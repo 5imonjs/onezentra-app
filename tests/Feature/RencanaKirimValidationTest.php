@@ -18,7 +18,7 @@ class RencanaKirimValidationTest extends TestCase
     private function admin(bool $viewAll = false): User
     {
         $role = Role::firstOrCreate(['slug' => '_admin'], ['name' => 'Admin', 'slug' => '_admin']);
-        $slugs = ['rencana_kirim.create', 'rencana_kirim.view', 'rencana_kirim.edit'];
+        $slugs = ['rencana_kirim.create', 'rencana_kirim.view', 'rencana_kirim.edit', 'rencana_kirim.delete'];
         if ($viewAll) {
             $slugs[] = 'depot.view_all';
         }
@@ -146,5 +146,63 @@ class RencanaKirimValidationTest extends TestCase
             ->assertStatus(200);
 
         $this->assertSame('PO-B1', $rkB->fresh()->po_transporter);
+    }
+
+    public function test_update_is_rejected_once_execution_has_started(): void
+    {
+        Sanctum::actingAs($admin = $this->admin());
+
+        // CHECKED_IN = item sudah jadi acuan gate/validasi SJ/receiving.
+        $rk = $this->withItems(RencanaKirim::create([
+            'po_transporter' => 'PO-LOCK', 'status' => 'CHECKED_IN',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $admin->id,
+        ]), $admin);
+
+        $this->putJson("/api/v1/rencana-kirim/{$rk->id}", ['driver_name' => 'Rangga'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn (string $m) => str_contains($m, 'tidak dapat diedit'));
+
+        $this->assertSame('PO-LOCK', $rk->fresh()->po_transporter);
+    }
+
+    public function test_update_keeps_past_rkh_date_when_unchanged_but_rejects_new_past_date(): void
+    {
+        Sanctum::actingAs($admin = $this->admin());
+
+        $past = now()->subWeek()->toDateString();
+        $rk = $this->withItems(RencanaKirim::create([
+            'po_transporter' => 'PO-PAST-KEEP', 'status' => 'DRAFT', 'rkh_date' => $past,
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $admin->id,
+        ]), $admin);
+
+        // Edit field lain tanpa menyentuh tanggal → tetap sah, tanggal lama dipertahankan.
+        $this->putJson("/api/v1/rencana-kirim/{$rk->id}", ['driver_name' => 'Rangga'])->assertStatus(200);
+        $this->assertSame($past, substr((string) $rk->fresh()->rkh_date, 0, 10));
+
+        // Ganti tanggal ke masa lalu lain → ditolak validasi.
+        $this->putJson("/api/v1/rencana-kirim/{$rk->id}", ['rkh_date' => now()->subDay()->toDateString()])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['rkh_date']);
+
+        $this->assertSame($past, substr((string) $rk->fresh()->rkh_date, 0, 10));
+    }
+
+    public function test_destroy_rejects_active_plans_but_allows_draft(): void
+    {
+        Sanctum::actingAs($admin = $this->admin());
+
+        $scheduled = $this->withItems(RencanaKirim::create([
+            'po_transporter' => 'PO-DEL-SCH', 'status' => 'SCHEDULED',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $admin->id,
+        ]), $admin);
+        $this->deleteJson("/api/v1/rencana-kirim/{$scheduled->id}")->assertStatus(422);
+        $this->assertDatabaseHas('rencana_kirim', ['id' => $scheduled->id]);
+
+        $draft = $this->withItems(RencanaKirim::create([
+            'po_transporter' => 'PO-DEL-DRA', 'status' => 'DRAFT',
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $admin->id,
+        ]), $admin);
+        $this->deleteJson("/api/v1/rencana-kirim/{$draft->id}")->assertOk();
+        $this->assertDatabaseMissing('rencana_kirim', ['id' => $draft->id]);
     }
 }

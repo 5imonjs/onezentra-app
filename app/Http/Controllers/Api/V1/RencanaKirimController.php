@@ -225,6 +225,13 @@ class RencanaKirimController extends Controller
     public function update(Request $request, RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
+        // Edit hanya sah selama belum dieksekusi: setelah CHECKED_IN, item menjadi acuan
+        // validasi SJ & receiving — mengubah dokumen/barang berarti memalsukan acuan.
+        abort_unless(
+            in_array($rencanaKirim->status, ['DRAFT', 'SCHEDULED'], true),
+            422,
+            "Rencana kirim berstatus {$rencanaKirim->status} tidak dapat diedit."
+        );
         if ($request->filled('po_transporter')) {
             $request->merge(['po_transporter' => strtoupper(trim($request->input('po_transporter')))]);
         }
@@ -239,6 +246,8 @@ class RencanaKirimController extends Controller
                     ->ignore($rencanaKirim->id),
             ],
             'rkh_number' => 'nullable|string|max:50',
+            // Saat edit, tanggal lampau yang sudah tersimpan tetap sah (tidak dipaksa mundur);
+            // yang ditolak hanya perubahan rkh_date ke tanggal lampau (after_or_equal).
             'rkh_date' => 'nullable|date|after_or_equal:today',
             'no_dokumen' => 'nullable|string|max:50',
             'no_dokumen_date' => 'nullable|string|max:50',
@@ -265,6 +274,18 @@ class RencanaKirimController extends Controller
             'items.*.satuan' => 'nullable|string|max:20',
             'items.*.keterangan' => 'nullable|string',
         ]);
+
+        // rkh_date: hapus dulu dari validated (rule after_or_equal menolak tanggal lampau
+        // yang tersimpan). Kembali hanya bila user benar-benar mengubahnya — sehingga RK
+        // ber-tanggal lampau tetap bisa diedit tanpa dipaksa mundur.
+        $validated = collect($validated)->except('rkh_date')->all();
+        if ($request->filled('rkh_date')) {
+            $newDate = substr((string) $request->input('rkh_date'), 0, 10);
+            $oldDate = substr((string) $rencanaKirim->rkh_date, 0, 10);
+            if ($newDate !== $oldDate) {
+                $validated['rkh_date'] = $request->input('rkh_date');
+            }
+        }
 
         if (isset($validated['items'])) {
             $items = $this->normalizeItemsFromNpn($validated['items']);
@@ -297,6 +318,13 @@ class RencanaKirimController extends Controller
     public function destroy(RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
+        // Hapus hanya sah sebelum dokumen dieksekusi — menjaga jejak audit alur gate →
+        // validasi SJ → receiving.
+        abort_unless(
+            in_array($rencanaKirim->status, ['DRAFT', 'CANCELLED'], true),
+            422,
+            "Rencana kirim berstatus {$rencanaKirim->status} tidak dapat dihapus."
+        );
         $rencanaKirim->items()->delete();
         $rencanaKirim->delete();
 
