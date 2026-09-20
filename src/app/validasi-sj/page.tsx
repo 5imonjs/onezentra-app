@@ -7,7 +7,7 @@ import DashboardLayout from '@/app/dashboard/layout';
 import { getErrorMessage, sjValidations, API_ROOT } from '@/lib/api';
 import Modal from '@/components/Modal';
 import SearchInput from '@/components/SearchInput';
-import Toast from '@/components/Toast';
+import { notifyGlobal } from '@/store/globalToast';
 import { useAuthStore } from '@/store/auth';
 
 type ValidationItem = {
@@ -127,18 +127,38 @@ export default function ValidasiSjPage() {
   };
   const [photoPreview, setPhotoPreview] = useState('');
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [lastPage, setLastPage] = useState(1);
+  const [svStats, setSvStats] = useState<{ today: number; in_progress: number; completed: number; cancelled: number; total: number } | null>(null);
 
   const loadItems = useCallback(async () => {
     try {
       const response = await sjValidations.list({ search, page, per_page: 20 });
       setItems(response.data.data);
+      setLastPage(Number(response.data.last_page) || 1);
     } catch (error) {
-      setToast({ message: getErrorMessage(error, 'Gagal memuat validasi dokumen.'), type: 'error' });
+      notifyGlobal(getErrorMessage(error, 'Gagal memuat validasi dokumen.'), 'error');
     }
   }, [page, search]);
 
+  const loadStats = useCallback(async () => {
+    try {
+      const response = await sjValidations.stats();
+      setSvStats(response.data.data);
+    } catch {
+      // Statistik gagal dimuat: chip menampilkan 0, daftar tetap berfungsi.
+    }
+  }, []);
+
   useEffect(() => { loadItems(); }, [loadItems]);
+  useEffect(() => { loadStats(); }, [loadStats]);
+
+  // Popup umur dapat ditutup dengan Escape.
+  useEffect(() => {
+    if (!showUmurPopup) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowUmurPopup(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showUmurPopup]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -150,7 +170,7 @@ export default function ValidasiSjPage() {
       const response = await sjValidations.get(validation.id);
       setActive(response.data.data);
     } catch (error) {
-      setToast({ message: getErrorMessage(error, 'Gagal memuat detail validasi.'), type: 'error' });
+      notifyGlobal(getErrorMessage(error, 'Gagal memuat detail validasi.'), 'error');
     }
   };
 
@@ -162,7 +182,7 @@ export default function ValidasiSjPage() {
       setLookup(response.data.data);
     } catch (error) {
       setLookup(null);
-      setToast({ message: getErrorMessage(error, 'Dokumen tidak ditemukan.'), type: 'error' });
+      notifyGlobal(getErrorMessage(error, 'Dokumen tidak ditemukan.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -177,8 +197,9 @@ export default function ValidasiSjPage() {
       setLookup(null);
       setCode('');
       loadItems();
+      loadStats();
     } catch (error) {
-      setToast({ message: getErrorMessage(error, 'Gagal memulai validasi.'), type: 'error' });
+      notifyGlobal(getErrorMessage(error, 'Gagal memulai validasi.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -226,9 +247,9 @@ export default function ValidasiSjPage() {
       setSelected(null);
       setPhoto(null);
       setPhotoPreview('');
-      setToast({ message: 'Item berhasil divalidasi.', type: 'success' });
+      notifyGlobal('Item berhasil divalidasi.', 'success');
     } catch (error) {
-      setToast({ message: getErrorMessage(error, 'Gagal menyimpan validasi item.'), type: 'error' });
+      notifyGlobal(getErrorMessage(error, 'Gagal menyimpan validasi item.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -239,11 +260,12 @@ export default function ValidasiSjPage() {
     setBusy(true);
     try {
       await sjValidations.complete(active.id);
-      setToast({ message: 'Validasi dokumen selesai.', type: 'success' });
+      notifyGlobal('Validasi dokumen selesai.', 'success');
       setActive(null);
       loadItems();
+      loadStats();
     } catch (error) {
-      setToast({ message: getErrorMessage(error, 'Gagal menyelesaikan validasi.'), type: 'error' });
+      notifyGlobal(getErrorMessage(error, 'Gagal menyelesaikan validasi.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -259,11 +281,13 @@ export default function ValidasiSjPage() {
   const itemUmurSelisih = itemSisaUmur ? itemSisaUmur.totalMonths - itemStandarUmur : null;
   const itemUmurSelisihDetail = form.expired_date ? formatUmurSelisih(form.expired_date, itemStandarUmur) : null;
   const popupUmurSelisihDetail = form.expired_date ? formatUmurSelisih(form.expired_date, standarUmur) : null;
-  const waitingCount = items.filter((item) => item.status === 'PENDING').length;
-  const inProgressCount = items.filter((item) => item.status === 'IN_PROGRESS').length;
-  const completedCount = items.filter((item) => item.status === 'COMPLETED').length;
-  const cancelledCount = items.filter((item) => item.status === 'CANCELLED').length;
-  const totalCount = items.length;
+  // Statistik header/ring dari server (global per depo), bukan hitungan halaman aktif.
+  // Level PENDING tidak ada pada validasi dokumen — record langsung berstatus IN_PROGRESS.
+  const svToday = svStats?.today ?? 0;
+  const svInProgress = svStats?.in_progress ?? 0;
+  const svCompleted = svStats?.completed ?? 0;
+  const svCancelled = svStats?.cancelled ?? 0;
+  const svTotal = svStats?.total ?? 0;
 
   if (!hasPermission('sj_validation.view')) {
     return (
@@ -277,9 +301,8 @@ export default function ValidasiSjPage() {
 
   return (
     <DashboardLayout>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {wasRedirected && (
-        <div className="rounded-xl border border-amber-200 bg-linear-to-r from-amber-50 to-orange-50 p-4 mb-4">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 mb-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
               <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
@@ -312,10 +335,10 @@ export default function ValidasiSjPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
               {[
-                { label: 'Hari ini', value: 0, valueClass: 'bg-slate-900 text-white', className: 'bg-white text-slate-900 shadow' },
-                { label: 'Terjadwal', value: waitingCount, valueClass: 'bg-blue-500 text-white', className: 'bg-white/10 border-white/20' },
-                { label: 'Selesai', value: completedCount, valueClass: 'bg-emerald-500 text-white', className: 'bg-white/10 border-white/20' },
-                { label: 'Total', value: totalCount, valueClass: 'text-white', className: 'bg-white/10 border-white/10' },
+                { label: 'Hari ini', value: svToday, valueClass: 'bg-slate-900 text-white', className: 'bg-white text-slate-900 shadow' },
+                { label: 'Berjalan', value: svInProgress, valueClass: 'bg-blue-500 text-white', className: 'bg-white/10 border-white/20' },
+                { label: 'Selesai', value: svCompleted, valueClass: 'bg-emerald-500 text-white', className: 'bg-white/10 border-white/20' },
+                { label: 'Total', value: svTotal, valueClass: 'text-white', className: 'bg-white/10 border-white/10' },
               ].map((stat) => (
                 <span key={stat.label} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur ${stat.className}`}>
                   {stat.label}
@@ -365,29 +388,27 @@ export default function ValidasiSjPage() {
             </section>
 
             {/* Progress Ring */}
-            {totalCount > 0 && (
+            {svTotal > 0 && (
               <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Ringkasan Status</h3>
                 <div className="flex items-center gap-4">
                   <div className="relative w-24 h-24 shrink-0">
                     <svg className="w-24 h-24 -rotate-90" viewBox="0 0 36 36">
                       <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                      {waitingCount > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f59e0b" strokeWidth="3" strokeDasharray={`${(waitingCount / totalCount) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
-                      {inProgressCount > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray={`${(inProgressCount / totalCount) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
-                      {completedCount > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" strokeWidth="3" strokeDasharray={`${(completedCount / totalCount) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
-                      {cancelledCount > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ef4444" strokeWidth="3" strokeDasharray={`${(cancelledCount / totalCount) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
+                      {svInProgress > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray={`${(svInProgress / svTotal) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
+                      {svCompleted > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" strokeWidth="3" strokeDasharray={`${(svCompleted / svTotal) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
+                      {svCancelled > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ef4444" strokeWidth="3" strokeDasharray={`${(svCancelled / svTotal) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-black text-slate-800">{totalCount}</span>
+                      <span className="text-xl font-black text-slate-800">{svTotal}</span>
                       <span className="text-[9px] text-slate-400 uppercase">Total</span>
                     </div>
                   </div>
                   <div className="space-y-3 flex-1">
 {[
-                       { label: 'Menunggu', count: waitingCount, color: 'bg-amber-500', textColor: 'text-amber-600' },
-                       { label: 'Diproses', count: inProgressCount, color: 'bg-blue-500', textColor: 'text-blue-600' },
-                       { label: 'Selesai', count: completedCount, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
-                       { label: 'Dibatalkan', count: cancelledCount, color: 'bg-red-500', textColor: 'text-red-600' },
+                       { label: 'Diproses', count: svInProgress, color: 'bg-blue-500', textColor: 'text-blue-600' },
+                       { label: 'Selesai', count: svCompleted, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+                       { label: 'Dibatalkan', count: svCancelled, color: 'bg-red-500', textColor: 'text-red-600' },
                      ].map((item) => (
                       <div key={item.label} className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
@@ -463,6 +484,13 @@ export default function ValidasiSjPage() {
                   </tbody>
                 </table>
               </div>
+              {lastPage > 1 && (
+                <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/40 px-5 py-3">
+                  <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed">Sebelumnya</button>
+                  <span className="text-xs text-slate-500">Halaman <strong className="text-slate-700">{page}</strong> dari {lastPage}</span>
+                  <button type="button" disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))} className="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed">Selanjutnya</button>
+                </div>
+              )}
             </section>
           </div>
         </div>
@@ -472,7 +500,7 @@ export default function ValidasiSjPage() {
       <Modal open={!!active} onClose={() => { setActive(null); setSelected(null); }} title="Detail Validasi Dokumen" subtitle="Pantau progres pemeriksaan dan validasi setiap item." size="2xl" footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
             {active?.status === 'IN_PROGRESS' && (
-              <button type="button" onClick={completeValidation} disabled={busy || pendingCount > 0} className="btn-primary inline-flex w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+              <button type="button" onClick={completeValidation} disabled={busy || pendingCount > 0 || !hasPermission('sj_validation.edit')} className="btn-primary inline-flex w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>
                 Selesaikan Validasi
               </button>
@@ -576,7 +604,7 @@ export default function ValidasiSjPage() {
       <Modal open={!!selected} onClose={() => setSelected(null)} title="Validasi Item" subtitle="Lengkapi pemeriksaan fisik sebelum menyimpan hasil validasi." size="lg" footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <button type="button" onClick={() => setSelected(null)} className="btn-secondary w-full sm:w-auto">Batal</button>
-          <button type="button" onClick={saveItem} disabled={busy || !form.actual_qty || (photoRequired && !photo)} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+          <button type="button" onClick={saveItem} disabled={busy || !form.actual_qty || (photoRequired && !photo) || !hasPermission('sj_validation.edit')} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
             {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
             {busy ? 'Menyimpan...' : 'Simpan Validasi'}
           </button>
@@ -673,20 +701,20 @@ export default function ValidasiSjPage() {
                       <svg className="w-6 h-6 text-amber-500 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                       <p className="text-[11px] font-bold text-amber-700">Kamera</p>
                     </div>
-                    <input type="file" accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhoto(f); if (f) setPhotoPreview(URL.createObjectURL(f)); }} className="sr-only" aria-label="Ambil foto dari kamera" />
+                    <input type="file" accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhoto(f); setPhotoPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return f ? URL.createObjectURL(f) : ''; }); }} className="sr-only" aria-label="Ambil foto dari kamera" />
                   </label>
                   <label className="flex-1 cursor-pointer">
                     <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-white/60 px-3 py-3 text-center hover:bg-amber-50 transition-colors">
                       <svg className="w-6 h-6 text-amber-500 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                       <p className="text-[11px] font-bold text-amber-700">Galeri</p>
                     </div>
-                    <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhoto(f); if (f) setPhotoPreview(URL.createObjectURL(f)); }} className="sr-only" aria-label="Pilih foto dari galeri" />
+                    <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhoto(f); setPhotoPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return f ? URL.createObjectURL(f) : ''; }); }} className="sr-only" aria-label="Pilih foto dari galeri" />
                   </label>
                 </div>
                 {photoPreview && (
                   <div className="relative rounded-xl overflow-hidden border border-amber-200 bg-white">
                     <Image src={photoPreview} alt="Pratinjau foto kondisi" className="w-full h-48 object-cover" width={400} height={200} unoptimized />
-                    <button type="button" onClick={() => { setPhoto(null); setPhotoPreview(''); }} className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-colors" aria-label="Hapus foto">
+                    <button type="button" onClick={() => { setPhoto(null); setPhotoPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return ''; }); }} className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-colors" aria-label="Hapus foto">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   </div>

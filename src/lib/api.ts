@@ -293,6 +293,7 @@ export const emailRecipients = {
 
 export const sjValidations = {
   list: (params?: Record<string, unknown>) => api.get('/sj-validations', { params }),
+  stats: () => api.get('/sj-validations/stats'),
   get: (id: number) => api.get(`/sj-validations/${id}`),
   lookup: (scanCode: string) => api.get('/sj-validations/lookup', { params: { scan_code: scanCode } }),
   startByCode: (scanCode: string) => api.post('/sj-validations/start-by-code', { scan_code: scanCode }),
