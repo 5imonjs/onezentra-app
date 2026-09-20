@@ -430,6 +430,8 @@ export default function RencanaKirimPage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Baseline isi form saat mode edit dibuka — deteksi "kotor" diukur dari sini, bukan form kosong.
+  const [editSnapshot, setEditSnapshot] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
   const { hasPermission } = useAuthStore();
 
@@ -555,27 +557,28 @@ export default function RencanaKirimPage() {
     setSelectedDate(item.rkh_date);
     setTypingItems(new Set());
     setCurrentStep(1);
-    setCreateForm({
+    const editForm = {
       rkh_date: item.rkh_date?.split('T')[0] ?? '', po_transporter: item.po_transporter ?? '',
       driver_name: item.driver_name ?? '', nopol: item.nopol ?? '',
       jenis_kendaraan: item.jenis_kendaraan ?? '', expedisi: item.expedisi ?? '',
       shipper_name: item.shipper_name ?? '', shipper_address: item.shipper_address ?? '', shipper_phone: item.shipper_phone ?? '',
       destination_name: item.nama_depo ?? item.destination_name ?? '', destination_address: item.destination_address ?? '',
       kode_depo: item.kode_depo ?? '', nama_depo: item.nama_depo ?? item.destination_name ?? '', notes: item.notes ?? '',
-    });
-    setCreateItems(
-      (item.items && item.items.length > 0
-        ? item.items.map((it, i) => ({
-            id: it.id, npn_id: it.npn_id,
-            item_number: i + 1, kode_barang: it.kode_barang ?? '', nama_barang: it.nama_barang ?? '',
-            jumlah: Number(it.jumlah) || 0, satuan: it.satuan ?? 'CRT', keterangan: it.keterangan ?? '',
-            umur: it.umur ?? null,
-            decVolume: it.decVolume ?? it.npn?.decVolume ?? null,
-            SAPdecUom: it.SAPdecUom ?? it.npn?.SAPdecUom ?? null,
-            kubikasi: it.kubikasi ?? null,
-          }))
-        : [{ ...emptyItem }])
-    );
+    };
+    const editItems = item.items && item.items.length > 0
+      ? item.items.map((it, i) => ({
+          id: it.id, npn_id: it.npn_id,
+          item_number: i + 1, kode_barang: it.kode_barang ?? '', nama_barang: it.nama_barang ?? '',
+          jumlah: Number(it.jumlah) || 0, satuan: it.satuan ?? 'CRT', keterangan: it.keterangan ?? '',
+          umur: it.umur ?? null,
+          decVolume: it.decVolume ?? it.npn?.decVolume ?? null,
+          SAPdecUom: it.SAPdecUom ?? it.npn?.SAPdecUom ?? null,
+          kubikasi: it.kubikasi ?? null,
+        }))
+      : [{ ...emptyItem }];
+    setCreateForm(editForm);
+    setCreateItems(editItems);
+    setEditSnapshot(JSON.stringify({ form: editForm, items: editItems }));
     setShowCreate(true);
   };
 
@@ -607,12 +610,14 @@ export default function RencanaKirimPage() {
 
   // Form dianggap "kotor" bila user pernah mengisi apa pun
   // (rkh_date prefill dari kalender tidak dihitung sebagai isian user).
-  const createDirty =
-    (Object.keys(emptyForm) as (keyof typeof emptyForm)[]).some((key) => {
-      if (key === 'rkh_date') return false;
-      return String(createForm[key] ?? '').trim() !== String(emptyForm[key] ?? '').trim();
-    }) ||
-    createItems.some((item) => item.kode_barang !== '' || item.nama_barang.trim().length > 0 || Number(item.jumlah) > 0);
+  // Mode edit: "kotor" = isi saat ini berbeda dari snapshot awal (memulihkan nilai awal = tidak kotor).
+  const createDirty = editingId
+    ? editSnapshot !== JSON.stringify({ form: createForm, items: createItems })
+    : (Object.keys(emptyForm) as (keyof typeof emptyForm)[]).some((key) => {
+        if (key === 'rkh_date') return false;
+        return String(createForm[key] ?? '').trim() !== String(emptyForm[key] ?? '').trim();
+      }) ||
+      createItems.some((item) => item.kode_barang !== '' || item.nama_barang.trim().length > 0 || Number(item.jumlah) > 0);
 
   const resetCreateForm = () => {
     setShowCreate(false);
@@ -624,6 +629,8 @@ export default function RencanaKirimPage() {
     setEditingStatus('');
     setTypingItems(new Set());
     setCurrentStep(1);
+    setPoDuplicate(false);
+    setEditSnapshot('');
   };
 
   const requestCloseCreate = () => {
@@ -803,6 +810,8 @@ export default function RencanaKirimPage() {
   const completedCount = Object.values(sectionComplete).filter(Boolean).length;
   const isMainFormValid = sectionComplete.dokumen && sectionComplete.kendaraan && sectionComplete.pengirim;
   const canSave = isMainFormValid && sectionComplete.barang;
+  // Backend menolak edit setelah CHECKED_IN — frontend menyetirinya sama: hanya DRAFT/SCHEDULED yang bisa diedit.
+  const editLocked = !!editingId && !['DRAFT', 'SCHEDULED'].includes(editingStatus);
   const itemCount = createItems.filter(i => i.kode_barang).length;
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
   const fmtDateId = (v?: string | null) => {
@@ -978,12 +987,12 @@ export default function RencanaKirimPage() {
                           <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">
                             <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                           </button>
-                          {hasPermission('rencana_kirim.edit') && (
+                          {hasPermission('rencana_kirim.edit') && ['DRAFT', 'SCHEDULED'].includes(item.status) && (
                             <button onClick={() => handleEdit(item)} aria-label={`Edit rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">
                               <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                             </button>
                           )}
-                          {hasPermission('rencana_kirim.delete') && (
+                          {hasPermission('rencana_kirim.delete') && ['DRAFT', 'CANCELLED'].includes(item.status) && (
                             <button onClick={() => handleDelete(item.id)} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">
                               <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                             </button>
@@ -1132,7 +1141,7 @@ export default function RencanaKirimPage() {
               <button onClick={requestCloseCreate} className="btn-secondary px-5">Batal</button>
               <button
                 onClick={handleCreate}
-                disabled={saving || typingItems.size > 0 || !canSave || poDuplicate || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create')) || ['CANCELLED', 'COMPLETED'].includes(editingStatus)}
+                disabled={saving || typingItems.size > 0 || !canSave || poDuplicate || editLocked || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create'))}
                 title={poDuplicate ? 'PO Transporter sudah dipakai di depo yang sama' : !canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : 'Isi minimal 1 barang') : undefined}
                 className="btn-primary min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-600/20"
               >
@@ -1149,9 +1158,13 @@ export default function RencanaKirimPage() {
         }
       >
         <div className="space-y-5">
-          {editingId && ['CANCELLED', 'COMPLETED'].includes(editingStatus) && (
-            <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${editingStatus === 'CANCELLED' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-              {editingStatus === 'CANCELLED' ? 'Rencana kirim ini sudah dibatalkan. Perubahan tidak dapat disimpan.' : 'Rencana kirim ini sudah selesai. Perubahan tidak dapat disimpan.'}
+          {editingId && editLocked && (
+            <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${editingStatus === 'CANCELLED' ? 'bg-red-50 border-red-200 text-red-700' : editingStatus === 'COMPLETED' ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+              {editingStatus === 'CANCELLED'
+                ? 'Rencana kirim ini sudah dibatalkan. Perubahan tidak dapat disimpan.'
+                : editingStatus === 'COMPLETED'
+                  ? 'Rencana kirim ini sudah selesai. Perubahan tidak dapat disimpan.'
+                  : 'Rencana kirim ini sudah diproses (Check In / Verifikasi / Dikerjakan). Perubahan tidak dapat disimpan.'}
             </div>
           )}
           {/* Modern Stepper */}
