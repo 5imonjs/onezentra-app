@@ -209,6 +209,7 @@ function NamaBarangInput({
         </div>
         <button
           onClick={handleUnlock}
+          aria-label="Ganti barang"
           className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0 mt-1"
           title="Ganti barang"
         >
@@ -788,7 +789,10 @@ export default function RencanaKirimPage() {
     const pcs = Number(item.SAPdecUom ?? item.npn?.SAPdecUom) || 1;
     return (Number(item.jumlah) || 0) * volume * pcs / 1_000_000;
   };
-  const totalKubikasi = createItems.reduce((sum, item) => sum + itemKubikasi(item), 0);
+  // Total yang TAMPIL = penjumlahan nilai per-baris yang sudah dibulatkan 2 desimal,
+  // agar penjumlahan di layar selalu konsisten (0.69 + 7.64 = 8.33, bukan 8.32).
+  // Angka final tetap dihitung ulang oleh backend saat simpan — ini hanya penyajian.
+  const totalKubikasiDisplay = createItems.reduce((sum, item) => sum + Number(itemKubikasi(item).toFixed(2)), 0);
   const sectionComplete = {
     dokumen: !!(createForm.po_transporter?.trim() && createForm.rkh_date),
     kendaraan: !!(createForm.driver_name?.trim() && createForm.nopol?.trim() && createForm.expedisi?.trim() && createForm.jenis_kendaraan),
@@ -1298,7 +1302,7 @@ export default function RencanaKirimPage() {
                       {sectionComplete.barang && (
                         <>
                           <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2.5 py-1 text-xs font-bold">{totalQty} Qty</span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-teal-600 text-white px-2.5 py-1 text-xs font-bold">{totalKubikasi.toFixed(2)} m³</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-teal-600 text-white px-2.5 py-1 text-xs font-bold">{totalKubikasiDisplay.toFixed(2)} m³</span>
                         </>
                       )}
                     </div>
@@ -1358,7 +1362,7 @@ export default function RencanaKirimPage() {
                 </div>
                 <div className="flex items-center justify-between px-4 py-3 bg-slate-900 text-white">
                   <span className="text-xs font-medium text-slate-300">Total {itemCount} barang</span>
-                  <span className="text-sm font-bold">{totalQty} Qty • {totalKubikasi.toFixed(2)} m³</span>
+                  <span className="text-sm font-bold">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
                 </div>
               </div>
             )}
@@ -1410,7 +1414,7 @@ export default function RencanaKirimPage() {
         open={showBarangModal}
         onClose={() => setShowBarangModal(false)}
         title="Kelola Daftar Barang"
-        subtitle={`${itemCount} barang • ${totalQty} qty • ${totalKubikasi.toFixed(2)} m³`}
+        subtitle={`${itemCount} barang • ${totalQty} qty • ${totalKubikasiDisplay.toFixed(2)} m³`}
         size="2xl"
         footer={
           <div className="flex w-full items-center justify-between">
@@ -1438,7 +1442,7 @@ export default function RencanaKirimPage() {
                       {item.kode_barang ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 text-white px-2.5 py-1 text-xs font-mono font-bold">{item.kode_barang}</span>
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${item.umur != null ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>{item.umur != null ? `${item.umur} bulan` : 'Umur -'}</span>
+                          <span title="Umur diambil dari master Standar Umur Produk" className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${item.umur != null ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{item.umur != null ? `${item.umur} bulan` : 'Umur belum diset'}</span>
                           <span className="inline-flex items-center rounded-full bg-teal-50 text-teal-700 border border-teal-200 px-2.5 py-1 text-xs font-bold">{rowKubikasi > 0 ? `${rowKubikasi.toFixed(2)} m³` : '0 m³'}</span>
                           {isDuplicate && (
                             <span role="alert" className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 border border-amber-200 px-2.5 py-1 text-xs font-bold">Duplikat baris #{firstSame + 1}</span>
@@ -1468,7 +1472,7 @@ export default function RencanaKirimPage() {
                       <input type="text" aria-label="Keterangan barang (opsional)" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-500" />
                     </div>
                   </div>
-                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-30 shrink-0 transition-colors">
+                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} aria-label={`Hapus barang ${item.item_number}`} className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-30 shrink-0 transition-colors">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
@@ -1481,8 +1485,11 @@ export default function RencanaKirimPage() {
             </button>
             <div className="flex items-center justify-between rounded-2xl bg-slate-900 text-white px-4 py-3">
               <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">Total • {itemCount} barang</span>
-              <span className="text-sm font-black">{totalQty} Qty • {totalKubikasi.toFixed(2)} m³</span>
+              <span className="text-sm font-black">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
             </div>
+            {createItems.some(i => i.kode_barang && i.umur == null) && (
+              <p className="px-1 text-[11px] leading-relaxed text-gray-400">Umur produk diambil dari master Standar Umur Produk. Produk tanpa umur tidak dapat dianalisa di Opname Expired — hubungi administrator untuk melengkapi master.</p>
+            )}
           </div>
         </div>
       </Modal>
