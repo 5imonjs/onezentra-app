@@ -132,7 +132,7 @@ class LoginToCompleteFlowTest extends TestCase
 
         $createRes = $this->postJson('/api/v1/rencana-kirim', [
             'po_transporter' => 'SJ-E2E-001',
-            'rkh_date' => '2026-09-10',
+            'rkh_date' => now()->toDateString(), // E2E harus tahan waktu (hardcode membuat test basi)
             'driver_name' => 'Budi E2E',
             'nopol' => 'B 9999 E2E',
             'jenis_kendaraan' => 'CDD',

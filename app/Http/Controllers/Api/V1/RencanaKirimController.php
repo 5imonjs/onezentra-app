@@ -15,6 +15,8 @@ use App\Models\StandarUmurProduk;
 use App\Services\EmailNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
 class RencanaKirimController extends Controller
@@ -127,10 +129,25 @@ class RencanaKirimController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Normalisasi identifier PO (memudahkan deteksi duplikat antar engine DB).
+        $request->merge(['po_transporter' => strtoupper(trim((string) $request->input('po_transporter')))]);
+
         $validated = $request->validate([
-            'po_transporter' => 'required|string|max:100',
+            'po_transporter' => [
+                'required', 'string', 'max:100',
+                Rule::unique('rencana_kirim', 'po_transporter')->where(function ($query) use ($request) {
+                    // Depo efektif: depot-scoped terkunci ke depo user; admin view_all memakai depo yang diminta.
+                    $kodeDepo = $request->user()->isDepotScoped()
+                        ? $request->user()->kode_depo
+                        : $request->input('kode_depo');
+
+                    // Case-insensitive agar portabel antar driver DB (MySQL & sqlite).
+                    return $query->where('kode_depo', $kodeDepo)
+                        ->whereRaw('LOWER(po_transporter) = LOWER(?)', [$request->input('po_transporter')]);
+                }),
+            ],
             'rkh_number' => 'nullable|string|max:50',
-            'rkh_date' => 'nullable|date',
+            'rkh_date' => 'nullable|date|after_or_equal:today',
             'no_dokumen' => 'nullable|string|max:50',
             'no_dokumen_date' => 'nullable|string|max:50',
             'driver_name' => 'nullable|string|max:100',
@@ -155,6 +172,9 @@ class RencanaKirimController extends Controller
             'items.*.jumlah' => 'required_with:items|numeric|min:1',
             'items.*.satuan' => 'nullable|string|max:20',
             'items.*.keterangan' => 'nullable|string',
+        ], [
+            'po_transporter.unique' => 'PO Transporter ini sudah dipakai pada rencana kirim lain di depo yang sama.',
+            'rkh_date.after_or_equal' => 'Tanggal RKH tidak boleh di masa lalu.',
         ]);
 
         $validated['created_by'] = $request->user()->id;
@@ -205,10 +225,21 @@ class RencanaKirimController extends Controller
     public function update(Request $request, RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
+        if ($request->filled('po_transporter')) {
+            $request->merge(['po_transporter' => strtoupper(trim($request->input('po_transporter')))]);
+        }
+
         $validated = $request->validate([
-            'po_transporter' => 'sometimes|required|string|max:100',
+            'po_transporter' => [
+                'sometimes', 'required', 'string', 'max:100',
+                Rule::unique('rencana_kirim', 'po_transporter')
+                    ->where(fn ($query) => $query
+                        ->where('kode_depo', $rencanaKirim->kode_depo)
+                        ->whereRaw('LOWER(po_transporter) = LOWER(?)', [$request->input('po_transporter')]))
+                    ->ignore($rencanaKirim->id),
+            ],
             'rkh_number' => 'nullable|string|max:50',
-            'rkh_date' => 'nullable|date',
+            'rkh_date' => 'nullable|date|after_or_equal:today',
             'no_dokumen' => 'nullable|string|max:50',
             'no_dokumen_date' => 'nullable|string|max:50',
             'driver_name' => 'nullable|string|max:100',
