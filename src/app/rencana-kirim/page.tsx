@@ -805,6 +805,11 @@ export default function RencanaKirimPage() {
   const canSave = isMainFormValid && sectionComplete.barang;
   const itemCount = createItems.filter(i => i.kode_barang).length;
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
+  const fmtDateId = (v?: string | null) => {
+    if (!v) return '-';
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
 
   return (
     <DashboardLayout>
@@ -1043,7 +1048,7 @@ export default function RencanaKirimPage() {
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
-                  <p className="mt-1 text-xs font-mono text-white/70">{fmt(viewItem.rkh_date?.split('T')[0])} • {fmt(viewItem.created_at?.split('T')[0])}</p>
+                  <p className="mt-1 text-xs text-white/70"><span className="font-semibold">RK:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
                 </div>
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border shadow-sm ${statusConfig[viewItem.status]?.bg === 'bg-white' ? 'bg-white text-slate-900 border-white' : 'bg-white text-slate-900 border-white/20'}`}>
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}
@@ -1052,7 +1057,7 @@ export default function RencanaKirimPage() {
               <div className="mt-4 grid grid-cols-3 gap-2">
                 <div className="rounded-xl bg-white/10 backdrop-blur border border-white/10 p-3 text-center">
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">Qty</p>
-                  <p className="text-lg font-black">{viewItem.total_qty}</p>
+                  <p className="text-lg font-black tabular-nums">{Number(viewItem.total_qty).toLocaleString('id-ID')}</p>
                 </div>
                 <div className="rounded-xl bg-white/10 backdrop-blur border border-white/10 p-3 text-center">
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">Kubikasi</p>
@@ -1066,8 +1071,7 @@ export default function RencanaKirimPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">🚚</span> Kendaraan</h4>
+              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
                 <div className="space-y-2.5 text-sm">
                   <div className="flex justify-between"><span className="text-slate-400">Driver</span><span className="font-bold text-slate-900">{fmt(viewItem.driver_name)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-400">Nopol</span><span className="font-mono font-bold">{fmt(viewItem.nopol)}</span></div>
@@ -1075,8 +1079,7 @@ export default function RencanaKirimPage() {
                   <div className="flex justify-between"><span className="text-slate-400">Jenis</span><span className="rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{fmt(viewItem.jenis_kendaraan)}</span></div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">📍</span> Pengiriman</h4>
+              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
                 <div className="space-y-2.5 text-sm">
                   <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Pengirim</p><p className="font-bold text-slate-900">{fmt(viewItem.shipper_name)}</p><p className="text-xs text-slate-500">{fmt(viewItem.shipper_address)}</p></div>
                   <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Kepada</p><p className="font-bold text-slate-900">{fmt(viewItem.destination_name)}</p><p className="text-xs text-slate-500">{fmt(viewItem.destination_address) || '-'}</p></div>
@@ -1087,7 +1090,7 @@ export default function RencanaKirimPage() {
               <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
                 <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
                   <h4 className="text-xs font-black tracking-widest text-slate-500 uppercase">Daftar barang • {viewItem.items.length}</h4>
-                  <span className="text-xs font-mono text-slate-500">{viewItem.items.reduce((s, i)=>s+Number(i.jumlah||0),0)} qty</span>
+                  <span className="text-xs font-mono text-slate-500">{viewItem.items.reduce((s, i) => s + Number(i.jumlah || 0), 0).toLocaleString('id-ID')} qty</span>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-64 overflow-auto">
                   {viewItem.items.map((item, idx) => (
@@ -1095,9 +1098,12 @@ export default function RencanaKirimPage() {
                       <span className="w-6 h-6 rounded-lg bg-slate-900 text-white text-xs font-black flex items-center justify-center shrink-0">{item.item_number}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-slate-900 truncate">{item.nama_barang}</p>
-                        <p className="text-xs font-mono text-slate-400">{item.kode_barang} • {item.jumlah} {item.satuan}</p>
+                        <p className="text-xs font-mono text-slate-400">{item.kode_barang} • {Number(item.jumlah).toLocaleString('id-ID')} {item.satuan}</p>
                       </div>
-                      <span className="text-sm font-black text-slate-900">{item.jumlah}</span>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-black text-slate-900 tabular-nums">{Number(item.jumlah).toLocaleString('id-ID')} <span className="text-xs font-medium text-slate-400">{item.satuan}</span></p>
+                        {item.keterangan ? <p className="text-[11px] text-slate-400 max-w-[220px] truncate">{item.keterangan}</p> : null}
+                      </div>
                     </div>
                   ))}
                 </div>
