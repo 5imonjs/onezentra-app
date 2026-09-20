@@ -248,6 +248,7 @@ Route::prefix('v1')->group(function () {
     Route::prefix('sj-validations')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [SjValidationController::class, 'index'])->middleware('permission:sj_validation.view');
         Route::get('/lookup', [SjValidationController::class, 'lookup'])->middleware('permission:sj_validation.create');
+        Route::get('/stats', [SjValidationController::class, 'stats'])->middleware('permission:sj_validation.view');
         Route::post('/start-by-code', [SjValidationController::class, 'startByCode'])->middleware('permission:sj_validation.create');
         Route::get('/{sjValidation}', [SjValidationController::class, 'show'])->middleware('permission:sj_validation.view');
         Route::post('/start/{rencanaKirim}', [SjValidationController::class, 'start'])->middleware('permission:sj_validation.create');
