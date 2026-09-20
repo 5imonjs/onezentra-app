@@ -828,8 +828,8 @@ export default function RencanaKirimPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-xl bg-white text-slate-900 px-3 py-1.5 text-xs font-black shadow">Hari ini <span className="bg-slate-900 text-white rounded-lg px-1.5 py-0.5">{todayCount}</span></span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-bold border border-white/20">Terjadwal <span className="bg-blue-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{scheduledCount}</span></span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-bold border border-white/20">Selesai <span className="bg-emerald-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{completedCountList}</span></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold border border-white/20">Terjadwal <span className="bg-blue-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{scheduledCount}</span></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold border border-white/20">Selesai <span className="bg-emerald-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{completedCountList}</span></span>
               <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold border border-white/10">Total <span className="text-white ml-1">{rkStats?.total ?? 0}</span></span>
             </div>
           </div>
@@ -1042,24 +1042,23 @@ export default function RencanaKirimPage() {
       >
         {viewItem && (
           <div className="space-y-5">
-            <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-slate-900 via-slate-800 to-indigo-900 p-5 text-white shadow-lg border border-white/10">
-              <div className="absolute -right-8 -top-8 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
-              <div className="relative flex flex-wrap items-start justify-between gap-3">
+            <div className="rounded-2xl bg-slate-900 p-5 text-white">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
                   <p className="mt-1 text-xs text-white/70"><span className="font-semibold">RK:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
                 </div>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border shadow-sm ${statusConfig[viewItem.status]?.bg === 'bg-white' ? 'bg-white text-slate-900 border-white' : 'bg-white text-slate-900 border-white/20'}`}>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-900">
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}
                 </span>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="rounded-xl bg-white/10 backdrop-blur border border-white/10 p-3 text-center">
+                <div className="rounded-xl bg-white/10 border border-white/10 p-3 text-center">
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">Qty</p>
                   <p className="text-lg font-black tabular-nums">{Number(viewItem.total_qty).toLocaleString('id-ID')}</p>
                 </div>
-                <div className="rounded-xl bg-white/10 backdrop-blur border border-white/10 p-3 text-center">
+                <div className="rounded-xl bg-white/10 border border-white/10 p-3 text-center">
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">Kubikasi</p>
                   <p className="text-lg font-black">{typeof viewItem.total_kubikasi === 'number' ? `${Number(viewItem.total_kubikasi).toFixed(2)}` : '-'} <span className="text-xs font-normal">m³</span></p>
                 </div>
