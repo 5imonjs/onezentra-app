@@ -126,12 +126,14 @@ export default function DashboardActivityChart() {
               </div>
             </div>
 
-            <div className="h-56 flex items-end gap-1 sm:gap-1.5 border-b border-gray-100" role="img" aria-label={`Grafik aktivitas harian, total ${totalRequests.toLocaleString('id-ID')} aktivitas dalam ${daily.length} hari`}>
+            <div className="h-56 flex items-end gap-1 sm:gap-1.5 border-b border-gray-100" role="group" aria-label={`Grafik aktivitas harian: total ${totalRequests.toLocaleString('id-ID')} aktivitas dalam ${daily.length} hari`}>
               {daily.map((day, index) => (
                 <div
                   key={day.date}
-                  className="h-full flex-1 min-w-0 flex flex-col justify-end items-center gap-2 group"
-                  title={`${formatDate(day.date)}: ${day.requests} aktivitas, ${day.active_users} user aktif`}
+                  tabIndex={0}
+                  role="img"
+                  aria-label={`${formatDate(day.date)}: ${day.requests.toLocaleString('id-ID')} aktivitas, ${day.active_users} user aktif`}
+                  className="h-full flex-1 min-w-0 flex flex-col justify-end items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded"
                 >
                   <div
                     className="w-full max-w-5 rounded-t bg-linear-to-t from-cyan-500 to-cyan-400 group-hover:from-cyan-600 group-hover:to-cyan-500 transition-all duration-200"

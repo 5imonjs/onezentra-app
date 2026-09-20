@@ -95,7 +95,7 @@ export default function GatePage() {
       setScanResult(null);
     } catch (e) {
       setFoundRencanaKirim(null);
-      setScanResult({ success: false, message: getErrorMessage(e, 'RencanaKirim not found') });
+      setScanResult({ success: false, message: getErrorMessage(e, 'Rencana kirim tidak ditemukan') });
     } finally {
       setLookupBusy(false);
     }
@@ -118,7 +118,7 @@ export default function GatePage() {
         driver_name: foundRencanaKirim.driver_name as string,
         po_transporter: foundRencanaKirim.po_transporter as string,
       });
-      setScanResult({ success: true, message: 'Gate INBOUND recorded. Status: CHECKED_IN' });
+      setScanResult({ success: true, message: 'Gate IN berhasil dicatat. Status: Check In' });
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
@@ -141,7 +141,7 @@ export default function GatePage() {
         driver_name: foundRencanaKirim.driver_name as string,
         po_transporter: foundRencanaKirim.po_transporter as string,
       });
-      setScanResult({ success: true, message: 'Gate OUTBOUND recorded. Status: COMPLETED' });
+      setScanResult({ success: true, message: 'Gate OUT berhasil dicatat. Status: Selesai' });
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
@@ -158,7 +158,7 @@ export default function GatePage() {
     setScanning(true);
     try {
       const res = await rencanaKirim.verify(foundRencanaKirim.id as number);
-      setScanResult({ success: true, message: 'RencanaKirim verified. Status: ' + res.data.data.status });
+      setScanResult({ success: true, message: 'Verifikasi berhasil. Status: ' + (statusLabels[res.data.data.status as string] || res.data.data.status) });
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
