@@ -35,6 +35,14 @@ class GateTransactionController extends Controller
             });
         }
 
+        if ($request->date_from) {
+            $query->whereDate('scan_time', '>=', $request->date_from);
+        }
+
+        if ($request->date_to) {
+            $query->whereDate('scan_time', '<=', $request->date_to);
+        }
+
         $perPage = $this->perPage($request);
         $transactions = $query->orderBy('created_at', 'desc')->paginate($perPage);
 

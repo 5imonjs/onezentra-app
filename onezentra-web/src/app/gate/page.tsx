@@ -61,23 +61,27 @@ export default function GatePage() {
 
   const loadStats = useCallback(async () => {
     try {
+      const d = new Date();
+      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const res = await Promise.all([
         gateTransactions.list({ per_page: 1 }),
+        // "Hari ini" dihitung server-side via filter tanggal, bukan dari halaman aktif.
+        gateTransactions.list({ date_from: todayStr, date_to: todayStr, per_page: 1 }),
         rencanaKirim.list({ status: 'SCHEDULED', per_page: 1 }),
         rencanaKirim.list({ status: 'COMPLETED', per_page: 1 }),
       ]);
-      const total = (res[0].data.total ?? 0) as number;
-      const terjadwal = (res[1].data.total ?? 0) as number;
-      const selesai = (res[2].data.total ?? 0) as number;
-      // Hari ini = transaksi hari ini (filter di client dari items hari ini, fallback 0)
-      setStats({ hariIni: 0, terjadwal, selesai, total });
+      setStats({
+        total: (res[0].data.total ?? 0) as number,
+        hariIni: (res[1].data.total ?? 0) as number,
+        terjadwal: (res[2].data.total ?? 0) as number,
+        selesai: (res[3].data.total ?? 0) as number,
+      });
     } catch {
       setStats(null);
     }
   }, []);
 
   useEffect(() => { loadStats(); }, [loadStats]);
-  useEffect(() => { if (items.length > 0) loadStats(); }, [items.length, loadStats]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
@@ -118,6 +122,7 @@ export default function GatePage() {
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
+      loadStats();
     } catch (e) {
       setScanResult({ success: false, message: getErrorMessage(e, 'Error') });
     } finally {
@@ -140,6 +145,7 @@ export default function GatePage() {
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
+      loadStats();
     } catch (e) {
       setScanResult({ success: false, message: getErrorMessage(e, 'Error') });
     } finally {
@@ -156,6 +162,7 @@ export default function GatePage() {
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
+      loadStats();
     } catch (e) {
       setScanResult({ success: false, message: getErrorMessage(e, 'Error') });
     } finally {
@@ -198,7 +205,6 @@ export default function GatePage() {
                   <h3 className="text-sm font-black tracking-tight text-slate-900">Quick Scan</h3>
                   <p className="text-xs text-slate-500">PO / Nopol • Enter untuk cari</p>
                 </div>
-                <span className="ml-auto hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 text-xs font-bold">● Live</span>
               </div>
               <div className="flex gap-2">
                 <div className="relative flex-1">
