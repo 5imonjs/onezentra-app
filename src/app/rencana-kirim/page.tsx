@@ -411,6 +411,7 @@ export default function RencanaKirimPage() {
     });
   };
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [poDuplicate, setPoDuplicate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -511,6 +512,25 @@ export default function RencanaKirimPage() {
   const scheduledCount = rkStats?.scheduled ?? 0;
   const completedCountList = rkStats?.completed ?? 0;
 
+  // Cek PO duplikat (debounced) — backend yang memutus, frontend memberi peringatan awal.
+  useEffect(() => {
+    const po = createForm.po_transporter?.trim().toUpperCase() ?? '';
+    if (!po || !showCreate) {
+      setPoDuplicate(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await rencanaKirim.list({ po_transporter: po, kode_depo: createForm.kode_depo || undefined, per_page: 1 });
+        const rows: Array<{ id?: number }> = res.data.data;
+        setPoDuplicate(rows.some(row => row.id !== editingId));
+      } catch {
+        setPoDuplicate(false); // gagal cek → biarkan backend yang memutus saat simpan
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [createForm.po_transporter, createForm.kode_depo, showCreate, editingId]);
+
   const openCreate = (date?: string) => {
     if (!hasPermission('rencana_kirim.create')) return;
     setCreateForm(prev => ({ ...prev, rkh_date: date ?? prev.rkh_date ?? todayDateStr() }));
@@ -521,8 +541,11 @@ export default function RencanaKirimPage() {
   };
 
   const handleDateClick = (date: string) => {
-    setSelectedDate(date);
-    openCreate(date);
+    // Tanggal lampau di-clamp ke hari ini — backend menolak rkh_date sebelum hari ini.
+    const today = todayDateStr();
+    const effective = date < today ? today : date;
+    setSelectedDate(effective);
+    openCreate(effective);
   };
 
   const handleEdit = (item: RencanaKirim) => {
@@ -1100,8 +1123,8 @@ export default function RencanaKirimPage() {
               <button onClick={requestCloseCreate} className="btn-secondary px-5">Batal</button>
               <button
                 onClick={handleCreate}
-                disabled={saving || typingItems.size > 0 || !canSave || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create')) || ['CANCELLED', 'COMPLETED'].includes(editingStatus)}
-                title={!canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : 'Isi minimal 1 barang') : undefined}
+                disabled={saving || typingItems.size > 0 || !canSave || poDuplicate || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create')) || ['CANCELLED', 'COMPLETED'].includes(editingStatus)}
+                title={poDuplicate ? 'PO Transporter sudah dipakai di depo yang sama' : !canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : 'Isi minimal 1 barang') : undefined}
                 className="btn-primary min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-600/20"
               >
                 <span className="flex items-center justify-center gap-2">
@@ -1171,12 +1194,15 @@ export default function RencanaKirimPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="f-po-transporter" className="block text-xs font-medium text-gray-500 mb-1">PO Transporter <span className="text-red-500">*</span></label>
-                <input id="f-po-transporter" type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2" />
+                <input id="f-po-transporter" aria-invalid={poDuplicate || undefined} type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2" />
                 <p className="text-[10px] text-gray-400 mt-0.5">Nomor PO transporter (SJ/BA)</p>
+                {poDuplicate && (
+                  <p role="alert" className="mt-1 text-xs font-semibold text-amber-600">PO Transporter ini sudah dipakai rencana kirim lain di depo yang sama.</p>
+                )}
               </div>
               <div>
                 <label htmlFor="f-rkh-date" className="block text-xs font-medium text-gray-500 mb-1">Tanggal RKH <span className="text-red-500">*</span></label>
-                <input id="f-rkh-date" type="date" value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
+                <input id="f-rkh-date" type="date" min={editingId ? undefined : todayDateStr()} value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
                 <p className="text-[10px] text-gray-400 mt-0.5">Tanggal pengiriman rencana</p>
               </div>
             </div>
@@ -1397,7 +1423,9 @@ export default function RencanaKirimPage() {
 
           <div className="space-y-3">
             {createItems.map((item, index) => {
-              const needsAttention = typingItems.has(index) || (item.nama_barang.trim().length > 0 && !item.kode_barang);
+              const firstSame = item.kode_barang ? createItems.findIndex(other => other.kode_barang && other.kode_barang === item.kode_barang) : -1;
+              const isDuplicate = item.kode_barang !== '' && firstSame !== -1 && firstSame !== index;
+              const needsAttention = typingItems.has(index) || (item.nama_barang.trim().length > 0 && !item.kode_barang) || isDuplicate;
               const rowKubikasi = itemKubikasi(item);
               return (
               <div key={index} className={`group relative rounded-2xl border bg-white p-5 shadow-sm transition-all ${needsAttention ? 'border-amber-200 bg-amber-50/20' : 'border-slate-100 hover:border-slate-200 hover:shadow-md'}`}>
@@ -1412,6 +1440,9 @@ export default function RencanaKirimPage() {
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 text-white px-2.5 py-1 text-xs font-mono font-bold">{item.kode_barang}</span>
                           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${item.umur != null ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>{item.umur != null ? `${item.umur} bulan` : 'Umur -'}</span>
                           <span className="inline-flex items-center rounded-full bg-teal-50 text-teal-700 border border-teal-200 px-2.5 py-1 text-xs font-bold">{rowKubikasi > 0 ? `${rowKubikasi.toFixed(2)} m³` : '0 m³'}</span>
+                          {isDuplicate && (
+                            <span role="alert" className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 border border-amber-200 px-2.5 py-1 text-xs font-bold">Duplikat baris #{firstSame + 1}</span>
+                          )}
                         </div>
                       ) : (
                         <p className="mt-1.5 text-xs text-slate-400">Ketik nama barang lalu pilih dari NPN</p>
