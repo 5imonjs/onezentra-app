@@ -5,6 +5,8 @@ import React, { useEffect, useId } from 'react';
 interface ModalProps {
   open: boolean;
   onClose: () => void;
+  /** Handler khusus untuk penutupan pasif (Escape/backdrop) — mis. minta konfirmasi dulu. Default: onClose. */
+  onCloseRequest?: () => void;
   title?: string;
   subtitle?: string;
   children: React.ReactNode;
@@ -22,9 +24,10 @@ const sizeClasses = {
 
 let openModalCount = 0;
 
-export default function Modal({ open, onClose, title, subtitle, children, size = 'md', footer }: ModalProps) {
+export default function Modal({ open, onClose, onCloseRequest, title, subtitle, children, size = 'md', footer }: ModalProps) {
   const reactId = useId();
   const titleId = title ? `modal-title-${reactId}` : undefined;
+  const handleDismiss = onCloseRequest ?? onClose;
 
   useEffect(() => {
     if (open) {
@@ -48,18 +51,18 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') handleDismiss();
     };
     if (open) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [open, onClose]);
+  }, [open, handleDismiss]);
 
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm animate-fade-in sm:p-4"
-      onClick={onClose}
+      onClick={handleDismiss}
       role="presentation"
     >
       <div

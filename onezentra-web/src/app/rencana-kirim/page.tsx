@@ -115,15 +115,18 @@ function NamaBarangInput({
   onSelect,
   onClear,
   onTypingChange,
+  inputId,
 }: {
   namaValue: string;
   onSelect: (product: NpnProduct) => void;
   onClear: () => void;
   onTypingChange?: (isTyping: boolean) => void;
+  inputId?: string;
 }) {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<NpnProduct[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
   const isLocked = !!namaValue;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -160,6 +163,7 @@ function NamaBarangInput({
         const res = await npn.searchProduct(query);
         setResults(res.data.data);
         setShowDropdown(res.data.data.length > 0);
+        setActiveIndex(res.data.data.length > 0 ? 0 : -1);
       } catch (e) {
         console.error(e);
       } finally {
@@ -171,14 +175,18 @@ function NamaBarangInput({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearch(value);
+    setActiveIndex(-1);
     doSearch(value);
     onTypingChange?.(value.trim().length > 0);
   };
 
-  const handleSelect = (product: NpnProduct) => {
+  const handleSelectIndex = (index: number) => {
+    const product = results[index];
+    if (!product) return;
     setSearch('');
     setResults([]);
     setShowDropdown(false);
+    setActiveIndex(-1);
     onTypingChange?.(false);
     onSelect(product);
   };
@@ -217,10 +225,22 @@ function NamaBarangInput({
       <div className="relative">
         <input
           ref={inputRef}
+          id={inputId}
           type="text"
+          role="combobox"
+          aria-expanded={showDropdown && results.length > 0}
+          aria-controls="npn-search-listbox"
+          aria-autocomplete="list"
+          aria-activedescendant={activeIndex >= 0 ? `npn-option-${activeIndex}` : undefined}
           value={search}
           onChange={handleSearchChange}
           onFocus={() => results.length > 0 && setShowDropdown(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); if (results.length > 0) { setShowDropdown(true); setActiveIndex(i => Math.min(results.length - 1, i + 1)); } }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(0, i - 1)); }
+            else if (e.key === 'Enter') { if (showDropdown && activeIndex >= 0 && results.length > 0) { e.preventDefault(); handleSelectIndex(activeIndex); } }
+            else if (e.key === 'Escape' && showDropdown) { e.stopPropagation(); setShowDropdown(false); setActiveIndex(-1); }
+          }}
           placeholder="Ketik nama barang..."
           className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent focus:bg-white bg-white transition-all pr-7"
         />
@@ -235,12 +255,13 @@ function NamaBarangInput({
       </div>
 
       {showDropdown && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
-          {results.map((product) => (
+        <ul id="npn-search-listbox" role="listbox" aria-label="Hasil pencarian barang NPN" className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+          {results.map((product, i) => (
+            <li key={product.id} role="option" id={`npn-option-${i}`} aria-selected={i === activeIndex}>
             <button
-              key={product.id}
-              onClick={() => handleSelect(product)}
-              className="w-full px-3 py-2.5 text-left hover:bg-primary-50 transition-colors border-b border-gray-100 last:border-0"
+              type="button"
+              onClick={() => handleSelectIndex(i)}
+              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-100 last:border-0 ${i === activeIndex ? 'bg-primary-100' : 'hover:bg-primary-50'}`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
@@ -252,8 +273,9 @@ function NamaBarangInput({
                 </div>
               </div>
             </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
@@ -273,6 +295,7 @@ function NamaDepoInput({
   disabled?: boolean;
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -293,18 +316,34 @@ function NamaDepoInput({
     d.nama_depo.toLowerCase().includes(value.trim().toLowerCase())
   );
 
-  const handleSelect = (d: DepoOption) => {
+  const handleSelectIndex = (index: number) => {
+    const d = filtered[index];
+    if (!d) return;
     onChange(d.nama_depo);
     setShowDropdown(false);
+    setActiveIndex(-1);
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
       <input
+        id="f-nama-depo"
         type="text"
+        role="combobox"
+        aria-expanded={showDropdown && filtered.length > 0}
+        aria-controls="depo-listbox"
+        aria-autocomplete="list"
+        aria-activedescendant={activeIndex >= 0 ? `depo-option-${activeIndex}` : undefined}
         value={value}
-        onChange={(e) => { onChange(e.target.value); setShowDropdown(e.target.value.trim().length > 0); }}
+        onChange={(e) => { onChange(e.target.value); setShowDropdown(e.target.value.trim().length > 0); setActiveIndex(-1); }}
         onFocus={() => { if (!disabled) setShowDropdown(value.trim().length > 0); }}
+        onKeyDown={(e) => {
+          if (disabled) return;
+          if (e.key === 'ArrowDown') { e.preventDefault(); if (filtered.length > 0) { setShowDropdown(true); setActiveIndex(i => Math.min(filtered.length - 1, i + 1)); } }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(0, i - 1)); }
+          else if (e.key === 'Enter') { if (showDropdown && activeIndex >= 0 && filtered.length > 0) { e.preventDefault(); handleSelectIndex(activeIndex); } }
+          else if (e.key === 'Escape' && showDropdown) { e.stopPropagation(); setShowDropdown(false); setActiveIndex(-1); }
+        }}
         placeholder="Nama depo tujuan"
         className="input-field text-sm py-2"
         disabled={disabled}
@@ -322,13 +361,13 @@ function NamaDepoInput({
         </button>
       )}
       {showDropdown && filtered.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
-          {filtered.map((d) => (
+        <ul id="depo-listbox" role="listbox" aria-label="Daftar depo" className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+          {filtered.map((d, i) => (
+            <li key={d.kode_depo} role="option" id={`depo-option-${i}`} aria-selected={i === activeIndex}>
             <button
-              key={d.kode_depo}
               type="button"
-              onClick={() => handleSelect(d)}
-              className="w-full px-3 py-2.5 text-left hover:bg-primary-50 transition-colors border-b border-gray-100 last:border-0"
+              onClick={() => handleSelectIndex(i)}
+              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-100 last:border-0 ${i === activeIndex ? 'bg-primary-100' : 'hover:bg-primary-50'}`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
@@ -340,8 +379,9 @@ function NamaDepoInput({
                 </div>
               </div>
             </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
@@ -370,6 +410,7 @@ export default function RencanaKirimPage() {
       return next;
     });
   };
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -384,16 +425,6 @@ export default function RencanaKirimPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ message: string; ok?: boolean; total_rows?: number; matched?: number; skipped?: number } | null>(null);
   const [showBarangModal, setShowBarangModal] = useState(false);
-
-  useEffect(() => {
-    if (importResult?.ok === true) {
-      const timer = setTimeout(() => {
-        setShowImport(false);
-        setImportResult(null);
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [importResult]);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -550,6 +581,35 @@ export default function RencanaKirimPage() {
     setDeleteTargetId(null);
   };
 
+  // Form dianggap "kotor" bila user pernah mengisi apa pun
+  // (rkh_date prefill dari kalender tidak dihitung sebagai isian user).
+  const createDirty =
+    (Object.keys(emptyForm) as (keyof typeof emptyForm)[]).some((key) => {
+      if (key === 'rkh_date') return false;
+      return String(createForm[key] ?? '').trim() !== String(emptyForm[key] ?? '').trim();
+    }) ||
+    createItems.some((item) => item.kode_barang !== '' || item.nama_barang.trim().length > 0 || Number(item.jumlah) > 0);
+
+  const resetCreateForm = () => {
+    setShowCreate(false);
+    setShowBarangModal(false);
+    setShowImport(false);
+    setCreateForm({ ...emptyForm });
+    setCreateItems([{ ...emptyItem }]);
+    setEditingId(null);
+    setEditingStatus('');
+    setTypingItems(new Set());
+    setCurrentStep(1);
+  };
+
+  const requestCloseCreate = () => {
+    if (createDirty) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    resetCreateForm();
+  };
+
   const handleCreate = async () => {
     const incompleteItem = createItems.some(item => item.nama_barang.trim() && !item.kode_barang);
     const typingItem = [...typingItems].some(index => createItems[index] && !createItems[index].kode_barang);
@@ -573,18 +633,13 @@ export default function RencanaKirimPage() {
     try {
       if (editingId) {
         await rencanaKirim.update(editingId, { ...createForm, items: payloadItems });
-        setShowCreate(false);
-        setCreateForm({ ...emptyForm });
-        setCreateItems([{ ...emptyItem }]);
-        setEditingId(null);
+        resetCreateForm();
         loadItems();
         loadStats();
         notifyGlobal(`Rencana kirim berhasil diperbarui untuk Depo ${createForm.nama_depo || createForm.kode_depo || '-'}.`, 'success');
       } else {
         await rencanaKirim.create({ ...createForm, items: payloadItems });
-        setShowCreate(false);
-        setCreateForm({ ...emptyForm });
-        setCreateItems([{ ...emptyItem }]);
+        resetCreateForm();
         loadItems();
         loadStats();
         notifyGlobal(`Rencana kirim berhasil disimpan untuk Depo ${createForm.nama_depo || createForm.kode_depo || '-'}.`, 'success');
@@ -1027,7 +1082,7 @@ export default function RencanaKirimPage() {
       </Modal>
 
       {/* Create Modal */}
-      <Modal open={showCreate} onClose={() => { setShowCreate(false); setShowBarangModal(false); setCreateForm({ ...emptyForm }); setCreateItems([{ ...emptyItem }]); setEditingId(null); setEditingStatus(''); setTypingItems(new Set()); }} title={editingId ? 'Edit Rencana Kirim' : 'Buat Rencana Kirim'} subtitle={editingId ? 'Perbarui jadwal, kendaraan, dan daftar barang.' : 'Lengkapi data pengiriman — isi dari atas ke bawah.'} size="2xl"
+      <Modal open={showCreate} onClose={requestCloseCreate} onCloseRequest={requestCloseCreate} title={editingId ? 'Edit Rencana Kirim' : 'Buat Rencana Kirim'} subtitle={editingId ? 'Perbarui jadwal, kendaraan, dan daftar barang.' : 'Lengkapi data pengiriman — isi dari atas ke bawah.'} size="2xl"
         footer={
           <div className="flex w-full items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs">
@@ -1036,13 +1091,13 @@ export default function RencanaKirimPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-white" /> Lengkapi NPN dulu
                 </span>
               ) : (
-                <span className="hidden sm:inline-flex items-center gap-1.5 text-gray-400">
-                  <span className={`w-2 h-2 rounded-full ${canSave ? 'bg-emerald-500' : 'bg-gray-300'}`} /> {canSave ? 'Siap simpan' : `Langkah ${currentStep}/5 • ${completedCount}/5 lengkap`}
+                <span className="inline-flex items-center gap-1.5 text-gray-500">
+                  <span className={`w-2 h-2 rounded-full ${canSave ? 'bg-emerald-500' : 'bg-gray-300'}`} /> {canSave ? 'Siap simpan' : !isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat' : 'Isi minimal 1 barang'}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => { setShowCreate(false); setCreateForm({ ...emptyForm }); setCreateItems([{ ...emptyItem }]); setEditingId(null); }} className="btn-secondary px-5">Batal</button>
+              <button onClick={requestCloseCreate} className="btn-secondary px-5">Batal</button>
               <button
                 onClick={handleCreate}
                 disabled={saving || typingItems.size > 0 || !canSave || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create')) || ['CANCELLED', 'COMPLETED'].includes(editingStatus)}
@@ -1115,13 +1170,13 @@ export default function RencanaKirimPage() {
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600 text-xs font-bold">1</span> Informasi Dokumen</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">PO Transporter <span className="text-red-500">*</span></label>
-                <input type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2" />
+                <label htmlFor="f-po-transporter" className="block text-xs font-medium text-gray-500 mb-1">PO Transporter <span className="text-red-500">*</span></label>
+                <input id="f-po-transporter" type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2" />
                 <p className="text-[10px] text-gray-400 mt-0.5">Nomor PO transporter (SJ/BA)</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Tanggal RKH <span className="text-red-500">*</span></label>
-                <input type="date" value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
+                <label htmlFor="f-rkh-date" className="block text-xs font-medium text-gray-500 mb-1">Tanggal RKH <span className="text-red-500">*</span></label>
+                <input id="f-rkh-date" type="date" value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
                 <p className="text-[10px] text-gray-400 mt-0.5">Tanggal pengiriman rencana</p>
               </div>
             </div>
@@ -1133,20 +1188,20 @@ export default function RencanaKirimPage() {
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">2</span> Kendaraan & Driver</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nama Driver <span className="text-red-500">*</span></label>
-                <input type="text" value={createForm.driver_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, driver_name: e.target.value }))} placeholder="cth: Budi Santoso" className="input-field text-sm py-2" />
+                <label htmlFor="f-driver" className="block text-xs font-medium text-gray-500 mb-1">Nama Driver <span className="text-red-500">*</span></label>
+                <input id="f-driver" type="text" value={createForm.driver_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, driver_name: e.target.value }))} placeholder="cth: Budi Santoso" className="input-field text-sm py-2" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Expedisi / Nama Kendaraan <span className="text-red-500">*</span></label>
-                <input type="text" value={createForm.expedisi ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, expedisi: e.target.value }))} placeholder="cth: CTP / Nama ekspedisi" className="input-field text-sm py-2" />
+                <label htmlFor="f-expedisi" className="block text-xs font-medium text-gray-500 mb-1">Expedisi / Nama Kendaraan <span className="text-red-500">*</span></label>
+                <input id="f-expedisi" type="text" value={createForm.expedisi ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, expedisi: e.target.value }))} placeholder="cth: CTP / Nama ekspedisi" className="input-field text-sm py-2" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nopol <span className="text-red-500">*</span></label>
-                <input type="text" value={createForm.nopol ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, nopol: e.target.value }))} placeholder="cth: DA 8323 BU" className="input-field text-sm py-2 uppercase" />
+                <label htmlFor="f-nopol" className="block text-xs font-medium text-gray-500 mb-1">Nopol <span className="text-red-500">*</span></label>
+                <input id="f-nopol" type="text" value={createForm.nopol ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, nopol: e.target.value }))} placeholder="cth: DA 8323 BU" className="input-field text-sm py-2 uppercase" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Jenis Kendaraan <span className="text-red-500">*</span></label>
-                <select value={createForm.jenis_kendaraan ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, jenis_kendaraan: e.target.value }))} className="select-field text-sm py-2">
+                <label htmlFor="f-jenis" className="block text-xs font-medium text-gray-500 mb-1">Jenis Kendaraan <span className="text-red-500">*</span></label>
+                <select id="f-jenis" value={createForm.jenis_kendaraan ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, jenis_kendaraan: e.target.value }))} className="select-field text-sm py-2">
                   <option value="">Pilih jenis kendaraan</option>
                   {jenisKendaraanOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
                 </select>
@@ -1162,35 +1217,35 @@ export default function RencanaKirimPage() {
               <div className="space-y-3 rounded-xl bg-gray-50/70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">Asal Pengirim</h4>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Asal Pengirim <span className="text-red-500">*</span></label>
-                  <input type="text" value={createForm.shipper_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_name: e.target.value }))} placeholder="cth: PT Sinar Abadi" className="input-field text-sm py-2" />
+                  <label htmlFor="f-shipper-name" className="block text-xs font-medium text-gray-500 mb-1">Asal Pengirim <span className="text-red-500">*</span></label>
+                  <input id="f-shipper-name" type="text" value={createForm.shipper_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_name: e.target.value }))} placeholder="cth: PT Sinar Abadi" className="input-field text-sm py-2" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Alamat Pengirim</label>
-                  <textarea value={createForm.shipper_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_address: e.target.value }))} placeholder="cth: Jl. Raya Singkawang No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
+                  <label htmlFor="f-shipper-addr" className="block text-xs font-medium text-gray-500 mb-1">Alamat Pengirim</label>
+                  <textarea id="f-shipper-addr" value={createForm.shipper_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_address: e.target.value }))} placeholder="cth: Jl. Raya Singkawang No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">No. HP Pengirim</label>
-                  <input type="text" value={createForm.shipper_phone ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_phone: e.target.value }))} placeholder="cth: 08xx-xxxx-xxxx" className="input-field text-sm py-2" />
+                  <label htmlFor="f-shipper-phone" className="block text-xs font-medium text-gray-500 mb-1">No. HP Pengirim</label>
+                  <input id="f-shipper-phone" type="text" value={createForm.shipper_phone ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_phone: e.target.value }))} placeholder="cth: 08xx-xxxx-xxxx" className="input-field text-sm py-2" />
                 </div>
               </div>
               <div className="space-y-3 rounded-xl bg-gray-50/70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">Ditujukan</h4>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Nama Depo <span className="text-red-500">*</span></label>
+                  <label htmlFor="f-nama-depo" className="block text-xs font-medium text-gray-500 mb-1">Nama Depo <span className="text-red-500">*</span></label>
                   <NamaDepoInput value={createForm.nama_depo ?? ''} depoList={depoList} onChange={handleNamaDepoChange} onClear={clearNamaDepo} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Kode Depo</label>
-                  <input type="text" value={createForm.kode_depo ?? ''} disabled className="input-field text-sm py-2 uppercase" placeholder="Otomatis terisi" />
+                  <label htmlFor="f-kode-depo" className="block text-xs font-medium text-gray-500 mb-1">Kode Depo</label>
+                  <input id="f-kode-depo" type="text" value={createForm.kode_depo ?? ''} disabled className="input-field text-sm py-2 uppercase" placeholder="Otomatis terisi" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Ditujukan <span className="text-red-500">*</span></label>
-                  <input type="text" value={createForm.destination_name ?? createForm.nama_depo ?? ''} disabled placeholder="Otomatis dari Nama Depo" className="input-field cursor-not-allowed bg-gray-100 text-sm py-2 text-gray-600" />
+                  <label htmlFor="f-dest-name" className="block text-xs font-medium text-gray-500 mb-1">Ditujukan <span className="text-red-500">*</span></label>
+                  <input id="f-dest-name" type="text" value={createForm.destination_name ?? createForm.nama_depo ?? ''} disabled placeholder="Otomatis dari Nama Depo" className="input-field cursor-not-allowed bg-gray-100 text-sm py-2 text-gray-600" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Alamat Tujuan</label>
-                  <textarea value={createForm.destination_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, destination_address: e.target.value }))} placeholder="cth: Jl. Karang Intan No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
+                  <label htmlFor="f-dest-addr" className="block text-xs font-medium text-gray-500 mb-1">Alamat Tujuan</label>
+                  <textarea id="f-dest-addr" value={createForm.destination_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, destination_address: e.target.value }))} placeholder="cth: Jl. Karang Intan No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
                   <p className="text-[10px] text-gray-400 mt-0.5">Alamat lengkap tujuan (akan tampil di Detail & PDF di bawah Singkawang)</p>
                 </div>
               </div>
@@ -1201,11 +1256,10 @@ export default function RencanaKirimPage() {
           {currentStep === 4 && (
           <div className="animate-fade-in space-y-4">
             {/* Header card - lebih premium */}
-            <div className="relative overflow-hidden rounded-2xl border border-amber-200/50 bg-linear-to-br from-amber-50 via-white to-orange-50/30 p-5 shadow-sm">
-              <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl" />
-              <div className="relative flex items-start justify-between gap-4">
+            <div className="rounded-2xl border border-amber-200/50 bg-amber-50 p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-amber-500 flex items-center justify-center shadow shrink-0">
                     <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                   </div>
                   <div>
@@ -1272,7 +1326,7 @@ export default function RencanaKirimPage() {
                         <p className="text-xs font-mono text-gray-400">{it.kode_barang} • {it.umur != null ? `${it.umur} bln` : '-'}</p>
                       </div>
                       <span className="text-sm font-bold text-gray-900 whitespace-nowrap">{it.jumlah} <span className="text-xs font-normal text-gray-500">{it.satuan}</span></span>
-                      <span className="text-xs font-mono font-semibold text-teal-600 whitespace-nowrap">{itemKubikasi(it).toFixed(4)} m³</span>
+                      <span className="text-xs font-mono font-semibold text-teal-600 whitespace-nowrap">{itemKubikasi(it).toFixed(2)} m³</span>
                     </div>
                   ))}
                 </div>
@@ -1289,7 +1343,7 @@ export default function RencanaKirimPage() {
           {currentStep === 5 && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm animate-fade-in">
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-bold">5</span> Catatan</h3>
-            <textarea value={createForm.notes ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Catatan tambahan untuk pengiriman ini..." rows={3} className="input-field text-sm py-2 w-full resize-none" />
+            <textarea id="f-notes" aria-label="Catatan tambahan" value={createForm.notes ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Catatan tambahan untuk pengiriman ini..." rows={3} className="input-field text-sm py-2 w-full resize-none" />
           </div>
           )}
 
@@ -1303,7 +1357,6 @@ export default function RencanaKirimPage() {
             >
               ← Sebelumnya
             </button>
-            <span className="text-xs font-medium text-gray-400">Langkah {currentStep} / 5</span>
             {currentStep < 4 ? (
               <button
                 type="button"
@@ -1352,13 +1405,13 @@ export default function RencanaKirimPage() {
                   <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-amber-500 text-white' : 'bg-white border border-slate-200 text-slate-700 shadow-sm'}`}>{item.item_number}</span>
                   <div className="flex-1 min-w-0 space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Barang <span className="text-red-500">*</span></label>
-                      <NamaBarangInput namaValue={item.nama_barang} onSelect={(p) => handleNamaBarangSelect(index, p)} onClear={() => handleClearItem(index)} onTypingChange={(v) => markTyping(index, v)} />
+                      <label htmlFor={`item-nama-${index}`} className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Barang <span className="text-red-500">*</span></label>
+                      <NamaBarangInput inputId={`item-nama-${index}`} namaValue={item.nama_barang} onSelect={(p) => handleNamaBarangSelect(index, p)} onClear={() => handleClearItem(index)} onTypingChange={(v) => markTyping(index, v)} />
                       {item.kode_barang ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 text-white px-2.5 py-1 text-xs font-mono font-bold">{item.kode_barang}</span>
                           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${item.umur != null ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>{item.umur != null ? `${item.umur} bulan` : 'Umur -'}</span>
-                          <span className="inline-flex items-center rounded-full bg-teal-50 text-teal-700 border border-teal-200 px-2.5 py-1 text-xs font-bold">{rowKubikasi > 0 ? `${rowKubikasi.toFixed(4)} m³` : '0 m³'}</span>
+                          <span className="inline-flex items-center rounded-full bg-teal-50 text-teal-700 border border-teal-200 px-2.5 py-1 text-xs font-bold">{rowKubikasi > 0 ? `${rowKubikasi.toFixed(2)} m³` : '0 m³'}</span>
                         </div>
                       ) : (
                         <p className="mt-1.5 text-xs text-slate-400">Ketik nama barang lalu pilih dari NPN</p>
@@ -1366,22 +1419,22 @@ export default function RencanaKirimPage() {
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Jumlah <span className="text-red-500">*</span></label>
-                        <input type="number" value={item.jumlah || ''} onChange={(e) => updateItem(index, 'jumlah', parseFloat(e.target.value) || 0)} placeholder="0" min="0" className="w-full px-3 py-2.5 text-center text-base font-black text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm" />
+                        <label htmlFor={`item-jumlah-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Jumlah <span className="text-red-500">*</span></label>
+                        <input id={`item-jumlah-${index}`} type="number" value={item.jumlah || ''} onChange={(e) => updateItem(index, 'jumlah', parseFloat(e.target.value) || 0)} placeholder="0" min="0" className="w-full px-3 py-2.5 text-center text-base font-black text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm" />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Satuan</label>
-                        <select value={item.satuan} onChange={(e) => updateItem(index, 'satuan', e.target.value)} className="w-full px-3 py-2.5 text-sm font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-center">
+                        <label htmlFor={`item-satuan-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Satuan</label>
+                        <select id={`item-satuan-${index}`} value={item.satuan} onChange={(e) => updateItem(index, 'satuan', e.target.value)} className="w-full px-3 py-2.5 text-sm font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-center">
                           <option value="CRT">CRT</option><option value="PCS">PCS</option><option value="DUS">DUS</option><option value="BOX">BOX</option><option value="KG">KG</option><option value="LUSIN">LUSIN</option><option value="ZAK">ZAK</option>
                         </select>
                       </div>
                       <div className="hidden sm:block">
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Keterangan</label>
-                        <input type="text" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Opsional" className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500" />
+                        <label htmlFor={`item-ket-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Keterangan</label>
+                        <input id={`item-ket-${index}`} type="text" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Opsional" className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500" />
                       </div>
                     </div>
                     <div className="sm:hidden">
-                      <input type="text" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-500" />
+                      <input type="text" aria-label="Keterangan barang (opsional)" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-500" />
                     </div>
                   </div>
                   <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-30 shrink-0 transition-colors">
@@ -1489,6 +1542,7 @@ export default function RencanaKirimPage() {
         </div>
       </Modal>
 
+      <ConfirmDialog open={confirmCloseOpen} onClose={() => setConfirmCloseOpen(false)} onConfirm={() => { setConfirmCloseOpen(false); resetCreateForm(); }} title="Buang perubahan?" message="Ada isian yang belum disimpan. Tutup form dan buang semua perubahan?" confirmLabel="Buang & Tutup" cancelLabel="Lanjut Mengisi" variant="warning" />
       <ConfirmDialog open={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }} onConfirm={confirmDelete} title="Hapus Rencana Kirim" message="Apakah Anda yakin ingin menghapus rencana kirim ini?" confirmLabel="Hapus" variant="danger" />
     </DashboardLayout>
   );
