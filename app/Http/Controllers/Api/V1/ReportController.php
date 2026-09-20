@@ -1,0 +1,201 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Exports\PenerimaanExport;
+use App\Exports\SelisihQtyExport;
+use App\Http\Controllers\Controller;
+use App\Models\ReceivingItem;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+
+class ReportController extends Controller
+{
+    public function selisihQty(Request $request): JsonResponse
+    {
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'kode_depo' => 'nullable|string|max:20',
+        ]);
+
+        $query = ReceivingItem::with(['receiving.rencanaKirim', 'validator'])
+            ->whereNotNull('selisih_qty')
+            ->where('selisih_qty', '!=', 0);
+
+        if ($request->user()->isDepotScoped()) {
+            $query->whereHas('receiving.rencanaKirim', fn ($q) => $q->forUserDepot($request->user()));
+        }
+
+        if ($request->date_from) {
+            $query->whereHas('receiving', fn ($q) => $q->whereDate('created_at', '>=', $request->date_from));
+        }
+        if ($request->date_to) {
+            $query->whereHas('receiving', fn ($q) => $q->whereDate('created_at', '<=', $request->date_to));
+        }
+        if ($request->kode_depo) {
+            $query->whereHas('receiving.rencanaKirim', fn ($q) => $q->where('kode_depo', $request->kode_depo));
+        }
+
+        $items = $query->orderByDesc('receiving_items.created_at')->get();
+
+        $data = $items->map(function ($item) {
+            $rk = $item->receiving->rencanaKirim;
+
+            return [
+                'id' => $item->id,
+                'created_at' => $item->created_at->format('Y-m-d H:i'),
+                'po_transporter' => $rk->po_transporter ?? '-',
+                'kode_barang' => $item->kode_barang,
+                'nama_barang' => $item->nama_barang,
+                'expected_qty' => (float) $item->expected_qty,
+                'actual_qty' => (float) $item->actual_qty,
+                'selisih_qty' => (float) $item->selisih_qty,
+                'selisih_reason' => $item->selisih_reason ?? '-',
+                'notes' => $item->notes ?? '-',
+                'condition' => $item->condition ?? '-',
+                'validator_name' => $item->validator->full_name ?? '-',
+            ];
+        });
+
+        $summary = [
+            'total_item' => $data->count(),
+            'total_selisih' => $data->sum('selisih_qty'),
+            'item_kurang' => $data->where('selisih_qty', '<', 0)->count(),
+            'item_lebih' => $data->where('selisih_qty', '>', 0)->count(),
+        ];
+
+        return response()->json(['data' => $data, 'summary' => $summary]);
+    }
+
+    public function selisihQtyExport(Request $request)
+    {
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'kode_depo' => 'nullable|string|max:20',
+        ]);
+
+        $filename = 'laporan-selisih-qty_'.date('Y-m-d_His').'.xlsx';
+
+        return Excel::download(
+            new SelisihQtyExport($request->date_from, $request->date_to, $request->kode_depo, $request->user()),
+            $filename
+        );
+    }
+
+    public function penerimaan(Request $request): JsonResponse
+    {
+        $this->validatePenerimaanRequest($request);
+
+        $items = $this->penerimaanQuery($request)->get();
+
+        $data = $items->map(fn (ReceivingItem $item) => $this->penerimaanRow($item));
+
+        $summary = [
+            'total_item' => $data->count(),
+            'total_qty_crt' => $data->sum('qty_crt'),
+            'total_qty_pcs' => $data->sum('qty_pcs'),
+            'item_sj' => $data->where('sumber', ReceivingItem::SOURCE_VALIDASI)->count(),
+            'item_manual' => $data->where('sumber', ReceivingItem::SOURCE_IMPORT)->count(),
+            'total_selisih' => $data->sum('selisih_qty'),
+        ];
+
+        return response()->json(['data' => $data, 'summary' => $summary]);
+    }
+
+    public function penerimaanExport(Request $request)
+    {
+        $this->validatePenerimaanRequest($request);
+
+        $filename = 'laporan-penerimaan_'.date('Y-m-d_His').'.xlsx';
+
+        return Excel::download(new PenerimaanExport($this->penerimaanQuery($request)), $filename);
+    }
+
+    private function validatePenerimaanRequest(Request $request): void
+    {
+        $request->validate([
+            'tanggal_from' => 'nullable|date',
+            'tanggal_to' => 'nullable|date',
+            'kode_depo' => 'nullable|string|max:20',
+            'sumber' => 'nullable|string|in:VALIDASI_SJ,IMPORT_MANUAL',
+            'search' => 'nullable|string|max:200',
+        ]);
+    }
+
+    private function penerimaanQuery(Request $request)
+    {
+        $query = ReceivingItem::query()
+            ->with(['receiving.rencanaKirim'])
+            ->whereNotNull('kode_barang');
+
+        if ($request->user()->isDepotScoped()) {
+            $query->where(fn ($q) => $q
+                ->where('kode_depo', $request->user()->kode_depo)
+                ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($request->user())));
+        }
+
+        if ($request->tanggal_from || $request->tanggal_to) {
+            $query->where(function ($q) use ($request) {
+                if ($request->tanggal_from) {
+                    $q->whereRaw('COALESCE(tanggal_penerimaan, DATE(scan_time), DATE(created_at)) >= ?', [$request->tanggal_from]);
+                }
+                if ($request->tanggal_to) {
+                    $q->whereRaw('COALESCE(tanggal_penerimaan, DATE(scan_time), DATE(created_at)) <= ?', [$request->tanggal_to]);
+                }
+            });
+        }
+
+        if ($request->kode_depo && ! $request->user()->isDepotScoped()) {
+            $query->where('kode_depo', $request->kode_depo);
+        }
+
+        if ($request->sumber) {
+            $query->where('source', $request->sumber);
+        }
+
+        if ($request->search) {
+            $like = "%{$request->search}%";
+            $query->where(fn ($q) => $q
+                ->where('kode_barang', 'like', $like)
+                ->orWhere('nama_barang', 'like', $like)
+                ->orWhere('sumber_material', 'like', $like)
+                ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r
+                    ->where('po_transporter', 'like', $like)
+                    ->orWhere('shipper_name', 'like', $like)
+                    ->orWhere('driver_name', 'like', $like)));
+        }
+
+        $query->orderByDesc('tanggal_penerimaan')->orderByDesc('receiving_items.id');
+
+        return $query;
+    }
+
+    private function penerimaanRow(ReceivingItem $item): array
+    {
+        $rk = $item->receiving?->rencanaKirim;
+
+        return [
+            'id' => $item->id,
+            'tanggal_penerimaan' => $item->tanggal_penerimaan ?: $item->created_at?->toDateString(),
+            'kode_depo' => $item->getKodeDepoFallback() ?: '-',
+            'nama_depo' => $item->getNamaDepoFallback() ?: '-',
+            'sumber_material' => $item->getSumberMaterialFallback() ?: '-',
+            'po_transporter' => $rk->po_transporter ?? '-',
+            'driver_name' => $rk->driver_name ?? '-',
+            'kode_barang' => $item->kode_barang,
+            'nama_barang' => $item->nama_barang ?: $item->kode_barang,
+            'qty_crt' => (float) $item->actual_qty,
+            'qty_pcs' => (float) ($item->qty_pcs ?? 0),
+            'satuan' => $item->satuan ?? '-',
+            'expired_date' => $item->expired_date?->toDateString() ?: '-',
+            'condition' => $item->condition ?? '-',
+            'selisih_qty' => (float) ($item->selisih_qty ?: 0),
+            'selisih_reason' => $item->selisih_reason ?? '-',
+            'notes' => $item->notes ?? '-',
+            'sumber' => $item->source,
+        ];
+    }
+}

@@ -1,0 +1,52 @@
+# ===== Laravel (root) =====
+
+# Dependencies
+/vendor
+/node_modules
+
+# Environment & secrets — JANGAN PERNAH commit
+/.env
+/.env.*
+!/.env.example
+
+# Runtime storage (struktur folder dijaga lewat .gitkeep)
+/storage/*.key
+/storage/app/private/*
+/storage/app/public/*
+/storage/framework/cache/*
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
+!/storage/**/.gitkeep
+
+# Bootstrap cache
+/bootstrap/cache/*.php
+
+# Test & cache artifacts
+/.phpunit.cache
+.phpunit.result.cache
+.phpactor.json
+
+# ===== Frontend (onezentra-web) =====
+onezentra-web/node_modules/
+onezentra-web/.next/
+onezentra-web/out/
+onezentra-web/.env*
+!onezentra-web/.env.example
+onezentra-web/tsconfig.tsbuildinfo
+onezentra-web/.turbo
+onezentra-web/.vercel
+onezentra-web/next-env.d.ts
+
+# ===== OS & editor =====
+.DS_Store
+**/.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*

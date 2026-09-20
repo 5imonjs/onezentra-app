@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Concerns\HasDepotScope;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class BiayaRetribusi extends Model
+{
+    use HasDepotScope;
+
+    protected $table = 'biaya_retribusis';
+
+    protected $fillable = [
+        'tanggal_pengajuan', 'kode_depo', 'nama_depo',
+        'nominal_biaya', 'is_rfah_required', 'rfah_name',
+        'approval_pengajuan', 'approval_pengajuan_level', 'created_by', 'status',
+        'submitted_by', 'submitted_at', 'checked_by', 'checked_at',
+        'rlh_approved_by', 'rlh_approved_at',
+        'approved_by', 'approved_at',
+        'rejected_by', 'rejected_at', 'rejection_reason',
+        'revised_by', 'revised_at', 'revisi_reason',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'tanggal_pengajuan' => 'date',
+            'nominal_biaya' => 'decimal:2',
+            'is_rfah_required' => 'boolean',
+            'submitted_by' => 'integer', 'submitted_at' => 'datetime',
+            'checked_by' => 'integer', 'checked_at' => 'datetime',
+            'rlh_approved_by' => 'integer', 'rlh_approved_at' => 'datetime',
+            'approved_by' => 'integer', 'approved_at' => 'datetime',
+            'rejected_by' => 'integer', 'rejected_at' => 'datetime',
+            'revised_by' => 'integer', 'revised_at' => 'datetime',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+        ];
+    }
+
+    public function details(): HasMany
+    {
+        return $this->hasMany(BiayaRetribusiDetail::class)->orderBy('order');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(BiayaRetribusiDocument::class)->orderBy('order');
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function checkedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'checked_by');
+    }
+
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function rlhApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rlh_approved_by');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function revisedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'revised_by');
+    }
+}
