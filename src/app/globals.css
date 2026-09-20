@@ -1,0 +1,349 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+
+  --color-accent-400: #2dd4bf;
+  --color-accent-500: #14b8a6;
+
+  --color-surface: #f8fafc;
+  --color-surface-card: #ffffff;
+  --color-surface-hover: #f1f5f9;
+
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+  --color-gray-900: #0f172a;
+
+  --font-sans: var(--font-roboto), 'Roboto', system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+
+  /* Accessible focus ring (3:1+ contrast on primary bg) */
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #4f46e5;
+  --focus-ring-inset: inset 0 0 0 2px #ffffff, inset 0 0 0 4px #4f46e5;
+}
+
+/* ============================================
+   SKIP TO CONTENT (WCAG 2.4.1)
+   ============================================ */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  padding: 12px 24px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+  transition: top 0.15s ease-in-out;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 0;
+  outline: none;
+}
+
+/* ============================================
+   REDUCED MOTION (WCAG 2.3.3)
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input, select, textarea {
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+::selection {
+  background-color: #c7d2fe;
+  color: #312e81;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes logoPop {
+  0% { transform: scale(0.88); opacity: 0; }
+  70% { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes splashBar {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-logo-pop {
+  animation: logoPop 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-splash-bar {
+  animation: splashBar 0.95s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s ease-out;
+}
+
+
+.sidebar-transition {
+  /* visibility ikut ditransisikan agar sidebar off-canvas yang tertutup
+     (translate-x + invisible) tidak bisa difokuskan keyboard di mobile. */
+  transition: width 0.3s ease-in-out, transform 0.3s ease-in-out, visibility 0.3s;
+}
+
+.card-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Accessible focus for interactive elements */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Toggle Switch Custom Sizes */
+.toggle-track-sm { width: 32px; height: 18px; }
+.toggle-track-md { width: 40px; height: 22px; }
+.toggle-track-lg { width: 48px; height: 26px; }
+
+.toggle-thumb-sm { width: 14px; height: 14px; }
+.toggle-thumb-md { width: 18px; height: 18px; }
+.toggle-thumb-lg { width: 22px; height: 22px; }
+
+.toggle-translate-sm:checked { transform: translateX(14px); }
+.toggle-translate-md:checked { transform: translateX(18px); }
+.toggle-translate-lg:checked { transform: translateX(22px); }
+
+.btn-primary {
+  @apply bg-primary-600 text-white px-4 py-2.5 rounded-xl font-medium transition-all duration-200 shadow-lg shadow-primary-600/20 hover:bg-primary-700 hover:shadow-xl hover:shadow-primary-600/30 active:scale-[0.98];
+}
+
+.btn-secondary {
+  @apply bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98];
+}
+
+.btn-danger {
+  @apply bg-red-500 text-white px-4 py-2.5 rounded-xl font-medium transition-all duration-200 shadow-lg shadow-red-500/20 hover:bg-red-600 hover:shadow-xl hover:shadow-red-500/30 active:scale-[0.98];
+}
+
+/* ============================================
+   ACCESSIBILITY UTILITY CLASSES
+   ============================================ */
+
+/* Screen reader only (visually hidden, accessible to AT) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus-visible ring for keyboard navigation */
+.focus-ring {
+  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600;
+}
+
+.input-field {
+  @apply w-full px-4 py-3 border border-gray-200 rounded-xl transition-all duration-200 bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent focus:shadow-lg focus:shadow-primary-500/10;
+}
+
+.select-field {
+  @apply px-4 py-3 pr-10 border border-gray-200 rounded-xl transition-all duration-200 bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent focus:shadow-lg focus:shadow-primary-500/10 appearance-none cursor-pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+.select-field-sm {
+  @apply px-3 py-2 pr-8 text-sm rounded-lg appearance-none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+}
+
+.table-header {
+  @apply px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border border-gray-200 bg-linear-to-b from-gray-50 to-gray-100;
+  white-space: nowrap;
+}
+
+.table-cell {
+  @apply px-6 py-4 border border-gray-200;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.badge {
+  @apply px-3 py-1 rounded-full text-xs font-semibold;
+}
+
+.badge-success {
+  @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+}
+
+.badge-warning {
+  @apply bg-amber-50 text-amber-700 border border-amber-200;
+}
+
+.badge-danger {
+  @apply bg-red-50 text-red-700 border border-red-200;
+}
+
+.badge-info {
+  @apply bg-blue-50 text-blue-700 border border-blue-200;
+}
+
+/* Excel-like Table Styles */
+.excel-header {
+  @apply px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200 bg-linear-to-b from-gray-50 to-gray-100;
+  white-space: nowrap;
+}
+
+.excel-cell {
+  @apply px-4 py-3 text-sm text-gray-700 border border-gray-200;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.excel-row {
+  @apply hover:bg-primary-50/30 transition-colors;
+}
+
+.excel-row:nth-child(even) {
+  @apply bg-gray-50/50;
+}
+
+/* ============================================
+   GLOBAL TEXT SIZE SCALE (Roboto)
+   ============================================
+   text-xs   = 12px  (labels, captions, badges)
+   text-sm   = 14px  (secondary text, table cells, form inputs)
+   text-base = 16px  (body text, default)
+   text-lg   = 18px  (subheadings, card titles)
+   text-xl   = 20px  (section titles)
+   text-2xl  = 24px  (page titles)
+   text-3xl  = 30px  (hero/landing text)
+   ============================================ */
+
+/* Override Tailwind text sizes for consistency */
+.text-xs {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.text-sm {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.text-base {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.text-lg {
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.text-xl {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.text-2xl {
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.text-3xl {
+  font-size: 30px;
+  line-height: 36px;
+}
