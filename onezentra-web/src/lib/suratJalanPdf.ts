@@ -321,5 +321,16 @@ export function previewSuratJalan(data: RencanaKirimData) {
   const doc = generateSuratJalanPDF(data);
   const blob = doc.output('blob');
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  const win = window.open(url, '_blank');
+  if (!win) {
+    // Popup diblokir browser — fallback unduh agar dokumen tetap bisa diakses user.
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Surat_Jalan_${data.po_transporter || 'document'}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+  // Revoke ditunda: tab preview membaca blob saat navigasi; revoke segera memutus tab di sebagian browser.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
