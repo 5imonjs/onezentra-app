@@ -1,6 +1,7 @@
 'use client';
 
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export interface RencanaKirimItem {
   item_number: number;
@@ -16,6 +17,7 @@ export interface RencanaKirimData {
   po_transporter: string;
   driver_name: string;
   nopol: string;
+  jenis_kendaraan?: string;
   expedisi: string;
   shipper_name: string;
   shipper_address: string;
@@ -24,11 +26,17 @@ export interface RencanaKirimData {
   destination_address?: string;
   notes: string;
   total_qty: number;
+  total_kubikasi?: number | null;
   items: RencanaKirimItem[];
   nama_depo: string;
 }
 
-const CODE39: Record<string, string> = {
+/**
+ * Tabel Code 39. Setiap nilai adalah representasi 12 modul (lebar sudah
+ * diperluas: elemen wide = 2 modul, narrow = 1 modul). Elemen bar/space
+ * ditentukan oleh *run* bit yang sama, bukan oleh paritas index.
+ */
+const CODE39_CHARS: Record<string, string> = {
   '0': '101001101101', '1': '110100101011', '2': '101100101011', '3': '110110010101',
   '4': '101001101011', '5': '110100110101', '6': '101100110101', '7': '101001011011',
   '8': '110100101101', '9': '101100101101', 'A': '110101001011', 'B': '101101001011',
@@ -42,272 +50,370 @@ const CODE39: Record<string, string> = {
   '/': '100100101001', '+': '100101001001', '%': '101001001001', '*': '100101101101',
 };
 
-function drawCode39(doc: jsPDF, value: string, centerX: number, y: number, width: number, height: number) {
-  const displayValue = normalizePdfText(value).toUpperCase();
-  const encoded = `*${displayValue.replace(/[^0-9A-Z. $/+%-]/g, '')}*`;
-  const narrow = 1;
-  const wide = 2.5;
-  const gap = 1;
-  const pattern = encoded.split('').map(char => CODE39[char] || CODE39['-']);
-  const totalUnits = pattern.reduce((sum, charPattern) => sum + [...charPattern].reduce((n, bit) => n + (bit === '1' ? wide : narrow), 0) + gap, 0);
-  const scale = Math.min(width / totalUnits, 0.45);
-  const actualWidth = totalUnits * scale;
-  const x = centerX - actualWidth / 2;
-  let cursor = x;
+const W = 210;
+const H = 297;
+const M = 8;
 
-  doc.setFillColor(0, 0, 0);
-  for (const charPattern of pattern) {
-    [...charPattern].forEach((bit, index) => {
-      const barWidth = (bit === '1' ? wide : narrow) * scale;
-      if (index % 2 === 0) doc.rect(cursor, y, barWidth, height, 'F');
-      cursor += barWidth;
-    });
-    cursor += gap * scale;
-  }
+/** jsPDF memang punya getNumberOfPages(); @types/jspdf lama belum mendeklarasikannya. */
+type JsPdfWithPages = jsPDF & { getNumberOfPages: () => number; lastAutoTable?: { finalY: number } };
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.text(displayValue, centerX, y + height + 3.5, { align: 'center' });
+export function getPdfPageCount(doc: jsPDF): number {
+  return (doc as JsPdfWithPages).getNumberOfPages();
 }
 
-function normalizePdfText(value: string | null | undefined): string {
-  return (value || '-').replace(/[\t ]+/g, ' ').replace(/\r\n/g, '\n').trim();
+export function normalizePdfText(value: string | null | undefined): string {
+  return (value || '-').replace(/[\t ]+/g, ' ').replace(/\r\n/g, '\n').trim() || '-';
 }
 
-function normalizeRkhDate(value: string | null | undefined): string {
+export function normalizeRkhDate(value: string | null | undefined): string {
   if (!value) return '-';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
+  // Ambil bagian tanggal secara tekstual: new Date('YYYY-MM-DD') diparse sebagai
+  // UTC sehingga di timezone negatif tanggal bisa bergeser satu hari.
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return value;
+  const [, yyyy, mm, dd] = match;
   return `${dd}-${mm}-${yyyy}`;
 }
 
-export function generateSuratJalanPDF(data: RencanaKirimData) {
-  const doc = new jsPDF('p', 'mm', 'a4');
-  const W = 210;
-  const M = 7;
-  const CW = W - M * 2;
-  const HDR_X = W - 72;
+/**
+ * Buang karakter yang tidak didukung Code 39 agar nilai yang dicetak (human
+ * readable) selalu identik dengan nilai yang di-encode ke bar.
+ */
+export function sanitizeCode39Value(value: string | null | undefined): string {
+  return normalizePdfText(value).toUpperCase().replace(/[^0-9A-Z. $/+%-]/g, '') || '-';
+}
 
-  let y = 10;
+/**
+ * Modul barcode ('1' = bar, '0' = space) untuk seluruh isi barcode, termasuk
+ * start/stop `*` dan gap (space narrow) antar karakter.
+ */
+export function encodeCode39(value: string | null | undefined): string {
+  const clean = sanitizeCode39Value(value);
+  return `*${clean}*`
+    .split('')
+    .map((char) => CODE39_CHARS[char] ?? CODE39_CHARS['-'])
+    .join('0');
+}
 
-  // ── HEADER (kanan, print-friendly) ──
-  const hdrData: [string, string][] = [
-    ['Tanggal RKH', normalizeRkhDate(data.rkh_date)],
-    ['Nama Driver', data.driver_name || '-'],
-    ['No. PO Transporter', data.po_transporter || '-'],
-  ];
-  const LH = 5;
-  for (const [lbl, val] of hdrData) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text(lbl, HDR_X, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(':', HDR_X + 26, y);
-    doc.setFont('helvetica', 'bold');
-    const maxW = W - M - HDR_X - 30;
-    let fs = 9;
-    doc.setFontSize(fs);
-    while (doc.getTextWidth(val || '-') > maxW && fs > 6) { fs -= 0.5; doc.setFontSize(fs); }
-    doc.text(val, W - M, y, { align: 'right' });
-    y += LH;
+function drawCode39(doc: jsPDF, value: string, centerX: number, y: number, maxWidth: number, height: number) {
+  const modules = encodeCode39(value);
+  const moduleWidth = Math.min(maxWidth / modules.length, 0.34);
+  const actualWidth = modules.length * moduleWidth;
+  let cursor = centerX - actualWidth / 2;
+
+  doc.setFillColor(0, 0, 0);
+  let i = 0;
+  while (i < modules.length) {
+    let j = i + 1;
+    while (j < modules.length && modules[j] === modules[i]) j++;
+    const runWidth = (j - i) * moduleWidth;
+    if (modules[i] === '1') doc.rect(cursor, y, runWidth, height, 'F');
+    cursor += runWidth;
+    i = j;
   }
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
-  doc.text('BARCODE', HDR_X, y);
-  const barcodeValue = normalizePdfText(data.po_transporter);
-  const barcodeCenter = HDR_X + 39;
-  drawCode39(doc, barcodeValue, barcodeCenter, y - 3.5, 48, 7);
-  y += 12;
 
-  // ── TITLE ──
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text('SURAT JALAN', W / 2, y, { align: 'center' });
-  y += 10;
-
-  const pad = 5;
-  const ly = M + pad;
-  const rx = M + 48;
-  const valueWidth = W - M - rx - pad;
-  const addressLineHeight = 4.5;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  const addressText = normalizePdfText(data.shipper_address);
-  const addressLines: string[] = doc.splitTextToSize(addressText, valueWidth);
+  doc.setFontSize(7);
+  doc.setTextColor(0, 0, 0);
+  doc.text(sanitizeCode39Value(value), centerX, y + height + 3.6, { align: 'center' });
+}
+
+function drawInfoBox(doc: jsPDF, data: RencanaKirimData, boxTop: number): number {
+  const boxW = W - M * 2;
+  const labelX = M + 5;
+  const valueX = M + 42;
+  const valueW = boxW - (valueX - M) - 5;
+  const lineHeight = 4.3;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  const addressLines = doc.splitTextToSize(normalizePdfText(data.shipper_address), valueW);
   const phone = normalizePdfText(data.shipper_phone);
   if (phone !== '-') {
-    const phoneSuffix = `  Hp. ${phone}`;
-    const last = addressLines[addressLines.length - 1] || '';
-    if (doc.getTextWidth(`${last}${phoneSuffix}`) <= valueWidth) {
-      addressLines[addressLines.length - 1] = `${last}${phoneSuffix}`;
+    const suffix = `  Hp. ${phone}`;
+    const last = addressLines[addressLines.length - 1] ?? '';
+    if (doc.getTextWidth(`${last}${suffix}`) <= valueW) {
+      addressLines[addressLines.length - 1] = `${last}${suffix}`;
     } else {
       addressLines.push(`Hp. ${phone}`);
     }
   }
-  const destAddr = normalizePdfText((data as unknown as { destination_address?: string }).destination_address);
-  const destFull = destAddr !== '-' && destAddr !== '' ? `${normalizePdfText(data.destination_name)}\n${destAddr}` : normalizePdfText(data.destination_name);
-  const destinationLines = doc.splitTextToSize(destFull, valueWidth);
-  const vehicle = data.expedisi ? `${normalizePdfText(data.expedisi)} / ${normalizePdfText(data.nopol)}` : normalizePdfText(data.nopol);
-  const vehicleLines = doc.splitTextToSize(vehicle.trim(), valueWidth);
-  const contentHeight = 7 + 5 + addressLines.length * addressLineHeight + 5 + destinationLines.length * addressLineHeight + vehicleLines.length * addressLineHeight + 6;
-  const boxY = y;
-  const boxH = Math.max(46, contentHeight + 5);
 
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.35);
-  doc.rect(M, boxY, CW, boxH, 'D');
+  const destAddr = normalizePdfText(data.destination_address);
+  const destFull = destAddr !== '-' ? `${normalizePdfText(data.destination_name)}\n${destAddr}` : normalizePdfText(data.destination_name);
+  const destinationLines = doc.splitTextToSize(destFull, valueW);
+  const vehicle = data.expedisi
+    ? `${normalizePdfText(data.expedisi)} / ${normalizePdfText(data.nopol)}`
+    : normalizePdfText(data.nopol);
+  const vehicleLines = doc.splitTextToSize(vehicle.trim(), valueW);
 
-  let ay = boxY + 7;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text('PENGIRIMAN', ly, ay);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(8);
-  doc.text(`:  ${normalizePdfText(data.shipper_name)}`, rx, ay);
+  const boxH = 8 + addressLines.length * lineHeight + 3 + destinationLines.length * lineHeight + 3 + vehicleLines.length * lineHeight + 5;
+
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.3);
+  doc.rect(M, boxTop, boxW, boxH, 'D');
+
+  let ay = boxTop + 6.5;
+  const label = (text: string) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text(text, labelX, ay);
+  };
+  const valueLines = (lines: string[]) => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text(lines.map((line, index) => (index === 0 ? `:  ${line}` : `   ${line}`)), valueX, ay);
+  };
+
+  label('PENGIRIM');
+  valueLines([normalizePdfText(data.shipper_name)]);
   ay += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  doc.text(addressLines, rx, ay);
-  ay += addressLines.length * addressLineHeight + 3;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text('KEPADA YTH', ly, ay);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(15, 23, 42);
-  doc.text(destinationLines.map((line: string, idx: number) => idx === 0 ? `:  ${line}` : `   ${line}`), rx, ay);
-  ay += destinationLines.length * addressLineHeight + 3;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text('KENDARAAN', ly, ay);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(15, 23, 42);
-  doc.text(vehicleLines.map((line: string, idx: number) => idx === 0 ? `:  ${line}` : `   ${line}`), rx, ay);
+  doc.text(addressLines, valueX, ay);
+  ay += addressLines.length * lineHeight + 3;
+
+  label('KEPADA YTH');
+  valueLines(destinationLines);
+  ay += destinationLines.length * lineHeight + 3;
+
+  label('KENDARAAN');
+  valueLines(vehicleLines);
 
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(6.5);
+  doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
-  doc.text('Kami kirimkan barang-barang sbb:', ly, boxY + boxH - 3.5);
+  doc.text('Kami kirimkan barang-barang sbb:', labelX, boxTop + boxH - 3);
 
-  y = boxY + boxH + 5;
+  return boxTop + boxH;
+}
 
-  // ── ITEMS TABLE — modern ──
-  const cW = [10, 28, 94, 18, 14, 32];
-  const cX: number[] = [];
-  let tx = M;
-  for (const w of cW) { cX.push(tx); tx += w; }
-  const tW = cW.reduce((a, b) => a + b, 0);
-  const hh = 8;
-  doc.setFillColor(240, 240, 240);
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.3);
-  doc.rect(M, y, tW, hh, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(0, 0, 0);
-  const heads = ['NO', 'KODE', 'NAMA BARANG', 'QTY', 'SAT', 'KET'];
-  for (let i = 0; i < heads.length; i++) {
-    const ax = (i === 0 || i === 3 || i === 4) ? cX[i] + cW[i] / 2 : cX[i] + 2.5;
-    const al = (i === 0 || i === 3 || i === 4) ? { align: 'center' as const } : {};
-    doc.text(heads[i], ax, y + 4.8, al);
-  }
-  y += hh;
-  const rows = data.items.map(it => [it.item_number.toString(), it.kode_barang || '-', it.nama_barang || '-', (it.jumlah || 0).toString(), it.satuan || '-', it.keterangan || '-']);
-  if (rows.length === 0) rows.push(['', '', '', '', '', '']);
-  const rH = 5.5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  for (let r = 0; r < rows.length; r++) {
-    const ry = y + r * rH;
-    if (r % 2 === 1) { doc.setFillColor(250, 250, 250); doc.rect(M, ry, tW, rH, 'F'); }
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.12);
-    doc.rect(M, ry, tW, rH, 'D');
-    for (let c = 1; c < cW.length; c++) doc.line(cX[c], ry, cX[c], ry + rH);
-    doc.setTextColor(0, 0, 0);
-    for (let c = 0; c < rows[r].length; c++) {
-      const t = rows[r][c]; if (!t) continue;
-      const ax = (c === 0 || c === 3 || c === 4) ? cX[c] + cW[c] / 2 : cX[c] + 2.2;
-      const al = (c === 0 || c === 3 || c === 4) ? { align: 'center' as const } : {};
-      doc.text(t, ax, ry + 3.5, al);
-    }
-  }
-  y += rows.length * rH;
-  // Total — abu terang, teks hitam
-  const totH = 7;
-  doc.setFillColor(240, 240, 240);
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.3);
-  doc.rect(M, y, tW, totH, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Total', cX[2] + 4, y + 5);
-  doc.text(String(data.total_qty || 0), cX[3] + cW[3] / 2, y + 5, { align: 'center' });
-  y += totH + 5;
+function drawFooter(doc: jsPDF, data: RencanaKirimData, afterTableY: number): void {
+  const CW = W - M * 2;
 
-  // ── NOTES (print-friendly) ──
-  const nbH = 18;
-  const nbY = y;
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.35);
-  doc.rect(M, nbY, CW, nbH, 'D');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Catatan', M + 4, nbY + 6);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  if (data.notes) doc.text(doc.splitTextToSize(normalizePdfText(data.notes), CW - 6), M + 4, nbY + 12);
-  y = nbY + nbH + 5;
+  const notesLines = data.notes ? doc.splitTextToSize(normalizePdfText(data.notes), CW - 12) : [];
+  const notesBody = notesLines.length > 0 ? notesLines : ['-'];
+  const notesH = 12 + notesBody.length * 4;
+  const signatureH = 26;
+  const footerNeed = notesH + 6 + 6 + signatureH + 5 + 6;
+
+  let fy = afterTableY + 6;
+  if (fy + footerNeed > H - M) {
+    doc.addPage();
+    fy = 20;
+  }
+
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.3);
+  doc.rect(M, fy, CW, notesH, 'D');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(20, 20, 20);
+  doc.text('Catatan', M + 5, fy + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(40, 40, 40);
+  doc.text(notesBody, M + 5, fy + 11.5);
+  fy += notesH + 6;
+
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7.5);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Pastikan barang sudah dicek dan pas saat muat di gudang', W / 2, y, { align: 'center' });
-  y += 7;
+  doc.setTextColor(40, 40, 40);
+  doc.text('Pastikan barang sudah dicek dan pas saat muat di gudang', W / 2, fy, { align: 'center' });
+  fy += 6;
 
-  // ── SIGNATURES (print-friendly) ──
   const sW = CW / 4;
-  const sH = 30;
-  const sTop = y;
-  const sLbl = ['Pengirim,', 'Mengetahui,', 'Supir,', 'Penerima,'];
-  const sRole = ['( Warehouse Coord )', '( Planner RDC )', '', `( ${data.nama_depo || 'DEPO'} )`];
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.3);
+  const sTop = fy;
+  const titles = ['Pengirim,', 'Mengetahui,', 'Supir,', 'Penerima,'];
+  const roles = ['( Warehouse Coord )', '( Planner RDC )', '', `( ${normalizePdfText(data.nama_depo)} )`];
+
   for (let i = 0; i < 4; i++) {
     const sx = M + i * sW;
-    doc.rect(sx, sTop, sW, sH);
+    doc.setDrawColor(30, 41, 59);
+    doc.setLineWidth(0.3);
+    doc.rect(sx, sTop, sW, signatureH);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.setTextColor(0, 0, 0);
-    doc.text(sLbl[i], sx + sW / 2, sTop + 5, { align: 'center' });
+    doc.setTextColor(20, 20, 20);
+    doc.text(titles[i], sx + sW / 2, sTop + 5, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+    const roleLines = roles[i] ? doc.splitTextToSize(roles[i], sW - 8) : [];
+    if (roleLines.length > 0) doc.text(roleLines, sx + sW / 2, sTop + 9.5, { align: 'center' });
+    doc.setDrawColor(120, 120, 120);
+    doc.setLineWidth(0.2);
+    doc.line(sx + 6, sTop + 18, sx + sW - 6, sTop + 18);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Tgl.', sx + 5, sTop + 23.5);
+  }
+  fy = sTop + signatureH + 5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(60, 60, 60);
+  const legends: [string, string][] = [
+    ['Putih', 'Accounting'],
+    ['Merah', 'Gudang'],
+    ['Hijau', 'Customer'],
+    ['Kuning', 'Accounting'],
+    ['Biru', 'Gudang'],
+  ];
+  const legendGap = CW / legends.length;
+  legends.forEach(([color, role], index) => {
+    doc.text(`${color} — ${role}`, M + index * legendGap, fy);
+  });
+}
+
+function stampPageChrome(doc: jsPDF, data: RencanaKirimData): void {
+  const pageCount = getPdfPageCount(doc);
+  for (let page = 1; page <= pageCount; page++) {
+    doc.setPage(page);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.text('Tgl.    :', sx + 2, sTop + 14);
-    doc.text('Cap.     :', sx + 2, sTop + 21);
-    doc.text('Ttd.    :', sx + 2, sTop + 28);
-    doc.setFontSize(6);
-    doc.text(sRole[i], sx + sW / 2, sTop + sH - 3, { align: 'center' });
+    doc.setTextColor(110, 110, 110);
+    doc.text(`Halaman ${page} dari ${pageCount}`, W - M, H - 6, { align: 'right' });
+    if (page > 1) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(20, 20, 20);
+      doc.text('SURAT JALAN', M, 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(110, 110, 110);
+      doc.text(`PO ${normalizePdfText(data.po_transporter)} • ${normalizeRkhDate(data.rkh_date)}`, M, 11.5);
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.2);
+      doc.line(M, 13.5, W - M, 13.5);
+    }
   }
-  y = sTop + sH + 6;
+  doc.setTextColor(0, 0, 0);
+  doc.setPage(1);
+}
+
+export function generateSuratJalanPDF(data: RencanaKirimData) {
+  const doc = new jsPDF('p', 'mm', 'a4');
+
+  // ── LETTERHEAD + META ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42);
+  doc.text('ONEZENTRA', M, 15);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.setTextColor(0, 0, 0);
-  const legends = [
-    { t: 'Putih — Accounting', x: M },
-    { t: 'Merah — Gudang', x: M + 36 },
-    { t: 'Hijau — Customer', x: M + 70 },
-    { t: 'Kuning — Accounting', x: M + 104 },
-    { t: 'Biru — Gudang', x: M + 138 },
+  doc.setTextColor(100, 116, 139);
+  doc.text('Warehouse Management System', M, 19.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`DEPO ${normalizePdfText(data.nama_depo)}`, M, 25);
+
+  const meta: [string, string][] = [
+    ['Tanggal RKH', normalizeRkhDate(data.rkh_date)],
+    ['Nama Driver', normalizePdfText(data.driver_name)],
+    ['No. PO Transporter', normalizePdfText(data.po_transporter)],
   ];
-  for (const l of legends) doc.text(l.t, l.x, y);
+  if (data.jenis_kendaraan) meta.push(['Jenis Kendaraan', normalizePdfText(data.jenis_kendaraan)]);
+
+  let my = 11;
+  for (const [label, val] of meta) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(label, W - M - 58, my);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(val, W - M, my, { align: 'right' });
+    my += 4.6;
+  }
+
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.5);
+  const ruleY = Math.max(28, my + 1);
+  doc.line(M, ruleY, W - M, ruleY);
+
+  // ── TITLE + BARCODE ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(15, 23, 42);
+  doc.text('SURAT JALAN', W / 2, ruleY + 9, { align: 'center' });
+  drawCode39(doc, data.po_transporter, W / 2, ruleY + 12, 80, 9);
+
+  // ── INFO BOX ──
+  const boxTop = ruleY + 26.5;
+  const boxBottom = drawInfoBox(doc, data, boxTop);
+  const tableY = boxBottom + 4;
+
+  // ── ITEMS TABLE (autoTable: pagination + text wrap) ──
+  const itemRows = data.items.map((item) => [
+    String(item.item_number ?? ''),
+    normalizePdfText(item.kode_barang),
+    normalizePdfText(item.nama_barang),
+    String(Number(item.jumlah) || 0),
+    normalizePdfText(item.satuan),
+    normalizePdfText(item.keterangan),
+  ]);
+  if (itemRows.length === 0) itemRows.push(['', '-', 'Tidak ada item', '-', '-', '-']);
+
+  autoTable(doc, {
+    startY: tableY,
+    margin: { top: 18, left: M, right: M, bottom: 16 },
+    head: [['NO', 'KODE', 'NAMA BARANG', 'QTY', 'SAT', 'KET']],
+    body: itemRows,
+    foot: [[
+      { content: 'Total', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold' } },
+      { content: String(Number(data.total_qty) || 0), styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '', styles: {} },
+      { content: '', styles: {} },
+      { content: '', styles: {} },
+    ]],
+    theme: 'grid',
+    showFoot: 'lastPage',
+    styles: {
+      font: 'helvetica',
+      fontSize: 7,
+      textColor: [20, 20, 20],
+      lineColor: [120, 120, 120],
+      lineWidth: 0.15,
+      cellPadding: 1.5,
+      minCellHeight: 5,
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: [235, 235, 235],
+      textColor: [20, 20, 20],
+      fontStyle: 'bold',
+      halign: 'center',
+      lineWidth: 0.2,
+    },
+    footStyles: {
+      fillColor: [245, 245, 245],
+      textColor: [20, 20, 20],
+      lineWidth: 0.2,
+    },
+    columnStyles: {
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 82 },
+      3: { cellWidth: 18, halign: 'center' },
+      4: { cellWidth: 14, halign: 'center' },
+      5: { cellWidth: 38 },
+    },
+  });
+
+  const afterTableY = (doc as JsPdfWithPages).lastAutoTable?.finalY ?? tableY;
+
+  // ── NOTES + SIGNATURES (halaman terakhir, dengan page-break bila perlu) ──
+  drawFooter(doc, data, afterTableY);
+
+  stampPageChrome(doc, data);
 
   return doc;
 }

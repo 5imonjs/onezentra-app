@@ -55,8 +55,31 @@ const itemStatusStyle: Record<string, string> = {
   MISMATCH: 'bg-red-50 text-red-700',
 };
 
+const itemStatusLabel: Record<string, string> = {
+  PENDING: 'Menunggu',
+  VALIDATED: 'Tervalidasi',
+  MISMATCH: 'Selisih',
+};
+
+const conditionLabels: Record<string, string> = {
+  FISIK_BAGUS: 'Fisik Bagus',
+  FISIK_RUSAK: 'Fisik Rusak',
+  QTY_KURANG: 'Qty Kurang',
+  ISI_KEMASAN_KURANG: 'Isi Kemasan Kurang',
+  EXPIRED_TIDAK_STANDAR: 'Expired / Tidak Standar',
+  LAINNYA: 'Lainnya',
+};
+
 const emptyForm = { actual_qty: '' as string | number, expired_date: '', condition: 'FISIK_BAGUS', notes: '', barcode: '', tier: 1, tinggi_tumpukan: 1 };
 const photoConditions = ['FISIK_RUSAK', 'QTY_KURANG', 'ISI_KEMASAN_KURANG', 'EXPIRED_TIDAK_STANDAR', 'LAINNYA'];
+
+// Format tanggal deterministik id-ID.
+function fmtDate(v: string | null | undefined): string {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
 
 export default function ValidasiSjPage() {
   const { hasPermission } = useAuthStore();
@@ -64,7 +87,10 @@ export default function ValidasiSjPage() {
   const [wasRedirected, setWasRedirected] = useState(false);
   const [items, setItems] = useState<Validation[]>([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [totalRows, setTotalRows] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
   const [lookup, setLookup] = useState<Validation['rencana_kirim'] | null>(null);
   const [active, setActive] = useState<Validation | null>(null);
@@ -127,18 +153,23 @@ export default function ValidasiSjPage() {
   };
   const [photoPreview, setPhotoPreview] = useState('');
   const [busy, setBusy] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [lastPage, setLastPage] = useState(1);
   const [svStats, setSvStats] = useState<{ today: number; in_progress: number; completed: number; cancelled: number; total: number } | null>(null);
 
   const loadItems = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await sjValidations.list({ search, page, per_page: 20 });
+      const response = await sjValidations.list({ search: debouncedSearch, page, per_page: 20 });
       setItems(response.data.data);
       setLastPage(Number(response.data.last_page) || 1);
+      setTotalRows(Number(response.data.total) || 0);
     } catch (error) {
       notifyGlobal(getErrorMessage(error, 'Gagal memuat validasi dokumen.'), 'error');
+    } finally {
+      setLoading(false);
     }
-  }, [page, search]);
+  }, [debouncedSearch, page]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -148,6 +179,15 @@ export default function ValidasiSjPage() {
       // Statistik gagal dimuat: chip menampilkan 0, daftar tetap berfungsi.
     }
   }, []);
+
+  // Debounce pencarian — tanpa ini tiap ketikan menembak API.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
   useEffect(() => { loadStats(); }, [loadStats]);
@@ -166,11 +206,15 @@ export default function ValidasiSjPage() {
   }, []);
 
   const openDetail = async (validation: Validation) => {
+    setDetailLoading(true);
+    setActive(validation as Validation);
     try {
       const response = await sjValidations.get(validation.id);
       setActive(response.data.data);
     } catch (error) {
       notifyGlobal(getErrorMessage(error, 'Gagal memuat detail validasi.'), 'error');
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -395,9 +439,9 @@ export default function ValidasiSjPage() {
                   <div className="relative w-24 h-24 shrink-0">
                     <svg className="w-24 h-24 -rotate-90" viewBox="0 0 36 36">
                       <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                      {svInProgress > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray={`${(svInProgress / svTotal) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
-                      {svCompleted > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" strokeWidth="3" strokeDasharray={`${(svCompleted / svTotal) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
-                      {svCancelled > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ef4444" strokeWidth="3" strokeDasharray={`${(svCancelled / svTotal) * 100}, 100`} strokeLinecap="round" className="transition-all duration-1000" />}
+                      {svInProgress > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray={`${(svInProgress / svTotal) * 100}, 100`} strokeDashoffset="0" strokeLinecap="round" className="transition-all duration-1000" />}
+                      {svCompleted > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" strokeWidth="3" strokeDasharray={`${(svCompleted / svTotal) * 100}, 100`} strokeDashoffset={`${-(svInProgress / svTotal) * 100}`} strokeLinecap="round" className="transition-all duration-1000" />}
+                      {svCancelled > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ef4444" strokeWidth="3" strokeDasharray={`${(svCancelled / svTotal) * 100}, 100`} strokeDashoffset={`${-((svInProgress + svCompleted) / svTotal) * 100}`} strokeLinecap="round" className="transition-all duration-1000" />}
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-xl font-black text-slate-800">{svTotal}</span>
@@ -434,28 +478,40 @@ export default function ValidasiSjPage() {
                   </div>
                   <div>
                     <h2 className="text-sm font-black text-slate-900">Daftar Validasi</h2>
-                    <p className="text-[11px] text-slate-400">{items.length} entri ditemukan</p>
+                    <p className="text-[11px] text-slate-400">{totalRows} entri ditemukan</p>
                   </div>
                 </div>
-                <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO transporter..." resultCount={items.length} resultLabel="validasi" />
+                <SearchInput value={search} onChange={(v) => setSearch(v)} placeholder="Cari PO transporter..." resultCount={totalRows} resultLabel="validasi" />
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[700px] border-collapse">
                   <caption className="sr-only">Daftar validasi dokumen</caption>
                   <thead>
-                    <tr className="bg-slate-800 text-white">
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider opacity-60">No</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider">PO Transporter</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider">Driver</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider">Tujuan</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider">Selesai</th>
-                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider">Aksi</th>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Tujuan</th>
+                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Selesai</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {items.map((item, index) => {
+                    {loading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={`skel-${i}`} className="animate-pulse">
+                          <td className="px-4 py-3"><div className="h-4 w-6 mx-auto rounded bg-gray-200" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-32 rounded bg-gray-200" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-20 rounded bg-gray-200" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-24 rounded bg-gray-200" /></td>
+                          <td className="px-4 py-3"><div className="h-5 w-20 mx-auto rounded-full bg-gray-200" /></td>
+                          <td className="px-4 py-3"><div className="h-4 w-20 mx-auto rounded bg-gray-200" /></td>
+                          <td className="px-4 py-3"><div className="h-7 w-16 ml-auto rounded-lg bg-gray-200" /></td>
+                        </tr>
+                      ))
+                    ) : items.map((item, index) => {
                       const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
                       return (
                         <tr key={item.id} className="even:bg-slate-50/30 hover:bg-slate-50/70 transition-all duration-150">
@@ -464,12 +520,12 @@ export default function ValidasiSjPage() {
                           <td className="px-4 py-3 text-sm text-slate-600">{item.rencana_kirim?.driver_name || '-'}</td>
                           <td className="px-4 py-3 text-sm text-slate-600">{item.rencana_kirim?.destination_name || '-'}</td>
                           <td className="px-4 py-3 text-center"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span></td>
-                          <td className="px-4 py-3 text-center text-xs text-slate-500">{item.completed_at ? new Date(item.completed_at).toLocaleDateString('id-ID') : '-'}</td>
+                          <td className="px-4 py-3 text-center text-xs text-slate-500">{fmtDate(item.completed_at)}</td>
                           <td className="px-4 py-3 text-right"><button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 transition-all duration-150"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button></td>
                         </tr>
                       );
                     })}
-                    {items.length === 0 && (
+                    {!loading && items.length === 0 && (
                       <tr>
                         <td colSpan={7} className="px-4 py-16 text-center">
                           <div className="flex flex-col items-center gap-3 text-slate-400">
@@ -500,16 +556,43 @@ export default function ValidasiSjPage() {
       <Modal open={!!active} onClose={() => { setActive(null); setSelected(null); }} title="Detail Validasi Dokumen" subtitle="Pantau progres pemeriksaan dan validasi setiap item." size="2xl" footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
             {active?.status === 'IN_PROGRESS' && (
-              <button type="button" onClick={completeValidation} disabled={busy || pendingCount > 0 || !hasPermission('sj_validation.edit')} className="btn-primary inline-flex w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>
-                Selesaikan Validasi
-              </button>
+              <div className="relative inline-flex w-full sm:w-auto">
+                <button type="button" onClick={completeValidation} disabled={busy || pendingCount > 0 || !hasPermission('sj_validation.edit')} className="btn-primary inline-flex w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>
+                  Selesaikan Validasi
+                </button>
+                {pendingCount > 0 && (
+                  <span className="absolute -top-8 right-0 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-medium text-white shadow-lg">
+                    Validasi {pendingCount} item terlebih dahulu
+                  </span>
+                )}
+              </div>
             )}
             <button type="button" onClick={() => { setActive(null); setSelected(null); }} className="btn-secondary w-full text-sm sm:w-auto">Tutup</button>
         </div>
       }>
         {active && (
           <div className="space-y-5 pb-1 animate-slide-up">
+            {detailLoading ? (
+              <div className="space-y-5 animate-pulse">
+                <div className="rounded-2xl bg-slate-200 h-40" />
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-slate-200" />
+                    <div className="space-y-2"><div className="h-4 w-32 rounded bg-slate-200" /><div className="h-3 w-48 rounded bg-slate-200" /></div>
+                  </div>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex gap-4 py-3 border-t border-slate-100">
+                      <div className="h-4 w-24 rounded bg-slate-200" />
+                      <div className="h-4 flex-1 rounded bg-slate-200" />
+                      <div className="h-4 w-16 rounded bg-slate-200" />
+                      <div className="h-4 w-16 rounded bg-slate-200" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
             <div className="relative overflow-hidden rounded-2xl bg-slate-950 p-5 text-white shadow-xl shadow-slate-900/10">
               <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full border-[20px] border-primary-400/10" aria-hidden="true" />
               <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -568,8 +651,8 @@ export default function ValidasiSjPage() {
                         <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.kode_barang}</td>
                         <td className="px-4 py-3 text-sm text-slate-800 font-medium">{item.nama_barang}</td>
                         <td className="px-4 py-3 text-right text-sm text-slate-600">{item.expected_qty} {item.satuan}</td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">{item.actual_qty ?? '-'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{item.expired_date ? new Date(item.expired_date).toLocaleDateString('id-ID') : '-'}</td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">{item.status === 'PENDING' ? '-' : (item.actual_qty ?? '-')}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(item.expired_date)}</td>
                         <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
                         <td className="px-4 py-3 text-center">
                           {item.photo ? (
@@ -581,7 +664,7 @@ export default function ValidasiSjPage() {
                             <span className="text-slate-300">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-center"><span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${itemStatusStyle[item.status] || 'bg-gray-100 text-gray-600'} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full mr-1 ${item.status === 'PENDING' ? 'bg-amber-500' : item.status === 'VALIDATED' ? 'bg-emerald-500' : 'bg-red-500'}`} />{item.status}</span></td>
+                        <td className="px-4 py-3 text-center"><span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${itemStatusStyle[item.status] || 'bg-gray-100 text-gray-600'} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full mr-1 ${item.status === 'PENDING' ? 'bg-amber-500' : item.status === 'VALIDATED' ? 'bg-emerald-500' : 'bg-red-500'}`} />{itemStatusLabel[item.status] || item.status}</span></td>
                         <td className="px-4 py-3 text-right">
                           {item.status === 'PENDING' && (
                             <button type="button" onClick={() => openItem(item)} className={`inline-flex min-h-[30px] items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors ${item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100'}`}>
@@ -596,6 +679,8 @@ export default function ValidasiSjPage() {
                 </table>
               </div>
             </div>
+          </>
+            )}
           </div>
         )}
       </Modal>
@@ -680,7 +765,7 @@ export default function ValidasiSjPage() {
               </div>
               <label className="block text-xs font-bold text-slate-600">Kondisi <span className="text-primary-600">*</span>
                 <select value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className="select-field mt-1.5 w-full py-2.5 text-sm">
-                  {['FISIK_BAGUS', 'FISIK_RUSAK', 'QTY_KURANG', 'ISI_KEMASAN_KURANG', 'EXPIRED_TIDAK_STANDAR', 'LAINNYA'].map((c) => <option key={c} value={c}>{c}</option>)}
+                  {Object.entries(conditionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </label>
             </div>

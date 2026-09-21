@@ -56,6 +56,7 @@ const docTypeLabel: Record<string, string> = {
 const triggerOptions: Record<string, { value: string; label: string; description: string }[]> = {
   rencana_kirim: [
     { value: 'created', label: 'Rencana Kirim dibuat', description: 'Terpicu saat jadwal Rencana Kirim baru dibuat (pemroses: modul Rencana Kirim).' },
+    { value: 'cancelled', label: 'Rencana Kirim dibatalkan', description: 'Terpicu saat Rencana Kirim dibatalkan dari status apa pun yang valid (pemroses: modul Rencana Kirim).' },
   ],
   sj_ba: [
     { value: 'validated', label: 'Validasi SJ/BA selesai', description: 'Terpicu saat dokumen SJ/BA selesai divalidasi (pemroses: modul Validasi Dokumen).' },

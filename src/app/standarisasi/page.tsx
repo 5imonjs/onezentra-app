@@ -177,7 +177,7 @@ export default function StandarisasiPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-   const { hasPermission, hasRole } = useAuthStore();
+   const { hasPermission } = useAuthStore();
 
 const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
    const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -558,7 +558,7 @@ const confirmApprove = async () => {
                     </td>
 <td className="table-cell text-right">
                        <div className="flex items-center justify-end gap-1">
-                         {item.status === 'pending' && hasRole('blc') && (
+                         {item.status === 'pending' && hasPermission('standarisasi.approve') && (
                            <>
                              <button onClick={() => setApproveTarget({ item, status: 'approved' })} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200" title="Approve" aria-label="Approve">
                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
@@ -768,7 +768,7 @@ const confirmApprove = async () => {
         footer={
           <>
             <button onClick={() => { setShowCreate(false); setCreateForm({ ...emptyForm }); setSelectedProduct(null); }} className="btn-secondary">Batal</button>
-            <button onClick={handleCreate} disabled={saving} className="btn-primary disabled:opacity-50">
+            <button onClick={handleCreate} disabled={saving || !createForm.npn_id} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
               <span className="flex items-center gap-2">
                 {saving ? (
                   <>
@@ -786,9 +786,9 @@ const confirmApprove = async () => {
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4" onKeyDown={(e) => { if (e.key === 'Enter' && createForm.npn_id && !saving) { e.preventDefault(); handleCreate(); } }}>
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Produk</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Produk <span className="text-slate-400">(ketik nama atau BOS ID)</span></label>
             <NpnProductPicker
               selected={selectedProduct}
               onSelect={(p) => { setSelectedProduct(p); setCreateForm(prev => ({ ...prev, npn_id: p.id })); }}
@@ -796,12 +796,12 @@ const confirmApprove = async () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Tier</label>
-            <input type="number" min="1" value={createForm.tier || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tier: parseInt(e.target.value) || 1 }))} className="input-field text-sm" />
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Tier <span className="text-primary-500">*</span></label>
+            <input type="number" min="1" max="100" value={createForm.tier || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tier: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Tinggi Tumpukan</label>
-            <input type="number" min="1" value={createForm.tinggi_tumpukan || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tinggi_tumpukan: parseInt(e.target.value) || 1 }))} className="input-field text-sm" />
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Tinggi Tumpukan <span className="text-primary-500">*</span></label>
+            <input type="number" min="1" max="100" value={createForm.tinggi_tumpukan || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tinggi_tumpukan: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
           </div>
         </div>
         <div className="bg-slate-50 rounded-xl p-4 mt-4">

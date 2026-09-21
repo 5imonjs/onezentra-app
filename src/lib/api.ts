@@ -147,12 +147,19 @@ export const standarUmurProduk = {
 
 export const standarisasiTumpukan = {
   list: (params?: Record<string, unknown>) => api.get('/standarisasi-tumpukan', { params }),
+  /** Jumlah per status untuk seluruh depo user (bukan hanya halaman aktif). */
+  stats: (params?: Record<string, unknown>) => api.get('/standarisasi-tumpukan/stats', { params }),
+  /** Pencarian produk khusus halaman ini — tidak butuh permission `npn.view`. */
+  searchProduct: (q: string) => api.get('/standarisasi-tumpukan/search-product', { params: { q } }),
   get: (id: number) => api.get(`/standarisasi-tumpukan/${id}`),
   create: (data: Record<string, unknown>) => api.post('/standarisasi-tumpukan', data),
   update: (id: number, data: Record<string, unknown>) => api.put(`/standarisasi-tumpukan/${id}`, data),
   delete: (id: number) => api.delete(`/standarisasi-tumpukan/${id}`),
+  bulkDelete: (ids: number[]) => api.post('/standarisasi-tumpukan/bulk-delete', { ids }),
   approve: (id: number) => api.post(`/standarisasi-tumpukan/${id}/approve`),
   reject: (id: number) => api.post(`/standarisasi-tumpukan/${id}/reject`),
+  /** Kirim ulang notifikasi email untuk status baris saat ini. */
+  notify: (id: number) => api.post(`/standarisasi-tumpukan/${id}/notify`),
 };
 
 export const depo = {
@@ -240,6 +247,7 @@ export const docks = {
 
 export const gateTransactions = {
   list: (params?: Record<string, unknown>) => api.get('/gate-transactions', { params }),
+  stats: () => api.get('/gate-transactions/stats'),
   get: (id: number) => api.get(`/gate-transactions/${id}`),
   create: (data: Record<string, unknown>) => api.post('/gate-transactions', data),
   byNoDokumen: (poTransporter: string) => api.get('/gate-transactions/search/by-dokumen', { params: { po_transporter: poTransporter } }),
@@ -309,6 +317,8 @@ export const sjValidations = {
 export const reports = {
   selisihQty: (params?: Record<string, unknown>) => api.get('/reports/selisih-qty', { params }),
   selisihQtyExport: (params?: Record<string, unknown>) => api.get('/reports/selisih-qty/export', { params, responseType: 'blob' }),
+  rencanaKirim: (params?: Record<string, unknown>) => api.get('/reports/rencana-kirim', { params }),
+  rencanaKirimExport: (params?: Record<string, unknown>) => api.get('/reports/rencana-kirim/export', { params, responseType: 'blob' }),
   penerimaan: (params?: Record<string, unknown>) => api.get('/reports/penerimaan', { params }),
   penerimaanExport: (params?: Record<string, unknown>) => api.get('/reports/penerimaan/export', { params, responseType: 'blob' }),
 };
