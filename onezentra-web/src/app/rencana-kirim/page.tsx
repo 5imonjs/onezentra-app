@@ -595,6 +595,22 @@ export default function RencanaKirimPage() {
     }
   };
 
+  // Dipakai tabel desktop & kartu mobile — guard statusBusyId mencegah klik ganda.
+  const handleStatusChange = async (item: RencanaKirim, newStatus: 'SCHEDULED' | 'CANCELLED') => {
+    if (statusBusyId !== null) return;
+    setStatusBusyId(item.id);
+    try {
+      const res = await changeStatus(item.id, newStatus);
+      await loadItems();
+      loadStats();
+      notifyGlobal(`Status diubah menjadi ${statusConfig[res.data.data.status]?.label || res.data.data.status}`, 'success');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengubah status'), 'error');
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteTargetId) return;
     try {
@@ -937,20 +953,7 @@ export default function RencanaKirimPage() {
                       <div className="inline-flex items-center gap-1.5">
                         {hasPermission('rencana_kirim.edit') && item.status === 'DRAFT' && (
                           <button
-                            onClick={async () => {
-                              if (statusBusyId !== null) return;
-                              setStatusBusyId(item.id);
-                              try {
-                                const res = await changeStatus(item.id, 'SCHEDULED');
-                                await loadItems();
-                                loadStats();
-                                notifyGlobal(`Status diubah menjadi ${statusConfig[res.data.data.status]?.label || res.data.data.status}`, 'success');
-                              } catch (e) {
-                                notifyGlobal(getErrorMessage(e, 'Gagal mengubah status'), 'error');
-                              } finally {
-                                setStatusBusyId(null);
-                              }
-                            }}
+                            onClick={() => handleStatusChange(item, 'SCHEDULED')}
                             disabled={statusBusyId === item.id}
                             aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-wait shadow-sm shadow-blue-600/25 rounded-lg transition-colors min-h-[36px]"
@@ -961,20 +964,7 @@ export default function RencanaKirimPage() {
                         )}
                         {hasPermission('rencana_kirim.edit') && item.status === 'SCHEDULED' && (
                           <button
-                            onClick={async () => {
-                              if (statusBusyId !== null) return;
-                              setStatusBusyId(item.id);
-                              try {
-                                const res = await changeStatus(item.id, 'CANCELLED');
-                                await loadItems();
-                                loadStats();
-                                notifyGlobal(`Status diubah menjadi ${statusConfig[res.data.data.status]?.label || res.data.data.status}`, 'success');
-                              } catch (e) {
-                                notifyGlobal(getErrorMessage(e, 'Gagal mengubah status'), 'error');
-                              } finally {
-                                setStatusBusyId(null);
-                              }
-                            }}
+                            onClick={() => handleStatusChange(item, 'CANCELLED')}
                             disabled={statusBusyId === item.id}
                             aria-label={`Batalkan rencana kirim ${item.po_transporter || ''}`}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-wait border border-red-200 rounded-lg transition-colors min-h-[36px]"
@@ -1007,6 +997,71 @@ export default function RencanaKirimPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile cards — tabel desktop disembunyikan di < lg; tanpa kartu ini daftar hilang di ponsel */}
+          <div className="lg:hidden divide-y divide-slate-100">
+            {items.map((item) => {
+              const st = statusConfig[item.status];
+              return (
+                <div key={item.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-sm font-bold text-slate-800 truncate">{fmt(item.po_transporter)}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">RK {item.rkh_date?.split('T')[0] || '-'} • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
+                    </div>
+                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-white'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-200'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} />
+                      {st?.label || item.status}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    <div><span className="text-slate-400">Driver: </span><span className="font-medium text-slate-700">{fmt(item.driver_name)}</span></div>
+                    <div><span className="text-slate-400">Nopol: </span><span className="font-mono font-medium text-slate-700">{fmt(item.nopol)}</span></div>
+                    <div><span className="text-slate-400">Expedisi: </span><span className="font-medium text-slate-700">{fmt(item.expedisi)}</span></div>
+                    <div><span className="text-slate-400">Jenis: </span>{item.jenis_kendaraan ? <span className="inline-flex rounded-md bg-blue-50 border border-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700">{item.jenis_kendaraan}</span> : '-'}</div>
+                    <div className="col-span-2"><span className="text-slate-400">Tujuan: </span><span className="font-medium text-slate-700">{fmt(item.destination_name)}</span></div>
+                    <div><span className="text-slate-400">Qty: </span><span className="font-bold text-slate-800">{item.total_qty}</span></div>
+                    <div><span className="text-slate-400">Kubikasi: </span>{typeof item.total_kubikasi === 'number' ? <span className="font-bold text-teal-700">{Number(item.total_kubikasi).toFixed(2)} m³</span> : '-'}</div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {hasPermission('rencana_kirim.edit') && item.status === 'DRAFT' && (
+                      <button onClick={() => handleStatusChange(item, 'SCHEDULED')} disabled={statusBusyId === item.id} aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-wait rounded-lg transition-colors min-h-[36px]">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Jadwalkan
+                      </button>
+                    )}
+                    {hasPermission('rencana_kirim.edit') && item.status === 'SCHEDULED' && (
+                      <button onClick={() => handleStatusChange(item, 'CANCELLED')} disabled={statusBusyId === item.id} aria-label={`Batalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-wait border border-red-200 rounded-lg transition-colors min-h-[36px]">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        Batalkan
+                      </button>
+                    )}
+                    <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 ml-auto">
+                      <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">
+                        <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      </button>
+                      {hasPermission('rencana_kirim.edit') && ['DRAFT', 'SCHEDULED'].includes(item.status) && (
+                        <button onClick={() => handleEdit(item)} aria-label={`Edit rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">
+                          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                        </button>
+                      )}
+                      {hasPermission('rencana_kirim.delete') && ['DRAFT', 'CANCELLED'].includes(item.status) && (
+                        <button onClick={() => handleDelete(item.id)} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">
+                          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {items.length === 0 && (
+              <div className="p-10 text-center">
+                <svg className="w-10 h-10 mx-auto text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                <p className="mt-2 text-sm text-slate-500 font-medium">Tidak ada data rencana kirim</p>
+              </div>
+            )}
           </div>
 
           <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
@@ -1216,7 +1271,7 @@ export default function RencanaKirimPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="f-po-transporter" className="block text-xs font-medium text-gray-500 mb-1">PO Transporter <span className="text-red-500">*</span></label>
-                <input id="f-po-transporter" aria-invalid={poDuplicate || undefined} type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2" />
+                <input id="f-po-transporter" aria-invalid={poDuplicate || undefined} type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2 uppercase" />
                 <p className="text-[10px] text-gray-400 mt-0.5">Nomor PO transporter (SJ/BA)</p>
                 {poDuplicate && (
                   <p role="alert" className="mt-1 text-xs font-semibold text-amber-600">PO Transporter ini sudah dipakai rencana kirim lain di depo yang sama.</p>

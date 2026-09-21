@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Penerimaan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PenerimaanController extends Controller
 {
@@ -59,9 +60,9 @@ class PenerimaanController extends Controller
             'szStatus' => 'nullable|string|max:20',
         ]);
 
-        $validated['saved_by'] = auth()->id();
+        $validated['saved_by'] = Auth::id();
         $validated['status'] = 'draft';
-        $validated = auth()->user()->depotAttributes($validated);
+        $validated = $this->currentUser()->depotAttributes($validated);
 
         if (! isset($validated['request_id'])) {
             $validated['request_id'] = strtoupper(uniqid('PIM-'));
@@ -75,7 +76,7 @@ class PenerimaanController extends Controller
     private function authorizeDepot(Penerimaan $penerimaan): void
     {
         abort_unless(
-            auth()->user()?->canAccessDepotRow($penerimaan->kode_depo, $penerimaan->nama_depo),
+            $this->currentUser()->canAccessDepotRow($penerimaan->kode_depo, $penerimaan->nama_depo),
             403,
             'Data penerimaan tidak ditemukan di depo Anda.'
         );
@@ -116,7 +117,7 @@ class PenerimaanController extends Controller
             $validated['completed_at'] = now();
         }
 
-        $validated = auth()->user()->depotAttributes($validated);
+        $validated = $this->currentUser()->depotAttributes($validated);
 
         $penerimaan->update($validated);
 

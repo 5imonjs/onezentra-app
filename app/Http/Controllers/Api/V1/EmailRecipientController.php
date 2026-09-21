@@ -67,7 +67,7 @@ class EmailRecipientController extends Controller
         $users = User::where('status', 'active')->select('id', 'full_name', 'email')->orderBy('full_name')->get();
         $roles = Role::select('id', 'name', 'slug')->orderBy('name')->get();
         $types = ['rencana_kirim', 'sj_ba', 'receiving', 'selisih', 'standarisasi_tumpukan', 'biaya_thl', 'biaya_retribusi'];
-        $triggers = ['created', 'validated', 'completed', 'selisih_qty', 'approved', 'rejected', 'submitted', 'checked', 'revisi'];
+        $triggers = ['created', 'cancelled', 'validated', 'completed', 'selisih_qty', 'approved', 'rejected', 'submitted', 'checked', 'revisi'];
         $fields = ['TO', 'CC'];
 
         return response()->json([
@@ -83,7 +83,7 @@ class EmailRecipientController extends Controller
     {
         $data = $request->validate([
             'document_type' => 'required|string|in:rencana_kirim,sj_ba,receiving,selisih,standarisasi_tumpukan,biaya_thl,biaya_retribusi',
-            'trigger' => 'required|string|in:created,validated,completed,selisih_qty,approved,rejected,submitted,checked,revisi',
+            'trigger' => 'required|string|in:created,cancelled,validated,completed,selisih_qty,approved,rejected,submitted,checked,revisi',
             'recipient_type' => 'required|string|in:email,user,role',
             'field' => 'required|string|in:TO,CC',
             'email' => 'nullable|email|max:255',

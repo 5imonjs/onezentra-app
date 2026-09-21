@@ -17,6 +17,14 @@ class EmailNotificationSeeder extends Seeder
             ['document_type' => 'rencana_kirim', 'trigger' => 'created', 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'cheker'],
             ['label' => 'CC cheker depo penerima', 'is_active' => true]
         );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'rencana_kirim', 'trigger' => 'cancelled', 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+            ['label' => 'BLC penerima pembatalan rencana kirim', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'rencana_kirim', 'trigger' => 'cancelled', 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'cheker'],
+            ['label' => 'CC cheker depo pembatalan rencana kirim', 'is_active' => true]
+        );
 
         EmailRecipient::updateOrCreate(
             ['document_type' => 'sj_ba', 'trigger' => 'validated', 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],

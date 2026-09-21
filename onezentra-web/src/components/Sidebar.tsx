@@ -31,6 +31,7 @@ const biayaMenus = [
 ];
 
 const reportItems = [
+  { name: 'Rencana Kirim', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.view' },
   { name: 'Penerimaan', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.view' },
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.view' },
   { name: 'Opname Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },

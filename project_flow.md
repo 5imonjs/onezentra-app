@@ -174,15 +174,15 @@ Catatan: status `CHECKED_IN` dihasilkan dari gate in (`/gate-transactions` INBOU
 
 Catatan hasil uji:
 - `POST /rencana-kirim` menerima header rencana + `items[]`; setiap item **wajib** berisi `item_number` (urutan mulai 1), `kode_barang`, `nama_barang`, `jumlah` (wajib lebih dari 0), `satuan` (opsional `keterangan`); `total_qty` dihitung otomatis dari jumlah item. Tanpa `item_number` → validasi `422`.
-- Nama field API header rencana mengikuti kolom tabel: `rkh_number` (Nomor RKH = tanggal rencana kirim), `rkh_date` (Tanggal RKH), `no_dokumen` (No. Dokumen/SJ-PO transporter), `no_dokumen_date`, `driver_name`, `nopol`, **`jenis_kendaraan`** (opsional, tipe kendaraan: CDD/CDE/L300/FUSO/TRONTON/CONTAINER 20 FT/CONTAINER 40 FT/LAINNYA — hanya label, tanpa perhitungan kapasitas), `expedisi`, `dock_number`, `shipper_*`, `destination_*`, `kode_depo`, `nama_depo`, `notes`.
-- **Penting:** `rkh_number` adalah **tanggal** rencana kirim (bukan nomor PO Transporter). Barcode yang di-scan di menu Receiving adalah `no_dokumen` (nomor PO Transporter/SJ/BA).
+- Nama field API header rencana mengikuti kolom tabel: `rkh_date` (Tanggal RKH = penanda nomor RKH), `po_transporter` (No. Dokumen/SJ-BA = nomor PO Transporter), `driver_name`, `nopol`, **`jenis_kendaraan`** (opsional, tipe kendaraan: CDD/CDE/L300/FUSO/TRONTON/CONTAINER 20 FT/CONTAINER 40 FT/LAINNYA — hanya label, tanpa perhitungan kapasitas), `expedisi`, `shipper_*`, `destination_*`, `kode_depo`, `nama_depo`, `notes`. (Kolom `rkh_number`, `no_dokumen`, `no_dokumen_date`, `dock_number` sudah di-drop dari `rencana_kirim` — jangan dipakai lagi.)
+- **Penting:** Nomor RKH = **tanggal** rencana kirim (`rkh_date`, bukan nomor PO Transporter). Barcode yang di-scan di menu Receiving adalah `po_transporter` (nomor PO Transporter/SJ/BA) — barcode yang dicetak pada PDF Surat Jalan juga `po_transporter`.
 - `POST /sj-validations/{id}/complete` sekarang juga **auto-create Receiving + ReceivingItems** dari data validasi (actual_qty, condition, expired_date, barcode). Receiving dibuat dengan status `PENDING`. Jika sudah ada Receiving PENDING/IN_PROGRESS untuk rencana yang sama, tidak dibuat duplikat.
-- Quick Scan di menu Receiving mencari berdasarkan `no_dokumen` atau `driver_name` (tanpa filter status) — sehingga Receiving PENDING yang baru di-auto-create juga bisa ditemukan.
-- `POST /receivings/{id}/complete` wajib mengirim `barcode`; barcode harus cocok dengan `no_dokumen` rencana (jika tidak → `422` "Barcode tidak cocok...") — ini adalah konfirmasi bongkar selesai berbasis barcode No. PO Transporter dari printout SJ. Saat cocok: menghasilkan **batch** (`BATCH-XXXXXXXX`) berisi snapshot `items_json`, melepas dock kembali `AVAILABLE`.
+- Quick Scan di menu Receiving mencari berdasarkan `po_transporter` atau `driver_name` (tanpa filter status) — sehingga Receiving PENDING yang baru di-auto-create juga bisa ditemukan.
+- `POST /receivings/{id}/complete` wajib mengirim `barcode`; barcode harus cocok dengan `po_transporter` rencana (jika tidak → `422` "Barcode tidak cocok...") — ini adalah konfirmasi bongkar selesai berbasis barcode No. PO Transporter dari printout SJ. Saat cocok: menghasilkan **batch** (`BATCH-XXXXXXXX`) berisi snapshot `items_json`, melepas dock kembali `AVAILABLE`.
 - Endpoint scan per-item `POST /receivings/{id}/scan` masih tersedia di API namun **tidak dipakai** oleh UI (mengikuti alur sederhana: data sudah ada dari validasi SJ, konfirmasi barcode PO transporter untuk selesai).
 - `GET /rencana-kirim/{id}` (detail) memuat relasi `items.npn`, `gateTransactions`, `receivings.items.rencanaKirimItem.npn`, `creator`.
 - **Validasi state Gate** (`POST /gate-transactions`, mulai 6 Sep 2026): `INBOUND` hanya diterima saat rencana berstatus `SCHEDULED`; `OUTBOUND` hanya saat rencana berstatus `COMPLETED` (sudah lewat receiving). Setiap tipe gate hanya tercatat sekali per rencana (duplikat ditolak `422`). Selain itu ditolak `422`. Hal ini menjaga agar gate tidak bisa melewati alur validasi/receiving.
-- `dock_number` pada rencana_kirim adalah **teks bebas** (kolom, diisi planner). Dock fisik dihubungkan saat Receiving lewat `dock_id` → `docks.id` (master dock memakai kolom `name` seperti `DOCK-01` dan status `AVAILABLE`/`OCCUPIED`).
+- Dock fisik dihubungkan saat Receiving lewat `dock_id` → `docks.id` (master dock memakai kolom `name` seperti `DOCK-01` dan status `AVAILABLE`/`OCCUPIED`); rencana_kirim tidak lagi menyimpan `dock_number` (kolom sudah di-drop).
 - **Kubikasi muatan (derived, tidak disimpan di DB):** `kubikasi` per item dan `total_kubikasi` pada header **dilampirkan** di respons `POST /`, `GET /{id}`, `PUT /`, dan `GET /`. Rumus: `kubikasi (m³) = jumlah × npn.decVolume × npn.SAPdecUom ÷ 1.000.000`, dengan `decVolume` = volume produk per pcs (cm³, dihitung dari L×W×H ÷ pcs per satuan) dan `SAPdecUom` = jumlah pcs per satuan (mis. CRT=60). Pencarian produk `GET /npn/search-product` mengembalikan `decVolume` & `SAPdecUom` agar form dapat menghitung total kubikasi live.
 - **Standarisasi Tumpukan (validasi SJ):** data standarisasi terbaru per produk dilampirkan sebagai `standarisasi` pada setiap item snapshot validasi via lookup `npn_id` → tabel `standarisasi_tumpukan` (status `pending`/`approved`/`rejected`). Saat cheker mengisi `tier` & `tinggi_tumpukan` pada scan item, sistem meng-*upsert* record `pending` (total_tier_tinggi = tier × tinggi) via `npn_id` yang sedang divalidasi — **bukan** lookup kolom BOSnet.
 
@@ -208,8 +208,8 @@ Bagian ini menjadi panduan kerja Admin Planner saat membuat dan meneruskan renca
 Admin Planner bertanggung jawab untuk:
 
 - Menentukan tanggal rencana pengiriman melalui kalender.
-- Mengisi identitas dokumen: No. Dokumen (SJ/BA = nomor PO transporter), nomor RKH, dan tanggal RKH.
-- Mengisi data kendaraan, driver, ekspedisi, dan dock bila sudah ditentukan.
+- Mengisi identitas dokumen: No. Dokumen (SJ/BA = nomor PO Transporter) dan tanggal RKH.
+- Mengisi data kendaraan, driver, dan ekspedisi.
 - Menentukan pengirim dan tujuan pengiriman.
 - Memilih produk dari database NPN.
 - Memastikan kode barang terisi dari `BOSnetszProductId` NPN.
@@ -258,16 +258,15 @@ Kalender adalah pintu utama pembuatan rencana. Tombol tambah rencana di header t
 
 Isi:
 
-1. No. Dokumen (SJ/BA = nomor PO transporter).
-2. Nomor RKH.
-3. Tanggal RKH.
+1. No. Dokumen (SJ/BA = nomor PO Transporter) — tersimpan sebagai `po_transporter`.
+2. Tanggal RKH (penanda nomor RKH).
 
-*(Mapping ke field API — lihat "Catatan hasil uji" §4: `no_dokumen`, `rkh_number`, `rkh_date`, `no_dokumen_date`.)*
+*(Mapping ke field API — lihat "Catatan hasil uji" §4: `po_transporter`, `rkh_date`. Kolom `no_dokumen`/`rkh_number`/`no_dokumen_date` sudah di-drop.)*
 
 Aturan:
 
-- Nomor RKH harus unik dan mudah dibaca.
-- Nomor RKH digunakan sebagai teks dan barcode pada PDF Surat Jalan.
+- `po_transporter` unik per depo (case-insensitive) — duplikat ditolak `422`.
+- Nomor PO Transporter digunakan sebagai teks dan barcode pada PDF Surat Jalan.
 - Tanggal RKH harus sesuai dengan tanggal yang dipilih pada kalender.
 - Jika tanggal diubah manual, planner harus memastikan tanggal tersebut tetap sesuai jadwal operasional.
 
@@ -279,13 +278,11 @@ Isi:
 2. Nama ekspedisi atau transporter.
 3. Plat nomor kendaraan.
 4. **Jenis kendaraan (tipe pengiriman)** — CDD/CDE/L300/FUSO/TRONTON/CONTAINER 20 FT/CONTAINER 40 FT/LAINNYA (hanya label, tidak dicocokkan dengan kapasitas).
-5. Nomor dock jika sudah ditentukan.
 
 Aturan:
 
 - Plat nomor ditulis konsisten, misalnya `B 1234 BG`.
 - Data ini akan dibaca Security saat validasi kendaraan di Gate.
-- Jika dock belum ditentukan, field dapat dikosongkan sesuai kebijakan operasional.
 
 #### Langkah 3: Pengirim dan Tujuan
 

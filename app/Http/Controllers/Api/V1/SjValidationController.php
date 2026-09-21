@@ -19,6 +19,7 @@ use App\Services\EmailNotificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -74,8 +75,8 @@ class SjValidationController extends Controller
     {
         $rk = $record instanceof RencanaKirim ? $record : $record->rencanaKirim;
         abort_unless(
-            auth()->user() instanceof User
-                && auth()->user()->canAccessDepotRow($rk?->kode_depo, $rk?->nama_depo),
+            Auth::user() instanceof User
+                && $this->currentUser()->canAccessDepotRow($rk?->kode_depo, $rk?->nama_depo),
             403,
             'Validasi tidak ditemukan di depo Anda.'
         );

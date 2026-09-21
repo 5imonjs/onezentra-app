@@ -143,7 +143,7 @@ export default function PendingActions() {
 
     if (hasPermission('gate.view')) {
       jobs.push(async () => {
-        const items = pickList<{ id: number; no_dokumen?: string; nopol?: string; status?: string }>(
+        const items = pickList<{ id: number; po_transporter?: string; nopol?: string; status?: string }>(
           await gateTransactions.list({ status: 'CHECKED_IN', per_page: MAX_PER_GROUP }),
         );
         if (items.length === 0) return null;
@@ -155,7 +155,7 @@ export default function PendingActions() {
           moreCount: Math.max(0, items.length - MAX_PER_GROUP),
           items: items.slice(0, MAX_PER_GROUP).map((item) => ({
             id: `gate-${item.id}`,
-            primary: item.no_dokumen || item.nopol || `Transaksi #${item.id}`,
+            primary: item.po_transporter || item.nopol || `Transaksi #${item.id}`,
             secondary: item.nopol || '-',
             href: '/gate',
           })),

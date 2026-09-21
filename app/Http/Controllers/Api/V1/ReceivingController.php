@@ -160,7 +160,7 @@ class ReceivingController extends Controller
     {
         $rk = $receiving->rencanaKirim;
         abort_unless(
-            auth()->user()?->canAccessDepotRow($rk?->kode_depo, $rk?->nama_depo),
+            $this->currentUser()->canAccessDepotRow($rk?->kode_depo, $rk?->nama_depo),
             403,
             'Data receiving tidak ditemukan di depo Anda.'
         );

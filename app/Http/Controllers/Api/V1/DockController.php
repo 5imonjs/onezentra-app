@@ -52,7 +52,7 @@ class DockController extends Controller
     public function show(Dock $dock): JsonResponse
     {
         abort_unless(
-            auth()->user()?->canAccessDepotRow($dock->kode_depo, $dock->nama_depo),
+            $this->currentUser()->canAccessDepotRow($dock->kode_depo, $dock->nama_depo),
             403,
             'Dock tidak ditemukan di depo Anda.'
         );
@@ -63,7 +63,7 @@ class DockController extends Controller
     public function update(Request $request, Dock $dock): JsonResponse
     {
         abort_unless(
-            auth()->user()?->canAccessDepotRow($dock->kode_depo, $dock->nama_depo),
+            $this->currentUser()->canAccessDepotRow($dock->kode_depo, $dock->nama_depo),
             403,
             'Dock tidak ditemukan di depo Anda.'
         );
@@ -89,7 +89,7 @@ class DockController extends Controller
     public function destroy(Dock $dock): JsonResponse
     {
         abort_unless(
-            auth()->user()?->canAccessDepotRow($dock->kode_depo, $dock->nama_depo),
+            $this->currentUser()->canAccessDepotRow($dock->kode_depo, $dock->nama_depo),
             403,
             'Dock tidak ditemukan di depo Anda.'
         );

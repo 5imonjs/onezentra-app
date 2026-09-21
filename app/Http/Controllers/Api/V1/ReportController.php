@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\PenerimaanExport;
+use App\Exports\RencanaKirimReportExport;
 use App\Exports\SelisihQtyExport;
 use App\Http\Controllers\Controller;
 use App\Models\ReceivingItem;
+use App\Models\RencanaKirim;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -83,6 +85,138 @@ class ReportController extends Controller
             new SelisihQtyExport($request->date_from, $request->date_to, $request->kode_depo, $request->user()),
             $filename
         );
+    }
+
+    public function rencanaKirim(Request $request): JsonResponse
+    {
+        $this->validateRencanaKirimRequest($request);
+
+        $query = $this->rencanaKirimQuery($request);
+        // Ringkasan selalu dihitung dari SELURUH baris terfilter, bukan hanya halaman aktif.
+        $allRows = (clone $query)->get();
+
+        $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
+        $paginated = $query->paginate($perPage);
+        $data = $paginated->getCollection()->map(fn (RencanaKirim $rk) => $this->rencanaKirimRow($rk));
+
+        $statusLabels = [
+            'DRAFT' => 'Draft',
+            'SCHEDULED' => 'Dijadwalkan',
+            'CHECKED_IN' => 'Check In',
+            'VERIFIED' => 'Terverifikasi',
+            'IN_PROGRESS' => 'Diproses',
+            'COMPLETED' => 'Selesai',
+            'CANCELLED' => 'Dibatalkan',
+        ];
+
+        $statusCounts = [];
+        foreach ($statusLabels as $status => $label) {
+            $statusCounts[$status] = [
+                'count' => $allRows->where('status', $status)->count(),
+                'label' => $label,
+            ];
+        }
+
+        $totalKubikasi = 0.0;
+        foreach ($allRows as $rk) {
+            $totalKubikasi += (float) $this->rencanaKirimRow($rk)['total_kubikasi'];
+        }
+
+        $summary = [
+            'total' => $allRows->count(),
+            'total_qty' => (int) $allRows->sum('total_qty'),
+            'total_kubikasi' => round($totalKubikasi, 2),
+            'completed_count' => $allRows->where('status', 'COMPLETED')->count(),
+            'cancelled_count' => $allRows->where('status', 'CANCELLED')->count(),
+            'status_counts' => $statusCounts,
+        ];
+
+        return response()->json([
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+            'data' => $data->values(),
+            'summary' => $summary,
+        ]);
+    }
+
+    public function rencanaKirimExport(Request $request)
+    {
+        $this->validateRencanaKirimRequest($request);
+
+        $filename = 'laporan-rencana-kirim_'.date('Y-m-d_His').'.xlsx';
+
+        return Excel::download(
+            new RencanaKirimReportExport(
+                $request->date_from,
+                $request->date_to,
+                $request->status,
+                $request->kode_depo,
+                $request->search,
+                $request->user(),
+            ),
+            $filename
+        );
+    }
+
+    private function validateRencanaKirimRequest(Request $request): void
+    {
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'status' => 'nullable|string|in:DRAFT,SCHEDULED,CHECKED_IN,VERIFIED,IN_PROGRESS,COMPLETED,CANCELLED',
+            'kode_depo' => 'nullable|string|max:20',
+            'search' => 'nullable|string|max:200',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+    }
+
+    private function rencanaKirimQuery(Request $request)
+    {
+        $query = RencanaKirim::query()->with(['items.npn']);
+
+        return RencanaKirimReportExport::applyFilters($query, $request->date_from, $request->date_to, $request->status, $request->kode_depo, $request->search, $request->user())
+            ->orderByDesc('rkh_date')
+            ->orderByDesc('id');
+    }
+
+    private function rencanaKirimRow(RencanaKirim $rk): array
+    {
+        $this->attachKubikasiToItems($rk);
+
+        return [
+            'id' => $rk->id,
+            'rkh_date' => $rk->rkh_date?->toDateString(),
+            'po_transporter' => $rk->po_transporter ?? '-',
+            'driver_name' => $rk->driver_name ?? '-',
+            'nopol' => $rk->nopol ?? '-',
+            'expedisi' => $rk->expedisi ?? '-',
+            'jenis_kendaraan' => $rk->jenis_kendaraan ?? '-',
+            'destination_name' => $rk->destination_name ?? '-',
+            'kode_depo' => $rk->kode_depo ?? '-',
+            'nama_depo' => $rk->nama_depo ?? '-',
+            'total_qty' => (float) $rk->total_qty,
+            'total_kubikasi' => round($rk->items->sum(fn ($item) => (float) ($item->kubikasi ?? 0)), 2),
+            'item_count' => $rk->items->count(),
+            'status' => $rk->status,
+        ];
+    }
+
+    /**
+     * Lampirkan kubikasi transient per item (jumlah x decVolume x SAPdecUom / 1.000.000 m³)
+     * — rumus sama dengan RencanaKirimController::attachKubikasi.
+     */
+    private function attachKubikasiToItems(RencanaKirim $rk): void
+    {
+        foreach ($rk->items as $item) {
+            $volume = $item->npn?->decVolume;
+            $uom = $item->npn?->SAPdecUom;
+            $item->kubikasi = ($volume !== null && $uom !== null)
+                ? round(((float) $item->jumlah) * ((float) $volume) * ((float) $uom) / 1_000_000, 4)
+                : null;
+        }
     }
 
     public function penerimaan(Request $request): JsonResponse

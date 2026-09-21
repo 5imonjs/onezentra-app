@@ -45,7 +45,7 @@ class BatchController extends Controller
     {
         $rk = $batch->receiving?->rencanaKirim ?? $batch->validationItem?->validation?->rencanaKirim;
         abort_unless(
-            auth()->user()?->canAccessDepotRow($rk?->kode_depo, $rk?->nama_depo),
+            $this->currentUser()->canAccessDepotRow($rk?->kode_depo, $rk?->nama_depo),
             403,
             'Batch tidak ditemukan di depo Anda.'
         );

@@ -8,6 +8,7 @@ use App\Imports\NpnImport;
 use App\Models\Npn;
 use App\Models\StandarUmurProduk;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -48,7 +49,7 @@ class NpnController extends Controller
             'szShortDescription' => 'nullable|string|max:255',
         ]);
 
-        $validated['created_by'] = auth()->id();
+        $validated['created_by'] = Auth::id();
         $npn = Npn::create($validated);
 
         return response()->json(['message' => 'NPN created', 'data' => $npn], 201);
@@ -57,7 +58,7 @@ class NpnController extends Controller
     public function show(Npn $npn)
     {
         abort_unless(
-            auth()->user()->canAccessDepotRow($npn->kode_depo, $npn->nama_depo),
+            $this->currentUser()->canAccessDepotRow($npn->kode_depo, $npn->nama_depo),
             403,
             'Anda tidak memiliki akses ke data ini.'
         );
@@ -68,7 +69,7 @@ class NpnController extends Controller
     public function update(Request $request, Npn $npn)
     {
         abort_unless(
-            auth()->user()->canAccessDepotRow($npn->kode_depo, $npn->nama_depo),
+            $this->currentUser()->canAccessDepotRow($npn->kode_depo, $npn->nama_depo),
             403,
             'Anda tidak memiliki akses ke data ini.'
         );
@@ -132,7 +133,7 @@ class NpnController extends Controller
     public function destroy(Npn $npn)
     {
         abort_unless(
-            auth()->user()->canAccessDepotRow($npn->kode_depo, $npn->nama_depo),
+            $this->currentUser()->canAccessDepotRow($npn->kode_depo, $npn->nama_depo),
             403,
             'Anda tidak memiliki akses ke data ini.'
         );
@@ -211,13 +212,22 @@ class NpnController extends Controller
     {
         $request->validate(['q' => 'required|string|min:1']);
 
+        $term = '%'.$request->q.'%';
         $query = Npn::select('id', 'BOSnetszProductId', 'SAPszProductId', 'SAPszUomId', 'SAPdecUom', 'decVolume', 'szNickName', 'szNickNameNew', 'szShortDescription', 'decUomConversion1', 'BOSnetdecUom')
-            ->where(function ($q) use ($request) {
-                $q->where('szNickName', 'like', '%'.$request->q.'%')
-                    ->orWhere('szNickNameNew', 'like', '%'.$request->q.'%')
-                    ->orWhere('BOSnetszProductId', 'like', '%'.$request->q.'%');
+            // Ikut mencari szShortDescription/SAP ID/barcode karena itulah teks yang
+            // benar-benar tampil pada picker, bukan hanya nickname produk.
+            ->where(function ($q) use ($term) {
+                $q->where('szNickName', 'like', $term)
+                    ->orWhere('szNickNameNew', 'like', $term)
+                    ->orWhere('szShortDescription', 'like', $term)
+                    ->orWhere('BOSnetszProductId', 'like', $term)
+                    ->orWhere('SAPszProductId', 'like', $term)
+                    ->orWhere('szBarcode', 'like', $term)
+                    ->orWhere('szBarcodeSekunder', 'like', $term)
+                    ->orWhere('szBarcodeTersier', 'like', $term);
             })
             ->where('szStatus', 'EXISTING')
+            ->orderBy('szNickName')
             ->limit(20)
             ->get();
 

@@ -5,6 +5,7 @@ import DashboardLayout from '@/app/dashboard/layout';
 import { gateTransactions, rencanaKirim, getErrorMessage } from '@/lib/api';
 import SearchInput from '@/components/SearchInput';
 import BarcodeScanner from '@/components/BarcodeScanner';
+import Modal from '@/components/Modal';
 import { useAuthStore } from '@/store/auth';
 
 interface GateTransaction {
@@ -14,7 +15,6 @@ interface GateTransaction {
   nopol: string;
   driver_name: string;
   po_transporter: string;
-  container_number: string;
   status: string;
   notes: string;
   scan_time: string;
@@ -31,12 +31,52 @@ const statusLabels: Record<string, string> = {
   CANCELLED: 'Dibatalkan',
 };
 
+// Panduan saat hasil scan tidak punya aksi gate (status atau izin).
+const STATUS_GUIDE: Record<string, string> = {
+  DRAFT: 'Dokumen masih Draft. Jadwalkan terlebih dahulu di menu Rencana Kirim.',
+  VERIFIED: 'Dokumen sudah diverifikasi dan menunggu proses bongkar. Tidak ada aksi gate saat ini.',
+  IN_PROGRESS: 'Bongkar sedang berjalan. Gate OUT tersedia setelah status Selesai.',
+  CANCELLED: 'Dokumen dibatalkan dan tidak dapat diproses di gate.',
+};
+
+// Pil status dokumen — pola yang sama dengan halaman laporan.
+const RK_STATUS_STYLE: Record<string, { color: string; bg: string; border: string; dot: string }> = {
+  DRAFT: { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', dot: 'bg-slate-400' },
+  SCHEDULED: { color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100', dot: 'bg-blue-500' },
+  CHECKED_IN: { color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100', dot: 'bg-amber-500' },
+  VERIFIED: { color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100', dot: 'bg-purple-500' },
+  IN_PROGRESS: { color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-100', dot: 'bg-orange-500' },
+  COMPLETED: { color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-100', dot: 'bg-emerald-500' },
+  CANCELLED: { color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-100', dot: 'bg-red-500' },
+};
+
+function StatusPill({ status }: { status: string | null | undefined }) {
+  const st = (status && RK_STATUS_STYLE[status]) || null;
+  const label = (status && statusLabels[status]) || status || '-';
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${st?.bg || 'bg-slate-100'} ${st?.color || 'text-slate-600'} ${st?.border || 'border-slate-200'}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-slate-400'}`} />
+      {label}
+    </span>
+  );
+}
+
+// Format waktu deterministik id-ID — toLocaleString() polos mengikuti locale browser.
+function fmtDateTime(v: string | null | undefined): string {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return `${d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+}
+
 export default function GatePage() {
   const { hasPermission } = useAuthStore();
   const [items, setItems] = useState<GateTransaction[]>([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [totalRows, setTotalRows] = useState(0);
   const [scanNoDokumen, setScanNoDokumen] = useState('');
   const [foundRencanaKirim, setFoundRencanaKirim] = useState<Record<string, unknown> | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -44,42 +84,54 @@ export default function GatePage() {
   const [showScanner, setShowScanner] = useState(false);
   const [lookupBusy, setLookupBusy] = useState(false);
   const [listError, setListError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<null | 'IN' | 'OUT' | 'VERIFY'>(null);
 
   const [stats, setStats] = useState<{ hariIni: number; terjadwal: number; selesai: number; total: number } | null>(null);
 
   const loadItems = useCallback(async () => {
+    if (!hasPermission('gate.view')) return;
+    setLoading(true);
     try {
-      const res = await gateTransactions.list({ search, page, per_page: 20 });
+      const res = await gateTransactions.list({ search: debouncedSearch, page, per_page: 20 });
       setItems(res.data.data);
-      setLastPage(res.data.last_page);
+      setLastPage(res.data.last_page ?? 1);
+      setTotalRows(res.data.total ?? 0);
       setListError('');
     } catch (e) {
       console.error(e);
       setListError(getErrorMessage(e, 'Gagal memuat riwayat gate.'));
+    } finally {
+      setLoading(false);
     }
-  }, [search, page]);
+  }, [debouncedSearch, page, hasPermission]);
 
   const loadStats = useCallback(async () => {
+    if (!hasPermission('gate.view')) {
+      setStats(null);
+      return;
+    }
     try {
-      const d = new Date();
-      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const res = await Promise.all([
-        gateTransactions.list({ per_page: 1 }),
-        // "Hari ini" dihitung server-side via filter tanggal, bukan dari halaman aktif.
-        gateTransactions.list({ date_from: todayStr, date_to: todayStr, per_page: 1 }),
-        rencanaKirim.list({ status: 'SCHEDULED', per_page: 1 }),
-        rencanaKirim.list({ status: 'COMPLETED', per_page: 1 }),
-      ]);
+      const res = await gateTransactions.stats();
       setStats({
-        total: (res[0].data.total ?? 0) as number,
-        hariIni: (res[1].data.total ?? 0) as number,
-        terjadwal: (res[2].data.total ?? 0) as number,
-        selesai: (res[3].data.total ?? 0) as number,
+        total: (res.data.data.total ?? 0) as number,
+        hariIni: (res.data.data.hari_ini ?? 0) as number,
+        terjadwal: (res.data.data.terjadwal ?? 0) as number,
+        selesai: (res.data.data.selesai ?? 0) as number,
       });
     } catch {
       setStats(null);
     }
-  }, []);
+  }, [hasPermission]);
+
+  // Debounce pencarian riwayat: tanpa ini tiap ketikan menembak API.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
@@ -170,7 +222,31 @@ export default function GatePage() {
     }
   };
 
+  // Aksi gate tercatat permanen — selalu lewat dialog konfirmasi dulu.
+  const requestConfirm = (type: 'IN' | 'OUT' | 'VERIFY') => {
+    if (!foundRencanaKirim || scanning) return;
+    setConfirmAction(type);
+  };
+
+  const executeConfirm = async () => {
+    if (!confirmAction) return;
+    setConfirmAction(null);
+    if (confirmAction === 'IN') await handleGateIn();
+    else if (confirmAction === 'OUT') await handleGateOut();
+    else await handleVerify();
+  };
+
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
+
+  if (!hasPermission('gate.view')) {
+    return (
+      <DashboardLayout>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+          Anda tidak memiliki izin untuk melihat Gate Check.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -187,8 +263,8 @@ export default function GatePage() {
             </div>
             <div className="hidden sm:flex flex-wrap items-center gap-2 ml-auto">
               <span className="inline-flex items-center gap-1.5 rounded-xl bg-white text-slate-900 px-3 py-1.5 text-xs font-black shadow">Hari ini <span className="bg-slate-900 text-white rounded-lg px-1.5 py-0.5">{stats?.hariIni ?? 0}</span></span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-bold border border-white/20">Terjadwal <span className="bg-blue-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{stats?.terjadwal ?? 0}</span></span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-bold border border-white/20">Selesai <span className="bg-emerald-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{stats?.selesai ?? 0}</span></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-bold border border-white/20">RKH Terjadwal <span className="bg-blue-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{stats?.terjadwal ?? 0}</span></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-bold border border-white/20">RKH Selesai <span className="bg-emerald-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{stats?.selesai ?? 0}</span></span>
               <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold border border-white/10">Total <span className="text-white ml-1">{stats?.total ?? 0}</span></span>
             </div>
           </div>
@@ -227,10 +303,22 @@ export default function GatePage() {
                     <div className="rounded-xl bg-white/10 backdrop-blur p-2.5 border border-white/10 col-span-2"><p className="text-[11px] font-bold tracking-widest text-white/60 uppercase">Driver • Status</p><p className="text-sm font-bold truncate">{foundRencanaKirim.driver_name as string} • {statusLabels[foundRencanaKirim.status as string] || (foundRencanaKirim.status as string)}</p></div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {foundRencanaKirim.status === 'SCHEDULED' && hasPermission('gate.create') && (<button onClick={handleGateIn} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-white text-slate-900 text-sm font-black hover:bg-slate-100 disabled:opacity-50">Gate IN →</button>)}
-                    {foundRencanaKirim.status === 'CHECKED_IN' && hasPermission('rencana_kirim.edit') && (<button onClick={handleVerify} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 disabled:opacity-50">Verify ✓</button>)}
-                    {foundRencanaKirim.status === 'COMPLETED' && hasPermission('gate.create') && (<button onClick={handleGateOut} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur border border-white/20 text-white text-sm font-bold hover:bg-white/20 disabled:opacity-50">Gate OUT</button>)}
+                    {foundRencanaKirim.status === 'SCHEDULED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('IN')} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-white text-slate-900 text-sm font-black hover:bg-slate-100 disabled:opacity-50">Gate IN →</button>)}
+                    {foundRencanaKirim.status === 'CHECKED_IN' && hasPermission('rencana_kirim.edit') && (<button onClick={() => requestConfirm('VERIFY')} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 disabled:opacity-50">Verify ✓</button>)}
+                    {foundRencanaKirim.status === 'COMPLETED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('OUT')} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur border border-white/20 text-white text-sm font-bold hover:bg-white/20 disabled:opacity-50">Gate OUT</button>)}
                   </div>
+                  {typeof foundRencanaKirim.status === 'string' && !['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) && (
+                    <p className="mt-3 rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-xs leading-5 text-slate-300">
+                      {STATUS_GUIDE[foundRencanaKirim.status] ?? 'Status ini tidak memiliki aksi gate.'}
+                    </p>
+                  )}
+                  {typeof foundRencanaKirim.status === 'string' && ['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) &&
+                    ((foundRencanaKirim.status === 'CHECKED_IN' && !hasPermission('rencana_kirim.edit')) ||
+                      (foundRencanaKirim.status !== 'CHECKED_IN' && !hasPermission('gate.create'))) && (
+                    <p className="mt-3 rounded-xl bg-amber-500/10 border border-amber-400/30 px-3 py-2.5 text-xs leading-5 text-amber-200">
+                      Anda tidak memiliki izin untuk aksi ini. Minta akses ke admin.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -249,9 +337,9 @@ export default function GatePage() {
           <div className="p-4 border-b border-gray-100">
             <SearchInput
               value={search}
-              onChange={(v) => { setSearch(v); setPage(1); }}
+              onChange={(v) => setSearch(v)}
               placeholder="Cari nopol/dokumen..."
-              resultCount={items.length}
+              resultCount={totalRows}
               resultLabel="transaksi"
             />
           </div>
@@ -262,33 +350,45 @@ export default function GatePage() {
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
                   <th className="table-header w-12" scope="col">No</th>
-                  <th className="excel-header" scope="col">Gate Type</th>
-                  <th className="excel-header" scope="col">PO Transporter</th>
-                  <th className="excel-header" scope="col">Nopol</th>
-                  <th className="excel-header" scope="col">Driver</th>
-                  <th className="excel-header" scope="col">Status</th>
-                  <th className="excel-header" scope="col">Scan Time</th>
+                  <th className="table-header" scope="col">Gate Type</th>
+                  <th className="table-header" scope="col">PO Transporter</th>
+                  <th className="table-header" scope="col">Nopol</th>
+                  <th className="table-header" scope="col">Driver</th>
+                  <th className="table-header" scope="col">Status</th>
+                  <th className="table-header" scope="col">Scan Time</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, index) => (
-                  <tr key={item.id} className={`excel-row ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-gray-50/50 transition-colors`}>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={`skel-${i}`} className="animate-pulse">
+                      <td className="table-cell"><div className="h-4 w-6 mx-auto rounded bg-gray-200" /></td>
+                      <td className="table-cell"><div className="h-5 w-16 rounded bg-gray-200" /></td>
+                      <td className="table-cell"><div className="h-4 w-28 rounded bg-gray-200" /></td>
+                      <td className="table-cell"><div className="h-4 w-20 rounded bg-gray-200" /></td>
+                      <td className="table-cell"><div className="h-4 w-20 rounded bg-gray-200" /></td>
+                      <td className="table-cell"><div className="h-5 w-20 rounded-full bg-gray-200" /></td>
+                      <td className="table-cell"><div className="h-4 w-32 rounded bg-gray-200" /></td>
+                    </tr>
+                  ))
+                ) : items.map((item, index) => (
+                  <tr key={item.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-primary-50/30 transition-colors`}>
                     <td className="table-cell text-center">{(page - 1) * 20 + index + 1}</td>
                     <td className="table-cell">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.gate_type === 'INBOUND' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                         {item.gate_type}
                       </span>
                     </td>
-                    <td className="excel-cell"><span className="text-sm font-mono">{fmt(item.po_transporter)}</span></td>
-                    <td className="excel-cell"><span className="text-sm font-mono">{fmt(item.nopol)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.driver_name)}</span></td>
-                    <td className="table-cell">
-                      <span className="text-xs font-medium text-gray-600">{statusLabels[item.rencana_kirim?.status as string] || (item.rencana_kirim?.status as string) || '-'}</span>
+                    <td className="table-cell"><span className="text-sm font-mono">{fmt(item.po_transporter)}</span></td>
+                    <td className="table-cell"><span className="text-sm font-mono">{fmt(item.nopol)}</span></td>
+                    <td className="table-cell"><span className="text-sm">{fmt(item.driver_name)}</span></td>
+                    <td className="table-cell whitespace-nowrap">
+                      <StatusPill status={item.rencana_kirim?.status as string} />
                     </td>
-                    <td className="excel-cell"><span className="text-sm">{item.scan_time ? new Date(item.scan_time).toLocaleString() : '-'}</span></td>
+                    <td className="table-cell"><span className="text-sm tabular-nums">{fmtDateTime(item.scan_time)}</span></td>
                   </tr>
                 ))}
-                {items.length === 0 && (
+                {!loading && items.length === 0 && (
                   <tr>
                     <td colSpan={7} className="table-cell text-center py-12" role="status">
                       <p className="text-gray-500 font-medium">Tidak ada transaksi gate</p>
@@ -300,7 +400,23 @@ export default function GatePage() {
           </div>
           {/* Mobile cards */}
           <div className="lg:hidden divide-y divide-slate-100">
-            {items.map((item) => (
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={`skel-m-${i}`} className="p-4 animate-pulse">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 w-36 rounded bg-gray-200" />
+                      <div className="h-3 w-28 rounded bg-gray-200" />
+                    </div>
+                    <div className="h-5 w-16 rounded-full bg-gray-200" />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="h-3 w-32 rounded bg-gray-200" />
+                    <div className="h-5 w-20 rounded-full bg-gray-200" />
+                  </div>
+                </div>
+              ))
+            ) : items.map((item) => (
               <div key={item.id} className="p-4 flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -309,23 +425,28 @@ export default function GatePage() {
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${item.gate_type === 'INBOUND' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-violet-50 text-violet-700 border-violet-200'}`}>{item.gate_type}</span>
                 </div>
-                <p className="text-xs text-slate-500">{item.scan_time ? new Date(item.scan_time).toLocaleString('id-ID') : '-'} • {statusLabels[item.rencana_kirim?.status as string] || '-'}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500 tabular-nums">{fmtDateTime(item.scan_time)}</p>
+                  <StatusPill status={item.rencana_kirim?.status as string} />
+                </div>
               </div>
             ))}
-            {items.length === 0 && <p className="p-8 text-center text-sm text-slate-400">Tidak ada transaksi</p>}
+            {!loading && items.length === 0 && <p className="p-8 text-center text-sm text-slate-400">Tidak ada transaksi</p>}
           </div>
 
-          <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-            <div className="flex justify-between items-center">
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-50" aria-label="Halaman sebelumnya">
-                Sebelumnya
-              </button>
-              <span className="text-sm text-gray-600">Halaman {page} dari {lastPage}</span>
-              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary disabled:opacity-50" aria-label="Halaman berikutnya">
-                Selanjutnya
-              </button>
+          {lastPage > 1 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex justify-between items-center">
+                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-50" aria-label="Halaman sebelumnya">
+                  Sebelumnya
+                </button>
+                <span className="text-sm text-gray-600">Halaman {page} dari {lastPage}</span>
+                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary disabled:opacity-50" aria-label="Halaman berikutnya">
+                  Selanjutnya
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
         </div>
         </div>
@@ -335,6 +456,52 @@ export default function GatePage() {
           onClose={() => setShowScanner(false)}
           onDetected={handleDetected}
         />
+
+        <Modal
+          open={confirmAction !== null}
+          onClose={() => setConfirmAction(null)}
+          title={confirmAction === 'IN' ? 'Catat Gate IN?' : confirmAction === 'OUT' ? 'Catat Gate OUT?' : 'Verifikasi Dokumen?'}
+          subtitle="Periksa kembali data sebelum mencatat — aksi ini tersimpan permanen."
+          size="md"
+          footer={
+            <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+              <button type="button" onClick={() => setConfirmAction(null)} className="btn-secondary w-full sm:w-auto">Batal</button>
+              <button
+                type="button"
+                onClick={executeConfirm}
+                disabled={scanning}
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50 sm:w-auto ${
+                  confirmAction === 'OUT' ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20' : 'btn-primary'
+                }`}
+              >
+                {confirmAction === 'IN' ? 'Ya, Catat IN' : confirmAction === 'OUT' ? 'Ya, Catat OUT' : 'Ya, Verifikasi'}
+              </button>
+            </div>
+          }
+        >
+          {foundRencanaKirim && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { label: 'PO Transporter', value: String(foundRencanaKirim.po_transporter ?? '-'), mono: true },
+                  { label: 'Nopol', value: String(foundRencanaKirim.nopol ?? '-'), mono: true },
+                  { label: 'Driver', value: String(foundRencanaKirim.driver_name ?? '-'), mono: false },
+                  { label: 'Status', value: statusLabels[foundRencanaKirim.status as string] || String(foundRencanaKirim.status ?? '-'), mono: false },
+                ].map((row) => (
+                  <div key={row.label} className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{row.label}</p>
+                    <p className={`mt-0.5 truncate text-sm font-bold text-slate-800 ${row.mono ? 'font-mono' : ''}`}>{row.value}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-xs leading-5 text-slate-600">
+                {confirmAction === 'IN' && 'Kendaraan masuk dicatat dan status rencana kirim berubah menjadi Check In.'}
+                {confirmAction === 'OUT' && 'Pastikan kendaraan benar-benar keluar dari area depo.'}
+                {confirmAction === 'VERIFY' && 'Dokumen dinyatakan terverifikasi dan status berubah menjadi Terverifikasi.'}
+              </p>
+            </div>
+          )}
+        </Modal>
       </div>
     </DashboardLayout>
   );

@@ -25,6 +25,7 @@ const MENU_FALLBACK: [string, string][] = [
   ['/users', 'users.view'],
   ['/email-settings', 'emails.view'],
   ['/email-recipients', 'emails.view'],
+  ['/reports/rencana-kirim', 'reports.view'],
   ['/reports/selisih-qty', 'reports.view'],
 ];
 

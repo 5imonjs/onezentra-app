@@ -57,7 +57,7 @@ class SystemEndToEndTest extends TestCase
             'reports.view',
             'dashboard.view',
             'depot.view_all',
-            'standarisasi.view', 'standarisasi.create', 'standarisasi.edit', 'standarisasi.delete',
+            'standarisasi.view', 'standarisasi.create', 'standarisasi.edit', 'standarisasi.approve', 'standarisasi.delete',
         ];
 
         $this->roleAdmin = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin Master']);

@@ -7,6 +7,7 @@ use App\Exports\RencanaKirimTemplate;
 use App\Http\Controllers\Controller;
 use App\Imports\RencanaKirimImport;
 use App\Imports\RencanaKirimItemImport;
+use App\Mail\RencanaKirimCancelled;
 use App\Mail\RencanaKirimCreated;
 use App\Models\Npn;
 use App\Models\RencanaKirim;
@@ -15,6 +16,7 @@ use App\Models\StandarUmurProduk;
 use App\Services\EmailNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
@@ -70,7 +72,7 @@ class RencanaKirimController extends Controller
     private function authorizeDepot(RencanaKirim $rencanaKirim): void
     {
         abort_unless(
-            auth()->user()?->canAccessDepotRow($rencanaKirim->kode_depo, $rencanaKirim->nama_depo),
+            $this->currentUser()->canAccessDepotRow($rencanaKirim->kode_depo, $rencanaKirim->nama_depo),
             403,
             'Rencana kirim tidak ditemukan di depo Anda.'
         );
@@ -83,11 +85,20 @@ class RencanaKirimController extends Controller
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('po_transporter', 'like', "%{$request->search}%")
-                    ->orWhere('rkh_number', 'like', "%{$request->search}%")
                     ->orWhere('driver_name', 'like', "%{$request->search}%")
                     ->orWhere('nopol', 'like', "%{$request->search}%")
                     ->orWhere('destination_name', 'like', "%{$request->search}%");
             });
+        }
+
+        // Pencocokan PO persis (case-insensitive, portabel antar driver DB) — dipakai
+        // frontend sebagai early-warning duplikat sebelum menyimpan.
+        if ($request->filled('po_transporter')) {
+            $query->whereRaw('LOWER(po_transporter) = LOWER(?)', [trim((string) $request->input('po_transporter'))]);
+        }
+
+        if ($request->filled('kode_depo')) {
+            $query->where('kode_depo', $request->input('kode_depo'));
         }
 
         if ($request->status) {
@@ -114,19 +125,6 @@ class RencanaKirimController extends Controller
         return response()->json($rencana_kirim);
     }
 
-    public function nextDockNumber(Request $request): JsonResponse
-    {
-        $max = (int) RencanaKirim::query()
-            ->forUserDepot($request->user())
-            ->whereNotNull('dock_number')
-            ->where('dock_number', '!=', '')
-            ->get('dock_number')
-            ->map(fn ($s) => (int) preg_replace('/\D/', '', (string) $s->dock_number))
-            ->max();
-
-        return response()->json(['data' => str_pad((string) ($max + 1), 2, '0', STR_PAD_LEFT)]);
-    }
-
     public function store(Request $request): JsonResponse
     {
         // Normalisasi identifier PO (memudahkan deteksi duplikat antar engine DB).
@@ -146,15 +144,11 @@ class RencanaKirimController extends Controller
                         ->whereRaw('LOWER(po_transporter) = LOWER(?)', [$request->input('po_transporter')]);
                 }),
             ],
-            'rkh_number' => 'nullable|string|max:50',
             'rkh_date' => 'nullable|date|after_or_equal:today',
-            'no_dokumen' => 'nullable|string|max:50',
-            'no_dokumen_date' => 'nullable|string|max:50',
             'driver_name' => 'nullable|string|max:100',
             'nopol' => 'nullable|string|max:50',
             'jenis_kendaraan' => 'nullable|string|max:50',
             'expedisi' => 'nullable|string|max:100',
-            'dock_number' => 'nullable|string|max:50',
             'shipper_name' => 'nullable|string|max:200',
             'shipper_address' => 'nullable|string',
             'shipper_phone' => 'nullable|string|max:50',
@@ -182,23 +176,30 @@ class RencanaKirimController extends Controller
         $validated['jenis_kendaraan'] ??= null;
         $validated = $request->user()->depotAttributes($validated);
 
+        $items = null;
         if (isset($validated['items'])) {
             $items = $this->normalizeItemsFromNpn($validated['items']);
             $this->assertItemsHaveProductCode($items);
             unset($validated['items']);
         }
 
-        $rencanaKirim = RencanaKirim::create($validated);
+        // Header + items ditulis atomik: sebagian item tanpa header (atau sebaliknya)
+        // akan merusak total_qty dan acuan validasi SJ.
+        $rencanaKirim = DB::transaction(function () use ($validated, $items) {
+            $rencanaKirim = RencanaKirim::create($validated);
 
-        if (isset($items)) {
-            $totalQty = 0;
-            foreach ($items as $item) {
-                $item['rencana_kirim_id'] = $rencanaKirim->id;
-                RencanaKirimItem::create($item);
-                $totalQty += $item['jumlah'];
+            if (isset($items)) {
+                $totalQty = 0;
+                foreach ($items as $item) {
+                    $item['rencana_kirim_id'] = $rencanaKirim->id;
+                    RencanaKirimItem::create($item);
+                    $totalQty += $item['jumlah'];
+                }
+                $rencanaKirim->update(['total_qty' => $totalQty]);
             }
-            $rencanaKirim->update(['total_qty' => $totalQty]);
-        }
+
+            return $rencanaKirim;
+        });
 
         $rencanaKirim->load('items.npn');
         $this->attachStandarUmur($rencanaKirim->items);
@@ -245,17 +246,13 @@ class RencanaKirimController extends Controller
                         ->whereRaw('LOWER(po_transporter) = LOWER(?)', [$request->input('po_transporter')]))
                     ->ignore($rencanaKirim->id),
             ],
-            'rkh_number' => 'nullable|string|max:50',
             // Saat edit, tanggal lampau yang sudah tersimpan tetap sah (tidak dipaksa mundur);
             // yang ditolak hanya perubahan rkh_date ke tanggal lampau (after_or_equal).
             'rkh_date' => 'nullable|date|after_or_equal:today',
-            'no_dokumen' => 'nullable|string|max:50',
-            'no_dokumen_date' => 'nullable|string|max:50',
             'driver_name' => 'nullable|string|max:100',
             'nopol' => 'nullable|string|max:50',
             'jenis_kendaraan' => 'nullable|string|max:50',
             'expedisi' => 'nullable|string|max:100',
-            'dock_number' => 'nullable|string|max:50',
             'shipper_name' => 'nullable|string|max:200',
             'shipper_address' => 'nullable|string',
             'shipper_phone' => 'nullable|string|max:50',
@@ -287,22 +284,29 @@ class RencanaKirimController extends Controller
             }
         }
 
+        $items = null;
         if (isset($validated['items'])) {
             $items = $this->normalizeItemsFromNpn($validated['items']);
             $this->assertItemsHaveProductCode($items);
             unset($validated['items']);
-
-            $rencanaKirim->items()->delete();
-            $totalQty = 0;
-            foreach ($items as $item) {
-                $item['rencana_kirim_id'] = $rencanaKirim->id;
-                RencanaKirimItem::create($item);
-                $totalQty += $item['jumlah'];
-            }
-            $validated['total_qty'] = $totalQty;
         }
 
-        $rencanaKirim->update($validated);
+        // Header + items (delete-all lalu insert ulang) ditulis atomik: kegagalan di
+        // tengah jalan tidak boleh meninggalkan item baru dengan total_qty lama.
+        DB::transaction(function () use ($rencanaKirim, $validated, $items) {
+            $rencanaKirim->update($validated);
+
+            if (isset($items)) {
+                $rencanaKirim->items()->delete();
+                $totalQty = 0;
+                foreach ($items as $item) {
+                    $item['rencana_kirim_id'] = $rencanaKirim->id;
+                    RencanaKirimItem::create($item);
+                    $totalQty += $item['jumlah'];
+                }
+                $rencanaKirim->update(['total_qty' => $totalQty]);
+            }
+        });
 
         $rencanaKirim->load('items.npn');
         $this->attachStandarUmur($rencanaKirim->items);
@@ -406,6 +410,13 @@ class RencanaKirimController extends Controller
         $this->assertTransition($rencanaKirim, 'CANCELLED');
 
         $rencanaKirim->update(['status' => 'CANCELLED']);
+
+        $this->emailService->send(
+            'rencana_kirim',
+            'cancelled',
+            $rencanaKirim,
+            new RencanaKirimCancelled($rencanaKirim->fresh(['items', 'creator']))
+        );
 
         return response()->json([
             'message' => 'Rencana kirim berhasil dibatalkan',

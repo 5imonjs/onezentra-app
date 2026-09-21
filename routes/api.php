@@ -108,10 +108,15 @@ Route::prefix('v1')->group(function () {
     Route::prefix('standarisasi-tumpukan')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [StandarisasiTumpukanController::class, 'index'])->middleware('permission:standarisasi.view');
         Route::post('/', [StandarisasiTumpukanController::class, 'store'])->middleware('permission:standarisasi.create');
+        // Wajib didaftarkan sebelum rute ber-parameter {standarisasiTumpukan}
+        Route::get('/stats', [StandarisasiTumpukanController::class, 'stats'])->middleware('permission:standarisasi.view');
+        Route::get('/search-product', [StandarisasiTumpukanController::class, 'searchProduct'])->middleware('permission:standarisasi.view');
+        Route::post('/bulk-delete', [StandarisasiTumpukanController::class, 'bulkDestroy'])->middleware('permission:standarisasi.delete');
         Route::get('/{standarisasiTumpukan}', [StandarisasiTumpukanController::class, 'show'])->middleware('permission:standarisasi.view');
         Route::put('/{standarisasiTumpukan}', [StandarisasiTumpukanController::class, 'update'])->middleware('permission:standarisasi.edit');
-        Route::post('/{standarisasiTumpukan}/approve', [StandarisasiTumpukanController::class, 'approve'])->middleware('permission:standarisasi.edit');
-        Route::post('/{standarisasiTumpukan}/reject', [StandarisasiTumpukanController::class, 'reject'])->middleware('permission:standarisasi.edit');
+        Route::post('/{standarisasiTumpukan}/approve', [StandarisasiTumpukanController::class, 'approve'])->middleware('permission:standarisasi.approve');
+        Route::post('/{standarisasiTumpukan}/reject', [StandarisasiTumpukanController::class, 'reject'])->middleware('permission:standarisasi.approve');
+        Route::post('/{standarisasiTumpukan}/notify', [StandarisasiTumpukanController::class, 'notify'])->middleware(['permission:standarisasi.view', 'throttle:10,1']);
         Route::delete('/{standarisasiTumpukan}', [StandarisasiTumpukanController::class, 'destroy'])->middleware('permission:standarisasi.delete');
     });
 
@@ -187,6 +192,7 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::prefix('gate-transactions')->middleware('auth:sanctum')->group(function () {
+        Route::get('/stats', [GateTransactionController::class, 'stats'])->middleware('permission:gate.view');
         Route::get('/', [GateTransactionController::class, 'index'])->middleware('permission:gate.view');
         Route::post('/', [GateTransactionController::class, 'store'])->middleware('permission:gate.create');
         Route::get('/{gateTransaction}', [GateTransactionController::class, 'show'])->middleware('permission:gate.view');
@@ -263,5 +269,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/selisih-qty/export', [ReportController::class, 'selisihQtyExport'])->middleware('permission:reports.view');
         Route::get('/penerimaan', [ReportController::class, 'penerimaan'])->middleware('permission:reports.view');
         Route::get('/penerimaan/export', [ReportController::class, 'penerimaanExport'])->middleware('permission:reports.view');
+        Route::get('/rencana-kirim', [ReportController::class, 'rencanaKirim'])->middleware('permission:reports.view');
+        Route::get('/rencana-kirim/export', [ReportController::class, 'rencanaKirimExport'])->middleware('permission:reports.view');
     });
 });

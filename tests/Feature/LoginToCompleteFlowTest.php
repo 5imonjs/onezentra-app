@@ -305,7 +305,7 @@ class LoginToCompleteFlowTest extends TestCase
         ])->assertStatus(422);
 
         // 6c. Barcode benar -> COMPLETED, rencana -> COMPLETED
-        // PO transporter adalah barcode yang benar (no_dokumen)
+        // PO transporter adalah barcode yang benar (po_transporter)
         // Batch per produk sudah terbuat saat scan validasi (2 batches), bukan saat complete receiving
         $this->postJson("/api/v1/receivings/{$receiving->id}/complete", [
             'barcode' => 'SJ-E2E-001',

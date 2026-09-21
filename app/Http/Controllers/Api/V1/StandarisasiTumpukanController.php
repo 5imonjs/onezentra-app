@@ -4,157 +4,318 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Mail\StandarisasiStatusNotification;
+use App\Models\Npn;
 use App\Models\StandarisasiTumpukan;
+use App\Models\User;
 use App\Services\EmailNotificationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StandarisasiTumpukanController extends Controller
 {
+    /** Batas atas tier/tinggi tumpukan — disamakan dengan clamp pada form UI. */
+    private const MAX_DIMENSION = 100;
+
+    /** Kolom produk yang ikut dicari (termasuk szShortDescription yang tampil di tabel). */
+    private const NPN_SEARCH_COLUMNS = [
+        'szNickName',
+        'szNickNameNew',
+        'szShortDescription',
+        'BOSnetszProductId',
+        'SAPszProductId',
+        'szBarcode',
+        'szBarcodeSekunder',
+        'szBarcodeTersier',
+    ];
+
+    private const NPN_LIST_COLUMNS = 'id,BOSnetszProductId,SAPszProductId,szNickName,szNickNameNew,szShortDescription,szBarcode,szBarcodeSekunder,szBarcodeTersier';
+
+    private const WORKFLOW_ROLES = ['blc', 'staff_logistic'];
+
     public function __construct(private EmailNotificationService $emailService) {}
 
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $query = StandarisasiTumpukan::query()->forUserDepot($request->user());
-        if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->whereHas('npn', function ($npn) use ($request) {
-                    $npn->where('szNickName', 'like', '%'.$request->search.'%')
-                        ->orWhere('szNickNameNew', 'like', '%'.$request->search.'%')
-                        ->orWhere('BOSnetszProductId', 'like', '%'.$request->search.'%')
-                        ->orWhere('szBarcode', 'like', '%'.$request->search.'%');
-                })->orWhere('kode_depo', 'like', '%'.$request->search.'%');
-            });
-        }
-        if ($request->filled('kode_depo')) {
-            $query->where('kode_depo', $request->kode_depo);
-        }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        $standarisasi = $query->with('npn:id,BOSnetszProductId,SAPszProductId,szNickName,szNickNameNew,szBarcode,szBarcodeSekunder,szBarcodeTersier')
-            ->orderBy('created_at', 'desc')
-            ->paginate($this->perPage($request, 50));
+        $standarisasi = $this->filteredQuery($request)
+            ->with('npn:'.self::NPN_LIST_COLUMNS)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($this->perPage($request));
 
         return response()->json($standarisasi);
     }
 
-    public function store(Request $request)
+    /**
+     * Ringkasan jumlah per status untuk kartu dashboard.
+     *
+     * Dihitung terpisah dari daftar agar angkanya mencakup seluruh depo user,
+     * bukan hanya baris di halaman yang sedang dibuka.
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $counts = $this->filteredQuery($request, withSearch: false)
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        return response()->json([
+            'data' => [
+                'total' => (int) $counts->sum(),
+                'pending' => (int) $counts->get('pending', 0),
+                'approved' => (int) $counts->get('approved', 0),
+                'rejected' => (int) $counts->get('rejected', 0),
+            ],
+        ]);
+    }
+
+    /**
+     * Pencarian produk untuk picker pada form standarisasi.
+     *
+     * Terpisah dari NpnController@searchProduct agar halaman ini tidak bergantung
+     * pada permission `npn.view`, dan hanya mengembalikan kolom yang dipakai picker.
+     */
+    public function searchProduct(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['q' => 'required|string|min:1']);
+        $term = '%'.$validated['q'].'%';
+
+        $products = Npn::query()
+            ->select(['id', 'BOSnetszProductId', 'SAPszProductId', 'szNickName', 'szNickNameNew', 'szShortDescription', 'szBarcode'])
+            ->where(function ($query) use ($term) {
+                foreach (self::NPN_SEARCH_COLUMNS as $index => $column) {
+                    $index === 0
+                        ? $query->where($column, 'like', $term)
+                        : $query->orWhere($column, 'like', $term);
+                }
+            })
+            ->where('szStatus', 'EXISTING')
+            ->orderBy('szNickName')
+            ->limit(20)
+            ->get();
+
+        return response()->json(['data' => $products]);
+    }
+
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'npn_id' => 'required|integer|exists:npn,id',
-            'tier' => 'nullable|integer|min:1',
-            'tinggi_tumpukan' => 'nullable|integer|min:1',
+            'tier' => 'required|integer|min:1|max:'.self::MAX_DIMENSION,
+            'tinggi_tumpukan' => 'required|integer|min:1|max:'.self::MAX_DIMENSION,
             'kode_depo' => 'nullable|string|max:50',
             'nama_depo' => 'nullable|string|max:150',
         ]);
 
-        $validated['requested_by'] = auth()->id();
-        $validated['requested_by_email'] = auth()->user()->email;
+        $validated['requested_by'] = $request->user()->id;
+        $validated['requested_by_email'] = $request->user()->email;
         $validated['status'] = 'pending';
-        $validated = auth()->user()->depotAttributes($validated);
+        $validated = $request->user()->depotAttributes($validated);
 
-        $validated['total_tier_tinggi'] = ($validated['tier'] ?? 0) * ($validated['tinggi_tumpukan'] ?? 0);
+        $validated['total_tier_tinggi'] = $validated['tier'] * $validated['tinggi_tumpukan'];
 
-        $standarisasi = StandarisasiTumpukan::create($validated);
+        $standarisasi = StandarisasiTumpukan::create($validated)->load('npn');
 
-        $this->emailService->send(
-            'standarisasi_tumpukan',
-            'submitted',
-            $standarisasi->fresh(['npn']),
-            new StandarisasiStatusNotification($standarisasi->fresh(['npn']))
-        );
+        $this->sendNotification($standarisasi, 'submitted');
 
-        return response()->json(['message' => 'Standarisasi tumpukan created', 'data' => $standarisasi->load('npn')], 201);
+        return response()->json(['message' => 'Standarisasi tumpukan created', 'data' => $standarisasi], 201);
     }
 
-    private function authorizeDepot(StandarisasiTumpukan $standarisasiTumpukan): void
+    public function show(Request $request, StandarisasiTumpukan $standarisasiTumpukan): JsonResponse
     {
-        $user = auth()->user();
-        if ($user && ($user->level === 'admin_master' || $user->hasRole('blc') || $user->hasRole('staff_logistic'))) {
-            return;
+        $this->authorizeDepot($request, $standarisasiTumpukan);
+
+        return response()->json(['data' => $standarisasiTumpukan->load('npn')]);
+    }
+
+    /**
+     * Ubah isi standarisasi (produk, tier, tinggi).
+     *
+     * `status` sengaja tidak divalidasi di sini: satu-satunya jalur perubahan
+     * status adalah approve()/reject() yang dijaga permission standarisasi.approve.
+     * Bila baris yang sudah approved diubah isinya, approval lama dibatalkan dan
+     * baris kembali ke `pending` agar wajib disetujui ulang.
+     */
+    public function update(Request $request, StandarisasiTumpukan $standarisasiTumpukan): JsonResponse
+    {
+        $this->authorizeDepot($request, $standarisasiTumpukan);
+
+        $validated = $request->validate([
+            'npn_id' => 'nullable|integer|exists:npn,id',
+            'tier' => 'nullable|integer|min:1|max:'.self::MAX_DIMENSION,
+            'tinggi_tumpukan' => 'nullable|integer|min:1|max:'.self::MAX_DIMENSION,
+        ]);
+
+        $contentChanged = collect(array_keys($validated))
+            ->contains(fn (string $field) => (string) ($validated[$field] ?? '') !== (string) ($standarisasiTumpukan->{$field} ?? ''));
+
+        if ($contentChanged) {
+            $tier = $validated['tier'] ?? $standarisasiTumpukan->tier;
+            $tinggi = $validated['tinggi_tumpukan'] ?? $standarisasiTumpukan->tinggi_tumpukan;
+            $validated['total_tier_tinggi'] = ($tier ?? 0) * ($tinggi ?? 0);
         }
+
+        $requiresReapproval = $contentChanged && $standarisasiTumpukan->status === 'approved';
+        if ($requiresReapproval) {
+            $validated['status'] = 'pending';
+            $validated['approved_by'] = null;
+            $validated['approved_by_email'] = null;
+        }
+
+        $standarisasiTumpukan->update($validated);
+        $standarisasiTumpukan = $standarisasiTumpukan->refresh()->load('npn');
+
+        if ($requiresReapproval) {
+            $this->sendNotification($standarisasiTumpukan, 'submitted');
+        }
+
+        return response()->json([
+            'message' => $requiresReapproval
+                ? 'Standarisasi tumpukan diperbarui dan menunggu approval ulang'
+                : 'Standarisasi tumpukan updated',
+            'data' => $standarisasiTumpukan,
+            'requires_reapproval' => $requiresReapproval,
+        ]);
+    }
+
+    public function approve(Request $request, StandarisasiTumpukan $standarisasiTumpukan): JsonResponse
+    {
+        $this->authorizeDepot($request, $standarisasiTumpukan);
+
+        $standarisasiTumpukan->update([
+            'status' => 'approved',
+            'approved_by' => $request->user()->id,
+            'approved_by_email' => $request->user()->email,
+            'total_tier_tinggi' => ($standarisasiTumpukan->tier ?? 0) * ($standarisasiTumpukan->tinggi_tumpukan ?? 0),
+        ]);
+
+        $standarisasiTumpukan = $standarisasiTumpukan->refresh()->load('npn');
+        $this->sendNotification($standarisasiTumpukan, 'approved');
+
+        return response()->json(['message' => 'Standarisasi tumpukan disetujui', 'data' => $standarisasiTumpukan]);
+    }
+
+    public function reject(Request $request, StandarisasiTumpukan $standarisasiTumpukan): JsonResponse
+    {
+        $this->authorizeDepot($request, $standarisasiTumpukan);
+
+        $standarisasiTumpukan->update(['status' => 'rejected']);
+
+        $standarisasiTumpukan = $standarisasiTumpukan->refresh()->load('npn');
+        $this->sendNotification($standarisasiTumpukan, 'rejected');
+
+        return response()->json(['message' => 'Standarisasi tumpukan ditolak', 'data' => $standarisasiTumpukan]);
+    }
+
+    /**
+     * Kirim ulang notifikasi email untuk status baris saat ini.
+     */
+    public function notify(Request $request, StandarisasiTumpukan $standarisasiTumpukan): JsonResponse
+    {
+        $this->authorizeDepot($request, $standarisasiTumpukan);
+
+        $trigger = match ($standarisasiTumpukan->status) {
+            'approved' => 'approved',
+            'rejected' => 'rejected',
+            default => 'submitted',
+        };
+
+        $this->sendNotification($standarisasiTumpukan->load('npn'), $trigger);
+
+        return response()->json(['message' => 'Notifikasi email dikirim ulang ke BLC & Admin Distribusi.']);
+    }
+
+    public function destroy(Request $request, StandarisasiTumpukan $standarisasiTumpukan): JsonResponse
+    {
+        $this->authorizeDepot($request, $standarisasiTumpukan);
+        $standarisasiTumpukan->delete();
+
+        return response()->json(['message' => 'Standarisasi tumpukan deleted']);
+    }
+
+    /**
+     * Hapus banyak baris dalam satu permintaan.
+     *
+     * Otorisasi per baris disamakan dengan destroy() supaya user tidak dapat
+     * menghapus data depo lain hanya dengan menebak id.
+     */
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|max:500',
+            'ids.*' => 'integer',
+        ]);
+
+        $user = $request->user();
+        $allowedIds = StandarisasiTumpukan::whereIn('id', $validated['ids'])
+            ->get()
+            ->filter(fn (StandarisasiTumpukan $row) => $this->canManageRow($user, $row))
+            ->pluck('id');
+
+        $deleted = $allowedIds->isEmpty()
+            ? 0
+            : StandarisasiTumpukan::whereIn('id', $allowedIds)->delete();
+
+        return response()->json([
+            'message' => 'Standarisasi tumpukan terpilih dihapus',
+            'deleted' => $deleted,
+            'skipped' => count($validated['ids']) - $deleted,
+        ]);
+    }
+
+    private function filteredQuery(Request $request, bool $withSearch = true)
+    {
+        $query = StandarisasiTumpukan::query()->forUserDepot($request->user());
+
+        if ($withSearch && $request->filled('search')) {
+            $term = '%'.$request->search.'%';
+            $query->where(function ($q) use ($term) {
+                $q->whereHas('npn', function ($npn) use ($term) {
+                    foreach (self::NPN_SEARCH_COLUMNS as $index => $column) {
+                        $index === 0
+                            ? $npn->where($column, 'like', $term)
+                            : $npn->orWhere($column, 'like', $term);
+                    }
+                })->orWhere('kode_depo', 'like', $term)
+                    ->orWhere('nama_depo', 'like', $term);
+            });
+        }
+
+        if ($request->filled('kode_depo')) {
+            $query->where('kode_depo', $request->kode_depo);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        return $query;
+    }
+
+    private function canManageRow(User $user, StandarisasiTumpukan $row): bool
+    {
+        if ($user->isAdminMaster() || $user->hasAnyRole(self::WORKFLOW_ROLES)) {
+            return true;
+        }
+
+        return $user->canAccessDepotRow($row->kode_depo, $row->nama_depo);
+    }
+
+    private function authorizeDepot(Request $request, StandarisasiTumpukan $standarisasiTumpukan): void
+    {
         abort_unless(
-            $user?->canAccessDepotRow($standarisasiTumpukan->kode_depo, $standarisasiTumpukan->nama_depo),
+            $this->canManageRow($request->user(), $standarisasiTumpukan),
             403,
             'Data standarisasi tidak ditemukan di depo Anda.'
         );
     }
 
-    public function show(StandarisasiTumpukan $standarisasiTumpukan)
+    private function sendNotification(StandarisasiTumpukan $standarisasi, string $trigger): void
     {
-        $this->authorizeDepot($standarisasiTumpukan);
-
-        return response()->json(['data' => $standarisasiTumpukan->load('npn')]);
-    }
-
-    public function update(Request $request, StandarisasiTumpukan $standarisasiTumpukan)
-    {
-        $this->authorizeDepot($standarisasiTumpukan);
-
-        $validated = $request->validate([
-            'npn_id' => 'nullable|integer|exists:npn,id',
-            'tier' => 'nullable|integer|min:1',
-            'tinggi_tumpukan' => 'nullable|integer|min:1',
-            'status' => 'nullable|in:pending,approved,rejected',
-        ]);
-
-        if (isset($validated['tier']) || isset($validated['tinggi_tumpukan'])) {
-            $validated['total_tier_tinggi'] = ($validated['tier'] ?? $standarisasiTumpukan->tier ?? 0) * ($validated['tinggi_tumpukan'] ?? $standarisasiTumpukan->tinggi_tumpukan ?? 0);
-        }
-        if (isset($validated['status']) && $validated['status'] === 'approved') {
-            $validated['approved_by'] = auth()->id();
-            $validated['approved_by_email'] = auth()->user()->email;
-        }
-
-        $standarisasiTumpukan->update($validated);
-
-        return response()->json(['message' => 'Standarisasi tumpukan updated', 'data' => $standarisasiTumpukan->refresh()->load('npn')]);
-    }
-
-    public function approve(Request $request, StandarisasiTumpukan $standarisasiTumpukan)
-    {
-        $this->authorizeDepot($standarisasiTumpukan);
-
-        $standarisasiTumpukan->update([
-            'status' => 'approved',
-            'approved_by' => auth()->id(),
-            'approved_by_email' => auth()->user()->email,
-            'total_tier_tinggi' => ($standarisasiTumpukan->tier ?? 0) * ($standarisasiTumpukan->tinggi_tumpukan ?? 0),
-        ]);
-
         $this->emailService->send(
             'standarisasi_tumpukan',
-            'approved',
-            $standarisasiTumpukan->fresh(['npn']),
-            new StandarisasiStatusNotification($standarisasiTumpukan->fresh(['npn']))
+            $trigger,
+            $standarisasi,
+            new StandarisasiStatusNotification($standarisasi)
         );
-
-        return response()->json(['message' => 'Standarisasi tumpukan disetujui', 'data' => $standarisasiTumpukan->refresh()->load('npn')]);
-    }
-
-    public function reject(Request $request, StandarisasiTumpukan $standarisasiTumpukan)
-    {
-        $this->authorizeDepot($standarisasiTumpukan);
-
-        $standarisasiTumpukan->update([
-            'status' => 'rejected',
-        ]);
-
-        $this->emailService->send(
-            'standarisasi_tumpukan',
-            'rejected',
-            $standarisasiTumpukan->fresh(['npn']),
-            new StandarisasiStatusNotification($standarisasiTumpukan->fresh(['npn']))
-        );
-
-        return response()->json(['message' => 'Standarisasi tumpukan ditolak', 'data' => $standarisasiTumpukan->refresh()->load('npn')]);
-    }
-
-    public function destroy(StandarisasiTumpukan $standarisasiTumpukan)
-    {
-        $this->authorizeDepot($standarisasiTumpukan);
-        $standarisasiTumpukan->delete();
-
-        return response()->json(['message' => 'Standarisasi tumpukan deleted']);
     }
 }

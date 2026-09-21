@@ -7,6 +7,7 @@ use App\Imports\UserImport;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -81,7 +82,7 @@ class UserController extends Controller
     private function authorizeDepot(User $user): void
     {
         abort_unless(
-            auth()->user()?->canAccessDepotRow($user->kode_depo, $user->nama_depo),
+            $this->currentUser()->canAccessDepotRow($user->kode_depo, $user->nama_depo),
             403,
             'Pengguna tidak ditemukan di depo Anda.'
         );
@@ -158,12 +159,12 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $this->authorizeDepot($user);
-        if ($user->id === auth()->id()) {
+        if ($user->id === Auth::id()) {
             return response()->json(['message' => 'Cannot delete your own account'], 422);
         }
         if ($user->isAdminMaster()) {
             abort_unless(
-                auth()->user()->isAdminMaster(),
+                $this->currentUser()->isAdminMaster(),
                 403,
                 'Hanya admin master yang dapat menghapus akun admin master.'
             );

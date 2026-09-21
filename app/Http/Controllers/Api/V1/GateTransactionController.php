@@ -117,7 +117,7 @@ class GateTransactionController extends Controller
     public function show(GateTransaction $gateTransaction): JsonResponse
     {
         abort_unless(
-            auth()->user()?->canAccessDepotRow($gateTransaction->rencanaKirim?->kode_depo, $gateTransaction->rencanaKirim?->nama_depo),
+            $this->currentUser()->canAccessDepotRow($gateTransaction->rencanaKirim?->kode_depo, $gateTransaction->rencanaKirim?->nama_depo),
             403,
             'Transaksi gate tidak ditemukan di depo Anda.'
         );
@@ -139,5 +139,34 @@ class GateTransactionController extends Controller
         }
 
         return response()->json(['data' => $rencanaKirim->load('items')]);
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $gateQuery = GateTransaction::query();
+        $rkQuery = RencanaKirim::query();
+
+        if ($user->isDepotScoped()) {
+            $gateQuery->whereHas('rencanaKirim', fn ($q) => $q->forUserDepot($user));
+            $rkQuery->forUserDepot($user);
+        }
+
+        $today = now()->toDateString();
+
+        $gateTotal = $gateQuery->count();
+        $gateToday = (clone $gateQuery)->whereDate('scan_time', $today)->count();
+        $rkScheduled = (clone $rkQuery)->where('status', 'SCHEDULED')->count();
+        $rkCompleted = (clone $rkQuery)->where('status', 'COMPLETED')->count();
+
+        return response()->json([
+            'data' => [
+                'total' => $gateTotal,
+                'hari_ini' => $gateToday,
+                'terjadwal' => $rkScheduled,
+                'selesai' => $rkCompleted,
+            ],
+        ]);
     }
 }
