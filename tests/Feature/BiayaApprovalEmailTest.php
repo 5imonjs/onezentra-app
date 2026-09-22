@@ -120,10 +120,28 @@ class BiayaApprovalEmailTest extends TestCase
             return $mail->hasTo('rlh_approved@example.com')
                 && $mail->trigger === 'rlh_approved'
                 && $mail->subjectLabel() === 'Disetujui RLH'
-                && $mail->actorName() === 'RLH Approver';
+                && $mail->actorName() === 'RLH Approver'
+                && $mail->actorTime() !== null;
         });
 
         $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'status' => 'rlh_approved']);
+
+        // RFAH revise → BLC resubmits to RFAH, not BAC.
+        Sanctum::actingAs($users['rfah']);
+        $this->postJson("/api/v1/biaya-thl/{$biaya->id}/revise", ['reason' => 'Mohon perjelas bukti foto'])->assertOk();
+        $this->assertDatabaseHas('biaya_thls', [
+            'id' => $biaya->id,
+            'status' => 'revisi',
+            'revision_return_status' => 'rlh_approved',
+        ]);
+
+        Sanctum::actingAs($users['operator']);
+        $this->postJson("/api/v1/biaya-thl/{$biaya->id}/submit")->assertOk();
+        $this->assertDatabaseHas('biaya_thls', [
+            'id' => $biaya->id,
+            'status' => 'rlh_approved',
+            'resubmitted_by' => $users['operator']->id,
+        ]);
 
         // RFAH approve → approved + email approved
         Sanctum::actingAs($users['rfah']);
@@ -256,8 +274,9 @@ class BiayaApprovalEmailTest extends TestCase
 
         $this->assertDatabaseHas('biaya_thls', [
             'id' => $biaya->id,
-            'status' => 'pending',
-            'revisi_reason' => null,
+            'status' => 'checked',
+            'revisi_reason' => 'Foto detail belum terupload',
+            'resubmitted_by' => $users['operator']->id,
         ]);
     }
 }

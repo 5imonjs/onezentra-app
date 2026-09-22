@@ -61,7 +61,13 @@
                 <tr>
                     <td style="padding: 6px 0; color: #6b7280;">Status</td>
                     <td style="padding: 6px 0; font-weight: 600;">
-                        <span style="{{ $subjectLabel === 'Disetujui' ? 'color: #047857;' : ($subjectLabel === 'Ditolak' ? 'color: #b91c1c;' : 'color: #b45309;') }}">
+                        @if(in_array($subjectLabel, ['Disetujui', 'Disetujui RLH'], true))
+                            <span style="color: #047857;">
+                        @elseif($subjectLabel === 'Ditolak')
+                            <span style="color: #b91c1c;">
+                        @else
+                            <span style="color: #b45309;">
+                        @endif
                             {{ strtoupper($biaya->status ?? '-') }}
                         </span>
                     </td>

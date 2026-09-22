@@ -54,10 +54,10 @@ class ApprovalAssignmentTest extends TestCase
         $this->assertSame(3, ApprovalAssignment::count());
         $this->assertSame('BAC User', ApprovalAssignment::where('approval_level', 'BAC')->first()->user->full_name);
         $sections = app(ApprovalSectionResolver::class)->resolve('DPT-A', 'Submitter');
-        // Nama kolom = aksi: tanpa aksi, assignee tidak ditampilkan (PDF
-        // draft tidak boleh terlihat seolah sudah disetujui).
+        // Nama assignee tetap ditampilkan, tetapi stamp hanya muncul setelah
+        // aksi approval benar-benar tercatat.
         $this->assertSame('Submitter', $sections[0]['people'][0]['name']);
-        $this->assertSame('-', $sections[2]['people'][0]['name']);
+        $this->assertSame('RLH User', $sections[2]['people'][0]['name']);
         $resolved = app(ApprovalSectionResolver::class)->resolve('DPT-A', 'Submitter', 'BAC User', 'RLH User', 'RFAH User');
         $this->assertSame('BAC User', $resolved[1]['people'][0]['name']);
         $this->assertSame('RLH User', $resolved[2]['people'][0]['name']);
@@ -86,6 +86,30 @@ class ApprovalAssignmentTest extends TestCase
             'kode_depo' => 'DPT-A',
             'assignments' => [['approval_level' => 'BAC', 'user_id' => $approver->id]],
         ])->assertStatus(422);
+    }
+
+    public function test_global_rlh_assignment_sees_and_can_approve_depot_submission(): void
+    {
+        $viewPermission = Permission::create(['slug' => 'biaya_thl.view', 'name' => 'THL View', 'menu_group' => 'Biaya']);
+        $approvePermission = $this->approvalPermissions()['approval.approve'];
+        $role = Role::create(['slug' => 'global_rlh', 'name' => 'Global RLH']);
+        $role->permissions()->attach([$viewPermission->id, $approvePermission->id]);
+        $rlh = User::create([
+            'email' => 'global-rlh@test.com', 'password' => 'password', 'full_name' => 'Global RLH',
+            'kode_depo' => 'RLH-01', 'nama_depo' => 'Depo RLH', 'level' => 'rlh', 'status' => 'active', 'role_id' => $role->id,
+        ]);
+        $role->users()->attach($rlh->id);
+        ApprovalAssignment::create(['kode_depo' => 'ADMIN', 'approval_level' => 'RLH', 'user_id' => $rlh->id, 'is_active' => true]);
+        $biaya = BiayaThl::create([
+            'tanggal_pengajuan' => '2026-09-23', 'kode_depo' => '0127', 'nama_depo' => 'Singkawang',
+            'status' => 'checked', 'nominal_biaya' => 100000, 'created_by' => $rlh->id,
+        ]);
+
+        Sanctum::actingAs($rlh);
+        $this->getJson('/api/v1/biaya-thl')->assertOk()->assertJsonPath('data.0.id', $biaya->id);
+        $this->postJson("/api/v1/biaya-thl/{$biaya->id}/approve")->assertOk();
+
+        $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'status' => 'approved']);
     }
 
     public function test_assigned_users_can_complete_the_approval_transition(): void
@@ -210,13 +234,16 @@ class ApprovalAssignmentTest extends TestCase
         $this->actingAs($submitter)->postJson("/api/v1/biaya-thl/{$biaya->id}/submit")->assertOk();
         $this->assertDatabaseHas('biaya_thls', [
             'id' => $biaya->id,
-            'status' => 'pending',
-            'revised_by' => null,
-            'revised_at' => null,
-            'revisi_reason' => null,
+            'status' => 'checked',
+            'revised_by' => $approver->id,
+            'revisi_reason' => 'Nama THL belum diisi',
+            'resubmitted_by' => $submitter->id,
+            'rlh_approved_by' => null,
+            'rlh_approved_at' => null,
+            'approved_by' => null,
+            'approved_at' => null,
         ]);
 
-        $this->actingAs($checker)->postJson("/api/v1/biaya-thl/{$biaya->id}/check")->assertOk();
         $this->actingAs($approver)->postJson("/api/v1/biaya-thl/{$biaya->id}/approve")->assertOk();
 
         $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'status' => 'approved']);

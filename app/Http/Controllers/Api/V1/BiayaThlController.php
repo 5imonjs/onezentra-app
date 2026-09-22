@@ -23,7 +23,27 @@ class BiayaThlController extends Controller
 {
     public function index(Request $request)
     {
-        $query = BiayaThl::query()->forUserDepot($request->user());
+        $user = $request->user();
+        $assignedDepots = ApprovalAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereIn('approval_level', ['BAC', 'RLH', 'RFAH'])
+            ->where('is_active', true)
+            ->pluck('kode_depo');
+        $hasGlobalFinalAssignment = ApprovalAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereIn('approval_level', ['RLH', 'RFAH'])
+            ->where('kode_depo', 'ADMIN')
+            ->where('is_active', true)
+            ->exists();
+
+        $query = BiayaThl::query();
+        if ($hasGlobalFinalAssignment) {
+            // ADMIN assignment is the configured global fallback for final approvers.
+        } elseif ($assignedDepots->isNotEmpty()) {
+            $query->whereIn('kode_depo', $assignedDepots->reject(fn (string $kodeDepo): bool => $kodeDepo === 'ADMIN')->values());
+        } else {
+            $query->forUserDepot($user);
+        }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('no_kendaraan', 'like', '%'.$request->search.'%')
@@ -36,7 +56,7 @@ class BiayaThlController extends Controller
         }
         // Ringkasan dihitung dari SELURUH baris terfilter, bukan halaman aktif.
         $summaryQuery = clone $query;
-        $data = $query->with('details.photos', 'photos', 'submittedBy', 'checkedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'createdBy')
+        $data = $query->with('details.photos', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'resubmittedBy', 'createdBy')
             ->orderBy('created_at', 'desc')
             ->paginate($this->perPage($request, 50));
 
@@ -44,14 +64,16 @@ class BiayaThlController extends Controller
         $response['summary'] = [
             'total' => (clone $summaryQuery)->count(),
             'total_nominal' => (float) (clone $summaryQuery)->sum('nominal_biaya'),
-            'pending' => (clone $summaryQuery)->where('status', 'pending')->count(),
+            'pending' => (clone $summaryQuery)->whereIn('status', ['pending', 'checked', 'rlh_approved'])->count(),
             'checked' => (clone $summaryQuery)->where('status', 'checked')->count(),
             'approved' => (clone $summaryQuery)->where('status', 'approved')->count(),
             'rejected' => (clone $summaryQuery)->where('status', 'rejected')->count(),
             'revisi' => (clone $summaryQuery)->where('status', 'revisi')->count(),
         ];
 
-        return response()->json($response);
+        return response()->json($response)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function store(Request $request)
@@ -100,14 +122,26 @@ class BiayaThlController extends Controller
 
     public function show(BiayaThl $biayaThl)
     {
-        $this->authorizeCreator($biayaThl);
+        $this->authorizeViewer($biayaThl);
 
-        return response()->json(['data' => $biayaThl->load('details.photos', 'photos')]);
+        return response()->json(['data' => $biayaThl->load(
+            'details.photos',
+            'photos',
+            'submittedBy',
+            'checkedBy',
+            'rlhApprovedBy',
+            'approvedBy',
+            'rejectedBy',
+            'revisedBy',
+            'resubmittedBy',
+            'createdBy',
+        )]);
     }
 
     public function update(Request $request, BiayaThl $biayaThl)
     {
         $this->authorizeCreator($biayaThl);
+        abort_if($biayaThl->status === 'approved', 422, 'Pengajuan yang sudah Approved Lengkap tidak dapat diedit.');
 
         // Simpan draft tidak boleh mengembalikan antrean yang berjalan.
         if ($request->boolean('is_draft')) {
@@ -219,6 +253,7 @@ class BiayaThlController extends Controller
     public function destroy(BiayaThl $biayaThl)
     {
         $this->authorizeCreator($biayaThl);
+        abort_if($biayaThl->status === 'approved', 422, 'Pengajuan yang sudah Approved Lengkap tidak dapat dihapus.');
         foreach ($biayaThl->photos as $photo) {
             Storage::disk('public')->delete($photo->file_path);
             $photo->delete();
@@ -261,23 +296,28 @@ class BiayaThlController extends Controller
 
     public function pdf(BiayaThl $biayaThl)
     {
-        $this->authorizeCreator($biayaThl);
+        $this->authorizePdfPrinter($biayaThl);
 
-        $biayaThl->load('details.photos', 'photos', 'checkedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
+        $biayaThl->load('details.photos', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
         $deciderName = match ($biayaThl->status) {
-            'approved' => $biayaThl->approvedBy?->full_name,
+            'rlh_approved' => $biayaThl->rlhApprovedBy?->full_name,
+            'approved' => $biayaThl->is_rfah_required ? $biayaThl->rlhApprovedBy?->full_name : $biayaThl->approvedBy?->full_name,
             'rejected' => $biayaThl->rejectedBy?->full_name,
             'revisi' => $biayaThl->revisedBy?->full_name,
             default => $biayaThl->approvedBy?->full_name,
         };
         $approvalSections = app(ApprovalSectionResolver::class)->resolve(
             $biayaThl->kode_depo ?: '',
-            $biayaThl->approval_pengajuan,
+            $biayaThl->submittedBy?->full_name ?: $biayaThl->approval_pengajuan,
             $biayaThl->checkedBy?->full_name,
             $deciderName,
             ($biayaThl->status === 'approved' && $biayaThl->is_rfah_required) ? $biayaThl->approvedBy?->full_name : null,
         );
+        $approvalSections = array_values(array_filter(
+            $approvalSections,
+            fn (array $section): bool => $section['title'] !== 'RFAH*' || $biayaThl->is_rfah_required,
+        ));
         $retribusi = new BiayaRetribusi([
             'tanggal_pengajuan' => $biayaThl->tanggal_pengajuan,
             'kode_depo' => $biayaThl->kode_depo,
@@ -285,8 +325,8 @@ class BiayaThlController extends Controller
             'nominal_biaya' => $biayaThl->nominal_biaya,
             'is_rfah_required' => $biayaThl->is_rfah_required,
             'rfah_name' => $biayaThl->rfah_name,
-            'approval_pengajuan' => $biayaThl->approval_pengajuan,
-            'approval_pengajuan_level' => $biayaThl->approval_pengajuan_level,
+            'approval_pengajuan' => $biayaThl->submittedBy?->full_name ?: $biayaThl->approval_pengajuan,
+            'approval_pengajuan_level' => strtoupper((string) ($biayaThl->approval_pengajuan_level ?: 'BLC')),
             'status' => $biayaThl->status,
             'rejection_reason' => $biayaThl->rejection_reason,
             'revisi_reason' => $biayaThl->revisi_reason,
@@ -339,7 +379,7 @@ class BiayaThlController extends Controller
     {
         $stamps = [];
 
-        if ($biayaThl->status !== 'draft') {
+        if ($biayaThl->status !== 'draft' && $biayaThl->submitted_at) {
             $stamps['Mengajukan'] = [
                 'text' => 'PENGAJUAN',
                 'color' => '#15803d',
@@ -355,19 +395,37 @@ class BiayaThlController extends Controller
             ];
         }
 
-        if ($biayaThl->status === 'approved') {
+        if ($biayaThl->status === 'rlh_approved' && $biayaThl->rlh_approved_at) {
+            $stamps['Menyetujui'] = [
+                'text' => 'DISETUJUI RLH',
+                'color' => '#15803d',
+                'date' => $biayaThl->rlh_approved_at->format('d M Y'),
+            ];
+        } elseif ($biayaThl->status === 'approved' && $biayaThl->approved_at && $biayaThl->approvedBy) {
             $stamps['Menyetujui'] = [
                 'text' => 'DISETUJUI',
                 'color' => '#15803d',
                 'date' => $biayaThl->approved_at?->format('d M Y'),
             ];
-        } elseif ($biayaThl->status === 'rejected') {
+            if ($biayaThl->is_rfah_required && $biayaThl->rlh_approved_at && $biayaThl->rlhApprovedBy) {
+                $stamps['Menyetujui'] = [
+                    'text' => 'DISETUJUI',
+                    'color' => '#15803d',
+                    'date' => $biayaThl->rlh_approved_at->format('d M Y'),
+                ];
+                $stamps['RFAH*'] = [
+                    'text' => 'DISETUJUI RFAH',
+                    'color' => '#15803d',
+                    'date' => $biayaThl->approved_at->format('d M Y'),
+                ];
+            }
+        } elseif ($biayaThl->status === 'rejected' && $biayaThl->rejected_at && $biayaThl->rejectedBy) {
             $stamps['Menyetujui'] = [
                 'text' => 'DITOLAK',
                 'color' => '#dc2626',
                 'date' => $biayaThl->rejected_at?->format('d M Y'),
             ];
-        } elseif ($biayaThl->status === 'revisi') {
+        } elseif ($biayaThl->status === 'revisi' && $biayaThl->revised_at && $biayaThl->revisedBy) {
             $stamps['Menyetujui'] = [
                 'text' => 'REVISI',
                 'color' => '#d97706',
@@ -541,5 +599,41 @@ class BiayaThlController extends Controller
             403,
             'Anda tidak memiliki izin untuk mengubah data ini.'
         );
+    }
+
+    private function authorizePdfPrinter(BiayaThl $biayaThl): void
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        abort_unless(
+            $user && ($user->isAdminMaster() || $user->hasRole('blc') || $biayaThl->created_by === $user->id),
+            403,
+            'Cetak PDF hanya dapat dilakukan oleh BLC atau pembuat pengajuan.'
+        );
+    }
+
+    private function authorizeViewer(BiayaThl $biayaThl): void
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($user->isAdminMaster() || $user->hasRole('blc') || $user->hasRole('staff_logistic') || $biayaThl->created_by === $user->id) {
+            return;
+        }
+
+        $assigned = ApprovalAssignment::query()
+            ->where('user_id', $user->id)
+            ->whereIn('approval_level', ['RLH', 'RFAH'])
+            ->where('is_active', true)
+            ->where(function ($query) use ($biayaThl): void {
+                $query->where('kode_depo', $biayaThl->kode_depo)
+                    ->orWhere('kode_depo', 'ADMIN');
+            })
+            ->exists();
+
+        abort_unless($assigned, 403, 'Anda bukan approver yang ditetapkan untuk pengajuan ini.');
     }
 }

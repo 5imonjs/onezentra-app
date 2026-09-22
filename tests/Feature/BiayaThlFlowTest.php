@@ -374,7 +374,7 @@ class BiayaThlFlowTest extends TestCase
         $detailId = $create->json('data.details.0.id');
         $photo = BiayaThlPhoto::firstWhere('biaya_thl_detail_id', $detailId);
         $this->assertNotNull($photo);
-        Storage::disk('public')->assertExists($photo->file_path);
+        $this->assertTrue(Storage::disk('public')->exists($photo->file_path));
 
         $fields = [
             'id' => $detailId,
@@ -399,7 +399,7 @@ class BiayaThlFlowTest extends TestCase
             'details' => [$fields],
         ])->assertOk();
         $this->assertDatabaseHas('biaya_thl_photos', ['id' => $photo->id]);
-        Storage::disk('public')->assertExists($photo->file_path);
+        $this->assertTrue(Storage::disk('public')->exists($photo->file_path));
 
         // Hapus eksplisit: baris + file hilang.
         $fields['photos_remove'] = [$photo->id];
@@ -408,7 +408,7 @@ class BiayaThlFlowTest extends TestCase
             'details' => [$fields],
         ])->assertOk();
         $this->assertDatabaseMissing('biaya_thl_photos', ['id' => $photo->id]);
-        Storage::disk('public')->assertMissing($photo->file_path);
+        $this->assertFalse(Storage::disk('public')->exists($photo->file_path));
     }
 
     public function test_draft_update_preserves_ids_and_photos_for_multiple_details(): void
@@ -673,5 +673,26 @@ class BiayaThlFlowTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['details.0.jam_datang', 'details.0.jam_pulang']);
+    }
+
+    public function test_approved_submission_cannot_be_updated_or_deleted(): void
+    {
+        Sanctum::actingAs($this->user);
+
+        $biaya = BiayaThl::create([
+            'tanggal_pengajuan' => '2026-09-23',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'created_by' => $this->user->id,
+            'status' => 'approved',
+        ]);
+
+        $this->putJson("/api/v1/biaya-thl/{$biaya->id}", [
+            'tanggal_pengajuan' => '2026-09-23',
+            'details' => [],
+        ])->assertStatus(422);
+
+        $this->deleteJson("/api/v1/biaya-thl/{$biaya->id}")->assertStatus(422);
+        $this->assertModelExists($biaya);
     }
 }

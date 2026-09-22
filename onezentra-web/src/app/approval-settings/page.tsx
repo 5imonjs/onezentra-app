@@ -15,6 +15,7 @@ const LEVELS = [
 
 type Approver = { id: number; full_name: string; email: string; level: string; kode_depo: string };
 type Assignment = { user: Approver };
+type Depot = { kode_depo: string; nama_depo: string | null };
 
 export default function ApprovalSettingsPage() {
   const { user, hasPermission } = useAuthStore();
@@ -22,34 +23,43 @@ export default function ApprovalSettingsPage() {
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [depots, setDepots] = useState<Depot[]>([]);
+  const [selectedDepot, setSelectedDepot] = useState('');
 
   const kodeDepo = user?.kode_depo;
   const load = useCallback(async () => {
     if (!kodeDepo) return;
     setLoading(true);
     try {
-      const response = await approvalAssignments.get(kodeDepo) as { data: { data: Record<string, Assignment>; users: Approver[] } };
+      const response = await approvalAssignments.get(selectedDepot || kodeDepo) as { data: { data: Record<string, Assignment>; users: Approver[]; depots?: Depot[] } };
       setApprovers(response.data.users);
+      if (response.data.depots) setDepots(response.data.depots);
       setSelected(Object.fromEntries(Object.entries(response.data.data).map(([level, assignment]) => [level, String(assignment.user.id)])));
     } catch {
       notifyGlobal('Gagal memuat pengaturan approval', 'error');
     } finally {
       setLoading(false);
     }
-  }, [kodeDepo]);
+  }, [kodeDepo, selectedDepot]);
 
   useEffect(() => { void load(); }, [load]);
 
   const save = async () => {
     if (!user?.kode_depo) return;
-    const assignments = LEVELS.map(({ key }) => ({ approval_level: key, user_id: Number(selected[key]) })).filter((assignment) => assignment.user_id > 0);
-    if (assignments.length !== LEVELS.length) {
+    const localAssignments = LEVELS.filter(({ key }) => key === 'BLC' || key === 'BAC')
+      .map(({ key }) => ({ approval_level: key, user_id: Number(selected[key]) }))
+      .filter((assignment) => assignment.user_id > 0);
+    const globalAssignments = LEVELS.filter(({ key }) => key === 'RLH' || key === 'RFAH')
+      .map(({ key }) => ({ approval_level: key, user_id: Number(selected[key]) }))
+      .filter((assignment) => assignment.user_id > 0);
+    if (localAssignments.length !== 2 || globalAssignments.length !== 2) {
       notifyGlobal('Pilih approver untuk semua tahap', 'error');
       return;
     }
     setSaving(true);
     try {
-      await approvalAssignments.save({ kode_depo: user.kode_depo, assignments });
+      await approvalAssignments.save({ kode_depo: selectedDepot || user.kode_depo, assignments: localAssignments });
+      await approvalAssignments.save({ kode_depo: 'ADMIN', assignments: globalAssignments });
       notifyGlobal('Pengaturan approval berhasil disimpan', 'success');
       await load();
     } catch {
@@ -80,15 +90,26 @@ export default function ApprovalSettingsPage() {
             <p className="mt-1 text-xs text-slate-500">Nama pada PDF diambil dari akun user aktif yang dipilih di sini.</p>
           </div>
           <div className="space-y-4 p-5">
-            {loading ? <div className="h-32 animate-pulse rounded-xl bg-slate-100" /> : LEVELS.map(({ key, title, description }) => (
+            <label className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
+              <span><span className="block text-sm font-semibold text-slate-800">Depo BLC/BAC</span><span className="text-xs text-slate-500">Pilih depo yang akan diatur</span></span>
+              <select value={selectedDepot || kodeDepo || ''} onChange={(event) => setSelectedDepot(event.target.value)} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
+                {depots.map((depot) => <option key={depot.kode_depo} value={depot.kode_depo}>{depot.nama_depo || depot.kode_depo} ({depot.kode_depo})</option>)}
+              </select>
+            </label>
+            {loading ? <div className="h-32 animate-pulse rounded-xl bg-slate-100" /> : LEVELS.map(({ key, title, description }) => {
+              const matchingLevel = key.toLowerCase();
+              const levelApprovers = approvers.filter((approver) => approver.level.toLowerCase() === matchingLevel);
+
+              return (
               <label key={key} className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
                 <span><span className="block text-sm font-semibold text-slate-800">{title}</span><span className="text-xs text-slate-500">{description} ({key})</span></span>
                 <select value={selected[key] || ''} onChange={(event) => setSelected((current) => ({ ...current, [key]: event.target.value }))} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
                   <option value="">Pilih user aktif</option>
-                  {approvers.map((approver) => <option key={approver.id} value={approver.id}>{approver.full_name} - {approver.email}</option>)}
+                  {levelApprovers.map((approver) => <option key={approver.id} value={approver.id}>{approver.full_name} - {approver.email}</option>)}
                 </select>
               </label>
-            ))}
+              );
+            })}
           </div>
           <div className="flex justify-end border-t border-gray-100 px-5 py-4">
             <button type="button" onClick={() => void save()} disabled={loading || saving || !hasPermission('approval.manage')} className="btn-primary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">

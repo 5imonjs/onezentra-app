@@ -104,7 +104,7 @@ class BiayaApprovalService
 
     private function notify(Model $biaya, string $trigger): void
     {
-        $fresh = $biaya->refresh()->load('submittedBy', 'checkedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
+        $fresh = $biaya->refresh()->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'resubmittedBy');
         $this->emailService->send(
             $this->documentTypeFor($biaya),
             $trigger,
@@ -119,18 +119,45 @@ class BiayaApprovalService
         $this->ensureStatus($biaya, ['draft', 'rejected', 'revisi']);
         $this->assertSubmittable($biaya);
 
+        $isRevisionResubmission = $biaya->status === 'revisi';
+        $isThl = $biaya instanceof BiayaThl;
+        $resubmissionStatus = $isThl ? $this->revisionReturnStatus($biaya) : 'pending';
+        $approvalReset = match ($resubmissionStatus) {
+            'pending' => [
+                'checked_by' => null, 'checked_at' => null,
+                'rlh_approved_by' => null, 'rlh_approved_at' => null,
+                'approved_by' => null, 'approved_at' => null,
+            ],
+            'checked' => [
+                'rlh_approved_by' => null, 'rlh_approved_at' => null,
+                'approved_by' => null, 'approved_at' => null,
+            ],
+            'rlh_approved' => [
+                'approved_by' => null, 'approved_at' => null,
+            ],
+            default => [],
+        };
+
         $biaya->update([
             'approval_pengajuan' => $actor->full_name ?: $actor->email,
             'approval_pengajuan_level' => $actor->level,
-            'status' => 'pending',
+            'status' => $isRevisionResubmission ? $resubmissionStatus : 'pending',
             'submitted_by' => $actor->id,
             'submitted_at' => now(),
             'rejected_by' => null,
             'rejected_at' => null,
             'rejection_reason' => null,
-            'revised_by' => null,
-            'revised_at' => null,
-            'revisi_reason' => null,
+            ...$approvalReset,
+            ...($isRevisionResubmission && $isThl ? [
+                'resubmitted_by' => $actor->id,
+                'resubmitted_at' => now(),
+                'revision_return_status' => null,
+            ] : []),
+            ...($isRevisionResubmission && ! $isThl ? [
+                'revised_by' => null,
+                'revised_at' => null,
+                'revisi_reason' => null,
+            ] : []),
         ]);
 
         $this->notify($biaya, 'submitted');
@@ -143,7 +170,7 @@ class BiayaApprovalService
         $this->ensureApprover($biaya, $actor, 'BAC');
         $this->ensureStatus($biaya, ['pending']);
 
-        $biaya->update(['status' => 'checked', 'checked_by' => $actor->id, 'checked_at' => now()]);
+        $biaya->update(['status' => 'checked', 'checked_by' => $actor->id, 'checked_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
 
         $this->notify($biaya, 'checked');
 
@@ -160,13 +187,15 @@ class BiayaApprovalService
                 'status' => 'rlh_approved',
                 'rlh_approved_by' => $actor->id,
                 'rlh_approved_at' => now(),
+                'resubmitted_by' => null,
+                'resubmitted_at' => null,
             ]);
             $this->notify($biaya, 'rlh_approved');
 
             return $biaya->refresh();
         }
 
-        $biaya->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now()]);
+        $biaya->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
 
         $this->notify($biaya, 'approved');
 
@@ -178,7 +207,7 @@ class BiayaApprovalService
         $this->ensureApprover($biaya, $actor, 'RFAH');
         $this->ensureStatus($biaya, ['rlh_approved']);
 
-        $biaya->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now()]);
+        $biaya->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
 
         $this->notify($biaya, 'approved');
 
@@ -201,6 +230,8 @@ class BiayaApprovalService
             'rejected_by' => $actor->id,
             'rejected_at' => now(),
             'rejection_reason' => $reason,
+            'resubmitted_by' => null,
+            'resubmitted_at' => null,
         ]);
 
         $this->notify($biaya, 'rejected');
@@ -219,6 +250,9 @@ class BiayaApprovalService
             'revised_by' => $actor->id,
             'revised_at' => now(),
             'revisi_reason' => $reason,
+            'revision_return_status' => $biaya->status,
+            'resubmitted_by' => null,
+            'resubmitted_at' => null,
         ]);
 
         $this->notify($biaya, 'revisi');
@@ -231,13 +265,31 @@ class BiayaApprovalService
         abort_unless($biaya->created_by === $actor->id, 403, 'Hanya pembuat pengajuan yang dapat mengirim ulang.');
     }
 
+    private function revisionReturnStatus(Model $biaya): string
+    {
+        if (in_array($biaya->revision_return_status, ['checked', 'rlh_approved'], true)) {
+            return $biaya->revision_return_status;
+        }
+
+        return match (strtoupper((string) $biaya->revisedBy?->level)) {
+            'RLH' => 'checked',
+            'RFAH' => 'rlh_approved',
+            default => 'pending',
+        };
+    }
+
     private function ensureApprover(Model $biaya, User $actor, string $level): void
     {
         $assigned = ApprovalAssignment::query()
-            ->where('kode_depo', $biaya->kode_depo)
-            ->where('approval_level', $level)
             ->where('user_id', $actor->id)
+            ->where('approval_level', $level)
             ->where('is_active', true)
+            ->where(function ($query) use ($biaya, $level): void {
+                $query->where('kode_depo', $biaya->kode_depo);
+                if (in_array($level, ['RLH', 'RFAH'], true)) {
+                    $query->orWhere('kode_depo', 'ADMIN');
+                }
+            })
             ->exists();
         abort_unless($assigned, 403, 'Anda bukan approver yang ditetapkan untuk depo ini.');
     }

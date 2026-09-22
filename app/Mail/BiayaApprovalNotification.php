@@ -47,6 +47,7 @@ class BiayaApprovalNotification extends Mailable
         $stamp = match ($this->trigger) {
             'submitted' => $this->biaya->submitted_at,
             'checked' => $this->biaya->checked_at,
+            'rlh_approved' => $this->biaya->rlh_approved_at,
             'approved' => $this->biaya->approved_at,
             'rejected' => $this->biaya->rejected_at,
             'revisi' => $this->biaya->revised_at,

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\ApprovalAssignment;
+
 class ApprovalSectionResolver
 {
     private const LEVELS = ['BLC', 'BAC', 'RLH', 'RFAH'];
@@ -14,12 +16,12 @@ class ApprovalSectionResolver
      */
     public function resolve(string $kodeDepo, ?string $submitterName = null, ?string $checkerName = null, ?string $approverName = null, ?string $rfahName = null): array
     {
-        return collect(self::LEVELS)->map(function (string $level) use ($submitterName, $checkerName, $approverName, $rfahName): array {
+        return collect(self::LEVELS)->map(function (string $level) use ($kodeDepo, $submitterName, $checkerName, $approverName, $rfahName): array {
             $actualName = match ($level) {
-                'BLC' => $submitterName,
-                'BAC' => $checkerName,
-                'RLH' => $approverName,
-                'RFAH' => $rfahName,
+                'BLC' => $submitterName ?: ApprovalAssignment::approverName('BLC', $kodeDepo),
+                'BAC' => $checkerName ?: ApprovalAssignment::approverName('BAC', $kodeDepo),
+                'RLH' => $approverName ?: ApprovalAssignment::approverName('RLH', $kodeDepo),
+                'RFAH' => $rfahName ?: ApprovalAssignment::approverName('RFAH', $kodeDepo),
             };
 
             return [

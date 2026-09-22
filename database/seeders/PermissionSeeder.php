@@ -110,7 +110,7 @@ class PermissionSeeder extends Seeder
                 'dashboard.view', 'penerimaan.view', 'npn.view',
                 'standar_umur.view', 'standarisasi.view', 'opname.view',
                 'biaya_thl.view', 'biaya_retribusi.view',
-                'approval.view', 'approval.approve', 'approval.reject', 'approval.revise', 'approval.rfah',
+                'approval.view', 'approval.reject', 'approval.revise', 'approval.rfah',
             ],
             'rh' => [
                 'dashboard.view', 'penerimaan.view', 'npn.view', 'opname.view',

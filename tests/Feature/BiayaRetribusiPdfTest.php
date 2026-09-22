@@ -87,6 +87,11 @@ class BiayaRetribusiPdfTest extends TestCase
         $thlResponse->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->assertStringStartsWith('%PDF-', $thlResponse->getContent());
 
+        $biayaThl->update([
+            'status' => 'pending',
+            'submitted_at' => '2026-09-22 10:15:00',
+        ]);
+
         $html = view('pdf.biaya_retribusi_combined', [
             'biayaRetribusi' => $biayaRetribusi->load('details.biayaThlDetail.photos', 'documents'),
             'approvalSections' => [
@@ -94,11 +99,42 @@ class BiayaRetribusiPdfTest extends TestCase
                 ['title' => 'Mengetahui', 'people' => [['name' => 'Manager', 'role' => 'BAC']]],
                 ['title' => 'Menyetujui', 'people' => [['name' => 'RLH', 'role' => 'RLH']]],
             ],
+            'stamps' => [
+                'Mengajukan' => [
+                    'text' => 'PENGAJUAN',
+                    'color' => '#15803d',
+                    'date' => '22 Sep 2026',
+                ],
+            ],
         ])->render();
 
         $this->assertStringContainsString('FORM KLAIM BIAYA PENGAJUAN RETRIBUSI', $html);
         $this->assertStringContainsString('FORM KLAIM TENAGA HARIAN LEPAS', $html);
         $this->assertStringContainsString('Budi', $html);
         $this->assertStringContainsString('admin_master', $html);
+        $this->assertStringContainsString('PENGAJUAN', $html);
+        $this->assertStringContainsString('22 Sep 2026', $html);
+
+        $biayaThl->update([
+            'status' => 'checked',
+            'checked_at' => '2026-09-22 11:15:00',
+            'checked_by' => null,
+        ]);
+
+        $checkedPdf = $this->actingAs($user)->get('/api/v1/biaya-thl/'.$biayaThl->id.'/pdf');
+
+        $checkedPdf->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $checkedPdf->getContent());
+
+        $biayaThl->update([
+            'status' => 'rlh_approved',
+            'rlh_approved_at' => '2026-09-22 12:15:00',
+            'rlh_approved_by' => null,
+        ]);
+
+        $rlhPdf = $this->actingAs($user)->get('/api/v1/biaya-thl/'.$biayaThl->id.'/pdf');
+
+        $rlhPdf->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $rlhPdf->getContent());
     }
 }

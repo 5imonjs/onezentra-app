@@ -20,6 +20,7 @@ type ThlData = {
   submitted_at?: string | null;
   checked_at?: string | null;
   approved_at?: string | null;
+  rlh_approved_at?: string | null;
   rejected_at?: string | null;
   rejection_reason?: string | null;
   revised_at?: string | null;
@@ -27,6 +28,12 @@ type ThlData = {
   approval_pengajuan?: string;
   approval_pengajuan_level?: string;
   approval_sections?: ApprovalSection[];
+  submittedBy?: { full_name?: string } | null;
+  checkedBy?: { full_name?: string } | null;
+  approvedBy?: { full_name?: string } | null;
+  rlhApprovedBy?: { full_name?: string } | null;
+  rejectedBy?: { full_name?: string } | null;
+  revisedBy?: { full_name?: string } | null;
   details: {
     nama_thl: string;
     driver_name?: string;
@@ -57,6 +64,7 @@ type RetribusiData = {
   submitted_at?: string | null;
   checked_at?: string | null;
   approved_at?: string | null;
+  rlh_approved_at?: string | null;
   rejected_at?: string | null;
   rejection_reason?: string | null;
   revised_at?: string | null;
@@ -64,6 +72,12 @@ type RetribusiData = {
   approval_pengajuan?: string;
   approval_pengajuan_level?: string;
   approval_sections?: ApprovalSection[];
+  submittedBy?: { full_name?: string } | null;
+  checkedBy?: { full_name?: string } | null;
+  approvedBy?: { full_name?: string } | null;
+  rlhApprovedBy?: { full_name?: string } | null;
+  rejectedBy?: { full_name?: string } | null;
+  revisedBy?: { full_name?: string } | null;
   details: {
     nopol_kendaraan: string;
     type_kendaraan: string;
@@ -117,10 +131,10 @@ const STAMP_GREEN: [number, number, number] = [21, 128, 61];
 const STAMP_RED: [number, number, number] = [220, 38, 38];
 const STAMP_ORANGE: [number, number, number] = [217, 119, 6];
 
-type AuditDates = { submitted?: string; checked?: string; approved?: string; rejected?: string; revised?: string };
+type AuditDates = { submitted?: string; checked?: string; rlhApproved?: string; approved?: string; rejected?: string; revised?: string };
 
 /** Nama pelaku aksi dari relasi *By (ada pada item tersimpan, kosong pada draft form). */
-function actorName(data: RetribusiData, key: 'submittedBy' | 'checkedBy' | 'approvedBy' | 'rejectedBy' | 'revisedBy'): string {
+function actorName(data: RetribusiData, key: 'submittedBy' | 'checkedBy' | 'approvedBy' | 'rlhApprovedBy' | 'rejectedBy' | 'revisedBy'): string {
   const holder = data as unknown as Record<string, { full_name?: string } | null | undefined>;
   return holder[key]?.full_name || '';
 }
@@ -132,37 +146,40 @@ function actorName(data: RetribusiData, key: 'submittedBy' | 'checkedBy' | 'appr
  */
 function actedNameFor(section: ApprovalSection, data: RetribusiData, dates: AuditDates): string {
   const assignee = section.people[0]?.name || '-';
-  if (section.title === 'Mengajukan') return data.approval_pengajuan || assignee;
+  if (section.title === 'Mengajukan') return actorName(data, 'submittedBy') || data.approval_pengajuan || assignee;
   if (section.title === 'Mengetahui') {
-    if (!dates.checked || dates.checked === '-') return '-';
+    if (!dates.checked || dates.checked === '-') return assignee;
     return actorName(data, 'checkedBy') || assignee;
   }
   if (section.title === 'Menyetujui') {
-    if (!['approved', 'rejected', 'revisi'].includes(data.status)) return '-';
-    const key = data.status === 'approved' ? 'approvedBy' : data.status === 'rejected' ? 'rejectedBy' : 'revisedBy';
+    if (data.status === 'rlh_approved') return actorName(data, 'rlhApprovedBy') || assignee;
+    if (!['approved', 'rejected', 'revisi'].includes(data.status)) return assignee;
+    const key = data.status === 'approved' && data.is_rfah_required ? 'rlhApprovedBy' : data.status === 'approved' ? 'approvedBy' : data.status === 'rejected' ? 'rejectedBy' : 'revisedBy';
     return actorName(data, key) || assignee;
   }
-  // RFAH* dan section lain: nama hanya setelah aksi final.
-  return data.status === 'approved' ? assignee : '-';
+  if (section.title === 'RFAH*') return data.status === 'approved' ? actorName(data, 'approvedBy') || assignee : assignee;
+  return assignee;
 }
 
 type StampSpec = { text: string; color: [number, number, number]; date: string };
 
-function auditDates(data: { submitted_at?: string | null; checked_at?: string | null; approved_at?: string | null; rejected_at?: string | null; revised_at?: string | null }): AuditDates {
+function auditDates(data: { submitted_at?: string | null; checked_at?: string | null; rlh_approved_at?: string | null; approved_at?: string | null; rejected_at?: string | null; revised_at?: string | null }): AuditDates {
   return {
     submitted: date(data.submitted_at),
     checked: date(data.checked_at),
+    rlhApproved: date(data.rlh_approved_at),
     approved: date(data.approved_at),
     rejected: date(data.rejected_at),
     revised: date(data.revised_at),
   };
 }
 
-function stampFor(section: ApprovalSection, status: string, dates: AuditDates): StampSpec | null {
+function stampFor(section: ApprovalSection, data: RetribusiData, dates: AuditDates): StampSpec | null {
+  const { status } = data;
   if (section.title === 'Mengajukan') {
     // Sejajar server (resolveStamps): cap mengikuti AKSI submit (status),
     // bukan keberadaan nama — nama bisa kosong pada data lama/API langsung.
-    return status && status !== 'draft'
+    return status && status !== 'draft' && dates.submitted && dates.submitted !== '-'
       ? { text: 'PENGAJUAN', color: STAMP_GREEN, date: dates.submitted || '' }
       : null;
   }
@@ -170,84 +187,96 @@ function stampFor(section: ApprovalSection, status: string, dates: AuditDates): 
   if (section.title === 'Mengetahui') {
     // Sejajar server (resolveStamps): cap DIPERIKSA hanya bila aksi periksa
     // benar terjadi (checked_at ada) — BUKAN karena nama assignee terdaftar.
-    // Versi lama mencap dari keberadaan nama sehingga PDF draft pun tercap.
-    return dates.checked ? { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked } : null;
+    // Nama pelaku boleh tidak terbawa pada data PDF, tetapi cap audit tetap
+    // harus tampil karena timestamp adalah bukti aksinya.
+    return dates.checked && dates.checked !== '-'
+      ? { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked }
+      : null;
   }
 
   if (section.title === 'Menyetujui') {
-    if (status === 'approved') return { text: 'DISETUJUI', color: STAMP_GREEN, date: dates.approved || '' };
-    if (status === 'rejected') return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected || '' };
-    if (status === 'revisi') return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised || '' };
+    if (dates.rlhApproved && dates.rlhApproved !== '-') return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
+    if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) return { text: 'DISETUJUI', color: STAMP_GREEN, date: dates.approved };
+    if (status === 'rejected' && dates.rejected && actorName(data, 'rejectedBy')) return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
+    if (status === 'revisi' && dates.revised && actorName(data, 'revisedBy')) return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
+  }
+
+  if (section.title === 'RFAH*' && status === 'approved' && dates.approved && actorName(data, 'approvedBy')) {
+    return { text: 'DISETUJUI RFAH', color: STAMP_GREEN, date: dates.approved };
   }
 
   return null;
 }
 
 function drawStamp(doc: jsPDF, cx: number, cy: number, stamp: StampSpec) {
-  const angle = -14;
-  const rad = (angle * Math.PI) / 180;
-  const cos = Math.cos(rad);
-  const sin = Math.sin(rad);
-  const rotated = (px: number, py: number) => ({
-    x: cx + (px - cx) * cos - (py - cy) * sin,
-    y: cy + (px - cx) * sin + (py - cy) * cos,
-  });
-
   doc.setFont('Roboto', 'bold');
-  doc.setFontSize(14);
-  const w = doc.getTextWidth(stamp.text) + 10;
-  const h = 11;
-  const tl = rotated(cx - w / 2, cy - h / 2);
-  const tr = rotated(cx + w / 2, cy - h / 2);
-  const br = rotated(cx + w / 2, cy + h / 2);
-  const bl = rotated(cx - w / 2, cy + h / 2);
+  doc.setFontSize(10);
+  const w = Math.max(doc.getTextWidth(stamp.text) + 16, 34);
+  const h = 12;
+  const left = cx - w / 2;
+  const top = cy - h / 2;
   doc.setDrawColor(stamp.color[0], stamp.color[1], stamp.color[2]);
-  doc.setLineWidth(0.9);
-  doc.line(tl.x, tl.y, tr.x, tr.y);
-  doc.line(tr.x, tr.y, br.x, br.y);
-  doc.line(br.x, br.y, bl.x, bl.y);
-  doc.line(bl.x, bl.y, tl.x, tl.y);
-  doc.setTextColor(stamp.color[0], stamp.color[1], stamp.color[2], 0.8);
-  doc.text(stamp.text, cx, cy - 0.5, { align: 'center', angle });
+  doc.setFillColor(255, 255, 255);
+  doc.setLineWidth(0.55);
+  doc.roundedRect(left, top, w, h, 2, 2, 'FD');
+  doc.setLineWidth(0.25);
+  doc.roundedRect(left + 1.2, top + 1.2, w - 2.4, h - 2.4, 1.2, 1.2, 'S');
+  doc.setTextColor(stamp.color[0], stamp.color[1], stamp.color[2]);
+  doc.text(stamp.text, cx, top + 4.7, { align: 'center' });
 
-  doc.setFontSize(6);
+  doc.setDrawColor(stamp.color[0], stamp.color[1], stamp.color[2]);
+  doc.line(left + 3, top + 6.7, left + w - 3, top + 6.7);
+  doc.setFont('Roboto', 'normal');
+  doc.setFontSize(5.5);
   const dateLabel = stamp.date || '-';
-  const dateWidth = doc.getTextWidth(dateLabel);
-  const dateA = rotated(cx - dateWidth / 2 - 1, cy + 2.5);
-  const dateB = rotated(cx + dateWidth / 2 + 1, cy + 2.5);
-  doc.line(dateA.x, dateA.y, dateB.x, dateB.y);
-  doc.text(dateLabel, cx, cy + 5, { align: 'center', angle });
+  doc.text(dateLabel, cx, top + 10.2, { align: 'center' });
+  doc.setDrawColor(35, 35, 35);
+  doc.setTextColor(20, 20, 20);
+  doc.setLineWidth(0.25);
 }
 
 async function loadApprovalSections(data: RetribusiData): Promise<ApprovalSection[]> {
   if (data.approval_sections?.length) return data.approval_sections;
+
+  const actualSections: ApprovalSection[] = [
+    { title: 'Mengajukan', people: [{ name: actorName(data, 'submittedBy') || data.approval_pengajuan || '-', role: data.approval_pengajuan_level || 'BLC' }] },
+    { title: 'Mengetahui', people: [{ name: actorName(data, 'checkedBy') || '-', role: 'BAC' }] },
+    { title: 'Menyetujui', people: [{ name: actorName(data, 'rlhApprovedBy') || '-', role: 'RLH' }] },
+    { title: 'RFAH*', people: [{ name: actorName(data, 'approvedBy') || data.rfah_name || '-', role: 'RFAH' }] },
+  ];
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
   try {
     const response = await fetch(`${apiUrl}/approval-assignments?kode_depo=${encodeURIComponent(data.kode_depo)}`, { credentials: 'include' });
     if (response.ok) {
       const payload = await response.json() as { data?: Record<string, { user?: { full_name?: string } }> };
-      const titles: Record<string, string> = { BLC: 'Mengajukan', BAC: 'Mengetahui', RLH: 'Menyetujui' };
-      const sections = ['BLC', 'BAC', 'RLH'].map((level) => ({
+      const titles: Record<string, string> = { BLC: 'Mengajukan', BAC: 'Mengetahui', RLH: 'Menyetujui', RFAH: 'RFAH*' };
+      const sections = ['BLC', 'BAC', 'RLH', 'RFAH'].map((level) => ({
         title: titles[level],
         people: [{
           name: level === 'BLC'
             ? data.approval_pengajuan || payload.data?.[level]?.user?.full_name || '-'
-            : payload.data?.[level]?.user?.full_name || '-',
+            : level === 'BAC'
+              ? actorName(data, 'checkedBy') || payload.data?.[level]?.user?.full_name || '-'
+              : level === 'RLH'
+                ? actorName(data, 'rlhApprovedBy') || payload.data?.[level]?.user?.full_name || '-'
+                : actorName(data, 'approvedBy') || payload.data?.[level]?.user?.full_name || data.rfah_name || '-',
           role: level === 'BLC' ? data.approval_pengajuan_level || 'BLC' : level,
         }],
       }));
-      if (sections.some((section) => section.people[0].name !== '-')) return sections;
+      return sections.map((section) => ({
+        ...section,
+        people: [{
+          ...section.people[0],
+          name: section.people[0].name !== '-' ? section.people[0].name : actualSections.find((actual) => actual.title === section.title)?.people[0]?.name || '-',
+        }],
+      }));
     }
   } catch {
     // Use the configured defaults when the settings endpoint is unavailable.
   }
 
-  return [
-    { title: 'Mengajukan', people: [{ name: data.approval_pengajuan || '-', role: data.approval_pengajuan_level || 'BLC' }] },
-    { title: 'Mengetahui', people: [{ name: '-', role: 'BAC' }] },
-    { title: 'Menyetujui', people: [{ name: '-', role: 'RLH' }] },
-  ];
+  return actualSections;
 }
 
 let pdfFontsReady: Promise<{ regular: string; bold: string }> | null = null;
@@ -264,7 +293,7 @@ async function loadPdfFonts(doc: jsPDF): Promise<void> {
   if (!pdfFontsReady) {
     pdfFontsReady = Promise.all([
       fetch('/fonts/Roboto-Regular.ttf').then(fontToBase64),
-      fetch('/fonts/Roboto-Bold.ttf').then(fontToBase64),
+        fetch('/fonts/Roboto-Bold.ttf').then(fontToBase64),
     ]).then(([regular, bold]) => ({ regular, bold }));
   }
 
@@ -285,7 +314,6 @@ function showPreview(doc: jsPDF) {
 export function generateTHLPdf(data: ThlData) {
   void buildCombinedRetribusi(toCombinedRetribusiData(data), 'save');
 }
-
 export function previewTHLPdf(data: ThlData) {
   void buildCombinedRetribusi(toCombinedRetribusiData(data), 'preview');
 }
@@ -302,6 +330,7 @@ function toCombinedRetribusiData(data: ThlData): RetribusiData {
     submitted_at: data.submitted_at,
     checked_at: data.checked_at,
     approved_at: data.approved_at,
+    rlh_approved_at: data.rlh_approved_at,
     rejected_at: data.rejected_at,
     rejection_reason: data.rejection_reason,
     revised_at: data.revised_at,
@@ -309,6 +338,12 @@ function toCombinedRetribusiData(data: ThlData): RetribusiData {
     approval_pengajuan: data.approval_pengajuan,
     approval_pengajuan_level: data.approval_pengajuan_level,
     approval_sections: data.approval_sections,
+    submittedBy: data.submittedBy,
+    checkedBy: data.checkedBy,
+    approvedBy: data.approvedBy,
+    rlhApprovedBy: data.rlhApprovedBy,
+    rejectedBy: data.rejectedBy,
+    revisedBy: data.revisedBy,
     details: data.details.map((detail) => ({
       nopol_kendaraan: formatPdfColumn(detail.nopol_kendaraan, detail.kendaraan_nopol),
       type_kendaraan: formatPdfColumn(detail.type_kendaraan, detail.kendaraan_type),
@@ -361,10 +396,11 @@ function loadHeaderLogo(): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } |
   return headerLogoCache;
 }
 
-async function drawHeaderLogo(doc: jsPDF, cx: number, cy: number): Promise<void> {
+async function drawHeaderLogo(doc: jsPDF, cx: number, cy: number, size = 16): Promise<void> {
   const logo = await loadHeaderLogo();
   if (!logo) return;
-  doc.addImage(logo.dataUrl, logo.format, cx - 7, cy - 7, 14, 14, undefined, 'FAST');
+  const offset = size / 2;
+  doc.addImage(logo.dataUrl, logo.format, cx - offset, cy - offset, size, size, undefined, 'FAST');
 }
 
 async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
@@ -407,7 +443,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
   doc.setFont('Roboto', 'bold');
   doc.setFontSize(10);
   if (!(await loadHeaderLogo())) doc.text('SNS', pageMargin + 9, 18, { align: 'center' });
-  else await drawHeaderLogo(doc, pageMargin + 9, 15);
+  else await drawHeaderLogo(doc, pageMargin + 9, 16);
   doc.setFontSize(11.5);
   doc.text('FORM KLAIM BIAYA PENGAJUAN RETRIBUSI', 148, 17.5, { align: 'center' });
   doc.setFont('Roboto', 'normal');
@@ -425,7 +461,10 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
     styles: { font: 'helvetica', fontSize: 7, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.3, minCellHeight: 5.5, valign: 'middle' },
     headStyles: { fillColor: [210, 210, 210], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
     footStyles: { fillColor: [255, 255, 255], textColor: [20, 20, 20], fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 9, halign: 'center' }, 1: { cellWidth: 62 }, 2: { cellWidth: 52 }, 3: { cellWidth: 55 }, 4: { cellWidth: 46, halign: 'right' }, 5: { cellWidth: 53 } },
+    columnStyles: { 0: { cellWidth: 9, halign: 'center' }, 1: { cellWidth: 62 }, 2: { cellWidth: 52 }, 3: { cellWidth: 55 }, 4: { cellWidth: 46, halign: 'center' }, 5: { cellWidth: 53 } },
+    didParseCell: (hookData) => {
+      if (hookData.section === 'foot') hookData.cell.styles.halign = 'center';
+    },
   });
   const retribusiY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 65;
 
@@ -435,31 +474,48 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
   const approvalWidth = pageWidth / approvalSections.length;
   doc.setFontSize(7);
   const audit = auditDates(data);
-  approvalSections.forEach((section, index) => {
+  const cleanDraftPreview = mode === 'preview' && data.status === 'draft';
+  const headingSections = approvalSections.length > 2 ? approvalSections.slice(0, 2) : approvalSections;
+  headingSections.forEach((section, index) => {
     const x = pageMargin + approvalWidth * index;
+    doc.setLineWidth(0.25);
+    doc.setDrawColor(35, 35, 35);
+    doc.setTextColor(20, 20, 20);
     doc.rect(x, approvalY, approvalWidth, 6);
     doc.text(section.title, x + approvalWidth / 2, approvalY + 4, { align: 'center' });
-    doc.rect(x, approvalY + 6, approvalWidth, 20);
-    doc.rect(x, approvalY + 26, approvalWidth, 7);
+  });
+  if (approvalSections.length > 2) {
+    const x = pageMargin + approvalWidth * 2;
+    const width = approvalWidth * (approvalSections.length - 2);
+    doc.rect(x, approvalY, width, 6);
+    doc.text('Menyetujui', x + width / 2, approvalY + 4, { align: 'center' });
+  }
+  approvalSections.forEach((section, index) => {
+    const x = pageMargin + approvalWidth * index;
+    doc.setLineWidth(0.25);
+    doc.setDrawColor(35, 35, 35);
+    doc.setTextColor(20, 20, 20);
+    doc.rect(x, approvalY + 6, approvalWidth, 22);
+    doc.rect(x, approvalY + 28, approvalWidth, 7);
+    doc.rect(x, approvalY + 35, approvalWidth, 7);
     const person = section.people[0];
-    const approvalName = mode === 'preview'
-      ? ''
-      : section.title === 'Mengajukan'
-        ? (data.approval_pengajuan || person?.name || '-')
-        : actedNameFor(section, data, audit);
-    doc.text(approvalName, x + approvalWidth / 2, approvalY + 17, { align: 'center' });
-    doc.text(section.title === 'Mengajukan' ? (data.approval_pengajuan_level || person?.role || '-') : (person?.role || '-'), x + approvalWidth / 2, approvalY + 30.5, { align: 'center' });
+    const approvalName = actedNameFor(section, data, audit);
+    doc.text(approvalName, x + approvalWidth / 2, approvalY + 32.5, { align: 'center' });
+    const approvalRole = section.title === 'Mengajukan'
+      ? (data.approval_pengajuan_level || person?.role || 'BLC')
+      : (person?.role || section.title);
+    doc.text(approvalRole.toUpperCase(), x + approvalWidth / 2, approvalY + 39.5, { align: 'center' });
 
-    const stamp = mode === 'preview' ? null : stampFor(section, data.status, audit);
+    const stamp = cleanDraftPreview ? null : stampFor(section, data, audit);
     if (stamp) drawStamp(doc, x + approvalWidth / 2, approvalY + 16, stamp);
   });
   doc.setFont('Roboto', 'normal');
   doc.setFontSize(6.2);
-  doc.text('Note: * Jika pengajuan biaya > Rp 1 Juta Rupiah', pageMargin, approvalY + 38);
+  doc.text('Note: * Jika pengajuan biaya > Rp 750.000', pageMargin, approvalY + 47);
 
   const rejected = data.status === 'rejected';
   const revisi = data.status === 'revisi';
-  const thlTop = approvalY + (rejected ? 54 : revisi ? 54 : 42);
+  const thlTop = approvalY + (rejected ? 63 : revisi ? 63 : 52);
   if (rejected && data.rejection_reason) {
     doc.setFont('Roboto', 'bold');
     doc.setFontSize(7);
@@ -477,21 +533,21 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
   doc.setDrawColor(35, 35, 35);
   doc.setFillColor(244, 246, 248);
   doc.setLineWidth(0.35);
-  doc.rect(pageMargin, thlTop, pageWidth, 14, 'FD');
-  doc.line(pageMargin + 18, thlTop, pageMargin + 18, thlTop + 14);
+  doc.rect(pageMargin, thlTop, pageWidth, 18, 'FD');
+  doc.line(pageMargin + 18, thlTop, pageMargin + 18, thlTop + 18);
   doc.setFont('Roboto', 'bold');
   doc.setFontSize(10);
   if (!(await loadHeaderLogo())) doc.text('SNS', pageMargin + 9, thlTop + 8.5, { align: 'center' });
-  else await drawHeaderLogo(doc, pageMargin + 9, thlTop + 7);
+  else await drawHeaderLogo(doc, pageMargin + 9, thlTop + 9, 16);
   doc.setFontSize(11.5);
-  doc.text('FORM KLAIM TENAGA HARIAN LEPAS', 148, thlTop + 9, { align: 'center' });
-  doc.rect(pageMargin, thlTop + 14, pageWidth, 6.5);
+  doc.text('FORM KLAIM TENAGA HARIAN LEPAS', 148, thlTop + 11, { align: 'center' });
+  doc.rect(pageMargin, thlTop + 18, pageWidth, 6.5);
   doc.setFont('Roboto', 'normal');
   doc.setFontSize(7);
-  doc.text(`TANGGAL ${date(data.tanggal_pengajuan).toUpperCase()}`, pageMargin + 2, thlTop + 18.2);
+  doc.text(`TANGGAL ${date(data.tanggal_pengajuan).toUpperCase()}`, pageMargin + 2, thlTop + 22.2);
 
   autoTable(doc, {
-    startY: thlTop + 21,
+    startY: thlTop + 25,
     margin: { left: pageMargin, right: pageMargin },
     head: [['No', 'Nama', 'Kubikasi', 'Drop Point', 'Posisi', 'Jam Datang', 'Jam Pulang']],
     body: data.details.map((detail, index) => {
@@ -502,7 +558,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 6.5, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.1, minCellHeight: 5, valign: 'middle' },
     headStyles: { fillColor: [210, 210, 210], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
-    columnStyles: { 0: { cellWidth: 9, halign: 'center' }, 1: { cellWidth: 80 }, 2: { cellWidth: 32, halign: 'center' }, 3: { cellWidth: 40 }, 4: { cellWidth: 48 }, 5: { cellWidth: 34, halign: 'center' }, 6: { cellWidth: 34, halign: 'center' } },
+    columnStyles: { 0: { cellWidth: 9, halign: 'center' }, 1: { cellWidth: 80 }, 2: { cellWidth: 32, halign: 'center' }, 3: { cellWidth: 40, halign: 'center' }, 4: { cellWidth: 48 }, 5: { cellWidth: 34, halign: 'center' }, 6: { cellWidth: 34, halign: 'center' } },
   });
   const thlY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? thlTop + 50;
   const photoTop = thlY + 1;

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -11,7 +12,7 @@
         .header { background: #f3f4f6; border: 1px solid #1f2937; }
         .header td { height: 34px; vertical-align: middle; }
         .brand { width: 14%; text-align: center; font-weight: bold; font-size: 10px; }
-        .brand img { display: block; width: 28px; height: 28px; margin: 0 auto; object-fit: contain; }
+        .brand img { display: block; width: 30px; height: 30px; max-width: 100%; margin: 0 auto; object-fit: contain; }
         .header .title { width: 60%; text-align: center; vertical-align: middle; font-weight: bold; font-size: 11px; line-height: 1.2; }
         .meta { width: 26%; font-size: 7px; }
         .meta div { padding: 2px 0; }
@@ -49,7 +50,7 @@
         .revisi-note { margin-top: 4px; font-size: 8px; font-weight: bold; color: #b45309; border: 1.5px solid #b45309; padding: 3px 6px; }
         .note { margin: 7px 0 8px; font-weight: bold; }
         .thl-header .title { width: 86%; }
-        .thl-header td { height: 30px; }
+        .thl-header td { height: 34px; }
         .thl-photos { height: 62px; vertical-align: top; padding: 3px; }
         .thl-photos img { width: 48px; height: 58px; object-fit: cover; margin-right: 3px; border: 1px solid #555; }
         .documents { margin-top: 8px; }
@@ -92,23 +93,26 @@
                         @php($suratJalans = collect([$detail->no_surat_jalan, $detail->biayaThlDetail?->kendaraan_sj])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
                         {{ $suratJalans ?: '-' }}
                     </td>
-                    <td class="right">{{ number_format($detail->nominal_biaya, 0, ',', '.') }}</td>
+                    <td class="center">Rp {{ number_format($detail->nominal_biaya, 0, ',', '.') }}</td>
                     <td></td>
                 </tr>
             @endforeach
-            <tr><td colspan="4" class="right"><b>Total</b></td><td class="right"><b>{{ number_format($biayaRetribusi->nominal_biaya, 0, ',', '.') }}</b></td><td></td></tr>
+            <tr><td colspan="4" class="center"><b>Total</b></td><td class="center"><b>Rp {{ number_format($biayaRetribusi->nominal_biaya, 0, ',', '.') }}</b></td><td></td></tr>
         </tbody>
     </table>
 
     @php($stamps = $stamps ?? [])
     <table class="approval">
         <tr>
-            @foreach(array_slice($approvalSections, 0, 3) as $section)
+            @foreach(array_slice($approvalSections, 0, 2) as $section)
                 <td class="heading">{{ $section['title'] }}</td>
             @endforeach
+            @if(count($approvalSections) > 2)
+                <td class="heading" colspan="{{ count($approvalSections) - 2 }}">Menyetujui</td>
+            @endif
         </tr>
         <tr>
-            @foreach(array_slice($approvalSections, 0, 3) as $section)
+            @foreach($approvalSections as $section)
                 <td class="signature-space">
                     @php($stamp = $stamps[$section['title']] ?? null)
                     @if($stamp)
@@ -126,12 +130,12 @@
             @endforeach
         </tr>
         <tr>
-            @foreach(array_slice($approvalSections, 0, 3) as $section)
+            @foreach($approvalSections as $section)
                 <td>{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan ?: '-') : ($section['people'][0]['name'] ?? '-') }}</td>
             @endforeach
         </tr>
         <tr>
-            @foreach(array_slice($approvalSections, 0, 3) as $section)
+            @foreach($approvalSections as $section)
                 <td class="role">{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan_level ?: 'BLC') : ($section['people'][0]['role'] ?? '-') }}</td>
             @endforeach
         </tr>
@@ -145,7 +149,7 @@
         <div class="revisi-note">REVISI — {{ $biayaRetribusi->revisi_reason ?: 'Tanpa catatan' }}</div>
     @endif
 
-    <div class="note">Note: * Jika pengajuan biaya &gt; Rp 1 Juta Rupiah</div>
+    <div class="note">Note: * Jika pengajuan biaya &gt; Rp 750.000</div>
 
     <table class="header thl-header">
         <tr>
@@ -175,7 +179,7 @@
                     <td class="center">{{ $loop->iteration }}</td>
                     <td>{{ $detail->nopol_kendaraan ?: '-' }} - {{ $thl?->nama_thl ?: $thl?->driver_name ?: '-' }}</td>
                     <td class="center">{{ $thl?->kubikasi ?? 0 }}</td>
-                    <td>{{ $thl?->droppoint ?: 0 }}</td>
+                    <td class="center">{{ $thl?->droppoint ?: 0 }}</td>
                     <td>{{ $thl?->posisi ?: 'THL GUDANG' }}</td>
                     <td class="center">{{ $thl?->jam_datang?->format('H:i') ?: '-' }}</td>
                     <td class="center">{{ $thl?->jam_pulang?->format('H:i') ?: '-' }}</td>

@@ -29,10 +29,17 @@ class ApprovalAssignment extends Model
             return null;
         }
 
+        $globalLevel = in_array($level, ['RLH', 'RFAH'], true);
         $assignment = self::query()
-            ->where('kode_depo', $kodeDepo)
+            ->where(function ($query) use ($kodeDepo, $globalLevel): void {
+                $query->where('kode_depo', $kodeDepo);
+                if ($globalLevel) {
+                    $query->orWhere('kode_depo', 'ADMIN');
+                }
+            })
             ->where('approval_level', $level)
             ->where('is_active', true)
+            ->orderByRaw('CASE WHEN kode_depo = ? THEN 0 ELSE 1 END', [$kodeDepo])
             ->with(['user:id,full_name,email'])
             ->first();
 

@@ -22,6 +22,8 @@ class BiayaRetribusi extends Model
         'approved_by', 'approved_at',
         'rejected_by', 'rejected_at', 'rejection_reason',
         'revised_by', 'revised_at', 'revisi_reason',
+        'resubmitted_by', 'resubmitted_at',
+        'revision_return_status',
     ];
 
     protected function casts(): array
@@ -36,6 +38,7 @@ class BiayaRetribusi extends Model
             'approved_by' => 'integer', 'approved_at' => 'datetime',
             'rejected_by' => 'integer', 'rejected_at' => 'datetime',
             'revised_by' => 'integer', 'revised_at' => 'datetime',
+            'resubmitted_by' => 'integer', 'resubmitted_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -84,5 +87,10 @@ class BiayaRetribusi extends Model
     public function revisedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'revised_by');
+    }
+
+    public function resubmittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resubmitted_by');
     }
 }

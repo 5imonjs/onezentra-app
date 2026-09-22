@@ -18,13 +18,28 @@ class ApprovalAssignmentController extends Controller
         $kodeDepo = $request->query('kode_depo', $request->user()->kode_depo);
         abort_unless($this->canAccessDepot($request->user(), $kodeDepo), 403);
 
+        $assignments = ApprovalAssignment::query()
+            ->with('user:id,full_name,email,level,kode_depo,nama_depo,status')
+            ->where(function ($query) use ($kodeDepo): void {
+                $query->where('kode_depo', 'ADMIN')
+                    ->orWhere('kode_depo', $kodeDepo);
+            })
+            ->where('is_active', true)
+            ->orderByRaw('CASE WHEN kode_depo = ? THEN 1 ELSE 0 END', [$kodeDepo])
+            ->get()
+            ->keyBy('approval_level');
+
+        $depots = User::query()
+            ->whereNotNull('kode_depo')
+            ->where('kode_depo', '!=', '')
+            ->select(['kode_depo', 'nama_depo'])
+            ->distinct()
+            ->orderBy('nama_depo')
+            ->get();
+
         return response()->json([
-            'data' => ApprovalAssignment::query()
-                ->with('user:id,full_name,email,level,kode_depo,nama_depo,status')
-                ->where('kode_depo', $kodeDepo)
-                ->where('is_active', true)
-                ->get()
-                ->keyBy('approval_level'),
+            'data' => $assignments,
+            'depots' => $depots,
             'users' => User::query()
                 ->where('status', 'active')
                 ->when($request->user()->isDepotScoped(), fn ($query) => $query->where('kode_depo', $kodeDepo))
