@@ -41,7 +41,7 @@ const EMPTY_COUNTS: Record<StatusKey, number> = {
   DRAFT: 0, SCHEDULED: 0, CHECKED_IN: 0, VERIFIED: 0, IN_PROGRESS: 0, COMPLETED: 0, CANCELLED: 0,
 };
 
-export default function RencanaKirimStatusChart() {
+export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: string }) {
   const { hasPermission } = useAuthStore();
   const [counts, setCounts] = useState<Record<StatusKey, number>>({ ...EMPTY_COUNTS });
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,7 @@ export default function RencanaKirimStatusChart() {
     setLoading(true);
     setFailed(false);
     try {
-      const res = await rencanaKirim.stats();
+      const res = await rencanaKirim.stats(kodeDepo);
       const data = res.data.data as Record<StatusKey, { count: number; sum_qty: number; sum_kubikasi: number }>;
       const next: Record<StatusKey, number> = { ...EMPTY_COUNTS };
       const nextQty: Record<StatusKey, number> = { ...EMPTY_COUNTS };
@@ -89,7 +89,7 @@ export default function RencanaKirimStatusChart() {
     } finally {
       setLoading(false);
     }
-  }, [canView]);
+  }, [canView, kodeDepo]);
 
   useEffect(() => {
     load();

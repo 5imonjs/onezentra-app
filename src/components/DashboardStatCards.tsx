@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
-import { rencanaKirim, gateTransactions, penerimaan, receivings, sjValidations, npn, standarUmurProduk, standarisasiTumpukan } from '@/lib/api';
+import { rencanaKirim, gateTransactions, receivingItems, receivings, sjValidations, npn, standarUmurProduk, standarisasiTumpukan } from '@/lib/api';
+import { useDashboardSummary } from '@/lib/dashboardSummary';
 
 interface StatSource {
   key: string;
@@ -46,7 +47,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'clipboard',
     iconBg: 'bg-emerald-600',
     group: 'operasional',
-    load: async () => (await penerimaan.list({ per_page: 1 })).data.total ?? 0,
+    load: async () => (await receivingItems.list({ source: 'VALIDASI_SJ', per_page: 1 })).data.total ?? 0,
   },
   {
     key: 'receiving',
@@ -125,7 +126,7 @@ function SkeletonCard() {
   );
 }
 
-function StatCard({ source, count, failed }: { source: StatSource; count?: number; failed?: boolean }) {
+function StatCard({ source, count, failed, delta }: { source: StatSource; count?: number; failed?: boolean; delta?: number }) {
   const isEmpty = !failed && count === 0;
   return (
     <Link
@@ -146,19 +147,24 @@ function StatCard({ source, count, failed }: { source: StatSource; count?: numbe
             {failed ? '–' : (count ?? 0).toLocaleString('id-ID')}
           </p>
           <p className={`text-xs font-semibold tracking-wider uppercase truncate mt-1 ${isEmpty ? 'text-slate-300' : 'text-slate-500'}`}>{source.label}</p>
+          {!failed && (delta ?? 0) > 0 && (
+            <p className="text-[11px] font-semibold text-emerald-600 tabular-nums mt-0.5">+{delta} minggu ini</p>
+          )}
         </div>
       </div>
     </Link>
   );
 }
 
-export default function DashboardStatCards() {
+export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) {
   const { hasPermission } = useAuthStore();
+  const { summary, loading: summaryLoading, failed: summaryFailed } = useDashboardSummary(kodeDepo);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [deltas, setDeltas] = useState<Record<string, number>>({});
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const loadFallback = useCallback(async () => {
     const visible = STAT_SOURCES.filter((s) => hasPermission(s.permission));
     setLoading(true);
     const results = await Promise.all(
@@ -182,8 +188,19 @@ export default function DashboardStatCards() {
   }, [hasPermission]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!summaryLoading && !summaryFailed) {
+      setCounts(summary.totals);
+      setDeltas(summary.new_7d);
+      const noneFailed: Record<string, boolean> = {};
+      for (const s of STAT_SOURCES) noneFailed[s.key] = false;
+      setFailed(noneFailed);
+      setLoading(false);
+      return;
+    }
+    if (!summaryLoading && summaryFailed) {
+      loadFallback();
+    }
+  }, [summaryLoading, summaryFailed, summary, loadFallback]);
 
   const visible = STAT_SOURCES.filter((s) => hasPermission(s.permission));
   const operasional = visible.filter((s) => s.group === 'operasional');
@@ -194,7 +211,7 @@ export default function DashboardStatCards() {
   }
 
   const renderCard = (s: StatSource) => (
-    <StatCard key={s.key} source={s} count={counts[s.key]} failed={failed[s.key]} />
+    <StatCard key={s.key} source={s} count={counts[s.key]} failed={failed[s.key]} delta={deltas[s.key]} />
   );
 
   return (

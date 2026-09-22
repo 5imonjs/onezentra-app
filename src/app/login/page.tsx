@@ -62,9 +62,9 @@ export default function LoginPage() {
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-accent-500/10 rounded-full blur-3xl"></div>
         
         <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
-          {/* priority sengaja tidak dipakai: panel ini hidden di mobile (hidden lg:flex),
-              tapi preload bersifat unconditional sehingga memicu warning
-              "preloaded but not used" di viewport kecil. */}
+          {/* Tanpa priority: hanya LCP yang boleh preload (lihat splash di
+              dashboard/layout). loading="eager" tidak membuat preload —
+              ia hanya menaikkan prioritas fetch gambar in-viewport ini. */}
           <Image src="/LOGO.png" alt="" width={560} height={136} loading="eager" className="w-full max-w-lg h-auto mb-8" />
           <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">ONEZENTRA</h1>
           

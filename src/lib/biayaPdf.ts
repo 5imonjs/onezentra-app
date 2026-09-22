@@ -33,6 +33,9 @@ type ThlData = {
     nopol_kendaraan: string;
     type_kendaraan: string;
     no_surat_jalan?: string;
+    kendaraan_sj?: string;
+    kendaraan_nopol?: string;
+    kendaraan_type?: string;
     nominal_biaya: number;
     kubikasi: number;
     droppoint: string;
@@ -65,6 +68,9 @@ type RetribusiData = {
     nopol_kendaraan: string;
     type_kendaraan: string;
     no_surat_jalan: string;
+    kendaraan_sj?: string;
+    kendaraan_nopol?: string;
+    kendaraan_type?: string;
     nominal_biaya: number;
     biaya_thl_detail?: {
       nama_thl?: string;
@@ -80,6 +86,25 @@ type RetribusiData = {
   documents: { document_type: string; file_name: string; file_path?: string }[];
 };
 
+/** Gabungkan seluruh nomor surat jalan milik satu kendaraan ke sel PDF yang sama. */
+export function formatSuratJalan(detail: { no_surat_jalan?: string | null; kendaraan_sj?: string | null }): string {
+  const suratJalans = [detail.no_surat_jalan, detail.kendaraan_sj]
+    .flatMap((item) => String(item || '').split(/[,;\n]+/))
+    .map((item) => item.trim())
+    .filter((item, index, values) => item !== '' && values.indexOf(item) === index);
+
+  return suratJalans.join(', ') || '-';
+}
+
+function formatPdfColumn(primary?: string | null, additional?: string | null): string {
+  const values = [primary, additional]
+    .flatMap((item) => String(item || '').split(/[,;\n]+/))
+    .map((item) => item.trim())
+    .filter((item, index, allValues) => item !== '' && allValues.indexOf(item) === index);
+
+  return values.join(', ') || '-';
+}
+
 const money = (value: number) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
 const date = (value: string | null | undefined) => {
   if (!value) return '-';
@@ -94,6 +119,33 @@ const STAMP_ORANGE: [number, number, number] = [217, 119, 6];
 
 type AuditDates = { submitted?: string; checked?: string; approved?: string; rejected?: string; revised?: string };
 
+/** Nama pelaku aksi dari relasi *By (ada pada item tersimpan, kosong pada draft form). */
+function actorName(data: RetribusiData, key: 'submittedBy' | 'checkedBy' | 'approvedBy' | 'rejectedBy' | 'revisedBy'): string {
+  const holder = data as unknown as Record<string, { full_name?: string } | null | undefined>;
+  return holder[key]?.full_name || '';
+}
+
+/**
+ * Nama pada kolom approval mencerminkan AKSI, bukan daftar assignee.
+ * Draft/preview pengajuan yang belum diperiksa: kotak Mengetahui/Menyetujui
+ * menampilkan '-' (role tetap tertera) + tanpa cap.
+ */
+function actedNameFor(section: ApprovalSection, data: RetribusiData, dates: AuditDates): string {
+  const assignee = section.people[0]?.name || '-';
+  if (section.title === 'Mengajukan') return data.approval_pengajuan || assignee;
+  if (section.title === 'Mengetahui') {
+    if (!dates.checked || dates.checked === '-') return '-';
+    return actorName(data, 'checkedBy') || assignee;
+  }
+  if (section.title === 'Menyetujui') {
+    if (!['approved', 'rejected', 'revisi'].includes(data.status)) return '-';
+    const key = data.status === 'approved' ? 'approvedBy' : data.status === 'rejected' ? 'rejectedBy' : 'revisedBy';
+    return actorName(data, key) || assignee;
+  }
+  // RFAH* dan section lain: nama hanya setelah aksi final.
+  return data.status === 'approved' ? assignee : '-';
+}
+
 type StampSpec = { text: string; color: [number, number, number]; date: string };
 
 function auditDates(data: { submitted_at?: string | null; checked_at?: string | null; approved_at?: string | null; rejected_at?: string | null; revised_at?: string | null }): AuditDates {
@@ -106,16 +158,20 @@ function auditDates(data: { submitted_at?: string | null; checked_at?: string | 
   };
 }
 
-function stampFor(section: ApprovalSection, status: string, approvalPengajuan: string | undefined, dates: AuditDates): StampSpec | null {
+function stampFor(section: ApprovalSection, status: string, dates: AuditDates): StampSpec | null {
   if (section.title === 'Mengajukan') {
-    return approvalPengajuan && status !== 'draft'
+    // Sejajar server (resolveStamps): cap mengikuti AKSI submit (status),
+    // bukan keberadaan nama — nama bisa kosong pada data lama/API langsung.
+    return status && status !== 'draft'
       ? { text: 'PENGAJUAN', color: STAMP_GREEN, date: dates.submitted || '' }
       : null;
   }
 
   if (section.title === 'Mengetahui') {
-    const name = section.people[0]?.name;
-    return name && name !== '-' ? { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked || '' } : null;
+    // Sejajar server (resolveStamps): cap DIPERIKSA hanya bila aksi periksa
+    // benar terjadi (checked_at ada) — BUKAN karena nama assignee terdaftar.
+    // Versi lama mencap dari keberadaan nama sehingga PDF draft pun tercap.
+    return dates.checked ? { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked } : null;
   }
 
   if (section.title === 'Menyetujui') {
@@ -254,14 +310,61 @@ function toCombinedRetribusiData(data: ThlData): RetribusiData {
     approval_pengajuan_level: data.approval_pengajuan_level,
     approval_sections: data.approval_sections,
     details: data.details.map((detail) => ({
-      nopol_kendaraan: detail.nopol_kendaraan,
-      type_kendaraan: detail.type_kendaraan,
-      no_surat_jalan: detail.no_surat_jalan || '',
+      nopol_kendaraan: formatPdfColumn(detail.nopol_kendaraan, detail.kendaraan_nopol),
+      type_kendaraan: formatPdfColumn(detail.type_kendaraan, detail.kendaraan_type),
+      no_surat_jalan: formatSuratJalan(detail),
+      kendaraan_sj: detail.kendaraan_sj,
       nominal_biaya: detail.nominal_biaya,
       biaya_thl_detail: detail,
     })),
     documents: [],
   };
+}
+
+let headerLogoCache: Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> | null = null;
+
+/**
+ * Logo headerPDF dari public/biaya THL.jpeg (sekali fetch per sesi).
+ * Null bila file belum disimpan — pemanggil wajib fallback ke teks SNS.
+ */
+function loadHeaderLogo(): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
+  if (!headerLogoCache) {
+    headerLogoCache = (async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      const backendOrigin = apiUrl.replace(/\/api\/v1\/?$/, '');
+      const logoUrls = [
+        `${window.location.origin}/biaya%20THL.jpeg`,
+        `${backendOrigin}/biaya%20THL.jpeg`,
+      ];
+
+      for (const logoUrl of logoUrls) {
+        try {
+          const res = await fetch(logoUrl, { credentials: 'include' });
+          if (!res.ok) continue;
+          const blob = await res.blob();
+          if (!blob.type.startsWith('image/')) continue;
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('read'));
+            reader.readAsDataURL(blob);
+          });
+          return { dataUrl, format: blob.type === 'image/png' ? 'PNG' : 'JPEG' };
+        } catch {
+          // Try the backend asset when the Next public path is unavailable.
+        }
+      }
+
+      return null;
+    })();
+  }
+  return headerLogoCache;
+}
+
+async function drawHeaderLogo(doc: jsPDF, cx: number, cy: number): Promise<void> {
+  const logo = await loadHeaderLogo();
+  if (!logo) return;
+  doc.addImage(logo.dataUrl, logo.format, cx - 7, cy - 7, 14, 14, undefined, 'FAST');
 }
 
 async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
@@ -299,26 +402,27 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
   doc.setDrawColor(35, 35, 35);
   doc.setFillColor(244, 246, 248);
   doc.setLineWidth(0.35);
-  doc.rect(pageMargin, 7, pageWidth, 16, 'FD');
-  doc.line(pageMargin + 18, 7, pageMargin + 18, 23);
+  doc.rect(pageMargin, 7, pageWidth, 18, 'FD');
+  doc.line(pageMargin + 18, 7, pageMargin + 18, 25);
   doc.setFont('Roboto', 'bold');
   doc.setFontSize(10);
-  doc.text('SNS', pageMargin + 9, 17, { align: 'center' });
+  if (!(await loadHeaderLogo())) doc.text('SNS', pageMargin + 9, 18, { align: 'center' });
+  else await drawHeaderLogo(doc, pageMargin + 9, 15);
   doc.setFontSize(11.5);
-  doc.text('FORM KLAIM BIAYA PENGAJUAN RETRIBUSI', 148, 16, { align: 'center' });
+  doc.text('FORM KLAIM BIAYA PENGAJUAN RETRIBUSI', 148, 17.5, { align: 'center' });
   doc.setFont('Roboto', 'normal');
   doc.setFontSize(7.2);
   doc.text(`DEPO: ${value(data.nama_depo || data.kode_depo)}`, 210, 12.5);
   doc.text(`Tanggal Pengajuan: ${date(data.tanggal_pengajuan)}`, 210, 18.5);
 
   autoTable(doc, {
-    startY: 25,
+    startY: 27,
     margin: { left: pageMargin, right: pageMargin },
     head: [['No', 'NO KENDARAAN', 'JENIS KENDARAAN', 'SURAT JALAN', 'NOMINAL', 'Paraf']],
-    body: data.details.map((detail, index) => [index + 1, detail.nopol_kendaraan || '-', detail.type_kendaraan || '-', detail.no_surat_jalan || '-', money(detail.nominal_biaya), '']),
+    body: data.details.map((detail, index) => [index + 1, detail.nopol_kendaraan || '-', detail.type_kendaraan || '-', formatSuratJalan(detail), money(detail.nominal_biaya), '']),
     foot: [['', '', '', 'Total', money(data.nominal_biaya), '']],
     theme: 'grid',
-    styles: { font: 'helvetica', fontSize: 6.5, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.2, minCellHeight: 5, valign: 'middle' },
+    styles: { font: 'helvetica', fontSize: 7, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.3, minCellHeight: 5.5, valign: 'middle' },
     headStyles: { fillColor: [210, 210, 210], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
     footStyles: { fillColor: [255, 255, 255], textColor: [20, 20, 20], fontStyle: 'bold' },
     columnStyles: { 0: { cellWidth: 9, halign: 'center' }, 1: { cellWidth: 62 }, 2: { cellWidth: 52 }, 3: { cellWidth: 55 }, 4: { cellWidth: 46, halign: 'right' }, 5: { cellWidth: 53 } },
@@ -330,26 +434,32 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
 
   const approvalWidth = pageWidth / approvalSections.length;
   doc.setFontSize(7);
+  const audit = auditDates(data);
   approvalSections.forEach((section, index) => {
     const x = pageMargin + approvalWidth * index;
     doc.rect(x, approvalY, approvalWidth, 6);
     doc.text(section.title, x + approvalWidth / 2, approvalY + 4, { align: 'center' });
-    doc.rect(x, approvalY + 6, approvalWidth, 22);
-    doc.rect(x, approvalY + 28, approvalWidth, 7);
+    doc.rect(x, approvalY + 6, approvalWidth, 20);
+    doc.rect(x, approvalY + 26, approvalWidth, 7);
     const person = section.people[0];
-    doc.text(section.title === 'Mengajukan' ? (data.approval_pengajuan || person?.name || '-') : (person?.name || '-'), x + approvalWidth / 2, approvalY + 18, { align: 'center' });
-    doc.text(section.title === 'Mengajukan' ? (data.approval_pengajuan_level || person?.role || '-') : (person?.role || '-'), x + approvalWidth / 2, approvalY + 32.5, { align: 'center' });
+    const approvalName = mode === 'preview'
+      ? ''
+      : section.title === 'Mengajukan'
+        ? (data.approval_pengajuan || person?.name || '-')
+        : actedNameFor(section, data, audit);
+    doc.text(approvalName, x + approvalWidth / 2, approvalY + 17, { align: 'center' });
+    doc.text(section.title === 'Mengajukan' ? (data.approval_pengajuan_level || person?.role || '-') : (person?.role || '-'), x + approvalWidth / 2, approvalY + 30.5, { align: 'center' });
 
-    const stamp = stampFor(section, data.status, data.approval_pengajuan, auditDates(data));
+    const stamp = mode === 'preview' ? null : stampFor(section, data.status, audit);
     if (stamp) drawStamp(doc, x + approvalWidth / 2, approvalY + 16, stamp);
   });
   doc.setFont('Roboto', 'normal');
   doc.setFontSize(6.2);
-  doc.text('Note: * Jika pengajuan biaya > Rp 1 Juta Rupiah', pageMargin, approvalY + 40);
+  doc.text('Note: * Jika pengajuan biaya > Rp 1 Juta Rupiah', pageMargin, approvalY + 38);
 
   const rejected = data.status === 'rejected';
   const revisi = data.status === 'revisi';
-  const thlTop = approvalY + (rejected ? 56 : revisi ? 56 : 44);
+  const thlTop = approvalY + (rejected ? 54 : revisi ? 54 : 42);
   if (rejected && data.rejection_reason) {
     doc.setFont('Roboto', 'bold');
     doc.setFontSize(7);
@@ -371,7 +481,8 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
   doc.line(pageMargin + 18, thlTop, pageMargin + 18, thlTop + 14);
   doc.setFont('Roboto', 'bold');
   doc.setFontSize(10);
-  doc.text('SNS', pageMargin + 9, thlTop + 8.5, { align: 'center' });
+  if (!(await loadHeaderLogo())) doc.text('SNS', pageMargin + 9, thlTop + 8.5, { align: 'center' });
+  else await drawHeaderLogo(doc, pageMargin + 9, thlTop + 7);
   doc.setFontSize(11.5);
   doc.text('FORM KLAIM TENAGA HARIAN LEPAS', 148, thlTop + 9, { align: 'center' });
   doc.rect(pageMargin, thlTop + 14, pageWidth, 6.5);
@@ -385,7 +496,8 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
     head: [['No', 'Nama', 'Kubikasi', 'Drop Point', 'Posisi', 'Jam Datang', 'Jam Pulang']],
     body: data.details.map((detail, index) => {
       const source = detail.biaya_thl_detail;
-      return [index + 1, `${detail.nopol_kendaraan || '-'} - ${source?.nama_thl || source?.driver_name || '-'}`, source?.kubikasi ?? 0, source?.droppoint || '0', source?.posisi || '-', source?.jam_datang ? new Date(source.jam_datang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-', source?.jam_pulang ? new Date(source.jam_pulang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'];
+      const kendaraan = detail.nopol_kendaraan || '-';
+      return [index + 1, `${kendaraan} - ${source?.nama_thl || source?.driver_name || '-'}`, source?.kubikasi ?? 0, source?.droppoint || '0', source?.posisi || '-', source?.jam_datang ? new Date(source.jam_datang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-', source?.jam_pulang ? new Date(source.jam_pulang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'];
     }),
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 6.5, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.1, minCellHeight: 5, valign: 'middle' },

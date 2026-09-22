@@ -44,10 +44,30 @@ const emptyForm: Partial<StandarisasiItem> = {
 };
 
 const STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
-  pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
-  approved: { label: 'Approved', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500' },
-  rejected: { label: 'Rejected', badge: 'bg-red-50 text-red-700 ring-red-200', dot: 'bg-red-500' },
+  pending: { label: 'Menunggu', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  approved: { label: 'Disetujui', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  rejected: { label: 'Ditolak', badge: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
 };
+
+function fmtDate(v: string | null | undefined): string {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function InfoItem({ label, children, bare = false }: { label: string; children: React.ReactNode; bare?: boolean }) {
+  return (
+    <div className="bg-slate-50 rounded-xl p-3 min-w-0">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
+      {bare ? (
+        <div className="mt-1">{children}</div>
+      ) : (
+        <p className="text-sm text-slate-800 mt-1 font-medium break-words">{children}</p>
+      )}
+    </div>
+  );
+}
 
 function NpnProductPicker({
   selected,
@@ -185,13 +205,19 @@ const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
    const [showSaveConfirm, setShowSaveConfirm] = useState(false);
    const [deleting, setDeleting] = useState(false);
 
+  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
+
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await standarisasiTumpukan.list({ search, status: statusFilter, page, per_page: 20 });
-      setItems(res.data.data);
-      setLastPage(res.data.last_page);
-      setTotal(res.data.total ?? res.data.data.length);
+      const [listRes, statsRes] = await Promise.all([
+        standarisasiTumpukan.list({ search, status: statusFilter, page, per_page: 20 }),
+        standarisasiTumpukan.stats({ search }),
+      ]);
+      setItems(listRes.data.data);
+      setLastPage(listRes.data.last_page);
+      setTotal(listRes.data.total ?? listRes.data.data.length);
+      if (statsRes.data?.data) setStats(statsRes.data.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -263,15 +289,18 @@ const confirmDelete = async () => {
   const confirmBulkDelete = async () => {
     setDeleting(true);
     try {
-      const results = await Promise.allSettled(selectedIds.map(id => standarisasiTumpukan.delete(id)));
-      const failed = results.filter(r => r.status === 'rejected').length;
-      const succeeded = selectedIds.filter((_, i) => results[i].status === 'fulfilled');
-      setSelectedIds(selectedIds.filter((_, i) => results[i].status === 'rejected'));
+      const res = await standarisasiTumpukan.bulkDelete(selectedIds);
+      const deleted = res.data?.deleted ?? selectedIds.length;
+      const skipped = res.data?.skipped ?? 0;
+      setSelectedIds([]);
       setShowBulkDeleteConfirm(false);
       await loadItems();
-      if (failed > 0) {
-        notifyGlobal(`${succeeded.length} data terhapus, ${failed} gagal. Silakan coba lagi untuk yang gagal.`);
-      }
+      notifyGlobal(
+        skipped > 0
+          ? `${deleted} data terhapus, ${skipped} dilewati (di luar depo Anda).`
+          : `${deleted} data terhapus.`,
+        'success'
+      );
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Error'));
     } finally {
@@ -290,7 +319,7 @@ const handleCreate = async () => {
        setShowCreate(false);
        setCreateForm({ ...emptyForm });
        setSelectedProduct(null);
-       notifyGlobal('Standarisasi tumpukan dikirim untuk approv BLC', 'info');
+       notifyGlobal('Standarisasi tumpukan dikirim untuk approve BLC', 'info');
        loadItems();
      } catch (e) {
        notifyGlobal(getErrorMessage(e, 'Error'));
@@ -314,12 +343,18 @@ const confirmSaveEdit = async () => {
      if (!editItem) return;
      setSaving(true);
      try {
-       await standarisasiTumpukan.update(editItem.id, editForm);
+       const res = await standarisasiTumpukan.update(editItem.id, editForm);
+       const requiresReapproval = res.data?.requires_reapproval === true;
        setEditItem(null);
        setEditForm({});
        setEditProduct(null);
        setShowSaveConfirm(false);
-       notifyGlobal('Data standarisasi berhasil diperbarui', 'success');
+       notifyGlobal(
+         requiresReapproval
+           ? 'Data diperbarui. Approval sebelumnya dibatalkan — item kembali Menunggu dan notifikasi dikirim ulang.'
+           : (res.data?.message || 'Data standarisasi berhasil diperbarui'),
+         requiresReapproval ? 'info' : 'success'
+       );
        loadItems();
      } catch (e) {
        notifyGlobal(getErrorMessage(e, 'Error'));
@@ -343,6 +378,9 @@ const confirmApprove = async () => {
          notifyGlobal('Standarisasi ditolak. Notifikasi email dikirim ke BLC & Admin Distribusi.', 'info');
        }
        setApproveTarget(null);
+       if (viewItem && viewItem.id === approveTarget.item.id) {
+         setViewItem({ ...viewItem, status: approveTarget.status });
+       }
        await loadItems();
      } catch (e) {
        notifyGlobal(getErrorMessage(e, 'Error'));
@@ -352,7 +390,7 @@ const confirmApprove = async () => {
    };
 
   const badge = (status: string) => {
-    const meta = STATUS_META[status] || { label: status, badge: 'bg-gray-50 text-gray-600 ring-gray-200', dot: 'bg-gray-400' };
+    const meta = STATUS_META[status] || { label: status, badge: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
@@ -363,7 +401,19 @@ const confirmApprove = async () => {
 
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
 
-  const pendingCount = items.filter(i => i.status === 'pending').length;
+
+
+  // Duplikat: produk yang dipilih di form edit sudah punya standarisasi lain (selain item ini)
+  const editDuplicate = editItem && editForm.npn_id != null
+    ? items.find((i) => i.id !== editItem.id && i.npn_id === editForm.npn_id) ?? null
+    : null;
+
+  // Dirty check: Simpan hanya aktif bila ada perubahan (hindari no-op save)
+  const isEditDirty = !!editItem && (
+    editForm.npn_id !== editItem.npn_id ||
+    (editForm.tier ?? 1) !== (editItem.tier ?? 1) ||
+    (editForm.tinggi_tumpukan ?? 1) !== (editItem.tinggi_tumpukan ?? 1)
+  );
 
   return (
     <DashboardLayout>
@@ -405,40 +455,40 @@ const confirmApprove = async () => {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total</p>
-                <p className="text-xl font-bold text-slate-800 tabular-nums">{total}</p>
+                <p className="text-xl font-bold text-slate-800 tabular-nums">{stats.total}</p>
               </div>
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Pending</p>
-                <p className="text-xl font-bold text-amber-600 tabular-nums">{pendingCount}</p>
+                <p className="text-xl font-bold text-amber-600 tabular-nums">{stats.pending}</p>
               </div>
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Approved</p>
-                <p className="text-xl font-bold text-emerald-600 tabular-nums">{items.filter(i => i.status === 'approved').length}</p>
+                <p className="text-xl font-bold text-emerald-600 tabular-nums">{stats.approved}</p>
               </div>
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Rejected</p>
-                <p className="text-xl font-bold text-red-600 tabular-nums">{items.filter(i => i.status === 'rejected').length}</p>
+                <p className="text-xl font-bold text-red-600 tabular-nums">{stats.rejected}</p>
               </div>
             </div>
           </div>
@@ -454,14 +504,17 @@ const confirmApprove = async () => {
                   onChange={(v) => { setSearch(v); setPage(1); }}
                   placeholder="Cari produk..."
                   filters={[
-                    { key: 'pending', label: 'Pending', value: 'pending' },
-                    { key: 'approved', label: 'Approved', value: 'approved' },
-                    { key: 'rejected', label: 'Rejected', value: 'rejected' },
+                    { key: 'pending', label: 'Menunggu', value: 'pending' },
+                    { key: 'approved', label: 'Disetujui', value: 'approved' },
+                    { key: 'rejected', label: 'Ditolak', value: 'rejected' },
                   ]}
                   activeFilter={statusFilter}
                   onFilterChange={(f) => { setStatusFilter(f); setPage(1); }}
                   resultCount={items.length}
                   resultLabel="item"
+                  totalCount={total}
+                  currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0}
+                  currentTo={(page - 1) * 20 + items.length}
                 />
               </div>
               {hasPermission('standarisasi.create') && (
@@ -638,61 +691,74 @@ const confirmApprove = async () => {
         title="Detail Standarisasi"
         subtitle="Informasi lengkap standarisasi tumpukan"
         size="lg"
-        footer={<button onClick={() => setViewItem(null)} className="btn-secondary">Tutup</button>}
+        footer={
+          <>
+            <button onClick={() => setViewItem(null)} className="btn-secondary">Tutup</button>
+            {viewItem?.status === 'pending' && hasPermission('standarisasi.approve') && (
+              <>
+                <button
+                  onClick={() => { if (viewItem) { setApproveTarget({ item: viewItem, status: 'rejected' }); } }}
+                  className="btn-secondary !text-red-600 hover:!bg-red-50"
+                >
+                  Tolak
+                </button>
+                <button
+                  onClick={() => { if (viewItem) { setApproveTarget({ item: viewItem, status: 'approved' }); } }}
+                  className="btn-primary"
+                >
+                  Setujui
+                </button>
+              </>
+            )}
+          </>
+        }
       >
         {viewItem && (
           <>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                ['BOS ID', viewItem.npn?.BOSnetszProductId],
-                ['SAP ID', viewItem.npn?.SAPszProductId],
-                ['Produk', viewItem.npn?.szShortDescription || viewItem.npn?.szNickName || viewItem.npn?.szNickNameNew],
-                ['Barcode', viewItem.npn?.szBarcode],
-                ['Kode Depo', viewItem.kode_depo],
-                ['Nama Depo', viewItem.nama_depo],
-              ].map(([label, value]) => (
-                <div key={label as string} className="bg-slate-50 rounded-xl p-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label as string}</span>
-                  <p className="text-sm text-slate-800 mt-1 font-medium">{fmt(value)}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InfoItem label="BOS ID">{fmt(viewItem.npn?.BOSnetszProductId)}</InfoItem>
+              <InfoItem label="SAP ID">{fmt(viewItem.npn?.SAPszProductId)}</InfoItem>
+              <InfoItem label="Produk">{fmt(viewItem.npn?.szShortDescription || viewItem.npn?.szNickName || viewItem.npn?.szNickNameNew)}</InfoItem>
+              <InfoItem label="Barcode">{fmt(viewItem.npn?.szBarcode)}</InfoItem>
+              <InfoItem label="Kode Depo">{fmt(viewItem.kode_depo)}</InfoItem>
+              <InfoItem label="Nama Depo">{fmt(viewItem.nama_depo)}</InfoItem>
             </div>
             <div className="border-t border-slate-100 pt-4 mt-4">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">Perhitungan Tumpukan</h3>
               <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-center">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tier</span>
+                  <p className="text-2xl font-bold text-slate-700 mt-1 tabular-nums">{viewItem.tier ?? '-'}</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-center">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tinggi</span>
+                  <p className="text-2xl font-bold text-slate-700 mt-1 tabular-nums">{viewItem.tinggi_tumpukan ?? '-'}</p>
+                </div>
                 <div className="bg-primary-50 rounded-xl p-4 border border-primary-100 text-center">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-primary-500">Tier</span>
-                  <p className="text-2xl font-bold text-primary-700 mt-1">{viewItem.tier ?? '-'}</p>
-                </div>
-                <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 text-center">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-500">Tinggi</span>
-                  <p className="text-2xl font-bold text-amber-700 mt-1">{viewItem.tinggi_tumpukan ?? '-'}</p>
-                </div>
-                <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 text-center">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-500">Total</span>
-                  <p className="text-2xl font-bold text-emerald-700 mt-1">{viewItem.total_tier_tinggi ?? '-'}</p>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-primary-500">Total</span>
+                  <p className="text-2xl font-bold text-primary-700 mt-1 tabular-nums">{viewItem.total_tier_tinggi ?? '-'}</p>
                 </div>
               </div>
+              {viewItem.tier != null && viewItem.tinggi_tumpukan != null && (
+                <p className="text-xs text-slate-400 mt-2 text-center">
+                  {viewItem.tier} tier × {viewItem.tinggi_tumpukan} tinggi = {viewItem.total_tier_tinggi ?? viewItem.tier * viewItem.tinggi_tumpukan} total tumpukan
+                </p>
+              )}
             </div>
             <div className="border-t border-slate-100 pt-4 mt-4">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">Status & Approval</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Status</span>
-                  <p className="mt-1.5">{badge(viewItem.status || 'pending')}</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Requested By</span>
-                  <p className="text-sm text-slate-800 mt-1 font-medium">{viewItem.requested_by_email || '-'}</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Approved By</span>
-                  <p className="text-sm text-slate-800 mt-1 font-medium">{viewItem.approved_by_email || '-'}</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tanggal</span>
-                  <p className="text-sm text-slate-800 mt-1 font-medium">{viewItem.created_at ? new Date(viewItem.created_at).toLocaleDateString('id-ID') : '-'}</p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InfoItem label="Status" bare>{badge(viewItem.status || 'pending')}</InfoItem>
+                <InfoItem label="Diajukan Oleh">{fmt(viewItem.requested_by_email)}</InfoItem>
+                <InfoItem label="Disetujui Oleh">
+                  {viewItem.approved_by_email || (viewItem.status === 'pending' ? <span className="text-slate-400 font-normal">Menunggu approval</span> : '-')}
+                </InfoItem>
+                <InfoItem label="Tanggal Dibuat">{fmtDate(viewItem.created_at)}</InfoItem>
+                <InfoItem label="Tanggal Approval">
+                  {viewItem.status === 'pending'
+                    ? <span className="text-slate-400 font-normal">Menunggu approval</span>
+                    : fmtDate(viewItem.updated_at)}
+                </InfoItem>
               </div>
             </div>
           </>
@@ -709,7 +775,7 @@ const confirmApprove = async () => {
         footer={
           <>
             <button onClick={() => { setEditItem(null); setEditForm({}); setEditProduct(null); }} className="btn-secondary">Batal</button>
-            <button onClick={handleSaveEdit} disabled={saving} className="btn-primary disabled:opacity-50">
+            <button onClick={handleSaveEdit} disabled={saving || !editForm.npn_id || !isEditDirty} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed" title={!isEditDirty ? 'Tidak ada perubahan untuk disimpan' : undefined}>
               <span className="flex items-center gap-2">
                 {saving ? (
                   <>
@@ -729,22 +795,41 @@ const confirmApprove = async () => {
       >
         {editItem && (
           <>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Produk</label>
+            {editItem.status === 'approved' && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 mb-4" role="alert">
+                <svg className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                <p className="text-xs text-amber-800">
+                  Item ini sudah <span className="font-semibold">Disetujui</span>. Perubahan apa pun akan membatalkan approval dan mengembalikan status ke <span className="font-semibold">Menunggu</span>.
+                </p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4" onKeyDown={(e) => { if (e.key === 'Enter' && editForm.npn_id && isEditDirty && !saving) { e.preventDefault(); handleSaveEdit(); } }}>
+              <div className="col-span-2 flex items-center justify-between gap-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Produk <span className="text-slate-400">(ketik nama atau BOS ID)</span></label>
+                {badge(editItem.status || 'pending')}
+              </div>
+              <div className="col-span-2 -mt-2">
                 <NpnProductPicker
                   selected={editProduct}
                   onSelect={(p) => { setEditProduct(p); setEditForm(prev => ({ ...prev, npn_id: p.id })); }}
                   onClear={() => { setEditProduct(null); setEditForm(prev => ({ ...prev, npn_id: undefined })); }}
                 />
+                {editDuplicate && (
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 mt-2" role="alert">
+                    <svg className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                    <p className="text-xs text-amber-800">
+                      Produk ini sudah memiliki standarisasi ({editDuplicate.tier} tier × {editDuplicate.tinggi_tumpukan} tinggi). Menyimpan akan membuat data kedua untuk produk yang sama.
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Tier</label>
-                <input type="number" min="1" value={editForm.tier || 1} onChange={(e) => setEditForm(prev => ({ ...prev, tier: parseInt(e.target.value) || 1 }))} className="input-field text-sm" />
+                <label htmlFor="edit-tier" className="block text-xs font-medium text-slate-500 mb-1.5">Tier <span className="text-primary-500">*</span></label>
+                <input id="edit-tier" type="number" min="1" max="100" value={editForm.tier || 1} onChange={(e) => setEditForm(prev => ({ ...prev, tier: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Tinggi Tumpukan</label>
-                <input type="number" min="1" value={editForm.tinggi_tumpukan || 1} onChange={(e) => setEditForm(prev => ({ ...prev, tinggi_tumpukan: parseInt(e.target.value) || 1 }))} className="input-field text-sm" />
+                <label htmlFor="edit-tinggi" className="block text-xs font-medium text-slate-500 mb-1.5">Tinggi Tumpukan <span className="text-primary-500">*</span></label>
+                <input id="edit-tinggi" type="number" min="1" max="100" value={editForm.tinggi_tumpukan || 1} onChange={(e) => setEditForm(prev => ({ ...prev, tinggi_tumpukan: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
               </div>
             </div>
             <div className="bg-slate-50 rounded-xl p-4 mt-4">
@@ -752,7 +837,6 @@ const confirmApprove = async () => {
               <p className="text-sm text-slate-800 mt-1">
                 {editForm.tier || 1} tier x {editForm.tinggi_tumpukan || 1} tinggi = <span className="font-bold text-primary-600">{(editForm.tier || 1) * (editForm.tinggi_tumpukan || 1)}</span> total
               </p>
-              <p className="text-xs text-slate-400 mt-2">Status hanya dapat diubah melalui tombol Approve/Reject oleh BLC.</p>
             </div>
           </>
         )}
@@ -838,7 +922,9 @@ const confirmApprove = async () => {
         onClose={() => setShowSaveConfirm(false)}
         onConfirm={confirmSaveEdit}
         title="Simpan Perubahan"
-        message="Apakah Anda yakin ingin menyimpan perubahan pada data standarisasi ini?"
+        message={editItem?.status === 'approved'
+          ? 'Item ini sudah Disetujui. Menyimpan akan membatalkan approval dan mengembalikan status ke Menunggu. Lanjut?'
+          : 'Apakah Anda yakin ingin menyimpan perubahan pada data standarisasi ini?'}
         confirmLabel="Simpan"
         variant="warning"
         loading={saving}

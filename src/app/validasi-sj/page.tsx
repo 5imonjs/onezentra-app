@@ -9,6 +9,7 @@ import Modal from '@/components/Modal';
 import SearchInput from '@/components/SearchInput';
 import { notifyGlobal } from '@/store/globalToast';
 import { useAuthStore } from '@/store/auth';
+import { conditionRequiresPhoto } from '@/lib/condition';
 
 type ValidationItem = {
   id: number;
@@ -71,7 +72,7 @@ const conditionLabels: Record<string, string> = {
 };
 
 const emptyForm = { actual_qty: '' as string | number, expired_date: '', condition: 'FISIK_BAGUS', notes: '', barcode: '', tier: 1, tinggi_tumpukan: 1 };
-const photoConditions = ['FISIK_RUSAK', 'QTY_KURANG', 'ISI_KEMASAN_KURANG', 'EXPIRED_TIDAK_STANDAR', 'LAINNYA'];
+
 
 // Format tanggal deterministik id-ID.
 function fmtDate(v: string | null | undefined): string {
@@ -257,10 +258,10 @@ export default function ValidasiSjPage() {
     }
     setSelected(item);
     setForm({
-      actual_qty: '',
+      actual_qty: item.actual_qty ?? '',
       expired_date: item.expired_date ?? '',
       condition: item.condition || 'FISIK_BAGUS',
-      notes: '',
+      notes: item.notes ?? '',
       barcode: item.barcode ?? '',
       tier: 1,
       tinggi_tumpukan: 1,
@@ -270,7 +271,8 @@ export default function ValidasiSjPage() {
   };
 
   const saveItem = async () => {
-    if (!active || !selected || !form.actual_qty) return;
+    if (!active || !selected || !form.actual_qty || !form.expired_date) return;
+    const isReEdit = selected.status !== 'PENDING';
     setBusy(true);
     try {
       const payload = new FormData();
@@ -291,7 +293,7 @@ export default function ValidasiSjPage() {
       setSelected(null);
       setPhoto(null);
       setPhotoPreview('');
-      notifyGlobal('Item berhasil divalidasi.', 'success');
+      notifyGlobal(isReEdit ? 'Perubahan item disimpan.' : 'Item berhasil divalidasi.', 'success');
     } catch (error) {
       notifyGlobal(getErrorMessage(error, 'Gagal menyimpan validasi item.'), 'error');
     } finally {
@@ -300,11 +302,16 @@ export default function ValidasiSjPage() {
   };
 
   const completeValidation = async () => {
-    if (!active || active.items?.some((item) => item.status === 'PENDING')) return;
+    if (!active || active.items?.some((item) => item.status === 'PENDING' || item.actual_qty == null || !item.expired_date)) return;
     setBusy(true);
     try {
       await sjValidations.complete(active.id);
-      notifyGlobal('Validasi dokumen selesai.', 'success');
+      notifyGlobal(
+        mismatchCount > 0
+          ? `Validasi dokumen selesai. ${mismatchCount} item selisih — notifikasi email dikirim ke BLC & Admin Distribusi.`
+          : 'Validasi dokumen selesai.',
+        'success'
+      );
       setActive(null);
       loadItems();
       loadStats();
@@ -316,8 +323,14 @@ export default function ValidasiSjPage() {
   };
 
   const pendingCount = active?.items?.filter((item) => item.status === 'PENDING').length ?? 0;
+  // Item "lengkap": sudah divalidasi + qty terisi + expired terisi.
+  // Selesaikan Validasi diblokir sampai semua item lengkap (cegah submit data bolong).
+  const isItemComplete = (item: ValidationItem): boolean =>
+    item.status !== 'PENDING' && item.actual_qty != null && !!item.expired_date;
+  const incompleteItems = active?.items?.filter((item) => !isItemComplete(item)) ?? [];
+  const mismatchCount = active?.items?.filter((item) => item.status === 'MISMATCH').length ?? 0;
   const progress = active?.items?.length ? Math.round(((active.items.length - pendingCount) / active.items.length) * 100) : 0;
-  const photoRequired = photoConditions.includes(form.condition);
+  const photoRequired = conditionRequiresPhoto(form.condition);
   const umurSelisih = sisaUmur.totalMonths - standarUmur;
   const umurRatio = standarUmur > 0 ? Math.max(0, Math.min((sisaUmur.totalMonths / standarUmur) * 100, 100)) : 0;
   const itemStandarUmur = selected?.umur ?? 0;
@@ -557,13 +570,13 @@ export default function ValidasiSjPage() {
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
             {active?.status === 'IN_PROGRESS' && (
               <div className="relative inline-flex w-full sm:w-auto">
-                <button type="button" onClick={completeValidation} disabled={busy || pendingCount > 0 || !hasPermission('sj_validation.edit')} className="btn-primary inline-flex w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                <button type="button" onClick={completeValidation} disabled={busy || incompleteItems.length > 0 || !hasPermission('sj_validation.complete')} title={incompleteItems.length > 0 ? `Lengkapi ${incompleteItems.length} item terlebih dahulu (qty & expired)` : (!hasPermission('sj_validation.complete') ? 'Anda tidak memiliki izin menyelesaikan validasi' : (mismatchCount > 0 ? `Siap diselesaikan — ${mismatchCount} item selisih, email notifikasi akan dikirim` : undefined))} className="btn-primary inline-flex w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>
                   Selesaikan Validasi
                 </button>
-                {pendingCount > 0 && (
+                {incompleteItems.length > 0 && (
                   <span className="absolute -top-8 right-0 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-medium text-white shadow-lg">
-                    Validasi {pendingCount} item terlebih dahulu
+                    {pendingCount > 0 ? `Validasi ${pendingCount} item terlebih dahulu` : `Lengkapi ${incompleteItems.length} item terlebih dahulu`}
                   </span>
                 )}
               </div>
@@ -620,6 +633,18 @@ export default function ValidasiSjPage() {
               </div>
             </div>
 
+            {active.status === 'IN_PROGRESS' && incompleteItems.length > 0 && (
+              <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4" role="alert">
+                <svg className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                <div>
+                  <p className="text-xs font-bold text-amber-900">{incompleteItems.length} item belum lengkap — Selesaikan Validasi terkunci</p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    {incompleteItems.slice(0, 3).map((i) => i.kode_barang).join(', ')}{incompleteItems.length > 3 ? ` +${incompleteItems.length - 3} lainnya` : ''} — lengkapiQty aktual & tanggal expired via tombol Validasi/Ubah.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -652,7 +677,13 @@ export default function ValidasiSjPage() {
                         <td className="px-4 py-3 text-sm text-slate-800 font-medium">{item.nama_barang}</td>
                         <td className="px-4 py-3 text-right text-sm text-slate-600">{item.expected_qty} {item.satuan}</td>
                         <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">{item.status === 'PENDING' ? '-' : (item.actual_qty ?? '-')}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(item.expired_date)}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {item.expired_date ? fmtDate(item.expired_date) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">
+                              Belum diisi
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
                         <td className="px-4 py-3 text-center">
                           {item.photo ? (
@@ -666,11 +697,18 @@ export default function ValidasiSjPage() {
                         </td>
                         <td className="px-4 py-3 text-center"><span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${itemStatusStyle[item.status] || 'bg-gray-100 text-gray-600'} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full mr-1 ${item.status === 'PENDING' ? 'bg-amber-500' : item.status === 'VALIDATED' ? 'bg-emerald-500' : 'bg-red-500'}`} />{itemStatusLabel[item.status] || item.status}</span></td>
                         <td className="px-4 py-3 text-right">
-                          {item.status === 'PENDING' && (
-                            <button type="button" onClick={() => openItem(item)} className={`inline-flex min-h-[30px] items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors ${item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100'}`}>
-                              {item.standarisasi?.status && item.standarisasi.status !== 'approved' && <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
-                              Validasi
-                            </button>
+                          {hasPermission('sj_validation.validate') && (
+                            item.status === 'PENDING' ? (
+                              <button type="button" onClick={() => openItem(item)} className={`inline-flex min-h-[30px] items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors ${item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100'}`}>
+                                {item.standarisasi?.status && item.standarisasi.status !== 'approved' && <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
+                                Validasi
+                              </button>
+                            ) : (
+                              <button type="button" onClick={() => openItem(item)} title="Ubah hasil validasi item ini" className="inline-flex min-h-[30px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50">
+                                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
+                                Ubah
+                              </button>
+                            )
                           )}
                         </td>
                       </tr>
@@ -689,7 +727,7 @@ export default function ValidasiSjPage() {
       <Modal open={!!selected} onClose={() => setSelected(null)} title="Validasi Item" subtitle="Lengkapi pemeriksaan fisik sebelum menyimpan hasil validasi." size="lg" footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <button type="button" onClick={() => setSelected(null)} className="btn-secondary w-full sm:w-auto">Batal</button>
-          <button type="button" onClick={saveItem} disabled={busy || !form.actual_qty || (photoRequired && !photo) || !hasPermission('sj_validation.edit')} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+          <button type="button" onClick={saveItem} disabled={busy || !form.actual_qty || !form.expired_date || (photoRequired && !photo) || !hasPermission('sj_validation.validate')} title={!form.expired_date ? 'Isi tanggal expired terlebih dahulu' : undefined} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
             {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
             {busy ? 'Menyimpan...' : 'Simpan Validasi'}
           </button>
@@ -745,7 +783,7 @@ export default function ValidasiSjPage() {
                     <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] font-bold uppercase text-slate-400">{selected.satuan}</span>
                   </div>
                 </label>
-                <label className="block text-xs font-bold text-slate-600">Expired Date
+                <label className="block text-xs font-bold text-slate-600">Expired Date <span className="text-primary-600">*</span>
                   <input type="date" value={form.expired_date} onChange={(e) => {
                     const val = e.target.value;
                     setForm({ ...form, expired_date: val });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { reports, depo, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -97,6 +97,7 @@ export default function RencanaKirimReportPage() {
   const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const reqIdRef = useRef(0);
 
   const selectedDepo = depots.find((d) => d.kode_depo === kodeDepo);
 
@@ -112,17 +113,20 @@ export default function RencanaKirimReportPage() {
 
   const fetchData = useCallback(async () => {
     if (!hasPermission('reports.view')) return;
+    const reqId = ++reqIdRef.current;
     setLoading(true);
     setError('');
     try {
       const res = await reports.rencanaKirim(buildParams());
+      if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
       setSummary(res.data.summary);
       setLastPage(res.data.last_page ?? 1);
     } catch (e) {
+      if (reqIdRef.current !== reqId) return;
       setError(getErrorMessage(e, 'Gagal memuat laporan'));
     } finally {
-      setLoading(false);
+      if (reqIdRef.current === reqId) setLoading(false);
     }
   }, [buildParams, hasPermission]);
 
@@ -315,7 +319,7 @@ export default function RencanaKirimReportPage() {
 
         {/* Summary Cards */}
         {summary && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" />
               <div className="relative flex items-center gap-3">

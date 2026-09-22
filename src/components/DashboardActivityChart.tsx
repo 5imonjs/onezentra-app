@@ -18,17 +18,17 @@ function formatDate(value: string): string {
   return new Date(`${value}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 }
 
-export default function DashboardActivityChart() {
+export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string }) {
   const [periodDays, setPeriodDays] = useState<number>(30);
   const [usage, setUsage] = useState<UsagePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async (days: number) => {
+  const load = useCallback(async (days: number, depot?: string) => {
     setLoading(true);
     setError('');
     try {
-      const response = await dashboard.activity(days) as UsageResponse;
+      const response = await dashboard.activity(days, depot) as UsageResponse;
       const payload = response.data?.data;
       if (!payload || !Array.isArray(payload.daily) || !Array.isArray(payload.top_users)) {
         throw new Error('Format data penggunaan sistem tidak valid.');
@@ -42,8 +42,8 @@ export default function DashboardActivityChart() {
   }, []);
 
   useEffect(() => {
-    load(periodDays);
-  }, [load, periodDays]);
+    load(periodDays, kodeDepo);
+  }, [load, periodDays, kodeDepo]);
 
   const daily = Array.isArray(usage?.daily) ? usage.daily : [];
   const topUsers = Array.isArray(usage?.top_users) ? usage.top_users : [];

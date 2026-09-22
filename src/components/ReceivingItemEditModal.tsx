@@ -1,10 +1,11 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
-import { opnameExpired, getErrorMessage } from '@/lib/api';
+import { opnameExpired, getErrorMessage, API_ROOT } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
-import { CONDITIONS, CONDITION_LABELS, canonicalCondition } from '@/lib/condition';
+import { CONDITIONS, CONDITION_LABELS, canonicalCondition, conditionRequiresPhoto } from '@/lib/condition';
 
 interface EditItem {
   id: number;
@@ -21,6 +22,7 @@ interface EditItem {
   kode_depo: string | null;
   nama_depo: string | null;
   notes?: string | null;
+  photo?: string | null;
 }
 
 interface Props {
@@ -45,8 +47,19 @@ const fmtDateInput = toDateInput;
 export default function ReceivingItemEditModal({ open, item, onClose, onSaved }: Props) {
   const [form, setForm] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+
+  const clearPhotoSelection = () => {
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+    setPhotoFile(null);
+  };
 
   useEffect(() => {
+    clearPhotoSelection();
     if (item) {
       setForm({
         qty_crt: String(item.actual_qty ?? ''),
@@ -87,7 +100,7 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
         kode_depo: form.kode_depo || null,
         nama_depo: form.nama_depo || null,
         notes: form.notes || null,
-      });
+      }, photoFile);
       onSaved();
       onClose();
     } catch (err) {
@@ -100,12 +113,26 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
+  const pickPhoto = (file: File | null) => {
+    if (!file) return;
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const photoRequired = conditionRequiresPhoto(form.condition);
+  const photoSatisfied = !photoRequired || photoFile !== null || !!item?.photo;
+  const saveDisabled = busy || !photoSatisfied;
+
   return (
     <Modal open={open} onClose={() => !busy && onClose()} title="Edit Penerimaan" subtitle={item ? `Kode: ${item.kode_barang ?? '-'}` : undefined} size="lg"
       footer={
         <>
           <button onClick={onClose} disabled={busy} className="btn-secondary">Batal</button>
-          <button type="submit" form="edit-receiving-item" disabled={busy} className="btn-primary disabled:opacity-50">
+          <button type="submit" form="edit-receiving-item" disabled={saveDisabled} title={!photoSatisfied ? 'Foto wajib diunggah untuk kondisi ini' : undefined} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
             <span className="flex items-center gap-2">
               {busy ? (
                 <>
@@ -172,6 +199,51 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
                 <option key={c} value={c}>{CONDITION_LABELS[c]}</option>
               ))}
             </select>
+          </div>
+          <div className="col-span-2">
+            <span className="block text-sm font-medium text-gray-700 mb-1.5">Bukti Foto {photoRequired && <span className="text-red-500">* wajib untuk kondisi ini</span>}</span>
+            {photoRequired && !photoSatisfied && (
+              <div className="mb-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
+                <p className="text-xs font-bold text-amber-900">Bukti fotografi kondisi wajib</p>
+                <p className="text-[11px] text-amber-700 mt-0.5">Ambil foto langsung atau pilih dari galeri sebagai bukti kondisi produk.</p>
+              </div>
+            )}
+            {item?.photo && !photoFile && (
+              <a
+                href={item.photo.startsWith('http') ? item.photo : `${API_ROOT}/storage/${item.photo}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-800"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                Lihat foto tersimpan
+              </a>
+            )}
+            {photoPreview ? (
+              <div className="relative">
+                <Image src={photoPreview} alt="Pratinjau foto kondisi baru" className="w-full h-48 object-cover rounded-xl" width={400} height={200} unoptimized />
+                <button type="button" onClick={clearPhotoSelection} className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Hapus foto baru">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <label className="btn-secondary text-sm cursor-pointer">
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.317z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm0 0c0 1.657 1.007 3 2.25 3S21 14.407 21 12.75s-1.007-3-2.25-3S16.5 11.093 16.5 12.75z" /></svg>
+                    {item?.photo ? 'Ganti via kamera' : 'Ambil via kamera'}
+                  </span>
+                  <input type="file" accept="image/*" capture="environment" onChange={(e) => pickPhoto(e.target.files?.[0] ?? null)} className="sr-only" aria-label="Ambil foto dari kamera" />
+                </label>
+                <label className="btn-secondary text-sm cursor-pointer">
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                    {item?.photo ? 'Ganti via galeri' : 'Pilih via galeri'}
+                  </span>
+                  <input type="file" accept="image/*" onChange={(e) => pickPhoto(e.target.files?.[0] ?? null)} className="sr-only" aria-label="Pilih foto dari galeri" />
+                </label>
+              </div>
+            )}
           </div>
           <div className="col-span-2">
             <label htmlFor="riem-sumber-material" className="block text-sm font-medium text-gray-700 mb-1.5">Sumber Material</label>

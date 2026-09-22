@@ -277,6 +277,82 @@ export default function OpnameExpiredReportPage() {
           </div>
         )}
 
+        {/* Filter panel */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
+                  <p className="mt-0.5 text-xs text-slate-400">Minggu opname, depo, dan status batch</p>
+                </div>
+              </div>
+              {(kodeDepo || statusFilter) && (
+                <button onClick={resetFilters} className="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors">Reset filter</button>
+              )}
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.2fr)_minmax(190px,1fr)_minmax(180px,1fr)_auto]">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Minggu Opname</label>
+                <select
+                  value={weekStart}
+                  onChange={(e) => { setWeekStart(e.target.value); setPage(1); }}
+                  className="select-field text-sm py-2.5 bg-slate-50 focus:bg-white"
+                >
+                  <option value="">— Pilih Minggu —</option>
+                  {weeks.map((w) => (
+                    <option key={w} value={w}>{w} s.d. {weekEnd(w)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Depo</label>
+                <select
+                  value={kodeDepo}
+                  onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
+                  className="select-field text-sm py-2.5 bg-slate-50 focus:bg-white"
+                  aria-label="Filter depo laporan"
+                >
+                  <option value="">Semua Depo</option>
+                  {depots.map((d) => (
+                    <option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Status</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                  className="select-field text-sm py-2.5 bg-slate-50 focus:bg-white"
+                >
+                  <option value="">Semua Status</option>
+                  {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
+                </select>
+              </div>
+              <button
+                onClick={handleExport}
+                disabled={exporting || loading}
+                className="btn-primary self-end py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="flex items-center gap-2">
+                  {exporting ? (
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  ) : (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                  )}
+                  {exporting ? 'Exporting...' : 'Export Excel'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <div className="bg-white rounded-xl border border-gray-100 p-4">
@@ -387,82 +463,6 @@ export default function OpnameExpiredReportPage() {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Filter panel */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-slate-400">Minggu opname, depo, dan status batch</p>
-                </div>
-              </div>
-              {(kodeDepo || statusFilter) && (
-                <button onClick={resetFilters} className="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors">Reset filter</button>
-              )}
-            </div>
-          </div>
-          <div className="p-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.2fr)_minmax(190px,1fr)_minmax(180px,1fr)_auto]">
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Minggu Opname</label>
-                <select
-                  value={weekStart}
-                  onChange={(e) => { setWeekStart(e.target.value); setPage(1); }}
-                  className="select-field text-sm py-2.5 bg-slate-50 focus:bg-white"
-                >
-                  <option value="">— Pilih Minggu —</option>
-                  {weeks.map((w) => (
-                    <option key={w} value={w}>{w} s.d. {weekEnd(w)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Depo</label>
-                <select
-                  value={kodeDepo}
-                  onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
-                  className="select-field text-sm py-2.5 bg-slate-50 focus:bg-white"
-                  aria-label="Filter depo laporan"
-                >
-                  <option value="">Semua Depo</option>
-                  {depots.map((d) => (
-                    <option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Status</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                  className="select-field text-sm py-2.5 bg-slate-50 focus:bg-white"
-                >
-                  <option value="">Semua Status</option>
-                  {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-                </select>
-              </div>
-              <button
-                onClick={handleExport}
-                disabled={exporting || loading}
-                className="btn-primary self-end py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="flex items-center gap-2">
-                  {exporting ? (
-                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                  ) : (
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                  )}
-                  {exporting ? 'Exporting...' : 'Export Excel'}
-                </span>
-              </button>
-            </div>
           </div>
         </div>
 

@@ -1,16 +1,30 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback, Fragment } from 'react';
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import Image from 'next/image';
 import DashboardLayout from '@/app/dashboard/layout';
-import { biayaThl } from '@/lib/api';
+import { biayaThl, getErrorMessage, API_ROOT } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import { getBiayaConfig, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
 import { generateTHLPdf, previewTHLPdf } from '@/lib/biayaPdf';
 
+interface StoredPhoto {
+  id: number;
+  file_path: string;
+  file_name?: string;
+}
+
+type PhotoItem = File | StoredPhoto;
+
+const isStoredPhoto = (p: PhotoItem): p is StoredPhoto => !(p instanceof File);
+
 interface DetailRow {
+  id?: number;
+  detailId?: number;
   no_surat_jalan: string;
   nama_thl: string;
   driver_name: string;
@@ -23,12 +37,17 @@ interface DetailRow {
   jam_datang: string;
   jam_pulang: string;
   kendaraan_tambahan: boolean;
+  kendaraan_sj?: string;
+  kendaraan_nopol?: string;
+  kendaraan_type?: string;
   order: number;
-  photos: File[];
+  photos: PhotoItem[];
+  photos_remove?: number[];
 }
 
 interface FormDetailRow extends DetailRow {
   groupId: string;
+  detailId?: number;
 }
 
 interface BiayaThlItem {
@@ -64,16 +83,28 @@ interface BiayaThlItem {
 }
 
 const STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
-  draft: { label: 'Draft', badge: 'bg-gray-50 text-gray-600 ring-gray-200', dot: 'bg-gray-400' },
-  pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
-  checked: { label: 'Checked', badge: 'bg-blue-50 text-blue-700 ring-blue-200', dot: 'bg-blue-500' },
-  approved: { label: 'Approved', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500' },
-  rejected: { label: 'Rejected', badge: 'bg-red-50 text-red-700 ring-red-200', dot: 'bg-red-500' },
-  revisi: { label: 'Revisi', badge: 'bg-orange-50 text-orange-700 ring-orange-200', dot: 'bg-orange-500' },
+  draft: { label: 'Draft', badge: 'bg-gray-50 text-gray-600 border-gray-200', dot: 'bg-gray-400' },
+  pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  checked: { label: 'Checked', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+  approved: { label: 'Approved', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  rejected: { label: 'Rejected', badge: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
+  revisi: { label: 'Revisi', badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
 };
 
 const VEHICLE_TYPES = ['CDD', 'Fuso', 'Container 20', 'Container 40', 'Box', 'Pickup'];
 const POSITIONS = ['THL HELPER', 'THL DRIVER', 'THL GUDANG'];
+
+// Identitas visual per grup SJ: warna + nomor selalu tampil berpasangan agar
+// grup mudah dibedakan sekilas tanpa mengandalkan warna saja (aksesibilitas).
+// Kelas ditulis statis penuh agar terdeteksi Tailwind JIT.
+const GROUP_ACCENTS = [
+  { solid: 'bg-indigo-600', soft: 'bg-indigo-50', text: 'text-indigo-700', bar: 'from-indigo-600 to-indigo-300' },
+  { solid: 'bg-emerald-600', soft: 'bg-emerald-50', text: 'text-emerald-700', bar: 'from-emerald-600 to-emerald-300' },
+  { solid: 'bg-amber-600', soft: 'bg-amber-50', text: 'text-amber-700', bar: 'from-amber-600 to-amber-300' },
+  { solid: 'bg-rose-600', soft: 'bg-rose-50', text: 'text-rose-700', bar: 'from-rose-600 to-rose-300' },
+  { solid: 'bg-sky-600', soft: 'bg-sky-50', text: 'text-sky-700', bar: 'from-sky-600 to-sky-300' },
+  { solid: 'bg-violet-600', soft: 'bg-violet-50', text: 'text-violet-700', bar: 'from-violet-600 to-violet-300' },
+];
 
 const createEmptyDetail = (order: number, sj: string, groupId: string): FormDetailRow => ({
   no_surat_jalan: sj,
@@ -98,7 +129,7 @@ const createGroupId = () =>
     ? crypto.randomUUID()
     : `grp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-const normalizeThlDetail = (detail: DetailRow): DetailRow => {
+const normalizeThlDetail = <T extends DetailRow>(detail: T): T => {
   const normalized = { ...detail };
   const position = normalized.posisi?.trim().toUpperCase();
 
@@ -127,9 +158,14 @@ const getMissingFields = (detail: FormDetailRow): string[] => {
   const missing: string[] = [];
   if (!detail.nama_thl.trim()) missing.push('Nama THL');
   if (!detail.posisi) missing.push('Posisi');
+  // Dokumentasi: plat + type kendaraan diisi per baris untuk SEMUA posisi,
+  // termasuk THL GUDANG.
   if (!detail.nopol_kendaraan.trim()) missing.push('Plat Kendaraan');
   if (!detail.type_kendaraan) missing.push('Type Kendaraan');
-  if (!Number.isFinite(Number(detail.nominal_biaya)) || Number(detail.nominal_biaya) < 0) missing.push('Nominal Biaya');
+  if (!Number.isFinite(Number(detail.nominal_biaya)) || Number(detail.nominal_biaya) < 1) missing.push('Nominal Biaya');
+  // Dokumentasi §2.1 langkah 6: satu baris valid wajib memiliki satu foto
+  // bukti. Draft tetap boleh disimpan tanpa foto (jalur draft tak dicek di sini).
+  if (detail.photos.length === 0) missing.push('Foto Bukti');
   if (requiresDriverName(position)) {
     if (!detail.driver_name.trim()) missing.push('Nama Driver');
     if (Number(detail.kubikasi) <= 0) missing.push('Kubikasi');
@@ -138,6 +174,9 @@ const getMissingFields = (detail: FormDetailRow): string[] => {
   if (requiresWorkHours(position)) {
     if (!detail.jam_datang) missing.push('Jam Datang');
     if (!detail.jam_pulang) missing.push('Jam Pulang');
+    if (detail.jam_datang && detail.jam_pulang && detail.jam_pulang <= detail.jam_datang) {
+      missing.push('Jam Pulang harus setelah Jam Datang');
+    }
   }
   return missing;
 };
@@ -145,6 +184,57 @@ const getMissingFields = (detail: FormDetailRow): string[] => {
 const isDetailReady = (detail: FormDetailRow): boolean => getMissingFields(detail).length === 0;
 
 const formatCurrency = (amount: number) => `Rp ${amount.toLocaleString('id-ID')}`;
+
+/**
+ * Kompresi foto lapangan (HP 8–12MP) ke JPEG ≤1280px kualitas 0.8 sebelum
+ * upload: hemat kuota sinyal gudang tanpa mengorbankan keterbacaan bukti.
+ */
+const compressImage = (file: File): Promise<File> =>
+  new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+      if (scale >= 1 && file.type === 'image/jpeg' && file.size <= 2 * 1024 * 1024) {
+        resolve(file);
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }) : file),
+        'image/jpeg',
+        0.8
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+
+const formatRibuan = (value: number | string): string => {
+  const rawValue = String(value ?? '').trim();
+  if (!rawValue) return '';
+
+  // Nilai decimal dari Laravel dapat diterima sebagai string, misalnya
+  // "131000.00". Jangan menganggap angka desimal tersebut sebagai digit rupiah.
+  const numericValue = typeof value === 'string' && /^\d+\.\d{2}$/.test(rawValue)
+    ? Number(rawValue)
+    : Number(rawValue.replace(/\./g, '').replace(',', '.'));
+
+  if (!Number.isFinite(numericValue)) return '';
+  return Math.trunc(numericValue).toLocaleString('id-ID');
+};
+
+const parseRibuan = (value: string): number => {
+  const digits = value.replace(/\D/g, '');
+  return digits ? Number(digits) : 0;
+};
 
 const formatDate = (value: string | null | undefined) => {
   if (!value) return '-';
@@ -155,9 +245,35 @@ const formatDate = (value: string | null | undefined) => {
 
 const formatDateTime = (value: string | null | undefined) => {
   if (!value) return '-';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value).trim());
+  if (m) {
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return `${date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+};
+
+/**
+ * Normalisasi nilai tanggal API (ISO datetime `2026-09-22T00:00:00...Z`
+ * atau `YYYY-MM-DD`) ke format `input[type=date]`. Parsing tekstual agar
+ * tidak terpengaruh timezone browser.
+ */
+const toDateInputValue = (value: string | null | undefined): string => {
+  if (!value) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value).trim());
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+};
+
+/**
+ * Normalisasi ke `input[datetime-local]` (`YYYY-MM-DDTHH:mm`).
+ * Menerima `YYYY-MM-DD HH:mm:ss`, ISO `...T...Z`, atau sudah `...THH:mm`.
+ */
+const toDatetimeLocalValue = (value: string | null | undefined): string => {
+  if (!value) return '';
+  const s = String(value).trim().replace(' ', 'T');
+  const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/.exec(s);
+  return m ? m[1] : '';
 };
 
 type StepState = 'done' | 'current' | 'todo';
@@ -269,9 +385,23 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
   );
 }
 
-function DetailPhotoThumb({ photo }: { photo: File }) {
-  const url = useMemo(() => URL.createObjectURL(photo), [photo]);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+function DetailPhotoThumb({ photo }: { photo: PhotoItem }) {
+  const storedUrl = isStoredPhoto(photo)
+    ? (photo.file_path.startsWith('http') ? photo.file_path : `${API_ROOT}/storage/${photo.file_path}`)
+    : '';
+  // URL blob dibuat di effect-state (bukan memo+cleanup): cleanup StrictMode
+  // double-invoke akan mencabut URL yang masih dipakai <img> bila pola memo
+  // dipakai, menghasilkan ERR_FILE_NOT_FOUND di konsol.
+  const [url, setUrl] = useState(storedUrl);
+  useEffect(() => {
+    if (!isStoredPhoto(photo)) {
+      const next = URL.createObjectURL(photo);
+      setUrl(next);
+      return () => URL.revokeObjectURL(next);
+    }
+    setUrl(storedUrl);
+  }, [photo, storedUrl]);
+  if (!url) return null;
   return <Image src={url} alt="Foto pendukung" className="w-full h-full object-cover" width={96} height={96} unoptimized />;
 }
 
@@ -294,51 +424,121 @@ export default function BiayaThlPage() {
     details: [] as FormDetailRow[],
   });
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
   const [formStep, setFormStep] = useState(1);
+  const [biayaConfig, setBiayaConfig] = useState<BiayaConfig>(BIAYA_CONFIG_FALLBACK);
+
+  useEffect(() => { getBiayaConfig(user?.kode_depo).then(setBiayaConfig).catch(() => {}); }, [user?.kode_depo]);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [summary, setSummary] = useState<{ total: number; total_nominal: number; pending: number; checked: number; approved: number; rejected: number; revisi: number; my_drafts: number } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const reqIdRef = useRef(0);
 
   const fetchItems = useCallback(async () => {
+    const reqId = ++reqIdRef.current;
     try {
-      const res = await biayaThl.list({ search, status: statusFilter, page, per_page: 50 });
+      const res = await biayaThl.list({ search: debouncedSearch, status: statusFilter, page, per_page: 50 });
+      if (reqIdRef.current !== reqId) return;
       setItems(res.data.data || res.data);
       setTotalPages(res.data.last_page || 1);
-    } catch {
-      notifyGlobal('Gagal memuat data', 'error');
+      if (res.data.summary) setSummary(res.data.summary);
+    } catch (e) {
+      if (reqIdRef.current !== reqId) return;
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat data'), 'error');
     } finally {
-      setLoading(false);
+      if (reqIdRef.current === reqId) setLoading(false);
     }
-  }, [search, statusFilter, page]);
+  }, [debouncedSearch, statusFilter, page]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+
+
+  const toggleCard = (idx: number) => {
+    setCollapsedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const buildFinalPayload = () => {
+    const normalizedDetails = applyGroupVehicle(formData.details.map(normalizeThlDetail));
+    const fd = new FormData();
+    fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
+    normalizedDetails.forEach((d, i) => {
+      const fdRow = d as FormDetailRow;
+      if (fdRow.detailId) fd.append(`details[${i}][id]`, String(fdRow.detailId));
+      (fdRow.photos_remove ?? []).forEach((pid) => fd.append(`details[${i}][photos_remove][]`, String(pid)));
+      fd.append(`details[${i}][no_surat_jalan]`, d.no_surat_jalan);
+      fd.append(`details[${i}][nama_thl]`, d.nama_thl);
+      fd.append(`details[${i}][driver_name]`, d.driver_name);
+      fd.append(`details[${i}][nopol_kendaraan]`, d.nopol_kendaraan);
+      fd.append(`details[${i}][type_kendaraan]`, d.type_kendaraan);
+      fd.append(`details[${i}][nominal_biaya]`, String(d.nominal_biaya));
+      fd.append(`details[${i}][kubikasi]`, String(d.kubikasi ?? 0));
+      fd.append(`details[${i}][droppoint]`, d.droppoint || '0');
+      if (d.posisi) fd.append(`details[${i}][posisi]`, d.posisi);
+      if (d.jam_datang) fd.append(`details[${i}][jam_datang]`, d.jam_datang);
+      if (d.jam_pulang) fd.append(`details[${i}][jam_pulang]`, d.jam_pulang);
+      if (d.kendaraan_tambahan) fd.append(`details[${i}][kendaraan_tambahan]`, '1');
+      if (d.kendaraan_sj) fd.append(`details[${i}][kendaraan_sj]`, d.kendaraan_sj);
+      if (d.kendaraan_nopol) fd.append(`details[${i}][kendaraan_nopol]`, d.kendaraan_nopol);
+      if (d.kendaraan_type) fd.append(`details[${i}][kendaraan_type]`, d.kendaraan_type);
+      fd.append(`details[${i}][order]`, String(i));
+      d.photos.forEach((photo) => { if (!isStoredPhoto(photo)) fd.append(`details[${i}][photos][]`, photo); });
+    });
+    return fd;
+  };
+
+  const persistFinal = async (): Promise<number | null> => {
+    if (editingId) {
+      const res = await biayaThl.update(editingId, buildFinalPayload());
+      return (res.data?.data?.id as number) ?? editingId;
+    }
+    const res = await biayaThl.create(buildFinalPayload());
+    return (res.data?.data?.id as number) ?? null;
+  };
+
+  const finishAfterSave = async () => {
+    setOpenModal(false);
+    setEditingId(null);
+    setEditingStatus(null);
+    resetForm();
+    setFormStep(1);
+    await fetchItems();
+  };
 
   const handleCreate = async () => {
     setBusy(true);
     try {
-      const normalizedDetails = formData.details.map(normalizeThlDetail);
-      const fd = new FormData();
-      fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
-      normalizedDetails.forEach((d, i) => {
-        fd.append(`details[${i}][no_surat_jalan]`, d.no_surat_jalan);
-        fd.append(`details[${i}][nama_thl]`, d.nama_thl);
-        fd.append(`details[${i}][driver_name]`, d.driver_name);
-        fd.append(`details[${i}][nopol_kendaraan]`, d.nopol_kendaraan);
-        fd.append(`details[${i}][type_kendaraan]`, d.type_kendaraan);
-        fd.append(`details[${i}][nominal_biaya]`, String(d.nominal_biaya));
-        fd.append(`details[${i}][kubikasi]`, String(d.kubikasi ?? 0));
-        fd.append(`details[${i}][droppoint]`, d.droppoint || '0');
-        if (d.posisi) fd.append(`details[${i}][posisi]`, d.posisi);
-        if (d.jam_datang) fd.append(`details[${i}][jam_datang]`, d.jam_datang);
-        if (d.jam_pulang) fd.append(`details[${i}][jam_pulang]`, d.jam_pulang);
-        if (d.kendaraan_tambahan) fd.append(`details[${i}][kendaraan_tambahan]`, '1');
-        fd.append(`details[${i}][order]`, String(i));
-        d.photos.forEach((photo) => fd.append(`details[${i}][photos][]`, photo));
-      });
-      await biayaThl.create(fd);
-      notifyGlobal('Biaya THL berhasil dibuat', 'success');
-      setOpenModal(false);
-      resetForm();
-      fetchItems();
+      await persistFinal();
+      notifyGlobal('Pengajuan tersimpan sebagai draft — buka detail lalu Kirim untuk masuk antrean.', 'success');
+      await finishAfterSave();
     } catch (e: unknown) {
-      notifyGlobal((e as Error).message || 'Gagal membuat Biaya THL', 'error');
+      notifyGlobal(getErrorMessage(e, 'Gagal membuat Biaya THL'), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCreateAndSubmit = async () => {
+    setBusy(true);
+    try {
+      const id = await persistFinal();
+      if (id == null) throw new Error('empty');
+      await biayaThl.submit(id);
+      notifyGlobal('Pengajuan dikirim ke antrean pemeriksaan.', 'success');
+      await finishAfterSave();
+    } catch (e: unknown) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengirim pengajuan'), 'error');
     } finally {
       setBusy(false);
     }
@@ -348,47 +548,90 @@ export default function BiayaThlPage() {
     if (!editingId) return;
     setBusy(true);
     try {
-      const normalizedDetails = formData.details.map(normalizeThlDetail);
-      const fd = new FormData();
-      fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
-      fd.append('_method', 'PUT');
-      normalizedDetails.forEach((d, i) => {
-        fd.append(`details[${i}][no_surat_jalan]`, d.no_surat_jalan);
-        fd.append(`details[${i}][nama_thl]`, d.nama_thl);
-        fd.append(`details[${i}][driver_name]`, d.driver_name);
-        fd.append(`details[${i}][nopol_kendaraan]`, d.nopol_kendaraan);
-        fd.append(`details[${i}][type_kendaraan]`, d.type_kendaraan);
-        fd.append(`details[${i}][nominal_biaya]`, String(d.nominal_biaya));
-        fd.append(`details[${i}][kubikasi]`, String(d.kubikasi ?? 0));
-        fd.append(`details[${i}][droppoint]`, d.droppoint || '0');
-        if (d.posisi) fd.append(`details[${i}][posisi]`, d.posisi);
-        if (d.jam_datang) fd.append(`details[${i}][jam_datang]`, d.jam_datang);
-        if (d.jam_pulang) fd.append(`details[${i}][jam_pulang]`, d.jam_pulang);
-        if (d.kendaraan_tambahan) fd.append(`details[${i}][kendaraan_tambahan]`, '1');
-        fd.append(`details[${i}][order]`, String(i));
-        d.photos.forEach((photo) => fd.append(`details[${i}][photos][]`, photo));
-      });
-      await biayaThl.update(editingId, fd);
+      await persistFinal();
       notifyGlobal('Biaya THL berhasil diperbarui', 'success');
-      setOpenModal(false);
-      setEditingId(null);
-      resetForm();
-      fetchItems();
+      await finishAfterSave();
     } catch (e: unknown) {
-      notifyGlobal((e as Error).message || 'Gagal memperbarui Biaya THL', 'error');
+      notifyGlobal(getErrorMessage(e, 'Gagal memperbarui Biaya THL'), 'error');
     } finally {
       setBusy(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Yakin ingin menghapus?')) return;
+  const canSaveDraft = editingId === null || ['draft', 'rejected', 'revisi'].includes(editingStatus ?? '');
+
+  const buildDraftPayload = () => {
+    const fd = new FormData();
+    fd.append('is_draft', '1');
+    if (formData.tanggal_pengajuan) fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
+    applyGroupVehicle(formData.details.map(normalizeThlDetail)).forEach((d, i) => {
+      const put = (key: string, value: unknown) => {
+        if (value === undefined || value === null || value === '') return;
+        fd.append(`details[${i}][${key}]`, value instanceof File ? value : String(value));
+      };
+      put('no_surat_jalan', d.no_surat_jalan);
+      put('nama_thl', d.nama_thl);
+      put('driver_name', d.driver_name);
+      put('nopol_kendaraan', d.nopol_kendaraan);
+      put('type_kendaraan', d.type_kendaraan);
+      put('nominal_biaya', d.nominal_biaya);
+      put('kubikasi', d.kubikasi);
+      put('droppoint', d.droppoint);
+      put('posisi', d.posisi);
+      put('jam_datang', d.jam_datang);
+      put('jam_pulang', d.jam_pulang);
+      if (d.kendaraan_tambahan) fd.append(`details[${i}][kendaraan_tambahan]`, '1');
+      put('kendaraan_sj', d.kendaraan_sj);
+      put('kendaraan_nopol', d.kendaraan_nopol);
+      put('kendaraan_type', d.kendaraan_type);
+      const fdRow = d as FormDetailRow;
+      if (fdRow.detailId) fd.append(`details[${i}][id]`, String(fdRow.detailId));
+      (fdRow.photos_remove ?? []).forEach((pid) => fd.append(`details[${i}][photos_remove][]`, String(pid)));
+      fd.append(`details[${i}][order]`, String(i));
+      d.photos.forEach((photo) => { if (!isStoredPhoto(photo)) fd.append(`details[${i}][photos][]`, photo); });
+    });
+    return fd;
+  };
+
+  const handleSaveDraft = async () => {
+    if (!canSaveDraft) return;
+    setBusy(true);
     try {
-      await biayaThl.delete(id);
-      notifyGlobal('Biaya THL berhasil dihapus', 'success');
+      const fd = buildDraftPayload();
+      if (editingId) {
+        await biayaThl.update(editingId, fd);
+      } else {
+        await biayaThl.create(fd);
+      }
+      notifyGlobal('Draft tersimpan. Lengkapi dan kirim saat siap.', 'success');
+      setOpenModal(false);
+      setEditingId(null);
+      setEditingStatus(null);
+      resetForm();
+      setFormStep(1);
       fetchItems();
-    } catch {
-      notifyGlobal('Gagal menghapus', 'error');
+    } catch (e: unknown) {
+      notifyGlobal(getErrorMessage(e, 'Gagal menyimpan draft'), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteTargetId === null) return;
+    try {
+      await biayaThl.delete(deleteTargetId);
+      notifyGlobal('Biaya THL berhasil dihapus', 'success');
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
+      fetchItems();
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal menghapus'), 'error');
     }
   };
 
@@ -448,6 +691,7 @@ export default function BiayaThlPage() {
 
   const resetForm = () => {
     setFormData({ tanggal_pengajuan: '', details: [] });
+    setSjVehicle({});
   };
 
   const insertSjGroupBefore = (nextGroupId: string | null) => {
@@ -466,27 +710,24 @@ export default function BiayaThlPage() {
   };
 
   const addDetailRow = (groupId: string) => {
+    const newIndex = formData.details.length;
     setFormData(prev => {
       const groupRows = prev.details.filter(d => d.groupId === groupId);
       const source = groupRows.length > 0 ? groupRows[groupRows.length - 1] : null;
-      if (source) {
-        const duplicatedRow: FormDetailRow = {
-          ...source,
-          nama_thl: '',
-          photos: [],
-          groupId,
-          order: prev.details.length,
-        };
-        return { ...prev, details: [...prev.details, duplicatedRow] };
-      }
-      return {
-        ...prev,
-        details: [...prev.details, createEmptyDetail(prev.details.length, '', groupId)],
-      };
+      const newRow: FormDetailRow = source
+        ? { ...source, nama_thl: '', photos: [], groupId, order: prev.details.length }
+        : createEmptyDetail(prev.details.length, '', groupId);
+      return { ...prev, details: [...prev.details, newRow] };
     });
+    scrollToWorker(newIndex);
   };
 
   const removeSjGroup = (groupId: string) => {
+    setSjVehicle((prev) => {
+      const next = { ...prev };
+      delete next[groupId];
+      return next;
+    });
     setFormData(prev => ({
       ...prev,
       details: prev.details
@@ -495,14 +736,70 @@ export default function BiayaThlPage() {
     }));
   };
 
-  const updateSjNumber = (groupId: string, value: string) => {
-    setErrorSJGroupIndex((prev) => (prev === Object.values(sjGroups).findIndex((g) => g.groupId === groupId) ? null : prev));
+  // Duplikat grup SJ: salin semua baris pekerja (nama, posisi, kendaraan,
+  // nominal, jam) ke grup baru tepat di bawahnya. Nomor SJ dikosongkan agar
+  // wajib diisi baru; foto dan id tidak ikut disalin (baris baru butuh bukti
+  // dan id sendiri).
+  const duplicateSjGroup = (groupId: string, groupIndex: number) => {
+    const newGroupId = createGroupId();
+    setFormData((prev) => {
+      const groupRows = prev.details.filter((d) => d.groupId === groupId);
+      if (groupRows.length === 0) return prev;
+      const copies: FormDetailRow[] = groupRows.map((d) => ({
+        ...d,
+        id: undefined,
+        detailId: undefined,
+        groupId: newGroupId,
+        no_surat_jalan: '',
+        photos: [],
+        photos_remove: [],
+      }));
+      const details = [...prev.details];
+      const lastIdx = details.map((d) => d.groupId).lastIndexOf(groupId);
+      details.splice(lastIdx + 1, 0, ...copies);
+      return { ...prev, details: details.map((d, i) => ({ ...d, order: i })) };
+    });
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`sj-group-${groupIndex + 1}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = el?.querySelector('input:not([disabled])') as HTMLInputElement | null;
+      input?.focus({ preventScroll: true });
+    });
+    // Foto sengaja tidak ikut disalin: bukti milik kejadian bongkar asal,
+    // baris baru wajib difoto ulang. Aturan foto wajib (1/baris) akan
+    // menandai baris salinan sampai fotonya dilengkapi.
+    notifyGlobal('Grup diduplikat — isi SJ baru dan upload foto bukti tiap baris', 'success');
+  };
+
+  const updateSjNumber = (groupId: string, value: string) => {    setErrorSJGroupIndex((prev) => (prev === Object.values(sjGroups).findIndex((g) => g.groupId === groupId) ? null : prev));
     setFormData(prev => ({
       ...prev,
       details: prev.details.map((d) =>
         d.groupId === groupId ? { ...d, no_surat_jalan: value } : d
       ),
     }));
+  };
+
+  const scrollToWorker = (globalIdx: number) => {
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`worker-card-${globalIdx}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = el?.querySelector('input:not([disabled])') as HTMLInputElement | null;
+      input?.focus({ preventScroll: true });
+    });
+  };
+
+  const insertDetailBefore = (groupId: string, atIndex: number) => {
+    const source = formData.details[atIndex - 1];
+    const row: FormDetailRow = source
+      ? { ...source, nama_thl: '', photos: [], groupId, order: atIndex }
+      : createEmptyDetail(atIndex, '', groupId);
+    setFormData((prev) => {
+      const details = [...prev.details];
+      details.splice(atIndex, 0, row);
+      return { ...prev, details: details.map((d, i) => ({ ...d, order: i })) };
+    });
+    scrollToWorker(atIndex);
   };
 
   const removeDetail = (index: number) => {
@@ -538,17 +835,88 @@ export default function BiayaThlPage() {
     setFormData(prev => {
       const newDetails = [...prev.details];
       const current = newDetails[detailIndex];
-      newDetails[detailIndex] = { ...current, photos: current.photos.filter((_, j) => j !== photoIndex) };
+      const removed = current.photos[photoIndex];
+      newDetails[detailIndex] = {
+        ...current,
+        photos: current.photos.filter((_, j) => j !== photoIndex),
+        photos_remove: removed && isStoredPhoto(removed)
+          ? [...(current.photos_remove ?? []), removed.id]
+          : current.photos_remove,
+      };
       return { ...prev, details: newDetails };
     });
   };
 
   const totalNominal = formData.details.reduce((sum, d) => sum + (Number(d.nominal_biaya) || 0), 0);
   const totalKubikasi = formData.details.reduce((sum, d) => sum + (Number(d.kubikasi) || 0), 0);
-  const isRfahRequired = totalNominal > 750000;
+  const positionCounts = formData.details.reduce<Record<string, number>>((acc, d) => {
+    const key = String(d.posisi ?? '').trim().toUpperCase();
+    if (key === 'THL GUDANG' || key === 'THL HELPER' || key === 'THL DRIVER') acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+  const compositionLabel = ['THL GUDANG', 'THL HELPER', 'THL DRIVER']
+    .map((k) => positionCounts[k] ? `${positionCounts[k]} ${k.replace('THL ', '').toLowerCase()}` : '')
+    .filter(Boolean)
+    .join(' · ') || '—';
+  // Checklist "kendaraan tambahan" per grup SJ (khusus GUDANG): kru yang
+  // sama membongkar 2+ kendaraan. Foto absen milik kru (per grup) sehingga
+  // tidak diduplikat — cukup centang + isi SJ/plat/type kendaraan ke-2.
+  // Berbeda dari versi lama: plat/type BARIS tidak disentuh (milik
+  // kendaraan utama sesuai dokumentasi); tambahan tersimpan di
+  // kendaraan_sj/nopol/type per baris GUDANG.
+  const [sjVehicle, setSjVehicle] = useState<Record<string, { enabled: boolean; sj: string; nopol: string; type: string }>>({});
+  // Plat tampil di ringkasan: plat baris + plat kendaraan tambahan grup.
+  const platList = [...new Set([
+    ...formData.details.map((d) => (d.nopol_kendaraan || '').trim().toUpperCase()),
+    ...Object.values(sjVehicle).map((gv) => (gv.enabled ? (gv.nopol || '').trim().toUpperCase() : '')),
+  ].filter(Boolean))];
+  const isRfahRequired = totalNominal > biayaConfig.thl_rfah_threshold;
   const hasIncompleteThlRows = formData.details.some((detail) => !isDetailReady(detail));
   const [errorWorkerIndex, setErrorWorkerIndex] = useState<number | null>(null);
+  const [collapsedCards, setCollapsedCards] = useState<Set<number>>(new Set());
+  // Filter "hanya yang belum lengkap" untuk grup besar: sembunyikan kartu
+  // yang sudah Siap agar scroll pendek. Index stabil (pakai hidden, bukan
+  // filter array) sehingga anchor worker-card-* dan order tidak bergeser.
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  // Grup review Step 3 per posisi (terbuka semua secara default).
+  const [reviewGroupsOpen, setReviewGroupsOpen] = useState<Set<string>>(() => new Set(POSITIONS));
+  const toggleReviewGroup = (pos: string) => {
+    setReviewGroupsOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(pos)) next.delete(pos);
+      else next.add(pos);
+      return next;
+    });
+  };
+  const prevReadyRef = useRef<Record<number, boolean>>({});
   const [errorSJGroupIndex, setErrorSJGroupIndex] = useState<number | null>(null);
+  // Lipat otomatis kartu yang baru lengkap (kecuali fokus sedang di dalamnya);
+  // buka kembali kartu yang ditandai error.
+  useEffect(() => {
+    setCollapsedCards((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      const active = document.activeElement as HTMLElement | null;
+      formData.details.forEach((d, i) => {
+        const ready = isDetailReady(d);
+        const was = prevReadyRef.current[i] ?? false;
+        if (ready && !was && errorWorkerIndex !== i) {
+          const card = document.getElementById(`worker-card-${i}`);
+          if (!card || !card.contains(active)) {
+            next.add(i);
+            changed = true;
+          }
+        }
+        if (!ready && was) {
+          next.delete(i);
+          changed = true;
+        }
+        prevReadyRef.current[i] = ready;
+      });
+      return changed ? next : prev;
+    });
+  }, [formData.details, errorWorkerIndex]);
+
 
   const previewThl = () => {
     const firstDetail = formData.details[0];
@@ -563,9 +931,9 @@ export default function BiayaThlPage() {
       kubikasi_base: totalKubikasi,
       nominal_biaya: totalNominal,
       is_rfah_required: isRfahRequired,
-      rfah_name: isRfahRequired ? 'Umi Marzuqoh' : '',
+      rfah_name: isRfahRequired ? biayaConfig.rfah_name : '',
       status: 'draft',
-      details: formData.details,
+      details: applyGroupVehicle(formData.details.map(normalizeThlDetail)),
     });
   };
 
@@ -575,6 +943,44 @@ export default function BiayaThlPage() {
     acc[gid].indices.push(i);
     return acc;
   }, {});
+
+  const isGudangGroup = (groupId: string): boolean =>
+    formData.details.some((d) => d.groupId === groupId && String(d.posisi ?? '').trim().toUpperCase() === 'THL GUDANG');
+
+  /**
+   * Menerjemahkan checklist grup ke kontrak per-baris backend. Hanya flag +
+   * kolom kendaraan tambahan yang ditulis; nopol/type baris (kendaraan
+   * utama) tidak disentuh.
+   */
+  const applyGroupVehicle = (rows: FormDetailRow[]): FormDetailRow[] =>
+    rows.map((d) => {
+      if (String(d.posisi ?? '').trim().toUpperCase() !== 'THL GUDANG') return d;
+      const gv = sjVehicle[d.groupId];
+      if (gv?.enabled) {
+        return { ...d, kendaraan_tambahan: true, kendaraan_sj: gv.sj, kendaraan_nopol: gv.nopol, kendaraan_type: gv.type };
+      }
+      return { ...d, kendaraan_tambahan: false, kendaraan_sj: '', kendaraan_nopol: '', kendaraan_type: '' };
+    });
+
+  const getGroupVehicleError = (groupId: string): string | null => {
+    if (!isGudangGroup(groupId)) return null;
+    const gv = sjVehicle[groupId];
+    if (!gv?.enabled) return null;
+    const problems: string[] = [];
+    if (!gv.sj.trim()) problems.push('No. SJ kendaraan ke-2');
+    if (!gv.nopol.trim()) problems.push('plat kendaraan ke-2');
+    if (!gv.type.trim()) problems.push('type kendaraan ke-2');
+    if (problems.length === 0) return null;
+    return `Kendaraan tambahan SJ ${Object.values(sjGroups).findIndex((g) => g.groupId === groupId) + 1} belum lengkap: ${problems.join(', ')}.`;
+  };
+
+  const sjVehicleErrorInfo = (() => {
+    for (const g of Object.values(sjGroups)) {
+      const err = getGroupVehicleError(g.groupId);
+      if (err) return { error: err, groupId: g.groupId };
+    }
+    return { error: null as string | null, groupId: null as string | null };
+  })();
 
   const sjGroupErrorInfo = (() => {
     const groups = Object.values(sjGroups);
@@ -589,13 +995,29 @@ export default function BiayaThlPage() {
     return { error: null, groupIndex: null };
   })();
   const sjGroupError = sjGroupErrorInfo.error;
+  const vehicleError = sjVehicleErrorInfo.error;
+  const hasBlockingError = !!sjGroupError || !!vehicleError;
 
   const goToStep = (step: number) => {
+    if (step > 1 && !formData.tanggal_pengajuan) {
+      notifyGlobal('Isi tanggal pengajuan terlebih dahulu', 'error');
+      setFormStep(1);
+      return;
+    }
     if (step === 3) {
-      if (sjGroupError) {
-        setErrorSJGroupIndex(sjGroupErrorInfo.groupIndex);
+      if (sjGroupError || vehicleError) {
+        const errGroupIndex = sjGroupError ? sjGroupErrorInfo.groupIndex : null;
+        setErrorSJGroupIndex(errGroupIndex);
         setErrorWorkerIndex(null);
-        notifyGlobal(sjGroupError, 'error');
+        notifyGlobal(vehicleError ?? sjGroupError ?? '', 'error');
+        requestAnimationFrame(() => {
+          const targetId = vehicleError && sjVehicleErrorInfo.groupId
+            ? `sj-vehicle-${sjVehicleErrorInfo.groupId}`
+            : errGroupIndex !== null && errGroupIndex !== undefined
+              ? `sj-group-${errGroupIndex}`
+              : null;
+          if (targetId) document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
         return;
       }
       if (hasIncompleteThlRows) {
@@ -606,12 +1028,20 @@ export default function BiayaThlPage() {
           const gid = firstIncomplete.groupId;
           const sjGroupIdx = Object.values(sjGroups).findIndex((g) => g.groupId === gid);
           setErrorSJGroupIndex(sjGroupIdx);
+          // Buka kartu yang error agar user langsung melihat kolom yang kurang.
+          setCollapsedCards((prev) => {
+            if (!prev.has(firstIncompleteIdx)) return prev;
+            const next = new Set(prev);
+            next.delete(firstIncompleteIdx);
+            return next;
+          });
           const workerNum = (formData.details.filter((d) => d.groupId === gid).findIndex((d) => d === firstIncomplete)) + 1;
           const missingFields = getMissingFields(firstIncomplete);
           notifyGlobal(
             `Pekerja ${workerNum}${sjGroupIdx >= 0 ? ` (Surat Jalan ${sjGroupIdx + 1})` : ''} belum lengkap: ${missingFields.join(', ')}.`,
             'error'
           );
+          scrollToWorker(firstIncompleteIdx);
           return;
         }
         notifyGlobal('Lengkapi semua data pekerja sebelum lanjut', 'error');
@@ -621,8 +1051,31 @@ export default function BiayaThlPage() {
     setFormStep(step);
   };
 
+  // Step 2 butuh tanggal; Step 3 butuh tanggal + minimal 1 baris valid.
+  const isStepBlocked = (step: number): string | null => {
+    if (step <= formStep) return null;
+    if (step > 1 && !formData.tanggal_pengajuan) return 'Isi tanggal pengajuan terlebih dahulu';
+    if (step > 2 && (formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError)) {
+      return 'Lengkapi data pekerja terlebih dahulu';
+    }
+    return null;
+  };
+
+  const isFormDirty = formData.tanggal_pengajuan !== '' || formData.details.length > 0;
+
+  const requestClose = () => {
+    if (isFormDirty && !busy) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    setOpenModal(false);
+    setEditingId(null);
+    setEditingStatus(null);
+  };
+
   const openCreateModal = () => {
     setEditingId(null);
+    setEditingStatus(null);
     resetForm();
     setFormStep(1);
     setOpenModal(true);
@@ -630,16 +1083,40 @@ export default function BiayaThlPage() {
 
   const openEditModal = (item: BiayaThlItem) => {
     setEditingId(item.id);
+    setEditingStatus(item.status);
     const sjGroupIds = new Map<string, string>();
     const details = (item.details as unknown as DetailRow[]).map((d): FormDetailRow => {
       const sj = d.no_surat_jalan || '';
       if (!sjGroupIds.has(sj)) sjGroupIds.set(sj, createGroupId());
-      return { ...d, photos: [], groupId: sjGroupIds.get(sj) as string } as FormDetailRow;
+      return {
+        ...d,
+        detailId: d.detailId ?? d.id,
+        jam_datang: toDatetimeLocalValue(d.jam_datang),
+        jam_pulang: toDatetimeLocalValue(d.jam_pulang),
+        photos: Array.isArray(d.photos) ? [...d.photos] : [],
+        groupId: sjGroupIds.get(sj) as string,
+      } as FormDetailRow;
     });
     setFormData({
-      tanggal_pengajuan: item.tanggal_pengajuan,
+      tanggal_pengajuan: toDateInputValue(item.tanggal_pengajuan),
       details,
     });
+    // Pulihkan checklist kendaraan tambahan dari baris GUDANG bertanda
+    // (groupId di atas baru dibangkitkan — turunkan dari details yang sama).
+    const restored: Record<string, { enabled: boolean; sj: string; nopol: string; type: string }> = {};
+    for (const d of details) {
+      if (restored[d.groupId]) continue;
+      if (String(d.posisi ?? '').trim().toUpperCase() !== 'THL GUDANG') continue;
+      if (d.kendaraan_tambahan === true) {
+        restored[d.groupId] = {
+          enabled: true,
+          sj: (d as unknown as { kendaraan_sj?: string }).kendaraan_sj || '',
+          nopol: (d as unknown as { kendaraan_nopol?: string }).kendaraan_nopol || '',
+          type: (d as unknown as { kendaraan_type?: string }).kendaraan_type || '',
+        };
+      }
+    }
+    setSjVehicle(restored);
     setFormStep(1);
     setOpenModal(true);
   };
@@ -656,9 +1133,7 @@ export default function BiayaThlPage() {
     );
   };
 
-  const totalNominalValue = items.reduce((sum, item) => sum + (Number(item.nominal_biaya) || 0), 0);
-  const pendingCount = items.filter((item) => item.status === 'pending').length;
-  const approvedCount = items.filter((item) => item.status === 'approved').length;
+
 
   return (
     <DashboardLayout>
@@ -677,25 +1152,29 @@ export default function BiayaThlPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
                 Total
-                <span className="rounded-md bg-primary-500 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{items.length}</span>
+                <span className="rounded-md bg-primary-500 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{summary?.total ?? items.length}</span>
               </span>
             </div>
           </div>
         </header>
 
-        <div className="rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className={`rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="px-2 py-1">
             <p className="text-xs text-slate-500">Total Nominal</p>
-            <p className="mt-1 text-2xl font-bold text-slate-800 tabular-nums">{formatCurrency(totalNominalValue)}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-800 tabular-nums">{formatCurrency(summary?.total_nominal ?? 0)}</p>
           </div>
           <div className="border-l border-slate-100 px-2 py-1 sm:pl-5">
             <p className="text-xs text-slate-500">Menunggu</p>
-            <p className="mt-1 text-2xl font-bold text-amber-600 tabular-nums">{pendingCount}</p>
+            <p className="mt-1 text-2xl font-bold text-amber-600 tabular-nums">{summary?.pending ?? 0}</p>
           </div>
           <div className="border-l border-slate-100 px-2 py-1 sm:pl-5">
             <p className="text-xs text-slate-500">Disetujui</p>
-            <p className="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">{approvedCount}</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">{summary?.approved ?? 0}</p>
+          </div>
+          <div className="border-l border-slate-100 px-2 py-1 sm:pl-5">
+            <p className="text-xs text-slate-500">Ditolak</p>
+            <p className="mt-1 text-2xl font-bold text-red-600 tabular-nums">{summary?.rejected ?? 0}</p>
           </div>
           </div>
         </div>
@@ -711,11 +1190,15 @@ export default function BiayaThlPage() {
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
+              <option value="checked">Checked</option>
+              <option value="revisi">Revisi</option>
             </select>
-            <button onClick={openCreateModal} className="inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] sm:w-auto">
+            {hasPermission('biaya_thl.create') && (
+            <button onClick={openCreateModal} className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] sm:w-auto">
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               Buat Pengajuan
             </button>
+            )}
           </div>
 
         {/* Table - Desktop */}
@@ -728,7 +1211,6 @@ export default function BiayaThlPage() {
                   <th scope="col" className="table-header">No Kendaraan</th>
                   <th scope="col" className="table-header">Depo</th>
                   <th scope="col" className="table-header text-right">Total</th>
-                  <th scope="col" className="table-header">RFAH</th>
                   <th scope="col" className="table-header">Status</th>
                   <th scope="col" className="table-header text-right">Aksi</th>
                 </tr>
@@ -736,7 +1218,7 @@ export default function BiayaThlPage() {
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="table-cell py-10">
+                    <td colSpan={6} className="table-cell py-10">
                       <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                         <svg className="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                         <span className="text-sm font-medium">Memuat data...</span>
@@ -745,7 +1227,7 @@ export default function BiayaThlPage() {
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="table-cell py-12">
+                    <td colSpan={6} className="table-cell py-12">
                       <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                         <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                         <span className="text-sm font-medium">Tidak ada data</span>
@@ -763,7 +1245,6 @@ export default function BiayaThlPage() {
                       <td className="px-5 py-3 text-sm font-medium text-slate-800">{item.no_kendaraan || '-'}</td>
                       <td className="px-5 py-3 text-sm text-slate-600">{item.nama_depo}</td>
                       <td className="px-5 py-3 text-right text-sm font-semibold text-slate-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</td>
-                      <td className="table-cell">{item.is_rfah_required ? <span className="text-amber-600 text-xs font-medium">{item.rfah_name}</span> : '-'}</td>
                       <td className="px-5 py-3">{badge(item.status)}</td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -872,18 +1353,67 @@ export default function BiayaThlPage() {
         )}
 
         {/* Create/Edit Modal - Step Wizard */}
-        <Modal open={openModal} onClose={() => { setOpenModal(false); setEditingId(null); }} title={editingId ? 'Edit Biaya THL' : 'Buat Biaya THL'} subtitle="Lengkapi pengajuan dalam 3 langkah sederhana" size="2xl" footer={
-          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-            <button type="button" onClick={() => { setOpenModal(false); setEditingId(null); }} className="btn-secondary w-full sm:w-auto">Batal</button>
-            <button type="button" onClick={previewThl} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || !!sjGroupError} className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+        <Modal open={openModal} onClose={requestClose} title={editingId ? 'Edit Biaya THL' : 'Buat Biaya THL'} subtitle={editingId ? 'Periksa perubahan sebelum disimpan' : 'Lengkapi pengajuan dalam 3 langkah sederhana'} size="2xl" footer={
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+            <button type="button" onClick={requestClose} disabled={busy} className="btn-secondary w-full sm:w-auto">Batal</button>
+            {formStep < 3 && canSaveDraft && (
+              <button type="button" onClick={handleSaveDraft} disabled={busy} title="Simpan sebagai draft — bisa dilengkapi dan dikirim nanti" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" /></svg>
+                Simpan Draft
+              </button>
+            )}
+            </div>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+            {formStep > 1 && (
+              <button type="button" onClick={() => goToStep(formStep - 1)} disabled={busy} title="Kembali ke langkah sebelumnya" className="btn-secondary inline-flex w-full items-center justify-center gap-1.5 sm:w-auto">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+                Kembali
+              </button>
+            )}
+            {formStep === 3 && (
+            // Sengaja tanpa gate permission: preview me-render data form yang
+            // sudah terlihat pengguna (client-side, tidak menyimpan/mengirim).
+            // Akses modal sudah digerbang biaya_thl.create/edit; backend PDF
+            // tetap butuh biaya_thl.view + authorizeCreator.
+            <button type="button" onClick={previewThl} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title="Pratinjau PDF ringkasan pengajuan (tidak menyimpan)" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               Preview PDF
             </button>
-            <button type="button" onClick={editingId ? handleUpdate : handleCreate} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || !!sjGroupError} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-              {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
-              {busy ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Buat Pengajuan'}
-            </button>
+            )}
+            {formStep === 3 && (!editingId || (canSaveDraft && hasPermission('approval.submit'))) ? (
+              <>
+                <button type="button" onClick={editingId ? handleUpdate : handleCreate} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title="Hanya menyimpan — belum masuk antrean pemeriksaan" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                  {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-600" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
+                  {busy ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Draft'}
+                </button>
+                <button type="button" onClick={handleCreateAndSubmit} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title="Simpan dan langsung kirim ke antrean pemeriksaan" className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                  Simpan & Kirim
+                </button>
+              </>
+            ) : (
+            <>
+            {formStep === 1 ? (
+              <button type="button" onClick={() => goToStep(2)} disabled={busy || !formData.tanggal_pengajuan} title={!formData.tanggal_pengajuan ? 'Isi tanggal pengajuan terlebih dahulu' : 'Lanjut ke pengisian data pekerja'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                Lanjut ke Data Pekerja
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+              </button>
+            ) : formStep === 2 ? (
+              <button type="button" onClick={() => goToStep(3)} disabled={busy || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title={formData.details.length === 0 ? 'Tambahkan minimal 1 pekerja' : hasIncompleteThlRows || hasBlockingError ? 'Lengkapi data pekerja yang belum valid' : 'Lanjut ke ringkasan akhir'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                Lanjut ke Review
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+              </button>
+            ) : (
+              <button type="button" onClick={editingId ? handleUpdate : handleCreate} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title="Simpan pengajuan" className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
+                {busy ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Buat Pengajuan'}
+              </button>
+            )}
+            </>
+            )}
           </div>
+        </div>
         }>
           <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
             <aside className="hidden rounded-3xl bg-slate-950 p-5 text-white shadow-xl lg:block">
@@ -897,21 +1427,33 @@ export default function BiayaThlPage() {
                   { step: 1, label: 'Informasi', note: 'Tanggal & depo' },
                   { step: 2, label: 'Data pekerja', note: `${formData.details.length} pekerja` },
                   { step: 3, label: 'Review', note: formatCurrency(totalNominal) },
-                ].map((item) => (
-                  <button key={item.step} type="button" onClick={() => goToStep(item.step)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-all ${formStep === item.step ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-300 hover:bg-white/10'}`}>
+                ].map((item) => {
+                  const blockedReason = isStepBlocked(item.step);
+                  return (
+                  <button key={item.step} type="button" onClick={() => goToStep(item.step)} disabled={!!blockedReason} title={blockedReason ?? undefined} aria-current={formStep === item.step ? 'step' : undefined} aria-disabled={!!blockedReason} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-all ${formStep === item.step ? 'bg-white text-slate-900 shadow-lg' : blockedReason ? 'text-slate-500 opacity-50 cursor-not-allowed' : 'text-slate-300 hover:bg-white/10'}`}>
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black ${formStep === item.step ? 'bg-primary-600 text-white' : 'bg-white/10 text-white'}`}>{item.step}</span>
                     <span className="min-w-0">
                       <span className="block text-xs font-black">{item.label}</span>
-                      <span className={`mt-0.5 block truncate text-[10px] ${formStep === item.step ? 'text-slate-500' : 'text-slate-400'}`}>{item.note}</span>
+                      <span className={`mt-0.5 block truncate text-[10px] ${formStep === item.step ? 'text-slate-500' : 'text-slate-400'}`}>{blockedReason ?? item.note}</span>
                     </span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
               <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-200">Ringkasan live</p>
                 <div className="mt-4 space-y-3">
                   <div className="flex items-end justify-between gap-3"><span className="text-xs text-slate-400">Total nominal</span><span className="text-sm font-black tabular-nums">{formatCurrency(totalNominal)}</span></div>
                   <div className="flex items-end justify-between gap-3"><span className="text-xs text-slate-400">Kubikasi</span><span className="text-sm font-black tabular-nums">{totalKubikasi} m³</span></div>
+                  <div className="flex items-end justify-between gap-3"><span className="text-xs text-slate-400">Komposisi</span><span className="text-xs font-bold tabular-nums text-right">{compositionLabel}</span></div>
+                  <div className="flex items-start justify-between gap-3"><span className="text-xs text-slate-400 pt-0.5">Plat</span>{platList.length > 0 ? (
+                    <span className="flex flex-wrap justify-end gap-1 max-w-[130px]">
+                      {platList.slice(0, 4).map((p) => (
+                        <span key={p} title={p} className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-200 truncate max-w-full">{p}</span>
+                      ))}
+                      {platList.length > 4 && <span className="text-[10px] font-bold text-slate-400">+{platList.length - 4}</span>}
+                    </span>
+                  ) : <span className="text-xs text-slate-500">—</span>}</div>
                   <div className="h-px bg-white/10" />
                   <p className="text-[10px] leading-4 text-slate-400">Validasi otomatis aktif. Data yang belum lengkap tidak dapat dikirim.</p>
                 </div>
@@ -928,10 +1470,12 @@ export default function BiayaThlPage() {
             {[
               { step: 1, label: 'Informasi', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg> },
               { step: 2, label: 'Data Pekerja', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg> },
-              { step: 3, label: 'Total & Submit', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
-            ].map((s, i) => (
+              { step: 3, label: 'Review', icon: <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
+            ].map((s, i) => {
+              const blockedReason = isStepBlocked(s.step);
+              return (
               <Fragment key={s.step}>
-                <button type="button" onClick={() => goToStep(s.step)} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${formStep === s.step ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : formStep > s.step ? 'bg-primary-50 text-primary-700' : 'bg-gray-100 text-gray-400'}`}>
+                <button type="button" onClick={() => goToStep(s.step)} disabled={!!blockedReason} title={blockedReason ?? undefined} aria-current={formStep === s.step ? 'step' : undefined} aria-disabled={!!blockedReason} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${formStep === s.step ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : formStep > s.step ? 'bg-primary-50 text-primary-700' : blockedReason ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400'}`}>
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${formStep === s.step ? 'bg-white text-primary-600' : formStep > s.step ? 'bg-primary-200 text-primary-700' : 'bg-gray-200 text-gray-400'}`}>
                     {formStep > s.step ? <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> : s.step}
                   </div>
@@ -939,7 +1483,8 @@ export default function BiayaThlPage() {
                 </button>
                 {i < 2 && <div className={`flex-1 h-0.5 mx-2 rounded ${formStep > s.step ? 'bg-primary-300' : 'bg-gray-200'}`} />}
               </Fragment>
-            ))}
+              );
+            })}
             </div>
           </div>
 
@@ -959,14 +1504,11 @@ export default function BiayaThlPage() {
 
                 <label className="block">
                   <span className="text-[11px] font-black uppercase tracking-widest text-primary-600 mb-2 block">Tanggal Pengajuan</span>
-                  <input type="date" value={formData.tanggal_pengajuan} onChange={(e) => setFormData({ ...formData, tanggal_pengajuan: e.target.value })} className="w-full bg-white/80 backdrop-blur border-2 border-primary-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all" />
+                  <input type="date" value={toDateInputValue(formData.tanggal_pengajuan)} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setFormData({ ...formData, tanggal_pengajuan: e.target.value })} className="w-full bg-white/80 backdrop-blur border-2 border-primary-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all" />
                 </label>
               </div>
 
-              <button type="button" onClick={() => goToStep(2)} disabled={!formData.tanggal_pengajuan} className="w-full py-3.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-200 flex items-center justify-center gap-2">
-                Lanjut ke Data Pekerja
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-              </button>
+              <p className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-500">Gunakan tombol <span className="font-bold text-slate-700">Lanjut ke Data Pekerja</span> di bawah dialog untuk melanjutkan.</p>
             </div>
           )}
 
@@ -979,7 +1521,7 @@ export default function BiayaThlPage() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-black text-gray-900">Data Pekerja</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">Input detail pekerja per Surat Jalan</p>
+                  <p className="text-xs text-gray-500 mt-0.5">1 baris = 1 pekerja × 1 bongkaran — pekerja yang sama boleh muncul di SJ berbeda</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {formData.details.length > 0 && (
@@ -988,12 +1530,34 @@ export default function BiayaThlPage() {
                       {formData.details.length} pekerja
                     </span>
                   )}
-                  <button type="button" onClick={addSjGroup} className="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2 text-xs font-black text-white hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200 shrink-0">
+                  <button type="button" onClick={addSjGroup} className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-colors shrink-0 ${formData.details.length === 0 ? 'border border-gray-200 bg-white text-gray-500 hover:border-primary-300 hover:text-primary-600' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-200'}`}>
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah Surat Jalan
                   </button>
                 </div>
               </div>
+
+              {formData.details.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-[11px] font-bold text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={showIncompleteOnly}
+                      onChange={(e) => setShowIncompleteOnly(e.target.checked)}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4"
+                    />
+                    Hanya yang belum lengkap
+                  </label>
+                  <span className="hidden h-4 w-px bg-slate-200 sm:block" aria-hidden="true" />
+                  <button type="button" onClick={() => setCollapsedCards(new Set(formData.details.map((_, i) => i)))} className="text-[11px] font-black text-slate-500 hover:text-primary-600 transition-colors">
+                    Lipatkan semua
+                  </button>
+                  <span className="text-slate-300" aria-hidden="true">·</span>
+                  <button type="button" onClick={() => setCollapsedCards(new Set())} className="text-[11px] font-black text-slate-500 hover:text-primary-600 transition-colors">
+                    Bentangkan semua
+                  </button>
+                </div>
+              )}
 
               {formData.details.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">
@@ -1010,6 +1574,9 @@ export default function BiayaThlPage() {
               ) : (
                 <div className="space-y-3">
                   {Object.values(sjGroups).map((group, gIdx) => {
+                    const accent = GROUP_ACCENTS[gIdx % GROUP_ACCENTS.length];
+                    const readyCount = group.indices.filter((i) => isDetailReady(formData.details[i])).length;
+                    if (showIncompleteOnly && readyCount === group.indices.length) return null;
                     return (
                       <Fragment key={group.groupId}>
                         {gIdx > 0 && (
@@ -1022,36 +1589,149 @@ export default function BiayaThlPage() {
                             <div className="h-px flex-1 border-t-2 border-dashed border-gray-200" />
                           </div>
                         )}
-                    <div key={group.groupId} className={`rounded-2xl border bg-white overflow-hidden shadow-sm ${errorSJGroupIndex === gIdx ? 'border-red-300 ring-2 ring-red-200' : 'border-gray-200'}`}>
-                      <div className="flex items-center gap-3 px-4 sm:px-5 py-4 bg-linear-to-r from-gray-50 to-white border-b border-gray-100">
-                        <div className="w-8 h-8 rounded-lg bg-white border border-primary-200 text-primary-700 flex items-center justify-center text-xs font-black shadow-sm shrink-0">
+                    <div key={group.groupId} id={`sj-group-${gIdx}`} className={`rounded-2xl border bg-white overflow-hidden shadow-sm scroll-mt-2 ${errorSJGroupIndex === gIdx ? 'border-red-300 ring-2 ring-red-200' : 'border-gray-200'}`}>
+                      <div className={`h-1 bg-gradient-to-r ${accent.bar}`} aria-hidden="true" />
+                      <div className="sticky top-0 z-10 flex items-center gap-3 px-4 sm:px-5 py-4 bg-white border-b border-gray-100">
+                        <div className={`w-8 h-8 rounded-lg ${accent.solid} text-white flex items-center justify-center text-xs font-black shadow-sm shrink-0`} aria-hidden="true">
                           {gIdx + 1}
                         </div>
                         <div className="flex-1 min-w-0">
                           <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Nomor Surat Jalan <span className="text-red-400">*</span></label>
                           <input type="text" value={group.sj} onChange={(e) => updateSjNumber(group.groupId, e.target.value)} placeholder="Contoh: SJ-2025-0001" className={`w-full rounded-xl border px-3 py-2 font-mono text-sm font-bold text-gray-800 placeholder:text-gray-300 transition-colors focus:outline-none focus:ring-4 bg-white ${errorSJGroupIndex === gIdx ? 'border-red-400 focus:border-red-400 focus:ring-red-50' : 'border-slate-200 focus:border-primary-400 focus:ring-primary-50'}`} />
                         </div>
-                        <span className="inline-flex items-center rounded-full bg-primary-100/70 text-primary-700 px-2.5 py-1 text-[11px] font-bold whitespace-nowrap shrink-0">{group.indices.length} pekerja</span>
-                        <button type="button" onClick={() => removeSjGroup(group.groupId)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0" title="Hapus Surat Jalan">
+                        <span className={`inline-flex items-center rounded-full ${accent.soft} ${accent.text} px-2.5 py-1 text-[11px] font-bold whitespace-nowrap shrink-0`}>{group.indices.length} pekerja</span>
+                        <button type="button" onClick={() => duplicateSjGroup(group.groupId, gIdx)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-primary-600 hover:bg-primary-50 transition-colors shrink-0" title="Duplikat grup — salin pekerja, tinggal isi SJ baru" aria-label={`Duplikat Surat Jalan ${gIdx + 1}`}>
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-2.25m8.25-7.5H18m-8.25 7.5h7.5" /></svg>
+                        </button>
+                        <button type="button" onClick={() => removeSjGroup(group.groupId)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0" title="Hapus Surat Jalan" aria-label={`Hapus Surat Jalan ${gIdx + 1}`}>
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                         </button>
                       </div>
-
-                      <div className="p-3 sm:p-4 space-y-2">
+                      <div className="flex items-center gap-2 border-b border-gray-100 bg-white px-4 sm:px-5 py-1.5" aria-hidden="true">
+                        <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100">
+                          <div className={`h-1 rounded-full bg-gradient-to-r ${accent.bar} transition-all`} style={{ width: `${group.indices.length === 0 ? 0 : Math.round((readyCount / group.indices.length) * 100)}%` }} />
+                        </div>
+                        <span className="text-[10px] font-black tabular-nums text-slate-400">{readyCount}/{group.indices.length} siap</span>
+                      </div>
+<div className="p-3 sm:p-4 space-y-2">
+                        {isGudangGroup(group.groupId) && (
+                          <div id={`sj-vehicle-${group.groupId}`} className={`rounded-2xl border bg-white overflow-hidden shadow-sm scroll-mt-2 ${sjVehicle[group.groupId]?.enabled ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'}`}>
+                            <label className="flex items-center gap-3 px-4 py-3.5 sm:px-5 cursor-pointer">
+                              <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${sjVehicle[group.groupId]?.enabled ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
+                              </span>
+                              <span className="flex-1 min-w-0">
+                                <span className="block text-sm font-black text-slate-900">Kendaraan tambahan</span>
+                                <span className="block text-[11px] text-slate-500">Centang bila kru grup ini juga membongkar kendaraan ke-2 (SJ berbeda)</span>
+                              </span>
+                              <input
+                                type="checkbox"
+                                aria-label="Kendaraan tambahan untuk grup ini"
+                                checked={!!sjVehicle[group.groupId]?.enabled}
+                                onChange={(e) => setSjVehicle((prev) => ({ ...prev, [group.groupId]: { enabled: e.target.checked, sj: prev[group.groupId]?.sj ?? '', nopol: prev[group.groupId]?.nopol ?? '', type: prev[group.groupId]?.type ?? '' } }))}
+                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-5 h-5 shrink-0"
+                              />
+                            </label>
+                            {sjVehicle[group.groupId]?.enabled && (
+                              <div className="border-t border-amber-100 bg-amber-50/50 px-4 py-3 sm:px-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div>
+                                    <label htmlFor={`sjv-sj-${group.groupId}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      No. SJ Kendaraan ke-2 <span className="text-red-400">*</span>
+                                    </label>
+                                    <input
+                                      id={`sjv-sj-${group.groupId}`}
+                                      type="text"
+                                      value={sjVehicle[group.groupId]?.sj ?? ''}
+                                      onChange={(e) => setSjVehicle((prev) => {
+                                        const cur = prev[group.groupId] ?? { enabled: true, sj: '', nopol: '', type: '' };
+                                        return { ...prev, [group.groupId]: { ...cur, sj: e.target.value } };
+                                      })}
+                                      placeholder="SJ kendaraan ke-2"
+                                      className="input-field py-2 text-sm font-mono uppercase"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label htmlFor={`sjv-nopol-${group.groupId}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      Plat Kendaraan ke-2 <span className="text-red-400">*</span>
+                                    </label>
+                                    <input
+                                      id={`sjv-nopol-${group.groupId}`}
+                                      type="text"
+                                      value={sjVehicle[group.groupId]?.nopol ?? ''}
+                                      onChange={(e) => setSjVehicle((prev) => {
+                                        const cur = prev[group.groupId] ?? { enabled: true, sj: '', nopol: '', type: '' };
+                                        return { ...prev, [group.groupId]: { ...cur, nopol: e.target.value } };
+                                      })}
+                                      placeholder="KB 1234 XX"
+                                      className="input-field py-2 text-sm font-mono uppercase"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label htmlFor={`sjv-type-${group.groupId}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      Type Kendaraan ke-2 <span className="text-red-400">*</span>
+                                    </label>
+                                    <select
+                                      id={`sjv-type-${group.groupId}`}
+                                      value={sjVehicle[group.groupId]?.type ?? ''}
+                                      onChange={(e) => setSjVehicle((prev) => {
+                                        const cur = prev[group.groupId] ?? { enabled: true, sj: '', nopol: '', type: '' };
+                                        return { ...prev, [group.groupId]: { ...cur, type: e.target.value } };
+                                      })}
+                                      className="select-field py-2 text-sm"
+                                    >
+                                      <option value="">Pilih</option>
+                                      {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {group.indices.map((idx) => {
                           const detail = formData.details[idx];
                           const rowNum = group.indices.indexOf(idx) + 1;
                           return (
-                            <div key={idx} className={`rounded-2xl border bg-white overflow-hidden shadow-sm ${errorWorkerIndex === idx ? 'border-red-300 ring-2 ring-red-200' : 'border-slate-200'}`}>
+                            <Fragment key={idx}>
+                              {rowNum > 1 && (
+                                <div className="flex items-center gap-3 py-1">
+                                  <div className="h-px flex-1 border-t-2 border-dashed border-gray-200" />
+                                  <button type="button" onClick={() => insertDetailBefore(group.groupId, idx)} title={`Sisipkan pekerja sebelum nomor ${rowNum}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-white px-3 py-1 text-[11px] font-black text-gray-500 hover:border-primary-400 hover:text-primary-600 transition-colors shrink-0">
+                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                    Sisipkan di sini
+                                  </button>
+                                  <div className="h-px flex-1 border-t-2 border-dashed border-gray-200" />
+                                </div>
+                              )}
+                            <div id={`worker-card-${idx}`} className={`rounded-2xl border bg-white overflow-hidden shadow-sm scroll-mt-2 ${showIncompleteOnly && isDetailReady(detail) ? 'hidden' : ''} ${errorWorkerIndex === idx ? 'border-red-300 ring-2 ring-red-200' : 'border-slate-200'}`}>
                               <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/70 px-4 py-4 sm:px-5">
-                                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-primary-500 to-primary-600 flex items-center justify-center text-xs font-black text-white shadow-sm shrink-0">
+                                <div className={`w-9 h-9 rounded-xl ${accent.solid} flex items-center justify-center text-xs font-black text-white shadow-sm shrink-0`}>
                                   {rowNum}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-black text-slate-900 block truncate">{detail.nama_thl || `Data pekerja ${rowNum}`}</span>
+                                  <span className="text-sm font-black text-slate-900 truncate">
+                                    {detail.nama_thl || `Data pekerja ${rowNum}`}
+                                    {(() => {
+                                      const nm = detail.nama_thl.trim().toLowerCase();
+                                      if (!nm) return null;
+                                      const twinIdx = group.indices.find((j) => j !== idx && formData.details[j]?.nama_thl.trim().toLowerCase() === nm);
+                                      if (twinIdx === undefined) return null;
+                                      const twinNo = group.indices.indexOf(twinIdx) + 1;
+                                      return (
+                                        <span className="ml-1.5 inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-black text-orange-700 align-middle" title={`Nama yang sama muncul juga di pekerja ${twinNo} SJ ini — pastikan bukan input ganda`}>
+                                          Duplikat?
+                                        </span>
+                                      );
+                                    })()}
+                                  </span>
                                   {errorWorkerIndex === idx ? (
                                     <span className="block text-[11px] font-bold text-red-600 mt-0.5">
                                       Kurang: {getMissingFields(detail).join(', ')}
+                                    </span>
+                                  ) : collapsedCards.has(idx) ? (
+                                    <span className="text-[11px] text-slate-500 truncate block">
+                                      {detail.posisi || 'Tanpa posisi'} · {formatCurrency(Number(detail.nominal_biaya) || 0)} · {Number(detail.kubikasi) || 0} m³
                                     </span>
                                   ) : (
                                     <span className="text-[11px] text-slate-500 truncate block">Lengkapi semua kolom bertanda <span className="font-bold text-red-500">*</span></span>
@@ -1060,10 +1740,28 @@ export default function BiayaThlPage() {
                                 <span className={`hidden rounded-full border px-2.5 py-1 text-[10px] font-black sm:inline-flex ${isDetailReady(detail) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
                                   {isDetailReady(detail) ? 'Siap' : 'Belum lengkap'}
                                 </span>
+                                <button type="button" onClick={() => toggleCard(idx)} aria-expanded={!collapsedCards.has(idx)} title={collapsedCards.has(idx) ? 'Bentangkan' : 'Lipatkan'} aria-label={collapsedCards.has(idx) ? `Bentangkan pekerja ${rowNum}` : `Lipatkan pekerja ${rowNum}`} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors shrink-0">
+                                  <svg className={`w-4 h-4 transition-transform ${collapsedCards.has(idx) ? '' : 'rotate-180'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                                </button>
                                 <button type="button" onClick={() => removeDetail(idx)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0" title="Hapus pekerja" aria-label={`Hapus pekerja ${rowNum}`}>
                                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                               </div>
+                              {!collapsedCards.has(idx) && (
+                              <>
+                              <nav aria-label="Lompat ke bagian" className="flex flex-wrap gap-1.5 border-b border-slate-100 bg-white px-4 py-2 sm:px-5">
+                                {[
+                                  ['Data', `wp-${idx}-data`],
+                                  ['Kendaraan', `wp-${idx}-kendaraan`],
+                                  ['Biaya', `wp-${idx}-biaya`],
+                                  ['Jam', `wp-${idx}-jam`],
+                                  ['Foto', `wp-${idx}-foto`],
+                                ].map(([label, href]) => (
+                                  <a key={href} href={`#${href}`} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-500 hover:border-primary-300 hover:text-primary-600 transition-colors">
+                                    {label}
+                                  </a>
+                                ))}
+                              </nav>
 
                               <div className="space-y-6 px-4 py-5 sm:px-5">
                                 {/* Data Pekerja */}
@@ -1072,7 +1770,7 @@ export default function BiayaThlPage() {
                                     <div className="w-7 h-7 rounded-lg bg-primary-50 border border-primary-100 flex items-center justify-center shrink-0">
                                       <svg className="w-3.5 h-3.5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
                                     </div>
-                                    <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Data Pekerja</h4>
+                                    <h4 id={`wp-${idx}-data`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Data Pekerja</h4>
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
@@ -1113,13 +1811,13 @@ export default function BiayaThlPage() {
                   </div>
                 </div>
 
-                {/* Kendaraan */}
+                {/* Kendaraan — plat + type per baris untuk SEMUA posisi (dokumentasi). */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-7 h-7 rounded-lg bg-primary-50 border border-primary-100 flex items-center justify-center shrink-0">
                       <svg className="w-3.5 h-3.5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
                     </div>
-                    <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Kendaraan</h4>
+                    <h4 id={`wp-${idx}-kendaraan`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Kendaraan</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 <div>
@@ -1138,12 +1836,6 @@ export default function BiayaThlPage() {
                       </select>
                     </div>
                   </div>
-                  {detail.posisi?.trim().toUpperCase() === 'THL GUDANG' && (
-                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mt-4">
-                      <input type="checkbox" checked={detail.kendaraan_tambahan} onChange={(e) => updateDetail(idx, 'kendaraan_tambahan', e.target.checked)} className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4" />
-                      Kendaraan Tambahan
-                    </label>
-                  )}
                 </div>
 
                                 {/* Biaya & Muatan */}
@@ -1152,14 +1844,14 @@ export default function BiayaThlPage() {
                                     <div className="w-7 h-7 rounded-lg bg-primary-50 border border-primary-100 flex items-center justify-center shrink-0">
                                       <svg className="w-3.5 h-3.5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
                                     </div>
-                                    <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Biaya & Muatan</h4>
+                                    <h4 id={`wp-${idx}-biaya`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Biaya & Muatan</h4>
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     <div>
                                       <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                                         Nominal Biaya (Rp) <span className="text-red-400">*</span>
                                       </label>
-                                      <input type="number" min="0" step="0.01" inputMode="decimal" value={detail.nominal_biaya || ''} onChange={(e) => updateDetail(idx, 'nominal_biaya', Number(e.target.value))} placeholder="0" title="Besaran biaya/honor THL dalam rupiah" className="input-field py-2 text-sm font-bold" />
+                                      <input type="text" inputMode="decimal" value={detail.nominal_biaya ? formatRibuan(detail.nominal_biaya) : ''} onChange={(e) => updateDetail(idx, 'nominal_biaya', parseRibuan(e.target.value))} placeholder="0" title="Besaran biaya/honor THL dalam rupiah (minimal Rp 1)" className="input-field py-2 text-sm font-bold tabular-nums" />
                                       <p className="mt-1 text-[10px] text-gray-400">Contoh: 150000 = Rp 150.000</p>
                                     </div>
                                     <div>
@@ -1177,31 +1869,31 @@ export default function BiayaThlPage() {
                                   </div>
                                 </div>
 
-                                {/* Jam Kerja */}
-                                {requiresWorkHours(detail.posisi) && (
-                                  <div>
+                                {/* Jam Kerja — wajib untuk SEMUA posisi, jadi selalu tampil.
+                                    Hanya disabled sebelum posisi dipilih (sejajar pola kubikasi/droppoint),
+                                    bukan show/hide yang menggeser layout. */}
+                                <div>
                                     <div className="flex items-center gap-2 mb-3">
                                       <div className="w-7 h-7 rounded-lg bg-primary-50 border border-primary-100 flex items-center justify-center shrink-0">
                                         <svg className="w-3.5 h-3.5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                       </div>
-                                      <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Jam Kerja</h4>
+                                      <h4 id={`wp-${idx}-jam`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Jam Kerja</h4>
                                     </div>
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                       <div>
                                         <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                                           Jam Datang <span className="text-red-400">*</span>
                                         </label>
-                                        <input type="datetime-local" value={detail.jam_datang} onChange={(e) => updateDetail(idx, 'jam_datang', e.target.value)} className="input-field py-2 text-sm" />
+                                        <input type="datetime-local" value={detail.jam_datang} onChange={(e) => updateDetail(idx, 'jam_datang', e.target.value)} disabled={!detail.posisi} title={!detail.posisi ? 'Pilih posisi terlebih dahulu' : undefined} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
                                       </div>
                                       <div>
                                         <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                                           Jam Pulang <span className="text-red-400">*</span>
                                         </label>
-                                        <input type="datetime-local" value={detail.jam_pulang} onChange={(e) => updateDetail(idx, 'jam_pulang', e.target.value)} className="input-field py-2 text-sm" />
+                                        <input type="datetime-local" value={detail.jam_pulang} onChange={(e) => updateDetail(idx, 'jam_pulang', e.target.value)} disabled={!detail.posisi} title={!detail.posisi ? 'Pilih posisi terlebih dahulu' : undefined} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
                                       </div>
                                     </div>
                                   </div>
-                                )}
 
                                 {/* Foto */}
                                 <div className="pt-1 border-t border-slate-100">
@@ -1209,8 +1901,8 @@ export default function BiayaThlPage() {
                                     <div className="w-7 h-7 rounded-lg bg-primary-50 border border-primary-100 flex items-center justify-center shrink-0">
                                       <svg className="w-3.5 h-3.5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
                                     </div>
-                                    <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Foto Pendukung</h4>
-                                    <span className="ml-auto text-[10px] font-black text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{detail.photos.length}/{MAX_PHOTOS_PER_DETAIL}</span>
+                                    <h4 id={`wp-${idx}-foto`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Foto Bukti <span className="text-red-400">*</span></h4>
+                                    <span className={`ml-auto text-[10px] font-black rounded-full px-2 py-0.5 ${detail.photos.length === 0 ? 'text-red-600 bg-red-100' : 'text-gray-400 bg-gray-100'}`}>{detail.photos.length}/{MAX_PHOTOS_PER_DETAIL}</span>
                                   </div>
                                   <div className="flex items-start gap-3">
                                     {detail.photos.length > 0 && (
@@ -1226,20 +1918,24 @@ export default function BiayaThlPage() {
                                     <label className="block cursor-pointer grow">
                                       <div className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-center transition-colors ${detail.photos.length > 0 ? 'border-primary-300 bg-primary-50/40 hover:bg-primary-50' : 'border-gray-200 bg-gray-50 hover:border-primary-300 hover:bg-primary-50/50'}`}>
                                         <svg className={`w-5 h-5 ${detail.photos.length > 0 ? 'text-primary-400' : 'text-gray-400'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                                        <span className="text-xs font-bold text-gray-500">{detail.photos.length > 0 ? 'Ganti foto' : 'Upload foto (opsional)'}</span>
+                                        <span className="text-xs font-bold text-gray-500">{detail.photos.length > 0 ? 'Ganti foto' : 'Upload foto bukti *'}</span>
                                       </div>
-                                      <input type="file" accept="image/jpeg,image/png,image/gif" className="sr-only" onChange={(e) => {
+                                      <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={async (e) => {
                                         const files = Array.from(e.target.files || []).slice(0, MAX_PHOTOS_PER_DETAIL);
-                                        const valid = files.filter(f => f.size <= 2 * 1024 * 1024);
-                                        if (valid.length < files.length) notifyGlobal('Foto melebihi 2MB', 'error');
-                                        addDetailPhoto(idx, valid);
                                         e.target.value = '';
+                                        const compressed = await Promise.all(files.map(compressImage));
+                                        const valid = compressed.filter(f => f.size <= 2 * 1024 * 1024);
+                                        if (valid.length < files.length) notifyGlobal('Foto melebihi 2MB setelah kompresi', 'error');
+                                        addDetailPhoto(idx, valid);
                                       }} />
                                     </label>
                                   </div>
                                 </div>
                               </div>
+                              </>
+                              )}
                             </div>
+                            </Fragment>
                           );
                         })}
 
@@ -1256,7 +1952,7 @@ export default function BiayaThlPage() {
               )}
 
               {sjGroupError && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-700">
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-700" role="alert">
                   <svg className="w-5 h-5 shrink-0 mt-0.5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
                   <div>
                     <p className="text-xs font-black uppercase tracking-wider">Periksa nomor Surat Jalan</p>
@@ -1264,12 +1960,17 @@ export default function BiayaThlPage() {
                   </div>
                 </div>
               )}
-
+              {vehicleError && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-800" role="alert">
+                  <svg className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wider">Lengkapi kendaraan tambahan</p>
+                    <p className="text-xs mt-0.5">{vehicleError}</p>
+                  </div>
+                </div>
+              )}
               {formData.details.length > 0 && (
-                <button type="button" onClick={() => goToStep(3)} className="w-full py-3.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 flex items-center justify-center gap-2">
-                  Lanjut ke Total & Submit
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-                </button>
+                <p className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-500">Gunakan tombol <span className="font-bold text-slate-700">Lanjut ke Review</span> di bawah dialog untuk melanjutkan.</p>
               )}
             </div>
           )}
@@ -1278,10 +1979,8 @@ export default function BiayaThlPage() {
           {formStep === 3 && (
             <div className="space-y-5">
               <div className="flex items-center gap-2 mb-2">
-                <button type="button" onClick={() => goToStep(2)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
-                </button>
                 <h3 className="text-sm font-black text-gray-800">Ringkasan Pengajuan</h3>
+                <span className="text-[11px] font-bold text-gray-400">Langkah 3 • periksa total sebelum dikirim</span>
               </div>
 
               <div className={`rounded-2xl p-5 transition-all ${isRfahRequired ? 'bg-linear-to-br from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-300 shadow-lg shadow-amber-100/50' : 'bg-gray-50 border border-gray-200'}`}>
@@ -1302,7 +2001,7 @@ export default function BiayaThlPage() {
                       <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
                       <div>
                         <p className="text-xs font-black text-amber-800">RFAH Required</p>
-                        <p className="text-[11px] text-amber-600">Total &gt; Rp 750.000 · Umi Marzuqoh</p>
+                        <p className="text-[11px] text-amber-600">Total &gt; Rp {biayaConfig.thl_rfah_threshold.toLocaleString('id-ID')} · {biayaConfig.rfah_name}</p>
                       </div>
                     </div>
                   </div>
@@ -1311,19 +2010,58 @@ export default function BiayaThlPage() {
 
               <div className="rounded-xl bg-white border border-gray-100 p-4 space-y-2">
                 <h4 className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">Detail Pekerja</h4>
-                {formData.details.slice(0, 5).map((d, i) => (
-                  <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                    <span className="w-6 h-6 rounded-md bg-primary-50 text-primary-600 flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-bold text-gray-800 block truncate">{d.nama_thl}</span>
-                      <span className="text-[11px] text-gray-400">{d.nopol_kendaraan} · {d.posisi}</span>
+                {(['THL GUDANG', 'THL HELPER', 'THL DRIVER'] as const).map((pos) => {
+                  const rows = formData.details
+                    .map((d, i) => ({ d, i }))
+                    .filter(({ d }) => String(d.posisi ?? '').trim().toUpperCase() === pos);
+                  if (rows.length === 0) return null;
+                  const open = reviewGroupsOpen.has(pos);
+                  const subtotal = rows.reduce((s, { d }) => s + (Number(d.nominal_biaya) || 0), 0);
+                  const kubikasi = rows.reduce((s, { d }) => s + (Number(d.kubikasi) || 0), 0);
+                  const badge = pos === 'THL GUDANG'
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                    : pos === 'THL HELPER'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200';
+                  return (
+                    <div key={pos} className="rounded-xl border border-slate-200 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => toggleReviewGroup(pos)}
+                        aria-expanded={open}
+                        aria-label={`${open ? 'Tutup' : 'Buka'} rincian ${pos}`}
+                        className="flex w-full items-center gap-3 bg-slate-50/70 px-3 py-2.5 text-left transition-colors hover:bg-slate-50"
+                      >
+                        <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-lg border px-1.5 text-[11px] font-black ${badge}`}>{rows.length}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-xs font-black text-slate-800">{pos}</span>
+                          <span className="block truncate text-[10px] text-slate-400">
+                            {rows.length} pekerja{ kubikasi > 0 ? ` · ${kubikasi} m³` : ''}
+                          </span>
+                        </span>
+                        <span className="text-xs font-black tabular-nums text-slate-800">{formatCurrency(subtotal)}</span>
+                        <svg className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                      </button>
+                      {open && (
+                        <div className="divide-y divide-gray-50 px-3">
+                          {rows.map(({ d, i }) => (
+                            <div key={i} className="flex items-center gap-3 py-2">
+                              <span className="w-6 h-6 rounded-md bg-primary-50 text-primary-600 flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm font-bold text-gray-800 block truncate">{d.nama_thl || `Pekerja ${i + 1}`}</span>
+                                <span className="text-[11px] text-gray-400 block truncate">{d.nopol_kendaraan} · {d.no_surat_jalan || '—'}</span>
+                                {d.kendaraan_tambahan ? (
+                                  <span className="mt-0.5 inline-flex items-center rounded-md bg-amber-50 border border-amber-200 px-1.5 py-px text-[10px] font-bold text-amber-700">+ Kendaraan ke-2 ({d.kendaraan_sj || 'SJ?'})</span>
+                                ) : null}
+                              </div>
+                              <span className="text-xs font-bold text-gray-600 tabular-nums">{formatCurrency(Number(d.nominal_biaya))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <span className="text-xs font-bold text-gray-600">{formatCurrency(Number(d.nominal_biaya))}</span>
-                  </div>
-                ))}
-                {formData.details.length > 5 && (
-                  <p className="text-[11px] text-gray-400 text-center pt-2">+{formData.details.length - 5} pekerja lainnya</p>
-                )}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1338,6 +2076,10 @@ export default function BiayaThlPage() {
             {viewItem?.status === 'pending' ? <>{hasPermission('approval.check') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}{hasPermission('approval.check') ? <button onClick={() => void approvalAction('check')} className="btn-secondary w-full sm:w-auto">Periksa</button> : null}</> : null}
             {viewItem?.status === 'checked' && viewItem ? <>{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600">Perlu Revisi</button> : null}{hasPermission('approval.approve') ? <button onClick={() => openDecision('approve', viewItem)} className="btn-primary w-full sm:w-auto">Setujui</button> : null}</> : null}
             {viewItem?.status === 'rlh_approved' ? <>{hasPermission('approval.rfah') ? <button onClick={() => void approvalAction('rfahApprove')} className="btn-primary w-full sm:w-auto">Setujui RFAH</button> : null}{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}</> : null}
+            {viewItem && <button onClick={() => { try { previewTHLPdf(viewItem); } catch { notifyGlobal('Gagal membuka preview PDF', 'error'); } }} className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              Preview PDF
+            </button>}
             {viewItem?.status === 'approved' ? <button onClick={() => viewItem && downloadPdf(viewItem)} className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
               Cetak PDF
@@ -1394,13 +2136,6 @@ export default function BiayaThlPage() {
                     Total Biaya
                   </span>
                   <p className="text-sm text-slate-800 mt-1.5 font-black tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 8v4m0 4h.01" /></svg>
-                    RFAH
-                  </span>
-                  <p className="text-sm text-slate-800 mt-1.5 font-semibold">{viewItem.is_rfah_required ? viewItem.rfah_name : '-'}</p>
                 </div>
               </div>
 
@@ -1560,6 +2295,24 @@ export default function BiayaThlPage() {
             </div>
           )}
         </Modal>
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+          onConfirm={confirmDelete}
+          title="Hapus Pengajuan"
+          message="Apakah Anda yakin ingin menghapus pengajuan ini? Tindakan ini tidak dapat dibatalkan."
+          confirmLabel="Hapus"
+          variant="danger"
+        />
+        <ConfirmDialog
+          open={showDiscardConfirm}
+          onClose={() => setShowDiscardConfirm(false)}
+          onConfirm={() => { setShowDiscardConfirm(false); setOpenModal(false); setEditingId(null); setEditingStatus(null); }}
+          title="Buang Perubahan?"
+          message="Formulir belum disimpan. Gunakan Simpan Draft bila ingin melanjutkan nanti."
+          confirmLabel="Buang"
+          variant="warning"
+        />
       </div>
     </DashboardLayout>
   );

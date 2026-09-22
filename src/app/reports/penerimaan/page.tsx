@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { reports, depo, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -48,6 +48,8 @@ const RANGES: { key: string; label: string }[] = [
 
 const conditionTone = conditionMeta;
 
+const PER_PAGE = 25;
+
 export default function PenerimaanReportPage() {
   const { hasPermission } = useAuthStore();
   const [items, setItems] = useState<PenerimaanRow[]>([]);
@@ -62,29 +64,36 @@ export default function PenerimaanReportPage() {
   const [searchApply, setSearchApply] = useState('');
   const [rangePreset, setRangePreset] = useState('');
   const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const reqIdRef = useRef(0);
 
   const selectedDepo = depots.find((d) => d.kode_depo === kodeDepo);
 
   const fetchData = useCallback(async () => {
     if (!hasPermission('reports.view')) return;
+    const reqId = ++reqIdRef.current;
     setLoading(true);
     setError('');
     try {
-      const params: Record<string, unknown> = {};
+      const params: Record<string, unknown> = { page, per_page: PER_PAGE };
       if (dateFrom) params.tanggal_from = dateFrom;
       if (dateTo) params.tanggal_to = dateTo;
       if (kodeDepo) params.kode_depo = kodeDepo;
       if (sumber) params.sumber = sumber;
       if (searchApply) params.search = searchApply;
       const res = await reports.penerimaan(params);
+      if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
       setSummary(res.data.summary);
+      setLastPage(res.data.last_page ?? 1);
     } catch (e) {
+      if (reqIdRef.current !== reqId) return;
       setError(getErrorMessage(e, 'Gagal memuat laporan'));
     } finally {
-      setLoading(false);
+      if (reqIdRef.current === reqId) setLoading(false);
     }
-  }, [dateFrom, dateTo, kodeDepo, sumber, searchApply, hasPermission]);
+  }, [dateFrom, dateTo, kodeDepo, sumber, searchApply, page, hasPermission]);
 
   useEffect(() => {
     depo.list().then((res) => setDepots(res.data.data)).catch(() => {});
@@ -97,6 +106,7 @@ export default function PenerimaanReportPage() {
   const applyRange = (key: string) => {
     const today = new Date();
     setRangePreset(key);
+    setPage(1);
     if (key === 'today') {
       setDateFrom(toLocalISODate(today));
       setDateTo(toLocalISODate(today));
@@ -122,6 +132,7 @@ export default function PenerimaanReportPage() {
     setSumber('');
     setSearch('');
     setSearchApply('');
+    setPage(1);
   };
 
   const handleExport = async () => {
@@ -147,12 +158,13 @@ export default function PenerimaanReportPage() {
   };
 
   useEffect(() => {
-    const t = setTimeout(() => setSearchApply(search.trim()), 400);
+    const t = setTimeout(() => { setSearchApply(search.trim()); setPage(1); }, 400);
     return () => clearTimeout(t);
   }, [search]);
 
   const submit = () => {
     setSearchApply(search.trim());
+    setPage(1);
   };
 
   return (
@@ -187,9 +199,42 @@ export default function PenerimaanReportPage() {
           </div>
         )}
 
+        {/* Filters */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-white">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-slate-900 to-slate-700 text-white flex items-center justify-center shadow">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
+                  <p className="text-xs text-slate-500">Tanggal • Depo • Sumber • Cari</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100">
+                {RANGES.map((r) => (
+                  <button key={r.key} onClick={() => applyRange(r.key)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4">
+              <div><label htmlFor="pf-from" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari</label><input id="pf-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-slate-50 focus:bg-white" /></div>
+              <div><label htmlFor="pf-to" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai</label><input id="pf-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-slate-50 focus:bg-white" /></div>
+              <div><label htmlFor="pf-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label><select id="pf-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field text-sm py-2 bg-slate-50 focus:bg-white"><option value="">Semua Depo</option>{depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}</select></div>
+              <div><label htmlFor="pf-sumber" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sumber</label><select id="pf-sumber" value={sumber} onChange={(e) => { setSumber(e.target.value); setPage(1); }} className="select-field text-sm py-2 bg-slate-50 focus:bg-white"><option value="">Semua</option><option value="VALIDASI_SJ">Validasi SJ</option><option value="IMPORT_MANUAL">Manual</option></select></div>
+              <div className="lg:col-span-2"><label htmlFor="pf-search" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span><input id="pf-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Kode, nama, PO, driver…" className="input-field text-sm py-2 pl-9 bg-slate-50 focus:bg-white" /></div></div>
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all">Reset</button>
+              <button onClick={submit} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-slate-900 to-slate-800 text-white text-sm font-semibold hover:from-slate-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
+            </div>
+          </div>
+        </div>
+
         {/* Summary Cards */}
         {summary && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" />
               <div className="relative flex items-center gap-3">
@@ -240,39 +285,6 @@ export default function PenerimaanReportPage() {
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-white">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-slate-900 to-slate-700 text-white flex items-center justify-center shadow">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
-                  <p className="text-xs text-slate-500">Tanggal • Depo • Sumber • Cari</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100">
-                {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4">
-              <div><label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari</label><input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); }} className="input-field text-sm py-2 bg-slate-50 focus:bg-white" /></div>
-              <div><label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai</label><input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); }} className="input-field text-sm py-2 bg-slate-50 focus:bg-white" /></div>
-              <div><label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label><select value={kodeDepo} onChange={(e) => setKodeDepo(e.target.value)} className="select-field text-sm py-2 bg-slate-50 focus:bg-white"><option value="">Semua Depo</option>{depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}</select></div>
-              <div><label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sumber</label><select value={sumber} onChange={(e) => setSumber(e.target.value)} className="select-field text-sm py-2 bg-slate-50 focus:bg-white"><option value="">Semua</option><option value="VALIDASI_SJ">Validasi SJ</option><option value="IMPORT_MANUAL">Manual</option></select></div>
-              <div className="lg:col-span-2"><label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span><input type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Kode, nama, PO, driver…" className="input-field text-sm py-2 pl-9 bg-slate-50 focus:bg-white" /></div></div>
-            </div>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all">Reset</button>
-              <button onClick={submit} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-slate-900 to-slate-800 text-white text-sm font-semibold hover:from-slate-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
-            </div>
-          </div>
-        </div>
-
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-white">
@@ -283,7 +295,9 @@ export default function PenerimaanReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Detail Penerimaan</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">{items.length} item ditemukan</p>
+                  <p className="mt-0.5 text-xs text-slate-500 tabular-nums">
+                    {summary ? `Menampilkan ${items.length > 0 ? (page - 1) * PER_PAGE + 1 : 0}–${(page - 1) * PER_PAGE + items.length} dari ${summary.total_item} item` : `${items.length} item ditemukan`}
+                  </p>
                 </div>
               </div>
               <button
@@ -416,6 +430,27 @@ export default function PenerimaanReportPage() {
             ))}
             {items.length === 0 && !loading && <p className="p-8 text-center text-sm text-slate-400">Tidak ada data</p>}
           </div>
+          {lastPage > 1 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex justify-between items-center">
+                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                    Sebelumnya
+                  </span>
+                </button>
+                <span className="text-sm text-gray-600 font-medium">
+                  Halaman {page} dari {lastPage}
+                </span>
+                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman berikutnya">
+                  <span className="flex items-center gap-2">
+                    Selanjutnya
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

@@ -18,6 +18,19 @@ export const CONDITION_LABELS: Record<string, string> = {
   LAINNYA: 'Lainnya',
 };
 
+/** Kondisi yang mewajibkan bukti foto (sejajar validasi SJ). */
+export const PHOTO_REQUIRED_CONDITIONS = [
+  'FISIK_RUSAK',
+  'QTY_KURANG',
+  'ISI_KEMASAN_KURANG',
+  'EXPIRED_TIDAK_STANDAR',
+  'LAINNYA',
+] as const;
+
+export function conditionRequiresPhoto(condition?: string | null): boolean {
+  return (PHOTO_REQUIRED_CONDITIONS as readonly string[]).includes(canonicalCondition(condition));
+}
+
 interface ConditionMeta {
   label: string;
   canonical: string;

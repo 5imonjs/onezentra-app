@@ -162,7 +162,10 @@ export default function StandarUmurPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [sortKey, setSortKey] = useState<string>('material_description');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [viewItem, setViewItem] = useState<StandarUmurItem | null>(null);
   const [editItem, setEditItem] = useState<StandarUmurItem | null>(null);
   const [editForm, setEditForm] = useState<Partial<StandarUmurItem>>({});
@@ -171,7 +174,11 @@ export default function StandarUmurPage() {
   const [saving, setSaving] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
   const [importResult, setImportResult] = useState<{ message?: string; ok?: boolean; total_rows?: number; imported?: number; skipped?: number } | null>(null);
 
   useEffect(() => {
@@ -194,13 +201,15 @@ export default function StandarUmurPage() {
 
   const loadItems = useCallback(async () => {
     try {
-      const res = await standarUmurProduk.list({ search, page, per_page: 20 });
-      setItems(res.data.data);
-      setLastPage(res.data.last_page);
+      const res = await standarUmurProduk.list({ search, page, per_page: 20, sort: sortKey, direction: sortDir });
+      const data = res.data;
+      setItems(data.data);
+      setLastPage(data.last_page);
+      setTotalCount(data.total);
     } catch (e) {
       console.error(e);
     }
-  }, [search, page]);
+  }, [search, page, sortKey, sortDir]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
@@ -214,6 +223,16 @@ export default function StandarUmurPage() {
 
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+    setPage(1);
   };
 
   const handleDelete = async (id: number) => {
@@ -297,20 +316,28 @@ export default function StandarUmurPage() {
   };
 
   const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
     try {
-      const res = await standarUmurProduk.export({ search });
+      const res = await standarUmurProduk.export({ search, sort: sortKey, direction: sortDir });
       downloadBlob(res.data, `standar_umur_produk_${new Date().toISOString().split('T')[0]}.xlsx`);
-    } catch {
-      notifyGlobal('Export failed');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Export gagal'));
+    } finally {
+      setExporting(false);
     }
   };
 
   const handleTemplate = async () => {
+    if (templateLoading) return;
+    setTemplateLoading(true);
     try {
       const res = await standarUmurProduk.template();
       downloadBlob(res.data, 'standar_umur_produk_template.xlsx');
-    } catch {
-      notifyGlobal('Download failed');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengunduh template'));
+    } finally {
+      setTemplateLoading(false);
     }
   };
 
@@ -336,6 +363,45 @@ export default function StandarUmurPage() {
   };
 
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const pickFile = (file: File | null) => {
+    if (file && file.size > MAX_IMPORT_BYTES) {
+      notifyGlobal(`Ukuran file ${formatFileSize(file.size)} melebihi batas 10 MB`);
+      return;
+    }
+    setSelectedFile(file);
+  };
+
+  const skuStatusColor = (status: unknown): string => {
+    const s = String(status ?? '').trim().toLowerCase();
+    if (!s || s === '-' || s === '0') return 'bg-gray-100 text-gray-500';
+    if (s === 'aktif' || s === 'active') return 'bg-emerald-100 text-emerald-700';
+    return 'bg-blue-100 text-blue-700';
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortKey !== column) return <span aria-hidden="true" className="sort-arrow text-gray-400">↕</span>;
+    return <span aria-hidden="true" className="sort-arrow">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+  };
+
+  const sortHeaderProps = (column: string) => ({
+    onClick: () => handleSort(column),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleSort(column);
+      }
+    },
+    tabIndex: 0,
+    'aria-sort': (sortKey === column ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none') as 'ascending' | 'descending' | 'none',
+    title: `Urutkan berdasarkan ${column}`,
+  });
 
   const renderFormFields = (form: Partial<StandarUmurItem>, setForm: React.Dispatch<React.SetStateAction<Partial<StandarUmurItem>>>) => (
     <div className="grid grid-cols-2 gap-4">
@@ -383,21 +449,32 @@ export default function StandarUmurPage() {
                   placeholder="Cari produk..."
                   resultCount={items.length}
                   resultLabel="produk"
+                  totalCount={totalCount}
+                  currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0}
+                  currentTo={(page - 1) * 20 + items.length}
                 />
               </div>
               <div className="flex items-center gap-2">
                 {hasPermission('standar_umur.view') && (
-                <button onClick={handleTemplate} className="btn-secondary">
+                <button onClick={handleTemplate} disabled={templateLoading} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed">
                   <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    {templateLoading ? (
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    )}
                     Template
                   </span>
                 </button>
                 )}
                 {hasPermission('standar_umur.view') && (
-                <button onClick={handleExport} className="btn-secondary">
+                <button onClick={handleExport} disabled={exporting} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed">
                   <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                    {exporting ? (
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                    )}
                     Export
                   </span>
                 </button>
@@ -438,9 +515,13 @@ export default function StandarUmurPage() {
                       />
                     </th>
                   )}
-                  <th scope="col" className="table-header w-12">No</th>
-                  <th scope="col" className="excel-header">Material</th>
-                  <th scope="col" className="excel-header">Material Description</th>
+                  <th scope="col" className="excel-header w-12">No</th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'material' ? 'active' : ''}`} {...sortHeaderProps('material')}>
+                    Material <SortIcon column="material" />
+                  </th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'material_description' ? 'active' : ''}`} {...sortHeaderProps('material_description')}>
+                    Material Description <SortIcon column="material_description" />
+                  </th>
                   <th scope="col" className="excel-header">Old material number</th>
                   <th scope="col" className="excel-header">Ext Material Group</th>
                   <th scope="col" className="excel-header">Country</th>
@@ -448,9 +529,13 @@ export default function StandarUmurPage() {
                   <th scope="col" className="excel-header">Cluster</th>
                   <th scope="col" className="excel-header">Cluster2</th>
                   <th scope="col" className="excel-header">LOB</th>
-                  <th scope="col" className="excel-header">Category</th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'category' ? 'active' : ''}`} {...sortHeaderProps('category')}>
+                    Category <SortIcon column="category" />
+                  </th>
                   <th scope="col" className="excel-header">Sub Category</th>
-                  <th scope="col" className="excel-header">Brand</th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'brand' ? 'active' : ''}`} {...sortHeaderProps('brand')}>
+                    Brand <SortIcon column="brand" />
+                  </th>
                   <th scope="col" className="excel-header">Incubation</th>
                   <th scope="col" className="excel-header">Isi -SAP</th>
                   <th scope="col" className="excel-header">Isi -BOSnet</th>
@@ -465,7 +550,9 @@ export default function StandarUmurPage() {
                   <th scope="col" className="excel-header">Demand Pattern</th>
                   <th scope="col" className="excel-header">SKUGrp</th>
                   <th scope="col" className="excel-header">SKUConv.</th>
-                  <th scope="col" className="excel-header">Umur (bulan)</th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'umur' ? 'active' : ''}`} {...sortHeaderProps('umur')}>
+                    Umur (bulan) <SortIcon column="umur" />
+                  </th>
                   <th scope="col" className="excel-header">Vol (m3)</th>
                   <th scope="col" className="excel-header">Weight (kg)</th>
                   <th scope="col" className="excel-header">MetricTon</th>
@@ -480,14 +567,14 @@ export default function StandarUmurPage() {
                   <th scope="col" className="excel-header">NickName</th>
                   <th scope="col" className="excel-header">SKU Fokus NKA</th>
                   <th scope="col" className="excel-header">SKU Fokus MTI</th>
-                  <th scope="col" className="table-header text-right">Aksi</th>
+                  <th scope="col" className="excel-header excel-sticky-right text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, index) => (
-                  <tr key={item.id} className={`excel-row ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-gray-50/50 transition-colors ${selectedIds.includes(item.id) ? 'bg-primary-50/30' : ''}`}>
+                  <tr key={item.id} className={`excel-row ${selectedIds.includes(item.id) ? 'excel-row-selected bg-primary-50/50' : ''} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                     {hasPermission('standar_umur.delete') && (
-                      <td className="table-cell text-center">
+                      <td className="excel-cell text-center">
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
@@ -496,7 +583,7 @@ export default function StandarUmurPage() {
                         />
                       </td>
                     )}
-                    <td className="table-cell text-sm text-gray-500 text-center">{(page - 1) * 20 + index + 1}</td>
+                    <td className="excel-cell text-center text-gray-500">{(page - 1) * 20 + index + 1}</td>
                     <td className="excel-cell"><span className="text-sm font-mono">{fmt(item.material)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.material_description)}</span></td>
                     <td className="excel-cell"><span className="text-sm font-mono">{fmt(item.old_material_number)}</span></td>
@@ -514,31 +601,31 @@ export default function StandarUmurPage() {
                     <td className="excel-cell"><span className="text-sm">{fmt(item.isi_bosnet)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.conversion1)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.conversion2)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.min_doi)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.target_doi)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.max_doi)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.trigger_point)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.max_point)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.min_doi)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.target_doi)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.max_doi)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.trigger_point)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.max_point)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.supply_pattern)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.demand_pattern)}</span></td>
                     <td className="excel-cell"><span className="text-sm font-mono">{fmt(item.skugrp)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.skuconv)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.umur)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.vol_m3)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.weight_kg)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.metric_ton)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.umur)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.vol_m3)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.weight_kg)}</span></td>
+                    <td className="excel-cell text-right tabular-nums"><span className="text-sm">{fmt(item.metric_ton)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.type_sku)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.uom)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.allocation_start)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.allocation_end)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.uom2)}</span></td>
-                    <td className="excel-cell"><span className="text-sm">{fmt(item.sku_status)}</span></td>
+                    <td className="excel-cell"><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${skuStatusColor(item.sku_status)}`}>{fmt(item.sku_status)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.made_in)}</span></td>
                     <td className="excel-cell"><span className="text-sm font-mono">{fmt(item.product_id)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.nickname)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.sku_fokus_nka)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.sku_fokus_mti)}</span></td>
-                    <td className="table-cell text-right">
+                    <td className="excel-cell excel-sticky-right text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => setViewItem(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200" title="Lihat Detail" aria-label="Lihat Detail">
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -559,7 +646,7 @@ export default function StandarUmurPage() {
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={45} className="table-cell text-center py-12">
+                    <td colSpan={allFields.length + 2 + (hasPermission('standar_umur.delete') ? 1 : 0)} className="excel-cell text-center py-12">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -684,41 +771,64 @@ export default function StandarUmurPage() {
         }
       >
         <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-primary-300 transition-colors">
+          <div
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-primary-50' : selectedFile ? 'border-primary-300 bg-primary-50/30' : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'}`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setIsDragging(false); pickFile(e.dataTransfer.files[0] || null); }}
+            role="button"
+            aria-label="Pilih file Excel untuk import"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
+          >
             <input
               ref={fileInputRef}
               type="file"
               accept=".xlsx,.xls,.csv"
-              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              onChange={(e) => { pickFile(e.target.files?.[0] || null); e.target.value = ''; }}
               className="hidden"
             />
             <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
             <p className="text-sm text-gray-600 mb-2">
-              {selectedFile ? selectedFile.name : 'Drag & drop file atau klik untuk memilih'}
+              {selectedFile ? `${selectedFile.name} (${formatFileSize(selectedFile.size)})` : 'Klik untuk pilih file atau taruh file di sini'}
             </p>
-            <p className="text-xs text-gray-400">Format: .xlsx, .xls, .csv (maks 10MB)</p>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-4 btn-secondary text-sm"
-            >
-              Pilih File
-            </button>
+            <p className="text-xs text-gray-400">Format: .xlsx, .xls, .csv (maks 10 MB)</p>
+            {selectedFile && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                className="mt-4 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors min-h-[44px] px-4"
+                aria-label="Hapus file terpilih"
+              >
+                Hapus file
+              </button>
+            )}
           </div>
 
           {importResult && (
-            <div className={`p-4 rounded-xl ${importResult.ok !== false ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
-              <p className={`text-sm font-medium ${importResult.ok !== false ? 'text-emerald-700' : 'text-red-700'}`}>
-                {importResult.message}
-              </p>
-              {importResult.total_rows !== undefined && (
-                <div className="mt-2 text-xs text-gray-600">
-                  <p>Total: {importResult.total_rows} baris</p>
-                  <p>Imported: {importResult.imported} baris</p>
-                  {(importResult.skipped ?? 0) > 0 && <p>Skipped: {importResult.skipped} baris</p>}
+            <div className={`p-4 rounded-xl animate-fade-in ${importResult.ok !== false ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${importResult.ok !== false ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                  {importResult.ok !== false ? (
+                    <svg className="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                  )}
                 </div>
-              )}
+                <div>
+                  <p className={`text-sm font-medium ${importResult.ok !== false ? 'text-emerald-700' : 'text-red-700'}`}>{importResult.message}</p>
+                  {importResult.total_rows !== undefined && (
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className="badge badge-info">Total: {importResult.total_rows}</span>
+                      <span className="badge badge-success">Imported: {importResult.imported}</span>
+                      {(importResult.skipped ?? 0) > 0 && <span className="badge badge-warning">Skipped: {importResult.skipped}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

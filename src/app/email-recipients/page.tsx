@@ -20,6 +20,7 @@ interface Recipient {
   role_slug: string | null;
   label: string;
   is_active: boolean;
+  resolved_count?: number;
   user?: { id: number; full_name: string; email: string };
 }
 
@@ -92,6 +93,18 @@ const triggerLabel = (documentType: string, trigger: string): string =>
 
 const triggerDescription = (documentType: string, trigger: string): string | undefined =>
   triggerOptions[documentType]?.find((t) => t.value === trigger)?.description;
+
+// Alasan penerima aktif tidak akan terkirim (null = sehat).
+const resolveProblem = (r: Recipient): string | null => {
+  if (!r.is_active || (r.resolved_count ?? 1) > 0) return null;
+  if (r.recipient_type === 'role') {
+    return `Role "${r.role_slug}" tidak memiliki user aktif — email tidak akan terkirim.`;
+  }
+  if (r.recipient_type === 'user') {
+    return 'User tidak aktif, dihapus, atau tanpa email — email tidak akan terkirim.';
+  }
+  return 'Alamat email kosong — email tidak akan terkirim.';
+};
 
 export default function EmailRecipientsPage() {
   const { hasPermission } = useAuthStore();
@@ -235,6 +248,8 @@ export default function EmailRecipientsPage() {
     return name.charAt(0).toUpperCase();
   };
 
+  const brokenRecipients = items.filter((r) => resolveProblem(r) !== null);
+
   return (
     <DashboardLayout>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -252,6 +267,24 @@ export default function EmailRecipientsPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {brokenRecipients.length > 0 && (
+            <div className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-5 py-4" role="alert">
+              <svg className="h-5 w-5 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-amber-900">{brokenRecipients.length} penerima tidak akan terkirim</p>
+                <ul className="mt-1 space-y-0.5">
+                  {brokenRecipients.slice(0, 5).map((r) => (
+                    <li key={r.id} className="text-xs text-amber-700">
+                      {docTypeLabel[r.document_type] || r.document_type} · {triggerLabel(r.document_type, r.trigger)} ({r.field}) — {resolveProblem(r)}
+                    </li>
+                  ))}
+                  {brokenRecipients.length > 5 && (
+                    <li className="text-xs text-amber-600">+{brokenRecipients.length - 5} lainnya — periksa baris bertanda peringatan di bawah.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          )}
           <div className="p-4 border-b border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 min-w-0">
               <SearchInput value={search} onChange={(v) => { setSearch(v); }} placeholder="Cari penerima..." resultCount={items.length} resultLabel="penerima" />
@@ -308,6 +341,12 @@ export default function EmailRecipientsPage() {
                           {recipientInitial(r)}
                         </div>
                         <span className="text-sm font-medium text-gray-900">{describe(r)}</span>
+                        {resolveProblem(r) && (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200" title={resolveProblem(r) || undefined} role="img" aria-label="Peringatan: penerima tidak akan terkirim">
+                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                            Tak terkirim
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-500">{r.label || <span className="text-gray-300">-</span>}</td>

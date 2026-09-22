@@ -51,10 +51,14 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   const [importing, setImporting] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editing, setEditing] = useState<ManualBatch | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [searchKode, setSearchKode] = useState('');
   const [searchResults, setSearchResults] = useState<NpnProduct[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [searching, setSearching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,6 +114,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
         const res = await npn.searchProduct(query);
         setSearchResults(res.data.data);
         setShowDropdown(res.data.data.length > 0);
+        setActiveIndex(res.data.data.length > 0 ? 0 : -1);
       } catch (e) {
         console.error(e);
       } finally {
@@ -153,6 +158,9 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
         nama_depo: form.nama_depo || null,
       });
       setForm({});
+      setSearchKode('');
+      setSearchResults([]);
+      setShowDropdown(false);
       await load();
       onChanged?.();
       setSuccessMsg('Batch manual ditambahkan.');
@@ -163,23 +171,36 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
     }
   };
 
+  const handleImportError = (err: unknown) => {
+    const response = (err as { response?: { data?: { message?: string; errors?: { row?: number; errors?: string[] }[] } } }).response?.data;
+    if (response?.errors?.length) {
+      const first = response.errors[0];
+      notifyGlobal(`${response.message ?? 'Import gagal'}\nBaris ${first.row}: ${(first.errors ?? []).join(', ')}`);
+    } else {
+      notifyGlobal(getErrorMessage(err, 'Import gagal'));
+    }
+  };
+
+  const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+
   const handleImport = async (file: File) => {
+    if (file.size > MAX_IMPORT_BYTES) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      notifyGlobal(`Ukuran file ${mb} MB melebihi batas 10 MB`);
+      return;
+    }
+    setSelectedFile(file);
     setImporting(true);
     setSuccessMsg(null);
     try {
       const res = await opnameExpired.manualImport(file);
       const { imported, skipped } = res.data;
       setSuccessMsg(`Import selesai: ${imported} baris masuk, ${skipped} dilewati.`);
+      setSelectedFile(null);
       await load();
       onChanged?.();
     } catch (err) {
-      const data = (err as { response?: { data?: { message?: string; errors?: { row?: number; errors?: string[] }[] } } }).response?.data;
-      if (data?.errors?.length) {
-        const first = data.errors[0];
-        notifyGlobal(`${data.message ?? 'Import gagal'}\nBaris ${first.row}: ${(first.errors || []).join(', ')}`);
-      } else {
-        notifyGlobal(getErrorMessage(err, 'Import gagal'));
-      }
+      handleImportError(err);
     } finally {
       setImporting(false);
     }
@@ -197,6 +218,12 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
     } finally {
       setGenerating(false);
     }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const downloadTemplate = async () => {
@@ -257,18 +284,37 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 Template
               </span>
             </button>
-            <label className="btn-secondary text-sm px-3 py-1.5 cursor-pointer">
+            <div
+              className={`btn-secondary text-sm px-3 py-1.5 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/5 text-primary' : 'hover:bg-slate-100'}`}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDragging(false); const file = e.dataTransfer.files[0]; if (file) handleImport(file); }}
+              role="button"
+              aria-label="Import Excel"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
+            >
               <span className="flex items-center gap-1.5">
                 {importing ? (
                   <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                 ) : (
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" /></svg>
                 )}
-                Import Excel
+                {selectedFile ? selectedFile.name : 'Import Excel'}
               </span>
-              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" disabled={importing} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); e.target.value = ''; }} />
-            </label>
+              {selectedFile && !importing && (
+                <span className="text-[11px] text-slate-400 ml-1">({formatFileSize(selectedFile.size)})</span>
+              )}
+            </div>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" disabled={importing} onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleImport(f); } e.target.value = ''; }} />
+            {selectedFile && (
+              <button type="button" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="text-slate-400 hover:text-red-500 transition-colors p-1" aria-label="Hapus file terpilih">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
           </div>
+          <p className="text-[11px] text-slate-400">Maks 10 MB • .xlsx, .xls, .csv • Taruh file di sini atau klik untuk browse</p>
 
           {successMsg && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
@@ -324,13 +370,28 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                         value={searchKode}
                         onChange={handleSearchChange}
                         onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
-                        onKeyDown={(e) => { if (e.key === 'Escape') setShowDropdown(false); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') { setShowDropdown(false); return; }
+                          if (!showDropdown || searchResults.length === 0) return;
+                          if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            setActiveIndex((i) => (i + 1) % searchResults.length);
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            setActiveIndex((i) => (i - 1 + searchResults.length) % searchResults.length);
+                          } else if (e.key === 'Enter' && activeIndex >= 0) {
+                            e.preventDefault();
+                            const product = searchResults[activeIndex];
+                            if (product) handleSelectProduct(product);
+                          }
+                        }}
                         placeholder="Ketik nama barang..."
                         className="input-field"
                         required
                         aria-expanded={showDropdown}
                         aria-controls="nama-barang-options"
                         aria-autocomplete="list"
+                        aria-activedescendant={activeIndex >= 0 && searchResults[activeIndex] ? `nama-barang-option-${searchResults[activeIndex].id}` : undefined}
                       />
                       {searching && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -345,11 +406,13 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                           {searchResults.map((product) => (
                             <button
                               key={product.id}
+                              id={`nama-barang-option-${product.id}`}
                               type="button"
                               role="option"
-                              aria-selected={false}
+                              aria-selected={searchResults[activeIndex]?.id === product.id}
                               onClick={() => handleSelectProduct(product)}
-                              className="w-full px-3 py-2.5 text-left hover:bg-primary-50 transition-colors border-b border-gray-100 last:border-0"
+                              onMouseEnter={() => setActiveIndex(searchResults.findIndex((p) => p.id === product.id))}
+                              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-100 last:border-0 ${searchResults[activeIndex]?.id === product.id ? 'bg-primary-50' : 'hover:bg-primary-50'}`}
                             >
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
@@ -374,7 +437,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 </div>
                 <div>
                   <label htmlFor="qty-crt" className="block text-sm font-medium text-gray-700 mb-1.5">Qty CRT/ZAK *</label>
-                  <input id="qty-crt" type="number" step="1" min="0" value={form.qty_crt || ''} onChange={(e) => setForm((p) => ({ ...p, qty_crt: e.target.value }))} className="input-field" required />
+                  <input id="qty-crt" type="number" step="1" min="1" value={form.qty_crt || ''} onChange={(e) => setForm((p) => ({ ...p, qty_crt: e.target.value }))} className="input-field" required />
                 </div>
                 <div>
                   <label htmlFor="qty-pcs" className="block text-sm font-medium text-gray-700 mb-1.5">PCS</label>
@@ -395,16 +458,6 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <div>
                   <label htmlFor="sumber-material" className="block text-sm font-medium text-gray-700 mb-1.5">Sumber Material</label>
                   <input id="sumber-material" value={form.sumber_material || ''} onChange={(e) => setForm((p) => ({ ...p, sumber_material: e.target.value }))} className="input-field" />
-                </div>
-                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="kode-depo" className="block text-sm font-medium text-gray-700 mb-1.5">Kode Depo</label>
-                    <input id="kode-depo" value={form.kode_depo || ''} disabled aria-label="Kode depo (otomatis dari akun)" className="input-field bg-gray-50" />
-                  </div>
-                  <div>
-                    <label htmlFor="nama-depo" className="block text-sm font-medium text-gray-700 mb-1.5">Nama Depo</label>
-                    <input id="nama-depo" value={form.nama_depo || ''} disabled aria-label="Nama depo (otomatis dari akun)" className="input-field bg-gray-50" />
-                  </div>
                 </div>
               </div>
               <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">

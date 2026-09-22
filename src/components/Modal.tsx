@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useRef, useCallback } from 'react';
 
 interface ModalProps {
   open: boolean;
@@ -28,15 +28,39 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
   const reactId = useId();
   const titleId = title ? `modal-title-${reactId}` : undefined;
   const handleDismiss = onCloseRequest ?? onClose;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Focus trap & auto-focus
+  const getFocusableElements = useCallback((): HTMLElement[] => {
+    if (!dialogRef.current) return [];
+    return Array.from(
+      dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => el.offsetParent !== null); // exclude hidden
+  }, []);
 
   useEffect(() => {
     if (open) {
       openModalCount++;
       document.body.style.overflow = 'hidden';
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      // Auto-focus first focusable element (close button or first input)
+      const timer = setTimeout(() => {
+        const focusable = getFocusableElements();
+        if (focusable.length > 0) focusable[0].focus();
+      }, 50);
+      return () => { clearTimeout(timer); };
     } else {
       openModalCount = Math.max(0, openModalCount - 1);
       if (openModalCount === 0) {
         document.body.style.overflow = '';
+      }
+      // Restore focus
+      if (previousFocusRef.current) {
+        previousFocusRef.current.focus();
+        previousFocusRef.current = null;
       }
     }
     return () => {
@@ -47,7 +71,26 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
         }
       }
     };
-  }, [open]);
+  }, [open, getFocusableElements]);
+
+  // Focus trap: keep Tab within modal
+  useEffect(() => {
+    if (!open) return;
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = getFocusableElements();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', handleTabKey);
+    return () => document.removeEventListener('keydown', handleTabKey);
+  }, [open, getFocusableElements]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -66,6 +109,7 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
       role="presentation"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

@@ -71,7 +71,10 @@ export default function NpnPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [sortKey, setSortKey] = useState<string>('szNickName');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [showImport, setShowImport] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ message: string; ok?: boolean; imported?: number; updated?: number; errors?: { row: number; errors: string[] }[] } | null>(null);
@@ -87,6 +90,10 @@ export default function NpnPage() {
   }, [importResult]);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
   const [viewItem, setViewItem] = useState<NpnItem | null>(null);
   const [editItem, setEditItem] = useState<NpnItem | null>(null);
   const [editForm, setEditForm] = useState<Partial<NpnItem>>({});
@@ -100,15 +107,27 @@ export default function NpnPage() {
 
   const loadItems = useCallback(async () => {
     try {
-      const params: Record<string, string | number> = { search, page, per_page: 20 };
+      const params: Record<string, string | number> = { search, page, per_page: 20, sort: sortKey, direction: sortDir };
       if (statusFilter) params.szStatus = statusFilter;
       const res = await npn.list(params);
-      setItems(res.data.data);
-      setLastPage(res.data.last_page);
+      const data = res.data;
+      setItems(data.data);
+      setLastPage(data.last_page);
+      setTotalCount(data.total);
     } catch (e) { console.error(e); }
-  }, [search, page, statusFilter]);
+  }, [search, page, statusFilter, sortKey, sortDir]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+    setPage(1);
+  };
 
   const toggleSelectAll = () => {
     if (selectedIds.length === items.length) {
@@ -179,6 +198,20 @@ export default function NpnPage() {
     }
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const pickFile = (file: File | null) => {
+    if (file && file.size > MAX_IMPORT_BYTES) {
+      notifyGlobal(`Ukuran file ${formatFileSize(file.size)} melebihi batas 10 MB`);
+      return;
+    }
+    setSelectedFile(file);
+  };
+
   const handleImport = async () => {
     if (!selectedFile) return;
     setImporting(true);
@@ -192,7 +225,7 @@ export default function NpnPage() {
       setImportResult({
         message: data.message || 'Import completed',
         ok: true,
-        ...(data.data ?? {}),
+        ...(typeof data.imported === 'number' ? { imported: data.imported, updated: data.updated } : {}),
       });
     } catch (e) {
       setImportResult({ message: getErrorMessage(e, 'Import failed'), ok: false });
@@ -215,24 +248,59 @@ export default function NpnPage() {
   };
 
   const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
     try {
-      const res = await npn.export({ search });
+      const res = await npn.export({ search, szStatus: statusFilter || undefined, sort: sortKey, direction: sortDir });
       downloadBlob(res.data, `npn_products_${new Date().toISOString().split('T')[0]}.xlsx`);
-    } catch {
-      notifyGlobal('Export failed');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Export gagal'));
+    } finally {
+      setExporting(false);
     }
   };
 
   const handleTemplate = async () => {
+    if (templateLoading) return;
+    setTemplateLoading(true);
     try {
       const res = await npn.template();
       downloadBlob(res.data, 'npn_template.xlsx');
-    } catch {
-      notifyGlobal('Download failed');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengunduh template'));
+    } finally {
+      setTemplateLoading(false);
     }
   };
 
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
+
+  const statusColor = (status: string): string => {
+    switch (status) {
+      case 'A': return 'bg-emerald-100 text-emerald-700';
+      case 'DEL': return 'bg-red-100 text-red-700';
+      case 'EXISTING': return 'bg-blue-100 text-blue-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortKey !== column) return <span aria-hidden="true" className="sort-arrow text-gray-400">↕</span>;
+    return <span aria-hidden="true" className="sort-arrow">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+  };
+
+  const sortHeaderProps = (column: string) => ({
+    onClick: () => handleSort(column),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleSort(column);
+      }
+    },
+    tabIndex: 0,
+    'aria-sort': (sortKey === column ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none') as 'ascending' | 'descending' | 'none',
+    title: `Urutkan berdasarkan ${column}`,
+  });
 
   return (
     <DashboardLayout>
@@ -273,21 +341,32 @@ export default function NpnPage() {
                   onFilterChange={(f) => { setStatusFilter(f); setPage(1); }}
                   resultCount={items.length}
                   resultLabel="produk"
+                  totalCount={totalCount}
+                  currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0}
+                  currentTo={(page - 1) * 20 + items.length}
                 />
               </div>
               <div className="flex items-center gap-2">
                 {hasPermission('npn.view') && (
-                <button onClick={handleTemplate} className="btn-secondary">
+                <button onClick={handleTemplate} disabled={templateLoading} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed">
                   <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    {templateLoading ? (
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    )}
                     Template
                   </span>
                 </button>
                 )}
                 {hasPermission('npn.view') && (
-                <button onClick={handleExport} className="btn-secondary">
+                <button onClick={handleExport} disabled={exporting} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed">
                   <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                    {exporting ? (
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                    )}
                     Export
                   </span>
                 </button>
@@ -297,14 +376,6 @@ export default function NpnPage() {
                     <span className="flex items-center gap-2">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                       Import
-                    </span>
-                  </button>
-                )}
-                {selectedIds.length > 0 && (
-                  <button onClick={handleBulkDelete} className="btn-danger">
-                    <span className="flex items-center gap-2">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                      Hapus ({selectedIds.length})
                     </span>
                   </button>
                 )}
@@ -329,19 +400,31 @@ export default function NpnPage() {
                     </th>
                   )}
                   <th scope="col" className="excel-header w-12">No</th>
-                  <th scope="col" className="excel-header">Nickname</th>
-                  <th scope="col" className="excel-header">Nickname New</th>
-                  <th scope="col" className="excel-header">BOS ID</th>
-                  <th scope="col" className="excel-header">SAP ID</th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'szNickName' ? 'active' : ''}`} {...sortHeaderProps('szNickName')}>
+                    Nickname <SortIcon column="szNickName" />
+                  </th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'szNickNameNew' ? 'active' : ''}`} {...sortHeaderProps('szNickNameNew')}>
+                    Nickname New <SortIcon column="szNickNameNew" />
+                  </th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'BOSnetszProductId' ? 'active' : ''}`} {...sortHeaderProps('BOSnetszProductId')}>
+                    BOS ID <SortIcon column="BOSnetszProductId" />
+                  </th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'SAPszProductId' ? 'active' : ''}`} {...sortHeaderProps('SAPszProductId')}>
+                    SAP ID <SortIcon column="SAPszProductId" />
+                  </th>
                   <th scope="col" className="excel-header">Description</th>
-                  <th scope="col" className="excel-header">Barcode</th>
-                  <th scope="col" className="excel-header">Status</th>
-                  <th scope="col" className="excel-header text-right">Aksi</th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'szBarcode' ? 'active' : ''}`} {...sortHeaderProps('szBarcode')}>
+                    Barcode <SortIcon column="szBarcode" />
+                  </th>
+                  <th scope="col" className={`excel-header excel-header-sortable ${sortKey === 'szStatus' ? 'active' : ''}`} {...sortHeaderProps('szStatus')}>
+                    Status <SortIcon column="szStatus" />
+                  </th>
+                  <th scope="col" className="excel-header excel-sticky-right text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, index) => (
-                  <tr key={item.id} className={`excel-row ${selectedIds.includes(item.id) ? 'bg-primary-50/50' : ''} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                  <tr key={item.id} className={`excel-row ${selectedIds.includes(item.id) ? 'excel-row-selected bg-primary-50/50' : ''} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                     {hasPermission('npn.delete') && (
                       <td className="excel-cell text-center">
                         <input
@@ -369,14 +452,14 @@ export default function NpnPage() {
                       <div className="text-sm text-gray-500">{item.szShortDescription || '-'}</div>
                     </td>
                     <td className="excel-cell">
-                      <span className="text-sm text-gray-600 font-mono">{item.szBarcode || '-'}</span>
+                      <span className={item.szBarcode ? 'text-sm text-gray-600 font-mono' : 'text-sm text-gray-400 italic'}>{item.szBarcode || 'Belum diisi'}</span>
                     </td>
                     <td className="excel-cell">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.szStatus === 'A' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusColor(item.szStatus)}`}>
                         {item.szStatus || '-'}
                       </span>
                     </td>
-                    <td className="excel-cell text-right">
+                    <td className="excel-cell excel-sticky-right text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => setViewItem(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200" title="Lihat Detail" aria-label="Lihat Detail">
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -435,6 +518,20 @@ export default function NpnPage() {
           </div>
         </div>
       </div>
+
+      {/* Floating bulk-action bar */}
+      {selectedIds.length > 0 && hasPermission('npn.delete') && (
+        <div role="status" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-gray-900 text-white pl-5 pr-3 py-2.5 rounded-2xl shadow-2xl border border-white/10 animate-fade-in">
+          <span className="text-sm font-medium whitespace-nowrap">{selectedIds.length} produk terpilih</span>
+          <span aria-hidden="true" className="w-px h-6 bg-white/20" />
+          <button onClick={() => setSelectedIds([])} className="min-h-[44px] px-4 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
+            Batal
+          </button>
+          <button onClick={handleBulkDelete} className="min-h-[44px] px-4 text-sm font-medium bg-red-600 hover:bg-red-500 rounded-xl transition-colors">
+            Hapus
+          </button>
+        </div>
+      )}
 
       {/* View Modal */}
       <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Detail NPN" subtitle="Informasi lengkap produk NPN" size="xl"
@@ -612,10 +709,17 @@ export default function NpnPage() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">File Excel</label>
             <div
-              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${selectedFile ? 'border-primary-300 bg-primary-50/30' : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'}`}
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-primary-50' : selectedFile ? 'border-primary-300 bg-primary-50/30' : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'}`}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDragging(false); pickFile(e.dataTransfer.files[0] || null); }}
+              role="button"
+              aria-label="Pilih file Excel untuk import"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
             >
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="hidden" />
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { pickFile(e.target.files?.[0] || null); e.target.value = ''; }} className="hidden" />
               {selectedFile ? (
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-14 h-14 rounded-2xl bg-primary-100 flex items-center justify-center">
@@ -623,8 +727,16 @@ export default function NpnPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">Klik untuk ganti file</p>
+                    <p className="text-xs text-gray-500 mt-1">({formatFileSize(selectedFile.size)}) • Klik atau taruh file untuk ganti</p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    className="text-xs font-medium text-gray-400 hover:text-red-500 transition-colors min-h-[44px] px-4"
+                    aria-label="Hapus file terpilih"
+                  >
+                    Hapus file
+                  </button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3">
@@ -632,8 +744,8 @@ export default function NpnPage() {
                     <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Klik untuk pilih file</p>
-                    <p className="text-xs text-gray-400 mt-1">Mendukung .xlsx, .xls, .csv (maks 10MB)</p>
+                    <p className="text-sm font-medium text-gray-700">Klik untuk pilih file atau taruh file di sini</p>
+                    <p className="text-xs text-gray-400 mt-1">Mendukung .xlsx, .xls, .csv (maks 10 MB)</p>
                   </div>
                 </div>
               )}
