@@ -19,6 +19,89 @@ class BiayaApprovalService
         return $biaya instanceof BiayaThl ? 'biaya_thl' : 'biaya_retribusi';
     }
 
+    /**
+     * Draft boleh tidak lengkap — antrean tidak boleh. Cermin aturan
+     * validateThlRequest (BE) + getMissingFields (FE) untuk Biaya THL;
+     * model lain lolos apa adanya.
+     */
+    private function assertSubmittable(Model $biaya): void
+    {
+        if (! $biaya instanceof BiayaThl) {
+            return;
+        }
+
+        $errors = [];
+        if (blank($biaya->tanggal_pengajuan)) {
+            $errors['tanggal_pengajuan'] = ['Tanggal pengajuan wajib diisi sebelum dikirim.'];
+        }
+
+        $details = $biaya->details()->get();
+        if ($details->isEmpty()) {
+            $errors['details'] = ['Minimal 1 pekerja sebelum dikirim.'];
+        }
+
+        foreach ($details as $index => $detail) {
+            $prefix = "details.{$index}";
+            $position = strtoupper(trim((string) ($detail->posisi ?? '')));
+            // Dokumentasi: plat + type per baris untuk semua posisi.
+            foreach ([
+                'nama_thl' => 'Nama THL',
+                'nopol_kendaraan' => 'Plat Kendaraan',
+                'type_kendaraan' => 'Type Kendaraan',
+            ] as $field => $label) {
+                if (blank($detail->{$field})) {
+                    $errors["{$prefix}.{$field}"] = ["{$label} wajib diisi sebelum dikirim."];
+                }
+            }
+            if ($detail->nominal_biaya === null || (float) $detail->nominal_biaya < 1) {
+                $errors["{$prefix}.nominal_biaya"] = ['Nominal Biaya minimal Rp 1 sebelum dikirim.'];
+            }
+            if (! in_array($position, ['THL HELPER', 'THL DRIVER', 'THL GUDANG'], true)) {
+                $errors["{$prefix}.posisi"] = ['Posisi wajib dipilih sebelum dikirim.'];
+            }
+            // Dokumentasi §2.1 langkah 6: satu baris valid wajib memiliki satu
+            // foto bukti sebelum dikirim.
+            if ($detail->photos()->count() < 1) {
+                $errors["{$prefix}.photos"] = ["Foto bukti wajib diunggah untuk {$detail->nama_thl} sebelum dikirim."];
+            }
+            // Checklist kendaraan tambahan: SJ, plat, dan type wajib terisi.
+            if (filter_var($detail->kendaraan_tambahan ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                foreach (['kendaraan_sj' => 'No. SJ kendaraan', 'kendaraan_nopol' => 'Plat kendaraan tambahan', 'kendaraan_type' => 'Type kendaraan tambahan'] as $field => $label) {
+                    if (blank($detail->{$field})) {
+                        $errors["{$prefix}.{$field}"] = ["{$label} wajib diisi untuk kendaraan tambahan."];
+                    }
+                }
+            }
+            if (in_array($position, ['THL HELPER', 'THL DRIVER'], true)) {
+                foreach ([
+                    'no_surat_jalan' => 'Nomor Surat Jalan',
+                    'driver_name' => 'Nama Driver',
+                    'droppoint' => 'Droppoint',
+                    'jam_datang' => 'Jam Datang',
+                    'jam_pulang' => 'Jam Pulang',
+                ] as $field => $label) {
+                    if (blank($detail->{$field})) {
+                        $errors["{$prefix}.{$field}"] = ["{$label} wajib diisi untuk posisi {$position}."];
+                    }
+                }
+                if ($detail->kubikasi === null || (float) $detail->kubikasi <= 0) {
+                    $errors["{$prefix}.kubikasi"] = ["Kubikasi wajib lebih dari 0 untuk posisi {$position}."];
+                }
+            }
+            if ($position === 'THL GUDANG') {
+                foreach (['jam_datang' => 'Jam Datang', 'jam_pulang' => 'Jam Pulang'] as $field => $label) {
+                    if (blank($detail->{$field})) {
+                        $errors["{$prefix}.{$field}"] = ["{$label} wajib diisi untuk posisi {$position}."];
+                    }
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
     private function notify(Model $biaya, string $trigger): void
     {
         $fresh = $biaya->refresh()->load('submittedBy', 'checkedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
@@ -34,6 +117,7 @@ class BiayaApprovalService
     {
         $this->ensureCreator($biaya, $actor);
         $this->ensureStatus($biaya, ['draft', 'rejected', 'revisi']);
+        $this->assertSubmittable($biaya);
 
         $biaya->update([
             'approval_pengajuan' => $actor->full_name ?: $actor->email,

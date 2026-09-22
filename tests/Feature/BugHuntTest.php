@@ -29,7 +29,7 @@ class BugHuntTest extends TestCase
 
         $roleAdmin = Role::firstOrCreate(['slug' => 'bug_admin'], ['name' => 'Bug Admin']);
         $roleOther = Role::firstOrCreate(['slug' => 'bug_other'], ['name' => 'Bug Other']);
-        $perms = ['rencana_kirim.view', 'rencana_kirim.create', 'rencana_kirim.edit', 'rencana_kirim.delete', 'gate.view', 'gate.create', 'sj_validation.view', 'sj_validation.create', 'sj_validation.edit', 'receiving.view', 'receiving.create', 'receiving.edit', 'receiving.delete', 'penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete', 'users.view', 'emails.view', 'emails.edit', 'opname.view', 'reports.view', 'dashboard.view'];
+        $perms = ['rencana_kirim.view', 'rencana_kirim.create', 'rencana_kirim.edit', 'rencana_kirim.delete', 'gate.view', 'gate.create', 'sj_validation.view', 'sj_validation.create', 'sj_validation.validate', 'sj_validation.complete', 'receiving.view', 'receiving.create', 'receiving.edit', 'receiving.delete', 'penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete', 'users.view', 'emails.view', 'emails.edit', 'opname.view', 'reports.view', 'dashboard.view'];
         foreach ($perms as $slug) {
             $p = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Bug']);
             $roleAdmin->permissions()->syncWithoutDetaching([$p->id]);

@@ -598,6 +598,13 @@ class SjValidationController extends Controller
                 'validated_by' => $sjValidation->validated_by,
                 'notes' => $svItem->notes,
                 'photo' => $svItem->photo,
+                // Cap depo/tanggal/sumber sejak lahir (sejajar withOpnameDefaults
+                // di ReceivingController::store): group & filter SQL bekerja
+                // pada kolom mentah, bukan accessor fallback.
+                'sumber_material' => $rencanaKirim->shipper_name,
+                'kode_depo' => $rencanaKirim->kode_depo,
+                'nama_depo' => $rencanaKirim->nama_depo,
+                'tanggal_penerimaan' => today()->toDateString(),
             ]);
         }
 

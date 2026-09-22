@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
@@ -70,10 +70,10 @@ const STATUS_ORDER = ['EXPIRED', 'KRITIS', 'PERHATIAN', 'AMAN'] as const;
 type TabKey = 'ACTION' | 'EXPIRED' | 'KRITIS' | 'PERHATIAN' | 'AMAN' | 'ALL';
 
 const STATUS_META: Record<string, { label: string; badge: string; dot: string; bar: string; text: string }> = {
-  EXPIRED: { label: 'Expired', badge: 'bg-red-50 text-red-700 ring-red-200', dot: 'bg-red-500', bar: 'bg-red-500', text: 'text-red-600' },
-  KRITIS: { label: 'Kritis', badge: 'bg-orange-50 text-orange-700 ring-orange-200', dot: 'bg-orange-500', bar: 'bg-orange-500', text: 'text-orange-700' },
-  PERHATIAN: { label: 'Perhatian', badge: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500', bar: 'bg-amber-400', text: 'text-amber-700' },
-  AMAN: { label: 'Aman', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500', bar: 'bg-emerald-500', text: 'text-emerald-700' },
+  EXPIRED: { label: 'Expired', badge: 'bg-red-50 text-red-700', dot: 'bg-red-500', bar: 'bg-red-500', text: 'text-red-600' },
+  KRITIS: { label: 'Kritis', badge: 'bg-orange-50 text-orange-700', dot: 'bg-orange-500', bar: 'bg-orange-500', text: 'text-orange-700' },
+  PERHATIAN: { label: 'Perhatian', badge: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500', bar: 'bg-amber-400', text: 'text-amber-700' },
+  AMAN: { label: 'Aman', badge: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500', bar: 'bg-emerald-500', text: 'text-emerald-700' },
 };
 
 const num = (v: unknown): number => Number(v ?? 0);
@@ -82,8 +82,8 @@ function DaysBar({ sisaHari, maxHari, status }: { sisaHari: number; maxHari: num
   const meta = STATUS_META[status] || STATUS_META.AMAN;
   const pct = Math.max(0, Math.min(100, (sisaHari / Math.max(maxHari, 1)) * 100));
   return (
-    <div className="w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-      <div className={`h-full rounded-full ${meta.bar}`} style={{ width: `${pct}%` }} />
+    <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden min-w-[40px] max-w-[80px]">
+      <div className={`h-full rounded-full transition-all duration-300 ${meta.bar}`} style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -107,7 +107,13 @@ export default function OpnameExpiredPage() {
   const [generating, setGenerating] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [thresholdForm, setThresholdForm] = useState<Record<string, string>>({});
+  const [thresholdForm, setThresholdForm] = useState<Record<string, number>>({
+    threshold_aman: 90,
+    threshold_perhatian: 30,
+    threshold_kritis: 7,
+  });
+  const [thresholdErrors, setThresholdErrors] = useState<string[]>([]);
+  const tablistRef = useRef<HTMLDivElement>(null);
 
   const current = useMemo(() => waves.find((w) => w.id === selectedId) ?? null, [waves, selectedId]);
   const currentIndex = useMemo(() => waves.findIndex((w) => w.id === selectedId), [waves, selectedId]);
@@ -181,6 +187,24 @@ export default function OpnameExpiredPage() {
     if (next) setSelectedId(next.id);
   };
 
+  const tabList = useMemo((): { key: TabKey; label: string }[] => [
+    { key: 'ACTION', label: 'Perlu Ditindak' },
+    ...STATUS_ORDER.map((s) => ({ key: s as TabKey, label: STATUS_META[s].label })),
+    { key: 'ALL', label: 'Semua' },
+  ], []);
+
+  const handleTabKeyDown = (e: React.KeyboardEvent) => {
+    const tabs = tabList;
+    const currentIdx = tabs.findIndex((t) => t.key === tabKey);
+    let nextIdx = currentIdx;
+    if (e.key === 'ArrowRight') { nextIdx = (currentIdx + 1) % tabs.length; e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { nextIdx = (currentIdx - 1 + tabs.length) % tabs.length; e.preventDefault(); }
+    else return;
+    setTabKey(tabs[nextIdx].key);
+    setPage(1);
+    (document.querySelector(`[data-tab="${tabs[nextIdx].key}"]`) as HTMLElement)?.focus();
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     try {
@@ -215,19 +239,34 @@ export default function OpnameExpiredPage() {
     setShowSettings(true);
     try {
       const res = await opnameExpired.settings() as { data: { data: Record<string, number> } };
-      setThresholdForm(Object.fromEntries(Object.entries(res.data.data).map(([k, v]) => [k, String(v)])));
+      setThresholdForm(Object.fromEntries(Object.entries(res.data.data).map(([k, v]) => [k, Number(v)])));
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal memuat pengaturan'));
     }
   };
 
+  const validateThresholds = (): boolean => {
+    const { threshold_aman, threshold_perhatian, threshold_kritis } = thresholdForm;
+    const errors: string[] = [];
+    if (threshold_aman < 0 || threshold_perhatian < 0 || threshold_kritis < 0) {
+      errors.push('Semua threshold harus ≥ 0.');
+    }
+    if (threshold_aman <= threshold_perhatian) {
+      errors.push('AMAN harus > PERHATIAN.');
+    }
+    if (threshold_perhatian <= threshold_kritis) {
+      errors.push('PERHATIAN harus > KRITIS.');
+    }
+    setThresholdErrors(errors);
+    return errors.length === 0;
+  };
+
   const saveSettings = async () => {
-    const payload = Object.fromEntries(
-      Object.entries(thresholdForm).map(([k, v]) => [k, v === '' ? 0 : parseFloat(v)]),
-    );
+    if (!validateThresholds()) return;
     try {
-      await opnameExpired.updateSettings(payload);
+      await opnameExpired.updateSettings(thresholdForm);
       setShowSettings(false);
+      setThresholdErrors([]);
       await load();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal simpan pengaturan'));
@@ -241,7 +280,7 @@ export default function OpnameExpiredPage() {
 
   const badge = (status?: string | null) => {
     const s = status || '-';
-    const meta = STATUS_META[s] || { label: s, badge: 'bg-gray-50 text-gray-600 ring-gray-200', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-gray-600' };
+    const meta = STATUS_META[s] || { label: s, badge: 'bg-gray-50 text-gray-600', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-gray-600' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
@@ -290,7 +329,7 @@ export default function OpnameExpiredPage() {
               return (
                 <div key={s} className="px-2 py-1">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${s === 'EXPIRED' ? 'bg-red-50' : s === 'KRITIS' ? 'bg-orange-50' : s === 'PERHATIAN' ? 'bg-amber-50' : 'bg-emerald-50'}`}>
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                       {s === 'EXPIRED' && <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>}
                       {s === 'KRITIS' && <svg className="w-5 h-5 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>}
                       {s === 'PERHATIAN' && <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
@@ -311,7 +350,7 @@ export default function OpnameExpiredPage() {
 
             <div className="px-2 py-1">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                   <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                 </div>
                 <div>
@@ -345,7 +384,7 @@ export default function OpnameExpiredPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); setSearchApply(search.trim()); } }}
-                placeholder="Cari kode / nama barang / sumber..."
+                placeholder="Cari kode / nama barang..."
                 className="input-field pl-9 py-2 text-sm"
                 aria-label="Cari kode atau nama barang"
               />
@@ -354,20 +393,21 @@ export default function OpnameExpiredPage() {
 
           {/* Tabs */}
           <div className="flex flex-wrap items-center gap-1 border-b border-gray-100 px-2 py-2">
-            <div className="flex flex-wrap items-center gap-1" role="tablist">
-              {([
-                { key: 'ACTION', label: 'Perlu Ditindak' },
-                ...STATUS_ORDER.map((s) => ({ key: s as TabKey, label: STATUS_META[s].label })),
-                { key: 'ALL', label: 'Semua' },
-              ] as { key: TabKey; label: string }[]).map((tab) => {
+            <div className="flex flex-wrap items-center gap-1" role="tablist" ref={tablistRef} onKeyDown={handleTabKeyDown}>
+              {tabList.map((tab) => {
                 const active = tabKey === tab.key;
                 const count = tabCount(tab.key);
                 return (
                   <button
                     key={tab.key}
+                    data-tab={tab.key}
                     onClick={() => { setTabKey(tab.key); setPage(1); }}
+                    onKeyDown={handleTabKeyDown}
+                    tabIndex={active ? 0 : -1}
                     role="tab"
-                    aria-selected={tabKey === tab.key}
+                    aria-selected={active}
+                    aria-controls="opname-table-panel"
+                    id={`tab-${tab.key}`}
                     className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${active ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}
                   >
                     {tab.label}
@@ -442,7 +482,7 @@ export default function OpnameExpiredPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" id="opname-table-panel" role="tabpanel" aria-labelledby="tab-ACTION">
                 <table className="w-full min-w-[980px] border-collapse">
                   <caption className="sr-only">Daftar opname expired</caption>
                   <thead>
@@ -682,23 +722,34 @@ export default function OpnameExpiredPage() {
       <Modal open={showSettings} onClose={() => setShowSettings(false)} title="Threshold Opname" subtitle="Ambang batas status expired" size="md"
         footer={
           <>
+            <button onClick={() => { setThresholdForm({ threshold_aman: 90, threshold_perhatian: 30, threshold_kritis: 7 }); setThresholdErrors([]); }} className="btn-secondary">Reset</button>
             <button onClick={() => setShowSettings(false)} className="btn-secondary">Batal</button>
             <button onClick={saveSettings} className="btn-primary">Simpan</button>
           </>
         }
       >
       <div className="space-y-6">
+        {thresholdErrors.length > 0 && (
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+            {thresholdErrors.map((err, i) => (
+              <p key={i} className="text-sm text-red-700">{err}</p>
+            ))}
+          </div>
+        )}
           <div>
             <label htmlFor="threshold-aman" className="block text-xs font-medium text-gray-500 mb-1">Threshold AMAN (hari, ≥ ini = Aman)</label>
-            <input id="threshold-aman" type="number" value={thresholdForm.threshold_aman || ''} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_aman: e.target.value }))} className="input-field" />
+            <input id="threshold-aman" type="number" min={0} step={1} value={thresholdForm.threshold_aman} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_aman: parseInt(e.target.value) || 0 }))} className="input-field" />
+            <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa ≥ hari ini → status <span className="text-emerald-600 font-medium">Aman</span></p>
           </div>
           <div>
             <label htmlFor="threshold-perhatian" className="block text-xs font-medium text-gray-500 mb-1">Threshold PERHATIAN (hari)</label>
-            <input id="threshold-perhatian" type="number" value={thresholdForm.threshold_perhatian || ''} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_perhatian: e.target.value }))} className="input-field" />
+            <input id="threshold-perhatian" type="number" min={0} step={1} value={thresholdForm.threshold_perhatian} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_perhatian: parseInt(e.target.value) || 0 }))} className="input-field" />
+            <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa &lt; threshold AMAN → status <span className="text-amber-600 font-medium">Perhatian</span></p>
           </div>
           <div>
             <label htmlFor="threshold-kritis" className="block text-xs font-medium text-gray-500 mb-1">Threshold KRITIS (hari)</label>
-            <input id="threshold-kritis" type="number" value={thresholdForm.threshold_kritis || ''} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: e.target.value }))} className="input-field" />
+            <input id="threshold-kritis" type="number" min={0} step={1} value={thresholdForm.threshold_kritis} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: parseInt(e.target.value) || 0 }))} className="input-field" />
+            <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa &lt; threshold PERHATIAN → status <span className="text-red-600 font-medium">Kritis/Expired</span></p>
           </div>
         </div>
       </Modal>

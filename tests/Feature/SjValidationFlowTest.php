@@ -120,7 +120,7 @@ class SjValidationFlowTest extends TestCase
 
     public function test_scan_validates_item_and_requires_photo_for_problem_conditions(): void
     {
-        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create', 'sj_validation.edit']));
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create', 'sj_validation.validate']));
         $rk = $this->scheduledRencana($user);
         $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
         $itemId = $validation['items'][0]['id'];
@@ -144,7 +144,7 @@ class SjValidationFlowTest extends TestCase
 
     public function test_scan_rejects_item_from_another_validation(): void
     {
-        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.edit']));
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
         $rkA = $this->scheduledRencana($user);
         $rkB = $this->scheduledRencana($user);
 
@@ -159,7 +159,7 @@ class SjValidationFlowTest extends TestCase
 
     public function test_complete_blocks_while_items_pending_then_creates_single_receiving(): void
     {
-        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.edit']));
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
         $rk = $this->scheduledRencana($user);
         $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
         $item = $validation['items'][0];
@@ -186,7 +186,7 @@ class SjValidationFlowTest extends TestCase
 
     public function test_complete_is_idempotent_no_duplicate_receiving(): void
     {
-        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.edit']));
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
         $rk = $this->scheduledRencana($user);
         $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
 
@@ -225,5 +225,33 @@ class SjValidationFlowTest extends TestCase
         // view-only tidak boleh memulai validasi.
         $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])
             ->assertStatus(403);
+    }
+
+    public function test_scan_requires_validate_permission(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.complete']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+
+        // Punya create + complete tapi tanpa validate → scan ditolak.
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $validation['items'][0]['id'],
+            'actual_qty' => 100,
+        ])->assertStatus(403);
+    }
+
+    public function test_complete_requires_complete_permission(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+
+        $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $validation['items'][0]['id'],
+            'actual_qty' => 100,
+        ])->assertOk();
+
+        // Item sudah tervalidasi tapi tanpa complete permission → ditolak.
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertStatus(403);
     }
 }

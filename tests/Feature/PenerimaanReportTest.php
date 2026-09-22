@@ -128,4 +128,23 @@ class PenerimaanReportTest extends TestCase
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $this->assertStringContainsString('laporan-penerimaan', $response->headers->get('content-disposition'));
     }
+
+    public function test_penerimaan_report_paginates_rows_but_summarizes_all(): void
+    {
+        for ($i = 1; $i <= 30; $i++) {
+            $this->makeItem('VALIDASI_SJ', sprintf('BRG-%02d', $i));
+        }
+
+        $page1 = $this->getJson('/api/v1/reports/penerimaan?per_page=25&page=1')->assertOk();
+        $this->assertCount(25, $page1->json('data'));
+        $this->assertSame(1, $page1->json('current_page'));
+        $this->assertSame(2, $page1->json('last_page'));
+        $this->assertSame(30, $page1->json('total'));
+        // Ringkasan mencakup seluruh 30 baris, bukan 25 di halaman aktif.
+        $this->assertSame(30, $page1->json('summary.total_item'));
+
+        $page2 = $this->getJson('/api/v1/reports/penerimaan?per_page=25&page=2')->assertOk();
+        $this->assertCount(5, $page2->json('data'));
+        $this->assertSame(30, $page2->json('summary.total_item'));
+    }
 }

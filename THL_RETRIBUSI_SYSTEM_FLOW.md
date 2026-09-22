@@ -18,10 +18,14 @@
 - Jam datang dan pulang ditampilkan untuk semua posisi THL yang dipilih,
   termasuk `THL GUDANG`. Nama driver hanya untuk `THL HELPER` dan
   `THL DRIVER`.
+- Plat (`nopol_kendaraan`) dan type (`type_kendaraan`) kendaraan diisi
+  per baris untuk SEMUA posisi, termasuk `THL GUDANG`. Tidak ada input
+  kendaraan level grup SJ.
 - Saat posisi `THL GUDANG` dipilih, frontend mengisi `kubikasi=0` dan
   `droppoint=0`.
 - Foto detail dikirim sebagai `details[i][photos][]` dan disimpan pada
-  `biaya_thl_photos` melalui relasi detail.
+  `biaya_thl_photos` melalui relasi detail. Satu baris valid wajib memiliki
+  satu foto bukti sebelum dikirim (divalidasi frontend + gerbang submit).
 
 ### Input Retribusi
 
@@ -287,6 +291,9 @@ Fungsi penting:
   - jam_pulang
   - nominal_biaya
   - kendaraan_tambahan
+  - kendaraan_sj
+  - kendaraan_nopol
+  - kendaraan_type
   - order
 
 - `biaya_thl_photos`
@@ -302,6 +309,12 @@ Fungsi penting:
 
 - Minimal 1 baris detail, maksimal 20.
 - Setiap detail wajib memiliki nama THL, nopol, jenis kendaraan, nominal.
+- Plat (`nopol_kendaraan`) dan type (`type_kendaraan`) kendaraan diisi
+  per baris untuk SEMUA posisi, termasuk `THL GUDANG`. Tidak ada input
+  kendaraan level grup SJ.
+- Kru GUDANG yang membongkar kendaraan ke-2 (SJ berbeda) dicatat lewat
+  checklist "Kendaraan tambahan" per grup: `kendaraan_sj`, `kendaraan_nopol`,
+  `kendaraan_type`. Foto absen milik kru sehingga tidak diduplikat.
 - Total nominal dihitung dari semua baris detail.
 - Jika total nominal > 750.000, sistem menandai `is_rfah_required` dan mengisi nama `Umi Marzuqoh`.
 - User hanya bisa edit/hapus data miliknya sendiri.

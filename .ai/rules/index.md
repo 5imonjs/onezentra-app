@@ -12,8 +12,9 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Models/**, app/Models/StandarisasiTumpukan.php, app/Models/ReceivingItem.php | .ai/rules/models.md |
 | onezentra-web/** | .ai/rules/onezentra-web.md |
 | onezentra-web/src/app/opname-expired/** | .ai/rules/opname-expired.md |
-| onezentra-web/src/app/penerimaan/** | .ai/rules/penerimaan.md |
+| onezentra-web/src/app/penerimaan/**, onezentra-web/src/components/DashboardStatCards.tsx, app/Http/Controllers/Api/V1/DashboardController.php, app/Models/Penerimaan.php, app/Http/Controllers/Api/V1/PenerimaanController.php | .ai/rules/penerimaan.md |
 | onezentra-web/src/app/rencana-kirim/page.tsx | .ai/rules/rencana-kirim.md |
+| onezentra-web/src/app/reports/** | .ai/rules/reports.md |
 | onezentra-web/src/app/reports/opname-expired/** | .ai/rules/reports-opname-expired.md |
 | onezentra-web/src/app/reports/rencana-kirim/**, app/Exports/RencanaKirimReportExport.php | .ai/rules/reports-rencana-kirim.md |
 | routes/api.php | .ai/rules/routes.md |

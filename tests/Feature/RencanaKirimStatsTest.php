@@ -102,4 +102,36 @@ class RencanaKirimStatsTest extends TestCase
         $this->assertCount(1, $calendar);
         $this->assertSame(1, $calendar[0]['breakdown']['SCHEDULED']);
     }
+
+    public function test_stats_accepts_kode_depo_filter_for_global_users(): void
+    {
+        $user = $this->viewer();
+        $today = now()->toDateString();
+
+        RencanaKirim::create(['po_transporter' => 'PO-DPO', 'status' => 'SCHEDULED', 'rkh_date' => $today, 'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $user->id]);
+        RencanaKirim::create(['po_transporter' => 'PO-OTHER', 'status' => 'COMPLETED', 'rkh_date' => $today, 'kode_depo' => 'OTHER', 'nama_depo' => 'Depo Lain', 'created_by' => $user->id]);
+
+        Sanctum::actingAs($user);
+        $res = $this->getJson('/api/v1/rencana-kirim/stats?kode_depo=OTHER')->assertOk();
+
+        $this->assertSame(1, $res->json('total'));
+        $this->assertSame(1, $res->json('data.COMPLETED.count'));
+        $this->assertSame(0, $res->json('data.SCHEDULED.count'));
+    }
+
+    public function test_stats_ignores_kode_depo_filter_for_scoped_users(): void
+    {
+        $user = $this->viewer(viewAll: false);
+        $today = now()->toDateString();
+
+        RencanaKirim::create(['po_transporter' => 'PO-DPO', 'status' => 'SCHEDULED', 'rkh_date' => $today, 'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'created_by' => $user->id]);
+        RencanaKirim::create(['po_transporter' => 'PO-OTHER', 'status' => 'SCHEDULED', 'rkh_date' => $today, 'kode_depo' => 'OTHER', 'nama_depo' => 'Depo Lain', 'created_by' => $user->id]);
+
+        Sanctum::actingAs($user);
+        // User depo terkunci ke deponya: filter kode_depo lain diabaikan.
+        $res = $this->getJson('/api/v1/rencana-kirim/stats?kode_depo=OTHER')->assertOk();
+
+        $this->assertSame(1, $res->json('total'));
+        $this->assertSame(1, $res->json('data.SCHEDULED.count'));
+    }
 }

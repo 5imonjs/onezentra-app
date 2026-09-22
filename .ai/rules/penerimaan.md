@@ -1,12 +1,15 @@
 ---
 paths:
-  - 'onezentra-web/src/app/penerimaan/**'
+  - 'onezentra-web/src/components/DashboardStatCards.tsx'
+  - 'app/Http/Controllers/Api/V1/DashboardController.php'
+  - 'app/Models/Penerimaan.php'
+  - 'app/Http/Controllers/Api/V1/PenerimaanController.php'
 ---
 
 # Penerimaan
 
-## Penerimaan page = toolbar + tabel padat berkelompok (operasional)
-Halaman Penerimaan = layar operasional (SJ only): satu toolbar (search + ringkasan inline dokumen/batch/CRT/PCS) di atas satu tabel padat dengan baris grup per dokumen receiving (PO/driver/nopol/depo/sumber tanggal/total CRT+PCS di baris grup; edit di tiap baris item). JANGAN pakai kartu statistik 4-blok atau kartu nested per dokumen — itu pola "dashboard", bukan data operasional. Jangan tambahkan kolom PO/Driver/Depo di tiap baris item. Paginasi default 25/halaman. Laporan/export tinggal di /reports/penerimaan (baca rule reports).
+## Kartu dashboard menghitung receiving_items VALIDASI_SJ, bukan tabel penerimaans
+Kartu "Penerimaan" di dashboard (dan endpoint `dashboard/summary`) menghitung `receiving_items` bersumber `VALIDASI_SJ` — sumber yang sama dengan halaman `/penerimaan` tujuannya. JANGAN arahkan kembali ke `penerimaan.list` / tabel `penerimaans`: tabel itu kosong dan tidak punya UI, kartu akan mati (dim) walau data ada.
 
-## Vocab kondisi kanonik + warna semantik
-Condition memakai set kanonik: FISIK_BAGUS, FISIK_RUSAK, QTY_KURANG, ISI_KEMASAN_KURANG, EXPIRED_TIDAK_STANDAR, LAINNYA. Tampilkan badge via helper bersama onezentra-web/src/lib/condition.ts (conditionMeta: label Indonesia + tone emerald/amber/red/neutral). Jangan hardcode warna 'GOOD' hijau vs sisanya amber — FISIK_BAGUS bukan kondisi buruk. Legacy (GOOD/DAMAGED/MISSING/LESS/NOT GOOD) dibaca via mapping; normalisasi penulisan ditangani backend (ReceivingItem::normalizeCondition).
+## Tabel penerimaans + PenerimaanController adalah jalur yatim
+Tidak ada halaman frontend yang memakai CRUD `/penerimaan` (model `Penerimaan`). Jangan bangun fitur baru di atasnya. Bila butuh data penerimaan, pakai `receiving_items` (lihat aturan source di `src.md`). Penghapusan endpoint yatim butuh keputusan eksplisit user — jangan hapus diam-diam.

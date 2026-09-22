@@ -286,6 +286,23 @@ button:focus-visible,
   white-space: nowrap;
 }
 
+.excel-header-sortable {
+  @apply cursor-pointer select-none hover:bg-gray-200 transition-colors;
+}
+
+.excel-header-sortable .sort-arrow {
+  @apply inline-block ml-1 opacity-30 transition-opacity;
+}
+
+.excel-header-sortable:hover .sort-arrow,
+.excel-header-sortable.active .sort-arrow {
+  @apply opacity-100;
+}
+
+.excel-header-sortable.active .sort-arrow.active {
+  @apply opacity-100;
+}
+
 .excel-cell {
   @apply px-4 py-3 text-sm text-gray-700 border border-gray-200;
   white-space: nowrap;
@@ -298,6 +315,28 @@ button:focus-visible,
 
 .excel-row:nth-child(even) {
   @apply bg-gray-50/50;
+}
+
+/* Sticky action column: solid bg per row state so scrolled content stays hidden behind */
+.excel-sticky-right {
+  position: sticky;
+  right: 0;
+  z-index: 10;
+  @apply bg-white;
+  box-shadow: -8px 0 12px -8px rgb(0 0 0 / 0.15);
+}
+
+thead .excel-sticky-right {
+  @apply bg-gray-100;
+}
+
+tbody .excel-row:nth-child(even) .excel-sticky-right {
+  @apply bg-gray-50;
+}
+
+/* Higher specificity than the nth-child rule above so selection wins on even rows */
+tbody tr.excel-row-selected td.excel-cell.excel-sticky-right {
+  @apply bg-primary-50;
 }
 
 /* ============================================

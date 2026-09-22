@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Mail\ReceivingCompleted;
+use App\Mail\SelisihQtyNotification;
 use App\Mail\StandarisasiStatusNotification;
 use App\Models\Npn;
 use App\Models\OpnameExpiredWave;
@@ -46,7 +48,7 @@ class SystemEndToEndTest extends TestCase
         $perms = [
             'rencana_kirim.view', 'rencana_kirim.create', 'rencana_kirim.edit', 'rencana_kirim.delete',
             'gate.view', 'gate.create',
-            'sj_validation.view', 'sj_validation.create', 'sj_validation.edit', 'sj_validation.delete',
+            'sj_validation.view', 'sj_validation.create', 'sj_validation.validate', 'sj_validation.complete', 'sj_validation.delete',
             'receiving.view', 'receiving.create', 'receiving.edit', 'receiving.delete',
             'penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete',
             'npn.view', 'npn.create', 'npn.edit', 'npn.delete',
@@ -77,6 +79,13 @@ class SystemEndToEndTest extends TestCase
             'role_id' => $this->roleAdmin->id,
         ]);
         $this->roleAdmin->users()->attach($this->admin->id);
+
+        // Assign blc role agar resolveRecipients() menemukan user aktif untuk receiving completed email
+        $blcRole = Role::firstOrCreate(['slug' => 'blc'], ['name' => 'BLC', 'description' => 'Approval BLC']);
+        $this->admin->roles()->attach($blcRole);
+
+        // Pastikan admin_distirbusi role ada untuk CC receiving completed
+        Role::firstOrCreate(['slug' => 'admin_distirbusi'], ['name' => 'Admin Distribusi', 'description' => 'Admin Distribusi']);
 
         Sanctum::actingAs($this->admin);
     }
@@ -205,16 +214,35 @@ class SystemEndToEndTest extends TestCase
             'sj_validation_item_id' => $itemId, 'actual_qty' => 8, 'condition' => 'FISIK_BAGUS',
         ])->assertOk()->assertJsonPath('data.status', 'MISMATCH'); // 8 != 10
 
+        // Daftarkan penerima notif selisih, lalu complete → email selisih terpush.
+        $this->postJson('/api/v1/email-recipients', [
+            'document_type' => 'selisih', 'trigger' => 'selisih_qty', 'recipient_type' => 'email', 'field' => 'TO', 'email' => 'selisih-rcv@example.com',
+        ])->assertCreated();
+
         $this->postJson("/api/v1/sj-validations/{$vid}/complete")->assertOk();
+        Mail::assertSent(SelisihQtyNotification::class, function ($mail) {
+            return $mail->hasTo('selisih-rcv@example.com');
+        });
         $this->assertDatabaseHas('receivings', ['rencana_kirim_id' => $rk->id, 'status' => 'PENDING']);
 
         $receiving = Receiving::where('rencana_kirim_id', $rk->id)->first();
         $this->assertEquals(8, (float) $receiving->items()->first()->actual_qty);
         $this->assertEquals(-2, (float) $receiving->items()->first()->selisih_qty);
 
+        // Daftarkan penerima notif email receiving completion
+        $this->postJson('/api/v1/email-recipients', [
+            'document_type' => 'receiving', 'trigger' => 'completed', 'recipient_type' => 'role', 'field' => 'TO', 'role_slug' => 'blc',
+        ])->assertCreated();
+        $this->postJson('/api/v1/email-recipients', [
+            'document_type' => 'receiving', 'trigger' => 'completed', 'recipient_type' => 'role', 'field' => 'CC', 'role_slug' => 'admin_distirbusi',
+        ])->assertCreated();
+
         // complete receiving butuh barcode cocok (ReceivingController.php:330)
         $this->postJson("/api/v1/receivings/{$receiving->id}/complete", ['barcode' => 'SALAH'])->assertStatus(422);
         $this->postJson("/api/v1/receivings/{$receiving->id}/complete", ['barcode' => 'SJ-RCV-001'])->assertOk();
+        Mail::assertSent(ReceivingCompleted::class, function ($mail) {
+            return $mail->hasTo('admin@onezentra.com');
+        });
         $this->assertDatabaseHas('receivings', ['id' => $receiving->id, 'status' => 'COMPLETED']);
         $this->assertDatabaseHas('rencana_kirim', ['id' => $rk->id, 'status' => 'COMPLETED']);
 
@@ -422,13 +450,14 @@ class SystemEndToEndTest extends TestCase
         $this->assertContains('selisih', $opts->json('document_types'));
         $this->assertContains('TO', $opts->json('fields'));
 
-        // store email type TO
+        // store email type TO (resolved_count ikut serta)
         $r1 = $this->postJson('/api/v1/email-recipients', [
             'document_type' => 'rencana_kirim', 'trigger' => 'created', 'recipient_type' => 'email', 'field' => 'TO', 'email' => 'to@example.com', 'label' => 'TO Rencana',
         ])->assertCreated()->assertJsonPath('data.email', 'to@example.com');
         $r1Id = $r1->json('data.id');
+        $this->assertSame(1, $r1->json('data.resolved_count'));
 
-        // store role type CC (harus ada role)
+        // store role type CC
         $role = Role::first();
         $this->postJson('/api/v1/email-recipients', [
             'document_type' => 'sj_ba', 'trigger' => 'validated', 'recipient_type' => 'role', 'field' => 'CC', 'role_slug' => $role->slug,
@@ -443,6 +472,9 @@ class SystemEndToEndTest extends TestCase
         $this->postJson('/api/v1/email-recipients', [
             'document_type' => 'selisih', 'trigger' => 'selisih_qty', 'recipient_type' => 'email', 'field' => 'TO', 'email' => 'selisih@example.com',
         ])->assertCreated();
+
+        // pastikan penerima receiving completion terdaftar (EmailRecipientSeeder dijalankan di setUp)
+        // EmailRecipientSeeder sudah seed via database seeders — tidak perlu duplicate
 
         // validasi: recipient_type=email tanpa email -> 422
         $this->postJson('/api/v1/email-recipients', [
@@ -462,6 +494,9 @@ class SystemEndToEndTest extends TestCase
         $this->deleteJson("/api/v1/email-recipients/{$r1Id}")->assertOk();
         $this->assertDatabaseMissing('email_recipients', ['id' => $r1Id]);
     }
+
+    // ============================================================
+    // 10. PERMISSION SYNC (RolePermissionTest.php:22)
 
     // ============================================================
     // 9b. EMAIL STANDARISASI (document_type=standarisasi_tumpukan)

@@ -98,7 +98,7 @@ class StateGuardTest extends TestCase
 
     public function test_sj_scan_refused_after_complete(): void
     {
-        $user = $this->userWith('sj@example.com', ['sj_validation.create', 'sj_validation.edit', 'sj_validation.view']);
+        $user = $this->userWith('sj@example.com', ['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete', 'sj_validation.view']);
         Sanctum::actingAs($user);
         $rk = $this->rencana('CHECKED_IN');
 

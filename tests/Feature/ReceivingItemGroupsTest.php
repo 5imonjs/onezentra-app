@@ -9,6 +9,8 @@ use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -23,6 +25,8 @@ class ReceivingItemGroupsTest extends TestCase
         $role = Role::firstOrCreate(['slug' => 'penerimaan_view'], ['name' => 'Penerimaan View']);
         $perm = Permission::firstOrCreate(['slug' => 'penerimaan.view'], ['name' => 'penerimaan.view', 'menu_group' => 'Penerimaan']);
         $role->permissions()->syncWithoutDetaching([$perm->id]);
+        $edit = Permission::firstOrCreate(['slug' => 'penerimaan.edit'], ['name' => 'penerimaan.edit', 'menu_group' => 'Penerimaan']);
+        $role->permissions()->syncWithoutDetaching([$edit->id]);
 
         $this->user = User::create([
             'email' => 'groups@test.com',
@@ -151,5 +155,78 @@ class ReceivingItemGroupsTest extends TestCase
 
         $ids = array_column($res->json('data.0.items'), 'kode_barang');
         $this->assertSame(['NEW', 'OLD'], $ids);
+    }
+
+    public function test_groups_item_with_null_depot_fields_still_listed(): void
+    {
+        // Regresi: item materialisasi validasi lama tanpa cap depo mentah
+        // (hanya fallback accessor) sempat hilang — total > 0 tapi data kosong.
+        $receiving = $this->makeReceiving();
+        $receiving->rencanaKirim()->update(['kode_depo' => '0127', 'nama_depo' => 'Singkawang']);
+        $this->makeSjItem([
+            'receiving_id' => $receiving->id,
+            'kode_barang' => 'BRG-NULL-DEPO',
+            'kode_depo' => null,
+            'nama_depo' => null,
+            'tanggal_penerimaan' => null,
+        ]);
+
+        $res = $this->getJson('/api/v1/receiving-items/groups')->assertOk();
+
+        $this->assertSame(1, $res->json('meta.total'));
+        $this->assertCount(1, $res->json('data'));
+        $this->assertCount(1, $res->json('data.0.items'));
+        $this->assertSame('BRG-NULL-DEPO', $res->json('data.0.items.0.kode_barang'));
+        // Tampilan tetap memakai fallback induk.
+        $this->assertSame('Singkawang', $res->json('data.0.depo'));
+    }
+
+    public function test_groups_manual_item_without_raw_date_uses_created_date(): void
+    {
+        $this->makeSjItem(['kode_barang' => 'BRG-NODATE', 'tanggal_penerimaan' => null]);
+
+        $res = $this->getJson('/api/v1/receiving-items/groups')->assertOk();
+
+        $this->assertSame(1, $res->json('meta.total'));
+        $this->assertSame('BRG-NODATE', $res->json('data.0.items.0.kode_barang'));
+    }
+
+    public function test_update_requires_photo_for_bad_condition_without_existing(): void
+    {
+        $item = $this->makeSjItem(['kode_barang' => 'BRG-NOPHOTO']);
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", [
+            'condition' => 'FISIK_RUSAK',
+        ])->assertStatus(422)->assertJsonValidationErrors('photo');
+    }
+
+    public function test_update_stores_photo_and_deletes_old(): void
+    {
+        Storage::fake('public');
+        $item = $this->makeSjItem(['kode_barang' => 'BRG-PHOTO']);
+        $oldPath = UploadedFile::fake()->image('lama.jpg')->store('validation-photos', 'public');
+        $item->update(['photo' => $oldPath]);
+
+        $file = UploadedFile::fake()->image('baru.jpg');
+        $this->call('POST', "/api/v1/receiving-items/{$item->id}", [
+            '_method' => 'PUT',
+            'condition' => 'FISIK_RUSAK',
+        ], [], ['photo' => $file])->assertOk();
+
+        $item->refresh();
+        $this->assertNotNull($item->photo);
+        $this->assertNotSame($oldPath, $item->photo);
+        Storage::disk('public')->assertExists($item->photo);
+        Storage::disk('public')->assertMissing($oldPath);
+    }
+
+    public function test_update_allows_bagus_condition_without_photo(): void
+    {
+        $item = $this->makeSjItem(['kode_barang' => 'BRG-NOPHOTO']);
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", [
+            'condition' => 'FISIK_BAGUS',
+            'notes' => 'cek ulang',
+        ])->assertOk();
     }
 }

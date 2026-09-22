@@ -17,15 +17,41 @@ class NpnExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping,
 {
     public ?string $search = null;
 
+    public ?string $szStatus = null;
+
+    public string $sort = 'szNickName';
+
+    public string $direction = 'asc';
+
+    /** Mode template: hanya header, tanpa baris data. */
+    public bool $empty = false;
+
     public function __construct(
         ?string $search = null,
+        ?string $szStatus = null,
+        string $sort = 'szNickName',
+        string $direction = 'asc',
+        bool $empty = false,
     ) {
         $this->search = $search;
+        $this->szStatus = $szStatus;
+        $this->empty = $empty;
+        $sortable = ['szNickName', 'szNickNameNew', 'BOSnetszProductId', 'SAPszProductId', 'szBarcode', 'szStatus'];
+        if (! in_array($sort, $sortable, true)) {
+            $sort = 'szNickName';
+            $direction = 'asc';
+        }
+        $this->sort = $sort;
+        $this->direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
     }
 
     public function query(): Builder|EloquentBuilder|Relation
     {
         $query = Npn::query();
+
+        if ($this->empty) {
+            return $query->whereRaw('1 = 0');
+        }
 
         if ($this->search) {
             $query->where(function ($q) {
@@ -37,7 +63,11 @@ class NpnExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping,
             });
         }
 
-        return $query->orderByRaw('szNickName IS NULL, szNickName ASC');
+        if ($this->szStatus) {
+            $query->where('szStatus', $this->szStatus);
+        }
+
+        return $query->orderBy($this->sort, $this->direction);
     }
 
     public function headings(): array
@@ -152,9 +182,8 @@ class NpnExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping,
     {
         return [
             1 => [
-                'font' => ['bold' => true, 'size' => 11],
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => ['fillType' => 'solid', 'color' => ['rgb' => '4F46E5']],
-                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             ],
         ];
     }

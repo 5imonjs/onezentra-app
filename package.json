@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
+        "build": "npm run web:build",
         "dev": "vite",
         "web:dev": "cd onezentra-web && npm run dev",
         "web:build": "cd onezentra-web && npm run build",

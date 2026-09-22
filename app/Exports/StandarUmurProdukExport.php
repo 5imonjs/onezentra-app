@@ -2,26 +2,68 @@
 
 namespace App\Exports;
 
-use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use App\Models\StandarUmurProduk;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\Builder;
+use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class StandarUmurProdukExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
+class StandarUmurProdukExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
-    protected Collection $data;
+    public ?string $search = null;
 
-    public function __construct(Collection $data)
-    {
-        $this->data = $data;
+    public ?string $brand = null;
+
+    public ?string $category = null;
+
+    public string $sort = 'material_description';
+
+    public string $direction = 'asc';
+
+    public function __construct(
+        ?string $search = null,
+        ?string $brand = null,
+        ?string $category = null,
+        string $sort = 'material_description',
+        string $direction = 'asc',
+    ) {
+        $this->search = $search;
+        $this->brand = $brand;
+        $this->category = $category;
+        $sortable = ['material', 'material_description', 'brand', 'category', 'umur'];
+        if (! in_array($sort, $sortable, true)) {
+            $sort = 'material_description';
+            $direction = 'asc';
+        }
+        $this->sort = $sort;
+        $this->direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
     }
 
-    public function collection(): Collection
+    public function query(): Builder|EloquentBuilder|Relation
     {
-        return $this->data;
+        $query = StandarUmurProduk::query();
+
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('material', 'like', '%'.$this->search.'%')
+                    ->orWhere('material_description', 'like', '%'.$this->search.'%');
+            });
+        }
+
+        if ($this->brand) {
+            $query->where('brand', $this->brand);
+        }
+
+        if ($this->category) {
+            $query->where('category', $this->category);
+        }
+
+        return $query->orderBy($this->sort, $this->direction);
     }
 
     public function headings(): array

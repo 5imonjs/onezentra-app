@@ -74,7 +74,7 @@
                 <td>{{ $detail->no_surat_jalan ?? '-' }}</td>
                 <td>{{ $detail->nama_thl }}</td>
                 <td>{{ $detail->posisi ?? '-' }}</td>
-                <td>{{ $detail->nopol_kendaraan }}</td>
+                <td>{{ $detail->nopol_kendaraan }}@if($detail->kendaraan_sj) (SJ {{ $detail->kendaraan_sj }})@endif</td>
                 <td>{{ $detail->type_kendaraan }}</td>
                 <td>{{ $detail->kubikasi }}</td>
                 <td>{{ $detail->droppoint ?? '-' }}</td>

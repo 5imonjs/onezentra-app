@@ -465,7 +465,12 @@ class RencanaKirimController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $user = $request->user();
-        $rks = RencanaKirim::with('items.npn')->forUserDepot($user)->get();
+        $rks = RencanaKirim::with('items.npn')->forUserDepot($user)
+            ->when(
+                ! $user->isDepotScoped() && trim((string) $request->input('kode_depo', '')) !== '',
+                fn ($query) => $query->where('kode_depo', trim((string) $request->input('kode_depo', '')))
+            )
+            ->get();
 
         $statuses = ['DRAFT', 'SCHEDULED', 'CHECKED_IN', 'VERIFIED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
         $stats = [];

@@ -223,20 +223,32 @@ class ReportController extends Controller
     {
         $this->validatePenerimaanRequest($request);
 
-        $items = $this->penerimaanQuery($request)->get();
+        $query = $this->penerimaanQuery($request);
+        // Ringkasan selalu dihitung dari SELURUH baris terfilter, bukan hanya halaman aktif.
+        $allItems = (clone $query)->get();
+        $allData = $allItems->map(fn (ReceivingItem $item) => $this->penerimaanRow($item));
 
-        $data = $items->map(fn (ReceivingItem $item) => $this->penerimaanRow($item));
+        $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
+        $paginated = $query->paginate($perPage);
+        $data = $paginated->getCollection()->map(fn (ReceivingItem $item) => $this->penerimaanRow($item));
 
         $summary = [
-            'total_item' => $data->count(),
-            'total_qty_crt' => $data->sum('qty_crt'),
-            'total_qty_pcs' => $data->sum('qty_pcs'),
-            'item_sj' => $data->where('sumber', ReceivingItem::SOURCE_VALIDASI)->count(),
-            'item_manual' => $data->where('sumber', ReceivingItem::SOURCE_IMPORT)->count(),
-            'total_selisih' => $data->sum('selisih_qty'),
+            'total_item' => $allData->count(),
+            'total_qty_crt' => $allData->sum('qty_crt'),
+            'total_qty_pcs' => $allData->sum('qty_pcs'),
+            'item_sj' => $allData->where('sumber', ReceivingItem::SOURCE_VALIDASI)->count(),
+            'item_manual' => $allData->where('sumber', ReceivingItem::SOURCE_IMPORT)->count(),
+            'total_selisih' => $allData->sum('selisih_qty'),
         ];
 
-        return response()->json(['data' => $data, 'summary' => $summary]);
+        return response()->json([
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+            'data' => $data->values(),
+            'summary' => $summary,
+        ]);
     }
 
     public function penerimaanExport(Request $request)
@@ -256,6 +268,8 @@ class ReportController extends Controller
             'kode_depo' => 'nullable|string|max:20',
             'sumber' => 'nullable|string|in:VALIDASI_SJ,IMPORT_MANUAL',
             'search' => 'nullable|string|max:200',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
         ]);
     }
 

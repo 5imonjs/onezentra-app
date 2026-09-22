@@ -8,6 +8,8 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class EmailRecipientController extends Controller
@@ -28,7 +30,7 @@ class EmailRecipientController extends Controller
             ->orderBy('trigger')
             ->orderBy('field');
 
-        return response()->json(['data' => $query->get()]);
+        return response()->json(['data' => $this->withResolution($query->get())]);
     }
 
     public function store(Request $request): JsonResponse
@@ -39,7 +41,7 @@ class EmailRecipientController extends Controller
 
         return response()->json([
             'message' => 'Email recipient created',
-            'data' => $recipient->load('user:id,full_name,email'),
+            'data' => $this->withResolution(collect([$recipient->load('user:id,full_name,email')]))->first(),
         ], 201);
     }
 
@@ -51,7 +53,7 @@ class EmailRecipientController extends Controller
 
         return response()->json([
             'message' => 'Email recipient updated',
-            'data' => $emailRecipient->fresh('user:id,full_name,email'),
+            'data' => $this->withResolution(collect([$emailRecipient->fresh('user:id,full_name,email')]))->first(),
         ]);
     }
 
@@ -77,6 +79,50 @@ class EmailRecipientController extends Controller
             'users' => $users,
             'roles' => $roles,
         ]);
+    }
+
+    /**
+     * Tambahkan status resolusi per baris agar UI bisa menandai penerima
+     * yang tidak akan terkirim (role yatim / tanpa user aktif / user nonaktif).
+     * Dihitung batch (2 query) agar tidak N+1.
+     *
+     * @param  Collection<int, EmailRecipient>  $recipients
+     * @return Collection<int, array>
+     */
+    private function withResolution($recipients)
+    {
+        $roleSlugs = $recipients->where('recipient_type', 'role')->pluck('role_slug')->filter()->unique()->values();
+        $existingRoles = $roleSlugs->isNotEmpty()
+            ? Role::whereIn('slug', $roleSlugs)->pluck('slug')->all()
+            : [];
+        $roleCounts = $roleSlugs->isNotEmpty()
+            ? DB::table('users')
+                ->join('role_user', 'role_user.user_id', '=', 'users.id')
+                ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                ->where('users.status', 'active')
+                ->whereNotNull('users.email')
+                ->where('users.email', '<>', '')
+                ->whereIn('roles.slug', $roleSlugs)
+                ->groupBy('roles.slug')
+                ->selectRaw('roles.slug, COUNT(DISTINCT users.id) as c')
+                ->pluck('c', 'slug')
+            : collect();
+
+        $userIds = $recipients->where('recipient_type', 'user')->pluck('user_id')->filter()->unique()->values();
+        $validUserIds = $userIds->isNotEmpty()
+            ? User::whereIn('id', $userIds)->where('status', 'active')->whereNotNull('email')->where('email', '<>', '')->pluck('id')->all()
+            : [];
+
+        return $recipients->map(function (EmailRecipient $r) use ($roleCounts, $validUserIds) {
+            $arr = $r->toArray();
+            $arr['resolved_count'] = match ($r->recipient_type) {
+                'role' => (int) ($roleCounts[$r->role_slug] ?? 0),
+                'user' => in_array($r->user_id, $validUserIds, true) ? 1 : 0,
+                default => blank($r->email) ? 0 : 1,
+            };
+
+            return $arr;
+        });
     }
 
     private function validateRecipient(Request $request, ?int $ignoreId = null): array

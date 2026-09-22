@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\BiayaRetribusiExport;
 use App\Http\Controllers\Controller;
+use App\Models\ApprovalAssignment;
 use App\Models\BiayaRetribusi;
 use App\Models\BiayaThl;
 use App\Models\BiayaThlDetail;
@@ -99,10 +100,7 @@ class BiayaRetribusiController extends Controller
         $this->validateThlReferences($request, $validated['details']);
 
         $validated['nominal_biaya'] = collect($validated['details'])->sum('nominal_biaya');
-        $validated['is_rfah_required'] = $validated['nominal_biaya'] > 1000000;
-        if ($validated['is_rfah_required']) {
-            $validated['rfah_name'] = 'Umi Marzuqoh';
-        }
+        $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.retribusi_rfah_threshold', 1000000);
         /** @var User $user */
         $user = $request->user();
         $validated['approval_pengajuan'] = $user->full_name ?: $user->email;
@@ -110,6 +108,9 @@ class BiayaRetribusiController extends Controller
         $validated['created_by'] = $user->id;
         $validated['status'] = 'draft';
         $validated = $user->depotAttributes($validated);
+        if ($validated['is_rfah_required']) {
+            $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? null);
+        }
 
         $biayaRetribusi = DB::transaction(function () use ($validated) {
             $biayaRetribusi = BiayaRetribusi::create($validated);
@@ -184,9 +185,9 @@ class BiayaRetribusiController extends Controller
         $this->validateThlReferences($request, $validated['details']);
 
         $validated['nominal_biaya'] = collect($validated['details'])->sum('nominal_biaya');
-        $validated['is_rfah_required'] = $validated['nominal_biaya'] > 1000000;
+        $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.retribusi_rfah_threshold', 1000000);
         if ($validated['is_rfah_required']) {
-            $validated['rfah_name'] = 'Umi Marzuqoh';
+            $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? $biayaRetribusi->kode_depo);
         } else {
             $validated['rfah_name'] = null;
         }
@@ -273,7 +274,7 @@ class BiayaRetribusiController extends Controller
     {
         $this->authorizeCreator($biayaRetribusi);
 
-        $biayaRetribusi->load('details.biayaThlDetail.photos', 'documents', 'checkedBy', 'approvedBy', 'revisedBy');
+        $biayaRetribusi->load('details.biayaThlDetail.photos', 'documents', 'checkedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
         $deciderName = match ($biayaRetribusi->status) {
             'approved' => $biayaRetribusi->approvedBy?->full_name,

@@ -29,7 +29,7 @@ class LoginToCompleteFlowTest extends TestCase
         $allPerms = [
             'rencana_kirim.view', 'rencana_kirim.create', 'rencana_kirim.edit', 'rencana_kirim.delete',
             'gate.view', 'gate.create',
-            'sj_validation.view', 'sj_validation.create', 'sj_validation.edit', 'sj_validation.delete',
+            'sj_validation.view', 'sj_validation.create', 'sj_validation.validate', 'sj_validation.complete', 'sj_validation.delete',
             'receiving.view', 'receiving.create', 'receiving.edit',
             'npn.view',
             'dashboard.view',

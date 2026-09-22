@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\ApprovalAssignment;
 use App\Models\BiayaThl;
+use App\Models\BiayaThlDetail;
+use App\Models\BiayaThlPhoto;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -52,7 +54,14 @@ class ApprovalAssignmentTest extends TestCase
         $this->assertSame(3, ApprovalAssignment::count());
         $this->assertSame('BAC User', ApprovalAssignment::where('approval_level', 'BAC')->first()->user->full_name);
         $sections = app(ApprovalSectionResolver::class)->resolve('DPT-A', 'Submitter');
-        $this->assertSame('RLH User', $sections[2]['people'][0]['name']);
+        // Nama kolom = aksi: tanpa aksi, assignee tidak ditampilkan (PDF
+        // draft tidak boleh terlihat seolah sudah disetujui).
+        $this->assertSame('Submitter', $sections[0]['people'][0]['name']);
+        $this->assertSame('-', $sections[2]['people'][0]['name']);
+        $resolved = app(ApprovalSectionResolver::class)->resolve('DPT-A', 'Submitter', 'BAC User', 'RLH User', 'RFAH User');
+        $this->assertSame('BAC User', $resolved[1]['people'][0]['name']);
+        $this->assertSame('RLH User', $resolved[2]['people'][0]['name']);
+        $this->assertSame('RFAH User', $resolved[3]['people'][0]['name']);
     }
 
     public function test_scoped_admin_cannot_assign_an_approver_from_another_depot(): void
@@ -100,6 +109,30 @@ class ApprovalAssignmentTest extends TestCase
         ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'BAC', 'user_id' => $checker->id]);
         ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'RLH', 'user_id' => $approver->id]);
         $biaya = BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => $submitter->id]);
+        $detail = BiayaThlDetail::create([
+            'biaya_thl_id' => $biaya->id,
+            'no_surat_jalan' => 'SJ-001',
+            'nama_thl' => 'Budi',
+            'driver_name' => 'Andi',
+            'nopol_kendaraan' => 'KB 1234 XX',
+            'type_kendaraan' => 'CDD',
+            'nominal_biaya' => 150000,
+            'kubikasi' => 1.5,
+            'droppoint' => 'Terminal A',
+            'posisi' => 'THL HELPER',
+            'jam_datang' => '2026-09-18 08:00:00',
+            'jam_pulang' => '2026-09-18 17:00:00',
+            'order' => 0,
+        ]);
+        BiayaThlPhoto::create([
+            'biaya_thl_id' => $biaya->id,
+            'biaya_thl_detail_id' => $detail->id,
+            'file_path' => 'biaya_thl/test/bukti.jpg',
+            'file_name' => 'bukti.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+            'order' => 0,
+        ]);
 
         $this->actingAs($submitter)->postJson("/api/v1/biaya-thl/{$biaya->id}/submit")->assertOk();
         $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'approval_pengajuan_level' => 'admin']);
@@ -135,6 +168,30 @@ class ApprovalAssignmentTest extends TestCase
         ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'BAC', 'user_id' => $checker->id]);
         ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'RLH', 'user_id' => $approver->id]);
         $biaya = BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => $submitter->id]);
+        $detail = BiayaThlDetail::create([
+            'biaya_thl_id' => $biaya->id,
+            'no_surat_jalan' => 'SJ-001',
+            'nama_thl' => 'Budi',
+            'driver_name' => 'Andi',
+            'nopol_kendaraan' => 'KB 1234 XX',
+            'type_kendaraan' => 'CDD',
+            'nominal_biaya' => 150000,
+            'kubikasi' => 1.5,
+            'droppoint' => 'Terminal A',
+            'posisi' => 'THL HELPER',
+            'jam_datang' => '2026-09-18 08:00:00',
+            'jam_pulang' => '2026-09-18 17:00:00',
+            'order' => 0,
+        ]);
+        BiayaThlPhoto::create([
+            'biaya_thl_id' => $biaya->id,
+            'biaya_thl_detail_id' => $detail->id,
+            'file_path' => 'biaya_thl/test/bukti.jpg',
+            'file_name' => 'bukti.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+            'order' => 0,
+        ]);
 
         $this->actingAs($submitter)->postJson("/api/v1/biaya-thl/{$biaya->id}/submit")->assertOk();
         $this->actingAs($checker)->postJson("/api/v1/biaya-thl/{$biaya->id}/check")->assertOk();

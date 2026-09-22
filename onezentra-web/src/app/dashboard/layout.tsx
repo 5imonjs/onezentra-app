@@ -32,10 +32,11 @@ const MENU_FALLBACK: [string, string][] = [
 function SplashScreen({ leaving = false, immersive = false }: { leaving?: boolean; immersive?: boolean }) {
   return (
     <div role="status" aria-live="polite" className={`pointer-events-none fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 transition-opacity duration-500 ${immersive ? 'bg-slate-950' : ''} ${leaving ? 'opacity-0' : 'opacity-100'}`}>
-      {/* Tanpa priority: splash mount setelah hydration (±600ms lalu unmount),
-          sehingga preload tidak memberi head-start tapi berisiko warning
-          "preloaded but not used". In-viewport = tetap langsung di-fetch. */}
-      <Image src="/LOGO.png" alt="ONEZENTRA" width={560} height={136} loading="eager" className="w-[min(82vw,560px)] h-auto object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)] animate-logo-pop" />
+      {/* priority: logo splash adalah LCP halaman (di atas fold & besar),
+          jadi ia satu-satunya pemilik preload — memuaskan peringatan LCP Next
+          sekaligus menghindari preload ganda tak terpakai. Sidebar bukan LCP:
+          sebagai gambar in-viewport ia tetap di-fetch langsung tanpa preload. */}
+      <Image src="/LOGO.png" alt="ONEZENTRA" width={560} height={136} priority className="w-[min(82vw,560px)] h-auto object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)] animate-logo-pop" />
       {immersive && (
         <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
           <div className="h-full bg-primary-500 animate-splash-bar"></div>

@@ -333,6 +333,23 @@ export default function PenerimaanPage() {
               ) : (
                 <p className="text-slate-500 font-medium">Belum ada data penerimaan dari SJ.</p>
               )}
+              {!search.trim() && rawGroups.length === 0 && (
+                <p className="mt-2 text-xs text-slate-400">
+                  Halaman ini hanya menampilkan item validasi SJ. Batch manual dikelola di{' '}
+                  {hasPermission('opname.view') ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push('/opname-expired')}
+                      className="font-semibold text-primary-600 hover:underline"
+                    >
+                      Opname Expired
+                    </button>
+                  ) : (
+                    'Opname Expired'
+                  )}
+                  .
+                </p>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

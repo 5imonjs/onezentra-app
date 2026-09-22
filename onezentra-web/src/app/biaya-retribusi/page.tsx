@@ -8,6 +8,7 @@ import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import { generateRetribusiPdf, previewRetribusiPdf } from '@/lib/biayaPdf';
+import { getBiayaConfig, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
 
 interface ThlCandidate {
   id: number;
@@ -231,6 +232,9 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
 
 export default function BiayaRetribusiPage() {
   const { user, hasPermission } = useAuthStore();
+  const [biayaConfig, setBiayaConfig] = useState<BiayaConfig>(BIAYA_CONFIG_FALLBACK);
+
+  useEffect(() => { getBiayaConfig(user?.kode_depo).then(setBiayaConfig).catch(() => {}); }, [user?.kode_depo]);
   const [items, setItems] = useState<BiayaRetribusiItem[]>([]);
   const [decision, setDecision] = useState<{ action: 'approve' | 'reject' | 'revise'; item: BiayaRetribusiItem } | null>(null);
   const [decisionReason, setDecisionReason] = useState('');
@@ -445,7 +449,7 @@ export default function BiayaRetribusiPage() {
     const c = candidates.find((c2) => c2.id === id);
     return sum + (Number(c?.nominal_biaya) || 0);
   }, 0) + manualDetails.reduce((sum, md) => sum + (Number(md.nominal_biaya) || 0), 0);
-  const isRfahRequired = totalNominal > 1000000;
+  const isRfahRequired = totalNominal > biayaConfig.retribusi_rfah_threshold;
   const hasIncompleteManualRows = manualDetails.some((row) => !row.nopol_kendaraan || !row.type_kendaraan || Number(row.nominal_biaya || 0) <= 0);
 
   const previewRetribusi = () => {
@@ -476,7 +480,7 @@ export default function BiayaRetribusiPage() {
       nama_depo: user?.nama_depo ?? '',
       nominal_biaya: totalNominal,
       is_rfah_required: isRfahRequired,
-      rfah_name: isRfahRequired ? 'Umi Marzuqoh' : '',
+      rfah_name: isRfahRequired ? biayaConfig.rfah_name : '',
       status: 'draft',
       details: [...candidateDetails, ...manualDetails.map((item) => ({ ...item, biaya_thl_detail: null }))],
       documents: formData.documents.map((document) => ({ document_type: document.document_type, file_name: document.file_name })),
@@ -1065,8 +1069,8 @@ export default function BiayaRetribusiPage() {
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
                       RFAH Required
                     </span>
-                    <p className="text-[11px] text-amber-600 mt-1 font-medium">Total &gt; Rp 1.000.000</p>
-                    <p className="text-[10px] font-bold text-amber-500 mt-0.5">Umi Marzuqoh</p>
+                    <p className="text-[11px] text-amber-600 mt-1 font-medium">Total &gt; Rp {biayaConfig.retribusi_rfah_threshold.toLocaleString('id-ID')}</p>
+                    <p className="text-[10px] font-bold text-amber-500 mt-0.5">{biayaConfig.rfah_name}</p>
                   </div>
                 )}
               </div>

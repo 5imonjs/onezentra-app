@@ -13,7 +13,8 @@ class BiayaThlDetail extends Model
     protected $fillable = [
         'biaya_thl_id', 'no_surat_jalan', 'nama_thl', 'driver_name', 'nopol_kendaraan',
         'type_kendaraan', 'kubikasi', 'droppoint', 'posisi',
-        'jam_datang', 'jam_pulang', 'nominal_biaya', 'kendaraan_tambahan', 'order',
+        'jam_datang', 'jam_pulang', 'nominal_biaya', 'kendaraan_tambahan', 'kendaraan_sj',
+        'kendaraan_nopol', 'kendaraan_type', 'order',
     ];
 
     protected function casts(): array

@@ -36,7 +36,7 @@
             @foreach($biayaThl->details as $detail)
                 <tr>
                     <td class="center">{{ $loop->iteration }}</td>
-                    <td>{{ $detail->nopol_kendaraan ?: '-' }} - {{ $detail->nama_thl ?: $detail->driver_name ?: '-' }}</td>
+                    <td>{{ $detail->nopol_kendaraan ?: '-' }}@if($detail->kendaraan_sj) (SJ {{ $detail->kendaraan_sj }})@endif - {{ $detail->nama_thl ?: $detail->driver_name ?: '-' }}</td>
                     <td class="center">{{ $detail->kubikasi ?? 0 }}</td>
                     <td>{{ $detail->droppoint ?: 0 }}</td>
                     <td>{{ $detail->posisi ?: 'THL GUDANG' }}</td>

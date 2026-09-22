@@ -9,6 +9,7 @@ use App\Models\Npn;
 use App\Models\StandarUmurProduk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException;
@@ -33,7 +34,14 @@ class NpnController extends Controller
         if ($request->filled('szStatus')) {
             $query->where('szStatus', $request->szStatus);
         }
-        $npn = $query->orderByRaw('szNickName IS NULL, szNickName ASC')->paginate($this->perPage($request, 50));
+        $sortable = ['szNickName', 'szNickNameNew', 'BOSnetszProductId', 'SAPszProductId', 'szBarcode', 'szStatus'];
+        $sort = $request->input('sort', 'szNickName');
+        $direction = strtolower((string) $request->input('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+        if (! in_array($sort, $sortable, true)) {
+            $sort = 'szNickName';
+            $direction = 'asc';
+        }
+        $npn = $query->orderBy($sort, $direction)->paginate($this->perPage($request, 50));
 
         return response()->json($npn);
     }
@@ -163,7 +171,7 @@ class NpnController extends Controller
 
         try {
             $import = new NpnImport($request->user());
-            Excel::import($import, $request->file('file'));
+            DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
             return response()->json([
                 'message' => 'Import completed',
@@ -195,7 +203,12 @@ class NpnController extends Controller
     {
         $filename = 'npn_products_'.date('Y-m-d_His').'.xlsx';
 
-        $export = new NpnExport($request->search);
+        $export = new NpnExport(
+            search: $request->input('search'),
+            szStatus: $request->input('szStatus'),
+            sort: (string) $request->input('sort', 'szNickName'),
+            direction: (string) $request->input('direction', 'asc'),
+        );
 
         return Excel::download(
             $export,
@@ -205,7 +218,7 @@ class NpnController extends Controller
 
     public function template()
     {
-        return Excel::download(new NpnExport, 'npn_template.xlsx');
+        return Excel::download(new NpnExport(empty: true), 'npn_template.xlsx');
     }
 
     public function searchProduct(Request $request)

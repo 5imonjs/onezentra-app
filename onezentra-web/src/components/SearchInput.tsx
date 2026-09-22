@@ -17,6 +17,9 @@ interface SearchInputProps {
   onFilterChange?: (filterKey: string) => void;
   resultCount?: number;
   resultLabel?: string;
+  totalCount?: number;
+  currentFrom?: number;
+  currentTo?: number;
 }
 
 export default function SearchInput({
@@ -28,6 +31,9 @@ export default function SearchInput({
   onFilterChange,
   resultCount,
   resultLabel = 'item',
+  totalCount,
+  currentFrom,
+  currentTo,
 }: SearchInputProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -118,7 +124,10 @@ export default function SearchInput({
       </div>
       {resultCount !== undefined && (
         <div className="text-sm text-gray-500">
-          {resultCount} {resultLabel}
+          {totalCount !== undefined && currentFrom !== undefined && currentTo !== undefined
+            ? `Menampilkan ${currentFrom}–${currentTo} dari ${totalCount} ${resultLabel}`
+            : `${resultCount} ${resultLabel}`
+          }
         </div>
       )}
     </div>

@@ -194,6 +194,38 @@ class OpnameExpiredTest extends TestCase
         ]);
     }
 
+    public function test_manual_receipt_rejects_zero_qty(): void
+    {
+        $this->postJson('/api/v1/receiving-items', [
+            'kode_barang' => 'B-ZERO',
+            'qty_crt' => 0,
+            'expired_date' => '2027-01-01',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('receiving_items', ['kode_barang' => 'B-ZERO']);
+    }
+
+    public function test_manual_receipt_derives_pcs_from_npn_conversion(): void
+    {
+        Npn::create([
+            'BOSnetszProductId' => 'B-DERIVE',
+            'szNickName' => 'Produk Derivasi',
+            'decUomConversion1' => 12,
+            'szStatus' => 'EXISTING',
+        ]);
+
+        $this->postJson('/api/v1/receiving-items', [
+            'kode_barang' => 'B-DERIVE',
+            'qty_crt' => 3,
+            'expired_date' => '2027-01-01',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('receiving_items', [
+            'kode_barang' => 'B-DERIVE',
+            'qty_pcs' => 36,
+        ]);
+    }
+
     public function test_wave_update_records_validation_and_koreksi(): void
     {
         $this->receipt('B-OP-01', 'Produk Validasi', 10, '2027-01-01', '2026-09-09');

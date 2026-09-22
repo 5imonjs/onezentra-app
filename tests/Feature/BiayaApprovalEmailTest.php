@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Mail\BiayaApprovalNotification;
 use App\Models\ApprovalAssignment;
 use App\Models\BiayaThl;
+use App\Models\BiayaThlDetail;
+use App\Models\BiayaThlPhoto;
 use App\Models\EmailRecipient;
 use App\Models\Permission;
 use App\Models\Role;
@@ -76,6 +78,30 @@ class BiayaApprovalEmailTest extends TestCase
             'is_rfah_required' => true,
             'created_by' => $users['operator']->id,
         ]);
+        $detail = BiayaThlDetail::create([
+            'biaya_thl_id' => $biaya->id,
+            'no_surat_jalan' => 'SJ-001',
+            'nama_thl' => 'Budi',
+            'driver_name' => 'Andi',
+            'nopol_kendaraan' => 'KB 1234 XX',
+            'type_kendaraan' => 'CDD',
+            'nominal_biaya' => 150000,
+            'kubikasi' => 1.5,
+            'droppoint' => 'Terminal A',
+            'posisi' => 'THL HELPER',
+            'jam_datang' => '2026-09-18 08:00:00',
+            'jam_pulang' => '2026-09-18 17:00:00',
+            'order' => 0,
+        ]);
+        BiayaThlPhoto::create([
+            'biaya_thl_id' => $biaya->id,
+            'biaya_thl_detail_id' => $detail->id,
+            'file_path' => 'biaya_thl/test/bukti.jpg',
+            'file_name' => 'bukti.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+            'order' => 0,
+        ]);
 
         // BLC submit → submitted
         Sanctum::actingAs($users['operator']);
@@ -123,6 +149,30 @@ class BiayaApprovalEmailTest extends TestCase
             'nama_depo' => 'Depo A',
             'created_by' => $users['operator']->id,
         ]);
+        $detail = BiayaThlDetail::create([
+            'biaya_thl_id' => $biaya->id,
+            'no_surat_jalan' => 'SJ-001',
+            'nama_thl' => 'Budi',
+            'driver_name' => 'Andi',
+            'nopol_kendaraan' => 'KB 1234 XX',
+            'type_kendaraan' => 'CDD',
+            'nominal_biaya' => 150000,
+            'kubikasi' => 1.5,
+            'droppoint' => 'Terminal A',
+            'posisi' => 'THL HELPER',
+            'jam_datang' => '2026-09-18 08:00:00',
+            'jam_pulang' => '2026-09-18 17:00:00',
+            'order' => 0,
+        ]);
+        BiayaThlPhoto::create([
+            'biaya_thl_id' => $biaya->id,
+            'biaya_thl_detail_id' => $detail->id,
+            'file_path' => 'biaya_thl/test/bukti.jpg',
+            'file_name' => 'bukti.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+            'order' => 0,
+        ]);
 
         Sanctum::actingAs($users['operator']);
         $this->postJson("/api/v1/biaya-thl/{$biaya->id}/submit")->assertOk();
@@ -154,6 +204,30 @@ class BiayaApprovalEmailTest extends TestCase
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
             'created_by' => $users['operator']->id,
+        ]);
+        $detail = BiayaThlDetail::create([
+            'biaya_thl_id' => $biaya->id,
+            'no_surat_jalan' => 'SJ-001',
+            'nama_thl' => 'Budi',
+            'driver_name' => 'Andi',
+            'nopol_kendaraan' => 'KB 1234 XX',
+            'type_kendaraan' => 'CDD',
+            'nominal_biaya' => 150000,
+            'kubikasi' => 1.5,
+            'droppoint' => 'Terminal A',
+            'posisi' => 'THL HELPER',
+            'jam_datang' => '2026-09-18 08:00:00',
+            'jam_pulang' => '2026-09-18 17:00:00',
+            'order' => 0,
+        ]);
+        BiayaThlPhoto::create([
+            'biaya_thl_id' => $biaya->id,
+            'biaya_thl_detail_id' => $detail->id,
+            'file_path' => 'biaya_thl/test/bukti.jpg',
+            'file_name' => 'bukti.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+            'order' => 0,
         ]);
 
         Sanctum::actingAs($users['operator']);

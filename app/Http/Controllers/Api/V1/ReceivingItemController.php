@@ -10,8 +10,10 @@ use App\Models\ReceivingItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException as ExcelValidationException;
 
 class ReceivingItemController extends Controller
 {
@@ -107,10 +109,10 @@ class ReceivingItemController extends Controller
         $candidates = [];
         $seen = [];
         foreach ($rows as $row) {
-            $kodeDepo = $row->kode_depo;
+            $kodeDepo = $row->getRawOriginal('kode_depo');
             $depoKey = $kodeDepo ?? '';
             if ($row->receiving_id !== null) {
-                $key = 'R'.$row->receiving_id.'|'.$depoKey;
+                $key = 'R'.$row->receiving_id;
                 $tanggal = $toDateString($row->tanggal_penerimaan);
             } else {
                 $tanggal = $toDateString($row->tanggal_penerimaan ?? $row->created_at);
@@ -151,12 +153,18 @@ class ReceivingItemController extends Controller
                             $sub->where('receiving_id', $b['receiving_id']);
                         } else {
                             $sub->whereNull('receiving_id')
-                                ->whereDate('tanggal_penerimaan', $b['tanggal']);
-                        }
-                        if ($b['kode_depo'] !== null) {
-                            $sub->where('kode_depo', $b['kode_depo']);
-                        } else {
-                            $sub->whereNull('kode_depo');
+                                ->where(function ($dateQ) use ($b) {
+                                    $dateQ->whereDate('tanggal_penerimaan', $b['tanggal'])
+                                        ->orWhere(function ($subDate) use ($b) {
+                                            $subDate->whereNull('tanggal_penerimaan')
+                                                ->whereDate('created_at', $b['tanggal']);
+                                        });
+                                });
+                            if ($b['kode_depo'] !== null) {
+                                $sub->where('kode_depo', $b['kode_depo']);
+                            } else {
+                                $sub->whereNull('kode_depo');
+                            }
                         }
                     });
                 }
@@ -189,12 +197,12 @@ class ReceivingItemController extends Controller
 
         $byKey = [];
         foreach ($allItems as $item) {
-            $depoKey = $item->kode_depo ?? '';
+            $depoKey = $item->getRawOriginal('kode_depo') ?? '';
             // Normalisasi tanggal sama seperti kandidat — kolom bisa berupa
             // string tergantung driver/cast, jadi optional()->toDateString()
             // yang hanya bekerja pada objek tidak boleh dipakai di sini.
             $key = $item->receiving_id !== null
-                ? 'R'.$item->receiving_id.'|'.$depoKey
+                ? 'R'.$item->receiving_id
                 : 'D'.$toDateString($item->tanggal_penerimaan ?? $item->created_at).'|'.$depoKey;
             $byKey[$key][] = $item;
         }
@@ -244,7 +252,7 @@ class ReceivingItemController extends Controller
         $validated = $request->validate([
             'kode_barang' => 'required|string|max:50',
             'nama_barang' => 'nullable|string|max:200',
-            'qty_crt' => 'required|numeric|min:0',
+            'qty_crt' => 'required|numeric|gt:0',
             'qty_pcs' => 'nullable|numeric|min:0',
             'satuan' => 'nullable|string|max:20',
             'expired_date' => 'required|date',
@@ -254,13 +262,28 @@ class ReceivingItemController extends Controller
             'nama_depo' => 'nullable|string|max:100',
         ]);
 
+        $qtyPcs = $validated['qty_pcs'] ?? null;
+        $conversionFactor = null;
+        $npn = Npn::query()
+            ->where('BOSnetszProductId', $validated['kode_barang'])
+            ->orWhere('SAPszProductId', $validated['kode_barang'])
+            ->first();
+
+        if ($npn && $npn->decUomConversion1) {
+            $conversionFactor = (float) $npn->decUomConversion1;
+            if ($qtyPcs === null) {
+                $qtyPcs = ((float) $validated['qty_crt']) * $conversionFactor;
+            }
+        }
+
         $attributes = [
             'source' => ReceivingItem::SOURCE_IMPORT,
             'kode_barang' => $validated['kode_barang'],
             'nama_barang' => $validated['nama_barang'] ?? null,
             'actual_qty' => $validated['qty_crt'],
             'expected_qty' => $validated['qty_crt'],
-            'qty_pcs' => $validated['qty_pcs'] ?? null,
+            'qty_pcs' => $qtyPcs,
+            'conversion_factor' => $conversionFactor,
             'satuan' => $validated['satuan'] ?? null,
             'expired_date' => $validated['expired_date'],
             'tanggal_penerimaan' => $validated['tanggal_penerimaan'] ?? today(),
@@ -295,6 +318,7 @@ class ReceivingItemController extends Controller
             'kode_depo' => 'nullable|string|max:20',
             'nama_depo' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
+            'photo' => 'nullable|image|max:10240',
         ]);
 
         $attributes = array_filter([
@@ -313,6 +337,19 @@ class ReceivingItemController extends Controller
         // Vocab kondisi dinormalisasi ke set kanonik (FISIK_*), lihat ReceivingItem::normalizeCondition.
         if (isset($attributes['condition'])) {
             $attributes['condition'] = ReceivingItem::normalizeCondition($attributes['condition']);
+        }
+
+        if ($request->input('condition') === 'FISIK_RUSAK' && empty($receivingItem->photo) && ! $request->hasFile('photo')) {
+            throw ValidationException::withMessages([
+                'photo' => ['Foto wajib disertakan untuk kondisi barang ini.'],
+            ]);
+        }
+
+        if ($request->hasFile('photo')) {
+            if ($receivingItem->photo) {
+                Storage::disk('public')->delete($receivingItem->photo);
+            }
+            $attributes['photo'] = $request->file('photo')->store('validation-photos', 'public');
         }
 
         if (array_key_exists('actual_qty', $attributes)) {
@@ -349,7 +386,7 @@ class ReceivingItemController extends Controller
                 'imported' => $import->imported,
                 'skipped' => $import->skipped,
             ]);
-        } catch (ValidationException $e) {
+        } catch (ExcelValidationException $e) {
             $failures = $e->failures();
             Log::error('Receiving Import Validation Error', ['failures' => $failures]);
 

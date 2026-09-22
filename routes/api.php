@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\ApprovalAssignmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BatchController;
+use App\Http\Controllers\Api\V1\BiayaConfigController;
 use App\Http\Controllers\Api\V1\BiayaRetribusiController;
 use App\Http\Controllers\Api\V1\BiayaThlController;
 use App\Http\Controllers\Api\V1\BiayaThlPdfSettingController;
@@ -52,6 +53,9 @@ Route::prefix('v1')->group(function () {
     Route::get('depo', [DepoController::class, 'index'])->middleware('auth:sanctum');
 
     Route::get('dashboard/activity', [DashboardController::class, 'activity'])
+        ->middleware(['auth:sanctum', 'permission:dashboard.view']);
+
+    Route::get('dashboard/summary', [DashboardController::class, 'summary'])
         ->middleware(['auth:sanctum', 'permission:dashboard.view']);
 
     Route::prefix('roles')->middleware('auth:sanctum')->group(function () {
@@ -119,6 +123,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/{standarisasiTumpukan}/notify', [StandarisasiTumpukanController::class, 'notify'])->middleware(['permission:standarisasi.view', 'throttle:10,1']);
         Route::delete('/{standarisasiTumpukan}', [StandarisasiTumpukanController::class, 'destroy'])->middleware('permission:standarisasi.delete');
     });
+
+    Route::get('biaya-config', [BiayaConfigController::class, 'show'])->middleware('auth:sanctum');
 
     Route::prefix('biaya-thl')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [BiayaThlController::class, 'index'])->middleware('permission:biaya_thl.view');
@@ -258,9 +264,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/start-by-code', [SjValidationController::class, 'startByCode'])->middleware('permission:sj_validation.create');
         Route::get('/{sjValidation}', [SjValidationController::class, 'show'])->middleware('permission:sj_validation.view');
         Route::post('/start/{rencanaKirim}', [SjValidationController::class, 'start'])->middleware('permission:sj_validation.create');
-        Route::post('/{sjValidation}/scan', [SjValidationController::class, 'scanItem'])->middleware('permission:sj_validation.edit');
+        Route::post('/{sjValidation}/scan', [SjValidationController::class, 'scanItem'])->middleware('permission:sj_validation.validate');
         Route::delete('/{sjValidation}/items/{item}', [SjValidationController::class, 'deleteItem'])->middleware('permission:sj_validation.delete');
-        Route::post('/{sjValidation}/complete', [SjValidationController::class, 'complete'])->middleware('permission:sj_validation.edit');
+        Route::post('/{sjValidation}/complete', [SjValidationController::class, 'complete'])->middleware('permission:sj_validation.complete');
         Route::post('/{sjValidation}/cancel', [SjValidationController::class, 'cancel'])->middleware('permission:sj_validation.edit');
     });
 
