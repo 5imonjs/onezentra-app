@@ -68,28 +68,52 @@ interface BiayaThlItem {
   created_by: number;
   submitted_at: string | null;
   checked_at: string | null;
+  rlh_approved_at: string | null;
   approved_at: string | null;
   rejected_at: string | null;
   rejection_reason: string | null;
   revised_at: string | null;
   revisi_reason: string | null;
+  resubmitted_at: string | null;
+  resubmittedBy?: { id: number; full_name: string } | null;
   submittedBy?: { id: number; full_name: string } | null;
   checkedBy?: { id: number; full_name: string } | null;
   approvedBy?: { id: number; full_name: string } | null;
+  rlhApprovedBy?: { id: number; full_name: string } | null;
   rejectedBy?: { id: number; full_name: string } | null;
-  revisedBy?: { id: number; full_name: string } | null;
+  revisedBy?: { id: number; full_name: string; level?: string } | null;
   details: DetailRow[];
   photos: unknown[];
 }
+
+const normalizeBiayaThlItem = (item: BiayaThlItem): BiayaThlItem => ({
+  ...item,
+  submittedBy: item.submittedBy ?? (item as BiayaThlItem & { submitted_by?: BiayaThlItem['submittedBy'] }).submitted_by,
+  checkedBy: item.checkedBy ?? (item as BiayaThlItem & { checked_by?: BiayaThlItem['checkedBy'] }).checked_by,
+  rlhApprovedBy: item.rlhApprovedBy ?? (item as BiayaThlItem & { rlh_approved_by?: BiayaThlItem['rlhApprovedBy'] }).rlh_approved_by,
+  approvedBy: item.approvedBy ?? (item as BiayaThlItem & { approved_by?: BiayaThlItem['approvedBy'] }).approved_by,
+  rejectedBy: item.rejectedBy ?? (item as BiayaThlItem & { rejected_by?: BiayaThlItem['rejectedBy'] }).rejected_by,
+  revisedBy: item.revisedBy ?? (item as BiayaThlItem & { revised_by?: BiayaThlItem['revisedBy'] }).revised_by,
+  resubmittedBy: item.resubmittedBy ?? (item as BiayaThlItem & { resubmitted_by?: BiayaThlItem['resubmittedBy'] }).resubmitted_by,
+  details: Array.isArray(item.details) ? item.details : [],
+  photos: Array.isArray(item.photos) ? item.photos : [],
+});
 
 const STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
   draft: { label: 'Draft', badge: 'bg-gray-50 text-gray-600 border-gray-200', dot: 'bg-gray-400' },
   pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
   checked: { label: 'Checked', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-  approved: { label: 'Approved', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  rlh_approved: { label: 'Disetujui RLH', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500' },
+  approved: { label: 'Approved Lengkap', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
   rejected: { label: 'Rejected', badge: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
   revisi: { label: 'Revisi', badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
 };
+
+const statusLabel = (item: BiayaThlItem): string => (
+  item.status === 'rlh_approved' && item.is_rfah_required
+    ? 'Menunggu RFAH'
+    : STATUS_META[item.status]?.label ?? item.status
+);
 
 const VEHICLE_TYPES = ['CDD', 'Fuso', 'Container 20', 'Container 40', 'Box', 'Pickup'];
 const POSITIONS = ['THL HELPER', 'THL DRIVER', 'THL GUDANG'];
@@ -183,7 +207,48 @@ const getMissingFields = (detail: FormDetailRow): string[] => {
 
 const isDetailReady = (detail: FormDetailRow): boolean => getMissingFields(detail).length === 0;
 
-const formatCurrency = (amount: number) => `Rp ${amount.toLocaleString('id-ID')}`;
+type GroupedWorkerDetail = {
+  no_surat_jalan: string;
+  workers: {
+    nama_thl: string;
+    posisi: string;
+    nopol_kendaraan: string;
+    type_kendaraan: string;
+    nominal_biaya: number;
+  }[];
+  nominal_biaya: number;
+};
+
+const groupWorkersBySuratJalan = (details: DetailRow[]): GroupedWorkerDetail[] => {
+  const groups = new Map<string, GroupedWorkerDetail>();
+
+  details.forEach((detail) => {
+    const suratJalan = detail.no_surat_jalan?.trim() || '-';
+    const group = groups.get(suratJalan) ?? {
+      no_surat_jalan: suratJalan,
+      workers: [],
+      nominal_biaya: 0,
+    };
+
+    const nominalBiaya = Number(detail.nominal_biaya) || 0;
+    group.workers.push({
+      nama_thl: detail.nama_thl || detail.driver_name || '-',
+      posisi: detail.posisi || '-',
+      nopol_kendaraan: detail.nopol_kendaraan || '-',
+      type_kendaraan: detail.type_kendaraan || '-',
+      nominal_biaya: nominalBiaya,
+    });
+    group.nominal_biaya += nominalBiaya;
+    groups.set(suratJalan, group);
+  });
+
+  return [...groups.values()];
+};
+
+const formatCurrency = (amount: number | string | null | undefined) => {
+  const numericAmount = Number(amount || 0);
+  return `Rp ${Number.isFinite(numericAmount) ? numericAmount.toLocaleString('id-ID', { maximumFractionDigits: 0 }) : '0'}`;
+};
 
 /**
  * Kompresi foto lapangan (HP 8–12MP) ke JPEG ≤1280px kualitas 0.8 sebelum
@@ -278,9 +343,14 @@ const toDatetimeLocalValue = (value: string | null | undefined): string => {
 
 type StepState = 'done' | 'current' | 'todo';
 
-const stepStateAt = (status: string, index: number): StepState => {
+const stepStateAt = (status: string, index: number, revisionIndex = 2): StepState => {
   if (status === 'rejected') return 'done';
-  const order = ['draft', 'pending', 'checked', 'revisi', 'approved'];
+  if (status === 'revisi') {
+    if (index < revisionIndex) return 'done';
+    if (index === revisionIndex) return 'current';
+    return 'todo';
+  }
+  const order = ['draft', 'pending', 'checked', 'rlh_approved', 'approved'];
   const currentIndex = order.indexOf(status);
   if (index < currentIndex) return 'done';
   if (index === currentIndex) return 'current';
@@ -290,16 +360,51 @@ const stepStateAt = (status: string, index: number): StepState => {
 function ApprovalStepper({ item }: { item: BiayaThlItem }) {
   const rejected = item.status === 'rejected';
   const revised = item.status === 'revisi';
+  const awaitingRecheck = Boolean(item.resubmitted_at) && ['pending', 'checked', 'rlh_approved'].includes(item.status);
+  const revisedLevel = item.revisedBy?.level?.toUpperCase();
+  const revisionLabel = revisedLevel === 'BAC'
+    ? 'Perlu Revisi BAC'
+    : revisedLevel === 'RLH'
+      ? 'Perlu Revisi RLH'
+      : revisedLevel === 'RFAH'
+        ? 'Perlu Revisi RFAH'
+        : 'Perlu Revisi';
+  const recheckIndex = item.status === 'pending' ? 1 : item.status === 'checked' ? 2 : item.status === 'rlh_approved' ? 3 : null;
+  const recheckLabel = recheckIndex === 1
+    ? 'Menunggu Pemeriksaan Ulang BAC'
+    : recheckIndex === 2
+      ? 'Menunggu Persetujuan Ulang RLH'
+      : recheckIndex === 3
+        ? 'Menunggu Persetujuan Ulang RFAH'
+        : null;
+  const revisionIndex = item.rlh_approved_at
+    ? 3
+    : item.checked_at
+      ? 2
+      : revisedLevel === 'RFAH'
+        ? 3
+        : revisedLevel === 'RLH'
+          ? 2
+          : 1;
   const steps = [
-    { label: 'Diajukan', role: item.approval_pengajuan_level || 'BLC', at: item.submitted_at, by: item.submittedBy?.full_name },
-    { label: 'Diperiksa', role: 'BAC', at: item.checked_at, by: item.checkedBy?.full_name },
+    { label: awaitingRecheck ? 'Diperbaiki & Dikirim Ulang' : 'Diajukan', role: item.approval_pengajuan_level || 'BLC', at: awaitingRecheck ? item.resubmitted_at : item.submitted_at, by: awaitingRecheck ? item.resubmittedBy?.full_name : item.submittedBy?.full_name },
+    { label: revised && revisionIndex === 1 ? 'Perlu Revisi' : awaitingRecheck && recheckIndex === 1 ? 'Menunggu Pemeriksaan Ulang' : 'Diperiksa', role: 'BAC', at: awaitingRecheck && recheckIndex === 1 ? null : item.checked_at, by: awaitingRecheck && recheckIndex === 1 ? undefined : item.checkedBy?.full_name },
     {
-      label: revised ? 'Perlu Revisi' : rejected ? 'Ditolak' : 'Disetujui',
+      label: revised && revisionIndex === 2 ? 'Perlu Revisi' : awaitingRecheck && recheckIndex === 2 ? 'Menunggu Persetujuan Ulang' : rejected ? 'Ditolak' : 'Disetujui RLH',
       role: 'RLH',
-      at: item.revised_at ?? item.rejected_at ?? item.approved_at,
-      by: item.revisedBy?.full_name ?? item.rejectedBy?.full_name ?? item.approvedBy?.full_name,
+      at: revised ? item.revised_at : rejected ? item.rejected_at : item.rlh_approved_at ?? item.approved_at,
+      by: revised ? item.revisedBy?.full_name : rejected ? item.rejectedBy?.full_name : item.rlhApprovedBy?.full_name ?? item.approvedBy?.full_name,
     },
   ];
+
+  if (item.is_rfah_required) {
+    steps.push({
+      label: revised && revisionIndex === 3 ? 'Perlu Revisi' : awaitingRecheck && recheckIndex === 3 ? 'Menunggu Persetujuan Ulang' : 'Disetujui RFAH',
+      role: 'RFAH',
+      at: item.status === 'approved' ? item.approved_at : null,
+      by: item.status === 'approved' ? item.approvedBy?.full_name : undefined,
+    });
+  }
 
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -308,13 +413,13 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
         <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Alur Persetujuan</h3>
         <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
           <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
-          {revised ? 'Perlu Revisi' : rejected ? 'Ditolak' : STATUS_META[item.status]?.label ?? item.status}
+          {revised ? revisionLabel : awaitingRecheck && recheckLabel ? recheckLabel : rejected ? 'Ditolak' : STATUS_META[item.status]?.label ?? item.status}
         </span>
       </div>
       <div className="px-4 py-4">
         <ol>
           {steps.map((step, i) => {
-            const state = stepStateAt(item.status, i);
+            const state = stepStateAt(item.status, i, revisionIndex);
             return (
               <li key={step.role} className="relative flex gap-3 pb-6 last:pb-0">
                 {i < steps.length - 1 && (
@@ -348,8 +453,20 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
                     {step.at ? (
                       <>
                         {step.by ? <span className="font-medium text-slate-600">{step.by}</span> : null}{step.by && ' · '}{formatDateTime(step.at)}
+                        {revised && i === revisionIndex && item.revisi_reason ? (
+                          <span className="block font-medium text-orange-700 whitespace-pre-line">Catatan revisi: {item.revisi_reason}</span>
+                        ) : null}
                       </>
-                    ) : state === 'current'
+                    ) : awaitingRecheck && recheckIndex === i
+                      ? (
+                        <span className="flex flex-col gap-0.5">
+                          <span className="font-medium text-amber-700">Perbaikan BLC sudah dikirim. Menunggu {i === 1 ? 'BAC memeriksa ulang' : i === 2 ? 'RLH menyetujui ulang' : 'RFAH menyetujui ulang'}.</span>
+                          {item.revisi_reason ? <span className="text-orange-700">Catatan revisi: {item.revisi_reason}</span> : null}
+                        </span>
+                      )
+                    : revised && i === revisionIndex && item.revisi_reason
+                      ? <span className="font-medium text-orange-700 whitespace-pre-line">{item.revisi_reason}</span>
+                      : state === 'current'
                       ? 'Menunggu aksi saat ini'
                       : 'Belum diproses'}
                   </p>
@@ -358,28 +475,6 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
             );
           })}
         </ol>
-        {item.is_rfah_required && (
-          <div className="mt-3 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-amber-800">RFAH* — nilai di atas ketentuan</p>
-              <p className="text-xs text-amber-700 mt-0.5">Nominal melebihi Rp 750.000, memerlukan pemantauan {item.rfah_name || '-'}.</p>
-            </div>
-          </div>
-        )}
-        {revised && item.revisi_reason ? (
-          <div className="mt-3 flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50/70 px-3 py-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-orange-800">Perlu revisi — {item.revisedBy?.full_name || '-'} ({formatDateTime(item.revised_at)})</p>
-              <p className="text-xs text-orange-700 mt-0.5 whitespace-pre-line">{item.revisi_reason}</p>
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
   );
@@ -406,7 +501,7 @@ function DetailPhotoThumb({ photo }: { photo: PhotoItem }) {
 }
 
 export default function BiayaThlPage() {
-  const { user, hasPermission } = useAuthStore();
+  const { user, hasPermission, hasRole } = useAuthStore();
   const [items, setItems] = useState<BiayaThlItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -439,7 +534,7 @@ export default function BiayaThlPage() {
   const fetchItems = useCallback(async () => {
     const reqId = ++reqIdRef.current;
     try {
-      const res = await biayaThl.list({ search: debouncedSearch, status: statusFilter, page, per_page: 50 });
+      const res = await biayaThl.list({ search: debouncedSearch, status: statusFilter, page, per_page: 50, _t: Date.now() });
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data || res.data);
       setTotalPages(res.data.last_page || 1);
@@ -535,7 +630,7 @@ export default function BiayaThlPage() {
       const id = await persistFinal();
       if (id == null) throw new Error('empty');
       await biayaThl.submit(id);
-      notifyGlobal('Pengajuan dikirim ke antrean pemeriksaan.', 'success');
+      notifyGlobal(editingStatus === 'revisi' ? 'Perubahan disimpan dan dikirim ulang ke tahap approval yang meminta revisi.' : 'Pengajuan dikirim ke antrean pemeriksaan.', 'success');
       await finishAfterSave();
     } catch (e: unknown) {
       notifyGlobal(getErrorMessage(e, 'Gagal mengirim pengajuan'), 'error');
@@ -635,9 +730,14 @@ export default function BiayaThlPage() {
     }
   };
 
-  const downloadPdf = (item: BiayaThlItem) => {
+  const loadLatestPdfItem = async (item: BiayaThlItem): Promise<BiayaThlItem> => {
+    const response = await biayaThl.get(item.id);
+    return normalizeBiayaThlItem(response.data.data);
+  };
+
+  const downloadPdf = async (item: BiayaThlItem) => {
     try {
-      generateTHLPdf(item);
+      generateTHLPdf(await loadLatestPdfItem(item));
     } catch {
       notifyGlobal('Gagal generate PDF', 'error');
     }
@@ -651,9 +751,9 @@ export default function BiayaThlPage() {
         : action === 'check'
           ? await biayaThl.check(viewItem.id)
           : await biayaThl.rfahApprove(viewItem.id);
-      setViewItem(response.data.data);
+      setViewItem(normalizeBiayaThlItem(response.data.data));
       await fetchItems();
-      notifyGlobal('Status pengajuan berhasil diperbarui', 'success');
+      notifyGlobal(action === 'submit' && viewItem.status === 'revisi' ? 'Perbaikan berhasil dikirim kembali ke BAC untuk diperiksa ulang.' : 'Status pengajuan berhasil diperbarui', 'success');
     } catch {
       notifyGlobal('Aksi approval tidak dapat diproses', 'error');
     }
@@ -672,12 +772,13 @@ export default function BiayaThlPage() {
     }
     setDecisionBusy(true);
     try {
-      const response = decision.action === 'approve'
-        ? await biayaThl.approve(decision.item.id)
+      await (decision.action === 'approve'
+        ? biayaThl.approve(decision.item.id)
         : decision.action === 'revise'
           ? await biayaThl.revise(decision.item.id, decisionReason)
-          : await biayaThl.reject(decision.item.id, decisionReason);
-      setViewItem(response.data.data);
+          : await biayaThl.reject(decision.item.id, decisionReason));
+      const detailResponse = await biayaThl.get(decision.item.id);
+      setViewItem(normalizeBiayaThlItem(detailResponse.data.data));
       await fetchItems();
       notifyGlobal(decision.action === 'approve' ? 'Pengajuan disetujui' : decision.action === 'revise' ? 'Pengajuan diminta revisi' : 'Pengajuan ditolak', 'success');
       setDecision(null);
@@ -1121,14 +1222,22 @@ export default function BiayaThlPage() {
     setOpenModal(true);
   };
 
-  const openViewModal = (item: BiayaThlItem) => setViewItem(item);
+  const openViewModal = async (item: BiayaThlItem) => {
+    try {
+      const response = await biayaThl.get(item.id);
+      setViewItem(normalizeBiayaThlItem(response.data.data));
+    } catch {
+      setViewItem(normalizeBiayaThlItem(item));
+      notifyGlobal('Detail terbaru tidak dapat dimuat, menampilkan data daftar.', 'error');
+    }
+  };
 
-  const badge = (status: string) => {
+  const badge = (status: string, item?: BiayaThlItem) => {
     const meta = STATUS_META[status] || STATUS_META.draft;
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-        {meta.label}
+        {item ? statusLabel(item) : meta.label}
       </span>
     );
   };
@@ -1245,18 +1354,18 @@ export default function BiayaThlPage() {
                       <td className="px-5 py-3 text-sm font-medium text-slate-800">{item.no_kendaraan || '-'}</td>
                       <td className="px-5 py-3 text-sm text-slate-600">{item.nama_depo}</td>
                       <td className="px-5 py-3 text-right text-sm font-semibold text-slate-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</td>
-                      <td className="px-5 py-3">{badge(item.status)}</td>
+                      <td className="px-5 py-3">{badge(item.status, item)}</td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openViewModal(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Lihat" aria-label="Lihat">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                           </button>
-                          {hasPermission('biaya_thl.edit') && (
+                          {hasPermission('biaya_thl.edit') && item.status !== 'approved' && (
                           <button onClick={() => openEditModal(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all" title="Edit" aria-label="Edit">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"></path></svg>
                           </button>
                           )}
-                          {hasPermission('biaya_thl.delete') && (
+                          {hasPermission('biaya_thl.delete') && item.status !== 'approved' && (
                           <button onClick={() => handleDelete(item.id)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Hapus" aria-label="Hapus">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                           </button>
@@ -1305,7 +1414,7 @@ export default function BiayaThlPage() {
                       <p className="mt-0.5 text-xs text-slate-500">{formatDate(item.tanggal_pengajuan)}</p>
                     </div>
                   </div>
-                  {badge(item.status)}
+                  {badge(item.status, item)}
                 </div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -1326,13 +1435,13 @@ export default function BiayaThlPage() {
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     Lihat
                   </button>
-                   {hasPermission('biaya_thl.edit') && (
+                   {hasPermission('biaya_thl.edit') && item.status !== 'approved' && (
                    <button onClick={() => openEditModal(item)} className="flex-1 min-h-[44px] flex items-center justify-center gap-2 text-sm font-semibold text-amber-600 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors">
                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"></path></svg>
                      Edit
                    </button>
                    )}
-                   {hasPermission('biaya_thl.delete') && (
+                   {hasPermission('biaya_thl.delete') && item.status !== 'approved' && (
                    <button onClick={() => handleDelete(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-400 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                    </button>
@@ -1387,9 +1496,9 @@ export default function BiayaThlPage() {
                   {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-600" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
                   {busy ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Draft'}
                 </button>
-                <button type="button" onClick={handleCreateAndSubmit} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title="Simpan dan langsung kirim ke antrean pemeriksaan" className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                <button type="button" onClick={handleCreateAndSubmit} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title={editingStatus === 'revisi' ? 'Simpan perbaikan lalu kirim kembali ke approver yang meminta revisi' : 'Simpan dan langsung kirim ke antrean pemeriksaan'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-                  Simpan & Kirim
+                  {editingStatus === 'revisi' ? 'Simpan Perubahan & Kirim Ulang' : 'Simpan & Kirim'}
                 </button>
               </>
             ) : (
@@ -2074,15 +2183,15 @@ export default function BiayaThlPage() {
           <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
             {viewItem?.status === 'draft' || viewItem?.status === 'rejected' || viewItem?.status === 'revisi' ? (viewItem?.created_by === user?.id && hasPermission('approval.submit') ? <button onClick={() => void approvalAction('submit')} className="btn-secondary w-full sm:w-auto">Kirim</button> : null) : null}
             {viewItem?.status === 'pending' ? <>{hasPermission('approval.check') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}{hasPermission('approval.check') ? <button onClick={() => void approvalAction('check')} className="btn-secondary w-full sm:w-auto">Periksa</button> : null}</> : null}
-            {viewItem?.status === 'checked' && viewItem ? <>{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600">Perlu Revisi</button> : null}{hasPermission('approval.approve') ? <button onClick={() => openDecision('approve', viewItem)} className="btn-primary w-full sm:w-auto">Setujui</button> : null}</> : null}
-            {viewItem?.status === 'rlh_approved' ? <>{hasPermission('approval.rfah') ? <button onClick={() => void approvalAction('rfahApprove')} className="btn-primary w-full sm:w-auto">Setujui RFAH</button> : null}{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}</> : null}
-            {viewItem && <button onClick={() => { try { previewTHLPdf(viewItem); } catch { notifyGlobal('Gagal membuka preview PDF', 'error'); } }} className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
+            {viewItem?.status === 'checked' && viewItem ? <>{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('revise', viewItem)} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600">Perlu Revisi</button> : null}{hasPermission('approval.approve') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('approve', viewItem)} className="btn-primary w-full sm:w-auto">Setujui</button> : null}</> : null}
+            {viewItem?.status === 'rlh_approved' ? <>{hasPermission('approval.rfah') ? <button onClick={() => void approvalAction('rfahApprove')} className="btn-primary w-full sm:w-auto">Setujui RFAH</button> : null}{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') && (hasRole('rfah', 'admin_master')) ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}</> : null}
+            {viewItem && <button onClick={() => { void (async () => { try { previewTHLPdf(await loadLatestPdfItem(viewItem)); } catch { notifyGlobal('Gagal membuka preview PDF', 'error'); } })(); }} className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               Preview PDF
             </button>}
-            {viewItem?.status === 'approved' ? <button onClick={() => viewItem && downloadPdf(viewItem)} className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
+            {viewItem?.status === 'approved' && viewItem && (viewItem.created_by === user?.id || hasRole('blc', 'admin_master')) ? <button onClick={() => viewItem && downloadPdf(viewItem)} className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-              Cetak PDF
+              Cetak PDF BLC
             </button> : null}
             <button onClick={() => setViewItem(null)} className="btn-secondary w-full sm:w-auto">Tutup</button>
           </div>
@@ -2109,7 +2218,7 @@ export default function BiayaThlPage() {
                     </div>
                   </div>
                   <div className="shrink-0">
-                    {badge(viewItem.status)}
+                    {badge(viewItem.status, viewItem)}
                   </div>
                 </div>
               </div>
@@ -2128,7 +2237,12 @@ export default function BiayaThlPage() {
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                     No Surat Jalan
                   </span>
-                  <p className="text-sm text-slate-800 mt-1.5 font-semibold font-mono break-words">{[...new Set((viewItem.details || []).map((d: DetailRow) => d.no_surat_jalan).filter(Boolean))].join(', ') || '-'}</p>
+                  <div className="mt-1.5 space-y-0.5 text-sm font-semibold font-mono text-slate-800">
+                    {[...new Set((viewItem.details || []).flatMap((d: DetailRow) => (d.no_surat_jalan || '').split(/[,;\n]+/).map((value) => value.trim()).filter(Boolean)))].map((suratJalan) => (
+                      <p key={suratJalan} className="break-all">{suratJalan}</p>
+                    ))}
+                    {!(viewItem.details || []).some((d: DetailRow) => d.no_surat_jalan) && <p>-</p>}
+                  </div>
                 </div>
                 <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
                   <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -2149,7 +2263,7 @@ export default function BiayaThlPage() {
                     <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
                     <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Daftar Pekerja</h3>
                     <span className="ml-auto inline-flex items-center rounded-full bg-primary-50 border border-primary-100 px-2.5 py-0.5 text-[11px] font-bold text-primary-700">
-                      {viewItem.details.length} pekerja
+                        {groupWorkersBySuratJalan(viewItem.details).length} SJ · {viewItem.details.length} pekerja
                     </span>
                   </div>
                   <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -2166,19 +2280,15 @@ export default function BiayaThlPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {viewItem.details.map((d, i) => (
-                          <tr key={i} className="hover:bg-slate-50/60 transition-colors">
+                          {groupWorkersBySuratJalan(viewItem.details).map((group, i) => (
+                          <tr key={group.no_surat_jalan} className="hover:bg-slate-50/60 transition-colors align-top">
                             <td className="table-cell text-center font-bold text-slate-400">{i + 1}</td>
-                            <td className="table-cell font-mono text-slate-600">{d.no_surat_jalan || '-'}</td>
-                            <td className="table-cell font-semibold text-slate-800">{d.nama_thl}</td>
-                            <td className="table-cell">
-                              <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${d.posisi === 'THL GUDANG' ? 'border-sky-200 bg-sky-50 text-sky-700' : d.posisi === 'THL DRIVER' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-primary-200 bg-primary-50 text-primary-700'}`}>
-                                {d.posisi || '-'}
-                              </span>
-                            </td>
-                            <td className="table-cell font-mono">{d.nopol_kendaraan || '-'}</td>
-                            <td className="table-cell">{d.type_kendaraan || '-'}</td>
-                            <td className="table-cell text-right font-bold text-slate-800 tabular-nums">{formatCurrency(Number(d.nominal_biaya))}</td>
+                            <td className="table-cell font-mono text-slate-600">{group.no_surat_jalan}</td>
+                            <td className="table-cell font-semibold text-slate-800"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <div key={`${worker.nama_thl}-${workerIndex}`}>{worker.nama_thl}</div>)}</div></td>
+                            <td className="table-cell"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <span key={`${worker.posisi}-${workerIndex}`} className={`block w-fit rounded-full border px-2 py-0.5 text-[10px] font-bold ${worker.posisi === 'THL GUDANG' ? 'border-sky-200 bg-sky-50 text-sky-700' : worker.posisi === 'THL DRIVER' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-primary-200 bg-primary-50 text-primary-700'}`}>{worker.posisi}</span>)}</div></td>
+                            <td className="table-cell font-mono"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <div key={`${worker.nopol_kendaraan}-${workerIndex}`}>{worker.nopol_kendaraan}</div>)}</div></td>
+                            <td className="table-cell"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <div key={`${worker.type_kendaraan}-${workerIndex}`}>{worker.type_kendaraan}</div>)}</div></td>
+                            <td className="table-cell text-right font-bold text-slate-800 tabular-nums"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <div key={`${worker.nominal_biaya}-${workerIndex}`}>{formatCurrency(worker.nominal_biaya)}</div>)}<div className="border-t border-slate-200 pt-1 text-[10px] text-slate-500">Total {formatCurrency(group.nominal_biaya)}</div></div></td>
                           </tr>
                         ))}
                       </tbody>
@@ -2190,7 +2300,7 @@ export default function BiayaThlPage() {
               {/* Status footer */}
               <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-xs text-slate-500">Status pengajuan</p>
-                {badge(viewItem.status)}
+                  {badge(viewItem.status, viewItem)}
               </div>
             </div>
           )}
@@ -2200,7 +2310,7 @@ export default function BiayaThlPage() {
         <Modal
           open={!!decision}
           onClose={() => { if (!decisionBusy) setDecision(null); }}
-          title={decision?.action === 'reject' ? 'Tolak Pengajuan' : decision?.action === 'revise' ? 'Perlu Revisi' : 'Setujui Pengajuan'}
+          title={decision?.action === 'reject' ? 'Tolak Pengajuan' : decision?.action === 'revise' ? 'Perlu Revisi' : decision?.item.is_rfah_required ? 'Setujui RLH' : 'Setujui Pengajuan'}
           subtitle={decision ? 'Konfirmasi keputusan approval' : undefined}
           size="md"
           footer={
@@ -2236,7 +2346,7 @@ export default function BiayaThlPage() {
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary-300/80">Biaya THL</p>
                     <p className="text-sm font-bold truncate">{decision.item.no_kendaraan || decision.item.details?.[0]?.nopol_kendaraan || '-'}</p>
                   </div>
-                  <span className="ml-auto shrink-0">{badge(decision.item.status)}</span>
+                  <span className="ml-auto shrink-0">{badge(decision.item.status, decision.item)}</span>
                 </div>
                 <div className="divide-y divide-slate-100 bg-white text-sm">
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
@@ -2289,7 +2399,11 @@ export default function BiayaThlPage() {
                 </div>
               ) : (
                 <p className="text-sm text-slate-600 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5">
-                  Pengajuan ini akan berstatus <strong className="text-emerald-700">Approved</strong> setelah disetujui.
+                  {decision.item.is_rfah_required ? (
+                    <>Pengajuan ini akan <strong className="text-emerald-700">disetujui RLH</strong> lalu diteruskan ke tahap <strong className="text-amber-700">RFAH</strong>.</>
+                  ) : (
+                    <>Pengajuan ini akan berstatus <strong className="text-emerald-700">Approved</strong> setelah disetujui.</>
+                  )}
                 </p>
               )}
             </div>
