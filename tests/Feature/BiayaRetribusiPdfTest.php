@@ -238,6 +238,61 @@ class BiayaRetribusiPdfTest extends TestCase
         $this->assertSame('RFAH Pending', $sections['RFAH*']['people'][0]['name']);
     }
 
+    public function test_retribusi_show_denies_thl_only_approver(): void
+    {
+        // Approver yang hanya ditugaskan untuk modul THL tidak boleh mengakses
+        // detail retribusi (authorizeViewer harus mem-filter module).
+        $permission = Permission::create([
+            'slug' => 'biaya_retribusi.view',
+            'name' => 'Biaya Retribusi View',
+            'menu_group' => 'Biaya',
+        ]);
+        $role = Role::create(['slug' => 'biaya_retribusi_deny', 'name' => 'Biaya Retribusi Deny']);
+        $role->permissions()->attach($permission->id);
+
+        $rlhThlOnly = User::create([
+            'email' => 'rlh-thl-only@test.com',
+            'password' => 'password',
+            'full_name' => 'RLH THL Only',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'level' => 'rlh',
+            'status' => 'active',
+            'role_id' => $role->id,
+        ]);
+        $role->users()->attach($rlhThlOnly->id);
+        ApprovalAssignment::create([
+            'module' => ApprovalAssignment::MODULE_THL,
+            'kode_depo' => 'DPT-A',
+            'approval_level' => 'RLH',
+            'user_id' => $rlhThlOnly->id,
+            'is_active' => true,
+        ]);
+
+        // Pengaju retribusi adalah user lain; pelihat adalah approver THL-only.
+        $submitter = User::create([
+            'email' => 'submitter-retribusi@test.com',
+            'password' => 'password',
+            'full_name' => 'Submitter Retribusi',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'level' => 'admin_master',
+            'status' => 'active',
+        ]);
+        $biayaRetribusi = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-09-24',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'nominal_biaya' => 250000,
+            'approval_pengajuan' => 'Siapa Saja',
+            'created_by' => $submitter->id,
+        ]);
+
+        $this->actingAs($rlhThlOnly)
+            ->getJson('/api/v1/biaya-retribusi/'.$biayaRetribusi->id)
+            ->assertStatus(403);
+    }
+
     private function retribusiUser(string $email, string $fullName, ?Role $role): User
     {
         $user = User::create([

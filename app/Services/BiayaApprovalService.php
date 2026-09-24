@@ -11,6 +11,7 @@ use App\Models\RetribusiRate;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class BiayaApprovalService
@@ -188,52 +189,57 @@ class BiayaApprovalService
         $this->ensureCreator($biaya, $actor);
         $this->ensureStatus($biaya, ['draft', 'rejected', 'revisi']);
         $this->assertSubmittable($biaya);
-        $fromStatus = $biaya->status;
 
-        $isRevisionResubmission = $biaya->status === 'revisi';
-        $isThl = $biaya instanceof BiayaThl;
-        $resubmissionStatus = $isThl ? $this->revisionReturnStatus($biaya) : 'pending';
-        $approvalReset = match ($resubmissionStatus) {
-            'pending' => [
-                'checked_by' => null, 'checked_at' => null,
-                'rlh_approved_by' => null, 'rlh_approved_at' => null,
-                'approved_by' => null, 'approved_at' => null,
-            ],
-            'checked' => [
-                'rlh_approved_by' => null, 'rlh_approved_at' => null,
-                'approved_by' => null, 'approved_at' => null,
-            ],
-            'rlh_approved' => [
-                'approved_by' => null, 'approved_at' => null,
-            ],
-            default => [],
-        };
+        $refreshed = $this->persistTransition(
+            $biaya,
+            ['draft', 'rejected', 'revisi'],
+            'submit',
+            $actor,
+            function (Model $locked) use ($actor): void {
+                $isRevisionResubmission = $locked->status === 'revisi';
+                $isThl = $locked instanceof BiayaThl;
+                $resubmissionStatus = $isThl ? $this->revisionReturnStatus($locked) : 'pending';
+                $approvalReset = match ($resubmissionStatus) {
+                    'pending' => [
+                        'checked_by' => null, 'checked_at' => null,
+                        'rlh_approved_by' => null, 'rlh_approved_at' => null,
+                        'approved_by' => null, 'approved_at' => null,
+                    ],
+                    'checked' => [
+                        'rlh_approved_by' => null, 'rlh_approved_at' => null,
+                        'approved_by' => null, 'approved_at' => null,
+                    ],
+                    'rlh_approved' => [
+                        'approved_by' => null, 'approved_at' => null,
+                    ],
+                    default => [],
+                };
 
-        $biaya->update([
-            'approval_pengajuan' => $actor->full_name ?: $actor->email,
-            'approval_pengajuan_level' => $actor->level,
-            'status' => $isRevisionResubmission ? $resubmissionStatus : 'pending',
-            'submitted_by' => $actor->id,
-            'submitted_at' => now(),
-            'rejected_by' => null,
-            'rejected_at' => null,
-            'rejection_reason' => null,
-            ...$approvalReset,
-            ...($isRevisionResubmission && $isThl ? [
-                'resubmitted_by' => $actor->id,
-                'resubmitted_at' => now(),
-                'revision_return_status' => null,
-            ] : []),
-            ...($isRevisionResubmission && ! $isThl ? [
-                'revised_by' => null,
-                'revised_at' => null,
-                'revisi_reason' => null,
-            ] : []),
-        ]);
+                $locked->update([
+                    'approval_pengajuan' => $actor->full_name ?: $actor->email,
+                    'approval_pengajuan_level' => $actor->level,
+                    'status' => $isRevisionResubmission ? $resubmissionStatus : 'pending',
+                    'submitted_by' => $actor->id,
+                    'submitted_at' => now(),
+                    'rejected_by' => null,
+                    'rejected_at' => null,
+                    'rejection_reason' => null,
+                    ...$approvalReset,
+                    ...($isRevisionResubmission && $isThl ? [
+                        'resubmitted_by' => $actor->id,
+                        'resubmitted_at' => now(),
+                        'revision_return_status' => null,
+                    ] : []),
+                    ...($isRevisionResubmission && ! $isThl ? [
+                        'revised_by' => null,
+                        'revised_at' => null,
+                        'revisi_reason' => null,
+                    ] : []),
+                ]);
+            },
+        );
 
-        $this->notify($biaya, 'submitted');
-        $refreshed = $biaya->refresh();
-        $this->recordHistory($refreshed, $fromStatus, 'submit', null, $actor);
+        $this->notify($refreshed, 'submitted');
 
         return $refreshed;
     }
@@ -241,13 +247,24 @@ class BiayaApprovalService
     public function check(Model $biaya, User $actor): Model
     {
         $this->ensureApprover($biaya, $actor, 'BAC');
-        $this->ensureStatus($biaya, ['pending']);
 
-        $biaya->update(['status' => 'checked', 'checked_by' => $actor->id, 'checked_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
+        $refreshed = $this->persistTransition(
+            $biaya,
+            ['pending'],
+            'check',
+            $actor,
+            function (Model $locked) use ($actor): void {
+                $locked->update([
+                    'status' => 'checked',
+                    'checked_by' => $actor->id,
+                    'checked_at' => now(),
+                    'resubmitted_by' => null,
+                    'resubmitted_at' => null,
+                ]);
+            },
+        );
 
-        $this->notify($biaya, 'checked');
-        $refreshed = $biaya->refresh();
-        $this->recordHistory($refreshed, 'pending', 'check', null, $actor);
+        $this->notify($refreshed, 'checked');
 
         return $refreshed;
     }
@@ -255,28 +272,38 @@ class BiayaApprovalService
     public function approve(Model $biaya, User $actor): Model
     {
         $this->ensureApprover($biaya, $actor, 'RLH');
-        $this->ensureStatus($biaya, ['checked']);
 
-        if ($biaya->is_rfah_required) {
-            $biaya->update([
-                'status' => 'rlh_approved',
-                'rlh_approved_by' => $actor->id,
-                'rlh_approved_at' => now(),
-                'resubmitted_by' => null,
-                'resubmitted_at' => null,
-            ]);
-            $this->notify($biaya, 'rlh_approved');
-            $refreshed = $biaya->refresh();
-            $this->recordHistory($refreshed, 'checked', 'approve', null, $actor);
+        $trigger = 'approved';
+        $refreshed = $this->persistTransition(
+            $biaya,
+            ['checked'],
+            'approve',
+            $actor,
+            function (Model $locked) use ($actor, &$trigger): void {
+                if ($locked->is_rfah_required) {
+                    $trigger = 'rlh_approved';
+                    $locked->update([
+                        'status' => 'rlh_approved',
+                        'rlh_approved_by' => $actor->id,
+                        'rlh_approved_at' => now(),
+                        'resubmitted_by' => null,
+                        'resubmitted_at' => null,
+                    ]);
 
-            return $refreshed;
-        }
+                    return;
+                }
 
-        $biaya->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
+                $locked->update([
+                    'status' => 'approved',
+                    'approved_by' => $actor->id,
+                    'approved_at' => now(),
+                    'resubmitted_by' => null,
+                    'resubmitted_at' => null,
+                ]);
+            },
+        );
 
-        $this->notify($biaya, 'approved');
-        $refreshed = $biaya->refresh();
-        $this->recordHistory($refreshed, 'checked', 'approve', null, $actor);
+        $this->notify($refreshed, $trigger);
 
         return $refreshed;
     }
@@ -284,13 +311,24 @@ class BiayaApprovalService
     public function rfahApprove(Model $biaya, User $actor): Model
     {
         $this->ensureApprover($biaya, $actor, 'RFAH');
-        $this->ensureStatus($biaya, ['rlh_approved']);
 
-        $biaya->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
+        $refreshed = $this->persistTransition(
+            $biaya,
+            ['rlh_approved'],
+            'rfah_approve',
+            $actor,
+            function (Model $locked) use ($actor): void {
+                $locked->update([
+                    'status' => 'approved',
+                    'approved_by' => $actor->id,
+                    'approved_at' => now(),
+                    'resubmitted_by' => null,
+                    'resubmitted_at' => null,
+                ]);
+            },
+        );
 
-        $this->notify($biaya, 'approved');
-        $refreshed = $biaya->refresh();
-        $this->recordHistory($refreshed, 'rlh_approved', 'rfah_approve', null, $actor);
+        $this->notify($refreshed, 'approved');
 
         return $refreshed;
     }
@@ -303,22 +341,27 @@ class BiayaApprovalService
             default => 'RLH',
         };
         $this->ensureApprover($biaya, $actor, $level);
-        $this->ensureStatus($biaya, ['pending', 'checked', 'rlh_approved']);
         $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
-        $fromReject = $biaya->status;
 
-        $biaya->update([
-            'status' => 'rejected',
-            'rejected_by' => $actor->id,
-            'rejected_at' => now(),
-            'rejection_reason' => $reason,
-            'resubmitted_by' => null,
-            'resubmitted_at' => null,
-        ]);
+        $refreshed = $this->persistTransition(
+            $biaya,
+            ['pending', 'checked', 'rlh_approved'],
+            'reject',
+            $actor,
+            function (Model $locked) use ($actor, $reason): void {
+                $locked->update([
+                    'status' => 'rejected',
+                    'rejected_by' => $actor->id,
+                    'rejected_at' => now(),
+                    'rejection_reason' => $reason,
+                    'resubmitted_by' => null,
+                    'resubmitted_at' => null,
+                ]);
+            },
+            $reason,
+        );
 
-        $this->notify($biaya, 'rejected');
-        $refreshed = $biaya->refresh();
-        $this->recordHistory($refreshed, $fromReject, 'reject', $reason, $actor);
+        $this->notify($refreshed, 'rejected');
 
         return $refreshed;
     }
@@ -326,22 +369,28 @@ class BiayaApprovalService
     public function revise(Model $biaya, User $actor, Request $request): Model
     {
         $this->ensureApprover($biaya, $actor, $biaya->status === 'rlh_approved' ? 'RFAH' : ($biaya->status === 'pending' ? 'BAC' : 'RLH'));
-        $this->ensureStatus($biaya, ['pending', 'checked', 'rlh_approved']);
         $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
-        $fromRevise = $biaya->status;
 
-        $biaya->update([
-            'status' => 'revisi',
-            'revised_by' => $actor->id,
-            'revised_at' => now(),
-            'revisi_reason' => $reason,
-            'revision_return_status' => $biaya->status,
-            'resubmitted_by' => null,
-            'resubmitted_at' => null,
-        ]);
-        $this->notify($biaya, 'revisi');
-        $refreshed = $biaya->refresh();
-        $this->recordHistory($refreshed, $fromRevise, 'revise', $reason, $actor);
+        $refreshed = $this->persistTransition(
+            $biaya,
+            ['pending', 'checked', 'rlh_approved'],
+            'revise',
+            $actor,
+            function (Model $locked) use ($actor, $reason): void {
+                $locked->update([
+                    'status' => 'revisi',
+                    'revised_by' => $actor->id,
+                    'revised_at' => now(),
+                    'revisi_reason' => $reason,
+                    'revision_return_status' => $locked->status,
+                    'resubmitted_by' => null,
+                    'resubmitted_at' => null,
+                ]);
+            },
+            $reason,
+        );
+
+        $this->notify($refreshed, 'revisi');
 
         return $refreshed;
     }
@@ -349,6 +398,40 @@ class BiayaApprovalService
     private function ensureCreator(Model $biaya, User $actor): void
     {
         abort_unless($biaya->created_by === $actor->id, 403, 'Hanya pembuat pengajuan yang dapat mengirim ulang.');
+    }
+
+    /**
+     * Jalankan transisi approval secara atomik: kunci baris (lockForUpdate)
+     * agar dua permintaan paralel tidak sama-sama lolos validasi status lalu
+     * saling menimpa jejak, validasi status ulang di dalam transaksi, dan
+     * catat ApprovalHistory pada transaksi yang sama dengan perubahan status.
+     *
+     * @param  array<int, string>  $allowed
+     * @param  \Closure(Model): void  $apply
+     */
+    private function persistTransition(Model $biaya, array $allowed, string $action, User $actor, \Closure $apply, ?string $reason = null): Model
+    {
+        $result = DB::transaction(function () use ($biaya, $allowed, $action, $actor, $apply, $reason): Model {
+            /** @var Model $locked */
+            $locked = $biaya->newQuery()->lockForUpdate()->findOrFail($biaya->getKey());
+
+            $this->ensureStatus($locked, $allowed);
+            $from = $locked->status;
+
+            $apply($locked);
+
+            $refreshed = $locked->refresh();
+            $this->recordHistory($refreshed, $from, $action, $reason, $actor);
+
+            return $refreshed;
+        }, 5);
+
+        // Sinkronkan instance pemanggil agar status terbaru terlihat dari luar
+        // transaksi (perilaku lama memperbarui instance yang sama).
+        $biaya->setRawAttributes($result->getAttributes(), true);
+        $biaya->syncOriginal();
+
+        return $result;
     }
 
     private function revisionReturnStatus(Model $biaya): string

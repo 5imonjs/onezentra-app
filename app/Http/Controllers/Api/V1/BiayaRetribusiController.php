@@ -723,6 +723,7 @@ class BiayaRetribusiController extends Controller
         }
 
         $assigned = ApprovalAssignment::query()
+            ->where('module', ApprovalAssignment::MODULE_RETRIBUSI)
             ->where('user_id', $user->id)
             ->whereIn('approval_level', ['BAC', 'RLH', 'RFAH'])
             ->where('is_active', true)

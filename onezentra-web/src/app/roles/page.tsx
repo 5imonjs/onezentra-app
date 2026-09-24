@@ -195,7 +195,12 @@ function RolesTab() {
   const [permSearch, setPermSearch] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  useEffect(() => { loadRoles(); }, []);
+  useEffect(() => {
+    // Muat daftar peran hanya sekali saat mount; loadRoles dipanggil ulang
+    // oleh handler pencarian/paginasi/refresh dengan argumen eksplisit.
+    void loadRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sengaja mount-only
+  }, []);
 
   useEffect(() => {
     return () => {

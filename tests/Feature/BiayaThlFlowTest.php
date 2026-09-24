@@ -62,6 +62,21 @@ class BiayaThlFlowTest extends TestCase
         $this->assertSame(1, $res->json('summary.rejected'));
     }
 
+    public function test_index_depot_scope_tolerates_blank_nama_depo_rows(): void
+    {
+        Sanctum::actingAs($this->user);
+
+        BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => $this->user->id, 'status' => 'pending', 'nominal_biaya' => 100000]);
+        $blankNamaDepo = BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => null, 'created_by' => $this->user->id, 'status' => 'pending', 'nominal_biaya' => 150000]);
+        BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-B', 'nama_depo' => 'Depo B', 'created_by' => $this->user->id, 'status' => 'pending', 'nominal_biaya' => 200000]);
+
+        $res = $this->getJson('/api/v1/biaya-thl?per_page=50')->assertOk();
+
+        $ids = collect($res->json('data'))->pluck('id')->all();
+        $this->assertCount(2, $ids);
+        $this->assertContains($blankNamaDepo->id, $ids);
+    }
+
     public function test_store_uses_assigned_rfah_per_depot_with_global_fallback(): void
     {
         Sanctum::actingAs($this->user);

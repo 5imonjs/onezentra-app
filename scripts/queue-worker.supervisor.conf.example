@@ -1,0 +1,27 @@
+; Contoh konfigurasi Supervisor untuk worker antrean (queue) Laravel.
+;
+; Latar belakang: QUEUE_CONNECTION=database — email approval & log aktivitas
+; (LogUserActivity) dijadwalkan lewat antrean. Tanpa worker, job menumpuk di
+; tabel `jobs` dan email tidak pernah terkirim.
+;
+; 1. Salin file ini ke /etc/supervisor/conf.d/onezentra-queue.conf
+;    (sesuaikan user, directory, dan path PHP).
+; 2. Reload supervisor:
+;      sudo supervisorctl reread && sudo supervisorctl update
+;      sudo supervisorctl status onezentra-queue:*
+; 3. Tambahkan cron scheduler (jalankan `php artisan schedule:run` tiap menit):
+;      * * * * * cd /path/ke/proyek && php artisan schedule:run >> /dev/null 2>&1
+
+[program:onezentra-queue]
+process_name=%(program_name)s_%(process_num)02d
+command=php /path/ke/proyek/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+directory=/path/ke/proyek
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/log/onezentra-queue-worker.log
+stopwaitsecs=3600
