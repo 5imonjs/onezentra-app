@@ -1,10 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import BiayaThlPage from './page';
 
-const { hasPermission, thlList, getBiayaConfig, notify } = vi.hoisted(() => ({
+const { hasPermission, thlList, thlGet, getBiayaConfig, notify } = vi.hoisted(() => ({
   hasPermission: vi.fn(() => true),
   thlList: vi.fn(),
+  thlGet: vi.fn(),
   getBiayaConfig: vi.fn(),
   notify: vi.fn(),
 }));
@@ -26,7 +27,7 @@ vi.mock('@/app/dashboard/layout', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  biayaThl: { list: thlList },
+  biayaThl: { list: thlList, get: thlGet },
   getErrorMessage: (_error: unknown, fallback: string) => fallback,
   API_ROOT: 'http://localhost:3000',
 }));
@@ -68,6 +69,7 @@ describe('BiayaThlPage — pola input langsung di step Data Pekerja', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     thlList.mockResolvedValue({ data: { data: [], last_page: 1 } });
+    thlGet.mockResolvedValue({ data: { data: {} } });
     getBiayaConfig.mockResolvedValue({
       rfah_name: 'Umi Marzuqoh',
       thl_rfah_threshold: 750000,
@@ -109,5 +111,69 @@ describe('BiayaThlPage — pola input langsung di step Data Pekerja', () => {
 
     await waitFor(() => expect(document.getElementById('sj-group-0')).not.toBeNull());
     expect(document.getElementById('sj-group-1')).toBeNull();
+  });
+
+  const makeThlItem = (overrides: Record<string, unknown> = {}) => ({
+    id: 77,
+    tanggal_pengajuan: '2026-09-24',
+    kode_depo: 'SKW',
+    nama_depo: 'Singkawang',
+    no_kendaraan: 'B 3434 FD',
+    type_kendaraan: 'CDD',
+    no_surat_jalan: '0127-26-00000TES5',
+    kubikasi_base: 0,
+    nominal_biaya: 1025000,
+    is_rfah_required: true,
+    rfah_name: 'Umi Marzuqoh',
+    approval_pengajuan: 'bac',
+    approval_pengajuan_level: 'BLC',
+    status: 'revisi',
+    created_by: 1,
+    submitted_at: '2026-09-24 10:00:00',
+    checked_at: null,
+    rlh_approved_at: null,
+    approved_at: null,
+    rejected_at: null,
+    rejection_reason: null,
+    revised_at: null,
+    revisi_reason: null,
+    resubmitted_at: null,
+    submittedBy: { id: 2, full_name: 'Simon Peres' },
+    checkedBy: null,
+    approvedBy: null,
+    rlhApprovedBy: null,
+    rejectedBy: null,
+    revisedBy: null,
+    details: [],
+    photos: [],
+    ...overrides,
+  });
+
+  const openDetail = async (item: ReturnType<typeof makeThlItem>) => {
+    thlList.mockResolvedValue({ data: { data: [item], last_page: 1 } });
+    thlGet.mockResolvedValue({ data: { data: item } });
+    render(<BiayaThlPage />);
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Lihat' }))[0]);
+    await screen.findByRole('heading', { name: 'Detail Biaya THL' });
+  };
+
+  it('tidak menampilkan tombol Kirim di modal detail untuk status revisi (kirim ulang lewat edit modal)', async () => {
+    await openDetail(makeThlItem({ status: 'revisi', revisi_reason: 'tesss', revised_at: '2026-09-24 11:00:00', revisedBy: { id: 3, full_name: 'Bac User', level: 'bac' } }));
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'Kirim' })).not.toBeInTheDocument();
+  });
+
+  it('tidak menampilkan tombol Kirim di modal detail untuk status rejected', async () => {
+    await openDetail(makeThlItem({ status: 'rejected', rejection_reason: 'lengkapi dokumen', rejected_at: '2026-09-24 11:00:00', rejectedBy: { id: 4, full_name: 'Rlh User', level: 'rlh' } }));
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'Kirim' })).not.toBeInTheDocument();
+  });
+
+  it('menampilkan tombol Kirim di modal detail untuk draft milik pembuat dengan approval.submit', async () => {
+    await openDetail(makeThlItem({ status: 'draft' }));
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'Kirim' })).toBeInTheDocument();
+  });
+
+  it('tidak menampilkan tombol Kirim di modal detail untuk draft milik pengguna lain', async () => {
+    await openDetail(makeThlItem({ status: 'draft', created_by: 999 }));
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: 'Kirim' })).not.toBeInTheDocument();
   });
 });
