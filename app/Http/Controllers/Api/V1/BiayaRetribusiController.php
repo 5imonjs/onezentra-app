@@ -384,15 +384,16 @@ class BiayaRetribusiController extends Controller
     {
         $this->authorizeViewer($biayaRetribusi);
 
-        $biayaRetribusi->load('details.biayaThlDetail.photos', 'documents', 'checkedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
+        $biayaRetribusi->load('details.biayaThlDetail.photos', 'documents', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $deciderName = match ($biayaRetribusi->status) {
-            'approved' => $biayaRetribusi->approvedBy?->full_name,
-            'rejected' => $biayaRetribusi->rejectedBy?->full_name,
-            'revisi' => $biayaRetribusi->revisedBy?->full_name,
-            default => $biayaRetribusi->approvedBy?->full_name,
-        };
-        $approvalSections = app(ApprovalSectionResolver::class)->resolve($biayaRetribusi->kode_depo ?: '', $biayaRetribusi->approval_pengajuan, $biayaRetribusi->checkedBy?->full_name, $deciderName);
+        $names = $this->approvalActorNames($biayaRetribusi);
+        $approvalSections = app(ApprovalSectionResolver::class)->resolve(
+            $biayaRetribusi->kode_depo ?: '',
+            $names['submitter'],
+            $names['checker'],
+            $names['approver'],
+            $names['rfah'],
+        );
 
         $html = view('pdf.biaya_retribusi', [
             'biayaRetribusi' => $biayaRetribusi,
@@ -411,7 +412,11 @@ class BiayaRetribusiController extends Controller
         ]);
     }
 
-    private function resolveStamps(BiayaRetribusi $biayaRetribusi): array
+    /**
+     * Cap audit per kotak approval untuk PDF. Publik agar perilaku penempatan
+     * cap (ikuti peran pelaku) dapat diuji langsung.
+     */
+    public function resolveStamps(BiayaRetribusi $biayaRetribusi): array
     {
         $stamps = [];
 
@@ -438,20 +443,89 @@ class BiayaRetribusiController extends Controller
                 'date' => $biayaRetribusi->approved_at?->format('d M Y'),
             ];
         } elseif ($biayaRetribusi->status === 'rejected') {
-            $stamps['Menyetujui'] = [
+            $actorSection = $this->stampSectionFor((string) $biayaRetribusi->rejectedBy?->level);
+            $stamps[$actorSection] = [
                 'text' => 'DITOLAK',
                 'color' => '#dc2626',
                 'date' => $biayaRetribusi->rejected_at?->format('d M Y'),
             ];
+            // Persetujuan RLH pada siklus sebelumnya tetap tercatat di kotaknya
+            // bila aksi terminal (ditolak) dilakukan pelaku lain (BAC/RFAH).
+            if ($actorSection !== 'Menyetujui' && $biayaRetribusi->rlh_approved_at && $biayaRetribusi->rlhApprovedBy) {
+                $stamps['Menyetujui'] = [
+                    'text' => 'DISETUJUI RLH',
+                    'color' => '#15803d',
+                    'date' => $biayaRetribusi->rlh_approved_at->format('d M Y'),
+                ];
+            }
         } elseif ($biayaRetribusi->status === 'revisi') {
-            $stamps['Menyetujui'] = [
+            $actorSection = $this->stampSectionFor((string) $biayaRetribusi->revisedBy?->level);
+            $stamps[$actorSection] = [
                 'text' => 'REVISI',
                 'color' => '#d97706',
                 'date' => $biayaRetribusi->revised_at?->format('d M Y'),
             ];
+            if ($actorSection !== 'Menyetujui' && $biayaRetribusi->rlh_approved_at && $biayaRetribusi->rlhApprovedBy) {
+                $stamps['Menyetujui'] = [
+                    'text' => 'DISETUJUI RLH',
+                    'color' => '#15803d',
+                    'date' => $biayaRetribusi->rlh_approved_at->format('d M Y'),
+                ];
+            }
         }
 
         return $stamps;
+    }
+
+    /**
+     * Kotak kolom approval tempat cap REVISI/DITOLAK diletakkan mengikuti
+     * peran pelaku aksi: BAC -> Mengetahui, RFAH -> RFAH*, selainnya
+     * (RLH / data lama tanpa level) -> Menyetujui. Sejajar dengan
+     * stampSectionFor() pada generator PDF frontend.
+     */
+    public function stampSectionFor(string $level): string
+    {
+        return match (strtoupper($level)) {
+            'BAC' => 'Mengetahui',
+            'RFAH' => 'RFAH*',
+            default => 'Menyetujui',
+        };
+    }
+
+    /**
+     * Nama pelaku per kotak approval, diurutkan sesuai ApprovalSectionResolver:
+     * submitter (BLC), checker (BAC), approver (RLH), rfah (RFAH*). Nama
+     * mengikuti peran pelaku aksi — revisi/ditolak oleh RFAH atau BAC tidak
+     * boleh tertukar ke kotak RLH. Publik agar dapat diuji langsung.
+     *
+     * @return array{submitter: ?string, checker: ?string, approver: ?string, rfah: ?string}
+     */
+    public function approvalActorNames(BiayaRetribusi $biayaRetribusi): array
+    {
+        $submitter = $biayaRetribusi->approval_pengajuan;
+        $checker = $biayaRetribusi->checkedBy?->full_name;
+        $approver = null;
+        $rfah = null;
+
+        if ($biayaRetribusi->status === 'rlh_approved') {
+            $approver = $biayaRetribusi->rlhApprovedBy?->full_name;
+        } elseif ($biayaRetribusi->status === 'approved') {
+            if ($biayaRetribusi->is_rfah_required) {
+                $approver = $biayaRetribusi->rlhApprovedBy?->full_name;
+                $rfah = $biayaRetribusi->approvedBy?->full_name;
+            } else {
+                $approver = $biayaRetribusi->approvedBy?->full_name;
+            }
+        } elseif (in_array($biayaRetribusi->status, ['rejected', 'revisi'], true)) {
+            $actor = $biayaRetribusi->status === 'rejected' ? $biayaRetribusi->rejectedBy : $biayaRetribusi->revisedBy;
+            match (strtoupper((string) ($actor?->level ?? ''))) {
+                'BAC' => $checker = $actor?->full_name,
+                'RFAH' => $rfah = $actor?->full_name,
+                default => $approver = $actor?->full_name,
+            };
+        }
+
+        return ['submitter' => $submitter, 'checker' => $checker, 'approver' => $approver, 'rfah' => $rfah];
     }
 
     /**

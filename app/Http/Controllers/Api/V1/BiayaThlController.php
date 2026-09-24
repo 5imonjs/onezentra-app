@@ -364,19 +364,13 @@ class BiayaThlController extends Controller
 
         $biayaThl->load('details.photos', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $deciderName = match ($biayaThl->status) {
-            'rlh_approved' => $biayaThl->rlhApprovedBy?->full_name,
-            'approved' => $biayaThl->is_rfah_required ? $biayaThl->rlhApprovedBy?->full_name : $biayaThl->approvedBy?->full_name,
-            'rejected' => $biayaThl->rejectedBy?->full_name,
-            'revisi' => $biayaThl->revisedBy?->full_name,
-            default => $biayaThl->approvedBy?->full_name,
-        };
+        $names = $this->approvalActorNames($biayaThl);
         $approvalSections = app(ApprovalSectionResolver::class)->resolve(
             $biayaThl->kode_depo ?: '',
-            $biayaThl->submittedBy?->full_name ?: $biayaThl->approval_pengajuan,
-            $biayaThl->checkedBy?->full_name,
-            $deciderName,
-            ($biayaThl->status === 'approved' && $biayaThl->is_rfah_required) ? $biayaThl->approvedBy?->full_name : null,
+            $names['submitter'],
+            $names['checker'],
+            $names['approver'],
+            $names['rfah'],
             ApprovalAssignment::MODULE_THL,
         );
         $approvalSections = array_values(array_filter(
@@ -440,7 +434,11 @@ class BiayaThlController extends Controller
         return base64_encode((string) file_get_contents($logoPath));
     }
 
-    private function resolveStamps(BiayaThl $biayaThl): array
+    /**
+     * Cap audit per kotak approval untuk PDF. Publik agar perilaku penempatan
+     * cap (ikuti peran pelaku) dapat diuji langsung.
+     */
+    public function resolveStamps(BiayaThl $biayaThl): array
     {
         $stamps = [];
 
@@ -485,20 +483,89 @@ class BiayaThlController extends Controller
                 ];
             }
         } elseif ($biayaThl->status === 'rejected' && $biayaThl->rejected_at && $biayaThl->rejectedBy) {
-            $stamps['Menyetujui'] = [
+            $actorSection = $this->stampSectionFor((string) $biayaThl->rejectedBy?->level);
+            $stamps[$actorSection] = [
                 'text' => 'DITOLAK',
                 'color' => '#dc2626',
                 'date' => $biayaThl->rejected_at?->format('d M Y'),
             ];
+            // Persetujuan RLH pada siklus sebelumnya tetap tercatat di kotaknya
+            // bila aksi terminal (ditolak) dilakukan pelaku lain (BAC/RFAH).
+            if ($actorSection !== 'Menyetujui' && $biayaThl->rlh_approved_at && $biayaThl->rlhApprovedBy) {
+                $stamps['Menyetujui'] = [
+                    'text' => 'DISETUJUI RLH',
+                    'color' => '#15803d',
+                    'date' => $biayaThl->rlh_approved_at->format('d M Y'),
+                ];
+            }
         } elseif ($biayaThl->status === 'revisi' && $biayaThl->revised_at && $biayaThl->revisedBy) {
-            $stamps['Menyetujui'] = [
+            $actorSection = $this->stampSectionFor((string) $biayaThl->revisedBy?->level);
+            $stamps[$actorSection] = [
                 'text' => 'REVISI',
                 'color' => '#d97706',
                 'date' => $biayaThl->revised_at?->format('d M Y'),
             ];
+            if ($actorSection !== 'Menyetujui' && $biayaThl->rlh_approved_at && $biayaThl->rlhApprovedBy) {
+                $stamps['Menyetujui'] = [
+                    'text' => 'DISETUJUI RLH',
+                    'color' => '#15803d',
+                    'date' => $biayaThl->rlh_approved_at->format('d M Y'),
+                ];
+            }
         }
 
         return $stamps;
+    }
+
+    /**
+     * Kotak kolom approval tempat cap REVISI/DITOLAK diletakkan mengikuti
+     * peran pelaku aksi: BAC -> Mengetahui, RFAH -> RFAH*, selainnya
+     * (RLH / data lama tanpa level) -> Menyetujui. Sejajar dengan
+     * stampSectionFor() pada generator PDF frontend.
+     */
+    public function stampSectionFor(string $level): string
+    {
+        return match (strtoupper($level)) {
+            'BAC' => 'Mengetahui',
+            'RFAH' => 'RFAH*',
+            default => 'Menyetujui',
+        };
+    }
+
+    /**
+     * Nama pelaku per kotak approval, diurutkan sesuai ApprovalSectionResolver:
+     * submitter (BLC), checker (BAC), approver (RLH), rfah (RFAH*). Nama
+     * mengikuti peran pelaku aksi — revisi/ditolak oleh RFAH atau BAC tidak
+     * boleh tertukar ke kotak RLH. Publik agar dapat diuji langsung.
+     *
+     * @return array{submitter: ?string, checker: ?string, approver: ?string, rfah: ?string}
+     */
+    public function approvalActorNames(BiayaThl $biayaThl): array
+    {
+        $submitter = $biayaThl->submittedBy?->full_name ?: $biayaThl->approval_pengajuan;
+        $checker = $biayaThl->checkedBy?->full_name;
+        $approver = null;
+        $rfah = null;
+
+        if ($biayaThl->status === 'rlh_approved') {
+            $approver = $biayaThl->rlhApprovedBy?->full_name;
+        } elseif ($biayaThl->status === 'approved') {
+            if ($biayaThl->is_rfah_required) {
+                $approver = $biayaThl->rlhApprovedBy?->full_name;
+                $rfah = $biayaThl->approvedBy?->full_name;
+            } else {
+                $approver = $biayaThl->approvedBy?->full_name;
+            }
+        } elseif (in_array($biayaThl->status, ['rejected', 'revisi'], true)) {
+            $actor = $biayaThl->status === 'rejected' ? $biayaThl->rejectedBy : $biayaThl->revisedBy;
+            match (strtoupper((string) ($actor?->level ?? ''))) {
+                'BAC' => $checker = $actor?->full_name,
+                'RFAH' => $rfah = $actor?->full_name,
+                default => $approver = $actor?->full_name,
+            };
+        }
+
+        return ['submitter' => $submitter, 'checker' => $checker, 'approver' => $approver, 'rfah' => $rfah];
     }
 
     private function validateThlRequest(Request $request, bool $isUpdate = false): array

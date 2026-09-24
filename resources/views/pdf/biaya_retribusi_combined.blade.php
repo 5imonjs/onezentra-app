@@ -141,11 +141,11 @@
         </tr>
     </table>
 
-    @if(($stamps['Menyetujui']['text'] ?? null) === 'DITOLAK')
+    @if(collect($stamps)->contains(fn ($stamp) => ($stamp['text'] ?? null) === 'DITOLAK'))
         <div class="reject-note">DITOLAK — {{ $biayaRetribusi->rejection_reason ?: 'Tanpa alasan' }}</div>
     @endif
 
-    @if(($stamps['Menyetujui']['text'] ?? null) === 'REVISI')
+    @if(collect($stamps)->contains(fn ($stamp) => ($stamp['text'] ?? null) === 'REVISI'))
         <div class="revisi-note">REVISI — {{ $biayaRetribusi->revisi_reason ?: 'Tanpa catatan' }}</div>
     @endif
 
