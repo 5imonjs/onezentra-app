@@ -11,6 +11,7 @@ import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { getBiayaConfig, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
 import { generateTHLPdf, previewTHLPdf } from '@/lib/biayaPdf';
+import ApprovalPipeline, { type ApprovalPipelineStep } from '@/components/ApprovalPipeline';
 
 interface StoredPhoto {
   id: number;
@@ -120,6 +121,45 @@ const statusLabel = (item: BiayaThlItem): string => (
     ? 'Menunggu RFAH'
     : STATUS_META[item.status]?.label ?? item.status
 );
+
+/** State tiap tahap pengajuan untuk pipeline ringkas di daftar — konsisten
+ *  dengan ApprovalStepper (modal detail): done = timestamp ada, current =
+ *  tahap menunggu, reject/revisi = titik terminal. RFAH hanya bila wajib. */
+const thlPipelineSteps = (item: BiayaThlItem): ApprovalPipelineStep[] => {
+  const rejected = item.status === 'rejected';
+  const revised = item.status === 'revisi';
+  const awaitingRecheck = Boolean(item.resubmitted_at) && ['pending', 'checked', 'rlh_approved'].includes(item.status);
+  const revisedLevel = item.revisedBy?.level?.toUpperCase();
+  const revisionIndex = item.rlh_approved_at
+    ? 3
+    : item.checked_at
+      ? 2
+      : revisedLevel === 'RFAH'
+        ? 3
+        : revisedLevel === 'RLH'
+          ? 2
+          : 1;
+  const stages: { role: string; at: string | null | undefined }[] = [
+    { role: item.approval_pengajuan_level || 'BLC', at: awaitingRecheck ? item.resubmitted_at : item.submitted_at },
+    { role: 'BAC', at: item.checked_at },
+    { role: 'RLH', at: rejected ? item.rejected_at : revisionIndex === 2 ? item.revised_at : item.rlh_approved_at ?? item.approved_at },
+  ];
+  if (item.is_rfah_required) stages.push({ role: 'RFAH', at: item.approved_at });
+
+  if (item.status === 'draft') {
+    return stages.map((stage) => ({ role: stage.role, state: 'todo' }));
+  }
+
+  const firstOpen = stages.findIndex((s) => !s.at);
+  return stages.map((stage, i) => {
+    if (rejected && i === 2) return { role: stage.role, state: 'reject' };
+    if (rejected) return { role: stage.role, state: stage.at ? 'done' : 'todo' };
+    if (revised && i === revisionIndex) return { role: stage.role, state: 'revisi' };
+    if (revised) return { role: stage.role, state: stage.at ? 'done' : 'todo' };
+    if (stage.at) return { role: stage.role, state: 'done' };
+    return { role: stage.role, state: i === firstOpen ? 'current' : 'todo' };
+  });
+};
 
 const VEHICLE_TYPES = ['CDD', 'Fuso', 'Container 20', 'Container 40', 'Box', 'Pickup'];
 const POSITIONS = ['THL HELPER', 'THL DRIVER', 'THL GUDANG'];
@@ -1603,7 +1643,12 @@ export default function BiayaThlPage() {
                       <td className="px-5 py-3 text-sm text-slate-600">{item.nama_depo}</td>
                       <td className="px-5 py-3 text-sm text-slate-600 text-center whitespace-nowrap">{getWorkerCount(item)} orang</td>
                       <td className="px-5 py-3 text-right text-sm font-semibold text-slate-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</td>
-                      <td className="px-5 py-3">{badge(item.status, item)}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex flex-col items-start gap-1.5">
+                          {badge(item.status, item)}
+                          <ApprovalPipeline steps={thlPipelineSteps(item)} />
+                        </div>
+                      </td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openViewModal(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Lihat" aria-label="Lihat">
@@ -1669,6 +1714,9 @@ export default function BiayaThlPage() {
                     </div>
                   </div>
                   {badge(item.status, item)}
+                </div>
+                <div className="mb-3">
+                  <ApprovalPipeline steps={thlPipelineSteps(item)} />
                 </div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
