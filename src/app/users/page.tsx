@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import React from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { users, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
@@ -34,6 +35,7 @@ const levels = [
   { value: 'admin_distirbusi', label: 'Admin Distribusi' },
   { value: 'admin_planner', label: 'Admin Planner' },
   { value: 'cheker', label: 'Cheker' },
+  { value: 'sac', label: 'SAC' },
 ];
 
 const emptyForm = {
@@ -192,6 +194,7 @@ export default function UsersPage() {
       admin_distirbusi: 'bg-indigo-100 text-indigo-700',
       admin_planner: 'bg-teal-100 text-teal-700',
       cheker: 'bg-orange-100 text-orange-700',
+      sac: 'bg-lime-100 text-lime-700',
     };
     return colors[level] || 'bg-gray-100 text-gray-700';
   };
@@ -509,9 +512,9 @@ export default function UsersPage() {
                   </div>
                   <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">{depoItems.length} user</span>
                 </div>,
-                ...depoItems.map((item) => <>{mobileCard(item)}</>)
+                ...depoItems.map((item) => <React.Fragment key={item.id}>{mobileCard(item)}</React.Fragment>)
               ])
-            ) : items.map((item) => <>{mobileCard(item)}</>)}
+            ) : items.map((item) => <React.Fragment key={item.id}>{mobileCard(item)}</React.Fragment>)}
           </div>
 
           {/* Pagination */}
