@@ -482,6 +482,9 @@ export default function BiayaRetribusiPage() {
   };
 
   const isKoliMode = biayaConfig.retribusi_calc_mode === 'koli';
+  /** Mode sesi wizard (bukan config depo): receiving pada depo mode koli = KOLI;
+   *  sesi manual/borongan atau depo borongan = BORONGAN. */
+  const isKoliSession = sourceType === 'receiving' && isKoliMode;
   /** Nominal per baris: manual (borongan) atau qty x tarif (koli). */
   const calcKoliNominal = (qtyZak: number, qtyCrt: number) =>
     (Number(qtyZak) || 0) * (Number(biayaConfig.retribusi_rate_zak) || 0)
@@ -2100,7 +2103,7 @@ export default function BiayaRetribusiPage() {
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-slate-500">Mode hitung</dt>
-                    <dd className="font-bold text-slate-800">{isKoliMode ? `Koli (zak Rp ${Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · crt Rp ${Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')})` : 'Borongan (manual)'}</dd>
+                    <dd className="font-bold text-slate-800">{isKoliSession ? `Koli (zak Rp ${Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · crt Rp ${Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')})` : 'Borongan (manual)'}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-slate-500">Dokumen</dt>
@@ -2158,8 +2161,8 @@ export default function BiayaRetribusiPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black ${isKoliMode ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {isKoliMode ? 'MODE KOLI' : 'MODE BORONGAN'}
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black ${isKoliSession ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {isKoliSession ? 'MODE KOLI' : 'MODE BORONGAN'}
                   </span>
                   {isRfahRequired && (
                     <>
