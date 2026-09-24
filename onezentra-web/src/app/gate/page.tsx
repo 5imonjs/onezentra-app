@@ -237,6 +237,8 @@ export default function GatePage() {
   };
 
   const fmt = (v: unknown): React.ReactNode => (v ?? '-') as React.ReactNode;
+  // Dipakai empty-state: apakah pencarian aktif (UI saja).
+  const hasSearch = search.trim().length > 0;
 
   if (!hasPermission('gate.view')) {
     return (
@@ -250,205 +252,288 @@ export default function GatePage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header — premium bento */}
-        <div className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
-          <div className="relative flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white text-slate-900 flex items-center justify-center shadow-lg">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+      <div className="space-y-5">
+        {/* Header — reflektif, konsisten dengan pola desain modern */}
+        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
+                <svg aria-hidden="true" className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold leading-tight">Gate Check</h1>
+                <p className="mt-0.5 text-gray-400">Scan PO / Nopol — IN ↔ OUT • auto status</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight">Gate Check</h1>
-              <p className="text-slate-300 text-sm">Scan PO / Nopol — IN ↔ OUT • auto status</p>
-            </div>
-            <div className="hidden sm:flex flex-wrap items-center gap-2 ml-auto">
-              <span className="inline-flex items-center gap-1.5 rounded-xl bg-white text-slate-900 px-3 py-1.5 text-xs font-black shadow">Hari ini <span className="bg-slate-900 text-white rounded-lg px-1.5 py-0.5">{stats?.hariIni ?? 0}</span></span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-bold border border-white/20">RKH Terjadwal <span className="bg-blue-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{stats?.terjadwal ?? 0}</span></span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-bold border border-white/20">RKH Selesai <span className="bg-emerald-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{stats?.selesai ?? 0}</span></span>
-              <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold border border-white/10">Total <span className="text-white ml-1">{stats?.total ?? 0}</span></span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                Hari ini
+                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{stats?.hariIni ?? 0}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                Terjadwal
+                <span className="rounded-md bg-blue-400 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-blue-950">{stats?.terjadwal ?? 0}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Selesai
+                <span className="rounded-md bg-emerald-400 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-emerald-950">{stats?.selesai ?? 0}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
+                Total
+                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{stats?.total ?? 0}</span>
+              </span>
             </div>
           </div>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+          {/* Quick Scan — panel pencarian + aksi gate */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 lg:sticky lg:top-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-black tracking-tight text-slate-900">Quick Scan</h3>
-                  <p className="text-xs text-slate-500">PO / Nopol • Enter untuk cari</p>
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Quick Scan</h2>
+                    <p className="mt-0.5 text-xs text-slate-400">Scan barcode atau ketik PO / Nopol, lalu Enter</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span>
-                  <input type="text" value={scanNoDokumen} onChange={(e) => setScanNoDokumen(e.target.value)} placeholder="PO / Nopol..." className="input-field pl-9 text-sm py-2.5 bg-slate-50 focus:bg-white" onKeyDown={(e) => e.key === 'Enter' && handleLookup()} aria-label="Nomor PO transporter" />
+              <div className="p-5">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span>
+                    <input type="text" value={scanNoDokumen} onChange={(e) => setScanNoDokumen(e.target.value)} placeholder="PO / Nopol..." className="input-field pl-9 text-sm py-2.5 bg-slate-50 focus:bg-white" onKeyDown={(e) => e.key === 'Enter' && handleLookup()} aria-label="Nomor PO transporter" />
+                  </div>
+                  <button onClick={() => handleLookup()} disabled={lookupBusy || !hasPermission('gate.view')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50">
+                    {lookupBusy ? '...' : 'Cari'}
+                  </button>
+                  <button onClick={() => setShowScanner(true)} aria-label="Buka scanner barcode" className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-700 transition-colors hover:bg-slate-50">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  </button>
                 </div>
-                <button onClick={() => handleLookup()} disabled={lookupBusy || !hasPermission('gate.view')} className="px-4 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 shadow shadow-primary-600/20 disabled:opacity-50">
-                  {lookupBusy ? '...' : 'Cari'}
-                </button>
-                <button onClick={() => setShowScanner(true)} className="px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                </button>
+
+                {foundRencanaKirim && (
+                  <div className="relative mt-4 overflow-hidden rounded-2xl bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 p-4 text-white shadow-xl sm:p-5">
+                    <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-primary-500/10 blur-2xl" />
+                    <div className="relative mb-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-white/10 bg-white/10 p-3 backdrop-blur">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">PO</p>
+                        <p className="mt-0.5 break-all font-mono text-sm font-semibold text-white">{foundRencanaKirim.po_transporter as string}</p>
+                      </div>
+                      <div className="rounded-xl bg-white p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nopol</p>
+                        <p className="mt-0.5 break-all font-mono text-sm font-semibold text-slate-900">{foundRencanaKirim.nopol as string}</p>
+                      </div>
+                      <div className="col-span-2 rounded-xl border border-white/10 bg-white/10 p-3 backdrop-blur">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver • Status</p>
+                        <p className="mt-0.5 truncate text-sm font-semibold text-white">{foundRencanaKirim.driver_name as string} • {statusLabels[foundRencanaKirim.status as string] || (foundRencanaKirim.status as string)}</p>
+                      </div>
+                    </div>
+                    <div className="relative flex flex-wrap gap-2">
+                      {foundRencanaKirim.status === 'SCHEDULED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('IN')} disabled={scanning} className="min-h-[44px] flex-1 px-4 py-2.5 rounded-xl bg-white text-slate-900 text-sm font-bold hover:bg-slate-100 transition-colors disabled:opacity-50">Gate IN →</button>)}
+                      {foundRencanaKirim.status === 'CHECKED_IN' && hasPermission('rencana_kirim.edit') && (<button onClick={() => requestConfirm('VERIFY')} disabled={scanning} className="min-h-[44px] flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-50">Verify ✓</button>)}
+                      {foundRencanaKirim.status === 'COMPLETED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('OUT')} disabled={scanning} className="min-h-[44px] flex-1 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm font-bold hover:bg-white/20 transition-colors disabled:opacity-50">Gate OUT</button>)}
+                    </div>
+                    {typeof foundRencanaKirim.status === 'string' && !['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) && (
+                      <p className="relative mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs leading-5 text-slate-300">
+                        {STATUS_GUIDE[foundRencanaKirim.status] ?? 'Status ini tidak memiliki aksi gate.'}
+                      </p>
+                    )}
+                    {typeof foundRencanaKirim.status === 'string' && ['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) &&
+                      ((foundRencanaKirim.status === 'CHECKED_IN' && !hasPermission('rencana_kirim.edit')) ||
+                        (foundRencanaKirim.status !== 'CHECKED_IN' && !hasPermission('gate.create'))) && (
+                      <p className="relative mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2.5 text-xs leading-5 text-amber-200">
+                        Anda tidak memiliki izin untuk aksi ini. Minta akses ke admin.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {scanResult && (
+                  <div className={`mt-4 flex items-start gap-2 rounded-xl border p-3 text-sm font-medium ${scanResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`} role={scanResult.success ? undefined : "alert"}>
+                    {scanResult.success ? (
+                      <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg>
+                    ) : (
+                      <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01" /></svg>
+                    )}
+                    <span>{scanResult.message}</span>
+                  </div>
+                )}
               </div>
-
-              {foundRencanaKirim && (
-                <div className="mt-4 rounded-2xl bg-slate-900 text-white p-4 shadow-lg border border-white/10">
-                  <div className="grid grid-cols-2 gap-2.5 mb-3">
-                    <div className="rounded-xl bg-white/10 backdrop-blur p-2.5 border border-white/10"><p className="text-[11px] font-bold tracking-widest text-white/60 uppercase">PO</p><p className="text-sm font-black truncate">{foundRencanaKirim.po_transporter as string}</p></div>
-                    <div className="rounded-xl bg-white text-slate-900 p-2.5"><p className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">Nopol</p><p className="text-sm font-black font-mono truncate">{foundRencanaKirim.nopol as string}</p></div>
-                    <div className="rounded-xl bg-white/10 backdrop-blur p-2.5 border border-white/10 col-span-2"><p className="text-[11px] font-bold tracking-widest text-white/60 uppercase">Driver • Status</p><p className="text-sm font-bold truncate">{foundRencanaKirim.driver_name as string} • {statusLabels[foundRencanaKirim.status as string] || (foundRencanaKirim.status as string)}</p></div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {foundRencanaKirim.status === 'SCHEDULED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('IN')} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-white text-slate-900 text-sm font-black hover:bg-slate-100 disabled:opacity-50">Gate IN →</button>)}
-                    {foundRencanaKirim.status === 'CHECKED_IN' && hasPermission('rencana_kirim.edit') && (<button onClick={() => requestConfirm('VERIFY')} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-black hover:bg-emerald-600 disabled:opacity-50">Verify ✓</button>)}
-                    {foundRencanaKirim.status === 'COMPLETED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('OUT')} disabled={scanning} className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur border border-white/20 text-white text-sm font-bold hover:bg-white/20 disabled:opacity-50">Gate OUT</button>)}
-                  </div>
-                  {typeof foundRencanaKirim.status === 'string' && !['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) && (
-                    <p className="mt-3 rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-xs leading-5 text-slate-300">
-                      {STATUS_GUIDE[foundRencanaKirim.status] ?? 'Status ini tidak memiliki aksi gate.'}
-                    </p>
-                  )}
-                  {typeof foundRencanaKirim.status === 'string' && ['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) &&
-                    ((foundRencanaKirim.status === 'CHECKED_IN' && !hasPermission('rencana_kirim.edit')) ||
-                      (foundRencanaKirim.status !== 'CHECKED_IN' && !hasPermission('gate.create'))) && (
-                    <p className="mt-3 rounded-xl bg-amber-500/10 border border-amber-400/30 px-3 py-2.5 text-xs leading-5 text-amber-200">
-                      Anda tidak memiliki izin untuk aksi ini. Minta akses ke admin.
-                    </p>
-                  )}
-                </div>
-              )}
-
-          {scanResult && (
-            <div className={`mt-4 p-3 rounded-xl text-sm font-medium border ${scanResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`} role={scanResult.success ? undefined : "alert"}>
-              {scanResult.message}
-            </div>
-          )}
-            </div>
+            </section>
           </div>
           <div className="lg:col-span-3">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          {listError && (
-            <div className="m-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{listError}</div>
-          )}
-          <div className="p-4 border-b border-gray-100">
-            <SearchInput
-              value={search}
-              onChange={(v) => setSearch(v)}
-              placeholder="Cari nopol/dokumen..."
-              resultCount={totalRows}
-              resultLabel="transaksi"
-            />
-          </div>
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+                    <svg className="h-5 w-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Riwayat Gate</h2>
+                    <p className="mt-0.5 text-xs text-slate-400">{totalRows} transaksi tercatat</p>
+                  </div>
+                </div>
+                <div className="w-full sm:w-72">
+                  <SearchInput
+                    value={search}
+                    onChange={(v) => setSearch(v)}
+                    placeholder="Cari nopol/dokumen..."
+                    resultCount={totalRows}
+                    resultLabel="transaksi"
+                  />
+                </div>
+              </div>
 
-          <div className="overflow-x-auto hidden lg:block">
-            <table className="w-full border-collapse">
-              <caption className="sr-only">Riwayat transaksi gate</caption>
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
-                  <th className="table-header w-12" scope="col">No</th>
-                  <th className="table-header" scope="col">Gate Type</th>
-                  <th className="table-header" scope="col">PO Transporter</th>
-                  <th className="table-header" scope="col">Nopol</th>
-                  <th className="table-header" scope="col">Driver</th>
-                  <th className="table-header" scope="col">Status</th>
-                  <th className="table-header" scope="col">Scan Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={`skel-${i}`} className="animate-pulse">
-                      <td className="table-cell"><div className="h-4 w-6 mx-auto rounded bg-gray-200" /></td>
-                      <td className="table-cell"><div className="h-5 w-16 rounded bg-gray-200" /></td>
-                      <td className="table-cell"><div className="h-4 w-28 rounded bg-gray-200" /></td>
-                      <td className="table-cell"><div className="h-4 w-20 rounded bg-gray-200" /></td>
-                      <td className="table-cell"><div className="h-4 w-20 rounded bg-gray-200" /></td>
-                      <td className="table-cell"><div className="h-5 w-20 rounded-full bg-gray-200" /></td>
-                      <td className="table-cell"><div className="h-4 w-32 rounded bg-gray-200" /></td>
+              {listError && (
+                <div className="m-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{listError}</div>
+              )}
+
+              {/* Table - Desktop */}
+              <div className="overflow-x-auto hidden lg:block">
+                <table className="w-full min-w-[760px] border-collapse">
+                  <caption className="sr-only">Riwayat transaksi gate</caption>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Gate Type</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nopol</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Scan Time</th>
                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {loading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={`skel-${i}`} className="animate-pulse">
+                          <td className="px-5 py-3"><div className="h-4 w-8 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="h-5 w-20 rounded-full bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="h-4 w-28 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="h-4 w-20 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="h-4 w-20 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="mx-auto h-5 w-20 rounded-full bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="ml-auto h-4 w-32 rounded bg-slate-100" /></td>
+                        </tr>
+                      ))
+                    ) : items.map((item, index) => (
+                      <tr key={item.id} className="transition-colors hover:bg-slate-50/70">
+                        <td className="px-5 py-3 text-sm tabular-nums text-slate-500">{(page - 1) * 20 + index + 1}</td>
+                        <td className="px-5 py-3">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${item.gate_type === 'INBOUND' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-violet-50 text-violet-700 ring-violet-200'}`}>
+                            {item.gate_type}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3"><span className="font-mono text-sm text-slate-700">{fmt(item.po_transporter)}</span></td>
+                        <td className="px-5 py-3"><span className="font-mono text-sm text-slate-700">{fmt(item.nopol)}</span></td>
+                        <td className="px-5 py-3"><span className="text-sm text-slate-700">{fmt(item.driver_name)}</span></td>
+                        <td className="px-5 py-3 text-center whitespace-nowrap">
+                          <StatusPill status={item.rencana_kirim?.status as string} />
+                        </td>
+                        <td className="px-5 py-3 text-right"><span className="text-sm tabular-nums text-slate-600">{fmtDateTime(item.scan_time)}</span></td>
+                      </tr>
+                    ))}
+                    {!loading && items.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-16 text-center">
+                          <div className="flex flex-col items-center gap-3 text-slate-400">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                              {hasSearch ? (
+                                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                              ) : (
+                                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                              )}
+                            </div>
+                            {hasSearch ? (
+                              <>
+                                <p className="text-sm font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
+                                <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium">Belum ada transaksi gate</p>
+                                <p className="text-xs text-slate-400">Gunakan panel Quick Scan untuk mencatat transaksi pertama.</p>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="divide-y divide-gray-100 lg:hidden">
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={`skel-m-${i}`} className="animate-pulse p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-36 rounded bg-slate-100" />
+                          <div className="h-3 w-28 rounded bg-slate-100" />
+                        </div>
+                        <div className="h-5 w-16 rounded-full bg-slate-100" />
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <div className="h-3 w-32 rounded bg-slate-100" />
+                        <div className="h-5 w-20 rounded-full bg-slate-100" />
+                      </div>
+                    </div>
                   ))
-                ) : items.map((item, index) => (
-                  <tr key={item.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-primary-50/30 transition-colors`}>
-                    <td className="table-cell text-center">{(page - 1) * 20 + index + 1}</td>
-                    <td className="table-cell">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.gate_type === 'INBOUND' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                        {item.gate_type}
-                      </span>
-                    </td>
-                    <td className="table-cell"><span className="text-sm font-mono">{fmt(item.po_transporter)}</span></td>
-                    <td className="table-cell"><span className="text-sm font-mono">{fmt(item.nopol)}</span></td>
-                    <td className="table-cell"><span className="text-sm">{fmt(item.driver_name)}</span></td>
-                    <td className="table-cell whitespace-nowrap">
+                ) : items.map((item) => (
+                  <div key={item.id} className="flex flex-col gap-2 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                          <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .414.336.75.75.75z" /></svg>
+                        </div>
+                        <div>
+                          <p className="font-mono text-sm font-bold text-slate-900">{item.po_transporter as string || '-'}</p>
+                          <p className="text-xs text-slate-500">{item.nopol as string} • {item.driver_name as string}</p>
+                        </div>
+                      </div>
+                      <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${item.gate_type === 'INBOUND' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-violet-50 text-violet-700 ring-violet-200'}`}>{item.gate_type}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs tabular-nums text-slate-500">{fmtDateTime(item.scan_time)}</p>
                       <StatusPill status={item.rencana_kirim?.status as string} />
-                    </td>
-                    <td className="table-cell"><span className="text-sm tabular-nums">{fmtDateTime(item.scan_time)}</span></td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
                 {!loading && items.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="table-cell text-center py-12" role="status">
-                      <p className="text-gray-500 font-medium">Tidak ada transaksi gate</p>
-                    </td>
-                  </tr>
+                  <div className="px-4 py-12 text-center">
+                    <p className="text-sm font-medium text-slate-400">{hasSearch ? `Tidak ada hasil untuk "${search}"` : 'Belum ada transaksi gate'}</p>
+                    {hasSearch && (
+                      <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="mt-1 text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                    )}
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-          {/* Mobile cards */}
-          <div className="lg:hidden divide-y divide-slate-100">
-            {loading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={`skel-m-${i}`} className="p-4 animate-pulse">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 w-36 rounded bg-gray-200" />
-                      <div className="h-3 w-28 rounded bg-gray-200" />
-                    </div>
-                    <div className="h-5 w-16 rounded-full bg-gray-200" />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="h-3 w-32 rounded bg-gray-200" />
-                    <div className="h-5 w-20 rounded-full bg-gray-200" />
-                  </div>
-                </div>
-              ))
-            ) : items.map((item) => (
-              <div key={item.id} className="p-4 flex flex-col gap-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-black text-slate-900">{item.po_transporter as string || '-'}</p>
-                    <p className="text-xs font-mono text-slate-500">{item.nopol as string} • {item.driver_name as string}</p>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${item.gate_type === 'INBOUND' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-violet-50 text-violet-700 border-violet-200'}`}>{item.gate_type}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500 tabular-nums">{fmtDateTime(item.scan_time)}</p>
-                  <StatusPill status={item.rencana_kirim?.status as string} />
-                </div>
               </div>
-            ))}
-            {!loading && items.length === 0 && <p className="p-8 text-center text-sm text-slate-400">Tidak ada transaksi</p>}
-          </div>
 
-          {lastPage > 1 && (
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-              <div className="flex justify-between items-center">
-                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-50" aria-label="Halaman sebelumnya">
-                  Sebelumnya
-                </button>
-                <span className="text-sm text-gray-600">Halaman {page} dari {lastPage}</span>
-                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary disabled:opacity-50" aria-label="Halaman berikutnya">
-                  Selanjutnya
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-        </div>
+              {lastPage > 1 && (
+                <div className="border-t border-gray-100 bg-slate-50/50 px-5 py-4">
+                  <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+                    <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">
+                      Sebelumnya
+                    </button>
+                    <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
+                    <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman berikutnya">
+                      Selanjutnya
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
         </div>
 
         <BarcodeScanner

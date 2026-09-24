@@ -266,23 +266,37 @@ export default function PenerimaanPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 animate-slide-up">
-        {/* Header — tenang, konsisten dengan pola desain receiving */}
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-              <svg aria-hidden="true" className="w-5 h-5 text-primary-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+      <div className="space-y-5 animate-slide-up">
+        {/* Header — reflektif, konsisten dengan pola desain modern */}
+        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
+                <svg aria-hidden="true" className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold leading-tight">Penerimaan</h1>
+                <p className="mt-0.5 text-gray-400">Hasil penerimaan SJ — tiap batch menjadi sumber Opname Expired</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">Penerimaan</h1>
-              <p className="text-slate-400 text-sm mt-0.5">Hasil penerimaan SJ — tiap batch menjadi sumber Opname Expired</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                Batch
+                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{pagination?.total ?? groups.length}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary-400" />
+                Item
+                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{allItems.length}</span>
+              </span>
             </div>
           </div>
         </header>
 
         {/* Worklist table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
             <SearchInput
               value={search}
               onChange={(v) => { setSearch(v); setPage(1); }}
@@ -319,11 +333,32 @@ export default function PenerimaanPage() {
               </div>
             </div>
           ) : loading && rawGroups.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">Memuat data...</div>
+            <>
+              <div className="hidden overflow-x-auto p-5 md:block">
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={'skel-' + i} className="animate-pulse rounded-xl border border-gray-100 bg-white p-4">
+                      <div className="h-4 w-1/3 rounded bg-gray-100" />
+                      <div className="mt-3 h-3 w-2/3 rounded bg-gray-100" />
+                      <div className="mt-2 h-3 w-1/2 rounded bg-gray-100" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3 p-5 md:hidden">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={'skel-m-' + i} className="animate-pulse rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <div className="h-4 w-32 rounded bg-slate-100" />
+                    <div className="mt-3 h-3 w-48 rounded bg-slate-100" />
+                    <div className="mt-2 h-3 w-40 rounded bg-slate-100" />
+                  </div>
+                ))}
+              </div>
+            </>
           ) : rawGroups.length === 0 ? (
             <div role="status" className="py-16 text-center">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
-                <svg className="w-7 h-7 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                <svg className="h-7 w-7 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
               </div>
               {search.trim() ? (
                 <>
@@ -352,43 +387,55 @@ export default function PenerimaanPage() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <caption className="sr-only">Daftar penerimaan barang</caption>
-                <thead>
-                  <tr className="bg-linear-to-r from-gray-50 to-gray-100">
-                    <th scope="col" className="excel-header">Kode Barang</th>
-                    <th scope="col" className="excel-header">Nama Barang</th>
-                    <th scope="col" className="excel-header text-right">Qty CRT</th>
-                    <th scope="col" className="excel-header text-right" title="Nilai otomatis: QTY CRT × faktor konversi (master)">PCS (auto)</th>
-                    <th scope="col" className="excel-header">Satuan</th>
-                    <th scope="col" className="excel-header">Expired</th>
-                    <th scope="col" className="excel-header">Kondisi</th>
-                    {hasPermission('penerimaan.edit') && (
-                      <th scope="col" className="excel-header text-right">Aksi</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {groups.map((group) => {
-                    const isOpen = !collapsed.has(group.key);
-                    return (
-                      <FragmentGroup key={group.key} group={group} isOpen={isOpen} onToggle={() => toggleGroup(group.key)} colSpan={colSpan} fnum={fnum} fmtDate={fmtDate} hasEdit={hasPermission('penerimaan.edit')} onEdit={setEditing} num={num} />
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[920px] border-collapse">
+                  <caption className="sr-only">Daftar penerimaan barang</caption>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode Barang</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Barang</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Qty CRT</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500" title="Nilai otomatis: QTY CRT × faktor konversi (master)">PCS (auto)</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Satuan</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Expired</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kondisi</th>
+                      {hasPermission('penerimaan.edit') && (
+                        <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {groups.map((group) => {
+                      const isOpen = !collapsed.has(group.key);
+                      return (
+                        <FragmentGroup key={group.key} group={group} isOpen={isOpen} onToggle={() => toggleGroup(group.key)} colSpan={colSpan} fnum={fnum} fmtDate={fmtDate} hasEdit={hasPermission('penerimaan.edit')} onEdit={setEditing} num={num} />
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Cards - Mobile */}
+              <div className="space-y-3 p-4 md:hidden">
+                {groups.map((group) => {
+                  const isOpen = !collapsed.has(group.key);
+                  return (
+                    <FragmentGroupMobile key={group.key} group={group} isOpen={isOpen} onToggle={() => toggleGroup(group.key)} fnum={fnum} fmtDate={fmtDate} hasEdit={hasPermission('penerimaan.edit')} onEdit={setEditing} num={num} />
+                  );
+                })}
+              </div>
+            </>
           )}
 
           {pagination && pagination.total > GROUPS_PER_PAGE && (
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-              <div className="flex items-center justify-between">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pagination.current_page <= 1} className="btn-secondary disabled:opacity-50" aria-label="Halaman sebelumnya">
+            <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3.5 sm:px-5">
+              <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pagination.current_page <= 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">
                   Sebelumnya
                 </button>
-                <span className="text-sm text-gray-600">Halaman {pagination.current_page} dari {pagination.last_page}</span>
-                <button onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))} disabled={pagination.current_page >= pagination.last_page} className="btn-secondary disabled:opacity-50" aria-label="Halaman berikutnya">
+                <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{pagination.current_page}</strong> dari <strong className="text-slate-800">{pagination.last_page}</strong></span>
+                <button onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))} disabled={pagination.current_page >= pagination.last_page} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman berikutnya">
                   Selanjutnya
                 </button>
               </div>
@@ -427,18 +474,18 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
   return (
     <>
       <tr
-        className="bg-gray-50/70 hover:bg-gray-100/70 transition-colors cursor-pointer"
+        className="bg-slate-50/70 hover:bg-slate-100/60 transition-colors cursor-pointer"
         onClick={onToggle}
         tabIndex={0}
         role="button"
         aria-expanded={isOpen}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
       >
-        <td colSpan={colSpan} className="table-cell">
+        <td colSpan={colSpan} className="px-5 py-3.5 whitespace-nowrap">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <svg className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-              <span className="text-sm font-bold text-gray-800">{group.po}</span>
+              <svg className={`h-4 w-4 text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+              <span className="font-mono text-sm font-bold text-gray-800">{group.po}</span>
               {group.receivingId && (
                 <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700">#{group.receivingId}</span>
               )}
@@ -458,23 +505,23 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
        {isOpen && group.items.map((item, itemIndex) => {
          const cf = (item as ReceivingItem & { resolvedConversionFactor: number | null }).resolvedConversionFactor;
          return (
-           <tr key={item.id} className={`excel-row ${itemIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-primary-50/30 transition-colors`}>
-             <td className="excel-cell"><span className="text-sm font-mono font-medium text-gray-800">{item.kode_barang}</span></td>
-             <td className="excel-cell min-w-[240px] max-w-[340px]">
-               <span className="block line-clamp-2 break-words" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
+           <tr key={item.id} className={`transition-colors hover:bg-primary-50/30 ${itemIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+             <td className="px-5 py-3 whitespace-nowrap"><span className="font-mono text-sm font-medium text-gray-800">{item.kode_barang}</span></td>
+             <td className="px-5 py-3 min-w-[240px] max-w-[340px]">
+               <span className="block line-clamp-2 break-words text-sm text-gray-700" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
              </td>
-             <td className="excel-cell text-right font-medium tabular-nums">{num(item.actual_qty)}</td>
-             <td className="excel-cell text-right tabular-nums text-gray-500" title={cf != null ? `QTY CRT × faktor konversi ${cf}` : undefined}>
+             <td className="px-5 py-3 text-right text-sm font-medium tabular-nums text-gray-800">{num(item.actual_qty)}</td>
+             <td className="px-5 py-3 text-right text-sm tabular-nums text-gray-500" title={cf != null ? `QTY CRT × faktor konversi ${cf}` : undefined}>
                  {item.qty_pcs != null ? num(item.qty_pcs) : (cf != null ? num(item.actual_qty * cf) : '-')}
                </td>
-             <td className="excel-cell">{item.satuan || '-'}</td>
-             <td className="excel-cell text-gray-700">{fmtDate(item.expired_date)}</td>
-              <td className="excel-cell">
+             <td className="px-5 py-3 whitespace-nowrap text-sm text-gray-600">{item.satuan || '-'}</td>
+             <td className="px-5 py-3 whitespace-nowrap text-sm text-gray-700">{fmtDate(item.expired_date)}</td>
+              <td className="px-5 py-3 whitespace-nowrap">
                 <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
               </td>
              {hasEdit && (
-               <td className="excel-cell text-right">
-                 <button onClick={() => onEdit(item)} className="btn-secondary" title="Edit penerimaan" aria-label="Edit penerimaan">
+               <td className="px-5 py-3 whitespace-nowrap text-right">
+                 <button onClick={() => onEdit(item)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-primary-50 hover:text-primary-600" title="Edit penerimaan" aria-label="Edit penerimaan">
                    <PencilIcon />
                  </button>
                </td>
@@ -483,5 +530,80 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
         );
       })}
     </>
+  );
+}
+
+function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, onEdit, num }: {
+  group: ReceivingGroup;
+  isOpen: boolean;
+  onToggle: () => void;
+  fnum: (v: number) => string;
+  fmtDate: (v?: string | null) => string;
+  hasEdit: boolean;
+  onEdit: (item: ReceivingItem & { resolvedConversionFactor: number | null }) => void;
+  num: (v: unknown) => number;
+}) {
+  return (
+    <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition-colors ${isOpen ? 'border-primary-200' : 'border-slate-100'}`}>
+      <button
+        onClick={onToggle}
+        tabIndex={0}
+        aria-expanded={isOpen}
+        className="flex w-full flex-col gap-2 px-4 py-3.5 text-left"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <svg className={`h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            <span className="truncate font-mono text-sm font-bold text-gray-800">{group.po}</span>
+            {group.receivingId && (
+              <span className="inline-flex shrink-0 items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700">#{group.receivingId}</span>
+            )}
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-sm font-bold text-gray-800 tabular-nums">{fnum(group.totalCrt)} <span className="text-xs font-medium text-gray-400">CRT</span></p>
+            <p className="text-xs font-semibold text-gray-500 tabular-nums">{fnum(group.totalPcs)} PCS</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-xs text-gray-500">
+          <span>{group.driver}{group.nopol !== '-' ? ` · ${group.nopol}` : ''}</span>
+          <span>{group.depo}</span>
+          <span>{fmtDate(group.tanggal)}</span>
+          <span>{group.sumber}</span>
+          <span>{group.items.length} item</span>
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="border-t border-gray-100 divide-y divide-gray-100">
+          {group.items.map((item) => {
+            const cf = (item as ReceivingItem & { resolvedConversionFactor: number | null }).resolvedConversionFactor;
+            return (
+              <div key={item.id} className="px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-sm font-medium text-gray-800">{item.kode_barang}</p>
+                    <p className="mt-0.5 line-clamp-2 break-words text-xs text-gray-600" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</p>
+                    <p className="mt-1 text-[11px] text-gray-400">{item.satuan || '-'} · Exp {fmtDate(item.expired_date)}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold tabular-nums text-gray-800">{num(item.actual_qty)} <span className="text-[11px] font-medium text-gray-400">CRT</span></p>
+                    <p className="text-xs tabular-nums text-gray-500">{item.qty_pcs != null ? num(item.qty_pcs) : (cf != null ? num(item.actual_qty * cf) : '-')} PCS</p>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
+                  {hasEdit && (
+                    <button onClick={() => onEdit(item)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-primary-50 hover:text-primary-600" title="Edit penerimaan" aria-label="Edit penerimaan">
+                      <PencilIcon />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

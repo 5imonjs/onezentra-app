@@ -427,6 +427,7 @@ export default function RencanaKirimPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ message: string; ok?: boolean; total_rows?: number; matched?: number; skipped?: number } | null>(null);
   const [showBarangModal, setShowBarangModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -437,6 +438,7 @@ export default function RencanaKirimPage() {
 
   const loadItems = useCallback(async (silent = false) => {
     try {
+      setLoading(true);
       const res = await rencanaKirim.list({ search, page, per_page: 20 });
       setItems(res.data.data);
       setLastPage(res.data.last_page);
@@ -445,6 +447,8 @@ export default function RencanaKirimPage() {
       if (!silent) {
         notifyGlobal(getErrorMessage(e, 'Gagal memuat daftar rencana kirim.'), 'error');
       }
+    } finally {
+      setLoading(false);
     }
   }, [search, page]);
 
@@ -838,27 +842,43 @@ export default function RencanaKirimPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header — bento premium */}
-        <div className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-5">
+        {/* Header — reflektif, konsisten dengan pola desain modern */}
+        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-white text-slate-900 flex items-center justify-center shadow-lg">
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
+                <svg aria-hidden="true" className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight">Rencana Kirim</h1>
-                <p className="text-slate-300 text-sm">Kelola pengiriman • auto kubikasi & umur</p>
+                <h1 className="text-2xl font-bold leading-tight">Rencana Kirim</h1>
+                <p className="mt-0.5 text-gray-400">Kelola pengiriman • auto kubikasi & umur</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-xl bg-white text-slate-900 px-3 py-1.5 text-xs font-black shadow">Hari ini <span className="bg-slate-900 text-white rounded-lg px-1.5 py-0.5">{todayCount}</span></span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold border border-white/20">Terjadwal <span className="bg-blue-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{scheduledCount}</span></span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold border border-white/20">Selesai <span className="bg-emerald-500 text-white rounded-full px-1.5 py-0.5 text-[11px]">{completedCountList}</span></span>
-              <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold border border-white/10">Total <span className="text-white ml-1">{rkStats?.total ?? 0}</span></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                Hari ini
+                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{todayCount}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                Terjadwal
+                <span className="rounded-md bg-blue-400 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-blue-950">{scheduledCount}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Selesai
+                <span className="rounded-md bg-emerald-400 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-emerald-950">{completedCountList}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
+                Total
+                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{rkStats?.total ?? 0}</span>
+              </span>
             </div>
           </div>
-        </div>
+        </header>
 
         {/* Calendar + Table Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -876,7 +896,7 @@ export default function RencanaKirimPage() {
           <div className="lg:col-span-2">
             {/* Table Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 bg-white">
+              <div className="px-5 py-4 border-b border-gray-100 bg-white">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center">
@@ -908,22 +928,33 @@ export default function RencanaKirimPage() {
               <caption className="sr-only">Daftar rencana pengiriman</caption>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">No</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tanggal RKH</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Driver</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nopol</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Expedisi</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Jenis Kendaraan</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tujuan</th>
-                  <th scope="col" className="px-5 py-3.5 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Total Qty</th>
-                  <th scope="col" className="px-5 py-3.5 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kubikasi (m³)</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status</th>
-                  <th scope="col" className="px-5 py-3.5 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">No</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tanggal RKH</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Driver</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nopol</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Expedisi</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Jenis Kendaraan</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tujuan</th>
+                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Total Qty</th>
+                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kubikasi (m³)</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {loading && items.length === 0 && (
+                  <>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <tr key={`skel-rk-${i}`} className="animate-pulse">
+                        {Array.from({ length: 13 }).map((__, j) => (
+                          <td key={j} className="px-5 py-3.5"><div className="h-4 w-24 rounded bg-slate-100" /></td>
+                        ))}
+                      </tr>
+                    ))}
+                  </>
+                )}
                 {items.map((item, index) => (
                   <tr key={item.id} className="group hover:bg-slate-50/70 transition-colors">
                     <td className="px-5 py-3.5 text-sm text-slate-500 whitespace-nowrap">{(page - 1) * 20 + index + 1}</td>
@@ -992,8 +1023,33 @@ export default function RencanaKirimPage() {
                     </td>
                   </tr>
                 ))}
-                {items.length === 0 && (
-                  <tr><td colSpan={13} className="px-5 py-16 text-center"><div role="status" className="flex flex-col items-center gap-2"><svg className="w-10 h-10 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg><p className="text-sm text-slate-500 font-medium">Tidak ada data rencana kirim</p></div></td></tr>
+                {!loading && items.length === 0 && (
+                  <tr>
+                    <td colSpan={13} className="px-5 py-16 text-center">
+                      <div role="status" className="flex flex-col items-center gap-2">
+                        <div className="mx-auto mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                          <svg className="h-7 w-7 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                        </div>
+                        {search.trim() ? (
+                          <>
+                            <p className="text-sm font-medium text-slate-600">Tidak ada hasil untuk &quot;{search}&quot;</p>
+                            <button onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm font-medium text-slate-600">Belum ada data rencana kirim.</p>
+                            <p className="text-xs text-slate-400">Buat rencana baru atau klik tanggal di kalender untuk mulai mengisi form.</p>
+                          </>
+                        )}
+                        {!search.trim() && hasPermission('rencana_kirim.create') && (
+                          <button onClick={() => openCreate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98]">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            Buat Rencana
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -1001,6 +1057,20 @@ export default function RencanaKirimPage() {
 
           {/* Mobile cards — tabel desktop disembunyikan di < lg; tanpa kartu ini daftar hilang di ponsel */}
           <div className="lg:hidden divide-y divide-slate-100">
+            {loading && items.length === 0 && (
+              <>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={`skel-rk-m-${i}`} className="animate-pulse p-4 space-y-3">
+                    <div className="h-4 w-2/3 rounded bg-slate-100" />
+                    <div className="h-3 w-1/3 rounded bg-slate-100" />
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="h-3 w-full rounded bg-slate-100" />
+                      <div className="h-3 w-full rounded bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
             {items.map((item) => {
               const st = statusConfig[item.status];
               return (
@@ -1056,23 +1126,41 @@ export default function RencanaKirimPage() {
                 </div>
               );
             })}
-            {items.length === 0 && (
+            {!loading && items.length === 0 && (
               <div className="p-10 text-center">
-                <svg className="w-10 h-10 mx-auto text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
-                <p className="mt-2 text-sm text-slate-500 font-medium">Tidak ada data rencana kirim</p>
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                  <svg className="h-7 w-7 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                </div>
+                {search.trim() ? (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">Tidak ada hasil untuk &quot;{search}&quot;</p>
+                    <button onClick={() => { setSearch(''); setPage(1); }} className="mt-2 text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">Belum ada data rencana kirim.</p>
+                    <p className="mt-0.5 text-xs text-slate-400">Buat rencana baru atau klik tanggal di kalender untuk mulai mengisi form.</p>
+                  </>
+                )}
+                {!search.trim() && hasPermission('rencana_kirim.create') && (
+                  <button onClick={() => openCreate()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98]">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Buat Rencana
+                  </button>
+                )}
               </div>
             )}
           </div>
 
-          <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-            <div className="flex flex-wrap justify-between items-center gap-3">
-              <span className="text-sm text-slate-500">Halaman <span className="font-semibold text-slate-700">{page}</span> dari <span className="font-semibold text-slate-700">{lastPage}</span></span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} aria-label="Halaman sebelumnya" className="btn-secondary text-sm px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed">
-                  <span className="flex items-center gap-1.5"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>Sebelumnya</span>
+          <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3.5 sm:px-5">
+            <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+              <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="font-semibold text-slate-800">{page}</strong> dari <strong className="font-semibold text-slate-800">{lastPage}</strong></span>
+              <div className="flex w-full items-center justify-center gap-2 sm:w-auto">
+                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} aria-label="Halaman sebelumnya" className="btn-secondary flex-1 text-sm px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed sm:flex-none">
+                  <span className="flex items-center justify-center gap-1.5"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>Sebelumnya</span>
                 </button>
-                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} aria-label="Halaman berikutnya" className="btn-primary text-sm px-4 py-2 shadow-none disabled:opacity-40 disabled:cursor-not-allowed">
-                  <span className="flex items-center gap-1.5">Selanjutnya<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></span>
+                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} aria-label="Halaman berikutnya" className="btn-primary flex-1 text-sm px-4 py-2 shadow-none disabled:opacity-40 disabled:cursor-not-allowed sm:flex-none">
+                  <span className="flex items-center justify-center gap-1.5">Selanjutnya<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></span>
                 </button>
               </div>
             </div>
