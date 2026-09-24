@@ -137,4 +137,67 @@ class BiayaRetribusiPdfTest extends TestCase
         $rlhPdf->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->assertStringStartsWith('%PDF-', $rlhPdf->getContent());
     }
+
+    public function test_retribusi_show_returns_actor_names_for_pdf_boxes(): void
+    {
+        $permission = Permission::create([
+            'slug' => 'biaya_retribusi.view',
+            'name' => 'Biaya Retribusi View',
+            'menu_group' => 'Biaya',
+        ]);
+        $role = Role::create(['slug' => 'biaya_retribusi_show', 'name' => 'Biaya Retribusi Show']);
+        $role->permissions()->attach($permission->id);
+
+        $viewer = $this->retribusiUser('retribusi-show@test.com', 'Viewer Show', $role);
+        $submitter = $this->retribusiUser('submitter@test.com', 'Pengaju Retribusi', null);
+        $checker = $this->retribusiUser('checker@test.com', 'Checker Retribusi', null);
+        $rlh = $this->retribusiUser('rlh@test.com', 'RLH Retribusi', null);
+        $rfah = $this->retribusiUser('rfah@test.com', 'RFAH Retribusi', null);
+
+        $biayaRetribusi = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-09-24',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'nominal_biaya' => 250000,
+            'approval_pengajuan' => 'Pengaju Retribusi',
+            'status' => 'approved',
+            'submitted_at' => '2026-09-24 10:00:00',
+            'submitted_by' => $submitter->id,
+            'checked_at' => '2026-09-24 10:30:00',
+            'checked_by' => $checker->id,
+            'rlh_approved_at' => '2026-09-24 11:00:00',
+            'rlh_approved_by' => $rlh->id,
+            'approved_at' => '2026-09-24 13:00:00',
+            'approved_by' => $rfah->id,
+            'is_rfah_required' => true,
+            'created_by' => $submitter->id,
+        ]);
+
+        $response = $this->actingAs($viewer)->getJson('/api/v1/biaya-retribusi/'.$biayaRetribusi->id);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.submitted_by.full_name', 'Pengaju Retribusi');
+        $response->assertJsonPath('data.checked_by.full_name', 'Checker Retribusi');
+        $response->assertJsonPath('data.rlh_approved_by.full_name', 'RLH Retribusi');
+        $response->assertJsonPath('data.approved_by.full_name', 'RFAH Retribusi');
+    }
+
+    private function retribusiUser(string $email, string $fullName, ?Role $role): User
+    {
+        $user = User::create([
+            'email' => $email,
+            'password' => 'password',
+            'full_name' => $fullName,
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'level' => 'admin_master',
+            'status' => 'active',
+            'role_id' => $role?->id,
+        ]);
+        if ($role) {
+            $role->users()->attach($user->id);
+        }
+
+        return $user;
+    }
 }

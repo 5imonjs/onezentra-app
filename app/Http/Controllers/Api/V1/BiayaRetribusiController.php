@@ -47,7 +47,7 @@ class BiayaRetribusiController extends Controller
         $query->orderBy($sortField, $sortDir);
         // Ringkasan dihitung dari SELURUH baris terfilter, bukan halaman aktif.
         $summaryQuery = clone $query;
-        $data = $query->with('details.biayaThl', 'details.biayaThlDetail.photos', 'documents', 'submittedBy', 'checkedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'createdBy')
+        $data = $query->with('details.biayaThl', 'details.biayaThlDetail.photos', 'documents', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'createdBy')
             ->paginate($this->perPage($request, 50));
 
         $response = $data->toArray();
@@ -222,7 +222,17 @@ class BiayaRetribusiController extends Controller
     {
         $this->authorizeViewer($biayaRetribusi);
 
-        return response()->json(['data' => $biayaRetribusi->load('details.biayaThlDetail.photos', 'documents', 'approvalHistories.actor')]);
+        return response()->json(['data' => $biayaRetribusi->load(
+            'details.biayaThlDetail.photos',
+            'documents',
+            'approvalHistories.actor',
+            'submittedBy',
+            'checkedBy',
+            'rlhApprovedBy',
+            'approvedBy',
+            'rejectedBy',
+            'revisedBy',
+        )]);
     }
 
     public function update(Request $request, BiayaRetribusi $biayaRetribusi)
