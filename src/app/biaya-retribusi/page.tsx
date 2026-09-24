@@ -1641,15 +1641,15 @@ export default function BiayaRetribusiPage() {
               </div>
             )}
 
-            {!editingId && sourceType && formStep === 2 && (
+            {/* Ringkasan tipe & panel tarif hanya untuk koli/otomatis receiving.
+                    Borongan/Manual tidak menampilkan kartu ini — nominal diisi manual. */}
+            {!editingId && sourceType === 'receiving' && formStep === 2 && (
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-bold text-gray-700">{sourceType === 'receiving' ? 'Otomatis dari Receiving' : 'Borongan / Manual'}</p>
+                  <p className="text-sm font-bold text-gray-700">Otomatis dari Receiving</p>
                   <button type="button" onClick={() => switchSourceType(null)} className="shrink-0 text-[11px] font-bold text-primary-600 hover:text-primary-700 hover:underline">‹ Ganti tipe</button>
                 </div>
-                {/* Panel tarif hanya relevan untuk koli (receiving dari depo mode koli).
-                    Tidak ditampilkan untuk Borongan/Manual — nominal diisi manual. */}
-                {sourceType === 'receiving' && isKoliMode && (
+                {isKoliMode && (
                 <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
                   <button type="button" onClick={() => setTariffOpen((v) => !v)} aria-expanded={tariffOpen} className="flex w-full flex-wrap items-center gap-2 text-left">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tarif berlaku</span>
