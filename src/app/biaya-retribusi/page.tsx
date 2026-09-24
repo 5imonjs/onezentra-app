@@ -200,11 +200,16 @@ const APPROVAL_ACTION_META: Record<string, { label: string; badge: string }> = {
 function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] | null }) {
   if (!histories || histories.length === 0) return null;
   return (
-    <div className="border-t border-slate-100 pt-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-        <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Riwayat Persetujuan</h3>
-        <span className="ml-auto inline-flex items-center rounded-full bg-primary-50 border border-primary-100 px-2.5 py-0.5 text-[11px] font-bold text-primary-700">{histories.length} aktivitas</span>
+    <div className="pt-1">
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </span>
+        <div>
+          <h3 className="text-sm font-black text-slate-800">Riwayat Persetujuan</h3>
+          <p className="text-[11px] text-slate-400">Jejak aksi tiap tahap approval</p>
+        </div>
+        <span className="ml-auto inline-flex items-center rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700">{histories.length} aktivitas</span>
       </div>
       <ol className="space-y-0">
         {histories.map((h, i) => {
@@ -212,7 +217,7 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
           return (
             <li key={h.id} className="relative flex gap-3 pb-4 last:pb-0">
               {i < histories.length - 1 && (
-                <span aria-hidden="true" className="absolute left-[15px] top-8 bottom-0 w-[2px] rounded-full bg-slate-200" />
+                <span aria-hidden="true" className="absolute left-[15px] top-9 bottom-0 w-[2px] rounded-full bg-slate-200" />
               )}
               <div className="shrink-0 mt-0.5">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-full border text-[10px] font-black ${meta.badge}`}>
@@ -269,16 +274,21 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
-        <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-        <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Alur Persetujuan</h3>
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+    <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-slate-50 to-white border-b border-slate-100">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 8H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M7 17L21 3m0 0h-5.5M21 3v5.5" /></svg>
+        </span>
+        <div>
+          <h3 className="text-sm font-black text-slate-800">Alur Persetujuan</h3>
+          <p className="text-[11px] text-slate-400">Tahapan approval pengajuan ini</p>
+        </div>
+        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${revised ? 'bg-orange-50 text-orange-700 border-orange-200' : rejected ? 'bg-red-50 text-red-700 border-red-200' : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : item.status === 'rlh_approved' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : item.status === 'checked' ? 'bg-blue-50 text-blue-700 border-blue-200' : item.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'rlh_approved' ? 'bg-indigo-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
           {revised ? 'Perlu Revisi' : rejected ? 'Ditolak' : STATUS_META[item.status]?.label ?? item.status}
         </span>
       </div>
-      <div className="px-4 py-4">
+      <div className="px-4 py-4 sm:px-5">
         <ol>
           {steps.map((step, i) => {
             const state = honestState(i);
@@ -2203,21 +2213,31 @@ export default function BiayaRetribusiPage() {
           {viewItem && (
             <div className="space-y-5">
               {/* Dark header card */}
-              <div className="rounded-2xl bg-slate-950 p-5 sm:p-6 text-white shadow-lg">
+              <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 p-5 sm:p-6 text-white shadow-xl">
+                <div aria-hidden="true" className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary-500/25 blur-3xl" />
+                <div aria-hidden="true" className="absolute -bottom-24 -left-14 h-52 w-52 rounded-full bg-indigo-500/15 blur-3xl" />
+                <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
                 <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-900 shadow-lg ring-1 ring-white/20">
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 0h7.5m-7.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h7.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h7.5a3 3 0 013 3m-16.5 0a3 3 0 00-3 3v7.5a3 3 0 003 3h7.5a3 3 0 003-3v-7.5a3 3 0 00-3-3h-7.5a3 3 0 00-3 3z" /></svg>
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 ring-1 ring-white/20">
+                      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 0h7.5m-7.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h7.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h7.5a3 3 0 013 3m-16.5 0a3 3 0 00-3 3v7.5a3 3 0 003 3h7.5a3 3 0 003-3v-7.5a3 3 0 00-3-3h-7.5a3 3 0 00-3 3z" /></svg>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-300/80">Biaya Retribusi</p>
-                      <p className="mt-1 text-base sm:text-lg font-black tracking-tight text-white truncate">{viewItem.nama_depo}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-400">
-                        <span className="font-mono text-gray-300">{viewItem.kode_depo}</span>
-                        <span className="text-gray-600">•</span>
-                        <span>Total <strong className="font-semibold text-slate-200 tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</strong></span>
-                        <span className="text-gray-600">•</span>
-{(viewItem.details?.length || 0)} baris
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-300/90">Biaya Retribusi</p>
+                      <p className="mt-1 text-lg sm:text-xl font-black tracking-tight text-white truncate">{viewItem.nama_depo}</p>
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                          <svg className="w-3 h-3 text-primary-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                          {viewItem.kode_depo}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                          <svg className="w-3 h-3 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
+                          {formatCurrency(viewItem.nominal_biaya)}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                          <svg className="w-3 h-3 text-sky-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                          {viewItem.details?.length || 0} baris
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -2227,32 +2247,48 @@ export default function BiayaRetribusiPage() {
                 </div>
               </div>
 
-              {/* Info grid */}
+              {/* Info ringkas */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
-                    Tanggal Pengajuan
-                  </span>
-                  <p className="text-sm text-slate-800 mt-1.5 font-semibold">{formatDate(viewItem.tanggal_pengajuan)}</p>
+                <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tanggal Pengajuan</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-800 mt-2.5">{formatDate(viewItem.tanggal_pengajuan)}</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                    No Surat Jalan
-                  </span>
-                  <div className="mt-1.5 space-y-0.5 text-sm font-semibold font-mono text-slate-800">
+                <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">No Surat Jalan</span>
+                  </div>
+                  <div className="mt-2.5 space-y-0.5 text-sm font-bold font-mono text-slate-800">
                     {getSJList(viewItem).length > 0 ? getSJList(viewItem).map((sj) => (
                       <p key={sj} className="break-all">{sj}</p>
                     )) : <p>-</p>}
                   </div>
                 </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5 sm:col-span-2">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                    Total Biaya
-                  </span>
-                  <p className="text-sm text-slate-800 mt-1.5 font-black tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</p>
+                <div className="rounded-xl sm:col-span-2 bg-linear-to-r from-emerald-50/80 to-white border border-emerald-100 shadow-sm p-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Biaya</span>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <p className="text-lg font-black text-emerald-700 tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</p>
+                      {viewItem.is_rfah_required && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                          RFAH required
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2260,21 +2296,26 @@ export default function BiayaRetribusiPage() {
               <ApprovalStepper item={viewItem} />
               <ApprovalHistoryList histories={viewItem.approvalHistories} />
 
-              {/* Detail table */}
+              {/* Detail Retribusi */}
               {viewItem.details.length > 0 && (
-                <div className="border-t border-slate-100 pt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-                    <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Detail Retribusi</h3>
+                <div className="pt-1">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800">Detail Retribusi</h3>
+                      <p className="text-[11px] text-slate-400">Baris kendaraan beserta qty zak & crt</p>
+                    </div>
                     <span className="ml-auto inline-flex items-center rounded-full bg-primary-50 border border-primary-100 px-2.5 py-0.5 text-[11px] font-bold text-primary-700">
                       {viewItem.details.length} baris
                     </span>
                   </div>
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-slate-50">
-                          <th className="table-header text-center">#</th>
+                          <th className="table-header text-center w-8">#</th>
                           <th className="table-header">Nopol</th>
                           <th className="table-header">Type</th>
                           <th className="table-header">No. SJ</th>
@@ -2285,11 +2326,22 @@ export default function BiayaRetribusiPage() {
                       <tbody className="divide-y divide-slate-100">
                         {viewItem.details.map((d, i) => (
                           <tr key={i} className="hover:bg-slate-50/60 transition-colors">
-                            <td className="table-cell text-center font-bold text-slate-400">{i + 1}</td>
-                            <td className="table-cell font-mono font-semibold text-slate-800">{upper(d.nopol_kendaraan) || '-'}</td>
-                            <td className="table-cell">{upper(d.type_kendaraan) || '-'}</td>
+                            <td className="table-cell text-center">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500 mx-auto">{i + 1}</span>
+                            </td>
+                            <td className="table-cell">
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium font-mono text-slate-700">{upper(d.nopol_kendaraan) || '-'}</span>
+                            </td>
+                            <td className="table-cell">
+                              <span className="inline-flex items-center rounded-md bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">{upper(d.type_kendaraan) || '-'}</span>
+                            </td>
                             <td className="table-cell font-mono text-slate-600">{d.no_surat_jalan || '-'}</td>
-                            <td className="table-cell text-right tabular-nums text-slate-600">{`${Number(d.qty_zak || 0).toLocaleString('id-ID')} zak · ${Number(d.qty_crt || 0).toLocaleString('id-ID')} crt`}</td>
+                            <td className="table-cell text-right">
+                              <div className="inline-flex items-center justify-end gap-1">
+                                <span className="inline-flex items-center rounded-md bg-amber-50 border border-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 tabular-nums">{Number(d.qty_zak || 0).toLocaleString('id-ID')} zak</span>
+                                <span className="inline-flex items-center rounded-md bg-sky-50 border border-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700 tabular-nums">{Number(d.qty_crt || 0).toLocaleString('id-ID')} crt</span>
+                              </div>
+                            </td>
                             <td className="table-cell text-right font-bold text-slate-800 tabular-nums">{formatCurrency(Number(d.nominal_biaya))}</td>
                           </tr>
                         ))}
@@ -2299,23 +2351,31 @@ export default function BiayaRetribusiPage() {
                 </div>
               )}
 
-              {/* Documents */}
+              {/* Lampiran Dokumen */}
               {viewItem.documents && (viewItem.documents as unknown[]).length > 0 && (
-                <div className="border-t border-gray-100 pt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-                    <h3 className="text-xs font-black uppercase tracking-[0.14em] text-gray-800">Lampiran Dokumen</h3>
+                <div className="pt-1">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800">Lampiran Dokumen</h3>
+                      <p className="text-[11px] text-slate-400">Bukti lampiran pengajuan retribusi</p>
+                    </div>
+                    <span className="ml-auto inline-flex items-center rounded-full bg-amber-50 border border-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
+                      {(viewItem.documents as unknown[]).length} file
+                    </span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {(viewItem.documents as { id?: number; document_type: string; file_name: string; file_path?: string }[]).map((doc, i) => {
                       const url = docUrl(doc);
                       return (
-                      <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
+                      <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white shadow-sm p-3 hover:border-primary-200 hover:shadow transition-all">
+                        <div className="w-9 h-9 rounded-lg bg-primary-50 ring-1 ring-primary-100 flex items-center justify-center shrink-0">
                           <svg className="w-4 h-4 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-gray-700">{doc.document_type.toUpperCase()}</p>
+                          <p className="text-xs font-bold text-gray-800">{doc.document_type.toUpperCase()}</p>
                           <p className="text-[11px] text-gray-500 truncate" title={doc.file_name}>{doc.file_name}</p>
                         </div>
                         {url ? (
@@ -2338,8 +2398,8 @@ export default function BiayaRetribusiPage() {
               )}
 
               {/* Status footer */}
-              <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-xs text-slate-500">Status pengajuan</p>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-xs font-semibold text-slate-500">Status pengajuan</p>
                 {badge(viewItem.status)}
               </div>
             </div>
