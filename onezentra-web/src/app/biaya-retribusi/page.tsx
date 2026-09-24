@@ -1681,7 +1681,6 @@ export default function BiayaRetribusiPage() {
                 <p className="mt-1 text-[11px] text-slate-400">Dua cara isi biaya — pilih yang sesuai, form berikutnya menyesuaikan otomatis.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <button type="button" aria-pressed={sourceType === 'receiving'} onClick={() => switchSourceType('receiving')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'receiving' ? 'border-primary-600 bg-primary-50 shadow-md' : 'border-primary-200 bg-primary-50/50 hover:border-primary-400'}`}>
-                    <span className="inline-flex rounded-full bg-primary-600 px-2 py-0.5 text-[10px] font-black text-white">DIREKOMENDASIKAN</span>
                     <span className="mt-2 block text-sm font-black text-slate-900">Otomatis dari Receiving</span>
                     <span className="mt-1 block text-[11px] leading-5 text-slate-500">Qty zak/crt & tanggal terisi sendiri dari receiving COMPLETED. Nominal mengikuti tarif koli depo.</span>
                   </button>
