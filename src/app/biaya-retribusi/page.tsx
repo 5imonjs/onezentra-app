@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { biayaRetribusi, retribusiRates, getErrorMessage, API_ROOT } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -1060,11 +1060,46 @@ export default function BiayaRetribusiPage() {
     setManualDetails(prev => prev.filter((_, i) => i !== index));
   };
 
+  /** Saat seksi Baris Manual masih kosong, form starter tampil langsung; input
+   *  pertama otomatis membentuk baris #1 dan fokus berpindah mulus ke baris itu. */
+  const manualStarterField = useRef<keyof ManualDetailRow | null>(null);
+
+  const startManualRow = (field: keyof ManualDetailRow, value: string | number) => {
+    manualStarterField.current = field;
+    setManualDetails([{ nopol_kendaraan: '', type_kendaraan: '', no_surat_jalan: '', qty_zak: 0, qty_crt: 0, nominal_biaya: 0, [field]: value }]);
+  };
+
+  useEffect(() => {
+    if (manualDetails.length === 1 && manualStarterField.current) {
+      const field = manualStarterField.current;
+      manualStarterField.current = null;
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`manual-row-0-${field}`) as HTMLInputElement | HTMLSelectElement | null;
+        el?.focus();
+        if (el instanceof HTMLInputElement) {
+          const len = el.value.length;
+          el.setSelectionRange(len, len);
+        }
+      });
+    }
+  }, [manualDetails.length]);
+
   const addDocument = () => {
     setFormData(prev => ({
       ...prev,
       documents: [...prev.documents, { document_type: 'BA', file: null, file_name: '' }],
     }));
+  };
+
+  /** Form starter Lampiran: pilih tipe atau file langsung dari seksi (tanpa klik
+   *  tombol tambah) — dokumen #1 terbentuk otomatis dengan kompresi/validasi sama. */
+  const startDocument = (field: 'document_type' | 'file', value: string | File) => {
+    if (field === 'document_type') {
+      setFormData((prev) => ({ ...prev, documents: [{ document_type: value as string, file: null, file_name: '' }] }));
+      return;
+    }
+    setFormData((prev) => ({ ...prev, documents: [{ document_type: 'BA', file: null, file_name: '' }] }));
+    void handleDocFile(0, value as File);
   };
 
   const updateDocument = (index: number, field: keyof DocumentRow, value: string | File | null) => {
@@ -1835,12 +1870,52 @@ export default function BiayaRetribusiPage() {
               </div>
 
               {manualDetails.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
-                    <svg className="h-5 w-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                <div className="rounded-xl border-2 border-dashed border-primary-200 bg-white p-4 shadow-sm">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Plat Kendaraan <span className="text-red-400">*</span>
+                      </label>
+                      <input type="text" onChange={(e) => startManualRow('nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Type Kendaraan <span className="text-red-400">*</span>
+                      </label>
+                      <select defaultValue="" onChange={(e) => startManualRow('type_kendaraan', e.target.value)} className="select-field py-2 text-sm">
+                        <option value="">Pilih</option>
+                        {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        No. SJ
+                      </label>
+                      <input type="text" onChange={(e) => startManualRow('no_surat_jalan', e.target.value)} placeholder="Nomor SJ" className="input-field py-2 text-sm font-mono" />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Qty Zak
+                      </label>
+                      <input type="number" min="0" onChange={(e) => startManualRow('qty_zak', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Qty Crt
+                      </label>
+                      <input type="number" min="0" onChange={(e) => startManualRow('qty_crt', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Nominal (Rp) <span className="text-red-400">*</span>
+                      </label>
+                      <input type="number" min="0" onChange={(e) => startManualRow('nominal_biaya', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm font-bold" />
+                    </div>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-slate-600">Belum ada baris manual</p>
-                  <p className="mt-1 text-[11px] text-slate-400">Klik “Tambah Baris” untuk memasukkan nopol, type, qty, dan nominal.</p>
+                  <p className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659 1.171-1.671a4.5 4.5 0 015.07-1.651 3 3 0 011.482 5.369L12 12" /></svg>
+                    Isi langsung di sini — baris pertama otomatis terbentuk. Gunakan “Tambah Baris” untuk baris berikutnya.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1866,13 +1941,13 @@ export default function BiayaRetribusiPage() {
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               Plat Kendaraan <span className="text-red-400">*</span>
                             </label>
-                            <input type="text" value={md.nopol_kendaraan} onChange={(e) => updateManualDetail(i, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
+                            <input type="text" value={md.nopol_kendaraan} onChange={(e) => updateManualDetail(i, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" id={`manual-row-${i}-nopol_kendaraan`} className="input-field py-2 text-sm font-mono uppercase" />
                           </div>
                           <div>
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               Type Kendaraan <span className="text-red-400">*</span>
                             </label>
-                            <select value={md.type_kendaraan} onChange={(e) => updateManualDetail(i, 'type_kendaraan', e.target.value)} className="select-field py-2 text-sm">
+                            <select value={md.type_kendaraan} onChange={(e) => updateManualDetail(i, 'type_kendaraan', e.target.value)} id={`manual-row-${i}-type_kendaraan`} className="select-field py-2 text-sm">
                               <option value="">Pilih</option>
                               {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
@@ -1881,25 +1956,25 @@ export default function BiayaRetribusiPage() {
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               No. SJ
                             </label>
-                            <input type="text" value={md.no_surat_jalan} onChange={(e) => updateManualDetail(i, 'no_surat_jalan', e.target.value)} placeholder="Nomor SJ" className="input-field py-2 text-sm font-mono" />
+                            <input type="text" value={md.no_surat_jalan} onChange={(e) => updateManualDetail(i, 'no_surat_jalan', e.target.value)} placeholder="Nomor SJ" id={`manual-row-${i}-no_surat_jalan`} className="input-field py-2 text-sm font-mono" />
                           </div>
                           <div>
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               Qty Zak
                             </label>
-                            <input type="number" min="0" value={md.qty_zak || ''} onChange={(e) => updateManualDetail(i, 'qty_zak', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
+                            <input type="number" min="0" value={md.qty_zak || ''} onChange={(e) => updateManualDetail(i, 'qty_zak', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-qty_zak`} className="input-field py-2 text-sm text-right" />
                           </div>
                           <div>
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               Qty Crt
                             </label>
-                            <input type="number" min="0" value={md.qty_crt || ''} onChange={(e) => updateManualDetail(i, 'qty_crt', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
+                            <input type="number" min="0" value={md.qty_crt || ''} onChange={(e) => updateManualDetail(i, 'qty_crt', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-qty_crt`} className="input-field py-2 text-sm text-right" />
                           </div>
                           <div>
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               Nominal (Rp) <span className="text-red-400">*</span>
                             </label>
-                            <input type="number" min="0" value={md.nominal_biaya || ''} onChange={(e) => updateManualDetail(i, 'nominal_biaya', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm font-bold" />
+                            <input type="number" min="0" value={md.nominal_biaya || ''} onChange={(e) => updateManualDetail(i, 'nominal_biaya', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-nominal_biaya`} className="input-field py-2 text-sm font-bold" />
                           </div>
                         </div>
                       </div>
@@ -1918,7 +1993,7 @@ export default function BiayaRetribusiPage() {
                   <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 0h7.5m-7.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h7.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h7.5a3 3 0 013 3m-16.5 0a3 3 0 00-3 3v7.5a3 3 0 003 3h7.5a3 3 0 003-3v-7.5a3 3 0 00-3-3h-7.5a3 3 0 00-3 3z" /></svg>
                   Dokumen Lampiran
                   {formData.documents.length > 0 && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{formData.documents.length}</span>
+                    <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">{formData.documents.length} dokumen</span>
                   )}
                 </label>
                 <button type="button" onClick={addDocument} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-700 transition-colors inline-flex items-center gap-1 shadow-sm">
@@ -1928,8 +2003,36 @@ export default function BiayaRetribusiPage() {
               </div>
 
               {formData.documents.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center">
-                  <p className="text-xs text-gray-400">Belum ada dokumen lampiran</p>
+                <div className="rounded-xl border-2 border-dashed border-primary-200 bg-white p-4 shadow-sm">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Tipe Dokumen <span className="text-red-400">*</span>
+                      </label>
+                      <select defaultValue="" onChange={(e) => { const t = e.target.value; if (t) startDocument('document_type', t); }} className="select-field py-2 text-sm">
+                        <option value="">Pilih</option>
+                        {DOCUMENT_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        File <span className="text-red-400">*</span>
+                      </label>
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only" id="doc-file-start" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) startDocument('file', file);
+                        e.target.value = '';
+                      }} />
+                      <label htmlFor="doc-file-start" className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-primary-50/50 cursor-pointer transition-colors">
+                        <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A4 4 0 1118.8 7.372l-10.94 10.938a2.5 2.5 0 01-3.536-3.536l10.94-10.938a1 1 0 011.414 1.414l-10.94 10.938a.5.5 0 01-.707-.707l7.693-7.693a1 1 0 011.414 1.414z" /></svg>
+                        <span className="min-w-0 flex-1 truncate">Pilih file (PDF, JPG, PNG, WEBP — maks 20 MB)</span>
+                      </label>
+                    </div>
+                  </div>
+                  <p className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659 1.171-1.671a4.5 4.5 0 015.07-1.651 3 3 0 011.482 5.369L12 12" /></svg>
+                    Pilih tipe atau file langsung di sini — dokumen pertama otomatis terbentuk. Gunakan “Tambah Dokumen” untuk menambahkan berikutnya.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-2">
