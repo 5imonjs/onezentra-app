@@ -205,6 +205,47 @@ export default function UsersPage() {
     return groups;
   }, {});
 
+  const mobileCard = (item: UserItem) => (
+    <div className="flex flex-col gap-2.5 p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-9 h-9 rounded-full bg-linear-to-br from-primary-500 to-primary-600 flex items-center justify-center text-sm font-bold text-white">
+              {item.full_name?.charAt(0) || 'U'}
+            </div>
+            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-gray-900">{item.full_name}</p>
+            <p className="text-xs text-gray-500">{item.email}</p>
+          </div>
+        </div>
+        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+          {item.status === 'active' ? 'Active' : 'Inactive'}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-slate-500">{item.kode_depo || '-'}</span>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{levels.find(l => l.value === item.level)?.label || item.level}</span>
+      </div>
+      <div className="flex items-center gap-2 border-t border-gray-100 pt-2">
+        {hasPermission('users.edit') && (
+          <button onClick={() => handleEdit(item)} className="inline-flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-800">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+            Edit
+          </button>
+        )}
+        {hasPermission('users.delete') && (
+          <button onClick={() => handleDelete(item.id)} className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+            Hapus
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -335,17 +376,18 @@ export default function UsersPage() {
         </div>
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px]">
               <caption className="sr-only">Daftar pengguna</caption>
-              <thead>
-                <tr className="bg-slate-50/80">
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">No</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">User</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Depo</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Level</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                  <th scope="col" className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Aksi</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-50">
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">User</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Level</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -359,7 +401,7 @@ export default function UsersPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21M8.25 8.25h.008v.008H8.25V8.25zm0 3.75h.008v.008H8.25V12zm0 3.75h.008v.008H8.25v-.008zm3.75-7.5h.008v.008H12V8.25zm0 3.75h.008v.008H12V12zm0 3.75h.008v.008H12v-.008zM15.75 8.25h.008v.008h-.008V8.25zm0 3.75h.008v.008h-.008V12zm0 3.75h.008v.008h-.008v-.008z" />
                             </svg>
                           </span>
-                          <span className="font-semibold text-slate-700">{depoName}</span>
+                          <span className="font-bold text-slate-700">{depoName}</span>
                         </div>
                         <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
                           {depoItems.length} user
@@ -396,7 +438,7 @@ export default function UsersPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
                         {item.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
@@ -436,7 +478,7 @@ export default function UsersPage() {
                     </td>
                     <td className="table-cell"><div className="text-sm"><span className="font-mono font-medium text-gray-700">{item.kode_depo || '-'}</span>{item.nama_depo && <span className="text-gray-400 ml-1">· {item.nama_depo}</span>}</div></td>
                     <td className="table-cell"><span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{levels.find(l => l.value === item.level)?.label || item.level}</span></td>
-                    <td className="table-cell"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}><span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>{item.status === 'active' ? 'Active' : 'Inactive'}</span></td>
+                    <td className="table-cell"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}><span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>{item.status === 'active' ? 'Active' : 'Inactive'}</span></td>
                     <td className="table-cell"><div className="flex items-center justify-end gap-1">{hasPermission('users.edit') && (<button onClick={() => handleEdit(item)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200" title="Edit" aria-label="Edit"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg></button>)}{hasPermission('users.delete') && (<button onClick={() => handleDelete(item.id)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Hapus" aria-label="Hapus"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>)}</div></td>
                   </tr>
                 )))}
@@ -454,22 +496,36 @@ export default function UsersPage() {
             </table>
           </div>
 
+          {/* Mobile cards */}
+          <div className="divide-y divide-gray-100 md:hidden">
+            {groupByDepo ? (
+              Object.entries(groupedItems).flatMap(([depoName, depoItems]) => [
+                <div key={`depo-${depoName}`} className="flex items-center justify-between gap-3 bg-slate-50/70 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21M8.25 8.25h.008v.008H8.25V8.25zm0 3.75h.008v.008H8.25V12zm0 3.75h.008v.008H8.25v-.008zm3.75-7.5h.008v.008H12V8.25zm0 3.75h.008v.008H12V12zm0 3.75h.008v.008H12v-.008zM15.75 8.25h.008v.008h-.008V8.25zm0 3.75h.008v.008h-.008V12zm0 3.75h.008v.008h-.008v-.008z" /></svg>
+                    </span>
+                    <span className="font-bold text-slate-700 text-sm">{depoName}</span>
+                  </div>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">{depoItems.length} user</span>
+                </div>,
+                ...depoItems.map((item) => <>{mobileCard(item)}</>)
+              ])
+            ) : items.map((item) => <>{mobileCard(item)}</>)}
+          </div>
+
           {/* Pagination */}
           {lastPage > 1 && (
-            <div className="px-5 py-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <p className="text-sm text-slate-500">
+            <div className="border-t border-gray-100 bg-slate-50/50 px-5 py-4">
+              <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+              <p className="text-xs text-slate-500">
                 Menampilkan <span className="font-medium text-slate-700">{fromCount}</span>–<span className="font-medium text-slate-700">{toCount}</span> dari <span className="font-medium text-slate-700">{totalCount}</span> user
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  ← Sebelumnya
-                </button>
-                <span className="text-sm text-gray-500 px-2">
-                  Halaman <span className="font-medium text-gray-700">{page}</span> / <span className="font-medium text-gray-700">{lastPage}</span>
-                </span>
-                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  Selanjutnya →
-                </button>
+                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">← Sebelumnya</button>
+                <span className="text-xs text-slate-500">Halaman <span className="font-medium text-gray-700">{page}</span> / <span className="font-medium text-gray-700">{lastPage}</span></span>
+                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">Selanjutnya →</button>
+              </div>
               </div>
             </div>
           )}
