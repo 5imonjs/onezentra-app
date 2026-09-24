@@ -2008,7 +2008,7 @@ export default function BiayaThlPage() {
                                       value={sjVehicle[group.groupId]?.nopol ?? ''}
                                       onChange={(e) => setSjVehicle((prev) => {
                                         const cur = prev[group.groupId] ?? { enabled: true, sj: '', nopol: '', type: '' };
-                                        return { ...prev, [group.groupId]: { ...cur, nopol: e.target.value } };
+                                        return { ...prev, [group.groupId]: { ...cur, nopol: e.target.value.toUpperCase() } };
                                       })}
                                       placeholder="KB 1234 XX"
                                       className="input-field py-2 text-sm font-mono uppercase"
@@ -2171,7 +2171,7 @@ export default function BiayaThlPage() {
                                       <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                                         Plat Kendaraan <span className="text-red-400">*</span>
                                       </label>
-                                      <input type="text" value={detail.nopol_kendaraan} onChange={(e) => updateDetail(idx, 'nopol_kendaraan', e.target.value)} placeholder="KB 1234 XX" title="Nomor polisi kendaraan, contoh: KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
+                                      <input type="text" value={detail.nopol_kendaraan} onChange={(e) => updateDetail(idx, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" title="Nomor polisi kendaraan, contoh: KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
                                     </div>
                     <div>
                       <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">

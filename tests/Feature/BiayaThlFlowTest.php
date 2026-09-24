@@ -281,7 +281,7 @@ class BiayaThlFlowTest extends TestCase
         $this->assertDatabaseHas('biaya_thl_details', [
             'no_surat_jalan' => 'SJ-K1',
             'nopol_kendaraan' => 'KB 9 X',
-            'type_kendaraan' => 'Box',
+            'type_kendaraan' => 'BOX',
         ]);
     }
 

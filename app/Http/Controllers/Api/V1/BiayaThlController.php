@@ -96,6 +96,7 @@ class BiayaThlController extends Controller
             }
         }
         unset($detail);
+        $validated['details'] = $this->normalizeDetailCasing($validated['details'] ?? []);
 
         $validated['kubikasi_base'] = collect($validated['details'] ?? [])->sum('kubikasi');
         $validated['nominal_biaya'] = collect($validated['details'] ?? [])->sum('nominal_biaya');
@@ -176,6 +177,7 @@ class BiayaThlController extends Controller
             }
         }
         unset($detail);
+        $validated['details'] = $this->normalizeDetailCasing($validated['details'] ?? []);
 
         $validated['kubikasi_base'] = collect($validated['details'] ?? [])->sum('kubikasi');
         $validated['nominal_biaya'] = collect($validated['details'] ?? [])->sum('nominal_biaya');
@@ -199,6 +201,26 @@ class BiayaThlController extends Controller
         });
 
         return response()->json(['message' => 'Biaya THL updated', 'data' => $biayaThl->load('details.photos', 'photos')]);
+    }
+
+    /**
+     * Normalisasi casing plat/type agar konsisten kapital di database
+     * (baris utama + kendaraan tambahan; pola sama dengan Biaya Retribusi).
+     *
+     * @param  array<int, array<string, mixed>>  $details
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeDetailCasing(array $details): array
+    {
+        return array_map(function ($detail) {
+            foreach (['nopol_kendaraan', 'kendaraan_nopol', 'type_kendaraan', 'kendaraan_type'] as $field) {
+                if (isset($detail[$field])) {
+                    $detail[$field] = strtoupper(trim((string) $detail[$field]));
+                }
+            }
+
+            return $detail;
+        }, $details);
     }
 
     /**
