@@ -10,9 +10,9 @@ class BiayaRetribusiDetail extends Model
     protected $table = 'biaya_retribusi_details';
 
     protected $fillable = [
-        'biaya_retribusi_id', 'biaya_thl_id', 'biaya_thl_detail_id',
+        'biaya_retribusi_id', 'biaya_thl_id', 'biaya_thl_detail_id', 'receiving_id',
         'nopol_kendaraan', 'type_kendaraan', 'no_surat_jalan',
-        'nominal_biaya', 'order',
+        'qty_zak', 'qty_crt', 'nominal_biaya', 'order',
     ];
 
     protected function casts(): array
@@ -21,6 +21,9 @@ class BiayaRetribusiDetail extends Model
             'biaya_retribusi_id' => 'integer',
             'biaya_thl_id' => 'integer',
             'biaya_thl_detail_id' => 'integer',
+            'receiving_id' => 'integer',
+            'qty_zak' => 'decimal:2',
+            'qty_crt' => 'decimal:2',
             'nominal_biaya' => 'decimal:2',
             'order' => 'integer',
             'created_at' => 'datetime',
@@ -41,5 +44,10 @@ class BiayaRetribusiDetail extends Model
     public function biayaThlDetail(): BelongsTo
     {
         return $this->belongsTo(BiayaThlDetail::class);
+    }
+
+    public function receiving(): BelongsTo
+    {
+        return $this->belongsTo(Receiving::class);
     }
 }

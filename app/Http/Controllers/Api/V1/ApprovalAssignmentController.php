@@ -17,8 +17,12 @@ class ApprovalAssignmentController extends Controller
     {
         $kodeDepo = $request->query('kode_depo', $request->user()->kode_depo);
         abort_unless($this->canAccessDepot($request->user(), $kodeDepo), 403);
+        $module = $request->query('module') === ApprovalAssignment::MODULE_RETRIBUSI
+            ? ApprovalAssignment::MODULE_RETRIBUSI
+            : ApprovalAssignment::MODULE_THL;
 
         $assignments = ApprovalAssignment::query()
+            ->where('module', $module)
             ->with('user:id,full_name,email,level,kode_depo,nama_depo,status')
             ->where(function ($query) use ($kodeDepo): void {
                 $query->where('kode_depo', 'ADMIN')
@@ -54,10 +58,12 @@ class ApprovalAssignmentController extends Controller
         $user = $request->user();
         $validated = $request->validate([
             'kode_depo' => ['required', 'string', 'max:50'],
+            'module' => ['nullable', 'string', Rule::in([ApprovalAssignment::MODULE_THL, ApprovalAssignment::MODULE_RETRIBUSI])],
             'assignments' => ['required', 'array'],
             'assignments.*.approval_level' => ['required', Rule::in(self::LEVELS)],
             'assignments.*.user_id' => ['required', 'integer', 'exists:users,id'],
         ]);
+        $module = $validated['module'] ?? ApprovalAssignment::MODULE_THL;
         abort_unless($this->canAccessDepot($user, $validated['kode_depo']), 403);
 
         foreach ($validated['assignments'] as $assignment) {
@@ -65,7 +71,7 @@ class ApprovalAssignmentController extends Controller
             abort_unless(! $user->isDepotScoped() || $approver->kode_depo === $validated['kode_depo'], 422);
 
             ApprovalAssignment::updateOrCreate(
-                ['kode_depo' => $validated['kode_depo'], 'approval_level' => $assignment['approval_level']],
+                ['module' => $module, 'kode_depo' => $validated['kode_depo'], 'approval_level' => $assignment['approval_level']],
                 ['user_id' => $approver->id, 'is_active' => true]
             );
         }

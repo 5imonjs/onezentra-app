@@ -33,9 +33,9 @@ class BiayaRetribusiApprovalEmailTest extends TestCase
         $rfah = User::create(['email' => 'rfah-retribusi@test.com', 'password' => 'password', 'full_name' => 'RFAH Approver', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'rfah', 'status' => 'active', 'role_id' => $role->id]);
         $role->users()->attach([$blc->id, $bac->id, $rlh->id, $rfah->id]);
 
-        ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'BAC', 'user_id' => $bac->id]);
-        ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'RLH', 'user_id' => $rlh->id]);
-        ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'RFAH', 'user_id' => $rfah->id]);
+        ApprovalAssignment::create(['module' => ApprovalAssignment::MODULE_RETRIBUSI, 'kode_depo' => 'DPT-A', 'approval_level' => 'BAC', 'user_id' => $bac->id]);
+        ApprovalAssignment::create(['module' => ApprovalAssignment::MODULE_RETRIBUSI, 'kode_depo' => 'DPT-A', 'approval_level' => 'RLH', 'user_id' => $rlh->id]);
+        ApprovalAssignment::create(['module' => ApprovalAssignment::MODULE_RETRIBUSI, 'kode_depo' => 'DPT-A', 'approval_level' => 'RFAH', 'user_id' => $rfah->id]);
 
         return ['operator' => $blc, 'supervisor' => $bac] + compact('rlh', 'rfah');
     }
@@ -62,19 +62,44 @@ class BiayaRetribusiApprovalEmailTest extends TestCase
         }
     }
 
+    private function createSubmittableRetribusi(User $creator, array $overrides = []): BiayaRetribusi
+    {
+        $biayaRetribusi = BiayaRetribusi::create(array_merge([
+            'tanggal_pengajuan' => '2026-09-18',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'nominal_biaya' => 1200000,
+            'created_by' => $creator->id,
+        ], $overrides));
+
+        $biayaRetribusi->details()->create([
+            'nopol_kendaraan' => 'KB 1234 XX',
+            'type_kendaraan' => 'CDD',
+            'no_surat_jalan' => 'SJ-001',
+            'nominal_biaya' => 1200000,
+        ]);
+
+        $biayaRetribusi->documents()->create([
+            'document_type' => 'SJ',
+            'file_path' => 'biaya-retribusi/lampiran/SJ-001.pdf',
+            'file_name' => 'SJ-001.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 1024,
+            'order' => 0,
+        ]);
+
+        return $biayaRetribusi;
+    }
+
     public function test_biaya_retribusi_approval_flow_sends_emails_for_all_triggers(): void
     {
         Mail::fake();
         $users = $this->createApprovalUsers();
         $this->createRecipients();
 
-        $biayaRetribusi = BiayaRetribusi::create([
-            'tanggal_pengajuan' => '2026-09-18',
-            'kode_depo' => 'DPT-A',
-            'nama_depo' => 'Depo A',
+        $biayaRetribusi = $this->createSubmittableRetribusi($users['operator'], [
             'nominal_biaya' => 1500000,
             'is_rfah_required' => true,
-            'created_by' => $users['operator']->id,
         ]);
 
         // BLC submit → submitted
@@ -112,12 +137,7 @@ class BiayaRetribusiApprovalEmailTest extends TestCase
         $users = $this->createApprovalUsers();
         $this->createRecipients();
 
-        $biayaRetribusi = BiayaRetribusi::create([
-            'tanggal_pengajuan' => '2026-09-18',
-            'kode_depo' => 'DPT-A',
-            'nama_depo' => 'Depo A',
-            'created_by' => $users['operator']->id,
-        ]);
+        $biayaRetribusi = $this->createSubmittableRetribusi($users['operator']);
 
         Sanctum::actingAs($users['operator']);
         $this->postJson("/api/v1/biaya-retribusi/{$biayaRetribusi->id}/submit")->assertOk();
@@ -142,12 +162,7 @@ class BiayaRetribusiApprovalEmailTest extends TestCase
         $users = $this->createApprovalUsers();
         $this->createRecipients();
 
-        $biayaRetribusi = BiayaRetribusi::create([
-            'tanggal_pengajuan' => '2026-09-18',
-            'kode_depo' => 'DPT-A',
-            'nama_depo' => 'Depo A',
-            'created_by' => $users['operator']->id,
-        ]);
+        $biayaRetribusi = $this->createSubmittableRetribusi($users['operator']);
 
         Sanctum::actingAs($users['operator']);
         $this->postJson("/api/v1/biaya-retribusi/{$biayaRetribusi->id}/submit")->assertOk();
@@ -174,13 +189,9 @@ class BiayaRetribusiApprovalEmailTest extends TestCase
         $users = $this->createApprovalUsers();
         $this->createRecipients();
 
-        $biayaRetribusi = BiayaRetribusi::create([
-            'tanggal_pengajuan' => '2026-09-18',
-            'kode_depo' => 'DPT-A',
-            'nama_depo' => 'Depo A',
+        $biayaRetribusi = $this->createSubmittableRetribusi($users['operator'], [
             'nominal_biaya' => 500000, // < Rp 1.000.000, no RFH required
             'is_rfah_required' => false,
-            'created_by' => $users['operator']->id,
         ]);
 
         Sanctum::actingAs($users['operator']);
@@ -200,12 +211,7 @@ class BiayaRetribusiApprovalEmailTest extends TestCase
         $users = $this->createApprovalUsers();
         $this->createRecipients();
 
-        $biayaRetribusi = BiayaRetribusi::create([
-            'tanggal_pengajuan' => '2026-09-18',
-            'kode_depo' => 'DPT-A',
-            'nama_depo' => 'Depo A',
-            'created_by' => $users['operator']->id,
-        ]);
+        $biayaRetribusi = $this->createSubmittableRetribusi($users['operator']);
 
         Sanctum::actingAs($users['operator']);
         $this->postJson("/api/v1/biaya-retribusi/{$biayaRetribusi->id}/submit")->assertOk();
@@ -222,12 +228,7 @@ class BiayaRetribusiApprovalEmailTest extends TestCase
         $users = $this->createApprovalUsers();
         $this->createRecipients();
 
-        $biayaRetribusi = BiayaRetribusi::create([
-            'tanggal_pengajuan' => '2026-09-18',
-            'kode_depo' => 'DPT-A',
-            'nama_depo' => 'Depo A',
-            'created_by' => $users['operator']->id,
-        ]);
+        $biayaRetribusi = $this->createSubmittableRetribusi($users['operator']);
 
         Sanctum::actingAs($users['operator']);
         $this->postJson("/api/v1/biaya-retribusi/{$biayaRetribusi->id}/submit")->assertOk();

@@ -283,4 +283,11 @@ class OpnameExpiredController extends Controller
             ])
             ->all();
     }
+
+    public function destroy(OpnameExpiredWave $wave): JsonResponse
+    {
+        $wave->delete();
+
+        return response()->json(['message' => 'Wave deleted']);
+    }
 }

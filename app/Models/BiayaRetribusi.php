@@ -6,6 +6,7 @@ use App\Models\Concerns\HasDepotScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class BiayaRetribusi extends Model
 {
@@ -47,6 +48,11 @@ class BiayaRetribusi extends Model
     public function details(): HasMany
     {
         return $this->hasMany(BiayaRetribusiDetail::class)->orderBy('order');
+    }
+
+    public function approvalHistories(): MorphMany
+    {
+        return $this->morphMany(ApprovalHistory::class, 'subject')->orderBy('id');
     }
 
     public function documents(): HasMany

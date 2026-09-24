@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exports\ReceivingExport;
+use App\Exports\ReceivingTemplate;
 use App\Http\Controllers\Controller;
+use App\Imports\ReceivingImport;
 use App\Mail\ReceivingCompleted;
 use App\Models\Dock;
 use App\Models\GateTransaction;
@@ -17,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReceivingController extends Controller
 {
@@ -414,5 +418,38 @@ class ReceivingController extends Controller
         });
 
         return response()->json(['message' => 'Receiving deleted successfully']);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
+        try {
+            $import = new ReceivingImport;
+            DB::transaction(fn () => Excel::import($import, $request->file('file')));
+
+            return response()->json([
+                'message' => 'Import berhasil',
+                'data' => ['imported' => $import->imported, 'updated' => $import->updated, 'errors' => $import->errors],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Receiving Import Error', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
+        }
+    }
+
+    public function export(Request $request)
+    {
+        $export = new ReceivingExport(
+            search: $request->input('search'),
+            status: $request->input('status'),
+        );
+
+        return Excel::download($export, 'receivings_'.now()->format('Y-m-d').'.xlsx');
+    }
+
+    public function template()
+    {
+        return Excel::download(new ReceivingTemplate, 'receivings_template.xlsx');
     }
 }

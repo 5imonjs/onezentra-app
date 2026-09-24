@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class RoleController extends Controller
 {
@@ -121,5 +122,118 @@ class RoleController extends Controller
         $role->users()->pluck('users.id')->each(fn (int $userId) => User::clearPermissionCache($userId));
 
         return response()->json(['message' => 'Permissions synced to role']);
+    }
+
+    // ==================== IMPORT / EXPORT / TEMPLATE ====================
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        $file = $request->file('file');
+        $data = Excel::toArray(null, $file);
+        $rows = $data[0] ?? [];
+
+        $imported = 0;
+        $updated = 0;
+        $errors = [];
+        $headers = ['name', 'slug', 'description', 'is_active'];
+
+        foreach ($rows as $index => $row) {
+            if ($index === 0) {
+                continue;
+            } // skip header
+
+            $rowData = array_combine($headers, array_pad($row, count($headers), null));
+            if (! $rowData['name'] || ! $rowData['slug']) {
+                $errors[] = ['row' => $index + 2, 'errors' => 'Nama dan slug wajib diisi'];
+
+                continue;
+            }
+
+            $slug = strtolower(trim($rowData['slug']));
+            $existing = Role::where('slug', $slug)->first();
+
+            if ($existing) {
+                $existing->update([
+                    'name' => trim($rowData['name']),
+                    'description' => $rowData['description'] ?? null,
+                    'is_active' => filter_var($rowData['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                ]);
+                $updated++;
+
+                continue;
+            }
+
+            try {
+                Role::create([
+                    'name' => trim($rowData['name']),
+                    'slug' => $slug,
+                    'description' => $rowData['description'] ?? null,
+                    'is_active' => filter_var($rowData['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                ]);
+                $imported++;
+            } catch (\Exception $e) {
+                $errors[] = ['row' => $index + 2, 'errors' => $e->getMessage()];
+            }
+        }
+
+        return response()->json([
+            'message' => 'Import selesai',
+            'data' => ['imported' => $imported, 'updated' => $updated, 'errors' => $errors],
+        ]);
+    }
+
+    public function export()
+    {
+        $roles = Role::orderBy('name')->get();
+        $filename = 'roles-export-'.now()->format('YmdHis').'.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ];
+
+        $callback = function () use ($roles) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['ID', 'Nama', 'Slug', 'Deskripsi', 'Aktif', 'Dibuat', 'Diubah']);
+            foreach ($roles as $role) {
+                fputcsv($handle, [
+                    $role->id,
+                    $role->name,
+                    $role->slug,
+                    $role->description ?? '',
+                    $role->is_active ? 'Ya' : 'Tidak',
+                    $role->created_at->format('Y-m-d H:i:s'),
+                    $role->updated_at->format('Y-m-d H:i:s'),
+                ]);
+            }
+            fclose($handle);
+        };
+
+        return response()->streamDownload($callback, $filename, $headers);
+    }
+
+    public function template()
+    {
+        $filename = 'role-import-template-'.now()->format('YmdHis').'.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ];
+
+        $callback = function () {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Nama', 'Slug', 'Deskripsi', 'Aktif (true/false)']);
+            fputcsv($handle, ['Contoh Role', 'contoh_role', 'Deskripsi singkat', 'true']);
+            fputcsv($handle);
+            fputcsv($handle, ['Kolom wajib diisi: Nama, Slug']);
+            fclose($handle);
+        };
+
+        return response()->streamDownload($callback, $filename, $headers);
     }
 }

@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\ReceivingController;
 use App\Http\Controllers\Api\V1\ReceivingItemController;
 use App\Http\Controllers\Api\V1\RencanaKirimController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\RetribusiRateController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SjValidationController;
 use App\Http\Controllers\Api\V1\StandarisasiTumpukanController;
@@ -66,6 +67,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('/{role}', [RoleController::class, 'destroy'])->middleware('permission:roles.delete');
         Route::get('/{role}/permissions', [RoleController::class, 'getPermissions'])->middleware('permission:roles.view');
         Route::put('/{role}/permissions', [RoleController::class, 'syncPermissions'])->middleware('permission:roles.edit');
+        Route::post('/import', [RoleController::class, 'import'])->middleware('permission:roles.import');
+        Route::get('/export', [RoleController::class, 'export'])->middleware('permission:roles.export');
+        Route::get('/template', [RoleController::class, 'template'])->middleware('permission:roles.template');
     });
 
     Route::prefix('permissions')->middleware('auth:sanctum')->group(function () {
@@ -122,6 +126,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/{standarisasiTumpukan}/reject', [StandarisasiTumpukanController::class, 'reject'])->middleware('permission:standarisasi.approve');
         Route::post('/{standarisasiTumpukan}/notify', [StandarisasiTumpukanController::class, 'notify'])->middleware(['permission:standarisasi.view', 'throttle:10,1']);
         Route::delete('/{standarisasiTumpukan}', [StandarisasiTumpukanController::class, 'destroy'])->middleware('permission:standarisasi.delete');
+        Route::post('/import', [StandarisasiTumpukanController::class, 'import'])->middleware('permission:standarisasi.import');
+        Route::get('/export', [StandarisasiTumpukanController::class, 'export'])->middleware('permission:standarisasi.export');
+        Route::get('/template', [StandarisasiTumpukanController::class, 'template'])->middleware('permission:standarisasi.template');
     });
 
     Route::get('biaya-config', [BiayaConfigController::class, 'show'])->middleware('auth:sanctum');
@@ -130,6 +137,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [BiayaThlController::class, 'index'])->middleware('permission:biaya_thl.view');
         Route::post('/', [BiayaThlController::class, 'store'])->middleware('permission:biaya_thl.create');
         Route::get('/export', [BiayaThlController::class, 'export'])->middleware('permission:biaya_thl.view');
+        Route::get('/photos/{photo}', [BiayaThlController::class, 'photo'])->middleware('permission:biaya_thl.view');
         Route::post('/{biayaThl}/submit', [BiayaThlController::class, 'submit'])->middleware('permission:approval.submit');
         Route::post('/{biayaThl}/check', [BiayaThlController::class, 'check'])->middleware('permission:approval.check');
         Route::post('/{biayaThl}/approve', [BiayaThlController::class, 'approve'])->middleware('permission:approval.approve');
@@ -140,6 +148,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{biayaThl}', [BiayaThlController::class, 'show'])->middleware('permission:biaya_thl.view');
         Route::put('/{biayaThl}', [BiayaThlController::class, 'update'])->middleware('permission:biaya_thl.edit');
         Route::delete('/{biayaThl}', [BiayaThlController::class, 'destroy'])->middleware('permission:biaya_thl.delete');
+        Route::post('/import', [BiayaThlController::class, 'import'])->middleware('permission:biaya_thl.import');
     });
 
     Route::prefix('biaya-retribusi')->middleware('auth:sanctum')->group(function () {
@@ -147,6 +156,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/candidates', [BiayaRetribusiController::class, 'candidates'])->middleware('permission:biaya_retribusi.view');
         Route::post('/', [BiayaRetribusiController::class, 'store'])->middleware('permission:biaya_retribusi.create');
         Route::get('/export', [BiayaRetribusiController::class, 'export'])->middleware('permission:biaya_retribusi.view');
+        Route::get('/documents/{document}', [BiayaRetribusiController::class, 'document'])->middleware('permission:biaya_retribusi.view');
         Route::post('/{biayaRetribusi}/submit', [BiayaRetribusiController::class, 'submit'])->middleware('permission:approval.submit');
         Route::post('/{biayaRetribusi}/check', [BiayaRetribusiController::class, 'check'])->middleware('permission:approval.check');
         Route::post('/{biayaRetribusi}/approve', [BiayaRetribusiController::class, 'approve'])->middleware('permission:approval.approve');
@@ -157,6 +167,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/{biayaRetribusi}', [BiayaRetribusiController::class, 'show'])->middleware('permission:biaya_retribusi.view');
         Route::put('/{biayaRetribusi}', [BiayaRetribusiController::class, 'update'])->middleware('permission:biaya_retribusi.edit');
         Route::delete('/{biayaRetribusi}', [BiayaRetribusiController::class, 'destroy'])->middleware('permission:biaya_retribusi.delete');
+        Route::post('/import', [BiayaRetribusiController::class, 'import'])->middleware('permission:biaya_retribusi.import');
+    });
+
+    Route::prefix('retribusi-rates')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [RetribusiRateController::class, 'index'])->middleware('permission:retribusi_rates.manage');
+        Route::post('/', [RetribusiRateController::class, 'upsert'])->middleware('permission:retribusi_rates.manage');
+        Route::delete('/{kodeDepo}', [RetribusiRateController::class, 'destroy'])->middleware('permission:retribusi_rates.manage');
     });
 
     Route::prefix('settings/biaya-thl-pdf')->middleware('auth:sanctum')->group(function () {
@@ -195,6 +212,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/{dock}', [DockController::class, 'show'])->middleware('permission:receiving.view');
         Route::put('/{dock}', [DockController::class, 'update'])->middleware('permission:receiving.edit');
         Route::delete('/{dock}', [DockController::class, 'destroy'])->middleware('permission:receiving.edit');
+        Route::post('/import', [DockController::class, 'import'])->middleware('permission:receiving.import');
+        Route::get('/export', [DockController::class, 'export'])->middleware('permission:receiving.export');
+        Route::get('/template', [DockController::class, 'template'])->middleware('permission:receiving.template');
     });
 
     Route::prefix('gate-transactions')->middleware('auth:sanctum')->group(function () {
@@ -203,6 +223,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/', [GateTransactionController::class, 'store'])->middleware('permission:gate.create');
         Route::get('/{gateTransaction}', [GateTransactionController::class, 'show'])->middleware('permission:gate.view');
         Route::get('/search/by-dokumen', [GateTransactionController::class, 'byNoDokumen'])->middleware('permission:gate.view');
+        Route::put('/{gateTransaction}', [GateTransactionController::class, 'update'])->middleware('permission:gate.edit');
+        Route::delete('/{gateTransaction}', [GateTransactionController::class, 'destroy'])->middleware('permission:gate.delete');
     });
 
     Route::prefix('receivings')->middleware('auth:sanctum')->group(function () {
@@ -214,6 +236,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/{receiving}/complete', [ReceivingController::class, 'completeReceiving'])->middleware('permission:receiving.edit');
         Route::post('/{receiving}/cancel', [ReceivingController::class, 'cancelReceiving'])->middleware('permission:receiving.edit');
         Route::delete('/{receiving}', [ReceivingController::class, 'destroy'])->middleware('permission:receiving.delete');
+        Route::post('/import', [ReceivingController::class, 'import'])->middleware('permission:receiving.import');
+        Route::get('/export', [ReceivingController::class, 'export'])->middleware('permission:receiving.export');
+        Route::get('/template', [ReceivingController::class, 'template'])->middleware('permission:receiving.template');
     });
 
     Route::prefix('receiving-items')->middleware('auth:sanctum')->group(function () {
@@ -235,6 +260,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/export', [OpnameExpiredController::class, 'export'])->middleware('permission:opname.view');
         Route::get('/{wave}', [OpnameExpiredController::class, 'show'])->middleware('permission:opname.view');
         Route::put('/{wave}', [OpnameExpiredController::class, 'update'])->middleware('permission:opname.edit');
+        Route::delete('/{wave}', [OpnameExpiredController::class, 'destroy'])->middleware('permission:opname.delete');
     });
 
     Route::prefix('batches')->middleware('auth:sanctum')->group(function () {
@@ -277,5 +303,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/penerimaan/export', [ReportController::class, 'penerimaanExport'])->middleware('permission:reports.view');
         Route::get('/rencana-kirim', [ReportController::class, 'rencanaKirim'])->middleware('permission:reports.view');
         Route::get('/rencana-kirim/export', [ReportController::class, 'rencanaKirimExport'])->middleware('permission:reports.view');
+        Route::get('/biaya-thl', [ReportController::class, 'biayaThl'])->middleware('permission:reports.biaya_thl');
+        Route::get('/biaya-thl/export', [ReportController::class, 'biayaThlExport'])->middleware('permission:reports.biaya_thl');
+        Route::get('/biaya-retribusi', [ReportController::class, 'biayaRetribusi'])->middleware('permission:reports.biaya_retribusi');
+        Route::get('/biaya-retribusi/export', [ReportController::class, 'biayaRetribusiExport'])->middleware('permission:reports.biaya_retribusi');
     });
 });

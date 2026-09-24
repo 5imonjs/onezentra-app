@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exports\DockExport;
+use App\Exports\DockTemplate;
 use App\Http\Controllers\Controller;
+use App\Imports\DockImport;
 use App\Models\Dock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DockController extends Controller
 {
@@ -96,5 +102,38 @@ class DockController extends Controller
         $dock->delete();
 
         return response()->json(['message' => 'Dock deleted successfully']);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
+        try {
+            $import = new DockImport;
+            DB::transaction(fn () => Excel::import($import, $request->file('file')));
+
+            return response()->json([
+                'message' => 'Import berhasil',
+                'data' => ['imported' => $import->imported, 'updated' => $import->updated, 'errors' => $import->errors],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Dock Import Error', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
+        }
+    }
+
+    public function export(Request $request)
+    {
+        $export = new DockExport(
+            search: $request->input('search'),
+            status: $request->input('status'),
+        );
+
+        return Excel::download($export, 'docks_'.now()->format('Y-m-d').'.xlsx');
+    }
+
+    public function template()
+    {
+        return Excel::download(new DockTemplate, 'docks_template.xlsx');
     }
 }

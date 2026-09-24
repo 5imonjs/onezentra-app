@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exports\BiayaRetribusiReportExport;
+use App\Exports\BiayaThlReportExport;
 use App\Exports\PenerimaanExport;
 use App\Exports\RencanaKirimReportExport;
 use App\Exports\SelisihQtyExport;
 use App\Http\Controllers\Controller;
+use App\Models\BiayaRetribusiDetail;
+use App\Models\BiayaThlDetail;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use Illuminate\Http\JsonResponse;
@@ -258,6 +262,211 @@ class ReportController extends Controller
         $filename = 'laporan-penerimaan_'.date('Y-m-d_His').'.xlsx';
 
         return Excel::download(new PenerimaanExport($this->penerimaanQuery($request)), $filename);
+    }
+
+    public function biayaThl(Request $request): JsonResponse
+    {
+        $this->validateBiayaRequest($request);
+
+        $query = $this->biayaThlQuery($request);
+        // Ringkasan selalu dihitung dari SELURUH baris terfilter, bukan hanya halaman aktif.
+        $allItems = (clone $query)->get();
+        $allData = $allItems->map(fn (BiayaThlDetail $detail) => $this->biayaThlRow($detail));
+
+        $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
+        $paginated = $query->paginate($perPage);
+        $data = $paginated->getCollection()->map(fn (BiayaThlDetail $detail) => $this->biayaThlRow($detail));
+
+        $summary = [
+            'total_pengajuan' => $allItems->map(fn (BiayaThlDetail $d) => $d->biaya_thl_id)->unique()->count(),
+            'total_detail' => $allData->count(),
+            'total_nominal' => (float) $allData->sum('nominal_biaya'),
+            'total_tenaga_kerja' => $allData->map(fn ($row) => $row['nama_thl'])->filter()->unique()->count(),
+        ];
+
+        return response()->json([
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+            'data' => $data->values(),
+            'summary' => $summary,
+        ]);
+    }
+
+    public function biayaThlExport(Request $request)
+    {
+        $this->validateBiayaRequest($request);
+
+        $filename = 'laporan-biaya-thl_'.date('Y-m-d_His').'.xlsx';
+
+        return Excel::download(new BiayaThlReportExport($this->biayaThlQuery($request)), $filename);
+    }
+
+    public function biayaRetribusi(Request $request): JsonResponse
+    {
+        $this->validateBiayaRequest($request);
+
+        $query = $this->biayaRetribusiQuery($request);
+        // Ringkasan selalu dihitung dari SELURUH baris terfilter, bukan hanya halaman aktif.
+        $allItems = (clone $query)->get();
+        $allData = $allItems->map(fn (BiayaRetribusiDetail $detail) => $this->biayaRetribusiRow($detail));
+
+        $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
+        $paginated = $query->paginate($perPage);
+        $data = $paginated->getCollection()->map(fn (BiayaRetribusiDetail $detail) => $this->biayaRetribusiRow($detail));
+
+        $summary = [
+            'total_pengajuan' => $allItems->map(fn (BiayaRetribusiDetail $d) => $d->biaya_retribusi_id)->unique()->count(),
+            'total_detail' => $allData->count(),
+            'total_nominal' => (float) $allData->sum('nominal_biaya'),
+        ];
+
+        return response()->json([
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+            'data' => $data->values(),
+            'summary' => $summary,
+        ]);
+    }
+
+    public function biayaRetribusiExport(Request $request)
+    {
+        $this->validateBiayaRequest($request);
+
+        $filename = 'laporan-biaya-retribusi_'.date('Y-m-d_His').'.xlsx';
+
+        return Excel::download(new BiayaRetribusiReportExport($this->biayaRetribusiQuery($request)), $filename);
+    }
+
+    private function validateBiayaRequest(Request $request): void
+    {
+        $request->validate([
+            'tanggal_from' => 'nullable|date',
+            'tanggal_to' => 'nullable|date',
+            'kode_depo' => 'nullable|string|max:20',
+            'status' => 'nullable|string|in:draft,pending,checked,rlh_approved,approved,rejected,revisi',
+            'search' => 'nullable|string|max:200',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+    }
+
+    private function biayaThlQuery(Request $request)
+    {
+        $query = BiayaThlDetail::query()->with('biayaThl');
+
+        if ($request->tanggal_from) {
+            $query->whereHas('biayaThl', fn ($q) => $q->whereDate('tanggal_pengajuan', '>=', $request->tanggal_from));
+        }
+        if ($request->tanggal_to) {
+            $query->whereHas('biayaThl', fn ($q) => $q->whereDate('tanggal_pengajuan', '<=', $request->tanggal_to));
+        }
+
+        if ($request->user()->isDepotScoped()) {
+            $query->whereHas('biayaThl', fn ($q) => $q->forUserDepot($request->user()));
+        } elseif ($request->kode_depo) {
+            $query->whereHas('biayaThl', fn ($q) => $q->where('kode_depo', $request->kode_depo));
+        }
+
+        if ($request->status) {
+            $query->whereHas('biayaThl', fn ($q) => $q->where('status', $request->status));
+        }
+
+        if ($request->search) {
+            $like = "%{$request->search}%";
+            $query->where(fn ($q) => $q
+                ->where('nama_thl', 'like', $like)
+                ->orWhere('no_surat_jalan', 'like', $like)
+                ->orWhere('nopol_kendaraan', 'like', $like)
+                ->orWhere('type_kendaraan', 'like', $like)
+                ->orWhereHas('biayaThl', fn ($r) => $r
+                    ->where('nama_depo', 'like', $like)
+                    ->orWhere('kode_depo', 'like', $like)));
+        }
+
+        $query->orderByDesc('biaya_thl_details.id');
+
+        return $query;
+    }
+
+    private function biayaThlRow(BiayaThlDetail $detail): array
+    {
+        $parent = $detail->biayaThl;
+
+        return [
+            'id' => $detail->id,
+            'tanggal_pengajuan' => $parent?->tanggal_pengajuan?->toDateString() ?: '-',
+            'kode_depo' => $parent?->kode_depo ?? '-',
+            'nama_depo' => $parent?->nama_depo ?? '-',
+            'no_surat_jalan' => $detail->no_surat_jalan ?? '-',
+            'nama_thl' => $detail->nama_thl ?? '-',
+            'posisi' => $detail->posisi ?? '-',
+            'nopol_kendaraan' => $detail->nopol_kendaraan ?? '-',
+            'type_kendaraan' => $detail->type_kendaraan ?? '-',
+            'droppoint' => $detail->droppoint ?? '-',
+            'kubikasi' => (float) ($detail->kubikasi ?? 0),
+            'nominal_biaya' => (float) ($detail->nominal_biaya ?? 0),
+            'status' => $parent?->status ?? '-',
+        ];
+    }
+
+    private function biayaRetribusiQuery(Request $request)
+    {
+        $query = BiayaRetribusiDetail::query()->with('biayaRetribusi');
+
+        if ($request->tanggal_from) {
+            $query->whereHas('biayaRetribusi', fn ($q) => $q->whereDate('tanggal_pengajuan', '>=', $request->tanggal_from));
+        }
+        if ($request->tanggal_to) {
+            $query->whereHas('biayaRetribusi', fn ($q) => $q->whereDate('tanggal_pengajuan', '<=', $request->tanggal_to));
+        }
+
+        if ($request->user()->isDepotScoped()) {
+            $query->whereHas('biayaRetribusi', fn ($q) => $q->forUserDepot($request->user()));
+        } elseif ($request->kode_depo) {
+            $query->whereHas('biayaRetribusi', fn ($q) => $q->where('kode_depo', $request->kode_depo));
+        }
+
+        if ($request->status) {
+            $query->whereHas('biayaRetribusi', fn ($q) => $q->where('status', $request->status));
+        }
+
+        if ($request->search) {
+            $like = "%{$request->search}%";
+            $query->where(fn ($q) => $q
+                ->where('no_surat_jalan', 'like', $like)
+                ->orWhere('nopol_kendaraan', 'like', $like)
+                ->orWhere('type_kendaraan', 'like', $like)
+                ->orWhereHas('biayaRetribusi', fn ($r) => $r
+                    ->where('nama_depo', 'like', $like)
+                    ->orWhere('kode_depo', 'like', $like)));
+        }
+
+        $query->orderByDesc('biaya_retribusi_details.id');
+
+        return $query;
+    }
+
+    private function biayaRetribusiRow(BiayaRetribusiDetail $detail): array
+    {
+        $parent = $detail->biayaRetribusi;
+
+        return [
+            'id' => $detail->id,
+            'tanggal_pengajuan' => $parent?->tanggal_pengajuan?->toDateString() ?: '-',
+            'kode_depo' => $parent?->kode_depo ?? '-',
+            'nama_depo' => $parent?->nama_depo ?? '-',
+            'no_surat_jalan' => $detail->no_surat_jalan ?? '-',
+            'nopol_kendaraan' => $detail->nopol_kendaraan ?? '-',
+            'type_kendaraan' => $detail->type_kendaraan ?? '-',
+            'qty_zak' => (float) ($detail->qty_zak ?? 0),
+            'qty_crt' => (float) ($detail->qty_crt ?? 0),
+            'nominal_biaya' => (float) ($detail->nominal_biaya ?? 0),
+            'status' => $parent?->status ?? '-',
+        ];
     }
 
     private function validatePenerimaanRequest(Request $request): void

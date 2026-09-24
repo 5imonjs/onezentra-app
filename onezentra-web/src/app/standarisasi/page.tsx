@@ -197,6 +197,11 @@ export default function StandarisasiPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
    const { hasPermission } = useAuthStore();
 
 const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -389,6 +394,58 @@ const confirmApprove = async () => {
      }
    };
 
+  const handleImport = async () => {
+    if (!importFile) {
+      notifyGlobal('Pilih file terlebih dahulu', 'info');
+      return;
+    }
+    setImporting(true);
+    try {
+      await standarisasiTumpukan.import(importFile);
+      setShowImportModal(false);
+      setImportFile(null);
+      notifyGlobal('Import berhasil', 'success');
+      loadItems();
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Import gagal'), 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await standarisasiTumpukan.export();
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `standarisasi-tumpukan-${new Date().toISOString().slice(0,10)}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      notifyGlobal('Export dimulai', 'success');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Export gagal'), 'error');
+    }
+  };
+
+  const handleTemplate = async () => {
+    try {
+      const res = await standarisasiTumpukan.template();
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'standarisasi-tumpukan_template.xlsx';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      notifyGlobal('Template diunduh', 'success');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Template gagal'), 'error');
+    }
+  };
+
+
   const badge = (status: string) => {
     const meta = STATUS_META[status] || { label: status, badge: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
     return (
@@ -444,6 +501,30 @@ const confirmApprove = async () => {
               </span>
             </button>
           </div>
+        )}
+        {hasPermission('standarisasi.import') && (
+          <button onClick={() => setShowImportModal(true)} className="btn-secondary shrink-0">
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              Import
+            </span>
+          </button>
+        )}
+        {hasPermission('standarisasi.export') && (
+          <button onClick={handleExport} className="btn-secondary shrink-0">
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 18v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" /></svg>
+              Export
+            </span>
+          </button>
+        )}
+        {hasPermission('standarisasi.template') && (
+          <button onClick={handleTemplate} className="btn-secondary shrink-0">
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              Template
+            </span>
+          </button>
         )}
 
         {/* Summary Cards */}
@@ -939,6 +1020,36 @@ const confirmApprove = async () => {
         variant={approveTarget?.status === 'approved' ? 'info' : 'danger'}
         loading={approving}
       />
+
+      {/* Import Modal */}
+      <Modal
+        open={showImportModal}
+        onClose={() => { setShowImportModal(false); setImportFile(null); }}
+        title="Import Standarisasi"
+        subtitle="Upload file Excel/CSV untuk mengimpor data standarisasi"
+        size="md"
+        footer={
+          <>
+            <button onClick={() => { setShowImportModal(false); setImportFile(null); }} className="btn-secondary">Batal</button>
+            <button onClick={handleImport} disabled={importing || !importFile} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+              {importing ? 'Mengimpor...' : 'Import'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-500 mb-1">Pilih File</label>
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+            />
+            <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: npn_id, tier, tinggi_tumpukan</p>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }

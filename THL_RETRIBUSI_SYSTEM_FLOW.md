@@ -192,7 +192,7 @@ Bagian ini adalah urutan implementasi yang harus diikuti asisten. Jangan mulai d
 
 - Total nominal tidak boleh dipercaya dari frontend; backend harus menghitung ulang dari detail.
 - THL menyimpan `is_rfah_required` jika total `> 750000`.
-- Retribusi backend menyimpan `is_rfah_required` jika total `> 1000000`. UI Retribusi saat ini menampilkan warning pada `> 750000`, jadi nilai threshold UI dan backend tidak sama dan harus diputuskan saat membangun ulang.
+- Retribusi menyimpan `is_rfah_required` jika total `> 1000000` — backend dan UI sama-sama memakai `retribusi_rfah_threshold` (default 1.000.000, via `GET /api/v1/biaya-config`), jadi tidak ada perbedaan threshold UI vs backend.
 - Validasi foto THL satu foto per baris ada di frontend; rule backend saat ini hanya memvalidasi file foto. Jika aturan satu foto per baris wajib secara bisnis, tambahkan validasi backend juga.
 - Edit dan hapus hanya boleh dilakukan oleh user yang sama dengan `created_by`.
 

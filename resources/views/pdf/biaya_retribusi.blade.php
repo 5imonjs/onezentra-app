@@ -104,40 +104,6 @@
         </tr>
     </table>
 
-    <div class="section-title" style="margin-top: 8px;">FORM KLAIM TENAGA HARIAN LEPAS</div>
-    <table class="data">
-        <thead>
-            <tr>
-                <th>No</th><th>Nama</th><th>Kubikasi</th><th>Drop Point</th><th>Posisi</th><th>Jam Datang</th><th>Jam Pulang</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($biayaRetribusi->details as $detail)
-                @php($source = $detail->biayaThlDetail)
-                <tr>
-                    <td class="center">{{ $loop->iteration }}</td>
-                    <td>{{ $source?->nama_thl ?: $source?->driver_name ?: '-' }}</td>
-                    <td class="center">{{ $source?->kubikasi ?? 0 }}</td>
-                    <td>{{ $source?->droppoint ?: '0' }}</td>
-                    <td>{{ $source?->posisi ?: '-' }}</td>
-                    <td class="center">{{ $source?->jam_datang?->format('H:i') ?? '-' }}</td>
-                    <td class="center">{{ $source?->jam_pulang?->format('H:i') ?? '-' }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    @php
-        $photos = $biayaRetribusi->details->flatMap(fn ($detail) => $detail->biayaThlDetail?->photos ?? []);
-    @endphp
-    <div class="photos">
-        @foreach($photos->take(10) as $photo)
-            @if(file_exists(storage_path('app/public/'.$photo->file_path)))
-                <img src="data:{{ $photo->mime_type ?: 'image/jpeg' }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/'.$photo->file_path))) }}" alt="{{ $photo->file_name }}">
-            @endif
-        @endforeach
-    </div>
-
     @if($biayaRetribusi->documents->count() > 0)
         <div class="attachment">
             <div class="section-title">LAMPIRAN DOKUMEN (BA / SJ / INVOICE)</div>

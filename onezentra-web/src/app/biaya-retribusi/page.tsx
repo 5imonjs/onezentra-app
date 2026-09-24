@@ -2,35 +2,40 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { biayaRetribusi } from '@/lib/api';
+import { biayaRetribusi, retribusiRates, getErrorMessage, API_ROOT } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import { generateRetribusiPdf, previewRetribusiPdf } from '@/lib/biayaPdf';
-import { getBiayaConfig, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
+import { getBiayaConfigFresh, clearBiayaConfigCache, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
 
-interface ThlCandidate {
+interface ReceivingCandidate {
   id: number;
-  biaya_thl_id: number;
-  biaya_thl_detail_id: number;
-  nama_thl: string;
-  driver_name: string;
+  receiving_id: number;
+  tanggal_selesai: string;
   nopol_kendaraan: string;
   type_kendaraan: string;
+  po_transporter: string;
+  driver_name: string;
+  checker_name: string;
+  kode_depo: string;
+  nama_depo: string;
   no_surat_jalan: string;
-  nominal_biaya: number;
-  kubikasi: number;
-  droppoint: string;
-  posisi: string;
+  /** Hasil bersih penerimaan — otomatis dari receiving, bukan input. */
+  qty_zak: number;
+  qty_crt: number;
 }
 
 interface DetailRow {
   biaya_thl_id: number;
   biaya_thl_detail_id: number;
+  receiving_id?: number | null;
   nopol_kendaraan: string;
   type_kendaraan: string;
   no_surat_jalan: string;
+  qty_zak?: number;
+  qty_crt?: number;
   nominal_biaya: number;
   order: number;
   biaya_thl_detail?: {
@@ -49,13 +54,18 @@ interface ManualDetailRow {
   nopol_kendaraan: string;
   type_kendaraan: string;
   no_surat_jalan: string;
+  qty_zak: number;
+  qty_crt: number;
   nominal_biaya: number;
 }
 
 interface DocumentRow {
+  id?: number;
   document_type: string;
   file: File | null;
   file_name: string;
+  file_path?: string;
+  file_size?: number;
 }
 
 interface BiayaRetribusiItem {
@@ -79,17 +89,46 @@ interface BiayaRetribusiItem {
   revisi_reason: string | null;
   submittedBy?: { id: number; full_name: string } | null;
   checkedBy?: { id: number; full_name: string } | null;
-  approvedBy?: { id: number; full_name: string } | null;
-  rejectedBy?: { id: number; full_name: string } | null;
-  revisedBy?: { id: number; full_name: string } | null;
+  approvedBy?: { id: number; full_name: string; level?: string } | null;
+  rejectedBy?: { id: number; full_name: string; level?: string } | null;
+  revisedBy?: { id: number; full_name: string; level?: string } | null;
   details: DetailRow[];
-  documents: { document_type: string; file_name: string; file_path?: string }[];
+  documents: { id?: number; document_type: string; file_name: string; file_path?: string; file_size?: number }[];
+  approvalHistories?: ApprovalHistoryItem[] | null;
 }
+
+/** Laravel 13 me-snake-case kunci relasi (submittedBy -> submitted_by, menimpa FK).
+ * Normalizer ini memulihkan bentuk camel + created_by numerik (pola THL). */
+const normalizeBiayaRetribusiItem = (item: BiayaRetribusiItem): BiayaRetribusiItem => {
+  const raw = item as unknown as Record<string, { id?: number; full_name?: string; level?: string } | number | null | undefined>;
+  const pickBy = (key: string): { id: number; full_name: string; level?: string } | null => {
+    const v = raw[key] as { id?: number; full_name?: string; level?: string } | null | undefined;
+    if (v && typeof v === 'object' && typeof v.id === 'number') {
+      return { id: v.id, full_name: v.full_name ?? '', level: v.level };
+    }
+    return null;
+  };
+  const createdRaw = raw['created_by'];
+  return {
+    ...item,
+    created_by: typeof createdRaw === 'object' && createdRaw !== null && typeof createdRaw.id === 'number'
+      ? createdRaw.id
+      : Number(createdRaw) || 0,
+    submittedBy: item.submittedBy ?? pickBy('submitted_by'),
+    checkedBy: item.checkedBy ?? pickBy('checked_by'),
+    approvedBy: item.approvedBy ?? pickBy('approved_by'),
+    rejectedBy: item.rejectedBy ?? pickBy('rejected_by'),
+    revisedBy: item.revisedBy ?? pickBy('revised_by'),
+    details: Array.isArray(item.details) ? item.details : [],
+    documents: Array.isArray(item.documents) ? item.documents : [],
+  };
+};
 
 const STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
   draft: { label: 'Draft', badge: 'bg-gray-50 text-gray-600 ring-gray-200', dot: 'bg-gray-400' },
   pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
   checked: { label: 'Checked', badge: 'bg-blue-50 text-blue-700 ring-blue-200', dot: 'bg-blue-500' },
+  rlh_approved: { label: 'Disetujui RLH', badge: 'bg-indigo-50 text-indigo-700 ring-indigo-200', dot: 'bg-indigo-500' },
   approved: { label: 'Approved', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500' },
   rejected: { label: 'Rejected', badge: 'bg-red-50 text-red-700 ring-red-200', dot: 'bg-red-500' },
   revisi: { label: 'Revisi', badge: 'bg-orange-50 text-orange-700 ring-orange-200', dot: 'bg-orange-500' },
@@ -105,7 +144,23 @@ const DOCUMENT_TYPES = [
 
 const VEHICLE_TYPES = ['CDD', 'Fuso', 'Container 20', 'Container 40'];
 
-const formatCurrency = (amount: number) => `Rp ${amount.toLocaleString('id-ID')}`;
+/** Plat/SJ/type kendaraan selalu kapital (ketikan user dinormalkan saat input). */
+const upper = (value: string | null | undefined): string => (value || '').toString().trim().toUpperCase();
+
+/**
+ * Normalisasi ke input[date] (YYYY-MM-DD). API mengembalikan ISO datetime
+ * sehingga nilai mentah membuat input tanggal tampil kosong saat edit.
+ */
+const toDateInputValue = (value: string | null | undefined): string => {
+  if (!value) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value).trim());
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+};
+
+const formatCurrency = (amount: number | string | null | undefined) => {
+  const numericAmount = Number(amount || 0);
+  return `Rp ${Number.isFinite(numericAmount) ? numericAmount.toLocaleString('id-ID', { maximumFractionDigits: 0 }) : '0'}`;
+};
 
 const formatDate = (value: string | null | undefined) => {
   if (!value) return '-';
@@ -123,28 +178,95 @@ const formatDateTime = (value: string | null | undefined) => {
 
 type StepState = 'done' | 'current' | 'todo';
 
-const stepStateAt = (status: string, index: number): StepState => {
-  if (status === 'rejected') return 'done';
-  const order = ['draft', 'pending', 'checked', 'revisi', 'approved'];
-  const currentIndex = order.indexOf(status);
-  if (index < currentIndex) return 'done';
-  if (index === currentIndex) return 'current';
-  return 'todo';
+export interface ApprovalHistoryItem {
+  id: number;
+  from_status: string | null;
+  to_status: string;
+  action: string;
+  reason: string | null;
+  created_at: string;
+  actor?: { id: number; full_name: string } | null;
+}
+
+const APPROVAL_ACTION_META: Record<string, { label: string; badge: string }> = {
+  submit: { label: 'Dikirim', badge: 'bg-blue-50 text-blue-700 border-blue-200' },
+  check: { label: 'Diperiksa', badge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  approve: { label: 'Disetujui', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  rfah_approve: { label: 'Disetujui RFAH', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  reject: { label: 'Ditolak', badge: 'bg-red-50 text-red-700 border-red-200' },
+  revise: { label: 'Revisi Diminta', badge: 'bg-orange-50 text-orange-700 border-orange-200' },
 };
+
+function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] | null }) {
+  if (!histories || histories.length === 0) return null;
+  return (
+    <div className="border-t border-slate-100 pt-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
+        <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Riwayat Persetujuan</h3>
+        <span className="ml-auto inline-flex items-center rounded-full bg-primary-50 border border-primary-100 px-2.5 py-0.5 text-[11px] font-bold text-primary-700">{histories.length} aktivitas</span>
+      </div>
+      <ol className="space-y-0">
+        {histories.map((h, i) => {
+          const meta = APPROVAL_ACTION_META[h.action] ?? { label: h.action, badge: 'bg-gray-50 text-gray-600 border-gray-200' };
+          return (
+            <li key={h.id} className="relative flex gap-3 pb-4 last:pb-0">
+              {i < histories.length - 1 && (
+                <span aria-hidden="true" className="absolute left-[15px] top-8 bottom-0 w-[2px] rounded-full bg-slate-200" />
+              )}
+              <div className="shrink-0 mt-0.5">
+                <span className={`flex h-8 w-8 items-center justify-center rounded-full border text-[10px] font-black ${meta.badge}`}>
+                  {i + 1}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-slate-800">{meta.label}</p>
+                  {h.from_status ? <span className="text-[10px] font-mono text-slate-400">{h.from_status} → {h.to_status}</span> : null}
+                </div>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {h.actor?.full_name ? <span className="font-medium text-slate-600">{h.actor.full_name}</span> : null}{h.actor?.full_name && ' · '}{formatDateTime(h.created_at)}
+                </p>
+                {h.reason ? <p className="mt-1 text-xs text-slate-600 whitespace-pre-line rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5">{h.reason}</p> : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
 
 function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
   const rejected = item.status === 'rejected';
   const revised = item.status === 'revisi';
+  const deciderLevel = (item.revisedBy?.level || item.rejectedBy?.level || item.approvedBy?.level || 'rlh').toUpperCase().replace('_', ' ');
+  /** Langkah tempat revisi diminta (pola THL): BAC -> 1, selainnya -> 2. */
+  const revisionIndex = revised ? ((item.revisedBy?.level || '').toLowerCase() === 'bac' ? 1 : 2) : -1;
   const steps = [
     { label: 'Diajukan', role: item.approval_pengajuan_level || 'BLC', at: item.submitted_at, by: item.submittedBy?.full_name },
-    { label: 'Diperiksa', role: 'BAC', at: item.checked_at, by: item.checkedBy?.full_name },
+    revisionIndex === 1
+      ? { label: 'Perlu Revisi', role: deciderLevel, at: item.revised_at, by: item.revisedBy?.full_name }
+      : { label: 'Diperiksa', role: 'BAC', at: item.checked_at, by: item.checkedBy?.full_name },
     {
-      label: revised ? 'Perlu Revisi' : rejected ? 'Ditolak' : 'Disetujui',
-      role: 'RLH',
-      at: item.revised_at ?? item.rejected_at ?? item.approved_at,
-      by: item.revisedBy?.full_name ?? item.rejectedBy?.full_name ?? item.approvedBy?.full_name,
+      label: revisionIndex === 2 ? 'Perlu Revisi' : rejected ? 'Ditolak' : 'Disetujui',
+      role: revisionIndex === 2 ? deciderLevel : 'RLH',
+      at: revisionIndex === 2 ? item.revised_at : item.rejected_at ?? item.approved_at,
+      by: revisionIndex === 2 ? item.revisedBy?.full_name : item.rejectedBy?.full_name ?? item.approvedBy?.full_name,
     },
   ];
+  /**
+   * Jujur berbasis timestamp: selesai = aksi benar terjadi. Status revisi/
+   * ditolak adalah terminal (bola di pengaju) sehingga tak ada langkah
+   * "berjalan" — tak ada lagi done -> current -> done yang rancu.
+   */
+  const honestState = (index: number): StepState => {
+    if (item.status === 'approved') return 'done';
+    if (steps[index].at) return 'done';
+    if (rejected || revised) return 'todo';
+    const firstOpen = steps.findIndex((s) => !s.at);
+    return index === firstOpen ? 'current' : 'todo';
+  };
 
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -152,16 +274,16 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
         <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
         <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Alur Persetujuan</h3>
         <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
-          <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'rlh_approved' ? 'bg-indigo-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
           {revised ? 'Perlu Revisi' : rejected ? 'Ditolak' : STATUS_META[item.status]?.label ?? item.status}
         </span>
       </div>
       <div className="px-4 py-4">
         <ol>
           {steps.map((step, i) => {
-            const state = stepStateAt(item.status, i);
+            const state = honestState(i);
             return (
-              <li key={step.role} className="relative flex gap-3 pb-6 last:pb-0">
+              <li key={`${step.role}-${i}`} className="relative flex gap-3 pb-6 last:pb-0">
                 {i < steps.length - 1 && (
                   <span
                     aria-hidden="true"
@@ -193,6 +315,12 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
                     {step.at ? (
                       <>
                         {step.by ? <span className="font-medium text-slate-600">{step.by}</span> : null}{step.by && ' · '}{formatDateTime(step.at)}
+                        {revised && revisionIndex === i && item.revisi_reason ? (
+                          <span className="block font-medium text-orange-700 whitespace-pre-line">Catatan revisi: {item.revisi_reason}</span>
+                        ) : null}
+                        {rejected && i === 2 && item.rejection_reason ? (
+                          <span className="block font-medium text-red-700 whitespace-pre-line">Alasan ditolak: {item.rejection_reason}</span>
+                        ) : null}
                       </>
                     ) : state === 'current'
                       ? 'Menunggu aksi saat ini'
@@ -231,10 +359,12 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
 }
 
 export default function BiayaRetribusiPage() {
-  const { user, hasPermission } = useAuthStore();
+  const { user, hasPermission, hasRole } = useAuthStore();
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
   const [biayaConfig, setBiayaConfig] = useState<BiayaConfig>(BIAYA_CONFIG_FALLBACK);
 
-  useEffect(() => { getBiayaConfig(user?.kode_depo).then(setBiayaConfig).catch(() => {}); }, [user?.kode_depo]);
   const [items, setItems] = useState<BiayaRetribusiItem[]>([]);
   const [decision, setDecision] = useState<{ action: 'approve' | 'reject' | 'revise'; item: BiayaRetribusiItem } | null>(null);
   const [decisionReason, setDecisionReason] = useState('');
@@ -244,28 +374,98 @@ export default function BiayaRetribusiPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [perPage, setPerPage] = useState(50);
+  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [summary, setSummary] = useState<{ total: number; total_nominal: number; pending: number; checked: number; approved: number; rejected: number; revisi: number } | null>(null);
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [editingDepo, setEditingDepo] = useState('');
+  /** Sumber baris pengajuan: receiving otomatis atau manual (borongan). null = belum pilih. */
+  const [sourceType, setSourceType] = useState<'receiving' | 'manual' | null>(null);
+  /** Wizard: 1 Tipe · 2 Data · 3 Lampiran · 4 Review. */
+  const [formStep, setFormStep] = useState(1);
+  const [documentsRemove, setDocumentsRemove] = useState<number[]>([]);
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
+    setPage(1);
+  };
+  const sortIndicator = (field: string) => {
+    if (sortField !== field) return <span className="text-slate-300 ml-1 text-xs">↕</span>;
+    return <span className="text-primary-600 ml-1 text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+  };
+  /** Daftar unik dari details pengajuan (fallback ke kolom header bila kosong). */
+  const uniqVals = (vals: (string | undefined)[]): string[] => [...new Set(vals.map((v) => upper(v)).filter(Boolean))];
+  const getSJShorts = (item: BiayaRetribusiItem): string[] => {
+    const fromDetails = uniqVals((item.details || []).map((d) => d.no_surat_jalan));
+    return fromDetails.map((sj) => (sj.length > 4 ? sj.slice(-4) : sj));
+  };
+  const getSJFull = (item: BiayaRetribusiItem): string => uniqVals((item.details || []).map((d) => d.no_surat_jalan)).join(', ') || '-';
+  const getSJList = (item: BiayaRetribusiItem): string[] => uniqVals((item.details || []).map((d) => d.no_surat_jalan));
+  const getKendaraanTypes = (item: BiayaRetribusiItem): string[] => uniqVals((item.details || []).map((d) => d.type_kendaraan));
+  const getNopols = (item: BiayaRetribusiItem): string[] => uniqVals((item.details || []).map((d) => d.nopol_kendaraan));
+  const getQtyLabel = (item: BiayaRetribusiItem): string => {
+    const zak = (item.details || []).reduce((s, d) => s + (Number(d.qty_zak) || 0), 0);
+    const crt = (item.details || []).reduce((s, d) => s + (Number(d.qty_crt) || 0), 0);
+    if (zak <= 0 && crt <= 0) return '-';
+    return `${zak > 0 ? `${Number(zak).toLocaleString('id-ID')} zak` : ''}${zak > 0 && crt > 0 ? ' · ' : ''}${crt > 0 ? `${Number(crt).toLocaleString('id-ID')} crt` : ''}`;
+  };
+  const renderChips = (values: string[], fullTitle: string) => {
+    if (values.length === 0) return <span className="text-slate-400">-</span>;
+    const shown = values.slice(0, 2);
+    const rest = values.length - shown.length;
+    return (
+      <span className="flex flex-wrap gap-1" title={fullTitle}>
+        {shown.map((v) => (
+          <span key={v} className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">{v}</span>
+        ))}
+        {rest > 0 && (
+          <span className="inline-flex items-center rounded-md bg-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-600">+{rest}</span>
+        )}
+      </span>
+    );
+  };
+  /** Hapus tanpa batasan status untuk Kendali Penuh; selainnya hanya draft/ditolak/revisi. */
+  const isDeletable = (status: string): boolean => hasPermission('biaya_retribusi.full_control')
+    ? true
+    : ['draft', 'rejected', 'revisi'].includes(status);
+  /** Edit terkirim (pending/checked/dll) hanya pengguna dengan Kendali Penuh; level lain hanya draft/ditolak/revisi. */
+  const canEditRow = (status: string): boolean => hasPermission('biaya_retribusi.full_control') ? true : ['draft', 'rejected', 'revisi'].includes(status);
   const [openModal, setOpenModal] = useState(false);
   const [viewItem, setViewItem] = useState<BiayaRetribusiItem | null>(null);
-  const [candidates, setCandidates] = useState<ThlCandidate[]>([]);
+  const [candidates, setCandidates] = useState<ReceivingCandidate[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<number[]>([]);
   const [formData, setFormData] = useState<{ tanggal_pengajuan: string; details: DetailRow[]; documents: DocumentRow[] }>({ tanggal_pengajuan: '', details: [], documents: [] });
   const [manualDetails, setManualDetails] = useState<ManualDetailRow[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [candidateNominals, setCandidateNominals] = useState<Record<number, number>>({});
 
   const fetchItems = useCallback(async () => {
     try {
-      const res = await biayaRetribusi.list({ search, status: statusFilter, page, per_page: 50 });
-      setItems(res.data.data || res.data);
+      const res = await biayaRetribusi.list({ search: debouncedSearch, status: statusFilter, page, per_page: perPage, sort: sortField, dir: sortDir });
+      const rawItems = res.data.data || res.data;
+      setItems(Array.isArray(rawItems) ? rawItems.map(normalizeBiayaRetribusiItem) : []);
       setTotalPages(res.data.last_page || 1);
+      if (res.data.summary) setSummary(res.data.summary);
     } catch {
       notifyGlobal('Gagal memuat data', 'error');
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, page]);
+  }, [debouncedSearch, statusFilter, page, perPage, sortField, sortDir]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const fetchCandidates = async () => {
     setBusy(true);
@@ -273,6 +473,7 @@ export default function BiayaRetribusiPage() {
       const res = await biayaRetribusi.candidates({});
       setCandidates(res.data || []);
       setSelectedCandidates([]);
+      setCandidateNominals({});
     } catch {
       notifyGlobal('Gagal memuat kandidat', 'error');
     } finally {
@@ -280,21 +481,115 @@ export default function BiayaRetribusiPage() {
     }
   };
 
-  const handleCreate = async () => {
-    setBusy(true);
-    try {
+  const isKoliMode = biayaConfig.retribusi_calc_mode === 'koli';
+  /** Nominal per baris: manual (borongan) atau qty x tarif (koli). */
+  const calcKoliNominal = (qtyZak: number, qtyCrt: number) =>
+    (Number(qtyZak) || 0) * (Number(biayaConfig.retribusi_rate_zak) || 0)
+    + (Number(qtyCrt) || 0) * (Number(biayaConfig.retribusi_rate_crt) || 0);
+  const candidateNominal = (id: number): number => {
+    if (!isKoliMode) return Number(candidateNominals[id]) || 0;
+    const c = candidates.find((c2) => c2.id === id);
+    if (!c) return 0;
+    return calcKoliNominal(c.qty_zak, c.qty_crt);
+  };
+  /** Baris manual selalu nominal ketikan (borongan); koli hanya untuk baris receiving. */
+  const manualNominal = (md: ManualDetailRow): number => Number(md.nominal_biaya) || 0;
+  const existingNominal = (d: DetailRow): number =>
+    d.receiving_id && isKoliMode ? calcKoliNominal(d.qty_zak || 0, d.qty_crt || 0) : Number(d.nominal_biaya) || 0;
+  const [rateDraft, setRateDraft] = useState<{ mode: 'borongan' | 'koli'; rate_zak: number; rate_crt: number }>({ mode: 'borongan', rate_zak: 0, rate_crt: 0 });
+  const [rateSaving, setRateSaving] = useState(false);
+  /** Panel tarif collapsible agar tak mengganggu fokus pengisian. */
+  const [tariffOpen, setTariffOpen] = useState(false);
+  const MAX_DOC_BYTES = 20 * 1024 * 1024;
+  const formatBytes = (bytes?: number | null): string => {
+    const n = Number(bytes) || 0;
+    if (n <= 0) return '';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+  };
+  /** Kompres foto lapangan (HP 8-12MP) ke JPEG <=1600px agar ringan saat diunggah. */
+  const compressDocImage = (file: File): Promise<File> => new Promise((resolve) => {
+    if (!file.type.startsWith('image/') || file.size <= MAX_DOC_BYTES) {
+      resolve(file);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob && blob.size < file.size) {
+          resolve(new File([blob], file.name.replace(/\.(png|webp)$/i, '.jpg'), { type: 'image/jpeg' }));
+        } else {
+          resolve(file);
+        }
+      }, 'image/jpeg', 0.82);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+  });
+
+  const handleDocFile = async (index: number, file: File) => {
+    const ready = await compressDocImage(file);
+    if (ready.size > MAX_DOC_BYTES) {
+      notifyGlobal(`File ${file.name} (${formatBytes(ready.size)}) melebihi batas 20 MB — perkecil/ganti file lalu coba lagi`, 'error');
+      return;
+    }
+    if (ready !== file) {
+      notifyGlobal(`Foto dikompresi ${formatBytes(file.size)} → ${formatBytes(ready.size)} agar bisa diunggah`, 'info');
+    }
+    updateDocument(index, 'file', ready);
+    updateDocument(index, 'file_name', ready.name);
+  };
+
+  const oversizedDoc = formData.documents.find((doc) => doc.file && doc.file.size > MAX_DOC_BYTES);
+  const abortOversized = (): boolean => {
+    if (oversizedDoc?.file) {
+      notifyGlobal(`File ${oversizedDoc.file.name} (${formatBytes(oversizedDoc.file.size)}) melebihi batas 20 MB — ganti file lalu coba lagi`, 'error');
+      return true;
+    }
+    return false;
+  };
+
+  /** Ubah error validasi teknis menjadi pesan yang dimengerti user. */
+  const retribusiErrorMessage = (e: unknown, fallback: string): string => {
+    const resp = (e as { response?: { data?: { errors?: Record<string, string | string[]> } } })?.response?.data?.errors;
+    if (resp) {
+      const keys = Object.keys(resp);
+      if (keys.some((k) => k.includes('receiving_id'))) {
+        return 'Receiving tidak valid — kemungkinan sudah diklaim atau belum COMPLETED. Klik “Muat ulang receiving” lalu pilih lagi.';
+      }
+      if (keys.some((k) => k.includes('nopol_kendaraan'))) return 'Plat kendaraan wajib diisi pada setiap baris.';
+      if (keys.some((k) => k.includes('type_kendaraan'))) return 'Type kendaraan wajib dipilih pada setiap baris.';
+      if (keys.some((k) => k.includes('nominal_biaya'))) return 'Nominal wajib diisi pada setiap baris.';
+      if (keys.some((k) => k.includes('tanggal_pengajuan'))) return 'Tanggal pengajuan tidak valid.';
+    }
+    return getErrorMessage(e, fallback);
+  };
+
+  /** Simpan draft dan kembalikan id-nya (pola sama dengan Biaya THL). */
+  const persistCreate = async (): Promise<number> => {
       const fd = new FormData();
       fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
 
       selectedCandidates.forEach((cId, i) => {
         const c = candidates.find((c2) => c2.id === cId);
         if (!c) return;
-        fd.append(`details[${i}][biaya_thl_id]`, String(c.biaya_thl_id));
-        fd.append(`details[${i}][biaya_thl_detail_id]`, String(c.biaya_thl_detail_id));
+        fd.append(`details[${i}][receiving_id]`, String(c.receiving_id));
         fd.append(`details[${i}][nopol_kendaraan]`, c.nopol_kendaraan);
         fd.append(`details[${i}][type_kendaraan]`, c.type_kendaraan);
         fd.append(`details[${i}][no_surat_jalan]`, c.no_surat_jalan || '');
-        fd.append(`details[${i}][nominal_biaya]`, String(c.nominal_biaya));
+        fd.append(`details[${i}][qty_zak]`, String(c.qty_zak || 0));
+        fd.append(`details[${i}][qty_crt]`, String(c.qty_crt || 0));
+        fd.append(`details[${i}][nominal_biaya]`, String(candidateNominal(cId)));
         fd.append(`details[${i}][order]`, String(i));
       });
 
@@ -303,7 +598,9 @@ export default function BiayaRetribusiPage() {
         fd.append(`details[${idx}][nopol_kendaraan]`, md.nopol_kendaraan);
         fd.append(`details[${idx}][type_kendaraan]`, md.type_kendaraan);
         fd.append(`details[${idx}][no_surat_jalan]`, md.no_surat_jalan);
-        fd.append(`details[${idx}][nominal_biaya]`, String(md.nominal_biaya));
+        fd.append(`details[${idx}][qty_zak]`, String(md.qty_zak || 0));
+        fd.append(`details[${idx}][qty_crt]`, String(md.qty_crt || 0));
+        fd.append(`details[${idx}][nominal_biaya]`, String(manualNominal(md)));
         fd.append(`details[${idx}][order]`, String(idx));
       });
 
@@ -313,25 +610,60 @@ export default function BiayaRetribusiPage() {
         }
       });
 
-      await biayaRetribusi.create(fd);
-      notifyGlobal('Biaya Retribusi berhasil dibuat', 'success');
+      const res = await biayaRetribusi.create(fd);
+      const id = (res as { data?: { data?: { id?: number } } }).data?.data?.id;
+      if (id == null) throw new Error('empty');
+      return id;
+  };
+
+  const finishAfterSave = async () => {
       setOpenModal(false);
+      setEditingStatus(null);
+      setDocumentsRemove([]);
       setSelectedCandidates([]);
       setCandidates([]);
+      setCandidateNominals({});
       setManualDetails([]);
       setFormData({ tanggal_pengajuan: '', details: [], documents: [] });
-      fetchItems();
+      setFormStep(minStep);
+      await fetchItems();
+  };
+
+  const handleCreate = async () => {
+    if (abortOversized()) return;
+    setBusy(true);
+    try {
+      await persistCreate();
+      notifyGlobal('Pengajuan tersimpan sebagai draft — buka detail lalu Kirim untuk masuk antrean.', 'success');
+      await finishAfterSave();
     } catch (e: unknown) {
-      notifyGlobal((e as Error).message || 'Gagal membuat Biaya Retribusi', 'error');
+      notifyGlobal(retribusiErrorMessage(e, 'Gagal membuat Biaya Retribusi'), 'error');
     } finally {
       setBusy(false);
     }
   };
 
-  const handleUpdate = async () => {
-    if (!editingId) return;
+  const handleCreateAndSubmit = async () => {
+    if (abortOversized()) return;
+    if (submitBlockers.length > 0) {
+      notifyGlobal(`Belum bisa dikirim: ${submitBlockers.slice(0, 2).join(' · ')}`, 'error');
+      return;
+    }
     setBusy(true);
     try {
+      const id = await persistCreate();
+      await biayaRetribusi.submit(id);
+      notifyGlobal('Pengajuan dikirim ke antrean pemeriksaan.', 'success');
+      await finishAfterSave();
+    } catch (e: unknown) {
+      notifyGlobal(retribusiErrorMessage(e, 'Gagal mengirim pengajuan'), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Payload update dipakai bersama handleUpdate & handleUpdateAndSubmit. */
+  const buildUpdatePayload = (): FormData => {
       const fd = new FormData();
       fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
       fd.append('_method', 'PUT');
@@ -339,10 +671,13 @@ export default function BiayaRetribusiPage() {
       formData.details.forEach((d, i) => {
         fd.append(`details[${i}][biaya_thl_id]`, String(d.biaya_thl_id || ''));
         fd.append(`details[${i}][biaya_thl_detail_id]`, String(d.biaya_thl_detail_id || ''));
+        fd.append(`details[${i}][receiving_id]`, String(d.receiving_id || ''));
         fd.append(`details[${i}][nopol_kendaraan]`, d.nopol_kendaraan);
         fd.append(`details[${i}][type_kendaraan]`, d.type_kendaraan);
         fd.append(`details[${i}][no_surat_jalan]`, d.no_surat_jalan || '');
-        fd.append(`details[${i}][nominal_biaya]`, String(d.nominal_biaya));
+        fd.append(`details[${i}][qty_zak]`, String(d.qty_zak || 0));
+        fd.append(`details[${i}][qty_crt]`, String(d.qty_crt || 0));
+        fd.append(`details[${i}][nominal_biaya]`, String(d.receiving_id && isKoliMode ? calcKoliNominal(d.qty_zak || 0, d.qty_crt || 0) : d.nominal_biaya));
         fd.append(`details[${i}][order]`, String(i));
       });
 
@@ -351,7 +686,9 @@ export default function BiayaRetribusiPage() {
         fd.append(`details[${idx}][nopol_kendaraan]`, md.nopol_kendaraan);
         fd.append(`details[${idx}][type_kendaraan]`, md.type_kendaraan);
         fd.append(`details[${idx}][no_surat_jalan]`, md.no_surat_jalan);
-        fd.append(`details[${idx}][nominal_biaya]`, String(md.nominal_biaya));
+        fd.append(`details[${idx}][qty_zak]`, String(md.qty_zak || 0));
+        fd.append(`details[${idx}][qty_crt]`, String(md.qty_crt || 0));
+        fd.append(`details[${idx}][nominal_biaya]`, String(manualNominal(md)));
         fd.append(`details[${idx}][order]`, String(idx));
       });
 
@@ -360,52 +697,133 @@ export default function BiayaRetribusiPage() {
           fd.append(`files[${i}]`, doc.file);
         }
       });
+      documentsRemove.forEach((docId) => fd.append('documents_remove[]', String(docId)));
+      return fd;
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId) return;
+    if (abortOversized()) return;
+    setBusy(true);
+    try {
+      const fd = buildUpdatePayload();
 
       await biayaRetribusi.update(editingId, fd);
       notifyGlobal('Biaya Retribusi berhasil diperbarui', 'success');
       setOpenModal(false);
       setEditingId(null);
+      setEditingStatus(null);
+      setDocumentsRemove([]);
       setManualDetails([]);
       fetchItems();
     } catch (e: unknown) {
-      notifyGlobal((e as Error).message || 'Gagal memperbarui', 'error');
+      notifyGlobal(retribusiErrorMessage(e, 'Gagal memperbarui'), 'error');
     } finally {
       setBusy(false);
     }
   };
 
+  /** Simpan perbaikan lalu kirim ulang ke approver yang meminta revisi (pola Biaya THL). */
+  const handleUpdateAndSubmit = async () => {
+    if (!editingId) return;
+    if (abortOversized()) return;
+    if (submitBlockers.length > 0) {
+      notifyGlobal(`Belum bisa dikirim: ${submitBlockers.slice(0, 2).join(' · ')}`, 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      const fd = buildUpdatePayload();
+      await biayaRetribusi.update(editingId, fd);
+      await biayaRetribusi.submit(editingId);
+      notifyGlobal('Perubahan disimpan dan dikirim ulang ke tahap approval yang meminta revisi.', 'success');
+      setOpenModal(false);
+      setEditingId(null);
+      setEditingStatus(null);
+      setDocumentsRemove([]);
+      setManualDetails([]);
+      setFormStep(minStep);
+      await fetchItems();
+    } catch (e: unknown) {
+      notifyGlobal(retribusiErrorMessage(e, 'Gagal mengirim perbaikan'), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Hapus hanya untuk draft/ditolak/revisi — yang sudah masuk antrean tak boleh hilang. */
   const handleDelete = async (id: number) => {
     if (!confirm('Yakin ingin menghapus?')) return;
     try {
       await biayaRetribusi.delete(id);
       notifyGlobal('Biaya Retribusi berhasil dihapus', 'success');
       fetchItems();
-    } catch {
-      notifyGlobal('Gagal menghapus', 'error');
+    } catch (e: unknown) {
+      notifyGlobal(getErrorMessage(e, 'Gagal menghapus'), 'error');
     }
   };
 
-  const downloadPdf = (item: BiayaRetribusiItem) => {
+  const warnLampiran = (message: string) => notifyGlobal(message, 'info');
+
+  const docUrl = (doc: { id?: number; file_path?: string }): string | null => {
+    if (doc.id != null) return biayaRetribusi.documentUrl(doc.id);
+    if (!doc.file_path) return null;
+    return doc.file_path.startsWith('http') ? doc.file_path : `${API_ROOT}/storage/${doc.file_path}`;
+  };
+
+  const loadLatestPdfItem = async (item: BiayaRetribusiItem): Promise<BiayaRetribusiItem> => {
+    const response = await biayaRetribusi.get(item.id);
+    return normalizeBiayaRetribusiItem(response.data.data);
+  };
+
+  const downloadPdf = async (item: BiayaRetribusiItem) => {
     try {
-      generateRetribusiPdf(item);
-    } catch {
-      notifyGlobal('Gagal generate PDF', 'error');
+      generateRetribusiPdf(await loadLatestPdfItem(item), { onWarning: warnLampiran });
+    } catch (e: unknown) {
+      console.error('[Download PDF Retribusi]', e);
+      notifyGlobal(e instanceof Error ? `Gagal generate PDF: ${e.message}` : 'Gagal generate PDF', 'error');
     }
+  };
+
+  /** Alasan record tersimpan belum boleh dikirim (cermin assertSubmittable backend). */
+  const viewBlockers = (item: BiayaRetribusiItem): string[] => {
+    const reasons: string[] = [];
+    if (!item.tanggal_pengajuan) reasons.push('Isi tanggal pengajuan');
+    if (!item.documents || item.documents.length === 0) reasons.push('Lampirkan minimal 1 dokumen');
+    if (!item.details || item.details.length === 0) reasons.push('Minimal 1 baris biaya');
+    (item.details || []).forEach((d, i) => {
+      if (!d.nopol_kendaraan) reasons.push(`Baris ${i + 1}: plat kosong`);
+      if (!d.type_kendaraan) reasons.push(`Baris ${i + 1}: type kosong`);
+      if (Number(d.nominal_biaya) < 1) reasons.push(`Baris ${i + 1}: nominal kurang dari Rp 1`);
+    });
+    return reasons;
   };
 
   const approvalAction = async (action: 'submit' | 'check' | 'rfahApprove') => {
     if (!viewItem) return;
+    if (action === 'submit') {
+      const blockers = viewBlockers(viewItem);
+      if (blockers.length > 0) {
+        notifyGlobal(`Belum bisa dikirim: ${blockers.slice(0, 2).join(' · ')}`, 'error');
+        return;
+      }
+    }
     try {
       const response = action === 'submit'
         ? await biayaRetribusi.submit(viewItem.id)
         : action === 'check'
           ? await biayaRetribusi.check(viewItem.id)
           : await biayaRetribusi.rfahApprove(viewItem.id);
-      setViewItem((response as { data: { data: BiayaRetribusiItem } }).data.data);
       await fetchItems();
+      try {
+        const fresh = await biayaRetribusi.get((response as { data: { data: BiayaRetribusiItem } }).data.data.id);
+        setViewItem(normalizeBiayaRetribusiItem(fresh.data.data));
+      } catch {
+        setViewItem(normalizeBiayaRetribusiItem((response as { data: { data: BiayaRetribusiItem } }).data.data));
+      }
       notifyGlobal('Status pengajuan berhasil diperbarui', 'success');
-    } catch {
-      notifyGlobal('Aksi approval tidak dapat diproses', 'error');
+    } catch (e: unknown) {
+      notifyGlobal(getErrorMessage(e, 'Aksi approval tidak dapat diproses'), 'error');
     }
   };
 
@@ -427,16 +845,35 @@ export default function BiayaRetribusiPage() {
         : decision.action === 'revise'
           ? await biayaRetribusi.revise(decision.item.id, decisionReason)
           : await biayaRetribusi.reject(decision.item.id, decisionReason);
-      setViewItem((response as { data: { data: BiayaRetribusiItem } }).data.data);
       await fetchItems();
+      try {
+        const fresh = await biayaRetribusi.get((response as { data: { data: BiayaRetribusiItem } }).data.data.id);
+        setViewItem(normalizeBiayaRetribusiItem(fresh.data.data));
+      } catch {
+        setViewItem(normalizeBiayaRetribusiItem((response as { data: { data: BiayaRetribusiItem } }).data.data));
+      }
       notifyGlobal(decision.action === 'approve' ? 'Pengajuan disetujui' : decision.action === 'revise' ? 'Pengajuan diminta revisi' : 'Pengajuan ditolak', 'success');
       setDecision(null);
       setDecisionReason('');
-    } catch {
-      notifyGlobal('Aksi approval tidak dapat diproses', 'error');
+    } catch (e: unknown) {
+      notifyGlobal(getErrorMessage(e, 'Aksi approval tidak dapat diproses'), 'error');
     } finally {
       setDecisionBusy(false);
     }
+  };
+
+  const switchSourceType = (next: 'receiving' | 'manual' | null) => {
+    if (next === sourceType) return;
+    setSourceType(next);
+    // Pilih tipe → langsung ke langkah Data; "Ganti tipe" → kembali ke langkah Tipe.
+    // Tanpa ini body modal kosong karena kartu tipe butuh !sourceType + formStep 1,
+    // sedangkan langkah Data butuh sourceType + formStep 2.
+    setFormStep(next === null ? 1 : 2);
+    setSelectedCandidates([]);
+    setCandidateNominals({});
+    setCandidates([]);
+    setManualDetails([]);
+    setFormData((prev) => ({ ...prev, tanggal_pengajuan: '' }));
   };
 
   const toggleCandidate = (id: number) => {
@@ -445,12 +882,129 @@ export default function BiayaRetribusiPage() {
     );
   };
 
-  const totalNominal = selectedCandidates.reduce((sum, id) => {
-    const c = candidates.find((c2) => c2.id === id);
-    return sum + (Number(c?.nominal_biaya) || 0);
-  }, 0) + manualDetails.reduce((sum, md) => sum + (Number(md.nominal_biaya) || 0), 0);
+  useEffect(() => {
+    if (editingId || selectedCandidates.length === 0) return;
+    const latest = selectedCandidates
+      .map((id) => candidates.find((c) => c.id === id)?.tanggal_selesai || '')
+      .filter(Boolean)
+      .sort()
+      .pop();
+    if (latest) {
+      setFormData((prev) => ({ ...prev, tanggal_pengajuan: latest }));
+    }
+  }, [selectedCandidates, candidates, editingId]);
+  const totalNominal = selectedCandidates.reduce((sum, id) => sum + candidateNominal(id), 0)
+    + formData.details.reduce((sum, d) => sum + existingNominal(d), 0)
+    + manualDetails.reduce((sum, md) => sum + manualNominal(md), 0);
   const isRfahRequired = totalNominal > biayaConfig.retribusi_rfah_threshold;
   const hasIncompleteManualRows = manualDetails.some((row) => !row.nopol_kendaraan || !row.type_kendaraan || Number(row.nominal_biaya || 0) <= 0);
+  const hasIncompleteCandidateRows = selectedCandidates.some((id) => {
+    if (!isKoliMode) return Number(candidateNominals[id] || 0) <= 0;
+    const c = candidates.find((c2) => c2.id === id);
+    return ((Number(c?.qty_zak) || 0) + (Number(c?.qty_crt) || 0)) <= 0;
+  });
+  const selectedRowCount = (editingId ? formData.details.length : selectedCandidates.length) + manualDetails.length;
+  /** Nopol kandidat yang nominalnya belum diisi (mode borongan). */
+  const missingNominalNopols = editingId ? [] : selectedCandidates
+    .map((id) => candidates.find((c) => c.id === id))
+    .filter((c): c is ReceivingCandidate => !!c && !isKoliMode && candidateNominal(c.id) <= 0)
+    .map((c) => c.nopol_kendaraan);
+  /** Depo tujuan pengajuan: mewarisi receiving bila satu depo (cermin backend). */
+  const selectedDepoLabels = [...new Set(selectedCandidates
+    .map((id) => candidates.find((c) => c.id === id))
+    .filter((c): c is ReceivingCandidate => !!c)
+    .map((c) => `${c.kode_depo} — ${c.nama_depo}`))];
+  /** Depo dari kandidat yang sudah dimuat (receiving) — basis mode koli/tarif,
+   *  analog inheritReceivingDepot backend, agar "Otomatis dari Receiving"
+   *  langsung memakai tarif depo receiving tanpa harus mencentang dulu. */
+  const candidateDepoLabels = [...new Set(candidates
+    .map((c) => `${c.kode_depo} — ${c.nama_depo}`))];
+  const isCandidateDepoUniform = !editingId && candidateDepoLabels.length === 1;
+  const isDepoInherited = !editingId && selectedDepoLabels.length === 1;
+  const targetDepoLabel = isCandidateDepoUniform
+    ? candidateDepoLabels[0]
+    : isDepoInherited ? selectedDepoLabels[0] : `${user?.kode_depo} — ${user?.nama_depo}`;
+  /** Depo efektif perhitungan: warisi receiving bila satu depo (kandidat termuat
+   *  atau yang dicentang), jika tidak depo user/record. */
+  const inheritedDepo = isDepoInherited ? selectedDepoLabels[0].split(' — ')[0] : '';
+  const candidateFlowDepo = isCandidateDepoUniform ? candidateDepoLabels[0].split(' — ')[0] : '';
+  const effectiveDepo = editingId ? editingDepo : candidateFlowDepo || inheritedDepo || user?.kode_depo || '';
+  // Refetch tarif saat modal dibuka (openCreateModal/Edit mereset biayaConfig ke
+  // FALLBACK), bukan hanya saat effectiveDepo berubah — agar tarif koli yang
+  // sudah disimpan tetap muncul tanpa harus input ulang tiap pengajuan.
+  useEffect(() => { getBiayaConfigFresh(effectiveDepo, 'biaya_retribusi').then(setBiayaConfig).catch(() => {}); }, [effectiveDepo, openModal]);
+  useEffect(() => {
+    setRateDraft({
+      mode: biayaConfig.retribusi_calc_mode === 'koli' ? 'koli' : 'borongan',
+      rate_zak: Number(biayaConfig.retribusi_rate_zak) || 0,
+      rate_crt: Number(biayaConfig.retribusi_rate_crt) || 0,
+    });
+  }, [biayaConfig, effectiveDepo]);
+  /** Kode + nama depo target untuk penyimpanan tarif inline. */
+  const effectiveKode = effectiveDepo;
+  const effectiveNama = !editingId && (isCandidateDepoUniform || isDepoInherited)
+    ? (targetDepoLabel.split(' — ').slice(1).join(' — ') || targetDepoLabel)
+    : user?.nama_depo || '';
+  const saveRates = async () => {
+    if (!effectiveKode) return;
+    if (rateDraft.mode === 'koli' && (Number(rateDraft.rate_zak) || 0) <= 0 && (Number(rateDraft.rate_crt) || 0) <= 0) {
+      notifyGlobal('Mode koli membutuhkan minimal satu tarif (zak/crt) lebih dari 0', 'error');
+      return;
+    }
+    setRateSaving(true);
+    try {
+      await retribusiRates.save({
+        kode_depo: effectiveKode,
+        nama_depo: effectiveNama || effectiveKode,
+        mode: rateDraft.mode,
+        rate_zak: Number(rateDraft.rate_zak) || 0,
+        rate_crt: Number(rateDraft.rate_crt) || 0,
+        is_active: true,
+      });
+      clearBiayaConfigCache(effectiveKode, 'biaya_retribusi');
+      const fresh = await getBiayaConfigFresh(effectiveKode, 'biaya_retribusi');
+      setBiayaConfig(fresh);
+      notifyGlobal(`Tarif ${effectiveNama || effectiveKode} disimpan`, 'success');
+    } catch (e: unknown) {
+      notifyGlobal(getErrorMessage(e, 'Gagal menyimpan tarif'), 'error');
+    } finally {
+      setRateSaving(false);
+    }
+  };
+  /** Alasan tombol terkunci — ditampilkan agar user tidak menebak. */
+  const blockerReasons: string[] = [];
+  if (!editingId && !sourceType) blockerReasons.push('Pilih tipe pengajuan');
+  if (!formData.tanggal_pengajuan) blockerReasons.push('Isi tanggal pengajuan');
+  if (selectedRowCount === 0) blockerReasons.push('Pilih receiving atau tambah baris manual');
+  if (missingNominalNopols.length > 0) blockerReasons.push(`Isi nominal: ${missingNominalNopols.join(', ')}`);
+  if (hasIncompleteManualRows) blockerReasons.push('Lengkapi baris manual');
+  const emptyDocIndex = formData.documents.findIndex((doc) => !doc.file && !doc.file_path);
+  if (emptyDocIndex >= 0) blockerReasons.push(`Lampiran #${emptyDocIndex + 1} belum ada file — hapus atau pilih file`);
+  const hasDocuments = formData.documents.some((doc) => doc.file || doc.file_path);
+  /** Syarat kirim = syarat draft + minimal 1 dokumen lampiran. */
+  const submitBlockers = hasDocuments
+    ? blockerReasons
+    : [...blockerReasons, 'Lampirkan minimal 1 dokumen (PDF/foto) sebelum dikirim'];
+  const stepDone = [
+    editingId ? true : !!sourceType,
+    !!formData.tanggal_pengajuan && selectedRowCount > 0 && !hasIncompleteManualRows && (editingId || !hasIncompleteCandidateRows),
+    formData.documents.length > 0,
+    false,
+  ];
+  const WIZARD_LABELS = ['Tipe', 'Data', 'Lampiran', 'Review'];
+  const minStep = editingId ? 2 : 1;
+  const stepProgress = formStep >= 4 ? 100 : Math.round((stepDone.slice(0, 3).filter(Boolean).length / 3) * 100);
+  const goNext = () => {
+    if (formStep === 1 && !editingId && !sourceType) { notifyGlobal('Pilih tipe pengajuan dulu', 'info'); return; }
+    if (formStep === 2 && blockerReasons.length > 0) { notifyGlobal(blockerReasons[0], 'error'); return; }
+    setFormStep((s) => Math.min(4, s + 1));
+  };
+  const goBack = () => setFormStep((s) => Math.max(minStep, s - 1));
+
+  const previewPdfError = (e: unknown) => {
+    console.error('[Preview PDF Retribusi]', e);
+    notifyGlobal(e instanceof Error ? `Gagal membuka preview PDF: ${e.message}` : 'Gagal membuka preview PDF', 'error');
+  };
 
   const previewRetribusi = () => {
     if (!formData.tanggal_pengajuan) return;
@@ -461,19 +1015,26 @@ export default function BiayaRetribusiPage() {
         nopol_kendaraan: candidate.nopol_kendaraan,
         type_kendaraan: candidate.type_kendaraan,
         no_surat_jalan: candidate.no_surat_jalan || '',
-        nominal_biaya: candidate.nominal_biaya,
+        nominal_biaya: candidateNominal(id),
         biaya_thl_detail: {
-          nama_thl: candidate.nama_thl || candidate.driver_name || '-',
+          nama_thl: candidate.driver_name || '-',
           driver_name: candidate.driver_name || '',
-          kubikasi: candidate.kubikasi || 0,
-          droppoint: candidate.droppoint || '0',
-          posisi: candidate.posisi || 'THL GUDANG',
+          kubikasi: 0,
+          droppoint: '0',
+          posisi: 'THL GUDANG',
           jam_datang: '',
           jam_pulang: '',
           photos: [],
         },
       }];
     });
+    const existingDetails = formData.details.map((d) => ({
+      nopol_kendaraan: d.nopol_kendaraan,
+      type_kendaraan: d.type_kendaraan,
+      no_surat_jalan: d.no_surat_jalan || '',
+      nominal_biaya: existingNominal(d),
+      biaya_thl_detail: d.biaya_thl_detail ?? null,
+    }));
     previewRetribusiPdf({
       tanggal_pengajuan: formData.tanggal_pengajuan,
       kode_depo: user?.kode_depo ?? '',
@@ -482,13 +1043,13 @@ export default function BiayaRetribusiPage() {
       is_rfah_required: isRfahRequired,
       rfah_name: isRfahRequired ? biayaConfig.rfah_name : '',
       status: 'draft',
-      details: [...candidateDetails, ...manualDetails.map((item) => ({ ...item, biaya_thl_detail: null }))],
-      documents: formData.documents.map((document) => ({ document_type: document.document_type, file_name: document.file_name })),
-    });
+      details: [...candidateDetails, ...existingDetails, ...manualDetails.map((item) => ({ ...item, nominal_biaya: manualNominal(item), biaya_thl_detail: null }))],
+      documents: formData.documents.map((document) => ({ id: document.id, document_type: document.document_type, file_name: document.file_name, file: document.file, file_path: document.file_path, file_size: document.file?.size ?? document.file_size ?? 0 })),
+    }, { onWarning: warnLampiran }).catch(previewPdfError);
   };
 
   const addManualDetail = () => {
-    setManualDetails([...manualDetails, { nopol_kendaraan: '', type_kendaraan: '', no_surat_jalan: '', nominal_biaya: 0 }]);
+    setManualDetails([...manualDetails, { nopol_kendaraan: '', type_kendaraan: '', no_surat_jalan: '', qty_zak: 0, qty_crt: 0, nominal_biaya: 0 }]);
   };
 
   const updateManualDetail = (index: number, field: keyof ManualDetailRow, value: string | number) => {
@@ -514,16 +1075,47 @@ export default function BiayaRetribusiPage() {
   };
 
   const removeDocument = (index: number) => {
-    setFormData(prev => ({
+    const target = formData.documents[index];
+    if (target?.id != null && !documentsRemove.includes(target.id)) {
+      setDocumentsRemove([...documentsRemove, target.id]);
+    }
+    setFormData((prev) => ({
       ...prev,
       documents: prev.documents.filter((_, i) => i !== index),
     }));
   };
 
+  const handleImport = async () => {
+    if (!importFile) {
+      notifyGlobal('Pilih file terlebih dahulu', 'info');
+      return;
+    }
+    setImporting(true);
+    try {
+      await biayaRetribusi.import(importFile);
+      setShowImportModal(false);
+      setImportFile(null);
+      notifyGlobal('Import berhasil', 'success');
+      fetchItems();
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Import gagal'), 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const openCreateModal = () => {
     setEditingId(null);
+    setEditingStatus(null);
+    setEditingDepo('');
+    setSourceType(null);
+    setFormStep(1);
+    setTariffOpen(false);
+    setBiayaConfig(BIAYA_CONFIG_FALLBACK);
+    setDocumentsRemove([]);
     setSelectedCandidates([]);
     setCandidates([]);
+    setCandidateNominals({});
     setManualDetails([]);
     setFormData({ tanggal_pengajuan: '', details: [], documents: [] });
     setOpenModal(true);
@@ -531,22 +1123,29 @@ export default function BiayaRetribusiPage() {
 
   const openEditModal = (item: BiayaRetribusiItem) => {
     setEditingId(item.id);
+    setBiayaConfig(BIAYA_CONFIG_FALLBACK);
+    setEditingStatus(item.status);
+    setSourceType('manual');
+    setFormStep(2);
+    setEditingDepo(item.kode_depo || '');
     setFormData({
-      tanggal_pengajuan: item.tanggal_pengajuan,
+      tanggal_pengajuan: toDateInputValue(item.tanggal_pengajuan),
       details: item.details.map((d) => ({ ...d })),
       documents: (item.documents || []).map((doc: unknown) => {
-        const d = doc as { document_type: string; file_path: string; file_name: string };
-        return { document_type: d.document_type, file: null, file_name: d.file_name };
+        const d = doc as { id?: number; document_type: string; file_path: string; file_name: string; file_size?: number };
+        return { id: d.id, document_type: d.document_type, file: null, file_name: d.file_name, file_path: d.file_path, file_size: d.file_size };
       }),
     });
+    setDocumentsRemove([]);
     setManualDetails([]);
     setOpenModal(true);
   };
 
   const openViewModal = (item: BiayaRetribusiItem) => {
-    setViewItem(item);
+    setViewItem(normalizeBiayaRetribusiItem(item));
   };
 
+  const viewSubmitBlockers = viewItem ? viewBlockers(viewItem) : [];
   const badge = (status: string) => {
     const meta = STATUS_META[status] || STATUS_META.draft;
     return (
@@ -557,9 +1156,6 @@ export default function BiayaRetribusiPage() {
     );
   };
 
-  const totalNominalValue = items.reduce((sum, item) => sum + (Number(item.nominal_biaya) || 0), 0);
-  const pendingCount = items.filter((item) => item.status === 'pending').length;
-  const approvedCount = items.filter((item) => item.status === 'approved').length;
 
   return (
     <DashboardLayout>
@@ -572,7 +1168,7 @@ export default function BiayaRetribusiPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Biaya Retribusi</h1>
-                <p className="mt-0.5 text-gray-400">Queue pengajuan biaya retribusi berbasis kandidat THL</p>
+                <p className="mt-0.5 text-gray-400">Queue pengajuan biaya retribusi berbasis penerimaan (receiving)</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -584,39 +1180,75 @@ export default function BiayaRetribusiPage() {
           </div>
         </header>
 
-        <div className="rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="px-2 py-1">
-            <p className="text-xs text-slate-500">Total Nominal</p>
-            <p className="mt-1 text-2xl font-bold text-slate-800 tabular-nums">{formatCurrency(totalNominalValue)}</p>
-          </div>
-          <div className="border-l border-slate-100 px-2 py-1 sm:pl-5">
-            <p className="text-xs text-slate-500">Menunggu</p>
-            <p className="mt-1 text-2xl font-bold text-amber-600 tabular-nums">{pendingCount}</p>
-          </div>
-          <div className="border-l border-slate-100 px-2 py-1 sm:pl-5">
-            <p className="text-xs text-slate-500">Disetujui</p>
-            <p className="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">{approvedCount}</p>
-          </div>
+        <div className={`rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+            <div className="px-2 py-1">
+              <p className="text-xs text-slate-500">Total Nominal</p>
+              <p className="mt-1 text-2xl font-bold text-slate-800 tabular-nums">{formatCurrency(summary?.total_nominal ?? 0)}</p>
+            </div>
+            <div onClick={() => { setStatusFilter(statusFilter === 'pending' ? '' : 'pending'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-amber-50/50 rounded-lg transition-colors">
+              <p className="text-xs text-slate-500">Menunggu</p>
+              <p className="mt-1 text-2xl font-bold text-amber-600 tabular-nums">{summary?.pending ?? 0}</p>
+            </div>
+            <div onClick={() => { setStatusFilter(statusFilter === 'approved' ? '' : 'approved'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-emerald-50/50 rounded-lg transition-colors">
+              <p className="text-xs text-slate-500">Disetujui</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">{summary?.approved ?? 0}</p>
+            </div>
+            <div onClick={() => { setStatusFilter(statusFilter === 'revisi' ? '' : 'revisi'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-orange-50/50 rounded-lg transition-colors">
+              <p className="text-xs text-slate-500">Revisi</p>
+              <p className="mt-1 text-2xl font-bold text-orange-600 tabular-nums">{summary?.revisi ?? 0}</p>
+            </div>
+            <div onClick={() => { setStatusFilter(statusFilter === 'rejected' ? '' : 'rejected'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-red-50/50 rounded-lg transition-colors">
+              <p className="text-xs text-slate-500">Ditolak</p>
+              <p className="mt-1 text-2xl font-bold text-red-600 tabular-nums">{summary?.rejected ?? 0}</p>
+            </div>
           </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="flex flex-col items-start gap-3 border-b border-gray-100 px-5 py-3 sm:flex-row sm:items-center">
             <div className="flex-1 w-full sm:w-auto">
-              <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari nopol, depo..." />
+              <SearchInput value={search} onChange={(v) => { setSearch(v); }} placeholder="Cari nopol, SJ, type, depo..." />
             </div>
             <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="select-field-sm w-full sm:w-auto">
               <option value="">Semua Status</option>
               <option value="draft">Draft</option>
               <option value="pending">Pending</option>
+              <option value="checked">Checked</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
+              <option value="revisi">Revisi</option>
             </select>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-slate-500">/page</span>
+              <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className="select-field-sm w-[90px]">
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            {hasPermission('biaya_retribusi.create') && (
             <button onClick={openCreateModal} className="inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] sm:w-auto">
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               Buat Pengajuan
             </button>
+            )}
+            {hasPermission('biaya_retribusi.export') && (
+              <button onClick={async () => { try { const res = await biayaRetribusi.export(); const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `biaya-retribusi-${new Date().toISOString().slice(0,10)}.xlsx`; a.click(); window.URL.revokeObjectURL(url); notifyGlobal('Export dimulai', 'success'); } catch (e) { notifyGlobal(getErrorMessage(e, 'Export gagal'), 'error'); } }} className="btn-secondary shrink-0">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 18v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" /></svg>
+                  Export
+                </span>
+              </button>
+            )}
+            {hasPermission('biaya_retribusi.import') && (
+              <button onClick={() => setShowImportModal(true)} className="btn-secondary shrink-0">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                  Import
+                </span>
+              </button>
+            )}
           </div>
 
         {/* Table - Desktop */}
@@ -625,27 +1257,43 @@ export default function BiayaRetribusiPage() {
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th scope="col" className="table-header">Tanggal</th>
+                  <th scope="col" className="table-header cursor-pointer select-none" onClick={() => handleSort('tanggal_pengajuan')}>
+                    Tanggal {sortIndicator('tanggal_pengajuan')}
+                  </th>
+                  <th scope="col" className="table-header">No SJ</th>
+                  <th scope="col" className="table-header">Kendaraan</th>
+                  <th scope="col" className="table-header">No Kendaraan</th>
                   <th scope="col" className="table-header">Depo</th>
-                  <th scope="col" className="table-header text-right">Total</th>
-                  <th scope="col" className="table-header">RFAH</th>
-                  <th scope="col" className="table-header">Status</th>
+                  <th scope="col" className="table-header text-center">Qty</th>
+                  <th scope="col" className="table-header cursor-pointer select-none text-right" onClick={() => handleSort('nominal_biaya')}>
+                    Total {sortIndicator('nominal_biaya')}
+                  </th>
+                  <th scope="col" className="table-header cursor-pointer select-none" onClick={() => handleSort('status')}>
+                    Status {sortIndicator('status')}
+                  </th>
                   <th scope="col" className="table-header text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  <tr>
-                    <td colSpan={6} className="table-cell py-10">
-                      <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
-                        <svg className="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-                        <span className="text-sm font-medium">Memuat data...</span>
-                      </div>
-                    </td>
-                  </tr>
+                  <>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={'skel-' + i} className="animate-pulse">
+                        <td className="table-cell py-3"><div className="h-4 w-16 bg-slate-100 rounded mx-auto" /></td>
+                        <td className="table-cell py-3"><div className="h-4 w-16 bg-slate-100 rounded mx-auto" /></td>
+                        <td className="table-cell py-3"><div className="h-4 w-12 bg-slate-100 rounded mx-auto" /></td>
+                        <td className="table-cell py-3"><div className="h-4 w-16 bg-slate-100 rounded mx-auto" /></td>
+                        <td className="table-cell py-3"><div className="h-4 w-16 bg-slate-100 rounded mx-auto" /></td>
+                        <td className="table-cell py-3 text-center"><div className="h-4 w-16 bg-slate-100 rounded mx-auto" /></td>
+                        <td className="table-cell py-3 text-right"><div className="h-4 w-16 bg-slate-100 rounded mx-auto" /></td>
+                        <td className="table-cell py-3 text-center"><div className="h-5 w-16 bg-slate-100 rounded-full mx-auto" /></td>
+                        <td className="table-cell py-3" />
+                      </tr>
+                    ))}
+                  </>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="table-cell py-12">
+                    <td colSpan={9} className="table-cell py-12">
                       <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                         <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                         <span className="text-sm font-medium">Tidak ada data</span>
@@ -660,25 +1308,40 @@ export default function BiayaRetribusiPage() {
                   items.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-5 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(item.tanggal_pengajuan)}</td>
+                      <td className="px-5 py-3 text-sm text-slate-600">{renderChips(getSJShorts(item), getSJFull(item))}</td>
+                      <td className="px-5 py-3 text-sm text-slate-600">{renderChips(getKendaraanTypes(item), getKendaraanTypes(item).join(', ') || '-')}</td>
+                      <td className="px-5 py-3 text-sm font-medium text-slate-800">{renderChips(getNopols(item), getNopols(item).join(', ') || '-')}</td>
                       <td className="px-5 py-3 text-sm text-slate-600">{item.nama_depo}</td>
+                      <td className="px-5 py-3 text-sm text-slate-600 text-center whitespace-nowrap">{getQtyLabel(item)}</td>
                       <td className="px-5 py-3 text-right text-sm font-semibold text-slate-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</td>
-                      <td className="table-cell">{item.is_rfah_required ? <span className="text-amber-600 text-xs font-medium">{item.rfah_name}</span> : '-'}</td>
-                      <td className="px-5 py-3">{badge(item.status)}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1.5">
+                          {badge(item.status)}
+                          {item.is_rfah_required && (
+                            <span className="inline-flex items-center rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700" title={item.rfah_name || 'RFAH'}>RFAH</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openViewModal(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Lihat" aria-label="Lihat">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                           </button>
-                          {hasPermission('biaya_retribusi.edit') && (
+                          {hasPermission('biaya_retribusi.edit') && canEditRow(item.status) && (
                           <button onClick={() => openEditModal(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all" title="Edit" aria-label="Edit">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"></path></svg>
                           </button>
                           )}
-                          {hasPermission('biaya_retribusi.delete') && (
+                          {hasPermission('biaya_retribusi.delete') && isDeletable(item.status) && (
                           <button onClick={() => handleDelete(item.id)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Hapus" aria-label="Hapus">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                           </button>
                           )}
+                          {hasPermission('approval.submit') && (hasPermission('biaya_retribusi.full_control') || item.status === 'draft') && (() => { const b = viewBlockers(item); return (
+                          <button onClick={() => { if (b.length > 0) { notifyGlobal(`Belum bisa dikirim: ${b.slice(0, 2).join(' · ')}`, 'error'); return; } biayaRetribusi.submit(item.id).then(() => { notifyGlobal('Pengajuan dikirim ke antrean pemeriksaan', 'success'); fetchItems(); }).catch((e: unknown) => notifyGlobal(getErrorMessage(e, 'Gagal mengirim'), 'error')); }} disabled={b.length > 0} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-40" title={b.length > 0 ? `Lengkapi dulu: ${b.slice(0, 2).join(' · ')}` : 'Kirim untuk diperiksa'} aria-label="Kirim">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                          </button>
+                          ); })()}
                         </div>
                       </td>
                     </tr>
@@ -719,20 +1382,23 @@ export default function BiayaRetribusiPage() {
                       <svg className="w-5 h-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 0h7.5m-7.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h7.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h7.5a3 3 0 013 3m-16.5 0a3 3 0 00-3 3v7.5a3 3 0 003 3h7.5a3 3 0 003-3v-7.5a3 3 0 00-3-3h-7.5a3 3 0 00-3 3z" /></svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-gray-800">{item.nama_depo}</p>
+                      <p className="text-sm font-bold text-gray-800">{getNopols(item).slice(0, 2).join(', ') || item.nama_depo}</p>
                       <p className="text-xs text-gray-500 mt-0.5">{formatDate(item.tanggal_pengajuan)}</p>
                     </div>
                   </div>
                   {badge(item.status)}
                 </div>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {item.is_rfah_required && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
                         RFAH
                       </span>
                     )}
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">SJ: {getSJShorts(item).join(', ') || '-'}</span>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{getKendaraanTypes(item).join(', ') || '-'}</span>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{getQtyLabel(item)}</span>
                   </div>
                   <span className="text-sm font-bold text-gray-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</span>
                 </div>
@@ -741,17 +1407,22 @@ export default function BiayaRetribusiPage() {
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     Lihat
                   </button>
-                   {hasPermission('biaya_retribusi.edit') && (
+                   {hasPermission('biaya_retribusi.edit') && canEditRow(item.status) && (
                    <button onClick={() => openEditModal(item)} className="flex-1 min-h-[44px] flex items-center justify-center gap-2 text-sm font-semibold text-amber-600 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors">
                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"></path></svg>
                      Edit
                    </button>
                    )}
-                   {hasPermission('biaya_retribusi.delete') && (
+                   {hasPermission('biaya_retribusi.delete') && isDeletable(item.status) && (
                    <button onClick={() => handleDelete(item.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-400 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                    </button>
                    )}
+                   {hasPermission('approval.submit') && (hasPermission('biaya_retribusi.full_control') || item.status === 'draft') && (() => { const b = viewBlockers(item); return (
+                   <button onClick={() => { if (b.length > 0) { notifyGlobal(`Belum bisa dikirim: ${b.slice(0, 2).join(' · ')}`, 'error'); return; } biayaRetribusi.submit(item.id).then(() => { notifyGlobal('Pengajuan dikirim ke antrean pemeriksaan', 'success'); fetchItems(); }).catch((e: unknown) => notifyGlobal(getErrorMessage(e, 'Gagal mengirim'), 'error')); }} disabled={b.length > 0} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-emerald-500 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors disabled:cursor-not-allowed disabled:opacity-40" title={b.length > 0 ? `Lengkapi dulu: ${b.slice(0, 2).join(' · ')}` : 'Kirim'}>
+                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                   </button>
+                   ); })()}
                 </div>
               </div>
             ))
@@ -761,6 +1432,7 @@ export default function BiayaRetribusiPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-4">
+            <p className="text-xs text-slate-500 tabular-nums mr-2">Halaman {page} dari {totalPages}</p>
             {Array.from({ length: totalPages }, (_, i) => (
               <button key={i + 1} onClick={() => setPage(i + 1)} className={`min-h-[44px] min-w-[44px] rounded-xl text-sm font-medium transition-all ${page === i + 1 ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{i + 1}</button>
             ))}
@@ -768,17 +1440,59 @@ export default function BiayaRetribusiPage() {
         )}
 
         {/* Create/Edit Modal */}
-        <Modal open={openModal} onClose={() => { setOpenModal(false); setEditingId(null); }} title={editingId ? 'Edit Biaya Retribusi' : 'Buat Biaya Retribusi'} subtitle="Pilih sumber biaya, lampirkan dokumen, lalu kirim pengajuan" size="2xl" footer={
-          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-            <button type="button" onClick={() => { setOpenModal(false); setEditingId(null); }} className="btn-secondary w-full sm:w-auto">Batal</button>
-            <button type="button" onClick={previewRetribusi} disabled={busy || !formData.tanggal_pengajuan || (selectedCandidates.length === 0 && manualDetails.length === 0) || hasIncompleteManualRows} className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-              Preview PDF
-            </button>
-            <button type="button" onClick={editingId ? handleUpdate : handleCreate} disabled={busy || !formData.tanggal_pengajuan || (!editingId && selectedCandidates.length === 0 && manualDetails.length === 0) || hasIncompleteManualRows} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-              {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
-              {busy ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Buat Pengajuan'}
-            </button>
+        <Modal open={openModal} onClose={() => { setOpenModal(false); setEditingId(null); setEditingStatus(null); }} title={editingId ? 'Edit Biaya Retribusi' : 'Buat Biaya Retribusi'} subtitle={`Langkah ${formStep} dari 4: ${WIZARD_LABELS[formStep - 1]}`} size="2xl" footer={
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+            {formStep === 2 && blockerReasons.length > 0 && !busy && (
+              <p className="text-xs font-semibold text-amber-600 sm:mr-auto">Lengkapi dulu: {blockerReasons.slice(0, 2).join(' · ')}{blockerReasons.length > 2 ? ` (+${blockerReasons.length - 2})` : ''}</p>
+            )}
+            {formStep === 4 && submitBlockers.length > 0 && !busy && (
+              <p className="text-xs font-semibold text-amber-600 sm:mr-auto">Belum bisa dikirim: {submitBlockers.slice(0, 2).join(' · ')}{submitBlockers.length > 2 ? ` (+${submitBlockers.length - 2})` : ''}</p>
+            )}
+            <button type="button" onClick={() => { setOpenModal(false); setEditingId(null); setEditingStatus(null); }} className="btn-secondary w-full sm:w-auto">Batal</button>
+            {formStep > minStep && (
+              <button type="button" onClick={goBack} disabled={busy} className="btn-secondary w-full sm:w-auto">‹ Kembali</button>
+            )}
+            {formStep < 4 && (
+              <button type="button" onClick={goNext} disabled={busy || (formStep === 1 && !editingId && !sourceType) || (formStep === 2 && blockerReasons.length > 0)} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                {formStep === 3 ? 'Review ›' : 'Lanjut ›'}
+              </button>
+            )}
+            {formStep === 4 && (
+              <>
+                <button type="button" onClick={previewRetribusi} disabled={busy || blockerReasons.length > 0} className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                  Preview PDF
+                </button>
+                {!editingId ? (
+                  <>
+                    <button type="button" onClick={handleCreate} disabled={busy || blockerReasons.length > 0} title="Hanya menyimpan — belum masuk antrean pemeriksaan" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                      {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-600" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
+                      {busy ? 'Menyimpan...' : 'Simpan Draft'}
+                    </button>
+                    <button type="button" onClick={handleCreateAndSubmit} disabled={busy || submitBlockers.length > 0} title={submitBlockers.length > 0 ? `Belum bisa dikirim: ${submitBlockers.slice(0, 2).join(' · ')}` : 'Simpan dan langsung kirim ke antrean pemeriksaan'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                      {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>}
+                      {busy ? 'Mengirim...' : 'Simpan & Kirim'}
+                    </button>
+                  </>
+                ) : editingStatus === 'revisi' ? (
+                  <>
+                    <button type="button" onClick={handleUpdate} disabled={busy || blockerReasons.length > 0} title="Hanya menyimpan perbaikan" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                      {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-600" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
+                      {busy ? 'Menyimpan...' : 'Simpan Perubahan'}
+                    </button>
+                    <button type="button" onClick={handleUpdateAndSubmit} disabled={busy || submitBlockers.length > 0} title={submitBlockers.length > 0 ? `Belum bisa dikirim: ${submitBlockers.slice(0, 2).join(' · ')}` : 'Simpan perbaikan lalu kirim kembali ke approver yang meminta revisi'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                      {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>}
+                      {busy ? 'Mengirim...' : 'Simpan Perubahan & Kirim Ulang'}
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" onClick={handleUpdate} disabled={busy || blockerReasons.length > 0} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                    {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
+                    {busy ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         }>
           <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -790,58 +1504,110 @@ export default function BiayaRetribusiPage() {
               </div>
               <div className="space-y-2">
                 {[
-                  { label: 'Informasi', note: formData.tanggal_pengajuan ? 'Tanggal sudah diisi' : 'Menunggu tanggal', active: !formData.tanggal_pengajuan },
-                  { label: 'Sumber biaya', note: `${selectedCandidates.length + manualDetails.length} baris dipilih`, active: formData.tanggal_pengajuan && selectedCandidates.length + manualDetails.length > 0 },
-                  { label: 'Lampiran', note: `${formData.documents.length} dokumen`, active: formData.documents.length > 0 },
-                ].map((item, index) => (
-                  <div key={item.label} className={`flex items-center gap-3 rounded-2xl p-3 ${item.active ? 'bg-white/15' : ''}`}>
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black ${item.active ? 'bg-primary-500 text-white' : 'bg-white/10 text-slate-300'}`}>{index + 1}</span>
+                  { label: 'Tipe', note: sourceType === 'receiving' ? 'Otomatis receiving' : sourceType === 'manual' ? 'Borongan manual' : 'Belum dipilih', done: stepDone[0] },
+                  { label: 'Data', note: selectedRowCount > 0 ? `${selectedRowCount} baris${!stepDone[1] ? ' · belum lengkap' : ''}` : 'Belum ada baris', done: stepDone[1] },
+                  { label: 'Lampiran', note: `${formData.documents.length} dokumen`, done: stepDone[2] },
+                  { label: 'Review', note: formStep === 4 ? 'Periksa & kirim' : 'Terakhir', done: false },
+                ].map((item, index) => {
+                  const stepNo = index + 1;
+                  const isCurrent = formStep === stepNo;
+                  const canJump = stepNo < formStep && stepNo >= minStep;
+                  return (
+                  <button key={item.label} type="button" disabled={!canJump} onClick={() => setFormStep(stepNo)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors ${isCurrent ? 'bg-white/15' : ''} ${canJump ? 'hover:bg-white/10 cursor-pointer' : item.done ? '' : 'cursor-default'}`}>
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black ${item.done ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-primary-500 text-white' : 'bg-white/10 text-slate-300'}`}>{item.done ? '✓' : stepNo}</span>
                     <span className="min-w-0">
                       <span className="block text-xs font-black">{item.label}</span>
                       <span className="mt-0.5 block truncate text-[10px] text-slate-400">{item.note}</span>
                     </span>
-                  </div>
-                ))}
+                  </button>
+                  );
+                })}
               </div>
               <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-200">Total pengajuan</p>
                 <p className="mt-2 text-2xl font-black tabular-nums">{formatCurrency(totalNominal)}</p>
                 <p className="mt-1 text-[10px] text-slate-400">{isRfahRequired ? 'RFAH diperlukan untuk pengajuan ini' : 'Belum melewati ambang RFAH'}</p>
+                {selectedRowCount > 0 && (
+                  <ul className="mt-3 space-y-1 border-t border-white/10 pt-3">
+                    {formData.details.slice(0, 3).map((d, i) => (
+                      <li key={`e-${i}`} className="flex items-center justify-between gap-2 text-[10px]">
+                        <span className="truncate font-mono text-slate-300">{upper(d.nopol_kendaraan) || `Baris #${i + 1}`}</span>
+                        <span className="shrink-0 font-bold tabular-nums text-white">{formatCurrency(existingNominal(d))}</span>
+                      </li>
+                    ))}
+                    {selectedCandidates.slice(0, Math.max(0, 3 - formData.details.length)).map((id) => {
+                      const c = candidates.find((c2) => c2.id === id);
+                      if (!c) return null;
+                      return (
+                        <li key={id} className="flex items-center justify-between gap-2 text-[10px]">
+                          <span className="truncate font-mono text-slate-300">{upper(c.nopol_kendaraan)}</span>
+                          <span className="shrink-0 font-bold tabular-nums text-white">{formatCurrency(candidateNominal(id))}</span>
+                        </li>
+                      );
+                    })}
+                    {manualDetails.slice(0, Math.max(0, 3 - formData.details.length - Math.min(selectedCandidates.length, 3))).map((md, i) => (
+                      <li key={`m-${i}`} className="flex items-center justify-between gap-2 text-[10px]">
+                        <span className="truncate font-mono text-slate-300">{upper(md.nopol_kendaraan) || `Manual #${i + 1}`}</span>
+                        <span className="shrink-0 font-bold tabular-nums text-white">{formatCurrency(manualNominal(md))}</span>
+                      </li>
+                    ))}
+                    {selectedRowCount > 3 && <li className="text-[10px] text-slate-400">+{selectedRowCount - 3} baris lainnya</li>}
+                  </ul>
+                )}
               </div>
             </aside>
             <div className="min-w-0">
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+          <div className="space-y-4 sm:space-y-5">
+            <div className="lg:hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="flex items-center gap-1.5">
+                {WIZARD_LABELS.map((label, i) => {
+                  const stepNo = i + 1;
+                  const isCurrent = formStep === stepNo;
+                  return (
+                  <div key={label} className="flex flex-1 items-center gap-1.5 last:flex-none">
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${stepDone[i] ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-primary-500 text-white' : 'bg-slate-200 text-slate-500'}`}>{stepDone[i] ? '✓' : stepNo}</span>
+                    <span className={`text-[10px] font-bold ${stepDone[i] || isCurrent ? 'text-slate-700' : 'text-slate-400'}`}>{label}</span>
+                    {i < 3 && <span className={`h-0.5 flex-1 rounded-full ${stepDone[i] ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
+                  </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4 lg:block">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Alur pengajuan</p>
-                  <p className="mt-1 text-sm font-bold text-slate-800">Data utama <span className="text-slate-300">→</span> Sumber biaya <span className="text-slate-300">→</span> Lampiran</p>
+                  <p className="mt-1 text-sm font-bold text-slate-800">Tipe <span className="text-slate-300">→</span> Data <span className="text-slate-300">→</span> Lampiran <span className="text-slate-300">→</span> Review</p>
                 </div>
                 <span className="rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-[10px] font-black text-primary-700">
-                  {selectedCandidates.length + manualDetails.length} baris
+                  {selectedRowCount} baris
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-slate-200">
                 <div
                   className="h-full rounded-full bg-linear-to-r from-primary-500 to-indigo-500 transition-all"
-                  style={{ width: `${formData.tanggal_pengajuan && selectedCandidates.length + manualDetails.length > 0 ? (formData.documents.length > 0 ? 100 : 66) : formData.tanggal_pengajuan ? 33 : 8}%` }}
+                  style={{ width: `${Math.max(stepProgress, 8)}%` }}
                 />
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-slate-400">
-                <span className={formData.tanggal_pengajuan ? 'text-primary-700' : ''}>1. Informasi</span>
-                <span className={selectedCandidates.length + manualDetails.length > 0 ? 'text-primary-700' : ''}>2. Biaya</span>
-                <span className={formData.documents.length > 0 ? 'text-primary-700' : ''}>3. Lampiran</span>
+              <div className="mt-3 grid grid-cols-4 gap-2 text-center text-[10px] font-bold text-slate-400">
+                <span className={stepDone[0] ? 'text-primary-700' : ''}>1. Tipe</span>
+                <span className={stepDone[1] ? 'text-primary-700' : ''}>2. Data{!stepDone[1] && selectedRowCount > 0 ? ' (belum lengkap)' : ''}</span>
+                <span className={stepDone[2] ? 'text-primary-700' : ''}>3. Lampiran</span>
+                <span className={formStep === 4 ? 'text-primary-700' : ''}>4. Review</span>
               </div>
             </div>
 
+            {formStep === 2 && (
+            <div className="grid gap-3 sm:grid-cols-2">
             {/* Depo Badge */}
             <div className="flex flex-col gap-3 rounded-2xl border border-primary-100 bg-linear-to-r from-primary-50 to-indigo-50 p-4 sm:flex-row sm:items-center">
               <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
                 <svg className="w-4 h-4 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-primary-600 uppercase tracking-wider">Depo Aktif</p>
-                <p className="text-sm font-bold text-gray-900 truncate">{user?.kode_depo} — {user?.nama_depo}</p>
+                <p className="text-[10px] font-bold text-primary-600 uppercase tracking-wider">Depo Pengajuan</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{targetDepoLabel}</p>
+                {(isCandidateDepoUniform || isDepoInherited) && <p className="text-[11px] text-primary-600">Mengikuti depo receiving</p>}
               </div>
             </div>
 
@@ -853,35 +1619,124 @@ export default function BiayaRetribusiPage() {
               </label>
               <input type="date" value={formData.tanggal_pengajuan} onChange={(e) => setFormData({ ...formData, tanggal_pengajuan: e.target.value })} className="input-field py-3 text-sm" />
             </div>
+            </div>
+            )}
+
+            {!editingId && formStep === 1 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-bold text-gray-700">Pilih tipe pengajuan dulu <span className="text-red-400">*</span></p>
+                <p className="mt-1 text-[11px] text-slate-400">Dua cara isi biaya — pilih yang sesuai, form berikutnya menyesuaikan otomatis.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <button type="button" aria-pressed={sourceType === 'receiving'} onClick={() => switchSourceType('receiving')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'receiving' ? 'border-primary-600 bg-primary-50 shadow-md' : 'border-primary-200 bg-primary-50/50 hover:border-primary-400'}`}>
+                    <span className="inline-flex rounded-full bg-primary-600 px-2 py-0.5 text-[10px] font-black text-white">DIREKOMENDASIKAN</span>
+                    <span className="mt-2 block text-sm font-black text-slate-900">Otomatis dari Receiving</span>
+                    <span className="mt-1 block text-[11px] leading-5 text-slate-500">Qty zak/crt & tanggal terisi sendiri dari receiving COMPLETED. Nominal mengikuti tarif koli depo.</span>
+                  </button>
+                  <button type="button" aria-pressed={sourceType === 'manual'} onClick={() => switchSourceType('manual')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'manual' ? 'border-slate-700 bg-slate-50 shadow-md' : 'border-slate-200 bg-white hover:border-slate-400'}`}>
+                    <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-600">MANUAL</span>
+                    <span className="mt-2 block text-sm font-black text-slate-900">Borongan / Manual</span>
+                    <span className="mt-1 block text-[11px] leading-5 text-slate-500">Ketik nopol, qty, dan nominal sendiri. Cocok untuk biaya satuan borongan.</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!editingId && sourceType && formStep === 2 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-gray-700">{sourceType === 'receiving' ? 'Otomatis dari Receiving' : 'Borongan / Manual'}</p>
+                  <button type="button" onClick={() => switchSourceType(null)} className="shrink-0 text-[11px] font-bold text-primary-600 hover:text-primary-700 hover:underline">‹ Ganti tipe</button>
+                </div>
+                {/* Panel tarif hanya relevan untuk koli (receiving dari depo mode koli).
+                    Tidak ditampilkan untuk Borongan/Manual — nominal diisi manual. */}
+                {sourceType === 'receiving' && isKoliMode && (
+                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                  <button type="button" onClick={() => setTariffOpen((v) => !v)} aria-expanded={tariffOpen} className="flex w-full flex-wrap items-center gap-2 text-left">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tarif berlaku</span>
+                    <span className="text-xs font-bold text-slate-800">{targetDepoLabel}</span>
+                    {isKoliMode ? (
+                      <span className="text-xs font-semibold text-indigo-700">1 zak Rp {Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · 1 crt Rp {Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')}</span>
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-500">Borongan — nominal diisi manual</span>
+                    )}
+                    <svg className={`ml-auto w-4 h-4 text-slate-400 transition-transform ${tariffOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                  </button>
+                  {tariffOpen && (
+                    <div className="mt-2 border-t border-slate-200 pt-2">
+                      <p className="text-[11px] text-slate-500">
+                        {isKoliMode
+                          ? 'Nominal tiap baris = qty zak × tarif zak + qty crt × tarif crt, dihitung otomatis.'
+                          : 'Depo ini memakai borongan: qty hanya info, nominal diketik manual per baris.'}
+                      </p>
+                      {hasPermission('retribusi_rates.manage') && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <select value={rateDraft.mode} onChange={(e) => setRateDraft((p) => ({ ...p, mode: e.target.value as 'borongan' | 'koli' }))} className="select-field-sm text-xs" aria-label="Mode hitung depo">
+                            <option value="borongan">Borongan</option>
+                            <option value="koli">Koli</option>
+                          </select>
+                          <label className="flex items-center gap-1 text-[11px] text-slate-500">Rp/zak
+                            <input type="number" min={0} value={rateDraft.rate_zak || ''} disabled={rateDraft.mode !== 'koli'} onChange={(e) => setRateDraft((p) => ({ ...p, rate_zak: Number(e.target.value) }))} placeholder="0" className="input-field w-24 py-1.5 text-right text-xs disabled:bg-slate-100" aria-label="Tarif per zak" />
+                          </label>
+                          <label className="flex items-center gap-1 text-[11px] text-slate-500">Rp/crt
+                            <input type="number" min={0} value={rateDraft.rate_crt || ''} disabled={rateDraft.mode !== 'koli'} onChange={(e) => setRateDraft((p) => ({ ...p, rate_crt: Number(e.target.value) }))} placeholder="0" className="input-field w-24 py-1.5 text-right text-xs disabled:bg-slate-100" aria-label="Tarif per crt" />
+                          </label>
+                          <button type="button" onClick={saveRates} disabled={rateSaving || !effectiveKode} className="min-h-[36px] rounded-lg bg-slate-900 px-3 text-[11px] font-bold text-white hover:bg-slate-800 disabled:opacity-50">
+                            {rateSaving ? 'Menyimpan...' : 'Simpan tarif'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                )}
+              </div>
+            )}
 
             {/* Pilih Kandidat */}
-            {!editingId && (
+            {!editingId && sourceType === 'receiving' && formStep === 2 && (
               <div>
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
-                  <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
-                  Pilih Kandidat THL
+                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                    Pilih dari Penerimaan (Receiving)
+                  </span>
                   {selectedCandidates.length > 0 && (
                     <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">{selectedCandidates.length} dipilih</span>
                   )}
-                </label>
-
-                <button onClick={() => fetchCandidates()} disabled={busy} className="w-full mb-3 rounded-xl bg-primary-600 text-white py-2.5 text-sm font-bold hover:bg-primary-700 transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50">
+                  {isKoliMode ? (
+                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">Mode Koli: 1 zak Rp {Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · 1 crt Rp {Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')}</span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">Mode Borongan: nominal manual</span>
+                  )}
+                </div>
+                <button onClick={() => fetchCandidates()} disabled={busy} className={`w-full mb-3 rounded-xl py-2.5 text-sm font-bold transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50 ${candidates.length > 0 ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-primary-600 text-white hover:bg-primary-700'}`}>
                   {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
-                  {busy ? 'Mencari...' : 'Muat Kandidat dari Biaya THL'}
+                  {busy ? 'Mencari...' : candidates.length > 0 ? 'Muat ulang receiving' : 'Muat Receiving Selesai'}
                 </button>
-
+                <p className="mb-3 text-[11px] text-slate-400">Hanya receiving COMPLETED yang sudah divalidasi checker dan belum diklaim. Qty zak/crt dan tanggal pengajuan terisi otomatis dari receiving — tanpa input ulang.</p>
+                {candidates.length === 0 && !busy && (
+                  <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center">
+                    <p className="text-xs font-semibold text-gray-500">Belum ada data receiving</p>
+                    <p className="mt-1 text-[11px] text-gray-400">Klik “Muat receiving” untuk menampilkan yang siap diklaim</p>
+                  </div>
+                )}
                 {candidates.length > 0 && (
-                  <div className="max-h-72 overflow-auto rounded-xl border border-gray-200 shadow-sm">
-                    <table className="min-w-[720px] w-full text-xs">
+                  <>
+                  <div className="max-h-72 overflow-auto rounded-xl border border-gray-200 shadow-sm hidden sm:block">
+                    <table className="min-w-[680px] w-full text-xs">
                       <thead className="sticky top-0 bg-gray-50">
                         <tr>
                           <th className="table-header text-center w-10">
                             <input type="checkbox" checked={selectedCandidates.length === candidates.length} onChange={() => setSelectedCandidates(selectedCandidates.length === candidates.length ? [] : candidates.map(c => c.id))} className="rounded border-gray-300 text-primary-600 w-4 h-4" />
                           </th>
-                          <th className="table-header">Nama THL</th>
+                          <th className="table-header">Tgl Selesai</th>
                           <th className="table-header">Nopol</th>
                           <th className="table-header">Type</th>
-                          <th className="table-header">No. SJ</th>
+                          <th className="table-header">PO</th>
+                          <th className="table-header">Driver</th>
+                          <th className="table-header">Checker</th>
+                          <th className="table-header text-right">Qty Zak</th>
+                          <th className="table-header text-right">Qty Crt</th>
                           <th className="table-header text-right">Nominal</th>
                         </tr>
                       </thead>
@@ -889,21 +1744,56 @@ export default function BiayaRetribusiPage() {
                         {candidates.map((c) => (
                           <tr key={c.id} className={`hover:bg-gray-50/50 cursor-pointer transition-colors ${selectedCandidates.includes(c.id) ? 'bg-primary-50/50' : ''}`} onClick={() => toggleCandidate(c.id)}>
                             <td className="table-cell text-center"><input type="checkbox" checked={selectedCandidates.includes(c.id)} onChange={() => toggleCandidate(c.id)} className="rounded border-gray-300 text-primary-600 w-4 h-4" onClick={(e) => e.stopPropagation()} /></td>
-                            <td className="table-cell font-medium">{c.nama_thl}</td>
-                            <td className="table-cell font-mono">{c.nopol_kendaraan}</td>
-                            <td className="table-cell">{c.type_kendaraan}</td>
-                            <td className="table-cell font-mono text-gray-500">{c.no_surat_jalan || '-'}</td>
-                            <td className="table-cell text-right font-semibold">{formatCurrency(Number(c.nominal_biaya))}</td>
+                            <td className="table-cell whitespace-nowrap">{formatDate(c.tanggal_selesai)}</td>
+                            <td className="table-cell font-mono font-medium">{upper(c.nopol_kendaraan)}</td>
+                            <td className="table-cell">{upper(c.type_kendaraan)}</td>
+                            <td className="table-cell font-mono text-gray-500">{c.po_transporter}</td>
+                            <td className="table-cell">{c.driver_name}</td>
+                            <td className="table-cell text-gray-500">{c.checker_name}</td>
+                            <td className="table-cell text-right tabular-nums" title="Otomatis dari receiving">{Number(c.qty_zak || 0).toLocaleString('id-ID')} <span className="ml-1 rounded bg-slate-100 px-1 text-[9px] font-bold text-slate-400">AUTO</span></td>
+                            <td className="table-cell text-right tabular-nums" title="Otomatis dari receiving">{Number(c.qty_crt || 0).toLocaleString('id-ID')} <span className="ml-1 rounded bg-slate-100 px-1 text-[9px] font-bold text-slate-400">AUTO</span></td>
+                            <td className="table-cell text-right" onClick={(e) => e.stopPropagation()}>
+                              {isKoliMode ? (
+                                <span className="text-xs font-bold text-slate-800 tabular-nums" title={`${Number(c.qty_zak || 0).toLocaleString('id-ID')} zak × Rp ${Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} + ${Number(c.qty_crt || 0).toLocaleString('id-ID')} crt × Rp ${Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')}`}>{formatCurrency(candidateNominal(c.id))}</span>
+                              ) : (
+                                <input type="number" min={0} value={candidateNominals[c.id] ?? ''} onChange={(e) => setCandidateNominals((prev) => ({ ...prev, [c.id]: Number(e.target.value) }))} placeholder="Rp" className={`input-field w-28 py-1.5 text-right text-xs ${selectedCandidates.includes(c.id) && candidateNominal(c.id) <= 0 ? 'border-red-300 ring-1 ring-red-200' : ''}`} aria-label={`Nominal ${c.nopol_kendaraan}`} />
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                  <div className="sm:hidden space-y-2">
+                    {candidates.map((c) => {
+                      const checked = selectedCandidates.includes(c.id);
+                      return (
+                        <div key={c.id} onClick={() => toggleCandidate(c.id)} className={`rounded-xl border p-3 transition-colors ${checked ? 'border-primary-300 bg-primary-50/50' : 'border-gray-200 bg-white'}`}>
+                          <div className="flex items-center gap-2">
+                            <input type="checkbox" checked={checked} onChange={() => toggleCandidate(c.id)} onClick={(e) => e.stopPropagation()} className="rounded border-gray-300 text-primary-600 w-4 h-4 shrink-0" aria-label={`Pilih ${c.nopol_kendaraan}`} />
+                            <p className="font-mono font-bold text-sm text-slate-800">{upper(c.nopol_kendaraan)}</p>
+                            <span className="ml-auto text-[11px] text-slate-500">{formatDate(c.tanggal_selesai)}</span>
+                          </div>
+                          <p className="mt-1 text-[11px] text-slate-500">{upper(c.type_kendaraan)} · {c.po_transporter} · {c.driver_name}</p>
+                          <p className="mt-1 text-[11px] text-slate-500 tabular-nums">Otomatis: {Number(c.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(c.qty_crt || 0).toLocaleString('id-ID')} crt</p>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            {isKoliMode ? (
+                              <p className="mt-2 text-sm font-black text-slate-900 tabular-nums">{formatCurrency(candidateNominal(c.id))}</p>
+                            ) : (
+                              <input type="number" min={0} value={candidateNominals[c.id] ?? ''} onChange={(e) => setCandidateNominals((prev) => ({ ...prev, [c.id]: Number(e.target.value) }))} placeholder="Nominal Rp" className={`mt-2 input-field w-full py-2 text-sm text-right font-bold ${checked && candidateNominal(c.id) <= 0 ? 'border-red-300 ring-1 ring-red-200' : ''}`} aria-label={`Nominal ${c.nopol_kendaraan}`} />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  </>
                 )}
               </div>
             )}
 
-            {/* Baris Manual */}
+            {/* Baris Manual */}            {/* Baris Manual */}
+            {(editingId || sourceType === 'manual') && formStep === 2 && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
@@ -932,7 +1822,7 @@ export default function BiayaRetribusiPage() {
                           {i + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-gray-800 block truncate">{md.nopol_kendaraan || `Manual #${i + 1}`}</span>
+                          <span className="text-sm font-bold text-gray-800 block truncate">{upper(md.nopol_kendaraan) || `Manual #${i + 1}`}</span>
                           <span className="text-[11px] text-gray-400">{md.type_kendaraan || 'Pilih type'} · {formatCurrency(Number(md.nominal_biaya) || 0)}</span>
                         </div>
                         <svg className="w-4 h-4 text-gray-300 group-open:rotate-180 transition-transform shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
@@ -942,14 +1832,14 @@ export default function BiayaRetribusiPage() {
                       </button>
 
                       <div className="px-3 pb-3 pt-1 border-t border-gray-100">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          <div>
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               Plat Kendaraan <span className="text-red-400">*</span>
                             </label>
-                            <input type="text" value={md.nopol_kendaraan} onChange={(e) => updateManualDetail(i, 'nopol_kendaraan', e.target.value)} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
+                            <input type="text" value={md.nopol_kendaraan} onChange={(e) => updateManualDetail(i, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
                           </div>
-                          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                          <div>
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               Type Kendaraan <span className="text-red-400">*</span>
                             </label>
@@ -966,6 +1856,18 @@ export default function BiayaRetribusiPage() {
                           </div>
                           <div>
                             <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                              Qty Zak
+                            </label>
+                            <input type="number" min="0" value={md.qty_zak || ''} onChange={(e) => updateManualDetail(i, 'qty_zak', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
+                          </div>
+                          <div>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                              Qty Crt
+                            </label>
+                            <input type="number" min="0" value={md.qty_crt || ''} onChange={(e) => updateManualDetail(i, 'qty_crt', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
+                          </div>
+                          <div>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                               Nominal (Rp) <span className="text-red-400">*</span>
                             </label>
                             <input type="number" min="0" value={md.nominal_biaya || ''} onChange={(e) => updateManualDetail(i, 'nominal_biaya', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm font-bold" />
@@ -977,8 +1879,10 @@ export default function BiayaRetribusiPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Dokumen Lampiran */}
+            {formStep === 3 && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
@@ -1032,14 +1936,13 @@ export default function BiayaRetribusiPage() {
                             </label>
                             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only" id={`doc-file-${i}`} onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (file) {
-                                updateDocument(i, 'file', file);
-                                updateDocument(i, 'file_name', file.name);
-                              }
+                              if (file) void handleDocFile(i, file);
+                              e.target.value = '';
                             }} />
                             <label htmlFor={`doc-file-${i}`} className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-primary-50/50 cursor-pointer transition-colors">
                               <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A4 4 0 1118.8 7.372l-10.94 10.938a2.5 2.5 0 01-3.536-3.536l10.94-10.938a1 1 0 011.414 1.414l-10.94 10.938a.5.5 0 01-.707-.707l7.693-7.693a1 1 0 011.414 1.414z" /></svg>
-                              {doc.file_name || 'Pilih file (PDF, JPG, PNG, WEBP)'}
+                              <span className="min-w-0 flex-1 truncate">{doc.file_name || 'Pilih file (PDF, JPG, PNG, WEBP — maks 20 MB)'}</span>
+                              {doc.file && <span className="shrink-0 text-[11px] font-bold text-slate-500 tabular-nums">{formatBytes(doc.file.size)}</span>}
                             </label>
                           </div>
                         </div>
@@ -1049,10 +1952,70 @@ export default function BiayaRetribusiPage() {
                 </div>
               )}
             </div>
+            )}
+
+            {/* Review ringkasan */}
+            {formStep === 4 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-bold text-gray-700">Periksa kembali sebelum dikirim</p>
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-slate-500">Depo</dt>
+                    <dd className="font-bold text-slate-800">{targetDepoLabel}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-slate-500">Tanggal</dt>
+                    <dd className="font-bold text-slate-800">{formatDate(formData.tanggal_pengajuan)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-slate-500">Mode hitung</dt>
+                    <dd className="font-bold text-slate-800">{isKoliMode ? `Koli (zak Rp ${Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · crt Rp ${Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')})` : 'Borongan (manual)'}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-slate-500">Dokumen</dt>
+                    <dd className="font-bold text-slate-800">{formData.documents.length} lampiran</dd>
+                  </div>
+                </dl>
+                <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100">
+                  {selectedCandidates.map((id) => {
+                    const c = candidates.find((c2) => c2.id === id);
+                    if (!c) return null;
+                    return (
+                      <div key={id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-mono font-bold text-slate-800">{upper(c.nopol_kendaraan)}</p>
+                          <p className="text-[11px] text-slate-500 tabular-nums">{Number(c.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(c.qty_crt || 0).toLocaleString('id-ID')} crt · {c.po_transporter}</p>
+                        </div>
+                        <p className="shrink-0 font-bold tabular-nums text-slate-800">{formatCurrency(candidateNominal(id))}</p>
+                      </div>
+                    );
+                  })}
+                  {formData.details.map((d, i) => (
+                    <div key={`e-${i}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-mono font-bold text-slate-800">{upper(d.nopol_kendaraan)}</p>
+                        <p className="text-[11px] text-slate-500 tabular-nums">{Number(d.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(d.qty_crt || 0).toLocaleString('id-ID')} crt</p>
+                      </div>
+                      <p className="shrink-0 font-bold tabular-nums text-slate-800">{formatCurrency(existingNominal(d))}</p>
+                    </div>
+                  ))}
+                  {manualDetails.map((md, i) => (
+                    <div key={`m-${i}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-mono font-bold text-slate-800">{upper(md.nopol_kendaraan) || `Manual #${i + 1}`}</p>
+                        <p className="text-[11px] text-slate-500 tabular-nums">{Number(md.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(md.qty_crt || 0).toLocaleString('id-ID')} crt</p>
+                      </div>
+                      <p className="shrink-0 font-bold tabular-nums text-slate-800">{formatCurrency(manualNominal(md))}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Total */}
+            {(formStep === 2 || formStep === 4) && (
             <div className={`rounded-2xl border-2 p-4 transition-all sm:p-5 ${isRfahRequired ? 'border-amber-300 bg-linear-to-r from-amber-50 via-orange-50 to-amber-50 shadow-amber-100/50 shadow-lg' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isRfahRequired ? 'bg-amber-100 text-amber-600' : 'bg-gray-200 text-gray-500'}`}>
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659 1.171-1.671a4.5 4.5 0 015.07-1.651 3 3 0 011.482 5.369L12 12" /></svg>
@@ -1060,7 +2023,7 @@ export default function BiayaRetribusiPage() {
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Pengajuan</p>
                     <p className="text-xl font-black text-gray-900 tabular-nums">{formatCurrency(totalNominal)}</p>
-                    <p className="text-[11px] text-gray-400">{selectedCandidates.length + manualDetails.length} kandidat terpilih</p>
+                    <p className="text-[11px] text-gray-400">{selectedRowCount} baris dipilih{blockerReasons.length > 0 && !busy ? ` · ${blockerReasons[0]}` : ''}</p>
                   </div>
                 </div>
                 {isRfahRequired && (
@@ -1075,6 +2038,7 @@ export default function BiayaRetribusiPage() {
                 )}
               </div>
             </div>
+            )}
           </div>
             </div>
           </div>
@@ -1083,11 +2047,15 @@ export default function BiayaRetribusiPage() {
         {/* View Modal */}
         <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Detail Biaya Retribusi" subtitle="Informasi lengkap pengajuan" size="lg" footer={
           <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
-            {viewItem?.status === 'draft' || viewItem?.status === 'rejected' || viewItem?.status === 'revisi' ? (viewItem?.created_by === user?.id && hasPermission('approval.submit') ? <button onClick={() => void approvalAction('submit')} className="btn-secondary w-full sm:w-auto">Kirim</button> : null) : null}
-            {viewItem?.status === 'pending' ? <>{hasPermission('approval.check') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}{hasPermission('approval.check') ? <button onClick={() => void approvalAction('check')} className="btn-secondary w-full sm:w-auto">Periksa</button> : null}</> : null}
-            {viewItem?.status === 'checked' && viewItem ? <>{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600">Perlu Revisi</button> : null}{hasPermission('approval.approve') ? <button onClick={() => openDecision('approve', viewItem)} className="btn-primary w-full sm:w-auto">Setujui</button> : null}</> : null}
-            {viewItem?.status === 'rlh_approved' ? <>{hasPermission('approval.rfah') ? <button onClick={() => void approvalAction('rfahApprove')} className="btn-primary w-full sm:w-auto">Setujui RFAH</button> : null}{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}</> : null}
-            {viewItem?.status === 'approved' ? <button onClick={() => downloadPdf(viewItem)} className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
+            {viewItem?.status === 'draft' || viewItem?.status === 'rejected' || viewItem?.status === 'revisi' ? (viewItem?.created_by === user?.id && hasPermission('approval.submit') ? <button onClick={() => void approvalAction('submit')} disabled={viewSubmitBlockers.length > 0} title={viewSubmitBlockers.length > 0 ? `Lengkapi dulu: ${viewSubmitBlockers.slice(0, 2).join(' · ')}` : 'Kirim ke antrean pemeriksaan'} className="btn-secondary w-full sm:w-auto disabled:cursor-not-allowed disabled:opacity-50">Kirim</button> : null) : null}
+            {viewItem?.status === 'pending' ? <>{hasRole('bac', 'admin_master') && hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}{hasRole('bac', 'admin_master') && hasPermission('approval.check') ? <button onClick={() => void approvalAction('check')} className="btn-secondary w-full sm:w-auto">Periksa</button> : null}</> : null}
+            {viewItem?.status === 'checked' && viewItem ? <>{hasPermission('approval.reject') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('revise', viewItem)} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600">Perlu Revisi</button> : null}{hasPermission('approval.approve') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('approve', viewItem)} className="btn-primary w-full sm:w-auto">Setujui</button> : null}</> : null}
+            {viewItem?.status === 'rlh_approved' ? <>{hasPermission('approval.rfah') && hasRole('rfah', 'admin_master') ? <button onClick={() => void approvalAction('rfahApprove')} className="btn-primary w-full sm:w-auto">Setujui</button> : null}{hasPermission('approval.reject') && (hasRole('rfah', 'admin_master')) ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') && (hasRole('rfah', 'admin_master')) ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}</> : null}
+            {viewItem && <button onClick={() => { void (async () => { try { const fresh = await loadLatestPdfItem(viewItem); previewRetribusiPdf({ tanggal_pengajuan: fresh.tanggal_pengajuan, kode_depo: fresh.kode_depo, nama_depo: fresh.nama_depo, nominal_biaya: Number(fresh.nominal_biaya), is_rfah_required: fresh.is_rfah_required, rfah_name: fresh.rfah_name, status: fresh.status, submitted_at: fresh.submitted_at, checked_at: fresh.checked_at, approved_at: fresh.approved_at, rejected_at: fresh.rejected_at, rejection_reason: fresh.rejection_reason, revised_at: fresh.revised_at, revisi_reason: fresh.revisi_reason, submittedBy: fresh.submittedBy, checkedBy: fresh.checkedBy, approvedBy: fresh.approvedBy, rejectedBy: fresh.rejectedBy, revisedBy: fresh.revisedBy, details: (fresh.details || []).map((d) => ({ nopol_kendaraan: d.nopol_kendaraan, type_kendaraan: d.type_kendaraan, no_surat_jalan: d.no_surat_jalan, nominal_biaya: Number(d.nominal_biaya), biaya_thl_detail: d.biaya_thl_detail ?? null })), documents: (fresh.documents || []).map((doc) => ({ id: doc.id, document_type: doc.document_type, file_name: doc.file_name, file_path: doc.file_path, file_size: doc.file_size })) }, { onWarning: warnLampiran }); } catch (e: unknown) { console.error('[Preview PDF]', e); notifyGlobal(e instanceof Error ? `Gagal membuka preview PDF: ${e.message}` : 'Gagal membuka preview PDF', 'error'); } })(); }} className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              Preview PDF
+            </button>}
+            {viewItem?.status === 'approved' && viewItem && (viewItem.created_by === user?.id || hasRole('blc', 'admin_master')) ? <button onClick={() => downloadPdf(viewItem)} className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
               Cetak PDF
             </button> : null}
@@ -1111,7 +2079,7 @@ export default function BiayaRetribusiPage() {
                         <span className="text-gray-600">•</span>
                         <span>Total <strong className="font-semibold text-slate-200 tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</strong></span>
                         <span className="text-gray-600">•</span>
-                        <span>{viewItem.details?.length || 0} detail</span>
+{(viewItem.details?.length || 0)} baris
                       </div>
                     </div>
                   </div>
@@ -1126,35 +2094,33 @@ export default function BiayaRetribusiPage() {
                 <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
                   <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
-                    Tanggal
+                    Tanggal Pengajuan
                   </span>
                   <p className="text-sm text-slate-800 mt-1.5 font-semibold">{formatDate(viewItem.tanggal_pengajuan)}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
                   <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-                    Depo
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    No Surat Jalan
                   </span>
-                  <p className="text-sm text-slate-800 mt-1.5 font-semibold break-words">{viewItem.nama_depo}</p>
+                  <div className="mt-1.5 space-y-0.5 text-sm font-semibold font-mono text-slate-800">
+                    {getSJList(viewItem).length > 0 ? getSJList(viewItem).map((sj) => (
+                      <p key={sj} className="break-all">{sj}</p>
+                    )) : <p>-</p>}
+                  </div>
                 </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5 sm:col-span-2">
                   <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                     Total Biaya
                   </span>
                   <p className="text-sm text-slate-800 mt-1.5 font-black tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 8v4m0 4h.01" /></svg>
-                    RFAH
-                  </span>
-                  <p className="text-sm text-slate-800 mt-1.5 font-semibold">{viewItem.is_rfah_required ? viewItem.rfah_name : '-'}</p>
-                </div>
               </div>
 
               {/* Alur persetujuan */}
               <ApprovalStepper item={viewItem} />
+              <ApprovalHistoryList histories={viewItem.approvalHistories} />
 
               {/* Detail table */}
               {viewItem.details.length > 0 && (
@@ -1171,10 +2137,10 @@ export default function BiayaRetribusiPage() {
                       <thead>
                         <tr className="bg-slate-50">
                           <th className="table-header text-center">#</th>
-                          <th className="table-header">Nama THL</th>
                           <th className="table-header">Nopol</th>
                           <th className="table-header">Type</th>
                           <th className="table-header">No. SJ</th>
+                          <th className="table-header text-right">Qty</th>
                           <th className="table-header text-right">Nominal</th>
                         </tr>
                       </thead>
@@ -1182,10 +2148,10 @@ export default function BiayaRetribusiPage() {
                         {viewItem.details.map((d, i) => (
                           <tr key={i} className="hover:bg-slate-50/60 transition-colors">
                             <td className="table-cell text-center font-bold text-slate-400">{i + 1}</td>
-                            <td className="table-cell font-semibold text-slate-800">{d.biaya_thl_detail?.nama_thl || d.nopol_kendaraan || '-'}</td>
-                            <td className="table-cell font-mono">{d.nopol_kendaraan || '-'}</td>
-                            <td className="table-cell">{d.type_kendaraan || '-'}</td>
+                            <td className="table-cell font-mono font-semibold text-slate-800">{upper(d.nopol_kendaraan) || '-'}</td>
+                            <td className="table-cell">{upper(d.type_kendaraan) || '-'}</td>
                             <td className="table-cell font-mono text-slate-600">{d.no_surat_jalan || '-'}</td>
+                            <td className="table-cell text-right tabular-nums text-slate-600">{`${Number(d.qty_zak || 0).toLocaleString('id-ID')} zak · ${Number(d.qty_crt || 0).toLocaleString('id-ID')} crt`}</td>
                             <td className="table-cell text-right font-bold text-slate-800 tabular-nums">{formatCurrency(Number(d.nominal_biaya))}</td>
                           </tr>
                         ))}
@@ -1203,17 +2169,32 @@ export default function BiayaRetribusiPage() {
                     <h3 className="text-xs font-black uppercase tracking-[0.14em] text-gray-800">Lampiran Dokumen</h3>
                   </div>
                   <div className="space-y-2">
-                    {(viewItem.documents as { document_type: string; file_name: string }[]).map((doc, i) => (
+                    {(viewItem.documents as { id?: number; document_type: string; file_name: string; file_path?: string }[]).map((doc, i) => {
+                      const url = docUrl(doc);
+                      return (
                       <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
                         <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
                           <svg className="w-4 h-4 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-xs font-semibold text-gray-700">{doc.document_type.toUpperCase()}</p>
-                          <p className="text-[11px] text-gray-500 truncate">{doc.file_name}</p>
+                          <p className="text-[11px] text-gray-500 truncate" title={doc.file_name}>{doc.file_name}</p>
                         </div>
+                        {url ? (
+                          <div className="flex shrink-0 items-center gap-1">
+                            <a href={url} target="_blank" rel="noopener noreferrer" title="Lihat" aria-label={`Lihat ${doc.file_name}`} className="min-h-[36px] min-w-[36px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all inline-flex items-center justify-center">
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            </a>
+                            <a href={url} download={doc.file_name} title="Unduh" aria-label={`Unduh ${doc.file_name}`} className="min-h-[36px] min-w-[36px] p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all inline-flex items-center justify-center">
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="shrink-0 text-[10px] font-semibold text-slate-400">Tanpa file</span>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1231,7 +2212,7 @@ export default function BiayaRetribusiPage() {
         <Modal
           open={!!decision}
           onClose={() => { if (!decisionBusy) setDecision(null); }}
-          title={decision?.action === 'reject' ? 'Tolak Pengajuan' : decision?.action === 'revise' ? 'Perlu Revisi' : 'Setujui Pengajuan'}
+          title={decision?.action === 'reject' ? 'Tolak Pengajuan' : decision?.action === 'revise' ? 'Perlu Revisi' : decision?.item.is_rfah_required ? 'Setujui RLH' : 'Setujui Pengajuan'}
           subtitle={decision ? 'Konfirmasi keputusan approval' : undefined}
           size="md"
           footer={
@@ -1325,6 +2306,36 @@ export default function BiayaRetribusiPage() {
               )}
             </div>
           )}
+        </Modal>
+
+        {/* Import Modal */}
+        <Modal
+          open={showImportModal}
+          onClose={() => { setShowImportModal(false); setImportFile(null); }}
+          title="Import Biaya Retribusi"
+          subtitle="Upload file Excel/CSV untuk mengimpor data Biaya Retribusi"
+          size="md"
+          footer={
+            <>
+              <button onClick={() => { setShowImportModal(false); setImportFile(null); }} className="btn-secondary">Batal</button>
+              <button onClick={handleImport} disabled={importing || !importFile} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                {importing ? 'Mengimpor...' : 'Import'}
+              </button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-500 mb-1">Pilih File</label>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+              />
+              <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: nopol_kendaraan, nominal_biaya</p>
+            </div>
+          </div>
         </Modal>
       </div>
     </DashboardLayout>

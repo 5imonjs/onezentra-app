@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Mail\BiayaApprovalNotification;
 use App\Models\ApprovalAssignment;
+use App\Models\ApprovalHistory;
+use App\Models\BiayaRetribusi;
 use App\Models\BiayaThl;
+use App\Models\RetribusiRate;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -26,6 +29,11 @@ class BiayaApprovalService
      */
     private function assertSubmittable(Model $biaya): void
     {
+        if ($biaya instanceof BiayaRetribusi) {
+            $this->assertRetribusiSubmittable($biaya);
+
+            return;
+        }
         if (! $biaya instanceof BiayaThl) {
             return;
         }
@@ -102,6 +110,68 @@ class BiayaApprovalService
         }
     }
 
+    /**
+     * Kelengkapan pengajuan retribusi sebelum dikirim: tanggal, minimal
+     * 1 baris, tiap baris berplat + bertype + bernominal, dan qty > 0
+     * untuk depo mode koli.
+     */
+    private function assertRetribusiSubmittable(BiayaRetribusi $biaya): void
+    {
+        $errors = [];
+        if (blank($biaya->tanggal_pengajuan)) {
+            $errors['tanggal_pengajuan'] = ['Tanggal pengajuan wajib diisi sebelum dikirim.'];
+        }
+
+        $details = $biaya->details()->get();
+        if ($details->isEmpty()) {
+            $errors['details'] = ['Minimal 1 baris biaya sebelum dikirim.'];
+        }
+        if ($biaya->documents()->count() < 1) {
+            $errors['documents'] = ['Minimal 1 dokumen lampiran (PDF/foto) sebelum dikirim.'];
+        }
+
+        $calc = RetribusiRate::resolveFor($biaya->kode_depo);
+        foreach ($details as $index => $detail) {
+            $prefix = "details.{$index}";
+            foreach ([
+                'nopol_kendaraan' => 'Plat Kendaraan',
+                'type_kendaraan' => 'Type Kendaraan',
+            ] as $field => $label) {
+                if (blank($detail->{$field})) {
+                    $errors["{$prefix}.{$field}"] = ["{$label} wajib diisi sebelum dikirim."];
+                }
+            }
+            if ($calc['mode'] === 'koli'
+                && (float) ($detail->qty_zak ?? 0) + (float) ($detail->qty_crt ?? 0) <= 0) {
+                $errors["{$prefix}.qty"] = ['Qty zak/crt wajib lebih dari 0 untuk depo mode koli sebelum dikirim.'];
+            }
+            if ($detail->nominal_biaya === null || (float) $detail->nominal_biaya < 1) {
+                $errors["{$prefix}.nominal_biaya"] = ['Nominal Biaya minimal Rp 1 sebelum dikirim.'];
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * Catat jejak audit append-only setiap transisi approval agar catatan
+     * revisi/ditolak dan riwayat aksi tak hilang ditimpa siklus berikutnya.
+     */
+    private function recordHistory(Model $biaya, ?string $from, string $action, ?string $reason, User $actor): void
+    {
+        ApprovalHistory::create([
+            'subject_type' => $biaya::class,
+            'subject_id' => $biaya->getKey(),
+            'from_status' => $from,
+            'to_status' => $biaya->status,
+            'action' => $action,
+            'reason' => $reason,
+            'actor_id' => $actor->id,
+        ]);
+    }
+
     private function notify(Model $biaya, string $trigger): void
     {
         $fresh = $biaya->refresh()->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'resubmittedBy');
@@ -118,6 +188,7 @@ class BiayaApprovalService
         $this->ensureCreator($biaya, $actor);
         $this->ensureStatus($biaya, ['draft', 'rejected', 'revisi']);
         $this->assertSubmittable($biaya);
+        $fromStatus = $biaya->status;
 
         $isRevisionResubmission = $biaya->status === 'revisi';
         $isThl = $biaya instanceof BiayaThl;
@@ -161,8 +232,10 @@ class BiayaApprovalService
         ]);
 
         $this->notify($biaya, 'submitted');
+        $refreshed = $biaya->refresh();
+        $this->recordHistory($refreshed, $fromStatus, 'submit', null, $actor);
 
-        return $biaya->refresh();
+        return $refreshed;
     }
 
     public function check(Model $biaya, User $actor): Model
@@ -173,8 +246,10 @@ class BiayaApprovalService
         $biaya->update(['status' => 'checked', 'checked_by' => $actor->id, 'checked_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
 
         $this->notify($biaya, 'checked');
+        $refreshed = $biaya->refresh();
+        $this->recordHistory($refreshed, 'pending', 'check', null, $actor);
 
-        return $biaya->refresh();
+        return $refreshed;
     }
 
     public function approve(Model $biaya, User $actor): Model
@@ -191,15 +266,19 @@ class BiayaApprovalService
                 'resubmitted_at' => null,
             ]);
             $this->notify($biaya, 'rlh_approved');
+            $refreshed = $biaya->refresh();
+            $this->recordHistory($refreshed, 'checked', 'approve', null, $actor);
 
-            return $biaya->refresh();
+            return $refreshed;
         }
 
         $biaya->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
 
         $this->notify($biaya, 'approved');
+        $refreshed = $biaya->refresh();
+        $this->recordHistory($refreshed, 'checked', 'approve', null, $actor);
 
-        return $biaya->refresh();
+        return $refreshed;
     }
 
     public function rfahApprove(Model $biaya, User $actor): Model
@@ -210,8 +289,10 @@ class BiayaApprovalService
         $biaya->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'resubmitted_by' => null, 'resubmitted_at' => null]);
 
         $this->notify($biaya, 'approved');
+        $refreshed = $biaya->refresh();
+        $this->recordHistory($refreshed, 'rlh_approved', 'rfah_approve', null, $actor);
 
-        return $biaya->refresh();
+        return $refreshed;
     }
 
     public function reject(Model $biaya, User $actor, Request $request): Model
@@ -224,6 +305,7 @@ class BiayaApprovalService
         $this->ensureApprover($biaya, $actor, $level);
         $this->ensureStatus($biaya, ['pending', 'checked', 'rlh_approved']);
         $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
+        $fromReject = $biaya->status;
 
         $biaya->update([
             'status' => 'rejected',
@@ -235,8 +317,10 @@ class BiayaApprovalService
         ]);
 
         $this->notify($biaya, 'rejected');
+        $refreshed = $biaya->refresh();
+        $this->recordHistory($refreshed, $fromReject, 'reject', $reason, $actor);
 
-        return $biaya->refresh();
+        return $refreshed;
     }
 
     public function revise(Model $biaya, User $actor, Request $request): Model
@@ -244,6 +328,7 @@ class BiayaApprovalService
         $this->ensureApprover($biaya, $actor, $biaya->status === 'rlh_approved' ? 'RFAH' : ($biaya->status === 'pending' ? 'BAC' : 'RLH'));
         $this->ensureStatus($biaya, ['pending', 'checked', 'rlh_approved']);
         $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
+        $fromRevise = $biaya->status;
 
         $biaya->update([
             'status' => 'revisi',
@@ -254,10 +339,11 @@ class BiayaApprovalService
             'resubmitted_by' => null,
             'resubmitted_at' => null,
         ]);
-
         $this->notify($biaya, 'revisi');
+        $refreshed = $biaya->refresh();
+        $this->recordHistory($refreshed, $fromRevise, 'revise', $reason, $actor);
 
-        return $biaya->refresh();
+        return $refreshed;
     }
 
     private function ensureCreator(Model $biaya, User $actor): void
@@ -281,6 +367,7 @@ class BiayaApprovalService
     private function ensureApprover(Model $biaya, User $actor, string $level): void
     {
         $assigned = ApprovalAssignment::query()
+            ->where('module', ApprovalAssignment::moduleFor($biaya))
             ->where('user_id', $actor->id)
             ->where('approval_level', $level)
             ->where('is_active', true)

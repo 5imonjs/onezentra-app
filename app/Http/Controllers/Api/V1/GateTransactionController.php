@@ -169,4 +169,22 @@ class GateTransactionController extends Controller
             ],
         ]);
     }
+
+    public function update(Request $request, GateTransaction $gateTransaction): JsonResponse
+    {
+        // Gate transactions are typically created from scan process, so edit is limited
+        $validated = $request->validate([
+            'notes' => 'nullable|string|max:1000',
+        ]);
+        $gateTransaction->update($validated);
+
+        return response()->json(['message' => 'Gate transaction updated', 'data' => $gateTransaction]);
+    }
+
+    public function destroy(GateTransaction $gateTransaction): JsonResponse
+    {
+        $gateTransaction->delete();
+
+        return response()->json(['message' => 'Gate transaction deleted']);
+    }
 }

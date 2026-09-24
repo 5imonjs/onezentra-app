@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\BiayaThlExport;
 use App\Http\Controllers\Controller;
+use App\Imports\BiayaThlImport;
 use App\Models\ApprovalAssignment;
 use App\Models\BiayaRetribusi;
 use App\Models\BiayaRetribusiDetail;
 use App\Models\BiayaThl;
+use App\Models\BiayaThlPhoto;
 use App\Models\User;
 use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
@@ -48,16 +50,20 @@ class BiayaThlController extends Controller
             $query->where(function ($q) use ($request) {
                 $q->where('no_kendaraan', 'like', '%'.$request->search.'%')
                     ->orWhere('nama_depo', 'like', '%'.$request->search.'%')
-                    ->orWhere('kode_depo', 'like', '%'.$request->search.'%');
+                    ->orWhere('kode_depo', 'like', '%'.$request->search.'%')
+                    ->orWhere('no_surat_jalan', 'like', '%'.$request->search.'%')
+                    ->orWhere('type_kendaraan', 'like', '%'.$request->search.'%');
             });
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        $sortField = in_array($request->sort, ['tanggal_pengajuan', 'type_kendaraan', 'nominal_biaya', 'status', 'no_kendaraan', 'created_at']) ? $request->sort : 'created_at';
+        $sortDir = $request->dir === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortField, $sortDir);
         // Ringkasan dihitung dari SELURUH baris terfilter, bukan halaman aktif.
         $summaryQuery = clone $query;
         $data = $query->with('details.photos', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'resubmittedBy', 'createdBy')
-            ->orderBy('created_at', 'desc')
             ->paginate($this->perPage($request, 50));
 
         $response = $data->toArray();
@@ -102,7 +108,7 @@ class BiayaThlController extends Controller
         $validated['status'] = 'draft';
         $validated = $user->depotAttributes($validated);
         if ($validated['is_rfah_required']) {
-            $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? null);
+            $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? null, ApprovalAssignment::MODULE_THL);
         }
 
         $firstDetail = $validated['details'][0] ?? [];
@@ -135,12 +141,18 @@ class BiayaThlController extends Controller
             'revisedBy',
             'resubmittedBy',
             'createdBy',
+            'approvalHistories.actor',
         )]);
     }
 
     public function update(Request $request, BiayaThl $biayaThl)
     {
         $this->authorizeCreator($biayaThl);
+        $editor = Auth::user();
+        $hasFullControl = $editor && $editor->hasPermission('biaya_thl.full_control');
+        if (! in_array($biayaThl->status, ['draft', 'rejected', 'revisi'], true) && ! $hasFullControl) {
+            abort(403, 'Hanya pengguna dengan permission Kendali Penuh Biaya THL yang dapat mengubah pengajuan yang sudah dikirim.');
+        }
         abort_if($biayaThl->status === 'approved', 422, 'Pengajuan yang sudah Approved Lengkap tidak dapat diedit.');
 
         // Simpan draft tidak boleh mengembalikan antrean yang berjalan.
@@ -169,7 +181,7 @@ class BiayaThlController extends Controller
         $validated['nominal_biaya'] = collect($validated['details'] ?? [])->sum('nominal_biaya');
         $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.thl_rfah_threshold', 750000);
         if ($validated['is_rfah_required']) {
-            $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? $biayaThl->kode_depo);
+            $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? $biayaThl->kode_depo, ApprovalAssignment::MODULE_THL);
         } else {
             $validated['rfah_name'] = null;
         }
@@ -253,7 +265,15 @@ class BiayaThlController extends Controller
     public function destroy(BiayaThl $biayaThl)
     {
         $this->authorizeCreator($biayaThl);
-        abort_if($biayaThl->status === 'approved', 422, 'Pengajuan yang sudah Approved Lengkap tidak dapat dihapus.');
+        $destroyer = Auth::user();
+        $destroyerHasFullControl = $destroyer && $destroyer->hasPermission('biaya_thl.full_control');
+        if (! $destroyerHasFullControl) {
+            abort_unless(
+                in_array($biayaThl->status, ['draft', 'rejected', 'revisi'], true),
+                422,
+                "Pengajuan yang sudah dikirim (status {$biayaThl->status}) tidak dapat dihapus."
+            );
+        }
         foreach ($biayaThl->photos as $photo) {
             Storage::disk('public')->delete($photo->file_path);
             $photo->delete();
@@ -294,6 +314,28 @@ class BiayaThlController extends Controller
         return response()->json(['message' => 'Pengajuan THL dikirim kembali untuk direvisi.', 'data' => $approvalService->revise($biayaThl, $request->user(), $request)]);
     }
 
+    /**
+     * Sajikan foto bukti lewat API (ber-CORS + berizin) karena file
+     * statis public/storage tidak mengirim header CORS ke frontend.
+     */
+    public function photo(Request $request, BiayaThlPhoto $photo)
+    {
+        $biayaThl = $photo->biayaThl;
+        abort_if(! $biayaThl, 404);
+        $user = $request->user();
+        if ($user->isDepotScoped() && $biayaThl->kode_depo !== $user->kode_depo) {
+            abort(403, 'Anda tidak memiliki akses ke foto depo ini.');
+        }
+        abort_unless($photo->file_path && Storage::disk('public')->exists($photo->file_path), 404);
+        $safeName = str_replace(['"', "\n", "\r"], '', $photo->file_name ?: basename($photo->file_path));
+
+        return Storage::disk('public')->response(
+            $photo->file_path,
+            $safeName,
+            ['Content-Type' => $photo->mime_type ?: 'application/octet-stream']
+        );
+    }
+
     public function pdf(BiayaThl $biayaThl)
     {
         $this->authorizePdfPrinter($biayaThl);
@@ -313,6 +355,7 @@ class BiayaThlController extends Controller
             $biayaThl->checkedBy?->full_name,
             $deciderName,
             ($biayaThl->status === 'approved' && $biayaThl->is_rfah_required) ? $biayaThl->approvedBy?->full_name : null,
+            ApprovalAssignment::MODULE_THL,
         );
         $approvalSections = array_values(array_filter(
             $approvalSections,
@@ -582,6 +625,9 @@ class BiayaThlController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        $sortField = in_array($request->sort, ['tanggal_pengajuan', 'type_kendaraan', 'nominal_biaya', 'status', 'no_kendaraan', 'created_at']) ? $request->sort : 'created_at';
+        $sortDir = $request->dir === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortField, $sortDir);
         $query->with('details.photos');
 
         return Excel::download(new BiayaThlExport($query), 'biaya_thl.xlsx');
@@ -605,11 +651,10 @@ class BiayaThlController extends Controller
     {
         /** @var User|null $user */
         $user = Auth::user();
-        abort_unless(
-            $user && ($user->isAdminMaster() || $user->hasRole('blc') || $biayaThl->created_by === $user->id),
-            403,
-            'Cetak PDF hanya dapat dilakukan oleh BLC atau pembuat pengajuan.'
-        );
+        if ($user && ($user->isAdminMaster() || $user->hasRole('blc') || $biayaThl->created_by === $user->id)) {
+            return;
+        }
+        $this->authorizeViewer($biayaThl);
     }
 
     private function authorizeViewer(BiayaThl $biayaThl): void
@@ -625,8 +670,9 @@ class BiayaThlController extends Controller
         }
 
         $assigned = ApprovalAssignment::query()
+            ->where('module', ApprovalAssignment::MODULE_THL)
             ->where('user_id', $user->id)
-            ->whereIn('approval_level', ['RLH', 'RFAH'])
+            ->whereIn('approval_level', ['BAC', 'RLH', 'RFAH'])
             ->where('is_active', true)
             ->where(function ($query) use ($biayaThl): void {
                 $query->where('kode_depo', $biayaThl->kode_depo)
@@ -635,5 +681,23 @@ class BiayaThlController extends Controller
             ->exists();
 
         abort_unless($assigned, 403, 'Anda bukan approver yang ditetapkan untuk pengajuan ini.');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
+        try {
+            $import = new BiayaThlImport;
+            DB::transaction(fn () => Excel::import($import, $request->file('file')));
+
+            return response()->json([
+                'message' => 'Import berhasil',
+                'data' => ['imported' => $import->imported, 'updated' => $import->updated, 'errors' => $import->errors],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Biaya THL Import Error', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
+        }
     }
 }

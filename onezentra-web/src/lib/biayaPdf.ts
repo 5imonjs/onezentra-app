@@ -1,8 +1,21 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { PDFDocument } from 'pdf-lib';
+import { API_ROOT, API_URL } from './api';
 
 type PdfMode = 'save' | 'preview';
-type ThlPhoto = File | { file_path?: string; file_name?: string };
+
+/** True bila font Roboto berhasil diregistrasi; selain itu pakai helvetica. */
+let robotoReady = false;
+
+function useFont(doc: jsPDF, style: 'normal' | 'bold'): void {
+  try {
+    doc.setFont(robotoReady ? 'Roboto' : 'helvetica', style);
+  } catch {
+    doc.setFont('helvetica', style);
+  }
+}
+type ThlPhoto = File | { id?: number; file_path?: string; file_name?: string };
 type ApprovalSection = { title: string; people: { name: string; role: string }[] };
 
 type ThlData = {
@@ -97,8 +110,137 @@ type RetribusiData = {
       photos?: ThlPhoto[];
     } | null;
   }[];
-  documents: { document_type: string; file_name: string; file_path?: string }[];
+  documents: { id?: number; document_type: string; file_name: string; file_path?: string; file?: File | null; file_size?: number }[];
 };
+
+type LampiranDoc = RetribusiData['documents'][number];
+
+const lampiranName = (doc: LampiranDoc): string => `${doc.file_name || ''} ${doc.file_path || ''}`.toLowerCase();
+
+const isImageDoc = (doc: LampiranDoc, blobType = ''): boolean => {
+  if (doc.file instanceof File) return doc.file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/.test(doc.file.name.toLowerCase());
+  if (blobType && blobType !== 'application/octet-stream') return blobType.startsWith('image/');
+  return /\.(jpe?g|png|webp)$/.test(lampiranName(doc));
+};
+
+const formatFileSize = (bytes?: number | null): string => {
+  const n = Number(bytes) || 0;
+  if (n <= 0) return '-';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+/** Baca lampiran gambar (File baru atau path tersimpan) menjadi dataUrl. */
+async function readLampiran(doc: LampiranDoc): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
+  try {
+    if (doc.file instanceof File) {
+      if (!doc.file.type.startsWith('image/')) return null;
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(doc.file as File);
+      });
+      return { dataUrl, format: doc.file.type === 'image/png' ? 'PNG' : 'JPEG' };
+    }
+    if (doc.id) {
+      const response = await fetch(`${API_URL}/biaya-retribusi/documents/${doc.id}`, { credentials: 'include' });
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) return null;
+      return readBlob(blob);
+    }
+    if (!doc.file_path) return null;
+    const response = await fetch(`${API_ROOT}/storage/${doc.file_path}`, { credentials: 'include' });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    if (!blob.type.startsWith('image/')) return null;
+    return readBlob(blob);
+  } catch {
+    return null;
+  }
+}
+
+async function readBlob(blob: Blob): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' }> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+  return { dataUrl, format: blob.type === 'image/png' ? 'PNG' : 'JPEG' };
+}
+
+/**
+ * Lampirkan dokumen ke PDF retribusi: gambar (JPG/PNG/WEBP) menjadi
+ * halaman penuh; selain itu (PDF/lainnya) masuk daftar manifest karena
+ * halaman PDF tidak bisa dirender client-side tanpa pdf.js.
+ */
+async function appendLampiranPages(doc: jsPDF, data: RetribusiData): Promise<void> {
+  const docs = data.documents || [];
+  if (docs.length === 0) return;
+  const width = 297;
+  const pageMargin = 10;
+  const pageWidth = width - pageMargin * 2;
+  const manifest: string[][] = [];
+  let lampiranNo = 0;
+
+  for (const item of docs) {
+    lampiranNo += 1;
+    const image = isImageDoc(item) ? await readLampiran(item) : null;
+    let embedded = false;
+    if (image) {
+      try {
+        doc.addPage('a4', 'landscape');
+        useFont(doc, 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(20, 20, 20);
+        doc.text(`LAMPIRAN ${lampiranNo} — ${String(item.document_type || '').toUpperCase()} — ${item.file_name || '-'}`, pageMargin, 14);
+        const top = 18;
+        const maxW = pageWidth;
+        const maxH = 210 - top - 10;
+        const ratio = Math.min(maxW / 100, maxH / 70);
+        const w = Math.min(maxW, 100 * ratio);
+        const h = Math.min(maxH, 70 * ratio);
+        doc.addImage(image.dataUrl, image.format, pageMargin + (maxW - w) / 2, top + (maxH - h) / 2, w, h, undefined, 'FAST');
+        embedded = true;
+      } catch {
+        embedded = false;
+      }
+    }
+    if (embedded) continue;
+    // Semua yang tidak tertanam (PDF/berkas/gambar gagal baca) masuk manifest.
+    manifest.push([
+      String(manifest.length + 1),
+      String(item.document_type || '').toUpperCase(),
+      item.file_name || '-',
+      formatFileSize(item.file_size),
+    ]);
+  }
+
+  if (manifest.length > 0) {
+    doc.addPage('a4', 'landscape');
+    useFont(doc, 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(20, 20, 20);
+    doc.text('DAFTAR LAMPIRAN DOKUMEN', pageMargin, 14);
+    useFont(doc, 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Dokumen PDF di bawah ini digabungkan pada halaman-halaman berikutnya dalam satu kesatuan dokumen.', pageMargin, 20);
+    autoTable(doc, {
+      startY: 24,
+      margin: { left: pageMargin, right: pageMargin },
+      head: [['No', 'Tipe', 'Nama File', 'Ukuran']],
+      body: manifest,
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 7, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.3, valign: 'middle' },
+      headStyles: { fillColor: [210, 210, 210], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
+      columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 1: { cellWidth: 40 }, 2: { cellWidth: 150 }, 3: { cellWidth: 30, halign: 'right' } },
+    });
+  }
+}
 
 /** Gabungkan seluruh nomor surat jalan milik satu kendaraan ke sel PDF yang sama. */
 export function formatSuratJalan(detail: { no_surat_jalan?: string | null; kendaraan_sj?: string | null }): string {
@@ -209,7 +351,7 @@ function stampFor(section: ApprovalSection, data: RetribusiData, dates: AuditDat
 }
 
 function drawStamp(doc: jsPDF, cx: number, cy: number, stamp: StampSpec) {
-  doc.setFont('Roboto', 'bold');
+  useFont(doc, 'bold');
   doc.setFontSize(10);
   const w = Math.max(doc.getTextWidth(stamp.text) + 16, 34);
   const h = 12;
@@ -226,7 +368,7 @@ function drawStamp(doc: jsPDF, cx: number, cy: number, stamp: StampSpec) {
 
   doc.setDrawColor(stamp.color[0], stamp.color[1], stamp.color[2]);
   doc.line(left + 3, top + 6.7, left + w - 3, top + 6.7);
-  doc.setFont('Roboto', 'normal');
+  useFont(doc, 'normal');
   doc.setFontSize(5.5);
   const dateLabel = stamp.date || '-';
   doc.text(dateLabel, cx, top + 10.2, { align: 'center' });
@@ -245,8 +387,8 @@ async function loadApprovalSections(data: RetribusiData): Promise<ApprovalSectio
     { title: 'RFAH*', people: [{ name: actorName(data, 'approvedBy') || data.rfah_name || '-', role: 'RFAH' }] },
   ];
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
   try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
     const response = await fetch(`${apiUrl}/approval-assignments?kode_depo=${encodeURIComponent(data.kode_depo)}`, { credentials: 'include' });
     if (response.ok) {
       const payload = await response.json() as { data?: Record<string, { user?: { full_name?: string } }> };
@@ -302,7 +444,7 @@ async function loadPdfFonts(doc: jsPDF): Promise<void> {
   doc.addFileToVFS('Roboto-Bold.ttf', fonts.bold);
   doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
   doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
-  doc.setFont('Roboto', 'normal');
+  useFont(doc, 'normal');
 }
 
 function showPreview(doc: jsPDF) {
@@ -311,11 +453,11 @@ function showPreview(doc: jsPDF) {
   if (!tab) window.location.href = url;
 }
 
-export function generateTHLPdf(data: ThlData) {
-  void buildCombinedRetribusi(toCombinedRetribusiData(data), 'save');
+export function generateTHLPdf(data: ThlData): Promise<void> {
+  return buildCombinedRetribusi(toCombinedRetribusiData(data), 'save');
 }
-export function previewTHLPdf(data: ThlData) {
-  void buildCombinedRetribusi(toCombinedRetribusiData(data), 'preview');
+export function previewTHLPdf(data: ThlData): Promise<void> {
+  return buildCombinedRetribusi(toCombinedRetribusiData(data), 'preview');
 }
 
 function toCombinedRetribusiData(data: ThlData): RetribusiData {
@@ -365,8 +507,7 @@ let headerLogoCache: Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null>
 function loadHeaderLogo(): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
   if (!headerLogoCache) {
     headerLogoCache = (async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-      const backendOrigin = apiUrl.replace(/\/api\/v1\/?$/, '');
+      const backendOrigin = API_ROOT;
       const logoUrls = [
         `${window.location.origin}/biaya%20THL.jpeg`,
         `${backendOrigin}/biaya%20THL.jpeg`,
@@ -404,6 +545,17 @@ async function drawHeaderLogo(doc: jsPDF, cx: number, cy: number, size = 16): Pr
 }
 
 async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
+  if (!(photo instanceof File) && typeof photo.id === 'number') {
+    try {
+      const response = await fetch(`${API_URL}/biaya-thl/photos/${photo.id}`, { credentials: 'include' });
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) return null;
+      return readBlob(blob);
+    } catch {
+      return null;
+    }
+  }
   if (photo instanceof File) {
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -415,8 +567,7 @@ async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'J
   }
 
   if (!photo.file_path) return null;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-  const response = await fetch(`${apiUrl}/storage/${photo.file_path}`, { credentials: 'include' });
+  const response = await fetch(`${API_ROOT}/storage/${photo.file_path}`, { credentials: 'include' });
   if (!response.ok) return null;
   const blob = await response.blob();
   const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -428,9 +579,93 @@ async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'J
   return { dataUrl, format: blob.type === 'image/png' ? 'PNG' : 'JPEG' };
 }
 
-async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
+const isPdfDoc = (doc: LampiranDoc, blobType = ''): boolean => {
+  const byName = /\.pdf$/i.test(lampiranName(doc).trim());
+  if (doc.file instanceof File) return doc.file.type === 'application/pdf' || byName;
+  if (blobType && blobType !== 'application/octet-stream') return blobType === 'application/pdf' || byName;
+  return byName;
+};
+
+async function readPdfBytes(doc: LampiranDoc): Promise<ArrayBuffer> {
+  if (doc.file instanceof File) {
+    if (!isPdfDoc(doc)) throw new Error(`File ${doc.file.name} bukan PDF`);
+    return await doc.file.arrayBuffer();
+  }
+  const url = doc.id
+    ? `${API_URL}/biaya-retribusi/documents/${doc.id}`
+    : doc.file_path
+      ? `${API_ROOT}/storage/${doc.file_path}`
+      : null;
+  if (!url) throw new Error(`Dokumen ${doc.file_name || '-'} tidak punya sumber file`);
+  let response: Response;
+  try {
+    response = await fetch(url, { credentials: 'include' });
+  } catch {
+    throw new Error(`Tidak dapat mengunduh ${doc.file_name || '-'} (jaringan/CORS)`);
+  }
+  if (!response.ok) throw new Error(`Unduhan ${doc.file_name || '-'} gagal (HTTP ${response.status})`);
+  const blob = await response.blob();
+  if (!isPdfDoc(doc, blob.type)) throw new Error(`File ${doc.file_name || '-'} bukan PDF valid`);
+  return await blob.arrayBuffer();
+}
+
+/**
+ * Gabungkan halaman file PDF lampiran ke dokumen utama (satu kesatuan
+ * dokumen). File rusak/terenkripsi dilewati — daftarnya tetap ada di
+ * halaman manifest. Mengembalikan null bila tidak ada PDF valid.
+ */
+async function mergePdfAttachments(doc: jsPDF, data: RetribusiData, warnings: string[]): Promise<Uint8Array | null> {
+  const pdfParts: ArrayBuffer[] = [];
+  for (const item of data.documents || []) {
+    if (!isPdfDoc(item)) continue;
+    try {
+      pdfParts.push(await readPdfBytes(item));
+    } catch (e) {
+      warnings.push(e instanceof Error ? e.message : `Lampiran ${item.file_name || '-'} gagal dibaca`);
+    }
+  }
+  if (pdfParts.length === 0) return null;
+  try {
+    const merged = await PDFDocument.load(doc.output('arraybuffer'));
+    for (const part of pdfParts) {
+      const src = await PDFDocument.load(part, { ignoreEncryption: true });
+      const pages = await merged.copyPages(src, src.getPageIndices());
+      pages.forEach((page) => merged.addPage(page));
+    }
+    return await merged.save();
+  } catch (e) {
+    warnings.push(e instanceof Error ? `Gabung PDF gagal: ${e.message}` : 'Gabung PDF gagal');
+    return null;
+  }
+}
+
+function showPreviewBytes(bytes: Uint8Array): void {
+  const url = window.URL.createObjectURL(new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' }));
+  const tab = window.open(url, '_blank');
+  if (!tab) window.location.href = url;
+}
+
+function downloadBytes(bytes: Uint8Array, filename: string): void {
+  const url = window.URL.createObjectURL(new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, options?: { includeThlSection?: boolean; onWarning?: (message: string) => void }) {
+  const includeThlSection = options?.includeThlSection ?? true;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-  await loadPdfFonts(doc);
+  try {
+    await loadPdfFonts(doc);
+    robotoReady = true;
+  } catch {
+    robotoReady = false;
+    doc.setFont('helvetica', 'normal');
+  }
   const width = 297;
   const pageMargin = 10;
   const pageWidth = width - pageMargin * 2;
@@ -440,13 +675,13 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
   doc.setLineWidth(0.35);
   doc.rect(pageMargin, 7, pageWidth, 18, 'FD');
   doc.line(pageMargin + 18, 7, pageMargin + 18, 25);
-  doc.setFont('Roboto', 'bold');
+  useFont(doc, 'bold');
   doc.setFontSize(10);
   if (!(await loadHeaderLogo())) doc.text('SNS', pageMargin + 9, 18, { align: 'center' });
   else await drawHeaderLogo(doc, pageMargin + 9, 16);
   doc.setFontSize(11.5);
   doc.text('FORM KLAIM BIAYA PENGAJUAN RETRIBUSI', 148, 17.5, { align: 'center' });
-  doc.setFont('Roboto', 'normal');
+  useFont(doc, 'normal');
   doc.setFontSize(7.2);
   doc.text(`DEPO: ${value(data.nama_depo || data.kode_depo)}`, 210, 12.5);
   doc.text(`Tanggal Pengajuan: ${date(data.tanggal_pengajuan)}`, 210, 18.5);
@@ -455,7 +690,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
     startY: 27,
     margin: { left: pageMargin, right: pageMargin },
     head: [['No', 'NO KENDARAAN', 'JENIS KENDARAAN', 'SURAT JALAN', 'NOMINAL', 'Paraf']],
-    body: data.details.map((detail, index) => [index + 1, detail.nopol_kendaraan || '-', detail.type_kendaraan || '-', formatSuratJalan(detail), money(detail.nominal_biaya), '']),
+    body: data.details.map((detail, index) => [index + 1, String(detail.nopol_kendaraan || '-').toUpperCase(), String(detail.type_kendaraan || '-').toUpperCase(), formatSuratJalan(detail), money(detail.nominal_biaya), '']),
     foot: [['', '', '', 'Total', money(data.nominal_biaya), '']],
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 7, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.3, minCellHeight: 5.5, valign: 'middle' },
@@ -509,22 +744,39 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
     const stamp = cleanDraftPreview ? null : stampFor(section, data, audit);
     if (stamp) drawStamp(doc, x + approvalWidth / 2, approvalY + 16, stamp);
   });
-  doc.setFont('Roboto', 'normal');
+  useFont(doc, 'normal');
   doc.setFontSize(6.2);
   doc.text('Note: * Jika pengajuan biaya > Rp 750.000', pageMargin, approvalY + 47);
+
+  if (!includeThlSection) {
+    await appendLampiranPages(doc, data);
+    const filename = `biaya_retribusi_${data.nama_depo || 'pengajuan'}_${data.tanggal_pengajuan}.pdf`;
+    const warnings: string[] = [];
+    const merged = await mergePdfAttachments(doc, data, warnings);
+    if (warnings.length > 0) options?.onWarning?.(`Lampiran bermasalah: ${warnings.slice(0, 2).join(' · ')}`);
+    if (merged) {
+      if (mode === 'preview') showPreviewBytes(merged);
+      else downloadBytes(merged, filename);
+    } else if (mode === 'preview') {
+      showPreview(doc);
+    } else {
+      doc.save(filename);
+    }
+    return;
+  }
 
   const rejected = data.status === 'rejected';
   const revisi = data.status === 'revisi';
   const thlTop = approvalY + (rejected ? 63 : revisi ? 63 : 52);
   if (rejected && data.rejection_reason) {
-    doc.setFont('Roboto', 'bold');
+    useFont(doc, 'bold');
     doc.setFontSize(7);
     doc.setTextColor(185, 28, 28);
     doc.text(`DITOLAK — ${data.rejection_reason}`, pageMargin, approvalY + 46, { maxWidth: pageWidth });
     doc.setTextColor(20, 20, 20);
   }
   if (revisi && data.revisi_reason) {
-    doc.setFont('Roboto', 'bold');
+    useFont(doc, 'bold');
     doc.setFontSize(7);
     doc.setTextColor(180, 83, 9);
     doc.text(`REVISI — ${data.revisi_reason}`, pageMargin, approvalY + 46, { maxWidth: pageWidth });
@@ -535,14 +787,14 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
   doc.setLineWidth(0.35);
   doc.rect(pageMargin, thlTop, pageWidth, 18, 'FD');
   doc.line(pageMargin + 18, thlTop, pageMargin + 18, thlTop + 18);
-  doc.setFont('Roboto', 'bold');
+  useFont(doc, 'bold');
   doc.setFontSize(10);
   if (!(await loadHeaderLogo())) doc.text('SNS', pageMargin + 9, thlTop + 8.5, { align: 'center' });
   else await drawHeaderLogo(doc, pageMargin + 9, thlTop + 9, 16);
   doc.setFontSize(11.5);
   doc.text('FORM KLAIM TENAGA HARIAN LEPAS', 148, thlTop + 11, { align: 'center' });
   doc.rect(pageMargin, thlTop + 18, pageWidth, 6.5);
-  doc.setFont('Roboto', 'normal');
+  useFont(doc, 'normal');
   doc.setFontSize(7);
   doc.text(`TANGGAL ${date(data.tanggal_pengajuan).toUpperCase()}`, pageMargin + 2, thlTop + 22.2);
 
@@ -552,7 +804,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
     head: [['No', 'Nama', 'Kubikasi', 'Drop Point', 'Posisi', 'Jam Datang', 'Jam Pulang']],
     body: data.details.map((detail, index) => {
       const source = detail.biaya_thl_detail;
-      const kendaraan = detail.nopol_kendaraan || '-';
+      const kendaraan = String(detail.nopol_kendaraan || '-').toUpperCase();
       return [index + 1, `${kendaraan} - ${source?.nama_thl || source?.driver_name || '-'}`, source?.kubikasi ?? 0, source?.droppoint || '0', source?.posisi || '-', source?.jam_datang ? new Date(source.jam_datang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-', source?.jam_pulang ? new Date(source.jam_pulang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'];
     }),
     theme: 'grid',
@@ -579,10 +831,10 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode) {
   if (mode === 'preview') showPreview(doc); else doc.save(filename);
 }
 
-export function generateRetribusiPdf(data: RetribusiData) {
-  void buildCombinedRetribusi(data, 'save');
+export function generateRetribusiPdf(data: RetribusiData, options?: { onWarning?: (message: string) => void }): Promise<void> {
+  return buildCombinedRetribusi(data, 'save', { includeThlSection: false, ...options });
 }
 
-export function previewRetribusiPdf(data: RetribusiData) {
-  void buildCombinedRetribusi(data, 'preview');
+export function previewRetribusiPdf(data: RetribusiData, options?: { onWarning?: (message: string) => void }): Promise<void> {
+  return buildCombinedRetribusi(data, 'preview', { includeThlSection: false, ...options });
 }

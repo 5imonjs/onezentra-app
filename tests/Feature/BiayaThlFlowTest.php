@@ -26,7 +26,7 @@ class BiayaThlFlowTest extends TestCase
         parent::setUp();
 
         $role = Role::firstOrCreate(['slug' => 'biaya_thl_admin'], ['name' => 'Biaya THL Admin']);
-        foreach (['biaya_thl.view', 'biaya_thl.create', 'biaya_thl.edit', 'biaya_thl.delete', 'approval.submit'] as $slug) {
+        foreach (['biaya_thl.view', 'biaya_thl.create', 'biaya_thl.edit', 'biaya_thl.delete', 'biaya_thl.full_control', 'approval.submit'] as $slug) {
             $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Biaya']);
             $role->permissions()->syncWithoutDetaching([$permission->id]);
         }
@@ -675,7 +675,7 @@ class BiayaThlFlowTest extends TestCase
         $response->assertJsonValidationErrors(['details.0.jam_datang', 'details.0.jam_pulang']);
     }
 
-    public function test_approved_submission_cannot_be_updated_or_deleted(): void
+    public function test_approved_submission_cannot_be_updated_but_full_control_can_delete(): void
     {
         Sanctum::actingAs($this->user);
 
@@ -691,6 +691,74 @@ class BiayaThlFlowTest extends TestCase
             'tanggal_pengajuan' => '2026-09-23',
             'details' => [],
         ])->assertStatus(422);
+
+        $this->deleteJson("/api/v1/biaya-thl/{$biaya->id}")->assertOk();
+        $this->assertModelMissing($biaya);
+    }
+
+    public function test_pending_submission_cannot_be_updated_without_full_control(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'biaya_thl_editor_only'], ['name' => 'Biaya THL Editor']);
+        foreach (['biaya_thl.view', 'biaya_thl.edit'] as $slug) {
+            $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Biaya']);
+            $role->permissions()->syncWithoutDetaching([$permission->id]);
+        }
+        $editor = User::create([
+            'email' => 'editor-no-full@test.com',
+            'password' => 'password',
+            'full_name' => 'Editor Biasa',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'level' => 'admin_master',
+            'status' => 'active',
+            'role_id' => $role->id,
+        ]);
+        $role->users()->attach($editor->id);
+        Sanctum::actingAs($editor);
+
+        $biaya = BiayaThl::create([
+            'tanggal_pengajuan' => '2026-09-24',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'created_by' => $this->user->id,
+            'status' => 'pending',
+            'nominal_biaya' => 100000,
+        ]);
+
+        $this->putJson("/api/v1/biaya-thl/{$biaya->id}", [
+            'tanggal_pengajuan' => '2026-09-24',
+            'details' => [],
+        ])->assertStatus(403);
+    }
+
+    public function test_pending_submission_cannot_be_deleted_without_full_control(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'biaya_thl_delete_only'], ['name' => 'Biaya THL Deleter']);
+        foreach (['biaya_thl.view', 'biaya_thl.delete'] as $slug) {
+            $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Biaya']);
+            $role->permissions()->syncWithoutDetaching([$permission->id]);
+        }
+        $deleter = User::create([
+            'email' => 'deleter-no-full@test.com',
+            'password' => 'password',
+            'full_name' => 'Deleter Biasa',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'level' => 'admin_master',
+            'status' => 'active',
+            'role_id' => $role->id,
+        ]);
+        $role->users()->attach($deleter->id);
+        Sanctum::actingAs($deleter);
+
+        $biaya = BiayaThl::create([
+            'tanggal_pengajuan' => '2026-09-24',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'created_by' => $this->user->id,
+            'status' => 'pending',
+            'nominal_biaya' => 100000,
+        ]);
 
         $this->deleteJson("/api/v1/biaya-thl/{$biaya->id}")->assertStatus(422);
         $this->assertModelExists($biaya);

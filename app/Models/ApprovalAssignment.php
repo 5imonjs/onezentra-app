@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ApprovalAssignment extends Model
 {
-    protected $fillable = ['kode_depo', 'approval_level', 'user_id', 'is_active'];
+    public const MODULE_THL = 'biaya_thl';
+
+    public const MODULE_RETRIBUSI = 'biaya_retribusi';
+
+    protected $fillable = ['module', 'kode_depo', 'approval_level', 'user_id', 'is_active'];
 
     protected function casts(): array
     {
@@ -23,7 +27,12 @@ class ApprovalAssignment extends Model
      * Nama penanggung jawab level approval untuk satu depo: user yang
      * di-assign aktif pada level tersebut. Null bila belum di-assign.
      */
-    public static function approverName(string $level, ?string $kodeDepo): ?string
+    public static function moduleFor(object $biaya): string
+    {
+        return $biaya instanceof BiayaThl ? self::MODULE_THL : self::MODULE_RETRIBUSI;
+    }
+
+    public static function approverName(string $level, ?string $kodeDepo, string $module = self::MODULE_THL): ?string
     {
         if (blank($kodeDepo)) {
             return null;
@@ -31,6 +40,7 @@ class ApprovalAssignment extends Model
 
         $globalLevel = in_array($level, ['RLH', 'RFAH'], true);
         $assignment = self::query()
+            ->where('module', $module)
             ->where(function ($query) use ($kodeDepo, $globalLevel): void {
                 $query->where('kode_depo', $kodeDepo);
                 if ($globalLevel) {
@@ -50,8 +60,8 @@ class ApprovalAssignment extends Model
      * Nama RFAH untuk satu depo: assignment aktif, jatuh ke config global
      * bila depo belum punya penanggung jawab RFAH.
      */
-    public static function resolveRfahName(?string $kodeDepo): string
+    public static function resolveRfahName(?string $kodeDepo, string $module = self::MODULE_THL): string
     {
-        return self::approverName('RFAH', $kodeDepo) ?? config('biaya.rfah_name', 'Umi Marzuqoh');
+        return self::approverName('RFAH', $kodeDepo, $module) ?? config('biaya.rfah_name', 'Umi Marzuqoh');
     }
 }

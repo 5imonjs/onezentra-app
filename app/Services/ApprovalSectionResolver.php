@@ -14,14 +14,14 @@ class ApprovalSectionResolver
      * '-' dengan role tetap tertera — PDF draft tidak boleh terlihat
      * seolah sudah diperiksa/disetujui.
      */
-    public function resolve(string $kodeDepo, ?string $submitterName = null, ?string $checkerName = null, ?string $approverName = null, ?string $rfahName = null): array
+    public function resolve(string $kodeDepo, ?string $submitterName = null, ?string $checkerName = null, ?string $approverName = null, ?string $rfahName = null, string $module = ApprovalAssignment::MODULE_THL): array
     {
-        return collect(self::LEVELS)->map(function (string $level) use ($kodeDepo, $submitterName, $checkerName, $approverName, $rfahName): array {
+        return collect(self::LEVELS)->map(function (string $level) use ($kodeDepo, $submitterName, $checkerName, $approverName, $rfahName, $module): array {
             $actualName = match ($level) {
-                'BLC' => $submitterName ?: ApprovalAssignment::approverName('BLC', $kodeDepo),
-                'BAC' => $checkerName ?: ApprovalAssignment::approverName('BAC', $kodeDepo),
-                'RLH' => $approverName ?: ApprovalAssignment::approverName('RLH', $kodeDepo),
-                'RFAH' => $rfahName ?: ApprovalAssignment::approverName('RFAH', $kodeDepo),
+                'BLC' => $submitterName ?: ApprovalAssignment::approverName('BLC', $kodeDepo, $module),
+                'BAC' => $checkerName ?: ApprovalAssignment::approverName('BAC', $kodeDepo, $module),
+                'RLH' => $approverName ?: ApprovalAssignment::approverName('RLH', $kodeDepo, $module),
+                'RFAH' => $rfahName ?: ApprovalAssignment::approverName('RFAH', $kodeDepo, $module),
             };
 
             return [

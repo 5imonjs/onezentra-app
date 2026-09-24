@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exports\StandarisasiTumpukanExport;
+use App\Exports\StandarisasiTumpukanTemplate;
 use App\Http\Controllers\Controller;
+use App\Imports\StandarisasiTumpukanImport;
 use App\Mail\StandarisasiStatusNotification;
 use App\Models\Npn;
 use App\Models\StandarisasiTumpukan;
@@ -10,6 +13,8 @@ use App\Models\User;
 use App\Services\EmailNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class StandarisasiTumpukanController extends Controller
 {
@@ -317,5 +322,38 @@ class StandarisasiTumpukanController extends Controller
             $standarisasi,
             new StandarisasiStatusNotification($standarisasi)
         );
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
+        try {
+            $import = new StandarisasiTumpukanImport;
+            DB::transaction(fn () => Excel::import($import, $request->file('file')));
+
+            return response()->json([
+                'message' => 'Import berhasil',
+                'data' => ['imported' => $import->imported, 'updated' => $import->updated, 'errors' => $import->errors],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Standarisasi Import Error', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
+        }
+    }
+
+    public function export(Request $request)
+    {
+        $export = new StandarisasiTumpukanExport(
+            search: $request->input('search'),
+            status: $request->input('status'),
+        );
+
+        return Excel::download($export, 'standarisasi-tumpukan_'.now()->format('Y-m-d').'.xlsx');
+    }
+
+    public function template()
+    {
+        return Excel::download(new StandarisasiTumpukanTemplate, 'standarisasi-tumpukan_template.xlsx');
     }
 }
