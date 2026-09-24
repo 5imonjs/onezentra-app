@@ -28,6 +28,7 @@ const masterDataMenus = [
 const biayaMenus = [
   { name: 'Biaya THL', path: '/biaya-thl', icon: 'coins', permission: 'biaya_thl.view' },
   { name: 'Biaya Retribusi', path: '/biaya-retribusi', icon: 'file-dollar', permission: 'biaya_retribusi.view' },
+  { name: 'Tarif Retribusi', path: '/tarif-retribusi', icon: 'coins', permission: 'retribusi_rates.manage' },
 ];
 
 const reportItems = [
