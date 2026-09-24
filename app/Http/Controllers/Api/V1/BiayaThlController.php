@@ -131,7 +131,7 @@ class BiayaThlController extends Controller
     {
         $this->authorizeViewer($biayaThl);
 
-        return response()->json(['data' => $biayaThl->load(
+        $biayaThl->load(
             'details.photos',
             'photos',
             'submittedBy',
@@ -143,7 +143,25 @@ class BiayaThlController extends Controller
             'resubmittedBy',
             'createdBy',
             'approvalHistories.actor',
-        )]);
+        );
+
+        $names = $this->approvalActorNames($biayaThl);
+        $approvalSections = app(ApprovalSectionResolver::class)->resolve(
+            $biayaThl->kode_depo ?: '',
+            $names['submitter'],
+            $names['checker'],
+            $names['approver'],
+            $names['rfah'],
+            ApprovalAssignment::MODULE_THL,
+        );
+
+        $data = $biayaThl->toArray();
+        $data['approval_sections'] = array_values(array_filter(
+            $approvalSections,
+            fn (array $section): bool => $section['title'] !== 'RFAH*' || $biayaThl->is_rfah_required,
+        ));
+
+        return response()->json(['data' => $data]);
     }
 
     public function update(Request $request, BiayaThl $biayaThl)

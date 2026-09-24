@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApprovalAssignment;
 use App\Models\BiayaRetribusi;
 use App\Models\BiayaThl;
 use App\Models\BiayaThlDetail;
@@ -180,6 +181,61 @@ class BiayaRetribusiPdfTest extends TestCase
         $response->assertJsonPath('data.checked_by.full_name', 'Checker Retribusi');
         $response->assertJsonPath('data.rlh_approved_by.full_name', 'RLH Retribusi');
         $response->assertJsonPath('data.approved_by.full_name', 'RFAH Retribusi');
+
+        $sections = collect($response->json('data.approval_sections'))->keyBy('title');
+        $this->assertSame('Pengaju Retribusi', $sections['Mengajukan']['people'][0]['name']);
+        $this->assertSame('Checker Retribusi', $sections['Mengetahui']['people'][0]['name']);
+        $this->assertSame('RLH Retribusi', $sections['Menyetujui']['people'][0]['name']);
+        $this->assertSame('RFAH Retribusi', $sections['RFAH*']['people'][0]['name']);
+    }
+
+    public function test_retribusi_show_approval_sections_fill_assigned_names_for_pending(): void
+    {
+        $permission = Permission::create([
+            'slug' => 'biaya_retribusi.view',
+            'name' => 'Biaya Retribusi View',
+            'menu_group' => 'Biaya',
+        ]);
+        $role = Role::create(['slug' => 'biaya_retribusi_show_pending', 'name' => 'Biaya Retribusi Show Pending']);
+        $role->permissions()->attach($permission->id);
+
+        $viewer = $this->retribusiUser('retribusi-pending@test.com', 'Viewer Pending', $role);
+        $submitter = $this->retribusiUser('submitter-pending@test.com', 'Pengaju Pending', null);
+        $bac = $this->retribusiUser('bac-pending@test.com', 'BAC Pending', null);
+        $rlh = $this->retribusiUser('rlh-pending@test.com', 'RLH Pending', null);
+        $rfah = $this->retribusiUser('rfah-pending@test.com', 'RFAH Pending', null);
+
+        foreach ([['BAC', $bac], ['RLH', $rlh], ['RFAH', $rfah]] as [$level, $assignee]) {
+            ApprovalAssignment::create([
+                'module' => ApprovalAssignment::MODULE_RETRIBUSI,
+                'kode_depo' => 'DPT-A',
+                'approval_level' => $level,
+                'user_id' => $assignee->id,
+                'is_active' => true,
+            ]);
+        }
+
+        $biayaRetribusi = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-09-24',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'nominal_biaya' => 1250000,
+            'approval_pengajuan' => 'Pengaju Pending',
+            'status' => 'pending',
+            'submitted_at' => '2026-09-24 10:00:00',
+            'submitted_by' => $submitter->id,
+            'is_rfah_required' => true,
+            'created_by' => $submitter->id,
+        ]);
+
+        $response = $this->actingAs($viewer)->getJson('/api/v1/biaya-retribusi/'.$biayaRetribusi->id);
+
+        $response->assertOk();
+        $sections = collect($response->json('data.approval_sections'))->keyBy('title');
+        $this->assertSame('Pengaju Pending', $sections['Mengajukan']['people'][0]['name']);
+        $this->assertSame('BAC Pending', $sections['Mengetahui']['people'][0]['name']);
+        $this->assertSame('RLH Pending', $sections['Menyetujui']['people'][0]['name']);
+        $this->assertSame('RFAH Pending', $sections['RFAH*']['people'][0]['name']);
     }
 
     private function retribusiUser(string $email, string $fullName, ?Role $role): User

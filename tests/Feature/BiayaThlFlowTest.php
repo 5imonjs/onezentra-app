@@ -763,4 +763,53 @@ class BiayaThlFlowTest extends TestCase
         $this->deleteJson("/api/v1/biaya-thl/{$biaya->id}")->assertStatus(422);
         $this->assertModelExists($biaya);
     }
+
+    public function test_show_returns_approval_sections_with_assigned_names_for_pending(): void
+    {
+        // approval_assignments memastikan tiap kotak approval selalu punya nama,
+        // bukan '-' — termasuk kotak yang belum ada aksinya.
+        $bac = User::create([
+            'email' => 'bac-thl@test.com', 'password' => 'password', 'full_name' => 'BAC THL',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'bac', 'status' => 'active',
+        ]);
+        $rlh = User::create([
+            'email' => 'rlh-thl@test.com', 'password' => 'password', 'full_name' => 'RLH THL',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'rlh', 'status' => 'active',
+        ]);
+        $rfah = User::create([
+            'email' => 'rfah-thl@test.com', 'password' => 'password', 'full_name' => 'RFAH THL',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'rfah', 'status' => 'active',
+        ]);
+        foreach ([['BAC', $bac], ['RLH', $rlh], ['RFAH', $rfah]] as [$level, $assignee]) {
+            ApprovalAssignment::create([
+                'module' => ApprovalAssignment::MODULE_THL,
+                'kode_depo' => 'DPT-A',
+                'approval_level' => $level,
+                'user_id' => $assignee->id,
+                'is_active' => true,
+            ]);
+        }
+
+        $submitter = $this->user;
+        $biaya = BiayaThl::create([
+            'tanggal_pengajuan' => '2026-09-24',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'created_by' => $submitter->id,
+            'status' => 'pending',
+            'submitted_at' => '2026-09-24 10:00:00',
+            'submitted_by' => $submitter->id,
+            'is_rfah_required' => true,
+            'nominal_biaya' => 1000000,
+        ]);
+
+        Sanctum::actingAs($this->user);
+        $res = $this->getJson("/api/v1/biaya-thl/{$biaya->id}")->assertOk();
+
+        $sections = collect($res->json('data.approval_sections'))->keyBy('title');
+        $this->assertSame('Biaya THL User', $sections['Mengajukan']['people'][0]['name']);
+        $this->assertSame('BAC THL', $sections['Mengetahui']['people'][0]['name']);
+        $this->assertSame('RLH THL', $sections['Menyetujui']['people'][0]['name']);
+        $this->assertSame('RFAH THL', $sections['RFAH*']['people'][0]['name']);
+    }
 }

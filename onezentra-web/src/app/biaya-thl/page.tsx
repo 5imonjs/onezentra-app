@@ -1240,6 +1240,7 @@ export default function BiayaThlPage() {
       nominal_biaya: totalNominal,
       is_rfah_required: isRfahRequired,
       rfah_name: isRfahRequired ? biayaConfig.rfah_name : '',
+      approval_pengajuan: user?.full_name || '',
       status: 'draft',
       details: applyGroupVehicle(formData.details.map(normalizeThlDetail)),
     }).catch(previewPdfError);

@@ -222,7 +222,7 @@ class BiayaRetribusiController extends Controller
     {
         $this->authorizeViewer($biayaRetribusi);
 
-        return response()->json(['data' => $biayaRetribusi->load(
+        $biayaRetribusi->load(
             'details.biayaThlDetail.photos',
             'documents',
             'approvalHistories.actor',
@@ -232,7 +232,25 @@ class BiayaRetribusiController extends Controller
             'approvedBy',
             'rejectedBy',
             'revisedBy',
-        )]);
+        );
+
+        $names = $this->approvalActorNames($biayaRetribusi);
+        $approvalSections = app(ApprovalSectionResolver::class)->resolve(
+            $biayaRetribusi->kode_depo ?: '',
+            $names['submitter'],
+            $names['checker'],
+            $names['approver'],
+            $names['rfah'],
+            ApprovalAssignment::MODULE_RETRIBUSI,
+        );
+
+        $data = $biayaRetribusi->toArray();
+        $data['approval_sections'] = array_values(array_filter(
+            $approvalSections,
+            fn (array $section): bool => $section['title'] !== 'RFAH*' || $biayaRetribusi->is_rfah_required,
+        ));
+
+        return response()->json(['data' => $data]);
     }
 
     public function update(Request $request, BiayaRetribusi $biayaRetribusi)

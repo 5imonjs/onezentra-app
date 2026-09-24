@@ -453,8 +453,8 @@ async function loadApprovalSections(data: RetribusiData): Promise<ApprovalSectio
   ];
 
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-    const response = await fetch(`${apiUrl}/approval-assignments?kode_depo=${encodeURIComponent(data.kode_depo)}`, { credentials: 'include' });
+    const approvalModule = 'no_kendaraan' in data && 'kubikasi_base' in data ? 'biaya_thl' : 'biaya_retribusi';
+    const response = await fetch(`${API_URL}/approval-assignments?kode_depo=${encodeURIComponent(data.kode_depo)}&module=${approvalModule}`, { credentials: 'include' });
     if (response.ok) {
       const payload = await response.json() as { data?: Record<string, { user?: { full_name?: string } }> };
       const titles: Record<string, string> = { BLC: 'Mengajukan', BAC: 'Mengetahui', RLH: 'Menyetujui', RFAH: 'RFAH*' };
