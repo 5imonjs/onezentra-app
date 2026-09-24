@@ -50,3 +50,6 @@ Thumbs.db
 !.vscode/extensions.json
 *.log
 npm-debug.log*
+
+# Next.js build output
+.next/
