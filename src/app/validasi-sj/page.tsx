@@ -345,6 +345,8 @@ export default function ValidasiSjPage() {
   const svCompleted = svStats?.completed ?? 0;
   const svCancelled = svStats?.cancelled ?? 0;
   const svTotal = svStats?.total ?? 0;
+  // Dipakai empty-state: apakah pencarian aktif (UI saja).
+  const hasSearch = search.trim().length > 0;
 
   if (!hasPermission('sj_validation.view')) {
     return (
@@ -375,31 +377,30 @@ export default function ValidasiSjPage() {
           </div>
         </div>
       )}
-      <div className="space-y-6">
-        {/* Header */}
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-5 space-y-5">
+        {/* Header — reflektif, konsisten dengan pola desain modern */}
+        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-white text-slate-900 flex items-center justify-center shadow-lg ring-1 ring-white/20 shrink-0">
-                <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
+                <svg aria-hidden="true" className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
               <div>
-                <div className="flex items-center gap-2.5">
-                  <h1 className="text-2xl font-black tracking-tight">Validasi Dokumen</h1>
-                </div>
-                <p className="text-slate-300 text-sm mt-0.5">Kontrol fisik produk, quantity, kondisi, dan expired.</p>
+                <h1 className="text-2xl font-bold leading-tight">Validasi Dokumen</h1>
+                <p className="mt-0.5 text-gray-400">Kontrol fisik produk, quantity, kondisi, dan expired.</p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <div className="flex flex-wrap items-center gap-2">
               {[
-                { label: 'Hari ini', value: svToday, valueClass: 'bg-slate-900 text-white', className: 'bg-white text-slate-900 shadow' },
-                { label: 'Berjalan', value: svInProgress, valueClass: 'bg-blue-500 text-white', className: 'bg-white/10 border-white/20' },
-                { label: 'Selesai', value: svCompleted, valueClass: 'bg-emerald-500 text-white', className: 'bg-white/10 border-white/20' },
-                { label: 'Total', value: svTotal, valueClass: 'text-white', className: 'bg-white/10 border-white/10' },
+                { label: 'Hari ini', value: svToday, badge: 'bg-white/20 text-white', dot: 'bg-white' },
+                { label: 'Berjalan', value: svInProgress, badge: 'bg-blue-400 text-blue-950', dot: 'bg-blue-400' },
+                { label: 'Selesai', value: svCompleted, badge: 'bg-emerald-400 text-emerald-950', dot: 'bg-emerald-400' },
+                { label: 'Total', value: svTotal, badge: 'bg-white/20 text-white', dot: 'bg-gray-300' },
               ].map((stat) => (
-                <span key={stat.label} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur ${stat.className}`}>
+                <span key={stat.label} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                  <span className={`h-1.5 w-1.5 rounded-full ${stat.dot}`} />
                   {stat.label}
-                  <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-black tabular-nums ${stat.valueClass}`}>{stat.value}</span>
+                  <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-black tabular-nums ${stat.badge}`}>{stat.value}</span>
                 </span>
               ))}
             </div>
@@ -410,43 +411,49 @@ export default function ValidasiSjPage() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
           {/* Scan Panel */}
           <div className="xl:col-span-1 space-y-5">
-            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
-                </div>
-                <div>
-                  <h2 className="text-sm font-black text-slate-900">Quick Scan</h2>
-                  <p className="text-[11px] text-slate-400">Cari PO transporter</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
-                  <input id="validation-code" placeholder="Scan atau ketik PO..." className="input-field pl-9 bg-slate-50 text-sm py-2.5 focus:bg-white" value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && findDocument()} aria-label="Kode validasi" />
-                </div>
-                <button type="button" onClick={findDocument} disabled={busy || !code.trim()} className="btn-primary text-sm px-4 py-2.5 disabled:opacity-50 shrink-0">{busy ? '...' : 'Cari'}</button>
-              </div>
-              {lookup && (
-                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-3 animate-fade-in">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {[
-                      { label: 'PO', value: lookup.po_transporter, mono: true },
-                      { label: 'Driver', value: lookup.driver_name || '-', mono: false },
-                      { label: 'Nopol', value: lookup.nopol || '-', mono: true },
-                      { label: 'Tujuan', value: lookup.destination_name || '-', mono: false },
-                    ].map((item) => (
-                      <div key={item.label}><p className="text-[10px] font-bold tracking-widest text-blue-500 uppercase">{item.label}</p><p className={`text-sm ${item.mono ? 'font-black text-slate-800 font-mono' : 'text-slate-700'}`}>{item.value}</p></div>
-                    ))}
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                   </div>
-                  <button type="button" onClick={startValidation} disabled={busy || !hasPermission('sj_validation.create')} className="w-full btn-primary text-sm py-2.5 disabled:opacity-50">Mulai Validasi</button>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Quick Scan</h2>
+                    <p className="mt-0.5 text-xs text-slate-400">Cari PO transporter untuk memulai validasi</p>
+                  </div>
                 </div>
-              )}
+              </div>
+              <div className="p-5">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                    <input id="validation-code" placeholder="Scan atau ketik PO..." className="input-field pl-9 bg-slate-50 text-sm py-2.5 focus:bg-white" value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && findDocument()} aria-label="Kode validasi" />
+                  </div>
+                  <button type="button" onClick={findDocument} disabled={busy || !code.trim()} className="btn-primary text-sm px-4 py-2.5 disabled:opacity-50 shrink-0">{busy ? '...' : 'Cari'}</button>
+                </div>
+                {lookup && (
+                  <div className="mt-4 space-y-3 rounded-xl border border-gray-100 bg-slate-50/70 p-4 animate-fade-in">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {[
+                        { label: 'PO', value: lookup.po_transporter, mono: true },
+                        { label: 'Driver', value: lookup.driver_name || '-', mono: false },
+                        { label: 'Nopol', value: lookup.nopol || '-', mono: true },
+                        { label: 'Tujuan', value: lookup.destination_name || '-', mono: false },
+                      ].map((item) => (
+                        <div key={item.label}><p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">{item.label}</p><p className={`text-sm ${item.mono ? 'font-mono font-bold text-slate-800' : 'text-slate-700'}`}>{item.value}</p></div>
+                      ))}
+                    </div>
+                    <button type="button" onClick={startValidation} disabled={busy || !hasPermission('sj_validation.create')} className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50">
+                      {busy ? 'Memulai...' : 'Mulai Validasi'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </section>
 
             {/* Progress Ring */}
             {svTotal > 0 && (
-              <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Ringkasan Status</h3>
                 <div className="flex items-center gap-4">
                   <div className="relative w-24 h-24 shrink-0">
@@ -483,58 +490,61 @@ export default function ValidasiSjPage() {
 
           {/* Table Section */}
           <div className="xl:col-span-2">
-            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/40 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+                    <svg className="h-5 w-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
                   </div>
                   <div>
-                    <h2 className="text-sm font-black text-slate-900">Daftar Validasi</h2>
-                    <p className="text-[11px] text-slate-400">{totalRows} entri ditemukan</p>
+                    <h2 className="text-sm font-bold text-slate-900">Daftar Validasi</h2>
+                    <p className="mt-0.5 text-xs text-slate-400">{totalRows} entri ditemukan</p>
                   </div>
                 </div>
-                <SearchInput value={search} onChange={(v) => setSearch(v)} placeholder="Cari PO transporter..." resultCount={totalRows} resultLabel="validasi" />
+                <div className="w-full sm:w-72">
+                  <SearchInput value={search} onChange={(v) => setSearch(v)} placeholder="Cari PO transporter..." resultCount={totalRows} resultLabel="validasi" />
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px] border-collapse">
+              {/* Table - Desktop */}
+              <div className="overflow-x-auto hidden md:block">
+                <table className="w-full min-w-[720px] border-collapse">
                   <caption className="sr-only">Daftar validasi dokumen</caption>
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Tujuan</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Selesai</th>
-                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Tujuan</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Selesai</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-gray-100">
                     {loading ? (
                       Array.from({ length: 5 }).map((_, i) => (
                         <tr key={`skel-${i}`} className="animate-pulse">
-                          <td className="px-4 py-3"><div className="h-4 w-6 mx-auto rounded bg-gray-200" /></td>
-                          <td className="px-4 py-3"><div className="h-4 w-32 rounded bg-gray-200" /></td>
-                          <td className="px-4 py-3"><div className="h-4 w-20 rounded bg-gray-200" /></td>
-                          <td className="px-4 py-3"><div className="h-4 w-24 rounded bg-gray-200" /></td>
-                          <td className="px-4 py-3"><div className="h-5 w-20 mx-auto rounded-full bg-gray-200" /></td>
-                          <td className="px-4 py-3"><div className="h-4 w-20 mx-auto rounded bg-gray-200" /></td>
-                          <td className="px-4 py-3"><div className="h-7 w-16 ml-auto rounded-lg bg-gray-200" /></td>
+                          <td className="px-5 py-3"><div className="h-4 w-8 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="h-4 w-32 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="h-4 w-20 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="h-4 w-24 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="mx-auto h-5 w-20 rounded-full bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="mx-auto h-4 w-20 rounded bg-slate-100" /></td>
+                          <td className="px-5 py-3"><div className="ml-auto h-7 w-16 rounded-lg bg-slate-100" /></td>
                         </tr>
                       ))
                     ) : items.map((item, index) => {
                       const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
                       return (
-                        <tr key={item.id} className="even:bg-slate-50/30 hover:bg-slate-50/70 transition-all duration-150">
-                          <td className="px-4 py-3 text-center text-slate-400 text-xs font-mono">{(page - 1) * 20 + index + 1}</td>
-                          <td className="px-4 py-3"><span className="text-sm font-black text-slate-900 font-mono">{item.rencana_kirim?.po_transporter || item.scan_code}</span></td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{item.rencana_kirim?.driver_name || '-'}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{item.rencana_kirim?.destination_name || '-'}</td>
-                          <td className="px-4 py-3 text-center"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span></td>
-                          <td className="px-4 py-3 text-center text-xs text-slate-500">{fmtDate(item.completed_at)}</td>
-                          <td className="px-4 py-3 text-right"><button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 transition-all duration-150"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button></td>
+                        <tr key={item.id} className="transition-colors even:bg-slate-50/30 hover:bg-slate-50/70">
+                          <td className="px-5 py-3 text-center font-mono text-xs text-slate-400">{(page - 1) * 20 + index + 1}</td>
+                          <td className="px-5 py-3"><span className="font-mono text-sm font-bold text-slate-900">{item.rencana_kirim?.po_transporter || item.scan_code}</span></td>
+                          <td className="px-5 py-3 text-sm text-slate-600">{item.rencana_kirim?.driver_name || '-'}</td>
+                          <td className="px-5 py-3 text-sm text-slate-600">{item.rencana_kirim?.destination_name || '-'}</td>
+                          <td className="px-5 py-3 text-center"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span></td>
+                          <td className="px-5 py-3 text-center text-xs text-slate-500">{fmtDate(item.completed_at)}</td>
+                          <td className="px-5 py-3 text-right"><button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button></td>
                         </tr>
                       );
                     })}
@@ -542,10 +552,24 @@ export default function ValidasiSjPage() {
                       <tr>
                         <td colSpan={7} className="px-4 py-16 text-center">
                           <div className="flex flex-col items-center gap-3 text-slate-400">
-                            <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
-                              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                              {hasSearch ? (
+                                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                              ) : (
+                                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              )}
                             </div>
-                            <p className="text-sm font-medium">Tidak ada validasi ditemukan</p>
+                            {hasSearch ? (
+                              <>
+                                <p className="text-sm font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
+                                <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium">Belum ada validasi dokumen</p>
+                                <p className="text-xs text-slate-400">Scan atau cari PO transporter di panel Quick Scan untuk memulai.</p>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -553,11 +577,62 @@ export default function ValidasiSjPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile cards */}
+              <div className="divide-y divide-gray-100 md:hidden">
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={`skel-m-${i}`} className="animate-pulse p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-36 rounded bg-slate-100" />
+                          <div className="h-3 w-28 rounded bg-slate-100" />
+                        </div>
+                        <div className="h-5 w-16 rounded-full bg-slate-100" />
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <div className="h-3 w-32 rounded bg-slate-100" />
+                        <div className="h-5 w-20 rounded-full bg-slate-100" />
+                      </div>
+                    </div>
+                  ))
+                ) : items.length === 0 ? (
+                  <div className="px-4 py-12 text-center">
+                    <p className="text-sm font-medium text-slate-400">{hasSearch ? `Tidak ada hasil untuk "${search}"` : 'Belum ada validasi dokumen'}</p>
+                    {hasSearch && (
+                      <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="mt-1 text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                    )}
+                  </div>
+                ) : items.map((item) => {
+                  const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
+                  return (
+                    <div key={item.id} className="flex flex-col gap-2.5 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-mono text-sm font-bold text-slate-900">{item.rencana_kirim?.po_transporter || item.scan_code}</p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500">{item.rencana_kirim?.driver_name || '-'} <span className="text-slate-300">•</span> {item.rencana_kirim?.destination_name || '-'}</p>
+                        </div>
+                        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-slate-500">Selesai: <span className="tabular-nums">{fmtDate(item.completed_at)}</span></p>
+                        <button type="button" onClick={() => openDetail(item)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50">
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                          Detail
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               {lastPage > 1 && (
-                <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/40 px-5 py-3">
-                  <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed">Sebelumnya</button>
-                  <span className="text-xs text-slate-500">Halaman <strong className="text-slate-700">{page}</strong> dari {lastPage}</span>
-                  <button type="button" disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))} className="btn-secondary text-sm disabled:opacity-40 disabled:cursor-not-allowed">Selanjutnya</button>
+                <div className="border-t border-gray-100 bg-slate-50/50 px-5 py-4">
+                  <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+                    <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="btn-secondary w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed sm:w-auto">Sebelumnya</button>
+                    <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
+                    <button type="button" disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))} className="btn-secondary w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed sm:w-auto">Selanjutnya</button>
+                  </div>
                 </div>
               )}
             </section>

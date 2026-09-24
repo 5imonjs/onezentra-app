@@ -112,6 +112,7 @@ export default function ReceivingPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [items, setItems] = useState<Receiving[]>([]);
+  const [loading, setLoading] = useState(true);
   // Statistik header dihitung dari total server (bukan hanya halaman aktif).
   const [statusTotals, setStatusTotals] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
   const [search, setSearch] = useState('');
@@ -128,6 +129,7 @@ export default function ReceivingPage() {
   const [notifiedRecipients, setNotifiedRecipients] = useState<{ to: string[]; cc: string[] } | null>(null);
 
   const loadItems = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await receivings.list({ search, page, per_page: 20 });
       setItems(res.data.data);
@@ -147,6 +149,8 @@ export default function ReceivingPage() {
       });
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal memuat daftar receiving.'), type: 'error' });
+    } finally {
+      setLoading(false);
     }
   }, [search, page]);
 
@@ -278,6 +282,8 @@ export default function ReceivingPage() {
   };
 
   const finishSelisih = foundReceiving ? Number(foundReceiving.total_received_qty) - Number(foundReceiving.total_expected_qty) : 0;
+  const foundExpected = Number(foundReceiving?.total_expected_qty ?? 0);
+  const foundPct = foundExpected > 0 ? Math.min(100, Math.round((Number(foundReceiving?.total_received_qty ?? 0) / foundExpected) * 100)) : 0;
   const finishSummary = foundReceiving
     ? `PO ${foundReceiving.rencana_kirim?.po_transporter} — diterima ${foundReceiving.total_received_qty} dari ${foundReceiving.total_expected_qty} (selisih ${finishSelisih.toFixed(2)}). Aksi ini menyelesaikan receiving, melepas dock, dan mengirim notifikasi email; tidak dapat dibatalkan.`
     : '';
@@ -298,93 +304,107 @@ export default function ReceivingPage() {
   return (
     <DashboardLayout>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="space-y-6">
-        {/* Header — tenang, tanpa ornament; angka dari total server */}
-        <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-lg">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-5">
+        {/* Header — reflektif; angka status dari total server */}
+        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-primary-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
+                <svg className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight">Receiving</h1>
-                <p className="text-slate-400 text-sm mt-0.5">Konfirmasi selesai bongkar dengan scan barcode PO transporter.</p>
+                <h1 className="text-2xl font-bold leading-tight">Receiving</h1>
+                <p className="mt-0.5 text-gray-400">Konfirmasi selesai bongkar dengan scan barcode PO transporter.</p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <div className="flex flex-wrap items-center gap-2">
               {[
-                { label: 'Total', value: statusTotals.total, badge: 'bg-white/15 text-white' },
-                { label: 'Menunggu', value: statusTotals.pending, badge: 'bg-amber-500/90 text-white' },
-                { label: 'Diproses', value: statusTotals.inProgress, badge: 'bg-blue-500/90 text-white' },
-                { label: 'Selesai', value: statusTotals.completed, badge: 'bg-emerald-500/90 text-white' },
+                { label: 'Total', value: statusTotals.total, badge: 'bg-white/20 text-white', dot: 'bg-white' },
+                { label: 'Menunggu', value: statusTotals.pending, badge: 'bg-amber-400 text-amber-950', dot: 'bg-amber-400' },
+                { label: 'Diproses', value: statusTotals.inProgress, badge: 'bg-blue-400 text-blue-950', dot: 'bg-blue-400' },
+                { label: 'Selesai', value: statusTotals.completed, badge: 'bg-emerald-400 text-emerald-950', dot: 'bg-emerald-400' },
               ].map((stat) => (
-                <span key={stat.label} className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-2.5 py-1.5 text-xs font-medium text-slate-300">
+                <span key={stat.label} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
+                  <span className={`h-1.5 w-1.5 rounded-full ${stat.dot}`} />
                   {stat.label}
-                  <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${stat.badge}`}>{stat.value}</span>
+                  <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-black tabular-nums ${stat.badge}`}>{stat.value}</span>
                 </span>
               ))}
             </div>
           </div>
         </header>
 
-        {/* Konfirmasi Selesai Bongkar — satu-satunya titik fokus warna di halaman ini */}
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        {/* Konfirmasi Selesai Bongkar */}
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Konfirmasi Selesai Bongkar</h2>
-              <p className="text-xs text-slate-400">Pilih data aktif di tabel, atau scan barcode PO transporter.</p>
+              <p className="mt-0.5 text-xs text-slate-400">Pilih data aktif di tabel, atau scan barcode PO transporter.</p>
             </div>
             {!foundReceiving && (
-              <button onClick={() => setShowScanner(true)} className="btn-primary text-sm inline-flex items-center gap-2">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" /></svg>
+              <button onClick={() => setShowScanner(true)} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98]">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" /></svg>
                 Scan Barcode
               </button>
             )}
           </div>
           <div className="p-5">
             {!foundReceiving ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-6 text-center">
-                <p className="text-sm leading-6 text-slate-500 max-w-xl mx-auto">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-linear-to-br from-slate-50/80 to-primary-50/40 px-6 py-10 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+                  <svg className="h-6 w-6 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                </div>
+                <h3 className="text-sm font-bold text-slate-800">Belum ada receiving dipilih</h3>
+                <p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-slate-500">
                   Scan barcode pada dokumen PO transporter, atau pilih receiving berstatus <b>Menunggu</b> / <b>Diproses</b> pada daftar di bawah.
                 </p>
               </div>
             ) : (
-              <div className="p-4 sm:p-5 bg-emerald-50 rounded-xl border border-emerald-200">
-                <div className="grid grid-cols-2 gap-4 mb-4 sm:grid-cols-4">
+              <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 p-5 text-white shadow-xl sm:p-6">
+                <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary-500/10 blur-2xl" />
+                <div className="relative mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">PO Transporter</span>
-                    <p className="text-sm font-semibold text-slate-800 mt-0.5 font-mono">{foundReceiving.rencana_kirim?.po_transporter}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">PO Transporter</p>
+                    <p className="mt-0.5 break-all font-mono text-sm font-semibold text-white">{foundReceiving.rencana_kirim?.po_transporter || '-'}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Driver</span>
-                    <p className="text-sm font-medium text-slate-800 mt-0.5">{foundReceiving.rencana_kirim?.driver_name || '-'}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver</p>
+                    <p className="mt-0.5 text-sm font-medium text-white">{foundReceiving.rencana_kirim?.driver_name || '-'}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Nopol</span>
-                    <p className="text-sm font-medium text-slate-800 mt-0.5">{foundReceiving.rencana_kirim?.nopol || '-'}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nopol</p>
+                    <p className="mt-0.5 text-sm font-medium text-white">{foundReceiving.rencana_kirim?.nopol || '-'}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Status</span>
-                    <span className={`inline-flex items-center gap-1.5 mt-1 rounded-full px-2.5 py-1 text-xs font-bold ${statusConfig[foundReceiving.status]?.bg} ${statusConfig[foundReceiving.status]?.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusConfig[foundReceiving.status]?.dot}`} />{statusConfig[foundReceiving.status]?.label || foundReceiving.status}
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</p>
+                    <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold text-white ring-1 ring-white/15">
+                      <span className={`h-1.5 w-1.5 rounded-full ${statusConfig[foundReceiving.status]?.dot || 'bg-slate-400'}`} />{statusConfig[foundReceiving.status]?.label || foundReceiving.status}
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 mb-4 rounded-lg bg-white/70 border border-emerald-100 px-3 py-2 text-xs">
-                  <span className="text-slate-500">Diterima <strong className="text-slate-800 tabular-nums">{foundReceiving.total_received_qty}</strong> dari <strong className="text-slate-800 tabular-nums">{foundReceiving.total_expected_qty}</strong></span>
+                <div className="relative mb-5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-slate-300">Progres bongkar</span>
+                    <span className="font-bold tabular-nums text-white">{foundReceiving.total_received_qty}<span className="text-slate-400"> / {foundReceiving.total_expected_qty}</span></span>
+                  </div>
+                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${foundPct}%` }} />
+                  </div>
                   {finishSelisih !== 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200">
-                      Selisih {finishSelisih > 0 ? `+${finishSelisih.toFixed(2)}` : finishSelisih.toFixed(2)}
+                    <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${finishSelisih > 0 ? 'bg-amber-400/20 text-amber-300' : 'bg-red-400/20 text-red-300'}`}>
+                      {finishSelisih > 0 ? `Selisih +${finishSelisih.toFixed(2)}` : `Selisih ${finishSelisih.toFixed(2)}`}
                     </span>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="relative flex flex-wrap gap-2">
                   {['PENDING', 'IN_PROGRESS'].includes(foundReceiving.status) && canFinish && (
-                    <button onClick={() => setShowFinishConfirm(true)} disabled={scanning} className="btn-primary disabled:opacity-50 text-sm">
+                    <button onClick={() => setShowFinishConfirm(true)} disabled={scanning} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50">
                       {scanning ? 'Memproses...' : 'Selesai Bongkar'}
                     </button>
                   )}
-                  <button onClick={() => { setFoundReceiving(null); setScanResult(null); setScanNoDokumen(''); setNotifiedRecipients(null); }} className="btn-secondary text-sm">Pilih Lain</button>
+                  <button onClick={() => { setFoundReceiving(null); setScanResult(null); setScanNoDokumen(''); setNotifiedRecipients(null); }} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-[0.98]">
+                    Pilih Lain
+                  </button>
                 </div>
               </div>
             )}
@@ -431,103 +451,169 @@ export default function ReceivingPage() {
         </section>
 
         {/* Daftar Receiving */}
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Daftar Receiving</h2>
-              <p className="text-xs text-slate-400">{statusTotals.total} entri ditemukan</p>
+              <p className="mt-0.5 text-xs text-slate-400">{statusTotals.total} entri ditemukan</p>
             </div>
-            <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO transporter..." resultCount={statusTotals.total} resultLabel="receiving" />
-            {hasPermission('receiving.import') && (
-              <button onClick={() => setShowImportModal(true)} className="btn-secondary shrink-0">
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                  Import
-                </span>
-              </button>
-            )}
-            {hasPermission('receiving.export') && (
-              <button onClick={handleExport} className="btn-secondary shrink-0">
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 18v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" /></svg>
-                  Export
-                </span>
-              </button>
-            )}
-            {hasPermission('receiving.template') && (
-              <button onClick={handleTemplate} className="btn-secondary shrink-0">
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  Template
-                </span>
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO transporter..." resultCount={statusTotals.total} resultLabel="receiving" />
+              {hasPermission('receiving.import') && (
+                <button onClick={() => setShowImportModal(true)} className="btn-secondary shrink-0">
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Import
+                  </span>
+                </button>
+              )}
+              {hasPermission('receiving.export') && (
+                <button onClick={handleExport} className="btn-secondary shrink-0">
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 18v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" /></svg>
+                    Export
+                  </span>
+                </button>
+              )}
+              {hasPermission('receiving.template') && (
+                <button onClick={handleTemplate} className="btn-secondary shrink-0">
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    Template
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse">
-              <caption className="sr-only">Daftar receiving</caption>
-              <thead>
-                <tr className="bg-slate-800 text-white">
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider opacity-60">No</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider">No. PO Transporter</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider">Driver</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider">Progres</th>
-                  <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {items.map((item, index) => {
-                  const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
-                  const isActive = foundReceiving?.id === item.id;
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => handleSelect(item)}
-                      className={`cursor-pointer transition-colors duration-150 ${isActive ? 'bg-primary-50 ring-1 ring-inset ring-primary-200' : 'even:bg-slate-50/40 hover:bg-slate-50'}`}
-                    >
-                      <td className="px-4 py-3 text-center text-slate-400 text-xs font-mono">{(page - 1) * 20 + index + 1}</td>
-                      <td className="px-4 py-3"><span className="text-sm font-semibold text-slate-900 font-mono">{fmt(item.rencana_kirim?.po_transporter)}</span></td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{fmt(item.rencana_kirim?.driver_name)}</td>
-                      <td className="px-4 py-3 text-right"><ProgressCell received={item.total_received_qty} expected={item.total_expected_qty} /></td>
-                      <td className="px-4 py-3 text-center"><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text}`}><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span></td>
-                      <td className="px-4 py-3 text-right"><button onClick={(e) => { e.stopPropagation(); handleView(item); }} className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 transition-colors"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button></td>
-                    </tr>
-                  );
-                })}
-                {items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-16 text-center">
-                      <div className="flex flex-col items-center gap-3 text-slate-400">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
+          {/* Table - Desktop */}
+          <div className="hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse">
+                <caption className="sr-only">Daftar receiving</caption>
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No. PO Transporter</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Progres</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={`skel-${i}`} className="animate-pulse">
+                        <td className="px-5 py-3"><div className="h-4 w-8 rounded bg-slate-100" /></td>
+                        <td className="px-5 py-3"><div className="h-4 w-28 rounded bg-slate-100" /></td>
+                        <td className="px-5 py-3"><div className="h-4 w-20 rounded bg-slate-100" /></td>
+                        <td className="px-5 py-3"><div className="ml-auto h-4 w-24 rounded bg-slate-100" /></td>
+                        <td className="px-5 py-3"><div className="mx-auto h-5 w-16 rounded-full bg-slate-100" /></td>
+                        <td className="px-5 py-3" />
+                      </tr>
+                    ))
+                  ) : items.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-16 text-center">
+                        <div className="flex flex-col items-center gap-3 text-slate-400">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                            {hasSearch ? (
+                              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                            ) : (
+                              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                            )}
+                          </div>
                           {hasSearch ? (
-                            <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                            <>
+                              <p className="text-sm font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
+                              <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                            </>
                           ) : (
-                            <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                            <p className="text-sm font-medium">Belum ada receiving</p>
                           )}
                         </div>
-                        {hasSearch ? (
-                          <>
-                            <p className="text-sm font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
-                            <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
-                          </>
-                        ) : (
-                          <p className="text-sm font-medium">Belum ada receiving</p>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      </td>
+                    </tr>
+                  ) : (
+                    items.map((item, index) => {
+                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
+                      const isActive = foundReceiving?.id === item.id;
+                      return (
+                        <tr
+                          key={item.id}
+                          onClick={() => handleSelect(item)}
+                          className={`cursor-pointer transition-colors duration-150 ${isActive ? 'bg-primary-50 ring-1 ring-inset ring-primary-200' : 'hover:bg-gray-50/50'}`}
+                        >
+                          <td className="px-5 py-3 text-xs font-mono text-slate-400">{(page - 1) * 20 + index + 1}</td>
+                          <td className="px-5 py-3"><span className="font-mono text-sm font-semibold text-slate-900">{fmt(item.rencana_kirim?.po_transporter)}</span></td>
+                          <td className="px-5 py-3 text-sm text-slate-600">{fmt(item.rencana_kirim?.driver_name)}</td>
+                          <td className="px-5 py-3 text-right"><ProgressCell received={item.total_received_qty} expected={item.total_expected_qty} /></td>
+                          <td className="px-5 py-3 text-center"><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text}`}><span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span></td>
+                          <td className="px-5 py-3 text-right">
+                            <button onClick={(e) => { e.stopPropagation(); handleView(item); }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-primary-50 hover:text-primary-700">
+                              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                              Detail
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="px-4 py-3.5 sm:px-5 border-t border-slate-100 bg-slate-50/60">
-            <div className="flex flex-col-reverse sm:flex-row gap-3 justify-between items-center">
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary w-full sm:w-auto text-sm disabled:opacity-50" aria-label="Halaman sebelumnya">Sebelumnya</button>
-              <span className="text-xs sm:text-sm text-slate-500">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
-              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary w-full sm:w-auto text-sm disabled:opacity-50" aria-label="Halaman berikutnya">Selanjutnya</button>
+          {/* Cards - Mobile */}
+          <div className="space-y-3 p-4 md:hidden">
+            {loading ? (
+              <div className="animate-pulse space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={`skel-m-${i}`} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <div className="h-4 w-28 rounded bg-slate-100" />
+                    <div className="mt-3 h-4 w-40 rounded bg-slate-100" />
+                  </div>
+                ))}
+              </div>
+            ) : items.length === 0 ? (
+              <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center text-sm text-slate-400">
+                {hasSearch ? 'Tidak ada hasil untuk pencarian Anda.' : 'Belum ada receiving'}
+              </div>
+            ) : (
+              items.map((item) => {
+                const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
+                const isActive = foundReceiving?.id === item.id;
+                return (
+                  <div key={item.id} onClick={() => handleSelect(item)} className={`cursor-pointer rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md ${isActive ? 'border-primary-200 ring-1 ring-primary-200' : 'border-slate-100'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-mono text-sm font-bold text-slate-800">{fmt(item.rencana_kirim?.po_transporter)}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {fmt(item.rencana_kirim?.driver_name)}
+                          {item.rencana_kirim?.nopol ? ` · ${item.rencana_kirim.nopol}` : ''}
+                        </p>
+                      </div>
+                      <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text}`}><span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span>
+                    </div>
+                    <div className="mt-3 flex items-end justify-between gap-3">
+                      <ProgressCell received={item.total_received_qty} expected={item.total_expected_qty} />
+                      <button onClick={(e) => { e.stopPropagation(); handleView(item); }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-primary-50 hover:text-primary-700" aria-label="Lihat detail">
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Pagination */}
+          <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3.5 sm:px-5">
+            <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">Sebelumnya</button>
+              <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
+              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman berikutnya">Selanjutnya</button>
             </div>
           </div>
         </section>

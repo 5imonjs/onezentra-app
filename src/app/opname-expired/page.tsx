@@ -164,6 +164,9 @@ export default function OpnameExpiredPage() {
   const totalBatch = totalActions;
   const berisikoCrt = (statusSummary.EXPIRED?.qty_crt ?? 0) + (statusSummary.KRITIS?.qty_crt ?? 0) + (statusSummary.PERHATIAN?.qty_crt ?? 0);
 
+  // Dipakai empty-state: apakah pencarian aktif (UI saja).
+  const hasSearch = searchApply.trim().length > 0;
+
   const tabCount = (key: TabKey): number => {
     if (key === 'ACTION') return (statusSummary.EXPIRED?.count ?? 0) + (statusSummary.KRITIS?.count ?? 0) + (statusSummary.PERHATIAN?.count ?? 0);
     if (key === 'ALL') return totalActions;
@@ -307,7 +310,7 @@ export default function OpnameExpiredPage() {
         <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 text-white">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
                 <svg aria-hidden="true" className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
               <div>
@@ -481,34 +484,49 @@ export default function OpnameExpiredPage() {
               </div>
             </div>
           ) : waves.length === 0 ? (
-            <div className="py-16" role="status">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
-                  <svg className="w-7 h-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div className="px-4 py-16" role="status">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                  {hasSearch ? (
+                    <svg className="h-7 w-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                  ) : (
+                    <svg className="h-7 w-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  )}
                 </div>
-                <p className="text-sm text-slate-500 font-medium">
-                  {tabKey === 'AMAN' ? 'Tidak ada batch berstatus Aman minggu ini.' : 'Tidak ada batch dengan kriteria ini. Coba Generate atau ganti filter.'}
-                </p>
+                {hasSearch ? (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">Tidak ada hasil untuk &quot;{searchApply}&quot;</p>
+                    <p className="text-xs text-slate-400">Coba kata kunci lain atau hapus pencarian.</p>
+                    <button type="button" onClick={() => { setSearch(''); setSearchApply(''); setPage(1); }} className="btn-secondary text-xs">Hapus pencarian</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-slate-500">
+                      {tabKey === 'AMAN' ? 'Tidak ada batch berstatus Aman minggu ini.' : 'Tidak ada batch dengan kriteria ini.'}
+                    </p>
+                    <p className="text-xs text-slate-400">Ganti filter minggu/tab, atau Generate opname untuk minggu tersebut.</p>
+                  </>
+                )}
               </div>
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto" id="opname-table-panel" role="tabpanel" aria-labelledby="tab-ACTION">
+              <div className="hidden overflow-x-auto md:block" id="opname-table-panel" role="tabpanel" aria-labelledby="tab-ACTION">
                 <table className="w-full min-w-[980px] border-collapse">
                   <caption className="sr-only">Daftar opname expired</caption>
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th scope="col" className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status</th>
-                      <th scope="col" className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Produk</th>
-                      <th scope="col" className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Depo</th>
-                      <th scope="col" className="px-5 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Qty</th>
-                      <th scope="col" className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tgl Penerimaan</th>
-                      <th scope="col" className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Expired</th>
-                      <th scope="col" className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Sisa</th>
-                      <th scope="col" className="px-5 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tindakan</th>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Produk</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Qty</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Tgl Penerimaan</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Expired</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Sisa</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Tindakan</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-gray-100">
                     {waves.map((w) => {
                       const meta = STATUS_META[w.status_ini] || STATUS_META.AMAN;
                       return (
@@ -568,8 +586,71 @@ export default function OpnameExpiredPage() {
                 </table>
               </div>
 
+              {/* Mobile cards */}
+              <div className="divide-y divide-gray-100 md:hidden">
+                {waves.map((w) => {
+                  const meta = STATUS_META[w.status_ini] || STATUS_META.AMAN;
+                  return (
+                    <div key={w.id} className="flex flex-col gap-3 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-mono text-sm font-bold text-slate-800">{w.kode_barang}</p>
+                          <p className="mt-0.5 line-clamp-1 break-words text-xs text-slate-500" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          {badge(w.status_ini)}
+                          {w.sisa_hari < 0 && <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">EXPIRED</span>}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1">
+                          <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                          {w.nama_depo || w.kode_depo || '-'}
+                        </span>
+                        <span className="tabular-nums font-semibold text-slate-700">{fnum(num(w.qty_ini_crt))} CRT</span>
+                        {num(w.qty_ini_pcs) > 0 && <span className="tabular-nums text-slate-400">/ {fnum(num(w.qty_ini_pcs))} PCS</span>}
+                        {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi {num(w.qty_koreksi_crt)} CRT</span>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Penerimaan</p>
+                          <p className="mt-0.5 font-medium text-slate-700">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</p>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Expired</p>
+                          <p className="mt-0.5 font-medium text-slate-700">{fmtDate(w.expired_date_ini)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DaysBar sisaHari={w.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={w.status_ini} />
+                        <span className={`whitespace-nowrap text-sm font-bold tabular-nums ${meta.text}`}>{w.sisa_hari} hr</span>
+                      </div>
+                      <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
+                        <button
+                          onClick={() => openItem(w)}
+                          className="inline-flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-800"
+                        >
+                          Detail
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                        </button>
+                        {hasPermission('opname.delete') && (
+                          <button
+                            onClick={() => handleDelete(w.id)}
+                            className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
+                          >
+                            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               {pagination && pagination.total > ITEMS_PER_PAGE && (
-                <div className="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                <div className="border-t border-gray-100 bg-slate-50/50 px-5 py-4">
+                  <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
                   <p className="text-xs text-slate-500 tabular-nums">
                     Menampilkan {pagination.from ?? 0}–{pagination.to ?? 0} dari {pagination.total} baris
                   </p>
@@ -591,6 +672,7 @@ export default function OpnameExpiredPage() {
                     >
                       Berikutnya
                     </button>
+                  </div>
                   </div>
                 </div>
               )}
