@@ -221,6 +221,7 @@ type GroupedWorkerDetail = {
     nopol_kendaraan: string;
     type_kendaraan: string;
     nominal_biaya: number;
+    photos: PhotoItem[];
   }[];
   nominal_biaya: number;
 };
@@ -243,6 +244,7 @@ const groupWorkersBySuratJalan = (details: DetailRow[]): GroupedWorkerDetail[] =
       nopol_kendaraan: detail.nopol_kendaraan || '-',
       type_kendaraan: detail.type_kendaraan || '-',
       nominal_biaya: nominalBiaya,
+      photos: detail.photos || [],
     });
     group.nominal_biaya += nominalBiaya;
     groups.set(suratJalan, group);
@@ -385,11 +387,16 @@ const APPROVAL_ACTION_META: Record<string, { label: string; badge: string }> = {
 function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] | null }) {
   if (!histories || histories.length === 0) return null;
   return (
-    <div className="border-t border-slate-100 pt-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-        <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Riwayat Persetujuan</h3>
-        <span className="ml-auto inline-flex items-center rounded-full bg-primary-50 border border-primary-100 px-2.5 py-0.5 text-[11px] font-bold text-primary-700">{histories.length} aktivitas</span>
+    <div className="pt-1">
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </span>
+        <div>
+          <h3 className="text-sm font-black text-slate-800">Riwayat Persetujuan</h3>
+          <p className="text-[11px] text-slate-400">Jejak aksi tiap tahap approval</p>
+        </div>
+        <span className="ml-auto inline-flex items-center rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700">{histories.length} aktivitas</span>
       </div>
       <ol className="space-y-0">
         {histories.map((h, i) => {
@@ -397,7 +404,7 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
           return (
             <li key={h.id} className="relative flex gap-3 pb-4 last:pb-0">
               {i < histories.length - 1 && (
-                <span aria-hidden="true" className="absolute left-[15px] top-8 bottom-0 w-[2px] rounded-full bg-slate-200" />
+                <span aria-hidden="true" className="absolute left-[15px] top-9 bottom-0 w-[2px] rounded-full bg-slate-200" />
               )}
               <div className="shrink-0 mt-0.5">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-full border text-[10px] font-black ${meta.badge}`}>
@@ -472,16 +479,21 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
-        <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-        <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Alur Persetujuan</h3>
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+    <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-slate-50 to-white border-b border-slate-100">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 8H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M7 17L21 3m0 0h-5.5M21 3v5.5" /></svg>
+        </span>
+        <div>
+          <h3 className="text-sm font-black text-slate-800">Alur Persetujuan</h3>
+          <p className="text-[11px] text-slate-400">Tahapan approval pengajuan ini</p>
+        </div>
+        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${revised ? 'bg-orange-50 text-orange-700 border-orange-200' : rejected ? 'bg-red-50 text-red-700 border-red-200' : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : item.status === 'rlh_approved' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : item.status === 'checked' ? 'bg-blue-50 text-blue-700 border-blue-200' : item.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'rlh_approved' ? 'bg-indigo-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
           {revised ? revisionLabel : awaitingRecheck && recheckLabel ? recheckLabel : rejected ? 'Ditolak' : STATUS_META[item.status]?.label ?? item.status}
         </span>
       </div>
-      <div className="px-4 py-4">
+      <div className="px-4 py-4 sm:px-5">
         <ol>
           {steps.map((step, i) => {
             const state = stepStateAt(item.status, i, revisionIndex);
@@ -564,6 +576,12 @@ function DetailPhotoThumb({ photo }: { photo: PhotoItem }) {
   if (!url) return null;
   return <Image src={url} alt="Foto pendukung" className="w-full h-full object-cover" width={96} height={96} unoptimized />;
 }
+
+/** URL absolut foto yang tersimpan di storage (untuk pratinjau di modal detail). */
+const photoStoredUrl = (photo: PhotoItem): string => {
+  if (!isStoredPhoto(photo)) return '';
+  return photo.file_path.startsWith('http') ? photo.file_path : `${API_ROOT}/storage/${photo.file_path}`;
+};
 
 export default function BiayaThlPage() {
   const { user, hasPermission, hasRole } = useAuthStore();
@@ -2436,22 +2454,32 @@ export default function BiayaThlPage() {
         }>
           {viewItem && (
             <div className="space-y-5">
-              {/* Dark header card - konsisten dengan header halaman */}
-              <div className="rounded-2xl bg-slate-950 p-5 sm:p-6 text-white shadow-lg">
+              {/* Dark header card */}
+              <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 p-5 sm:p-6 text-white shadow-xl">
+                <div aria-hidden="true" className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary-500/25 blur-3xl" />
+                <div aria-hidden="true" className="absolute -bottom-24 -left-14 h-52 w-52 rounded-full bg-emerald-500/10 blur-3xl" />
+                <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
                 <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-slate-900 shadow-lg ring-1 ring-white/20">
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659 1.171-1.671a4.5 4.5 0 0 1 5.07-1.651 3 3 0 0 1 1.482 5.369L12 12" /></svg>
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 ring-1 ring-white/20">
+                      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659 1.171-1.671a4.5 4.5 0 0 1 5.07-1.651 3 3 0 0 1 1.482 5.369L12 12" /></svg>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-300/80">Biaya THL</p>
-                      <p className="mt-1 text-base sm:text-lg font-black tracking-tight text-white truncate">{viewItem.no_kendaraan || viewItem.details?.[0]?.nopol_kendaraan || '-'}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-400">
-                        <span className="font-mono text-gray-300">{viewItem.nama_depo}</span>
-                        <span className="text-gray-600">•</span>
-                        <span>Total <strong className="font-semibold text-slate-200 tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</strong></span>
-                        <span className="text-gray-600">•</span>
-                        <span>{viewItem.details?.length || 0} pekerja</span>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-300/90">Biaya THL</p>
+                      <p className="mt-1 text-lg sm:text-xl font-black tracking-tight text-white truncate">{viewItem.no_kendaraan || viewItem.details?.[0]?.nopol_kendaraan || '-'}</p>
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                          <svg className="w-3 h-3 text-primary-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                          {viewItem.nama_depo}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                          <svg className="w-3 h-3 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
+                          {formatCurrency(viewItem.nominal_biaya)}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                          <svg className="w-3 h-3 text-sky-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                          {viewItem.details?.length || 0} pekerja
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -2461,33 +2489,41 @@ export default function BiayaThlPage() {
                 </div>
               </div>
 
-              {/* Info grid */}
+              {/* Info ringkas */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
-                    Tanggal Pengajuan
-                  </span>
-                  <p className="text-sm text-slate-800 mt-1.5 font-semibold">{formatDate(viewItem.tanggal_pengajuan)}</p>
+                <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tanggal Pengajuan</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-800 mt-2.5">{formatDate(viewItem.tanggal_pengajuan)}</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                    No Surat Jalan
-                  </span>
-                  <div className="mt-1.5 space-y-0.5 text-sm font-semibold font-mono text-slate-800">
+                <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">No Surat Jalan</span>
+                  </div>
+                  <div className="mt-2.5 space-y-0.5 text-sm font-bold font-mono text-slate-800">
                     {[...new Set((viewItem.details || []).flatMap((d: DetailRow) => (d.no_surat_jalan || '').split(/[,;\n]+/).map((value) => value.trim()).filter(Boolean)))].map((suratJalan) => (
                       <p key={suratJalan} className="break-all">{suratJalan}</p>
                     ))}
                     {!(viewItem.details || []).some((d: DetailRow) => d.no_surat_jalan) && <p>-</p>}
                   </div>
                 </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                    Total Biaya
-                  </span>
-                  <p className="text-sm text-slate-800 mt-1.5 font-black tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</p>
+                <div className="rounded-xl sm:col-span-2 bg-linear-to-r from-emerald-50/80 to-white border border-emerald-100 shadow-sm p-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Biaya</span>
+                    </div>
+                    <p className="text-lg font-black text-emerald-700 tabular-nums">{formatCurrency(viewItem.nominal_biaya)}</p>
+                  </div>
                 </div>
               </div>
 
@@ -2495,39 +2531,102 @@ export default function BiayaThlPage() {
               <ApprovalStepper item={viewItem} />
               <ApprovalHistoryList histories={viewItem.approvalHistories} />
 
-              {/* Detail table */}
+              {/* Daftar Pekerja */}
               {viewItem.details.length > 0 && (
-                <div className="border-t border-slate-100 pt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-                    <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Daftar Pekerja</h3>
+                <div className="pt-1">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800">Daftar Pekerja</h3>
+                      <p className="text-[11px] text-slate-400">Per baris surat jalan dengan bukti foto</p>
+                    </div>
                     <span className="ml-auto inline-flex items-center rounded-full bg-primary-50 border border-primary-100 px-2.5 py-0.5 text-[11px] font-bold text-primary-700">
-                        {groupWorkersBySuratJalan(viewItem.details).length} SJ · {viewItem.details.length} pekerja
+                      {groupWorkersBySuratJalan(viewItem.details).length} SJ · {viewItem.details.length} pekerja
                     </span>
                   </div>
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-slate-50">
-                          <th className="table-header text-center">#</th>
+                          <th className="table-header text-center w-8">#</th>
                           <th className="table-header">No. SJ</th>
-                          <th className="table-header">Nama THL</th>
+                          <th className="table-header">Pekerja</th>
                           <th className="table-header">Posisi</th>
                           <th className="table-header">Plat Kendaraan</th>
-                          <th className="table-header">Type</th>
+                          <th className="table-header text-center">Foto</th>
                           <th className="table-header text-right">Nominal</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                          {groupWorkersBySuratJalan(viewItem.details).map((group, i) => (
+                        {groupWorkersBySuratJalan(viewItem.details).map((group, i) => (
                           <tr key={group.no_surat_jalan} className="hover:bg-slate-50/60 transition-colors align-top">
-                            <td className="table-cell text-center font-bold text-slate-400">{i + 1}</td>
-                            <td className="table-cell font-mono text-slate-600">{group.no_surat_jalan}</td>
-                            <td className="table-cell font-semibold text-slate-800"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <div key={`${worker.nama_thl}-${workerIndex}`}>{worker.nama_thl}</div>)}</div></td>
-                            <td className="table-cell"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <span key={`${worker.posisi}-${workerIndex}`} className={`block w-fit rounded-full border px-2 py-0.5 text-[10px] font-bold ${worker.posisi === 'THL GUDANG' ? 'border-sky-200 bg-sky-50 text-sky-700' : worker.posisi === 'THL DRIVER' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-primary-200 bg-primary-50 text-primary-700'}`}>{worker.posisi}</span>)}</div></td>
-                            <td className="table-cell font-mono"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <div key={`${worker.nopol_kendaraan}-${workerIndex}`}>{worker.nopol_kendaraan}</div>)}</div></td>
-                            <td className="table-cell"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <div key={`${worker.type_kendaraan}-${workerIndex}`}>{worker.type_kendaraan}</div>)}</div></td>
-                            <td className="table-cell text-right font-bold text-slate-800 tabular-nums"><div className="space-y-1">{group.workers.map((worker, workerIndex) => <div key={`${worker.nominal_biaya}-${workerIndex}`}>{formatCurrency(worker.nominal_biaya)}</div>)}<div className="border-t border-slate-200 pt-1 text-[10px] text-slate-500">Total {formatCurrency(group.nominal_biaya)}</div></div></td>
+                            <td className="table-cell text-center">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500 mx-auto">{i + 1}</span>
+                            </td>
+                            <td className="table-cell font-mono">
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">{group.no_surat_jalan}</span>
+                            </td>
+                            <td className="table-cell">
+                              <div className="space-y-1">
+                                {group.workers.map((worker, workerIndex) => (
+                                  <div key={`${worker.nama_thl}-${workerIndex}`} className="flex items-center gap-2">
+                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-[10px] font-black text-primary-700">{worker.nama_thl.slice(0, 1).toUpperCase()}</span>
+                                    <span className="font-semibold text-slate-800">{worker.nama_thl}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="table-cell">
+                              <div className="space-y-1">
+                                {group.workers.map((worker, workerIndex) => (
+                                  <span key={`${worker.posisi}-${workerIndex}`} className={`block w-fit rounded-full border px-2 py-0.5 text-[10px] font-bold ${worker.posisi === 'THL GUDANG' ? 'border-sky-200 bg-sky-50 text-sky-700' : worker.posisi === 'THL DRIVER' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-primary-200 bg-primary-50 text-primary-700'}`}>{worker.posisi}</span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="table-cell">
+                              <div className="space-y-1">
+                                {group.workers.map((worker, workerIndex) => (
+                                  <div key={`${worker.nopol_kendaraan}-${workerIndex}`} className="space-y-0.5">
+                                    <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium font-mono text-slate-700">{worker.nopol_kendaraan}</span>
+                                    <span className="block text-[10px] text-slate-400">{worker.type_kendaraan}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="table-cell text-center">
+                              <div className="space-y-1">
+                                {group.workers.map((worker, workerIndex) => {
+                                  const first = worker.photos[0];
+                                  const src = first ? photoStoredUrl(first) : '';
+                                  return (
+                                    <div key={`foto-${workerIndex}`} className="flex justify-center">
+                                      {src ? (
+                                        <a href={src} target="_blank" rel="noopener noreferrer" title="Lihat foto bukti" className="group relative block h-10 w-10 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-sm hover:ring-2 hover:ring-primary-400 transition-all">
+                                          <Image src={src} alt={`Foto ${worker.nama_thl}`} className="h-full w-full object-cover" width={40} height={40} unoptimized />
+                                          {worker.photos.length > 1 && (
+                                            <span className="absolute -right-0.5 -bottom-0.5 rounded-md bg-slate-900/90 px-1 text-[9px] font-bold text-white">+{worker.photos.length - 1}</span>
+                                          )}
+                                        </a>
+                                      ) : (
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-slate-200 text-slate-300">
+                                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25z" /></svg>
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                            <td className="table-cell text-right">
+                              <div className="space-y-1">
+                                {group.workers.map((worker, workerIndex) => (
+                                  <div key={`${worker.nominal_biaya}-${workerIndex}`} className="font-bold text-slate-800 tabular-nums">{formatCurrency(worker.nominal_biaya)}</div>
+                                ))}
+                                <div className="border-t border-slate-200 pt-1 text-[11px] font-black text-slate-600">Total {formatCurrency(group.nominal_biaya)}</div>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -2537,8 +2636,8 @@ export default function BiayaThlPage() {
               )}
 
               {/* Status footer */}
-              <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-xs text-slate-500">Status pengajuan</p>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-xs font-semibold text-slate-500">Status pengajuan</p>
                   {badge(viewItem.status, viewItem)}
               </div>
             </div>
