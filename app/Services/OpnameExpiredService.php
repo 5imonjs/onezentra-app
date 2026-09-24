@@ -145,7 +145,7 @@ class OpnameExpiredService
                     'nama_barang' => $item->nama_barang ?: $item->kode_barang,
                     'expired_date' => $expired,
                     'sumber_material' => $sumber,
-                    'tanggal_penerimaan' => $item->tanggal_penerimaan instanceof \Illuminate\Support\Carbon ? $item->tanggal_penerimaan->toDateString() : $item->tanggal_penerimaan,
+                    'tanggal_penerimaan' => $item->tanggal_penerimaan instanceof Carbon ? $item->tanggal_penerimaan->toDateString() : $item->tanggal_penerimaan,
                     'qty_crt' => 0,
                     'qty_pcs' => 0,
                 ];
