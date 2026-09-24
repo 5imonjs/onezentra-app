@@ -16,7 +16,7 @@ function useFont(doc: jsPDF, style: 'normal' | 'bold'): void {
   }
 }
 type ThlPhoto = File | { id?: number; file_path?: string; file_name?: string };
-type ApprovalSection = { title: string; people: { name: string; role: string }[] };
+export type ApprovalSection = { title: string; people: { name: string; role: string }[] };
 
 type ThlData = {
   tanggal_pengajuan: string;
@@ -45,8 +45,8 @@ type ThlData = {
   checkedBy?: { full_name?: string } | null;
   approvedBy?: { full_name?: string } | null;
   rlhApprovedBy?: { full_name?: string } | null;
-  rejectedBy?: { full_name?: string } | null;
-  revisedBy?: { full_name?: string } | null;
+  rejectedBy?: { full_name?: string; level?: string } | null;
+  revisedBy?: { full_name?: string; level?: string } | null;
   details: {
     nama_thl: string;
     driver_name?: string;
@@ -66,7 +66,7 @@ type ThlData = {
   }[];
 };
 
-type RetribusiData = {
+export type RetribusiData = {
   tanggal_pengajuan: string;
   kode_depo: string;
   nama_depo: string;
@@ -89,8 +89,8 @@ type RetribusiData = {
   checkedBy?: { full_name?: string } | null;
   approvedBy?: { full_name?: string } | null;
   rlhApprovedBy?: { full_name?: string } | null;
-  rejectedBy?: { full_name?: string } | null;
-  revisedBy?: { full_name?: string } | null;
+  rejectedBy?: { full_name?: string; level?: string } | null;
+  revisedBy?: { full_name?: string; level?: string } | null;
   details: {
     nopol_kendaraan: string;
     type_kendaraan: string;
@@ -262,9 +262,12 @@ function formatPdfColumn(primary?: string | null, additional?: string | null): s
 }
 
 const money = (value: number) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+// Normalisasi 'YYYY-MM-DD HH:mm:ss' (gaya Laravel) menjadi ISO agar
+// new Date() dapat mem-parse; format ISO (dengan 'T' atau 'Z') dibiarkan.
+const normalizedDateInput = (value: string) => (value.includes('T') ? value : value.replace(' ', 'T'));
 const date = (value: string | null | undefined) => {
   if (!value) return '-';
-  const parsed = new Date(value.includes('T') ? value : `${value}T00:00:00`);
+  const parsed = new Date(normalizedDateInput(value));
   return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 };
 const value = (item: unknown) => String(item ?? '-');
@@ -273,7 +276,7 @@ const STAMP_GREEN: [number, number, number] = [21, 128, 61];
 const STAMP_RED: [number, number, number] = [220, 38, 38];
 const STAMP_ORANGE: [number, number, number] = [217, 119, 6];
 
-type AuditDates = { submitted?: string; checked?: string; rlhApproved?: string; approved?: string; rejected?: string; revised?: string };
+export type AuditDates = { submitted?: string; checked?: string; rlhApproved?: string; approved?: string; rejected?: string; revised?: string };
 
 /** Nama pelaku aksi dari relasi *By (ada pada item tersimpan, kosong pada draft form). */
 function actorName(data: RetribusiData, key: 'submittedBy' | 'checkedBy' | 'approvedBy' | 'rlhApprovedBy' | 'rejectedBy' | 'revisedBy'): string {
@@ -282,30 +285,66 @@ function actorName(data: RetribusiData, key: 'submittedBy' | 'checkedBy' | 'appr
 }
 
 /**
+ * Kotak kolom approval tempat cap REVISI/DITOLAK diletakkan mengikuti peran
+ * pelaku aksinya — bukan selalu kotak RLH. BAC membubuhkan di kotak
+ * Mengetahui, RFAH di kotak RFAH*, selainnya (RLH / data lama tanpa level)
+ * kembali ke kotak Menyetujui.
+ */
+export function stampSectionFor(level?: string | null): string {
+  const normalized = (level || '').toUpperCase();
+  if (normalized === 'BAC') return 'Mengetahui';
+  if (normalized === 'RFAH') return 'RFAH*';
+  return 'Menyetujui';
+}
+
+/**
  * Nama pada kolom approval mencerminkan AKSI, bukan daftar assignee.
  * Draft/preview pengajuan yang belum diperiksa: kotak Mengetahui/Menyetujui
  * menampilkan '-' (role tetap tertera) + tanpa cap.
+ *
+ * Nama pelaku revisi/ditolak ditempatkan di kotak sesuai peran pelakunya
+ * (BAC -> Mengetahui, RFAH -> RFAH*, selainnya -> Menyetujui), sejajar
+ * dengan penempatan cap — revisi oleh RFAH tidak boleh muncul di kotak RLH.
  */
-function actedNameFor(section: ApprovalSection, data: RetribusiData, dates: AuditDates): string {
+export function actedNameFor(section: ApprovalSection, data: RetribusiData, dates: AuditDates): string {
   const assignee = section.people[0]?.name || '-';
   if (section.title === 'Mengajukan') return actorName(data, 'submittedBy') || data.approval_pengajuan || assignee;
-  if (section.title === 'Mengetahui') {
-    if (!dates.checked || dates.checked === '-') return assignee;
-    return actorName(data, 'checkedBy') || assignee;
+
+  const isRejected = data.status === 'rejected';
+  const isRevisi = data.status === 'revisi';
+  const actorNameOf = isRejected ? actorName(data, 'rejectedBy') : isRevisi ? actorName(data, 'revisedBy') : '';
+  const actorLevel = (isRejected ? data.rejectedBy?.level : isRevisi ? data.revisedBy?.level : '') || '';
+
+  // Nama pelaku aksi terminal (revisi/ditolak) menempel pada kotak sesuai
+  // perannya; kotak lain menampilkan nama aksi aktual atau assignee.
+  if ((isRejected || isRevisi) && actorNameOf) {
+    if (stampSectionFor(actorLevel) === section.title) return actorNameOf;
+    return assignee;
   }
+
+  if (section.title === 'Mengetahui') {
+    if (dates.checked && dates.checked !== '-') return actorName(data, 'checkedBy') || assignee;
+    return assignee;
+  }
+
   if (section.title === 'Menyetujui') {
     if (data.status === 'rlh_approved') return actorName(data, 'rlhApprovedBy') || assignee;
-    if (!['approved', 'rejected', 'revisi'].includes(data.status)) return assignee;
-    const key = data.status === 'approved' && data.is_rfah_required ? 'rlhApprovedBy' : data.status === 'approved' ? 'approvedBy' : data.status === 'rejected' ? 'rejectedBy' : 'revisedBy';
-    return actorName(data, key) || assignee;
+    if (data.status === 'approved') {
+      return data.is_rfah_required
+        ? actorName(data, 'rlhApprovedBy') || assignee
+        : actorName(data, 'approvedBy') || assignee;
+    }
+    return assignee;
   }
-  if (section.title === 'RFAH*') return data.status === 'approved' ? actorName(data, 'approvedBy') || assignee : assignee;
+
+  if (section.title === 'RFAH*' && data.status === 'approved') return actorName(data, 'approvedBy') || assignee;
+
   return assignee;
 }
 
-type StampSpec = { text: string; color: [number, number, number]; date: string };
+export type StampSpec = { text: string; color: [number, number, number]; date: string };
 
-function auditDates(data: { submitted_at?: string | null; checked_at?: string | null; rlh_approved_at?: string | null; approved_at?: string | null; rejected_at?: string | null; revised_at?: string | null }): AuditDates {
+export function auditDates(data: { submitted_at?: string | null; checked_at?: string | null; rlh_approved_at?: string | null; approved_at?: string | null; rejected_at?: string | null; revised_at?: string | null }): AuditDates {
   return {
     submitted: date(data.submitted_at),
     checked: date(data.checked_at),
@@ -316,7 +355,7 @@ function auditDates(data: { submitted_at?: string | null; checked_at?: string | 
   };
 }
 
-function stampFor(section: ApprovalSection, data: RetribusiData, dates: AuditDates): StampSpec | null {
+export function stampFor(section: ApprovalSection, data: RetribusiData, dates: AuditDates): StampSpec | null {
   const { status } = data;
   if (section.title === 'Mengajukan') {
     // Sejajar server (resolveStamps): cap mengikuti AKSI submit (status),
@@ -331,20 +370,46 @@ function stampFor(section: ApprovalSection, data: RetribusiData, dates: AuditDat
     // benar terjadi (checked_at ada) — BUKAN karena nama assignee terdaftar.
     // Nama pelaku boleh tidak terbawa pada data PDF, tetapi cap audit tetap
     // harus tampil karena timestamp adalah bukti aksinya.
-    return dates.checked && dates.checked !== '-'
-      ? { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked }
-      : null;
+    if (dates.checked && dates.checked !== '-') return { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked };
+    // Revisi/ditolak oleh BAC menempel di kotak Mengetahui (bukan RLH).
+    if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'Mengetahui' && dates.revised && actorName(data, 'revisedBy')) {
+      return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
+    }
+    if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'Mengetahui' && dates.rejected && actorName(data, 'rejectedBy')) {
+      return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
+    }
+    return null;
   }
 
   if (section.title === 'Menyetujui') {
-    if (dates.rlhApproved && dates.rlhApproved !== '-') return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
+    // Cap DISETUJUI RLH hanya menyala pada status yang benar-benar
+    // melewati RLH; status revisi/ditolak pasca-RLH menampilkan cap
+    // terminal (REVISI/DITOLAK) sesuai pelaku, konsisten dengan server.
+    if (dates.rlhApproved && dates.rlhApproved !== '-' && (status === 'rlh_approved' || status === 'approved')) {
+      return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
+    }
     if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) return { text: 'DISETUJUI', color: STAMP_GREEN, date: dates.approved };
-    if (status === 'rejected' && dates.rejected && actorName(data, 'rejectedBy')) return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
-    if (status === 'revisi' && dates.revised && actorName(data, 'revisedBy')) return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
+    if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'Menyetujui' && dates.rejected && actorName(data, 'rejectedBy')) return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
+    if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'Menyetujui' && dates.revised && actorName(data, 'revisedBy')) return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
+    // Persetujuan RLH pada siklus sebelumnya tetap tercatat di kotaknya
+    // walau aksi terminal (revisi/ditolak) dilakukan pelaku lain (BAC/RFAH)
+    // — cap terminal ada di kotak pelakunya, sehingga kotak RLH tidak kosong.
+    if (status === 'rejected' && dates.rejected && dates.rlhApproved && dates.rlhApproved !== '-' && stampSectionFor(data.rejectedBy?.level) !== 'Menyetujui') return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
+    if (status === 'revisi' && dates.revised && dates.rlhApproved && dates.rlhApproved !== '-' && stampSectionFor(data.revisedBy?.level) !== 'Menyetujui') return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
+    return null;
   }
 
-  if (section.title === 'RFAH*' && status === 'approved' && dates.approved && actorName(data, 'approvedBy')) {
-    return { text: 'DISETUJUI RFAH', color: STAMP_GREEN, date: dates.approved };
+  if (section.title === 'RFAH*') {
+    if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) {
+      return { text: 'DISETUJUI RFAH', color: STAMP_GREEN, date: dates.approved };
+    }
+    if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'RFAH*' && dates.rejected && actorName(data, 'rejectedBy')) {
+      return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
+    }
+    if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'RFAH*' && dates.revised && actorName(data, 'revisedBy')) {
+      return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
+    }
+    return null;
   }
 
   return null;
