@@ -1558,56 +1558,74 @@ export default function BiayaRetribusiPage() {
             </aside>
             <div className="min-w-0">
           <div className="space-y-4 sm:space-y-5">
-            <div className="lg:hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="lg:hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
               <div className="flex items-center gap-1.5">
                 {WIZARD_LABELS.map((label, i) => {
                   const stepNo = i + 1;
                   const isCurrent = formStep === stepNo;
+                  const isDone = stepDone[i];
                   return (
                   <div key={label} className="flex flex-1 items-center gap-1.5 last:flex-none">
-                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${stepDone[i] ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-primary-500 text-white' : 'bg-slate-200 text-slate-500'}`}>{stepDone[i] ? '✓' : stepNo}</span>
-                    <span className={`text-[10px] font-bold ${stepDone[i] || isCurrent ? 'text-slate-700' : 'text-slate-400'}`}>{label}</span>
-                    {i < 3 && <span className={`h-0.5 flex-1 rounded-full ${stepDone[i] ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ring-2 ${isDone ? 'bg-emerald-500 text-white ring-emerald-200' : isCurrent ? 'bg-primary-600 text-white ring-primary-200' : 'bg-slate-100 text-slate-400 ring-slate-100'}`}>{isDone ? '✓' : stepNo}</span>
+                    <span className={`text-[10px] font-bold ${isDone ? 'text-emerald-700' : isCurrent ? 'text-primary-700' : 'text-slate-400'}`}>{label}</span>
+                    {i < 3 && <span className={`h-0.5 flex-1 rounded-full ${isDone ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
                   </div>
                   );
                 })}
               </div>
             </div>
-            <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4 lg:block">
-              <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:block">
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Alur pengajuan</p>
-                  <p className="mt-1 text-sm font-bold text-slate-800">Tipe <span className="text-slate-300">→</span> Data <span className="text-slate-300">→</span> Lampiran <span className="text-slate-300">→</span> Review</p>
+                  <p className="mt-0.5 text-sm font-bold text-slate-800">Langkah {formStep} dari 4</p>
                 </div>
                 <span className="rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-[10px] font-black text-primary-700">
                   {selectedRowCount} baris
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+              <div className="flex items-center">
+                {WIZARD_LABELS.map((label, i) => {
+                  const stepNo = i + 1;
+                  const isDone = stepDone[i];
+                  const isCurrent = formStep === stepNo;
+                  const isLast = i === WIZARD_LABELS.length - 1;
+                  return (
+                  <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-black ring-2 transition-all ${isDone ? 'bg-emerald-500 text-white ring-emerald-200' : isCurrent ? 'bg-primary-600 text-white ring-primary-200 shadow-md' : 'bg-slate-100 text-slate-400 ring-slate-100'}`}>{isDone ? '✓' : stepNo}</span>
+                    {!isLast && <div className={`mx-2 h-0.5 flex-1 rounded-full ${isDone ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
+                  </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                {WIZARD_LABELS.map((label, i) => {
+                  const isDone = stepDone[i];
+                  const isCurrent = formStep === i + 1;
+                  return (
+                  <span key={label} className={`text-[10px] font-bold ${isDone ? 'text-emerald-700' : isCurrent ? 'text-primary-700' : 'text-slate-400'}`}>{isDone ? `✓ ${label}` : label}</span>
+                  );
+                })}
+              </div>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <div
                   className="h-full rounded-full bg-linear-to-r from-primary-500 to-indigo-500 transition-all"
-                  style={{ width: `${Math.max(stepProgress, 8)}%` }}
+                  style={{ width: `${Math.max(stepProgress, 6)}%` }}
                 />
-              </div>
-              <div className="mt-3 grid grid-cols-4 gap-2 text-center text-[10px] font-bold text-slate-400">
-                <span className={stepDone[0] ? 'text-primary-700' : ''}>1. Tipe</span>
-                <span className={stepDone[1] ? 'text-primary-700' : ''}>2. Data{!stepDone[1] && selectedRowCount > 0 ? ' (belum lengkap)' : ''}</span>
-                <span className={stepDone[2] ? 'text-primary-700' : ''}>3. Lampiran</span>
-                <span className={formStep === 4 ? 'text-primary-700' : ''}>4. Review</span>
               </div>
             </div>
 
             {formStep === 2 && (
             <div className="grid gap-3 sm:grid-cols-2">
             {/* Depo Badge */}
-            <div className="flex flex-col gap-3 rounded-2xl border border-primary-100 bg-linear-to-r from-primary-50 to-indigo-50 p-4 sm:flex-row sm:items-center">
-              <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
-                <svg className="w-4 h-4 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+            <div className="flex flex-col gap-3 rounded-2xl border border-primary-100 bg-linear-to-r from-primary-50 via-indigo-50 to-white p-4 shadow-sm sm:flex-row sm:items-center">
+              <div className="w-10 h-10 rounded-xl bg-white shadow-sm ring-1 ring-primary-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-primary-600 uppercase tracking-wider">Depo Pengajuan</p>
                 <p className="text-sm font-bold text-gray-900 truncate">{targetDepoLabel}</p>
-                {(isCandidateDepoUniform || isDepoInherited) && <p className="text-[11px] text-primary-600">Mengikuti depo receiving</p>}
+                {(isCandidateDepoUniform || isDepoInherited) && <p className="mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-primary-600"><span className="h-1 w-1 rounded-full bg-primary-500" />Mengikuti depo receiving</p>}
               </div>
             </div>
 
@@ -1695,9 +1713,11 @@ export default function BiayaRetribusiPage() {
             {/* Pilih Kandidat */}
             {!editingId && sourceType === 'receiving' && formStep === 2 && (
               <div>
-                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                    <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                    </span>
                     Pilih dari Penerimaan (Receiving)
                   </span>
                   {selectedCandidates.length > 0 && (
@@ -1715,9 +1735,12 @@ export default function BiayaRetribusiPage() {
                 </button>
                 <p className="mb-3 text-[11px] text-slate-400">Hanya receiving COMPLETED yang sudah divalidasi checker dan belum diklaim. Qty zak/crt dan tanggal pengajuan terisi otomatis dari receiving — tanpa input ulang.</p>
                 {candidates.length === 0 && !busy && (
-                  <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center">
-                    <p className="text-xs font-semibold text-gray-500">Belum ada data receiving</p>
-                    <p className="mt-1 text-[11px] text-gray-400">Klik “Muat receiving” untuk menampilkan yang siap diklaim</p>
+                  <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                      <svg className="h-5 w-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M10 3v18" /></svg>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-slate-600">Belum ada data receiving</p>
+                    <p className="mt-1 text-[11px] text-slate-400">Klik “Muat receiving” untuk menampilkan yang siap diklaim</p>
                   </div>
                 )}
                 {candidates.length > 0 && (
@@ -1795,30 +1818,36 @@ export default function BiayaRetribusiPage() {
             {/* Baris Manual */}            {/* Baris Manual */}
             {(editingId || sourceType === 'manual') && formStep === 2 && (
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+              <div className="flex items-center justify-between mb-2.5">
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                  </span>
                   Baris Manual
                   {manualDetails.length > 0 && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{manualDetails.length}</span>
+                    <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">{manualDetails.length} baris</span>
                   )}
                 </label>
-                <button type="button" onClick={addManualDetail} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-200 transition-colors inline-flex items-center gap-1">
+                <button type="button" onClick={addManualDetail} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-700 transition-colors inline-flex items-center gap-1 shadow-sm">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                  Tambah
+                  Tambah Baris
                 </button>
               </div>
 
               {manualDetails.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center">
-                  <p className="text-xs text-gray-400">Belum ada baris manual</p>
+                <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                    <svg className="h-5 w-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-slate-600">Belum ada baris manual</p>
+                  <p className="mt-1 text-[11px] text-slate-400">Klik “Tambah Baris” untuk memasukkan nopol, type, qty, dan nominal.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {manualDetails.map((md, i) => (
                     <details key={i} open className="group relative rounded-lg border border-gray-100 bg-white">
                       <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors list-none">
-                        <div className="w-6 h-6 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">
+                        <div className="w-6 h-6 rounded-md bg-primary-100 border border-primary-200 flex items-center justify-center text-[10px] font-bold text-primary-700 shrink-0">
                           {i + 1}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1892,9 +1921,9 @@ export default function BiayaRetribusiPage() {
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">{formData.documents.length}</span>
                   )}
                 </label>
-                <button type="button" onClick={addDocument} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-200 transition-colors inline-flex items-center gap-1">
+                <button type="button" onClick={addDocument} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-700 transition-colors inline-flex items-center gap-1 shadow-sm">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                  Tambah
+                  Tambah Dokumen
                 </button>
               </div>
 
@@ -2014,10 +2043,10 @@ export default function BiayaRetribusiPage() {
 
             {/* Total */}
             {(formStep === 2 || formStep === 4) && (
-            <div className={`rounded-2xl border-2 p-4 transition-all sm:p-5 ${isRfahRequired ? 'border-amber-300 bg-linear-to-r from-amber-50 via-orange-50 to-amber-50 shadow-amber-100/50 shadow-lg' : 'border-gray-200 bg-gray-50'}`}>
+            <div className={`rounded-2xl border-2 p-4 transition-all sm:p-5 ${isRfahRequired ? 'border-amber-300 bg-linear-to-r from-amber-50 via-orange-50 to-amber-50 shadow-amber-100/50 shadow-lg' : 'border-primary-100 bg-linear-to-br from-primary-50/70 to-white shadow-sm'}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isRfahRequired ? 'bg-amber-100 text-amber-600' : 'bg-gray-200 text-gray-500'}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${isRfahRequired ? 'bg-amber-100 text-amber-600' : 'bg-primary-100 text-primary-600'}`}>
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659 1.171-1.671a4.5 4.5 0 015.07-1.651 3 3 0 011.482 5.369L12 12" /></svg>
                   </div>
                   <div>
@@ -2026,16 +2055,20 @@ export default function BiayaRetribusiPage() {
                     <p className="text-[11px] text-gray-400">{selectedRowCount} baris dipilih{blockerReasons.length > 0 && !busy ? ` · ${blockerReasons[0]}` : ''}</p>
                   </div>
                 </div>
-                {isRfahRequired && (
-                  <div className="text-right">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-200 px-3 py-1.5 text-xs font-bold text-amber-700">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                      RFAH Required
-                    </span>
-                    <p className="text-[11px] text-amber-600 mt-1 font-medium">Total &gt; Rp {biayaConfig.retribusi_rfah_threshold.toLocaleString('id-ID')}</p>
-                    <p className="text-[10px] font-bold text-amber-500 mt-0.5">{biayaConfig.rfah_name}</p>
-                  </div>
-                )}
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black ${isKoliMode ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {isKoliMode ? 'MODE KOLI' : 'MODE BORONGAN'}
+                  </span>
+                  {isRfahRequired && (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-200 px-3 py-1.5 text-xs font-bold text-amber-700">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                        RFAH Required
+                      </span>
+                      <p className="text-[11px] text-amber-600 font-medium">Total &gt; Rp {biayaConfig.retribusi_rfah_threshold.toLocaleString('id-ID')} · {biayaConfig.rfah_name}</p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
             )}
