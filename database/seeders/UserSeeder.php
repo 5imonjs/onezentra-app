@@ -92,6 +92,14 @@ class UserSeeder extends Seeder
                 'level' => 'cheker',
                 'role_slug' => 'cheker',
             ],
+            [
+                'kode_depo' => 'SAC-01',
+                'nama_depo' => 'Depo SAC',
+                'full_name' => 'User SAC',
+                'email' => 'sac@onezentra.com',
+                'level' => 'sac',
+                'role_slug' => 'sac',
+            ],
         ];
 
         foreach ($users as $data) {

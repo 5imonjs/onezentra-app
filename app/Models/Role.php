@@ -18,6 +18,7 @@ class Role extends Model
         'admin_distirbusi',
         'admin_planner',
         'cheker',
+        'sac',
     ];
 
     protected $table = 'roles';

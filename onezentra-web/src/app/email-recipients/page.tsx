@@ -250,6 +250,8 @@ export default function EmailRecipientsPage() {
 
   const brokenRecipients = items.filter((r) => resolveProblem(r) !== null);
 
+  const hasSearch = search.trim().length > 0 || documentType !== '';
+
   return (
     <DashboardLayout>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -307,19 +309,20 @@ export default function EmailRecipientsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[860px]">
               <caption className="sr-only">Daftar penerima email</caption>
-              <thead>
-                <tr className="bg-slate-50/80">
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">No</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Dokumen</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Trigger</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Field</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Penerima</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Label</th>
-                  <th scope="col" className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Aktif</th>
-                  <th scope="col" className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Aksi</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-50">
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Dokumen</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Trigger</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Field</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Penerima</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Label</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Aktif</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -333,7 +336,7 @@ export default function EmailRecipientsPage() {
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-700">{triggerLabel(r.document_type, r.trigger)}</td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ring-1 ring-inset ring-black/5 ${fieldBadge(r.field)}`}>{r.field}</span>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${fieldBadge(r.field)}`}>{r.field}</span>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
@@ -386,6 +389,48 @@ export default function EmailRecipientsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-2 p-3">
+            {items.map((r) => (
+              <div key={r.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-medium text-gray-900 text-sm">{docTypeLabel[r.document_type] || r.document_type}</p>
+                    <p className="text-xs text-gray-500">{triggerLabel(r.document_type, r.trigger)}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${fieldBadge(r.field)}`}>{r.field}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <p className="text-slate-500">Penerima: <span className="font-medium text-slate-700">{describe(r)}</span></p>
+                  <p className="text-slate-500">Aktif: <span className="font-medium text-slate-700">{r.is_active ? 'Aktif' : 'Nonaktif'}</span></p>
+                  {r.label && <p className="text-slate-500 col-span-2">Label: <span className="font-medium text-slate-700">{r.label}</span></p>}
+                </div>
+                {resolveProblem(r) && (
+                  <span className="inline-flex mt-1 items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 ring-1 ring-red-200">
+                    <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                    Tak terkirim
+                  </span>
+                )}
+                <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
+                  {hasPermission('emails.edit') && (
+                    <button onClick={() => openEdit(r)} className="min-h-[36px] px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label="Edit">Edit</button>
+                  )}
+                  {hasPermission('emails.edit') && (
+                    <button onClick={() => { setDeleteTargetId(r.id); setShowDeleteConfirm(true); }} className="min-h-[36px] px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label="Hapus">Hapus</button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {items.length === 0 && (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+                  <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                </div>
+                <p className="text-sm font-medium text-slate-500">{hasSearch ? 'Tidak ada hasil pencarian' : 'Belum ada penerima email'}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
