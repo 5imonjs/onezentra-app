@@ -2,11 +2,6 @@ import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  esbuild: {
-    // Automatic runtime agar test, komponen, dan react-dom memakai satu
-    // instance React yang sama (menghindari "two React copies").
-    jsx: 'automatic',
-  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
@@ -18,6 +13,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // Satu instance React yang sama untuk test, komponen, dan react-dom
+    // (menghindari "two React copies").
     dedupe: ['react', 'react-dom'],
   },
 });

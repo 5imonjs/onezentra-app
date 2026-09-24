@@ -201,7 +201,6 @@ export default function StandarisasiPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
-  const [exporting, setExporting] = useState(false);
    const { hasPermission } = useAuthStore();
 
 const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
