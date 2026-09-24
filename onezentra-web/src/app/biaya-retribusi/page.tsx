@@ -9,6 +9,7 @@ import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import { generateRetribusiPdf, previewRetribusiPdf } from '@/lib/biayaPdf';
 import { getBiayaConfigFresh, clearBiayaConfigCache, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
+import ApprovalPipeline, { type ApprovalPipelineStep } from '@/components/ApprovalPipeline';
 
 interface ReceivingCandidate {
   id: number;
@@ -155,6 +156,37 @@ const toDateInputValue = (value: string | null | undefined): string => {
   if (!value) return '';
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value).trim());
   return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+};
+
+/** State tiap tahap pengajuan untuk pipeline ringkas di daftar. RFAH tampil
+ *  bila is_rfah_required (senada chip RFAH); saat status rlh_approved tahap
+ *  RFAH menjadi yang menunggu. Sumber timestamp sama dengan modal detail. */
+const retribusiPipelineSteps = (item: BiayaRetribusiItem): ApprovalPipelineStep[] => {
+  const rejected = item.status === 'rejected';
+  const revised = item.status === 'revisi';
+  const revisionAtBac = revised && (item.revisedBy?.level?.toLowerCase() === 'bac');
+  const stages: { role: string; at: string | null | undefined }[] = [
+    { role: item.approval_pengajuan_level || 'BLC', at: item.submitted_at },
+    { role: 'BAC', at: item.checked_at },
+    { role: 'RLH', at: item.rejected_at ?? item.approved_at },
+  ];
+  if (item.is_rfah_required) stages.push({ role: 'RFAH', at: item.approved_at });
+
+  if (item.status === 'draft') {
+    return stages.map((stage) => ({ role: stage.role, state: 'todo' }));
+  }
+
+  const firstOpen = stages.findIndex((s) => !s.at);
+  return stages.map((stage, i) => {
+    if (item.status === 'approved') return { role: stage.role, state: 'done' };
+    if (item.status === 'rlh_approved') return { role: stage.role, state: i === 3 ? 'current' : 'done' };
+    if (rejected && i === 2) return { role: stage.role, state: 'reject' };
+    if (rejected) return { role: stage.role, state: stage.at ? 'done' : 'todo' };
+    if (revised && (revisionAtBac ? i === 1 : i === 2)) return { role: stage.role, state: 'revisi' };
+    if (revised) return { role: stage.role, state: stage.at ? 'done' : 'todo' };
+    if (stage.at) return { role: stage.role, state: 'done' };
+    return { role: stage.role, state: i === firstOpen ? 'current' : 'todo' };
+  });
 };
 
 const formatCurrency = (amount: number | string | null | undefined) => {
@@ -1363,11 +1395,14 @@ export default function BiayaRetribusiPage() {
                       <td className="px-5 py-3 text-sm text-slate-600 text-center whitespace-nowrap">{getQtyLabel(item)}</td>
                       <td className="px-5 py-3 text-right text-sm font-semibold text-slate-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</td>
                       <td className="px-5 py-3">
-                        <div className="flex items-center gap-1.5">
-                          {badge(item.status)}
-                          {item.is_rfah_required && (
-                            <span className="inline-flex items-center rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700" title={item.rfah_name || 'RFAH'}>RFAH</span>
-                          )}
+                        <div className="flex flex-col items-start gap-1.5">
+                          <div className="flex items-center gap-1.5">
+                            {badge(item.status)}
+                            {item.is_rfah_required && (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700" title={item.rfah_name || 'RFAH'}>RFAH</span>
+                            )}
+                          </div>
+                          <ApprovalPipeline steps={retribusiPipelineSteps(item)} />
                         </div>
                       </td>
                       <td className="px-5 py-3 text-right">
@@ -1435,6 +1470,9 @@ export default function BiayaRetribusiPage() {
                     </div>
                   </div>
                   {badge(item.status)}
+                </div>
+                <div className="mb-3">
+                  <ApprovalPipeline steps={retribusiPipelineSteps(item)} />
                 </div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1.5 flex-wrap">
