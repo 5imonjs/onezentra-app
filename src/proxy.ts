@@ -21,9 +21,11 @@ export function proxy(request: NextRequest) {
   // Heuristik server-side: cookie sesi Sanctum tidak ada berarti belum login.
   // Validitas sesi tetap ditegakkan backend (401) + guard client.
   if (!request.cookies.has(SESSION_COOKIE)) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('expired', '1');
-    return NextResponse.redirect(loginUrl);
+    // Arahkan ke /login polos. Label "sesi berakhir" (?expired=1) HANYA untuk
+    // sesi yang benar-benar mati di tengah pemakaian — ditandai interceptor API
+    // (lib/api.ts). Pengunjung baru/mantan tanpa cookie jangan dibilang
+    // sesinya "berakhir".
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();

@@ -31,6 +31,9 @@ export default function LoginPage() {
     }
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('expired') === '1') {
       setError('Sesi Anda telah berakhir. Silakan login kembali.');
+      // Bersihkan flag dari URL: kalau dibiarkan, refresh/restore tab akan
+      // memunculkan pesan ini berulang padahal tidak ada sesi baru berakhir.
+      router.replace('/login', { scroll: false });
     }
   }, [user, router]);
 

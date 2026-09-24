@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AxiosError } from 'axios';
+import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { notifyPermissionDenied } from '@/store/globalToast';
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -35,35 +35,91 @@ export const apiClient = axios.create({
   },
 });
 
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 422 && process.env.NODE_ENV !== 'production') {
-      console.warn('[API 422]', {
-        method: error.config?.method?.toUpperCase(),
-        url: error.config?.url,
-        params: error.config?.params,
-        data: error.config?.data,
-        response: error.response?.data,
-      });
-    }
-    if (error.response?.status === 401 || error.response?.status === 419) {
-      // Sesi kedaluwarsa/CSRF mismatch: state auth hanya di memori, jadi reload penuh ke
-      // /login otomatis membersihkannya. Jangan redirect jika sudah di /login.
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        // Hard navigation disengaja: state auth hanya di memori, dan interceptor axios
-        // berada di luar React sehingga router Next tidak tersedia di sini.
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.href = '/login?expired=1';
-      }
-    } else if (error.response?.status === 403) {
-      if (typeof window !== 'undefined') {
-        notifyPermissionDenied(error.response?.data?.message);
-      }
-    }
-    return Promise.reject(error);
+/**
+ * Status respons yang berarti sesi bermasalah (auth hilang / token tak valid).
+ * 401 = sesi kadaluwarsa/dihentikan; 419 = CSRF mismatch.
+ */
+export function isSessionLossStatus(status?: number): boolean {
+  return status === 401 || status === 419;
+}
+
+/** Reload penuh ke /login — state auth hanya di memori, jadi reload otomatis membersihkannya. */
+function redirectToLogin(): void {
+  // Jangan redirect jika sudah di /login.
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    // Hard navigation disengaja: state auth hanya di memori, dan interceptor axios
+    // berada di luar React sehingga router Next tidak tersedia di sini.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = '/login?expired=1';
   }
-);
+}
+
+/**
+ * Pasang interceptor respons untuk penanganan status HTTP.
+ *
+ * 419 (csrf-token-mismatch) ≠ sesi berakhir: token XSRF bisa basi tanpa sesi mati
+ * (restart server, deploy, tab lain). Untuk 419 kami refresh cookie CSRF lalu
+ * retry request yang sama SEKALI (simbol RETRY_ATTEMPTED di config agar retry
+ * tetap bounded). Kalau retry masih gagal 419/401, barulah diperlakukan sebagai
+ * kehilangan sesi.
+ */
+export function registerResponseInterceptors(
+  client: AxiosInstance,
+  refreshCsrf: () => Promise<unknown> = () => client.get(`${API_ROOT}/sanctum/csrf-cookie`),
+): void {
+  // Tanda retry ditaruh sebagai symbol property di config: axios `mergeConfig`
+  // menyalin properti non-objek dari config asal ke config baru saat retry,
+  // jadi tanda ini ikut terbawa dan mencegah retry berkali-kali (bounded).
+  const RETRY_ATTEMPTED: unique symbol = Symbol('csrfRetryAttempted');
+  type RetryableConfig = AxiosRequestConfig & { [RETRY_ATTEMPTED]?: boolean };
+  // Pertahanan ekstra: request refresh CSRF sendiri jangan di-retry (kalau
+  // endpoint itu pernah menjawab 419, langsung jatuh ke penanganan sesi).
+  const isCsrfRefresh = (url?: string) => !!url?.includes('/sanctum/csrf-cookie');
+
+  client.interceptors.response.use(
+    (response) => response,
+    (error: AxiosError<ApiErrorResponse>) => {
+      if (error.response?.status === 422 && process.env.NODE_ENV !== 'production') {
+        console.warn('[API 422]', {
+          method: error.config?.method?.toUpperCase(),
+          url: error.config?.url,
+          params: error.config?.params,
+          data: error.config?.data,
+          response: error.response?.data,
+        });
+      }
+
+      const config = error.config as RetryableConfig | undefined;
+
+      if (
+        error.response?.status === 419
+        && config
+        && !config[RETRY_ATTEMPTED]
+        && !isCsrfRefresh(config.url)
+      ) {
+        config[RETRY_ATTEMPTED] = true;
+        // Request ulang yang masih 419/401 — konfig-nya (hasil merge) masih
+        // membawa tanda RETRY_ATTEMPTED — masuk lagi ke interceptor ini dan
+        // ditangani sebagai kehilangan sesi, bukan di-retry lagi.
+        return refreshCsrf()
+          .then(() => client.request(config))
+          .catch((retryError: AxiosError) => Promise.reject(retryError));
+      }
+
+      if (isSessionLossStatus(error.response?.status)) {
+        redirectToLogin();
+      } else if (error.response?.status === 403) {
+        if (typeof window !== 'undefined') {
+          notifyPermissionDenied(error.response?.data?.message);
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+}
+
+registerResponseInterceptors(apiClient);
 
 export const auth = {
   csrf: () => apiClient.get(`${API_ROOT}/sanctum/csrf-cookie`),
