@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\EmailRecipient;
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -79,6 +80,32 @@ class SeederRoleVerificationTest extends TestCase
 
         $this->assertContains('blc', $validSlugs);
         $this->assertContains('admin_distirbusi', $validSlugs);
+    }
+
+    public function test_approval_view_hanya_untuk_admin_master(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        $owners = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'approval.view'))
+            ->pluck('slug')
+            ->sort()
+            ->values()
+            ->all();
+        $this->assertSame(['admin_master'], $owners);
+
+        $expectations = [
+            'blc' => 'approval.submit',
+            'bac' => 'approval.check',
+            'rlh' => 'approval.approve',
+            'rfah' => 'approval.rfah',
+        ];
+        foreach ($expectations as $roleSlug => $permissionSlug) {
+            $this->assertTrue(
+                Role::where('slug', $roleSlug)->first()->permissions()->where('slug', $permissionSlug)->exists(),
+                "Role {$roleSlug} harus memegang {$permissionSlug}"
+            );
+        }
     }
 
     private function seedRoles(): void

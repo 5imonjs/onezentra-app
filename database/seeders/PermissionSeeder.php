@@ -128,13 +128,16 @@ class PermissionSeeder extends Seeder
                 'dashboard.view', 'penerimaan.view', 'npn.view',
                 'standar_umur.view', 'standarisasi.view', 'opname.view',
                 'biaya_thl.view', 'biaya_retribusi.view',
-                'approval.view', 'approval.approve', 'approval.reject', 'approval.revise',
+                // Tanpa approval.view: menu "Pengaturan Approval" hanya untuk
+                // admin_master (pengelola roles & permissions). Aksi approve
+                // tetap berjalan lewat permission approval.* masing-masing.
+                'approval.approve', 'approval.reject', 'approval.revise',
             ],
             'rfah' => [
                 'dashboard.view', 'penerimaan.view', 'npn.view',
                 'standar_umur.view', 'standarisasi.view', 'opname.view',
                 'biaya_thl.view', 'biaya_retribusi.view',
-                'approval.view', 'approval.reject', 'approval.revise', 'approval.rfah',
+                'approval.reject', 'approval.revise', 'approval.rfah',
             ],
             'rh' => [
                 'dashboard.view', 'penerimaan.view', 'npn.view', 'opname.view',
@@ -147,7 +150,7 @@ class PermissionSeeder extends Seeder
                 'biaya_retribusi.view', 'biaya_retribusi.create', 'biaya_retribusi.edit',
                 'sj_validation.view',
                 'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.delete',
-                'approval.view', 'approval.submit',
+                'approval.submit',
                 'gate.edit', 'gate.delete',
             ],
             'bac' => [
@@ -156,7 +159,7 @@ class PermissionSeeder extends Seeder
                 'biaya_thl.view', 'biaya_thl.create', 'biaya_thl.edit',
                 'biaya_retribusi.view', 'biaya_retribusi.create', 'biaya_retribusi.edit',
                 'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.delete',
-                'approval.view', 'approval.check', 'approval.revise',
+                'approval.check', 'approval.revise',
                 'gate.edit', 'gate.delete',
             ],
             'admin_distirbusi' => [

@@ -1272,6 +1272,13 @@ export default function BiayaThlPage() {
       setFormStep(1);
       return;
     }
+    // Pola "input langsung" (sama seperti retribusi): pembuatan baru yang masuk
+    // ke step Data Pekerja tanpa baris langsung disiapkan 1 grup SJ + 1 baris
+    // pekerja kosong — user langsung mengetik tanpa klik "Tambah Surat Jalan".
+    if (step === 2 && editingId === null && formData.details.length === 0) {
+      insertSjGroupBefore(null);
+      scrollToWorker(0);
+    }
     if (step === 3) {
       if (sjGroupError || vehicleError) {
         const errGroupIndex = sjGroupError ? sjGroupErrorInfo.groupIndex : null;
