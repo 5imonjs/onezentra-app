@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AxiosError } from 'axios';
 import { notifyPermissionDenied } from '@/store/globalToast';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 export const API_ROOT = API_URL.replace(/\/api\/v1\/?$/, '');
 
 type ApiErrorResponse = {
@@ -91,6 +91,15 @@ export const roles = {
   delete: (id: number) => apiClient.delete(`/roles/${id}`),
   getPermissions: (id: number) => apiClient.get(`/roles/${id}/permissions`),
   syncPermissions: (id: number, permissionIds: number[]) => apiClient.put(`/roles/${id}/permissions`, { permission_ids: permissionIds }),
+  import: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/roles/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  export: () => apiClient.get('/roles/export', { responseType: 'blob' }),
+  template: () => apiClient.get('/roles/template', { responseType: 'blob' }),
 };
 
 export const permissions = {
@@ -161,10 +170,25 @@ export const standarisasiTumpukan = {
   reject: (id: number) => apiClient.post(`/standarisasi-tumpukan/${id}/reject`),
   /** Kirim ulang notifikasi email untuk status baris saat ini. */
   notify: (id: number) => apiClient.post(`/standarisasi-tumpukan/${id}/notify`),
+  import: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/standarisasi-tumpukan/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  export: (params?: Record<string, unknown>) => apiClient.get('/standarisasi-tumpukan/export', { params, responseType: 'blob' }),
+  template: () => apiClient.get('/standarisasi-tumpukan/template', { responseType: 'blob' }),
 };
 
 export const depo = {
   list: () => apiClient.get('/depo'),
+};
+
+export const retribusiRates = {
+  list: () => apiClient.get('/retribusi-rates'),
+  save: (data: Record<string, unknown>) => apiClient.post('/retribusi-rates', data),
+  remove: (kodeDepo: string) => apiClient.delete(`/retribusi-rates/${kodeDepo}`),
 };
 
 export const receivingItems = {
@@ -221,6 +245,7 @@ export const opnameExpired = {
   },
   manualTemplate: () => apiClient.get('/receiving-items/template', { responseType: 'blob' }),
   manualDelete: (id: number) => apiClient.delete(`/receiving-items/${id}`),
+  delete: (id: number) => apiClient.delete(`/opname-expired/${id}`),
 };
 
 export const rencanaKirim = {
@@ -257,6 +282,15 @@ export const docks = {
   create: (data: Record<string, unknown>) => apiClient.post('/docks', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/docks/${id}`, data),
   delete: (id: number) => apiClient.delete(`/docks/${id}`),
+  import: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/docks/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  export: (params?: Record<string, unknown>) => apiClient.get('/docks/export', { params, responseType: 'blob' }),
+  template: () => apiClient.get('/docks/template', { responseType: 'blob' }),
 };
 
 export const gateTransactions = {
@@ -265,6 +299,8 @@ export const gateTransactions = {
   get: (id: number) => apiClient.get(`/gate-transactions/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/gate-transactions', data),
   byNoDokumen: (poTransporter: string) => apiClient.get('/gate-transactions/search/by-dokumen', { params: { po_transporter: poTransporter } }),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put(`/gate-transactions/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/gate-transactions/${id}`),
 };
 
 export const receivings = {
@@ -276,6 +312,15 @@ export const receivings = {
   complete: (id: number, data?: Record<string, unknown>) => apiClient.post(`/receivings/${id}/complete`, data ?? {}),
   cancel: (id: number) => apiClient.post(`/receivings/${id}/cancel`),
   delete: (id: number) => apiClient.delete(`/receivings/${id}`),
+  import: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/receivings/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  export: (params?: Record<string, unknown>) => apiClient.get('/receivings/export', { params, responseType: 'blob' }),
+  template: () => apiClient.get('/receivings/template', { responseType: 'blob' }),
 };
 
 export const batches = {
@@ -335,6 +380,10 @@ export const reports = {
   rencanaKirimExport: (params?: Record<string, unknown>) => apiClient.get('/reports/rencana-kirim/export', { params, responseType: 'blob' }),
   penerimaan: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan', { params }),
   penerimaanExport: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan/export', { params, responseType: 'blob' }),
+  biayaThl: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl', { params }),
+  biayaThlExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl/export', { params, responseType: 'blob' }),
+  biayaRetribusi: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi', { params }),
+  biayaRetribusiExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi/export', { params, responseType: 'blob' }),
 };
 
 export const biayaThl = {
@@ -363,6 +412,13 @@ export const biayaThl = {
   rfahApprove: (id: number) => apiClient.post(`/biaya-thl/${id}/rfah-approve`),
   reject: (id: number, reason: string) => apiClient.post(`/biaya-thl/${id}/reject`, { reason }),
   revise: (id: number, reason: string) => apiClient.post(`/biaya-thl/${id}/revise`, { reason }),
+  import: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/biaya-thl/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 export const biayaRetribusi = {
@@ -379,6 +435,7 @@ export const biayaRetribusi = {
     return apiClient.put(`/biaya-retribusi/${id}`, data, config);
   },
   delete: (id: number) => apiClient.delete(`/biaya-retribusi/${id}`),
+  documentUrl: (docId: number) => `${API_URL}/biaya-retribusi/documents/${docId}`,
   export: (params?: Record<string, unknown>) => apiClient.get('/biaya-retribusi/export', { params, responseType: 'blob' }),
    submit: (id: number) => apiClient.post(`/biaya-retribusi/${id}/submit`),
    check: (id: number) => apiClient.post(`/biaya-retribusi/${id}/check`),
@@ -386,7 +443,14 @@ export const biayaRetribusi = {
    rfahApprove: (id: number) => apiClient.post(`/biaya-retribusi/${id}/rfah-approve`),
    reject: (id: number, reason: string) => apiClient.post(`/biaya-retribusi/${id}/reject`, { reason }),
    revise: (id: number, reason: string) => apiClient.post(`/biaya-retribusi/${id}/revise`, { reason }),
- };
+  import: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/biaya-retribusi/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
 
 export const biayaThlPdfSettings = {
   get: (kodeDepo?: string) => apiClient.get('/settings/biaya-thl-pdf', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
@@ -394,8 +458,8 @@ export const biayaThlPdfSettings = {
 };
 
 export const approvalAssignments = {
-  get: (kodeDepo?: string) => apiClient.get('/approval-assignments', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
-  save: (data: { kode_depo: string; assignments: { approval_level: string; user_id: number }[] }) => apiClient.post('/approval-assignments', data),
+  get: (kodeDepo?: string, module: 'biaya_thl' | 'biaya_retribusi' = 'biaya_thl') => apiClient.get('/approval-assignments', { params: { ...(kodeDepo ? { kode_depo: kodeDepo } : {}), module } }),
+  save: (data: { kode_depo: string; module?: 'biaya_thl' | 'biaya_retribusi'; assignments: { approval_level: string; user_id: number }[] }) => apiClient.post('/approval-assignments', data),
 };
 
 export default apiClient;

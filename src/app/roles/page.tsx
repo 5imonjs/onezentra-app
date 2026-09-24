@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { roles, permissions, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
@@ -172,6 +172,17 @@ function RolesTab() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
 
+  // Search
+  const [search, setSearch] = useState('');
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Import
+  const [showImport, setShowImport] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ message: string; ok?: boolean; imported?: number; updated?: number; errors?: { row: number; errors: string }[] } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Permission Management State
   const [showPermModal, setShowPermModal] = useState(false);
   const [permRole, setPermRole] = useState<Role | null>(null);
@@ -186,15 +197,83 @@ function RolesTab() {
 
   useEffect(() => { loadRoles(); }, []);
 
-  const loadRoles = async () => {
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
+
+  const loadRoles = async (searchQuery?: string) => {
     try {
-      const res = await roles.list();
+      const query = searchQuery ?? search;
+      const res = await roles.list(query || undefined);
       setRoleList(res.data.data);
       setTotalPermissions(res.data.meta?.total_permissions || 0);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Search handler with debounce
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      loadRoles(value);
+    }, 300);
+  };
+
+  // Import handler
+  const handleImport = async () => {
+    if (!selectedFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await roles.import(selectedFile);
+      const data = res.data.data;
+      setImportResult({ message: res.data.message || 'Import selesai', ok: true, ...data });
+      setSelectedFile(null);
+      loadRoles();
+    } catch (e) {
+      setImportResult({ message: getErrorMessage(e, 'Import gagal'), ok: false });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Export handler
+  const handleExport = async () => {
+    try {
+      const res = await roles.export();
+      const blob = res.data;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'roles-export.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      notifyGlobal('Export role berhasil!');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Export gagal'));
+    }
+  };
+
+  // Template handler
+  const handleTemplate = async () => {
+    try {
+      const res = await roles.template();
+      const blob = res.data;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'role-import-template.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      notifyGlobal('Template unduh!');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengunduh template'));
     }
   };
 
@@ -362,21 +441,63 @@ function RolesTab() {
 
   return (
     <>
-      {/* Add Role Button */}
-      <div className="flex justify-end">
-        {hasPermission('roles.create') && (
-        <button
-          onClick={() => { setEditingRole(null); setForm({ name: '', slug: '', description: '' }); setShowModal(true); }}
-          className="btn-primary"
-        >
-          <span className="flex items-center gap-2">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Tambah Role
-          </span>
-        </button>
-        )}
+      {/* Toolbar: Search + Action Buttons */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="relative">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Cari role..."
+                className="input-field !pl-11 !py-2.5"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {hasPermission('roles.template') && (
+              <button onClick={handleTemplate} className="btn-secondary whitespace-nowrap">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5 5 5M5 20h14a1 1 0 0 0 1-1v-4" /></svg>
+                  Template
+                </span>
+              </button>
+            )}
+            {hasPermission('roles.export') && (
+              <button onClick={handleExport} className="btn-secondary whitespace-nowrap">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5 5 5M5 20h14a1 1 0 0 0 1-1v-4" /></svg>
+                  Export
+                </span>
+              </button>
+            )}
+            {hasPermission('roles.import') && (
+              <button onClick={() => { setSelectedFile(null); setImportResult(null); setShowImport(true); }} className="btn-secondary whitespace-nowrap">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L7 9m5-5 5 5M5 20h14a1 1 0 0 0 1-1v-4" /></svg>
+                  Import
+                </span>
+              </button>
+            )}
+            {hasPermission('roles.create') && (
+              <button
+                onClick={() => { setEditingRole(null); setForm({ name: '', slug: '', description: '' }); setShowModal(true); }}
+                className="btn-primary"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Tambah Role
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Roles Grid */}
@@ -725,6 +846,45 @@ function RolesTab() {
         variant="warning"
         loading={submitLoading}
       />
+
+      {/* Import Modal */}
+      <Modal
+        open={showImport}
+        onClose={() => { setShowImport(false); setSelectedFile(null); setImportResult(null); }}
+        title="Import Role"
+        subtitle="Upload file Excel atau CSV"
+        size="md"
+        footer={
+          <>
+            <button onClick={() => { setShowImport(false); setSelectedFile(null); setImportResult(null); }} className="btn-secondary">Batal</button>
+            <button onClick={handleImport} disabled={!selectedFile || importing} className="btn-primary disabled:opacity-50">
+              {importing ? 'Mengimpor...' : 'Import Sekarang'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div
+            className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-primary-300"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+            <p className="text-sm font-medium text-gray-700">{selectedFile?.name || 'Klik untuk memilih file'}</p>
+            <p className="text-xs text-gray-400 mt-1">Kolom: Nama, Slug, Deskripsi, Aktif (true/false)</p>
+          </div>
+          {importResult && (
+            <div className={`p-4 rounded-xl ${importResult.errors?.length ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+              <p className="text-sm font-medium">{importResult.message}</p>
+              <p className="text-xs mt-1">
+                Baris: {importResult.imported ?? 0} baru · Diperbarui: {importResult.updated ?? 0}
+                {importResult.errors?.slice(0, 5).map((error, i) => (
+                  <p key={i} className="text-xs mt-1">Baris {error.row}: {error.errors}</p>
+                ))}
+              </p>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Permission Save Confirm */}
       <ConfirmDialog

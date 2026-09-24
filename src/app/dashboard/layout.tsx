@@ -26,7 +26,11 @@ const MENU_FALLBACK: [string, string][] = [
   ['/email-settings', 'emails.view'],
   ['/email-recipients', 'emails.view'],
   ['/reports/rencana-kirim', 'reports.view'],
+  ['/reports/penerimaan', 'reports.view'],
   ['/reports/selisih-qty', 'reports.view'],
+  ['/reports/opname-expired', 'reports.view'],
+  ['/reports/biaya-thl', 'reports.biaya_thl'],
+  ['/reports/biaya-retribusi', 'reports.biaya_retribusi'],
 ];
 
 function SplashScreen({ leaving = false, immersive = false }: { leaving?: boolean; immersive?: boolean }) {
