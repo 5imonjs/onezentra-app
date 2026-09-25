@@ -32,6 +32,9 @@ use Illuminate\Support\Facades\Storage;
 
 Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+    // Mobile (Bearer token, per-perangkat). Web SPA tetap cookie-only via /login.
+    Route::post('mobile/login', [AuthController::class, 'mobileLogin'])->middleware('throttle:10,1');
+    Route::post('mobile/logout', [AuthController::class, 'mobileLogout'])->middleware(['auth:sanctum', 'throttle:10,1']);
     Route::post('register', [AuthController::class, 'register'])
         ->middleware(['auth:sanctum', 'permission:users.create', 'throttle:5,1']);
     Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');

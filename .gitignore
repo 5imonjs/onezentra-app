@@ -40,6 +40,11 @@ onezentra-web/.turbo
 onezentra-web/.vercel
 onezentra-web/next-env.d.ts
 
+# ===== Mobile (onezentra-mobile-flutter) =====
+onezentra-mobile-flutter/.dart_tool/
+onezentra-mobile-flutter/.flutter-plugins-dependencies
+onezentra-mobile-flutter/build/
+
 # ===== OS & editor =====
 .DS_Store
 **/.DS_Store

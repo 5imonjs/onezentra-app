@@ -86,16 +86,13 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        // Untuk API Bearer token: hapus token akses yang sedang dipakai.
-        // Guard method_exists karena sesi cookie stateful memakai
-        // TransientToken yang tidak memiliki method delete().
+        // Hapus HANYA token akses yang dipakai request ini (multi-device safe).
+        // Jangan pakai `$user->tokens()->delete()`: itu akan mencabut token
+        // mobile / perangkat lain saat user logout dari web.
         $currentToken = $request->user()?->currentAccessToken();
         if ($currentToken && method_exists($currentToken, 'delete')) {
             $currentToken->delete();
         }
-
-        // Bersihkan sisa Bearer token yatim milik user ini.
-        $request->user()?->tokens()->delete();
 
         // Untuk login berbasis session (jika ada), invalidasi session.
         // Pakai guard "web" (SessionGuard): guard default saat request
@@ -104,6 +101,66 @@ class AuthController extends Controller
             auth('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+        }
+
+        return response()->json(['message' => 'Logged out successfully']);
+    }
+
+    /**
+     * Login khusus mobile (React Native / Flutter) berbasis Bearer token.
+     *
+     * Web SPA tetap memakai cookie stateful via `login()` dan TIDAK pernah
+     * menerima token. Endpoint ini satu-satunya yang menerbitkan
+     * `personal_access_token`, satu token per perangkat (`device_name`)
+     * sehingga logout di satu perangkat tidak menendang perangkat lain.
+     */
+    public function mobileLogin(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+            'device_name' => 'nullable|string|max:100',
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
+        }
+
+        if ($user->status !== 'active') {
+            throw ValidationException::withMessages([
+                'email' => ['Your account is inactive.'],
+            ]);
+        }
+
+        $deviceName = $validated['device_name'] ?? 'mobile';
+        $expirationMinutes = (int) config('sanctum.expiration', 480);
+        $expiresAt = now()->addMinutes($expirationMinutes);
+
+        $token = $user->createToken($deviceName, ['*'], $expiresAt);
+
+        return response()->json([
+            'message' => 'Login successful',
+            'token' => $token->plainTextToken,
+            'token_type' => 'Bearer',
+            'expires_at' => $expiresAt->toIso8601String(),
+            'user' => $user->load('roles'),
+            'permissions' => $user->getAssignedPermissionSlugs(),
+        ]);
+    }
+
+    /**
+     * Logout khusus mobile: cabut HANYA token perangkat ini.
+     * Token perangkat lain milik user yang sama tetap berlaku.
+     */
+    public function mobileLogout(Request $request)
+    {
+        $currentToken = $request->user()?->currentAccessToken();
+        if ($currentToken && method_exists($currentToken, 'delete')) {
+            $currentToken->delete();
         }
 
         return response()->json(['message' => 'Logged out successfully']);
