@@ -17,7 +17,8 @@ class AuthProvider extends ChangeNotifier {
   bool hasRole(List<String> roles) {
     final u = user;
     if (u == null) return false;
-    return roles.contains(u.level) || u.roles.any((r) => roles.contains(r.slug));
+    return roles.contains(u.level) ||
+        u.roles.any((r) => roles.contains(r.slug));
   }
 
   Future<void> login(String email, String password) async {
@@ -35,7 +36,9 @@ class AuthProvider extends ChangeNotifier {
       final data = res.data as Map<String, dynamic>;
       await ApiClient.instance.persistToken(data['token'] as String?);
       user = AuthUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
-      permissions = ((data['permissions'] as List?) ?? []).map((e) => '$e').toList();
+      permissions = ((data['permissions'] as List?) ?? [])
+          .map((e) => '$e')
+          .toList();
     } finally {
       isLoading = false;
       notifyListeners();
@@ -66,7 +69,9 @@ class AuthProvider extends ChangeNotifier {
       final res = await ApiClient.instance.dio.get('/user');
       final data = res.data as Map<String, dynamic>;
       user = AuthUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
-      permissions = ((data['permissions'] as List?) ?? []).map((e) => '$e').toList();
+      permissions = ((data['permissions'] as List?) ?? [])
+          .map((e) => '$e')
+          .toList();
     } catch (_) {
       await ApiClient.instance.persistToken(null);
       user = null;

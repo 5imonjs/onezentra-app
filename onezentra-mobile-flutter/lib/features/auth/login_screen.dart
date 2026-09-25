@@ -5,10 +5,22 @@ import 'package:onezentra_mobile/features/auth/auth_provider.dart';
 import 'package:onezentra_mobile/theme/app_colors.dart';
 
 const _features = [
-  (emoji: '📦', title: 'Inventory', desc: 'Track products'),
-  (emoji: '🛡️', title: 'Security', desc: 'Role-based access'),
-  (emoji: '📊', title: 'Analytics', desc: 'Real-time data'),
-  (emoji: '📅', title: 'Scheduling', desc: 'Plan ahead'),
+  (
+    icon: Icons.inventory_2_outlined,
+    title: 'Inventory',
+    desc: 'Stok real-time',
+  ),
+  (
+    icon: Icons.verified_user_outlined,
+    title: 'Keamanan',
+    desc: 'Akses berbasis peran',
+  ),
+  (icon: Icons.bar_chart_outlined, title: 'Analitik', desc: 'Data live gudang'),
+  (
+    icon: Icons.calendar_month_outlined,
+    title: 'Penjadwalan',
+    desc: 'Rencana kirim',
+  ),
 ];
 
 /// Layar Login — port dari `onezentra-mobile/app/index.tsx`
@@ -21,8 +33,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   String _error = '';
   bool _showPassword = false;
   bool _restored = false;
@@ -36,7 +51,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _restore() async {
     final auth = context.read<AuthProvider>();
     await auth.restore();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() => _restored = true);
     if (auth.isAuthenticated) {
       Navigator.of(context).pushReplacementNamed('/dashboard');
@@ -47,63 +64,74 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
-  String? _validate(String email, String password) {
-    if (email.trim().isEmpty) return 'Email wajib diisi.';
-    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email.trim())) {
+  String? _emailValidator(String? value) {
+    final email = (value ?? '').trim();
+    if (email.isEmpty) {
+      return 'Email wajib diisi.';
+    }
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
       return 'Format email tidak valid.';
     }
-    if (password.isEmpty) return 'Password wajib diisi.';
+    return null;
+  }
+
+  String? _passwordValidator(String? value) {
+    if ((value ?? '').isEmpty) {
+      return 'Password wajib diisi.';
+    }
+    if ((value ?? '').length < 3) {
+      return 'Password minimal 3 karakter.';
+    }
     return null;
   }
 
   Future<void> _submit() async {
-    final email = _emailCtrl.text;
-    final password = _passwordCtrl.text;
-    final clientError = _validate(email, password);
-    if (clientError != null) {
-      setState(() => _error = clientError);
+    FocusScope.of(context).unfocus();
+    setState(() => _error = '');
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    setState(() => _error = '');
     try {
-      await context.read<AuthProvider>().login(email, password);
-      if (!mounted) return;
+      await context.read<AuthProvider>().login(
+        _emailCtrl.text,
+        _passwordCtrl.text,
+      );
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pushReplacementNamed('/dashboard');
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _error = parseLoginError(e));
     }
+  }
+
+  void _forgotPassword() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Hubungi admin gudang untuk reset kata sandi akun Anda.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final canSubmit =
-        !auth.isLoading && _emailCtrl.text.trim().isNotEmpty && _passwordCtrl.text.isNotEmpty;
 
     if (!_restored || auth.isRestoring) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: AppColors.darkGradient,
-          ),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: AppColors.primary300),
-              SizedBox(height: 12),
-              Text('Memuat sesi...', style: TextStyle(color: AppColors.primary300, fontSize: 14)),
-            ],
-          ),
-        ),
-      );
+      return const _SplashLoader();
     }
 
     return Scaffold(
@@ -115,195 +143,531 @@ class _LoginScreenState extends State<LoginScreen> {
             colors: AppColors.darkGradient,
           ),
         ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-                Image.asset('assets/logo.png', height: 54, semanticLabel: 'Logo ONEZENTRA'),
-                const SizedBox(height: 8),
-                const Text(
-                  'ONEZENTRA',
-                  style: TextStyle(
-                    color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.35,
-                  children: [
-                    for (final f in _features)
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.06),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                          borderRadius: BorderRadius.circular(AppRadius.feature),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary500.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(f.emoji, style: const TextStyle(fontSize: 20)),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(f.title,
-                                style: const TextStyle(
-                                    color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                            Text(f.desc,
-                                style: const TextStyle(color: AppColors.primary300, fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.card),
-                    boxShadow: const [
-                      BoxShadow(color: Color(0x26000000), blurRadius: 20, offset: Offset(0, 8)),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text('Hallo, Welcome Back',
-                          style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.gray900)),
-                      const SizedBox(height: 4),
-                      const Text('Welcome Back to ONEZENTRA',
-                          style: TextStyle(fontSize: 14, color: AppColors.gray500)),
-                      const SizedBox(height: 20),
-                      if (_error.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.errorBg,
-                            border: Border.all(color: AppColors.errorBorder),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFEE2E2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Text('!',
-                                    style: TextStyle(
-                                        color: AppColors.errorText,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 16)),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(_error,
-                                    style: const TextStyle(
-                                        color: AppColors.errorText, fontSize: 14)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      const Text('Email address',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.gray700)),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _emailCtrl,
-                        onChanged: (_) => setState(() {}),
-                        decoration: _inputDecoration(hint: 'admin@onezentra.com'),
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.email],
-                        style: _inputStyle,
-                      ),
-                      const SizedBox(height: 12),
-                      const Text('Password',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.gray700)),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _passwordCtrl,
-                        onChanged: (_) => setState(() {}),
-                        obscureText: !_showPassword,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: const [AutofillHints.password],
-                        onSubmitted: (_) => _submit(),
-                        style: _inputStyle,
-                        decoration: _inputDecoration(
-                          hint: 'Enter your password',
-                          suffix: IconButton(
-                            onPressed: () => setState(() => _showPassword = !_showPassword),
-                            tooltip: _showPassword ? 'Sembunyikan password' : 'Tampilkan password',
-                            icon: Text(_showPassword ? '🙈' : '👁️',
-                                style: const TextStyle(fontSize: 20)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: 52,
-                        child: FilledButton(
-                          onPressed: canSubmit ? _submit : null,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primary600,
-                            disabledBackgroundColor: AppColors.primary600.withValues(alpha: 0.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.input),
+        child: Stack(
+          children: [
+            const _DecorativeBackground(),
+            SafeArea(
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: Center(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      16,
+                      20,
+                      16 + MediaQuery.viewInsetsOf(context).bottom,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _Entrance(
+                            delayMs: 0,
+                            child: _HeroHeader(
+                              onLogoPressed: () =>
+                                  FocusScope.of(context).unfocus(),
                             ),
                           ),
-                          child: auth.isLoading
-                              ? const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                          color: Colors.white, strokeWidth: 2),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text('Signing in...',
-                                        style: TextStyle(
-                                            fontSize: 16, fontWeight: FontWeight.w700)),
-                                  ],
-                                )
-                              : const Text('Sign in',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                        ),
+                          const SizedBox(height: 16),
+                          const _Entrance(delayMs: 90, child: _FeatureGrid()),
+                          const SizedBox(height: 20),
+                          _Entrance(
+                            delayMs: 180,
+                            child: _LoginCard(
+                              formKey: _formKey,
+                              emailCtrl: _emailCtrl,
+                              passwordCtrl: _passwordCtrl,
+                              emailFocus: _emailFocus,
+                              passwordFocus: _passwordFocus,
+                              emailValidator: _emailValidator,
+                              passwordValidator: _passwordValidator,
+                              error: _error,
+                              showPassword: _showPassword,
+                              isLoading: auth.isLoading,
+                              onTogglePassword: () => setState(
+                                () => _showPassword = !_showPassword,
+                              ),
+                              onClearEmail: () => setState(_emailCtrl.clear),
+                              onEmailChanged: (_) => _error.isEmpty
+                                  ? null
+                                  : setState(() => _error = ''),
+                              onSubmit: _submit,
+                              onForgotPassword: _forgotPassword,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const _SecureHint(),
+                          const SizedBox(height: 10),
+                          Text(
+                            '© ${DateTime.now().year} ONEZENTRA  ·  Developed by Langkau_kami',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.gray400,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  '© ${DateTime.now().year} ONEZENTRA  ·  Developed by Langkau_kami  ·  All rights reserved',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.gray400, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SplashLoader extends StatelessWidget {
+  const _SplashLoader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: AppColors.darkGradient,
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 44,
+              height: 44,
+              child: CircularProgressIndicator(
+                color: AppColors.primary300,
+                strokeWidth: 3,
+              ),
+            ),
+            SizedBox(height: 14),
+            Text(
+              'Memuat sesi...',
+              style: TextStyle(color: AppColors.primary300, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DecorativeBackground extends StatelessWidget {
+  const _DecorativeBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Stack(
+      children: [
+        Positioned(
+          top: -70,
+          right: -60,
+          child: _BlurCircle(size: 220, color: Color(0x336366F1)),
+        ),
+        Positioned(
+          top: 90,
+          left: -70,
+          child: _BlurCircle(size: 180, color: Color(0x262DD4BF)),
+        ),
+        Positioned(
+          bottom: -40,
+          left: 40,
+          right: 40,
+          child: _BlurCircle(size: 140, color: Color(0x1A818CF8)),
+        ),
+      ],
+    );
+  }
+}
+
+class _BlurCircle extends StatelessWidget {
+  const _BlurCircle({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+    );
+  }
+}
+
+class _HeroHeader extends StatelessWidget {
+  const _HeroHeader({required this.onLogoPressed});
+
+  final VoidCallback onLogoPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: onLogoPressed,
+          child: Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x40000000),
+                  blurRadius: 24,
+                  offset: Offset(0, 10),
                 ),
-                const SizedBox(height: 12),
               ],
             ),
+            padding: const EdgeInsets.all(10),
+            child: Image.asset(
+              'assets/logo.png',
+              semanticLabel: 'Logo ONEZENTRA',
+              errorBuilder: (_, _, _) => const Icon(
+                Icons.warehouse_outlined,
+                size: 36,
+                color: AppColors.primary600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'ONEZENTRA',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 3,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Warehouse Management System',
+          style: TextStyle(color: AppColors.primary200, fontSize: 13),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.smartphone, size: 14, color: AppColors.accent400),
+              SizedBox(width: 6),
+              Text(
+                'Mobile Access  ·  v1.0.0',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeatureGrid extends StatelessWidget {
+  const _FeatureGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.9,
+      ),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _features.length,
+      itemBuilder: (context, i) {
+        final f = _features[i];
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.07),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            borderRadius: BorderRadius.circular(AppRadius.feature),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary500.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Icon(f.icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      f.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      f.desc,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.primary300,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LoginCard extends StatelessWidget {
+  const _LoginCard({
+    required this.formKey,
+    required this.emailCtrl,
+    required this.passwordCtrl,
+    required this.emailFocus,
+    required this.passwordFocus,
+    required this.emailValidator,
+    required this.passwordValidator,
+    required this.error,
+    required this.showPassword,
+    required this.isLoading,
+    required this.onTogglePassword,
+    required this.onClearEmail,
+    required this.onEmailChanged,
+    required this.onSubmit,
+    required this.onForgotPassword,
+  });
+
+  final GlobalKey<FormState> formKey;
+  final TextEditingController emailCtrl;
+  final TextEditingController passwordCtrl;
+  final FocusNode emailFocus;
+  final FocusNode passwordFocus;
+  final FormFieldValidator<String> emailValidator;
+  final FormFieldValidator<String> passwordValidator;
+  final String error;
+  final bool showPassword;
+  final bool isLoading;
+  final VoidCallback onTogglePassword;
+  final VoidCallback onClearEmail;
+  final ValueChanged<String> onEmailChanged;
+  final Future<void> Function() onSubmit;
+  final VoidCallback onForgotPassword;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 28,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: AutofillGroup(
+        child: Form(
+          key: formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Halo, Selamat Datang Kembali',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.gray900,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Masuk untuk mengelola operasional gudang Anda.',
+                style: TextStyle(fontSize: 14, color: AppColors.gray500),
+              ),
+              const SizedBox(height: 20),
+              if (error.isNotEmpty) _ErrorBanner(message: error),
+              if (error.isNotEmpty) const SizedBox(height: 16),
+              const _FieldLabel('Email address'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: emailCtrl,
+                focusNode: emailFocus,
+                validator: emailValidator,
+                onChanged: onEmailChanged,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
+                autocorrect: false,
+                enableSuggestions: false,
+                style: _inputStyle,
+                onFieldSubmitted: (_) =>
+                    FocusScope.of(context).requestFocus(passwordFocus),
+                decoration: _inputDecoration(
+                  hint: 'nama@perusahaan.com',
+                  prefix: Icons.alternate_email,
+                  suffix: emailCtrl.text.isNotEmpty
+                      ? IconButton(
+                          onPressed: onClearEmail,
+                          tooltip: 'Hapus email',
+                          icon: const Icon(
+                            Icons.clear,
+                            size: 18,
+                            color: AppColors.gray400,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const _FieldLabel('Password'),
+                  TextButton(
+                    onPressed: onForgotPassword,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text(
+                      'Lupa password?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: passwordCtrl,
+                focusNode: passwordFocus,
+                validator: passwordValidator,
+                obscureText: !showPassword,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.password],
+                style: _inputStyle,
+                onFieldSubmitted: (_) => onSubmit(),
+                decoration: _inputDecoration(
+                  hint: 'Masukkan kata sandi',
+                  prefix: Icons.lock_outline,
+                  suffix: IconButton(
+                    onPressed: onTogglePassword,
+                    tooltip: showPassword
+                        ? 'Sembunyikan password'
+                        : 'Tampilkan password',
+                    icon: Icon(
+                      showPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 20,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 54,
+                child: FilledButton(
+                  onPressed: isLoading ? null : onSubmit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary600,
+                    disabledBackgroundColor: AppColors.primary600.withValues(
+                      alpha: 0.6,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: isLoading
+                      ? const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Memeriksa...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Masuk ke Dashboard',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded, size: 20),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
           ),
         ),
       ),
@@ -311,26 +675,151 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-const _inputStyle = TextStyle(fontSize: 14, color: AppColors.gray900);
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
 
-InputDecoration _inputDecoration({required String hint, Widget? suffix}) {
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 13.5,
+        fontWeight: FontWeight.w700,
+        color: AppColors.gray700,
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.errorBg,
+        border: Border.all(color: AppColors.errorBorder),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEE2E2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.error_outline,
+              color: AppColors.errorText,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.errorText,
+                fontSize: 13.5,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SecureHint extends StatelessWidget {
+  const _SecureHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.lock, size: 13, color: AppColors.gray400),
+        SizedBox(width: 6),
+        Text(
+          'Sesi tersimpan aman di perangkat ini',
+          style: TextStyle(color: AppColors.gray400, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _Entrance extends StatelessWidget {
+  const _Entrance({required this.delayMs, required this.child});
+
+  final int delayMs;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 450 + delayMs),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final t = (value * 1000 - delayMs).clamp(0.0, 1000.0) / 1000.0;
+        final eased = Curves.easeOutCubic.transform(t);
+        return Opacity(
+          opacity: eased,
+          child: Transform.translate(
+            offset: Offset(0, 16 * (1 - eased)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+const _inputStyle = TextStyle(fontSize: 14.5, color: AppColors.gray900);
+
+InputDecoration _inputDecoration({
+  required String hint,
+  required IconData prefix,
+  Widget? suffix,
+}) {
   const border = OutlineInputBorder(
-    borderRadius: BorderRadius.all(Radius.circular(AppRadius.input)),
+    borderRadius: BorderRadius.all(Radius.circular(14)),
     borderSide: BorderSide(color: AppColors.gray200),
   );
   const focused = OutlineInputBorder(
-    borderRadius: BorderRadius.all(Radius.circular(AppRadius.input)),
-    borderSide: BorderSide(color: AppColors.primary500, width: 2),
+    borderRadius: BorderRadius.all(Radius.circular(14)),
+    borderSide: BorderSide(color: AppColors.primary500, width: 1.8),
+  );
+  const errorBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(14)),
+    borderSide: BorderSide(color: AppColors.errorText),
   );
   return InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: AppColors.gray400),
+    hintStyle: const TextStyle(color: AppColors.gray400, fontSize: 14),
     filled: true,
-    fillColor: Colors.white,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    fillColor: AppColors.gray50,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
     border: border,
     enabledBorder: border,
     focusedBorder: focused,
+    errorBorder: errorBorder,
+    focusedErrorBorder: errorBorder,
+    prefixIcon: Icon(prefix, size: 20, color: AppColors.gray400),
     suffixIcon: suffix,
+    errorStyle: const TextStyle(fontSize: 12.5),
   );
 }

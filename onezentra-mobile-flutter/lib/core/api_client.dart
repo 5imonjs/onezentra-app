@@ -19,14 +19,17 @@ String parseLoginError(Object e) {
     String validationMessage = '';
     if (data is Map) {
       final errors = data['errors'];
-      if (errors is Map && errors['email'] is List && (errors['email'] as List).isNotEmpty) {
+      if (errors is Map &&
+          errors['email'] is List &&
+          (errors['email'] as List).isNotEmpty) {
         validationMessage = '${errors['email'][0]}';
       } else if (data['message'] is String) {
         validationMessage = data['message'] as String;
       }
     }
     final isInvalidCredentials =
-        e.response?.statusCode == 401 || validationMessage.toLowerCase().contains('credentials');
+        e.response?.statusCode == 401 ||
+        validationMessage.toLowerCase().contains('credentials');
     if (isInvalidCredentials) return 'Email atau password salah.';
     if (validationMessage.isNotEmpty) return validationMessage;
     if (e.message != null && e.message!.isNotEmpty) return e.message!;
@@ -39,7 +42,8 @@ String apiErrorMessage(Object e, [String fallback = 'Terjadi kesalahan']) {
     final data = e.response?.data;
     if (data is Map) {
       if (e.response?.statusCode == 403) {
-        return (data['message'] as String?) ?? 'Anda tidak memiliki izin untuk melakukan aksi ini.';
+        return (data['message'] as String?) ??
+            'Anda tidak memiliki izin untuk melakukan aksi ini.';
       }
       final errors = data['errors'];
       if (errors is Map) {
@@ -68,7 +72,10 @@ class ApiClient {
       baseUrl: apiUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 15),
-      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
     ),
   );
 

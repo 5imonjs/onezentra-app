@@ -222,10 +222,12 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('gate-transactions')->middleware('auth:sanctum')->group(function () {
         Route::get('/stats', [GateTransactionController::class, 'stats'])->middleware('permission:gate.view');
+        // Rute statis wajib sebelum rute ber-parameter {gateTransaction}
+        // agar tidak tertelan model binding (lookup PO selalu 404).
+        Route::get('/search/by-dokumen', [GateTransactionController::class, 'byNoDokumen'])->middleware('permission:gate.view');
         Route::get('/', [GateTransactionController::class, 'index'])->middleware('permission:gate.view');
         Route::post('/', [GateTransactionController::class, 'store'])->middleware('permission:gate.create');
         Route::get('/{gateTransaction}', [GateTransactionController::class, 'show'])->middleware('permission:gate.view');
-        Route::get('/search/by-dokumen', [GateTransactionController::class, 'byNoDokumen'])->middleware('permission:gate.view');
         Route::put('/{gateTransaction}', [GateTransactionController::class, 'update'])->middleware('permission:gate.edit');
         Route::delete('/{gateTransaction}', [GateTransactionController::class, 'destroy'])->middleware('permission:gate.delete');
     });
@@ -268,8 +270,9 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('batches')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [BatchController::class, 'index'])->middleware('permission:receiving.view');
-        Route::get('/{batch}', [BatchController::class, 'show'])->middleware('permission:receiving.view');
+        // Rute statis wajib sebelum {batch} — pola yang sama dengan gate-transactions.
         Route::get('/search/by-number', [BatchController::class, 'byNumber'])->middleware('permission:receiving.view');
+        Route::get('/{batch}', [BatchController::class, 'show'])->middleware('permission:receiving.view');
     });
 
     Route::prefix('email-settings')->middleware('auth:sanctum')->group(function () {

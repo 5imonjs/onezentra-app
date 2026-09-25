@@ -107,6 +107,10 @@ export default function ValidasiSjPage() {
     today.setHours(0, 0, 0, 0);
 
     const expired = new Date(`${expiredDate}T00:00:00`);
+    // Input date yang diketik sebagian (mis. "2026-09-") menghasilkan Invalid Date;
+    // tanpa guard ini totalMonths/totalDays = NaN lalu bocor ke children React.
+    if (Number.isNaN(expired.getTime())) return null;
+
     const totalDays = Math.ceil((expired.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const monthDifference = (expired.getFullYear() - today.getFullYear()) * 12
       + expired.getMonth() - today.getMonth();
@@ -123,6 +127,7 @@ export default function ValidasiSjPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const expired = new Date(`${expiredDate}T00:00:00`);
+    if (Number.isNaN(expired.getTime())) return null;
     const standardDate = new Date(today);
     standardDate.setDate(1);
     standardDate.setMonth(standardDate.getMonth() + standardMonths);
@@ -864,7 +869,7 @@ export default function ValidasiSjPage() {
                     setForm({ ...form, expired_date: val });
                     const standar = selected?.umur ?? 0;
                     setStandarUmur(standar);
-                    setSisaUmur(calcUmurInMonths(val));
+                    setSisaUmur(calcUmurInMonths(val) ?? { totalMonths: 0, totalDays: 0 });
                     setShowUmurPopup(true);
                   }} className="input-field mt-1.5 py-2.5 text-sm" />
                 </label>

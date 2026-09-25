@@ -21,7 +21,7 @@ interface StatSource {
 const STAT_SOURCES: StatSource[] = [
   {
     key: 'rencana_kirim',
-    label: 'Rencana Kirim',
+    label: 'Replenishment',
     href: '/rencana-kirim',
     permission: 'rencana_kirim.view',
     icon: 'truck',
@@ -31,7 +31,7 @@ const STAT_SOURCES: StatSource[] = [
   },
   {
     key: 'gate',
-    label: 'Gate Check',
+    label: 'Check In Point',
     href: '/gate',
     permission: 'gate.view',
     icon: 'gate',
@@ -41,7 +41,7 @@ const STAT_SOURCES: StatSource[] = [
   },
   {
     key: 'penerimaan',
-    label: 'Penerimaan',
+    label: 'Inbound',
     href: '/penerimaan',
     permission: 'penerimaan.view',
     icon: 'clipboard',
@@ -51,7 +51,7 @@ const STAT_SOURCES: StatSource[] = [
   },
   {
     key: 'receiving',
-    label: 'Receiving',
+    label: 'Check Out Point',
     href: '/receiving',
     permission: 'receiving.view',
     icon: 'receive',

@@ -4,6 +4,8 @@ import 'package:onezentra_mobile/core/api_client.dart';
 import 'package:onezentra_mobile/features/auth/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/login_screen.dart';
 import 'package:onezentra_mobile/features/dashboard/dashboard_screen.dart';
+import 'package:onezentra_mobile/features/gate/gate_checkin_screen.dart';
+import 'package:onezentra_mobile/features/gate/gate_provider.dart';
 import 'package:onezentra_mobile/theme/app_colors.dart';
 
 Future<void> main() async {
@@ -17,12 +19,17 @@ class OnezentraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) {
-        final auth = AuthProvider();
-        ApiClient.instance.onUnauthorized = auth.handleUnauthorized;
-        return auth;
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) {
+            final auth = AuthProvider();
+            ApiClient.instance.onUnauthorized = auth.handleUnauthorized;
+            return auth;
+          },
+        ),
+        ChangeNotifierProvider(create: (_) => GateProvider()),
+      ],
       child: MaterialApp(
         title: 'ONEZENTRA',
         debugShowCheckedModeBanner: false,
@@ -36,6 +43,7 @@ class OnezentraApp extends StatelessWidget {
         routes: {
           '/': (_) => const LoginScreen(),
           '/dashboard': (_) => const DashboardScreen(),
+          '/gate': (_) => const GateCheckinScreen(),
         },
       ),
     );
