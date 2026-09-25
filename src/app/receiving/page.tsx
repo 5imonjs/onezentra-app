@@ -295,7 +295,7 @@ export default function ReceivingPage() {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Anda tidak memiliki izin untuk melihat Receiving.
+          Anda tidak memiliki izin untuk melihat Check Out Point.
         </div>
       </DashboardLayout>
     );
@@ -313,7 +313,7 @@ export default function ReceivingPage() {
                 <svg className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
               </div>
               <div>
-                <h1 className="text-2xl font-bold leading-tight">Receiving</h1>
+                <h1 className="text-2xl font-bold leading-tight">Check Out Point</h1>
                 <p className="mt-0.5 text-gray-400">Konfirmasi selesai bongkar dengan scan barcode PO transporter.</p>
               </div>
             </div>
@@ -454,7 +454,7 @@ export default function ReceivingPage() {
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Daftar Receiving</h2>
+              <h2 className="text-sm font-bold text-slate-900">Daftar Check Out Point</h2>
               <p className="mt-0.5 text-xs text-slate-400">{statusTotals.total} entri ditemukan</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -632,7 +632,7 @@ export default function ReceivingPage() {
         />
 
         {/* Detail Modal — bersih, putih, fokus pada data */}
-        <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Detail Receiving" subtitle="Rincian barang yang diterima per PO transporter." size="xl" footer={
+        <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Detail Check Out Point" subtitle="Rincian barang yang diterima per PO transporter." size="xl" footer={
           <div className="flex items-center justify-end gap-3">
             <button type="button" onClick={() => setViewItem(null)} className="btn-secondary text-sm">Tutup</button>
           </div>
@@ -744,8 +744,8 @@ export default function ReceivingPage() {
       <Modal
         open={showImportModal}
         onClose={() => { setShowImportModal(false); setImportFile(null); }}
-        title="Import Receiving"
-        subtitle="Upload file Excel/CSV untuk mengimpor data Receiving"
+        title="Import Check Out Point"
+        subtitle="Upload file Excel/CSV untuk mengimpor data Check Out Point"
         size="md"
         footer={
           <>

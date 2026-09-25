@@ -33,7 +33,7 @@ const statusLabels: Record<string, string> = {
 
 // Panduan saat hasil scan tidak punya aksi gate (status atau izin).
 const STATUS_GUIDE: Record<string, string> = {
-  DRAFT: 'Dokumen masih Draft. Jadwalkan terlebih dahulu di menu Rencana Kirim.',
+  DRAFT: 'Dokumen masih Draft. Jadwalkan terlebih dahulu di menu Replenishment.',
   VERIFIED: 'Dokumen sudah diverifikasi dan menunggu proses bongkar. Tidak ada aksi gate saat ini.',
   IN_PROGRESS: 'Bongkar sedang berjalan. Gate OUT tersedia setelah status Selesai.',
   CANCELLED: 'Dokumen dibatalkan dan tidak dapat diproses di gate.',
@@ -244,7 +244,7 @@ export default function GatePage() {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Anda tidak memiliki izin untuk melihat Gate Check.
+          Anda tidak memiliki izin untuk melihat Check In Point.
         </div>
       </DashboardLayout>
     );
@@ -261,7 +261,7 @@ export default function GatePage() {
                 <svg aria-hidden="true" className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
               </div>
               <div>
-                <h1 className="text-2xl font-bold leading-tight">Gate Check</h1>
+                <h1 className="text-2xl font-bold leading-tight">Check In Point</h1>
                 <p className="mt-0.5 text-gray-400">Scan PO / Nopol — IN ↔ OUT • auto status</p>
               </div>
             </div>

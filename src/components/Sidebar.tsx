@@ -11,12 +11,12 @@ const menuItems = [
 ];
 
 const operasionalMenus = [
-  { name: 'Receiving', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
-  { name: 'Penerimaan', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
-  { name: 'Rencana Kirim', path: '/rencana-kirim', icon: 'truck', permission: 'rencana_kirim.view' },
-  { name: 'Gate Check', path: '/gate', icon: 'gate', permission: 'gate.view' },
+  { name: 'Replenishment', path: '/rencana-kirim', icon: 'truck', permission: 'rencana_kirim.view' },
+  { name: 'Check In Point', path: '/gate', icon: 'gate', permission: 'gate.view' },
   { name: 'Validasi Dokumen', path: '/validasi-sj', icon: 'check', permission: 'sj_validation.view' },
-  { name: 'Opname Expired', path: '/opname-expired', icon: 'check', permission: 'opname.view' },
+  { name: 'Check Out Point', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
+  { name: 'Inbound', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
+  { name: 'Batch Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
 ];
 
 const masterDataMenus = [
@@ -32,12 +32,12 @@ const biayaMenus = [
 ];
 
 const reportItems = [
-  { name: 'Rencana Kirim', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.view' },
-  { name: 'Penerimaan', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.view' },
+  { name: 'Laporan Replenishment', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.view' },
+  { name: 'Laporan Inbound', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.view' },
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.view' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
-  { name: 'Opname Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
+  { name: 'Laporan Batch Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
 ];
 
 const systemItems = [
@@ -109,7 +109,7 @@ function NavItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
           }`}
         />
       )}
-      {isExpanded && <span className="whitespace-nowrap">{label}</span>}
+      {isExpanded && <span className="flex-1 min-w-0 truncate">{label}</span>}
     </Link>
   );
 }
@@ -140,7 +140,7 @@ function NavSubItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
           }`}
         />
       )}
-      {isExpanded && <span className="whitespace-nowrap">{label}</span>}
+      {isExpanded && <span className="flex-1 min-w-0 truncate">{label}</span>}
     </Link>
   );
 }
@@ -196,6 +196,7 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
     <div>
       <button
         onClick={onToggle}
+        aria-expanded={open}
         className={`flex items-center gap-3 rounded-lg px-3 py-2.5 w-full transition-all duration-150 ${
           accent
             ? 'bg-emerald-500/10 text-emerald-300 border-l-2 border-emerald-500'
@@ -378,7 +379,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
 
         <div className="mt-3 space-y-1">
           <CollapsibleGroup
-            title="Operasional"
+            title="Inventory"
             icon="road"
             items={operasionalMenus}
             isExpanded={isExpanded}

@@ -335,7 +335,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                     </span>
                   </button>
                 ) : (
-                  <span className="text-xs text-emerald-700">Jalankan Generate di menu Opname Expired</span>
+                  <span className="text-xs text-emerald-700">Jalankan Generate di menu Batch Expired</span>
                 )}
                 <button type="button" onClick={() => setSuccessMsg(null)} className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors" aria-label="Tutup pesan">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
