@@ -33,8 +33,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.2
+  # 7.x pindah dari MLKit ke Vision API Apple: binary jauh lebih ringan,
+  # simulator iOS arm64 ikut didukung, dan syarat minimum iOS turun ke 12.
+  image_picker: ^1.2.3
+  mobile_scanner: ^7.4.2
   provider: ^6.1.2
-  mobile_scanner: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -46,6 +49,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  integration_test:
+    sdk: flutter
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

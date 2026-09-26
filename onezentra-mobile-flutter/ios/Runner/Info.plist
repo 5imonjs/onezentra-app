@@ -26,6 +26,19 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>ONEZENTRA memakai kamera untuk memindai barcode SJ / dokumen pengiriman di titik check in dan check out, memindai barcode kemasan produk, serta merekam foto kondisi barang saat validasi dokumen.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ONEZENTRA perlu akses galeri untuk melampirkan foto kondisi barang pada validasi dokumen.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Server ONEZENTRA sering berada di jaringan lokal gudang (192.168.x.x)
+		     yang masih memakai HTTP. Tanpa ini iOS memblokir SEMUA http:// sehingga
+		     login selalu gagal di perangkat. NSAllowsLocalNetworking hanya
+		     mengizinkan host jaringan lokal — host publik tetap wajib HTTPS. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

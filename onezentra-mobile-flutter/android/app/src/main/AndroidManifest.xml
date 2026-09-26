@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Wajib ada di manifest utama (bukan hanya debug/profile): tanpa ini
+         seluruh panggilan API dan pemindaian kamera gagal di build release. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="onezentra_mobile"
+        android:label="ONEZENTRA"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
