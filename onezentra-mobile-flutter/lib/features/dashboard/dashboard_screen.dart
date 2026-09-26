@@ -1,592 +1,460 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:onezentra_mobile/features/auth/auth_provider.dart';
-import 'package:onezentra_mobile/features/gate/gate_provider.dart';
+import 'package:onezentra_mobile/features/auth/auth_user.dart';
+import 'package:onezentra_mobile/features/dashboard/dashboard_modules.dart';
+import 'package:onezentra_mobile/features/dashboard/dashboard_provider.dart';
+import 'package:onezentra_mobile/features/dashboard/models/dashboard_format.dart';
+import 'package:onezentra_mobile/features/dashboard/models/dashboard_models.dart';
+import 'package:onezentra_mobile/features/standarisasi/standarisasi_screen.dart';
 import 'package:onezentra_mobile/theme/app_colors.dart';
+import 'package:onezentra_mobile/widgets/page_header.dart';
+import 'package:onezentra_mobile/widgets/section_card.dart';
+import 'package:onezentra_mobile/widgets/states.dart';
+import 'package:onezentra_mobile/widgets/stat_tile.dart';
+import 'package:onezentra_mobile/widgets/status_pill.dart';
+import 'package:onezentra_mobile/widgets/tile_grid.dart';
 
-class _MenuDef {
-  const _MenuDef({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.permission,
-    required this.route,
-    this.soon = false,
+/// Tab Beranda — clone `onezentra-web/src/app/dashboard/page.tsx` dalam
+/// bentuk mobile: hero gelap berisi sapaan, kartu peringatan, kartu
+/// statistik per modul (juga jadi pintu masuk modul), dan aktivitas terbaru.
+///
+/// Berbeda dari versi web, modul yang belum punya halaman mobile **tidak**
+/// disembunyikan: angkanya tetap tampil, dan mengetuk kartunya menjelaskan
+/// bahwa halamannya belum tersedia — jauh lebih baik daripada operator
+/// mencari menu yang tidak ada.
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({
+    super.key,
+    required this.onOpenTab,
+    this.onUnavailable,
+    this.onOpenPage,
   });
 
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final String permission;
-  final String? route;
-  final bool soon;
-}
+  /// Dipanggil dengan key tab (`gate` / `validation`) saat kartu atau baris
+  /// aktivitas diketuk.
+  final void Function(String tabKey) onOpenTab;
 
-const _menus = [
-  _MenuDef(
-    title: 'Check In Point',
-    subtitle: 'Scan SJ / PO',
-    icon: Icons.qr_code_scanner,
-    permission: 'gate.view',
-    route: '/gate',
-  ),
-  _MenuDef(
-    title: 'Validasi Dokumen',
-    subtitle: 'Segera hadir',
-    icon: Icons.fact_check_outlined,
-    permission: 'sj_validation.view',
-    route: null,
-    soon: true,
-  ),
-  _MenuDef(
-    title: 'Check Out',
-    subtitle: 'Segera hadir',
-    icon: Icons.forklift,
-    permission: 'receiving.view',
-    route: null,
-    soon: true,
-  ),
-  _MenuDef(
-    title: 'Inbound',
-    subtitle: 'Segera hadir',
-    icon: Icons.inventory_2_outlined,
-    permission: 'penerimaan.view',
-    route: null,
-    soon: true,
-  ),
-];
+  /// Dipanggil untuk modul yang belum punya halaman di aplikasi mobile.
+  final void Function(String moduleLabel)? onUnavailable;
 
-/// Dashboard modern — header identitas + statistik gate + grid menu
-/// operasional berbasis permission (mirror Sidebar web).
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  /// Dipanggil untuk modul/baris yang punya halaman mandiri di luar empat tab
+  /// (lihat [DashboardPage]). Default-nya mendorong halaman yang terpetakan di
+  /// [pushDashboardPage]; test menyuntik callback sendiri agar tidak menyentuh
+  /// jaringan.
+  final Future<void> Function(DashboardPage page)? onOpenPage;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  int _tab = 0;
+/// Dorong halaman mandiri tujuan dari Beranda.
+///
+/// Dipisah dari widget supaya pemetaan [DashboardPage] -> widget bisa diuji
+/// tanpa `Navigator` sungguhan, dan supaya ada tepat satu tempat yang tahu
+/// halaman mana yang hidup di mobile.
+Future<void> pushDashboardPage(BuildContext context, DashboardPage page) {
+  return Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => switch (page) {
+        DashboardPage.standarisasi => const StandarisasiScreen(),
+      },
+    ),
+  );
+}
 
+class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _guard());
-  }
-
-  Future<void> _guard() async {
-    final auth = context.read<AuthProvider>();
-    await auth.restore();
-    if (!mounted) {
-      return;
-    }
-    if (!auth.isAuthenticated) {
-      Navigator.of(context).pushReplacementNamed('/');
-      return;
-    }
-    if (auth.hasPermission('gate.view')) {
-      final gate = context.read<GateProvider>();
-      gate.loadStats();
-    }
-    setState(() {});
-  }
-
-  void _openMenu(_MenuDef menu) {
-    if (menu.route != null) {
-      Navigator.of(context).pushNamed(menu.route!);
-      return;
-    }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('${menu.title} segera hadir di mobile.')),
-      );
-  }
-
-  Future<void> _logout() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keluar?'),
-        content: const Text('Sesi di perangkat ini akan dihapus.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Keluar'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) {
-      return;
-    }
-    await context.read<AuthProvider>().logout();
-    if (!mounted) {
-      return;
-    }
-    Navigator.of(context).pushReplacementNamed('/');
+    // Layar dipulihkan saat pertama kali dibuka (shell memang sudah memuat
+    // ringkasan, jadi di sini biasanya hanya cache yang dipakai — tapi kalau
+    // layar ini dibuka sendiri, angkanya tetap terisi).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!context.read<AuthProvider>().hasPermission('dashboard.view')) {
+        return;
+      }
+      context.read<DashboardProvider>().load();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    if (!auth.isAuthenticated) {
-      return const Scaffold(
-        backgroundColor: AppColors.surface,
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary600),
-        ),
-      );
+    final dash = context.watch<DashboardProvider>();
+    final can = auth.hasPermission;
+
+    // Ringkasan hanya berizin `dashboard.view`; tanpa itu backend menolak
+    // dengan 403, jadi jangan dipanggil sama sekali.
+    final canViewSummary = can('dashboard.view');
+    final alerts = canViewSummary
+        ? buildDashboardAlerts(dash.summary, can)
+        : const <DashboardAlert>[];
+    final modules = dashboardModules.where((m) => can(m.permission)).toList();
+    final operational = modules.where((m) => m.isOperational).toList();
+    final master = modules.where((m) => !m.isOperational).toList();
+
+    void openPage(DashboardPage page) {
+      final open = widget.onOpenPage;
+      if (open != null) {
+        open(page);
+        return;
+      }
+      pushDashboardPage(context, page);
     }
-    final visibleMenus = _menus
-        .where((m) => auth.hasPermission(m.permission))
-        .toList();
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: _tab == 0
-          ? _HomeTab(
-              menus: visibleMenus,
-              onOpen: _openMenu,
-              onLogout: _logout,
-              onRefresh: () => context.read<GateProvider>().loadStats(),
-            )
-          : _tab == 1
-          ? _ShortcutTab(
-              onGate: () => Navigator.of(context).pushNamed('/gate'),
-              canGate: auth.hasPermission('gate.view'),
-            )
-          : _ProfileTab(onLogout: _logout),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view),
-            label: 'Beranda',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.qr_code_scanner),
-            label: 'Check In',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Saya',
-          ),
-        ],
-      ),
-    );
-  }
-}
+    void openModule(DashboardModule m) {
+      final tab = m.tab;
+      if (tab != null) {
+        widget.onOpenTab(tab);
+        return;
+      }
+      final page = m.page;
+      if (page != null) {
+        openPage(page);
+        return;
+      }
+      (widget.onUnavailable ?? _defaultUnavailable(context))(m.label);
+    }
 
-class _HomeTab extends StatelessWidget {
-  const _HomeTab({
-    required this.menus,
-    required this.onOpen,
-    required this.onLogout,
-    required this.onRefresh,
-  });
-
-  final List<_MenuDef> menus;
-  final ValueChanged<_MenuDef> onOpen;
-  final VoidCallback onLogout;
-  final Future<void> Function() onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final gate = context.watch<GateProvider>();
-    final name = auth.user?.fullName ?? '-';
-    final depot = auth.user != null
-        ? '${auth.user!.kodeDepo} • ${auth.user!.namaDepo}'
-        : '-';
+    void openRecent(DashboardRecentItem item) {
+      final tab = item.targetTab;
+      if (tab != null) {
+        widget.onOpenTab(tab);
+        return;
+      }
+      final page = item.targetPage;
+      if (page != null) {
+        openPage(page);
+        return;
+      }
+      (widget.onUnavailable ?? _defaultUnavailable(context))(item.type);
+    }
 
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: () => canViewSummary ? dash.reload() : Future<void>.value(),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 60, 20, 22),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.gray900, AppColors.primary950],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          const _Hero(),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary500, AppColors.primary700],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
+                    if (canViewSummary && dash.error != null) ...[
+                      ErrorCard(message: dash.error!, onRetry: dash.reload),
+                      const SizedBox(height: 16),
+                    ],
+                    if (alerts.isNotEmpty) ...[
+                      const SectionLabel('Perlu Perhatian'),
+                      _AlertGrid(
+                        alerts: alerts,
+                        onTap: (a) {
+                          final tab = a.tab;
+                          if (tab != null) {
+                            widget.onOpenTab(tab);
+                            return;
+                          }
+                          final page = a.page;
+                          if (page != null) {
+                            openPage(page);
+                            return;
+                          }
+                          (widget.onUnavailable ??
+                              _defaultUnavailable(context))(a.label);
+                        },
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        name.isEmpty ? '?' : name[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 20,
-                        ),
-                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    _StatGrid(
+                      title: 'Statistik',
+                      modules: operational,
+                      summary: dash.summary,
+                      loading: dash.loading && !dash.hasData,
+                      failed: dash.error != null,
+                      onTap: openModule,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Halo, $name',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 17,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            depot,
-                            style: const TextStyle(
-                              color: AppColors.primary200,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: onLogout,
-                      tooltip: 'Keluar',
-                      icon: const Icon(Icons.logout, color: Colors.white70),
-                    ),
-                  ],
-                ),
-                if (auth.hasPermission('gate.view')) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      _MiniStat(
-                        label: 'Hari ini',
-                        value: gate.statsLoading
-                            ? '…'
-                            : '${gate.stats.hariIni}',
-                      ),
-                      const SizedBox(width: 8),
-                      _MiniStat(
-                        label: 'Terjadwal',
-                        value: gate.statsLoading
-                            ? '…'
-                            : '${gate.stats.terjadwal}',
-                      ),
-                      const SizedBox(width: 8),
-                      _MiniStat(
-                        label: 'Selesai',
-                        value: gate.statsLoading
-                            ? '…'
-                            : '${gate.stats.selesai}',
+                    if (master.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _StatGrid(
+                        title: 'Data Master',
+                        modules: master,
+                        summary: dash.summary,
+                        loading: dash.loading && !dash.hasData,
+                        failed: dash.error != null,
+                        onTap: openModule,
                       ),
                     ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Gate Check',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    if (canViewSummary && dash.summary.recent.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _RecentCard(
+                        items: dash.summary.recent,
+                        onTap: openRecent,
+                      ),
+                    ],
+                    if (modules.isEmpty) ...[
+                      const SizedBox(height: 20),
+                      const _NoModuleCard(),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Menu operasional gudang berbasis izin Anda.',
-                  style: TextStyle(color: AppColors.gray500, fontSize: 13),
-                ),
-                const SizedBox(height: 12),
-                if (menus.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Text(
-                      'Tidak ada menu operasional untuk akun ini. Minta akses ke admin.',
-                      style: TextStyle(color: Color(0xFF92400E)),
-                    ),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 1.05,
-                        ),
-                    itemCount: menus.length,
-                    itemBuilder: (context, i) {
-                      final m = menus[i];
-                      return _MenuCard(menu: m, onTap: () => onOpen(m));
-                    },
-                  ),
-              ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
+  /// Fallback saat [onUnavailable] tidak diberikan (mis. dipakai di preview).
+  static void Function(String) _defaultUnavailable(BuildContext context) {
+    return (label) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('$label segera hadir di aplikasi mobile.')),
+        );
+    };
+  }
 }
 
-class _MiniStat extends StatelessWidget {
-  const _MiniStat({required this.label, required this.value});
-
-  final String label;
-  final String value;
+/// Hero gelap: sapaan + nama, tanggal panjang, dan identitas depo/role.
+///
+/// Warna, jarak atas, dan bentuk pita diambil dari [PageHeader] yang sama
+/// dengan tab lain — bedanya hanya isi (sapaan + chip depo/role), supaya
+/// Beranda tidak terlihat seperti aplikasi yang berbeda dari Check In.
+class _Hero extends StatelessWidget {
+  const _Hero();
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(color: AppColors.primary200, fontSize: 11),
-            ),
+    final auth = context.watch<AuthProvider>();
+    final user = auth.user;
+    final name = user?.fullName ?? '-';
+    final firstName = name.trim().isEmpty ? '-' : name.trim().split(' ').first;
+    final depot = user == null ? '-' : '${user.kodeDepo} • ${user.namaDepo}';
+
+    return PageHeader(
+      // Web: "Selamat pagi, <span class="text-primary-300">Budi</span>".
+      // Nama depan lewat `accent` supaya warna emphasis-nya milik widget
+      // header, bukan dirangkai manual di sini.
+      title: '${greetingFor(DateTime.now().hour)},',
+      accent: firstName,
+      subtitle: formatLongDate(DateTime.now()),
+      icon: Icons.warehouse_outlined,
+      iconSolid: true,
+      chips: [
+        HeaderChip(icon: Icons.warehouse_outlined, label: depot),
+        for (final role in user?.roles ?? const <AuthRole>[])
+          HeaderChip(icon: Icons.badge_outlined, label: role.name),
+      ],
+    );
+  }
+}
+
+class _AlertGrid extends StatelessWidget {
+  const _AlertGrid({required this.alerts, required this.onTap});
+
+  final List<DashboardAlert> alerts;
+  final void Function(DashboardAlert alert) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return TileGrid(
+      tiles: [
+        for (final a in alerts)
+          StatTile(
+            label: a.label,
+            icon: Icons.warning_amber_rounded,
+            tone: a.tone,
+            // Nilai peringatan sudah berupa teks ("12", "3,5 jam") jadi
+            // ditugaskan lewat `value` yang sudah diformat sebagai label penuh.
+            valueText: a.value,
+            hint: a.hint,
+            onTap: () => onTap(a),
+            semanticLabel: '${a.label}: ${a.value}. ${a.hint}',
+          ),
+      ],
+    );
+  }
+}
+
+/// Kartu statistik per modul — grid 2 kolom seperti web.
+class _StatGrid extends StatelessWidget {
+  const _StatGrid({
+    required this.title,
+    required this.modules,
+    required this.summary,
+    required this.loading,
+    required this.failed,
+    required this.onTap,
+  });
+
+  final String title;
+  final List<DashboardModule> modules;
+  final DashboardSummary summary;
+  final bool loading;
+  final bool failed;
+  final void Function(DashboardModule module) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(title: title),
+        TileGrid(
+          tiles: [
+            for (final m in modules)
+              if (loading) const SkeletonStatTile() else _moduleTile(m),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _moduleTile(DashboardModule m) {
+    final total = summary.totalOf(m.key);
+    // `total == null` berarti backend tidak mengirim modul ini: sebelum
+    // data masuk -> masih memuat, setelah data masuk -> kontrak berubah
+    // dan angka tidak boleh dikarang jadi 0.
+    final state = failed
+        ? StatState.failed
+        : total == null
+        ? StatState.loading
+        : StatState.ready;
+    return StatTile(
+      label: m.label,
+      icon: m.icon,
+      tone: m.tone,
+      value: total,
+      delta: summary.deltaOf(m.key),
+      state: state,
+      onTap: () => onTap(m),
+    );
+  }
+}
+
+/// Aktivitas terbaru lintas modul — padanan `DashboardRecent.tsx`.
+class _RecentCard extends StatelessWidget {
+  const _RecentCard({required this.items, required this.onTap});
+
+  final List<DashboardRecentItem> items;
+  final void Function(DashboardRecentItem item) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SectionHeader(
+            title: 'Aktivitas Terbaru',
+            subtitle: 'Perubahan terakhir lintas modul',
+            icon: Icons.history,
+          ),
+          const Divider(height: 1),
+          for (var i = 0; i < items.length; i++) ...[
+            _RecentRow(item: items[i], onTap: () => onTap(items[i])),
+            if (i < items.length - 1)
+              const Divider(height: 1, indent: 16, endIndent: 16),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _MenuCard extends StatelessWidget {
-  const _MenuCard({required this.menu, required this.onTap});
+class _RecentRow extends StatelessWidget {
+  const _RecentRow({required this.item, required this.onTap});
 
-  final _MenuDef menu;
+  final DashboardRecentItem item;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final active = menu.route != null;
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.gray200),
-            borderRadius: BorderRadius.circular(20),
+    return SectionCard(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      color: Colors.transparent,
+      borderColor: Colors.transparent,
+      radius: 0,
+      semanticLabel: '${item.type}: ${item.title}',
+      child: Row(
+        children: [
+          // Pill tipe ikut boleh menyusut: pada layar sangat sempit atau
+          // label tipe panjang, pill tetap utuh dan tidak menyingkirkan judul
+          // yang justru informatif.
+          Flexible(
+            child: StatusPill(label: item.type, tone: _typeTone(item.type)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: active ? AppColors.primary600 : AppColors.gray100,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  menu.icon,
-                  color: active ? Colors.white : AppColors.gray500,
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    menu.title,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.gray800,
                   ),
+                ),
+                if (item.subtitle.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          menu.subtitle,
-                          style: TextStyle(
-                            color: active
-                                ? AppColors.primary600
-                                : AppColors.gray500,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (active)
-                        const Icon(
-                          Icons.arrow_forward,
-                          size: 14,
-                          color: AppColors.primary600,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ShortcutTab extends StatelessWidget {
-  const _ShortcutTab({required this.onGate, required this.canGate});
-
-  final VoidCallback onGate;
-  final bool canGate;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Aksi cepat',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Mulai dari sini untuk operasional gate harian.',
-              style: TextStyle(color: AppColors.gray500),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 56,
-              child: FilledButton.icon(
-                onPressed: canGate ? onGate : null,
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Buka Check In Point'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary600,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
-            if (!canGate)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: Text(
-                  'Akun ini tidak memiliki izin gate.view.',
-                  style: TextStyle(color: AppColors.gray500),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileTab extends StatelessWidget {
-  const _ProfileTab({required this.onLogout});
-
-  final VoidCallback onLogout;
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Saya',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: AppColors.gray200),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
                   Text(
-                    auth.user?.fullName ?? '-',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  Text(
-                    auth.user?.email ?? '-',
-                    style: const TextStyle(color: AppColors.gray500),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${auth.user?.kodeDepo ?? '-'} • ${auth.user?.namaDepo ?? '-'}',
+                    item.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: AppColors.gray500,
-                      fontSize: 13,
+                      fontSize: 12,
+                      color: AppColors.gray400,
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 52,
-              child: OutlinedButton.icon(
-                onPressed: onLogout,
-                icon: const Icon(Icons.logout),
-                label: const Text('Keluar'),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            formatRelativeTime(item.at),
+            style: const TextStyle(fontSize: 11.5, color: AppColors.gray400),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Warna pill per jenis modul — pasangan `TYPE_TONES` di
+  /// `DashboardRecent.tsx` (`bg-amber-100 text-amber-700`, …).
+  static PillTone _typeTone(String type) => switch (type) {
+    'Rencana Kirim' => PillTone.warning,
+    'Validasi SJ' => PillTone.primary,
+    'Receiving' => PillTone.info,
+    _ => PillTone.neutral,
+  };
+}
+
+class _NoModuleCard extends StatelessWidget {
+  const _NoModuleCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      color: AppColors.warningBg,
+      borderColor: AppColors.warningBorder,
+      child: const Text(
+        'Tidak ada menu operasional untuk akun ini. Minta akses ke admin.',
+        style: TextStyle(color: AppColors.warningText, fontSize: 13),
       ),
     );
   }

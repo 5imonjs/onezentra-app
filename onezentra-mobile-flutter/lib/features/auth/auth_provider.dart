@@ -1,44 +1,53 @@
 import 'package:flutter/foundation.dart';
 import 'package:onezentra_mobile/core/api_client.dart';
+import 'package:onezentra_mobile/features/auth/auth_service.dart';
 import 'package:onezentra_mobile/features/auth/auth_user.dart';
 
-/// Mirror `src/store/auth.ts` (Expo) — sesi Bearer token di SecureStorage,
-/// hidup antar restart & per-perangkat.
+/// State sesi aplikasi — satu-satunya sumber kebenaran "apakah user login".
+///
+/// Sesi disimpan sebagai Bearer token di SecureStorage (hidup antar restart &
+/// per-perangkat). Pola ini konsisten dengan `GateProvider`: service di-inject
+/// agar state bisa diuji tanpa jaringan.
 class AuthProvider extends ChangeNotifier {
+  AuthProvider([AuthService? service]) : _service = service ?? AuthService();
+
+  final AuthService _service;
+
   AuthUser? user;
   List<String> permissions = [];
   bool isLoading = false;
   bool isRestoring = true;
 
+  /// Pesan error saat memulihkan sesi gagal karena jaringan/server (bukan
+  /// karena token invalid). Token sengaja **tidak** dibuang agar pengguna
+  /// cukup menekan "Coba lagi", bukan login ulang dari nol.
+  String? restoreError;
+
   bool get isAuthenticated => user != null;
 
   bool hasPermission(String slug) => permissions.contains(slug);
 
-  bool hasRole(List<String> roles) {
-    final u = user;
-    if (u == null) return false;
-    return roles.contains(u.level) ||
-        u.roles.any((r) => roles.contains(r.slug));
+  /// Dipanggil `ApiClient` saat token dibuang (logout atau 401).
+  void clearSession() {
+    final changed = user != null || permissions.isNotEmpty || isRestoring;
+    user = null;
+    permissions = [];
+    isRestoring = false;
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   Future<void> login(String email, String password) async {
     isLoading = true;
+    restoreError = null;
     notifyListeners();
     try {
-      final res = await ApiClient.instance.dio.post(
-        '/mobile/login',
-        data: {
-          'email': email.trim(),
-          'password': password,
-          'device_name': '${defaultTargetPlatform.name}-mobile',
-        },
-      );
-      final data = res.data as Map<String, dynamic>;
-      await ApiClient.instance.persistToken(data['token'] as String?);
-      user = AuthUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
-      permissions = ((data['permissions'] as List?) ?? [])
-          .map((e) => '$e')
-          .toList();
+      final session = await _service.login(email: email, password: password);
+      await ApiClient.instance.persistToken(session.token);
+      user = session.user;
+      permissions = session.permissions;
+      restoreError = null;
     } finally {
       isLoading = false;
       notifyListeners();
@@ -46,45 +55,53 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    try {
-      await ApiClient.instance.dio.post('/mobile/logout');
-    } catch (_) {
-      // abaikan — tetap bersihkan state lokal
-    }
-    await ApiClient.instance.persistToken(null);
-    user = null;
-    permissions = [];
+    isLoading = true;
     notifyListeners();
+    try {
+      await _service.logout();
+    } catch (_) {
+      // Gagal revoke di server tidak boleh menahan logout lokal.
+    }
+    isLoading = false;
+    await ApiClient.instance.clearSession();
+    clearSession();
   }
 
+  /// Pulihkan sesi dari storage. Dipanggil **satu kali** oleh `AppRoot`,
+  /// bukan per layar — sebelumnya tiap layar memanggilnya lagi sehingga
+  /// sesi yang baru dibuat langsung terhapus.
   Future<void> restore() async {
     isRestoring = true;
+    restoreError = null;
     notifyListeners();
+
+    if (!ApiClient.instance.hasToken) {
+      clearSession();
+      isRestoring = false;
+      notifyListeners();
+      return;
+    }
+
     try {
-      if (ApiClient.instance.token == null) {
-        user = null;
-        permissions = [];
-        return;
+      final session = await _service.me();
+      user = session.user;
+      permissions = session.permissions;
+      restoreError = null;
+    } catch (e) {
+      if (isSessionExpired(e)) {
+        // 401/403: token benar-benar tidak berlaku → buang & kembali ke login.
+        await ApiClient.instance.clearSession();
+        clearSession();
+      } else {
+        restoreError = apiErrorMessage(
+          e,
+          'Tidak dapat memuat sesi. Periksa koneksi lalu coba lagi.',
+        );
+        clearSession();
       }
-      final res = await ApiClient.instance.dio.get('/user');
-      final data = res.data as Map<String, dynamic>;
-      user = AuthUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
-      permissions = ((data['permissions'] as List?) ?? [])
-          .map((e) => '$e')
-          .toList();
-    } catch (_) {
-      await ApiClient.instance.persistToken(null);
-      user = null;
-      permissions = [];
     } finally {
       isRestoring = false;
       notifyListeners();
     }
-  }
-
-  void handleUnauthorized() {
-    user = null;
-    permissions = [];
-    notifyListeners();
   }
 }

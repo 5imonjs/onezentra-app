@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:onezentra_mobile/app_root.dart';
 import 'package:onezentra_mobile/core/api_client.dart';
 import 'package:onezentra_mobile/features/auth/auth_provider.dart';
-import 'package:onezentra_mobile/features/auth/login_screen.dart';
-import 'package:onezentra_mobile/features/dashboard/dashboard_screen.dart';
-import 'package:onezentra_mobile/features/gate/gate_checkin_screen.dart';
+import 'package:onezentra_mobile/features/dashboard/dashboard_provider.dart';
 import 'package:onezentra_mobile/features/gate/gate_provider.dart';
-import 'package:onezentra_mobile/theme/app_colors.dart';
+import 'package:onezentra_mobile/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,30 +20,33 @@ class OnezentraApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // GateProvider dibuat lebih dulu: saat sesi berakhir, data gate milik
+        // user sebelumnya harus ikut dibersihkan.
+        ChangeNotifierProvider(create: (_) => GateProvider()),
+        // Beranda memakai provider global agar angka tidak di-request ulang
+        // setiap kali operator berpindah tab.
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(
-          create: (_) {
+          create: (ctx) {
             final auth = AuthProvider();
-            ApiClient.instance.onUnauthorized = auth.handleUnauthorized;
+            final gate = ctx.read<GateProvider>();
+            final dashboard = ctx.read<DashboardProvider>();
+            // 401 dari server / logout → satu callback membersihkan seluruh
+            // state sensitif sekaligus, lalu AppRoot memunculkan login.
+            ApiClient.instance.onSessionEnded = () {
+              auth.clearSession();
+              gate.reset();
+              dashboard.reset();
+            };
             return auth;
           },
         ),
-        ChangeNotifierProvider(create: (_) => GateProvider()),
       ],
       child: MaterialApp(
         title: 'ONEZENTRA',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary600),
-          scaffoldBackgroundColor: AppColors.surface,
-          fontFamily: 'Roboto',
-        ),
-        initialRoute: '/',
-        routes: {
-          '/': (_) => const LoginScreen(),
-          '/dashboard': (_) => const DashboardScreen(),
-          '/gate': (_) => const GateCheckinScreen(),
-        },
+        theme: AppTheme.light(),
+        home: const AppRoot(),
       ),
     );
   }

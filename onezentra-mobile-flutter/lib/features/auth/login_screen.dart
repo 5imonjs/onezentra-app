@@ -23,8 +23,15 @@ const _features = [
   ),
 ];
 
+/// Versi aplikasi. Satu konstanta di sisi Dart supaya badge versi ini tidak
+/// lagi melenceng dari `pubspec.yaml`.
+const _appVersion = '1.0.0';
+
 /// Layar Login — port dari `onezentra-mobile/app/index.tsx`
 /// (mirror `onezentra-web/src/app/login/page.tsx`).
+///
+/// Sesi tidak lagi dipulihkan di layar ini; `AppRoot` yang memutuskan layar
+/// mana yang tampil, sehingga login cukup menampilkan form.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -40,25 +47,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordFocus = FocusNode();
   String _error = '';
   bool _showPassword = false;
-  bool _restored = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _restore());
-  }
-
-  Future<void> _restore() async {
-    final auth = context.read<AuthProvider>();
-    await auth.restore();
-    if (!mounted) {
-      return;
-    }
-    setState(() => _restored = true);
-    if (auth.isAuthenticated) {
-      Navigator.of(context).pushReplacementNamed('/dashboard');
-    }
-  }
 
   @override
   void dispose() {
@@ -96,15 +84,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
+    final auth = context.read<AuthProvider>();
     try {
-      await context.read<AuthProvider>().login(
-        _emailCtrl.text,
-        _passwordCtrl.text,
-      );
-      if (!mounted) {
-        return;
-      }
-      Navigator.of(context).pushReplacementNamed('/dashboard');
+      await auth.login(_emailCtrl.text, _passwordCtrl.text);
     } catch (e) {
       if (!mounted) {
         return;
@@ -130,10 +112,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
-    if (!_restored || auth.isRestoring) {
-      return const _SplashLoader();
-    }
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -149,31 +127,33 @@ class _LoginScreenState extends State<LoginScreen> {
             SafeArea(
               child: GestureDetector(
                 onTap: () => FocusScope.of(context).unfocus(),
-                child: Center(
-                  child: SingleChildScrollView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      16,
-                      20,
-                      16 + MediaQuery.viewInsetsOf(context).bottom,
-                    ),
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    16,
+                    20,
+                    16 + MediaQuery.viewInsetsOf(context).bottom,
+                  ),
+                  child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 480),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _Entrance(
-                            delayMs: 0,
-                            child: _HeroHeader(
-                              onLogoPressed: () =>
-                                  FocusScope.of(context).unfocus(),
-                            ),
-                          ),
+                          const _Entrance(delayMs: 0, child: _HeroHeader()),
                           const SizedBox(height: 16),
                           const _Entrance(delayMs: 90, child: _FeatureGrid()),
                           const SizedBox(height: 20),
+                          if (auth.restoreError != null) ...[
+                            _OfflineBanner(
+                              message: auth.restoreError!,
+                              onRetry: () =>
+                                  context.read<AuthProvider>().restore(),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           _Entrance(
                             delayMs: 180,
                             child: _LoginCard(
@@ -205,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             '© ${DateTime.now().year} ONEZENTRA  ·  Developed by Langkau_kami',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
-                              color: AppColors.gray400,
+                              color: AppColors.gray300,
                               fontSize: 12,
                             ),
                           ),
@@ -224,38 +204,58 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class _SplashLoader extends StatelessWidget {
-  const _SplashLoader();
+/// Banner saat pemulihan sesi gagal karena jaringan — token tidak dibuang,
+/// jadi pengguna cukup mencoba ulang alih-alih login dari awal.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: AppColors.darkGradient,
-        ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warningBg,
+        border: Border.all(color: AppColors.warningBorder),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 44,
-              height: 44,
-              child: CircularProgressIndicator(
-                color: AppColors.primary300,
-                strokeWidth: 3,
-              ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.wifi_off_outlined,
+            size: 20,
+            color: AppColors.warningText,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: AppColors.warningText,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: onRetry,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Coba lagi'),
+                ),
+              ],
             ),
-            SizedBox(height: 14),
-            Text(
-              'Memuat sesi...',
-              style: TextStyle(color: AppColors.primary300, fontSize: 14),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -305,44 +305,36 @@ class _BlurCircle extends StatelessWidget {
   }
 }
 
+/// Header brand. Logo disimpan sebagai file putih transparan, jadi tidak
+/// boleh ditaruh di atas latar putih (sebelumnya tidak terlihat sama sekali) —
+/// ditampilkan langsung di atas gradient gelap, seperti panel kiri login web.
 class _HeroHeader extends StatelessWidget {
-  const _HeroHeader({required this.onLogoPressed});
-
-  final VoidCallback onLogoPressed;
+  const _HeroHeader();
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        GestureDetector(
-          onTap: onLogoPressed,
-          child: Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x40000000),
-                  blurRadius: 24,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(10),
+        Semantics(
+          label: 'Logo ONEZENTRA',
+          image: true,
+          child: SizedBox(
+            height: 40,
             child: Image.asset(
               'assets/logo.png',
-              semanticLabel: 'Logo ONEZENTRA',
+              fit: BoxFit.contain,
+              cacheWidth: 480,
+              filterQuality: FilterQuality.medium,
+              excludeFromSemantics: true,
               errorBuilder: (_, _, _) => const Icon(
                 Icons.warehouse_outlined,
-                size: 36,
-                color: AppColors.primary600,
+                size: 40,
+                color: Colors.white,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         const Text(
           'ONEZENTRA',
           style: TextStyle(
@@ -366,14 +358,22 @@ class _HeroHeader extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
             borderRadius: BorderRadius.circular(999),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.smartphone, size: 14, color: AppColors.accent400),
-              SizedBox(width: 6),
+              const Icon(
+                Icons.smartphone,
+                size: 14,
+                color: AppColors.accent400,
+              ),
+              const SizedBox(width: 6),
               Text(
-                'Mobile Access  ·  v1.0.0',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+                'Mobile Access  ·  v$_appVersion',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -809,7 +809,7 @@ InputDecoration _inputDecoration({
   );
   return InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: AppColors.gray400, fontSize: 14),
+    hintStyle: const TextStyle(color: AppColors.gray500, fontSize: 14),
     filled: true,
     fillColor: AppColors.gray50,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
@@ -818,7 +818,7 @@ InputDecoration _inputDecoration({
     focusedBorder: focused,
     errorBorder: errorBorder,
     focusedErrorBorder: errorBorder,
-    prefixIcon: Icon(prefix, size: 20, color: AppColors.gray400),
+    prefixIcon: Icon(prefix, size: 20, color: AppColors.gray500),
     suffixIcon: suffix,
     errorStyle: const TextStyle(fontSize: 12.5),
   );
