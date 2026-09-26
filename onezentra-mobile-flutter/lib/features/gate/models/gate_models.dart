@@ -1,3 +1,5 @@
+import 'package:onezentra_mobile/widgets/status_pill.dart';
+
 /// Model ringan untuk alur Gate Check In — mirror
 /// `onezentra-web/src/app/gate/page.tsx` + `GateTransactionController`.
 class RencanaKirimSummary {
@@ -28,6 +30,20 @@ class RencanaKirimSummary {
       status: '${json['status'] ?? ''}',
       kodeDepo: '${json['kode_depo'] ?? ''}',
       namaDepo: '${json['nama_depo'] ?? ''}',
+    );
+  }
+
+  /// Salinan dengan status baru — dipakai setelah gate tercatat supaya kartu
+  /// lanjutan (Mulai Validasi) mencerminkan status terbaru dokumen.
+  RencanaKirimSummary copyWith({String? status}) {
+    return RencanaKirimSummary(
+      id: id,
+      poTransporter: poTransporter,
+      nopol: nopol,
+      driverName: driverName,
+      status: status ?? this.status,
+      kodeDepo: kodeDepo,
+      namaDepo: namaDepo,
     );
   }
 }
@@ -108,6 +124,36 @@ String gateStatusLabel(String status) {
     'CANCELLED' => 'Dibatalkan',
     _ => status.isEmpty ? '-' : status,
   };
+}
+
+/// Nada pill status dokumen — mirror `RK_STATUS_STYLE` di web
+/// (`bg-*`/`text-*`/`border-*` per status, dengan titik warna di depan label).
+///
+/// Status yang tidak dikenal memakai abu-abu, sama seperti fallback
+/// `bg-slate-100 text-slate-600` di web: lebih baik netral daripada menebak
+/// warna yang berarti status lain.
+PillTone gateStatusTone(String status) {
+  return switch (status) {
+    'DRAFT' => PillTone.neutral,
+    'SCHEDULED' => PillTone.blue,
+    'CHECKED_IN' => PillTone.warning,
+    'VERIFIED' => PillTone.violet,
+    'IN_PROGRESS' => PillTone.orange,
+    'COMPLETED' => PillTone.success,
+    'CANCELLED' => PillTone.danger,
+    _ => PillTone.neutral,
+  };
+}
+
+/// Status dokumen yang masih boleh masuk ke proses Validasi Dokumen.
+///
+/// Backend (`SjValidationController::startValidation`) menerima SCHEDULED,
+/// CHECKED_IN, dan VERIFIED. VERIFIED sengaja tidak ditawarkan di UI: status
+/// itu berarti validasi sudah lewat (dokumen menunggu bongkar), sehingga
+/// tombolnya hanya muncul saat operator benar-benar masih punya pekerjaan —
+/// yang persis setelah Gate IN.
+bool isDocumentValidatable(String status) {
+  return status == 'SCHEDULED' || status == 'CHECKED_IN';
 }
 
 /// Panduan aksi gate — mirror `STATUS_GUIDE` di web.
