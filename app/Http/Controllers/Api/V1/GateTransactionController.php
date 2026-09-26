@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\GateTransaction;
 use App\Models\RencanaKirim;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -125,12 +126,29 @@ class GateTransactionController extends Controller
         return response()->json(['data' => $gateTransaction->load('rencanaKirim')]);
     }
 
+    /**
+     * Lookup satu rencana kirim dari nomor yang diinput operator.
+     *
+     * Field query tetap `po_transporter` (dipakai web & mobile), tapi nilainya
+     * dicocokkan ke `po_transporter` ATAU `nopol` karena kedua layar menyebut
+     * kolomnya "PO / Nopol". Match dilakukan persis (setelah trim) — partial
+     * match berisiko mengembalikan dokumen milik orang lain, dan dokumen itu
+     * lalu bisa langsung di-Gate-IN dari layar.
+     */
     public function byNoDokumen(Request $request): JsonResponse
     {
-        $request->validate(['po_transporter' => 'required|string']);
+        $validated = $request->validate([
+            'po_transporter' => ['required', 'string', 'max:100'],
+        ]);
 
-        $rencanaKirim = RencanaKirim::where('po_transporter', $request->po_transporter)
+        $nomor = trim($validated['po_transporter']);
+
+        $rencanaKirim = RencanaKirim::query()
             ->forUserDepot($request->user())
+            ->where(function (Builder $q) use ($nomor): void {
+                $q->where('po_transporter', $nomor)
+                    ->orWhere('nopol', $nomor);
+            })
             ->orderBy('created_at', 'desc')
             ->first();
 
