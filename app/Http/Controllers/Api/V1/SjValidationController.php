@@ -253,11 +253,23 @@ class SjValidationController extends Controller
     }
 
     /**
-     * Mulai validasi: buat record + snapshot semua item rencana kirim.
+     * Mulai validasi dari dokumen yang sudah diketahui (hasil scan di Check In).
+     *
+     * Model tidak di-bind route supaya dokumen yang tidak ada / bukan depo
+     * pengguna menjawab 404 "Dokumen tidak ditemukan" — sama dengan
+     * `startByCode` — bukan pesan ModelNotFound mentah yang membocorkan nama
+     * class ke layar operator.
      */
-    public function start(Request $request, RencanaKirim $rencanaKirim): JsonResponse
+    public function start(Request $request, int $rencanaKirim): JsonResponse
     {
-        $rencanaKirim->load('items.npn');
+        $rencanaKirim = RencanaKirim::query()
+            ->forUserDepot($request->user())
+            ->with('items.npn')
+            ->find($rencanaKirim);
+
+        if (! $rencanaKirim) {
+            return response()->json(['message' => 'Dokumen tidak ditemukan'], 404);
+        }
 
         return $this->startValidation($request, $rencanaKirim);
     }

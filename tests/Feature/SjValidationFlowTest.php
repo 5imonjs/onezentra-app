@@ -118,6 +118,63 @@ class SjValidationFlowTest extends TestCase
             ->assertStatus(422);
     }
 
+    /**
+     * Alur Check In → Validasi: dokumen sudah ketemu di gate, jadi mobile
+     * memanggil start/{id} — tanpa scan/ketik PO untuk kedua kalinya.
+     */
+    public function test_start_by_id_resumes_existing_validation(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create']));
+        $rk = $this->scheduledRencana($user);
+        $rk->update(['status' => 'CHECKED_IN']);
+
+        $first = $this->postJson("/api/v1/sj-validations/start/{$rk->id}")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame('IN_PROGRESS', $first['status']);
+        $this->assertCount(1, $first['items']);
+
+        // Buka lagi dari gate → record yang sama, tidak menggandakan snapshot.
+        $again = $this->postJson("/api/v1/sj-validations/start/{$rk->id}")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame($first['id'], $again['id']);
+        $this->assertSame(1, SjValidation::count());
+    }
+
+    public function test_start_by_id_returns_friendly_404_for_unknown_document(): void
+    {
+        Sanctum::actingAs($this->userWithPermissions(['sj_validation.create']));
+
+        $this->postJson('/api/v1/sj-validations/start/999999')
+            ->assertStatus(404)
+            ->assertJsonPath('message', 'Dokumen tidak ditemukan');
+    }
+
+    public function test_start_by_id_hides_document_of_another_depot(): void
+    {
+        $user = $this->userWithPermissions(['sj_validation.create']);
+        Sanctum::actingAs($user);
+
+        $rk = $this->scheduledRencana($user);
+        $rk->update(['kode_depo' => 'DPO-LAIN', 'nama_depo' => 'Depo Lain']);
+
+        $this->postJson("/api/v1/sj-validations/start/{$rk->id}")
+            ->assertStatus(404)
+            ->assertJsonPath('message', 'Dokumen tidak ditemukan');
+    }
+
+    public function test_start_by_id_rejects_draft_rencana(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create']));
+        $rk = $this->scheduledRencana($user);
+        $rk->update(['status' => 'DRAFT']);
+
+        $this->postJson("/api/v1/sj-validations/start/{$rk->id}")->assertStatus(422);
+    }
+
     public function test_scan_validates_item_and_requires_photo_for_problem_conditions(): void
     {
         Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create', 'sj_validation.validate']));
