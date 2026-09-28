@@ -13,4 +13,4 @@ Filter laporan rencana kirim (date_from/date_to rkh_date, status whitelist in:DR
 - Akses pakai `permission:reports.view` (bukan rencana_kirim.view) — sama dengan laporan Penerimaan/Selisih Qty/Opname.
 - Kubikasi TIDAK disimpan DB: derived per request via `attachKubikasiToItems` (jumlah × npn.decVolume × npn.SAPdecUom ÷ 1.000.000 m³) — rumus sama dengan RencanaKirimController.
 - Urutan baris: `rkh_date desc, id desc`. Summary memuat total, total_qty, total_kubikasi, completed/cancelled count, dan status_counts berlabel ID.
-- Halaman frontend wajib punya kartu mobile (`lg:hidden`) — tabel desktop `hidden lg:block`; pola UI mengikuti /reports/selisih-qty (header bento gelap + filter card + summary cards + table-header/table-cell classes).
+- Halaman frontend wajib punya kartu responsif (`lg:hidden`) — tabel desktop `hidden lg:block`; pola UI mengikuti /reports/selisih-qty (header bento gelap + filter card + summary cards + table-header/table-cell classes).
