@@ -100,9 +100,13 @@ class ApprovalAssignmentTest extends TestCase
         ]);
         $role->users()->attach($rlh->id);
         ApprovalAssignment::create(['kode_depo' => 'ADMIN', 'approval_level' => 'RLH', 'user_id' => $rlh->id, 'is_active' => true]);
+        $submitter = User::create([
+            'email' => 'global-rlh-submitter@test.com', 'password' => 'password', 'full_name' => 'Submitter',
+            'kode_depo' => '0127', 'nama_depo' => 'Singkawang', 'level' => 'staff_logistic', 'status' => 'active',
+        ]);
         $biaya = BiayaThl::create([
             'tanggal_pengajuan' => '2026-09-23', 'kode_depo' => '0127', 'nama_depo' => 'Singkawang',
-            'status' => 'checked', 'nominal_biaya' => 100000, 'created_by' => $rlh->id,
+            'status' => 'checked', 'nominal_biaya' => 100000, 'created_by' => $submitter->id,
         ]);
 
         Sanctum::actingAs($rlh);
@@ -247,5 +251,47 @@ class ApprovalAssignmentTest extends TestCase
         $this->actingAs($approver)->postJson("/api/v1/biaya-thl/{$biaya->id}/approve")->assertOk();
 
         $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'status' => 'approved']);
+    }
+
+    public function test_creator_cannot_approve_their_own_submission(): void
+    {
+        $approvalPermissions = $this->approvalPermissions();
+        $role = Role::create(['slug' => 'self_approve_admin', 'name' => 'Self Approve Admin']);
+        $role->permissions()->attach(array_values($approvalPermissions));
+        $creator = User::create([
+            'email' => 'self-approve@test.com', 'password' => 'password', 'full_name' => 'Creator',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active', 'role_id' => $role->id,
+        ]);
+        $role->users()->attach($creator->id);
+        ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'BAC', 'user_id' => $creator->id]);
+        ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'RLH', 'user_id' => $creator->id]);
+        $biaya = BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'status' => 'pending', 'created_by' => $creator->id]);
+
+        Sanctum::actingAs($creator);
+        $this->postJson("/api/v1/biaya-thl/{$biaya->id}/check")
+            ->assertForbidden()
+            ->assertJsonFragment(['message' => 'Pembuat pengajuan tidak boleh memproses pengajuannya sendiri.']);
+
+        $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'status' => 'pending', 'checked_by' => null]);
+    }
+
+    public function test_creator_cannot_reject_their_own_submission(): void
+    {
+        $approvalPermissions = $this->approvalPermissions();
+        $role = Role::create(['slug' => 'self_reject_admin', 'name' => 'Self Reject Admin']);
+        $role->permissions()->attach(array_values($approvalPermissions));
+        $creator = User::create([
+            'email' => 'self-reject@test.com', 'password' => 'password', 'full_name' => 'Creator',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active', 'role_id' => $role->id,
+        ]);
+        $role->users()->attach($creator->id);
+        ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'BAC', 'user_id' => $creator->id]);
+        $biaya = BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'status' => 'pending', 'created_by' => $creator->id]);
+
+        Sanctum::actingAs($creator);
+        $this->postJson("/api/v1/biaya-thl/{$biaya->id}/reject", ['reason' => 'Uji'])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'status' => 'pending']);
     }
 }

@@ -110,6 +110,22 @@ class SeederRoleVerificationTest extends TestCase
         }
     }
 
+    public function test_sac_and_operator_mirror_bac_and_cheker_permissions(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        $bac = Role::where('slug', 'bac')->first()->permissions()->pluck('slug')->sort()->values()->all();
+        $sac = Role::where('slug', 'sac')->first()->permissions()->pluck('slug')->sort()->values()->all();
+        $this->assertNotEmpty($sac, 'Role sac tidak boleh nol permission (lockout)');
+        $this->assertSame($bac, $sac);
+
+        $cheker = Role::where('slug', 'cheker')->first()->permissions()->pluck('slug')->sort()->values()->all();
+        $operator = Role::where('slug', 'operator')->first()->permissions()->pluck('slug')->sort()->values()->all();
+        $this->assertNotEmpty($operator, 'Role operator tidak boleh nol permission (lockout)');
+        $this->assertSame($cheker, $operator);
+    }
+
     private function seedRoles(): void
     {
         $meta = [

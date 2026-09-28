@@ -44,13 +44,16 @@ Route::prefix('v1')->group(function () {
         Route::post('/', [ApprovalAssignmentController::class, 'upsert'])->middleware('permission:approval.manage');
     });
 
-    Route::get('storage/{path}', function (string $path) {
-        abort_unless(Storage::disk('public')->exists($path), 404);
-
-        return response()->file(Storage::disk('public')->path($path));
-    })->where('path', '.*');
-
     Route::middleware('auth:sanctum')->group(function () {
+        // File bukti (foto validasi, dokumen biaya) WAJIB auth: path file
+        // dikembalikan polos di respons JSON sehingga route publik = bypass
+        // total atas gate permission photos/{photo} & documents/{document}.
+        Route::get('storage/{path}', function (string $path) {
+            abort_unless(Storage::disk('public')->exists($path), 404);
+
+            return response()->file(Storage::disk('public')->path($path));
+        })->where('path', '.*');
+
         Route::get('user', [AuthController::class, 'user']);
         Route::put('user', [AuthController::class, 'updateProfile']);
     });

@@ -131,7 +131,6 @@ export const auth = {
   logout: () => apiClient.post('/logout'),
   getUser: () => apiClient.get('/user'),
   updateProfile: (data: Record<string, unknown>) => apiClient.put('/user', data),
-  changePassword: (data: Record<string, unknown>) => apiClient.put('/user/password', data),
 };
 
 export const dashboard = {

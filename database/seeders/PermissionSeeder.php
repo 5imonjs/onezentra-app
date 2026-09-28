@@ -162,6 +162,9 @@ class PermissionSeeder extends Seeder
                 'approval.check', 'approval.revise',
                 'gate.edit', 'gate.delete',
             ],
+            // CATATAN: slug 'admin_distirbusi' memang typo (kurang 'b') sejak awal
+            // dan sudah tersimpan di DB + dirujuk kode. JANGAN diperbaiki
+            // ejaannya tanpa migrasi data (akan meng orphan role & user).
             'admin_distirbusi' => [
                 'dashboard.view', 'penerimaan.view', 'penerimaan.create', 'penerimaan.edit',
                 'npn.view', 'npn.create', 'npn.edit', 'npn.delete',
@@ -218,6 +221,17 @@ class PermissionSeeder extends Seeder
             $permIds = array_map(fn ($slug) => $allPermIds[$slug] ?? null, $permSlugs);
             $permIds = array_filter($permIds);
             $role->permissions()->sync($permIds);
+        }
+
+        // sac & operator: user aktif di DB tetapi nol permission = lockout total.
+        // Keputusan akses: operator = operasional depo ( = cheker),
+        // sac = checker ( = bac). Referensi langsung agar tidak drift.
+        foreach (['operator' => 'cheker', 'sac' => 'bac'] as $mirror => $source) {
+            $role = Role::where('slug', $mirror)->first();
+            $sourceRole = Role::where('slug', $source)->first();
+            if ($role && $sourceRole) {
+                $role->permissions()->sync($sourceRole->permissions()->pluck('permissions.id')->all());
+            }
         }
 
         $this->command->info('Permissions seeded successfully.');

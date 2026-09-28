@@ -12,8 +12,10 @@ use App\Models\BiayaRetribusiDetail;
 use App\Models\BiayaThlDetail;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
@@ -65,14 +67,30 @@ class ReportController extends Controller
             ];
         });
 
-        $summary = [
-            'total_item' => $data->count(),
-            'total_selisih' => $data->sum('selisih_qty'),
-            'item_kurang' => $data->where('selisih_qty', '<', 0)->count(),
-            'item_lebih' => $data->where('selisih_qty', '>', 0)->count(),
-        ];
+        $summary = $this->selisihQtySummary($query);
 
         return response()->json(['data' => $data, 'summary' => $summary]);
+    }
+
+    /**
+     * Ringkasan selisih via agregasi SQL — tanpa memuat seluruh baris.
+     *
+     * @param  Builder  $query
+     */
+    private function selisihQtySummary($query): array
+    {
+        $agg = (clone $query)->toBase()->selectRaw(
+            'COUNT(*) as c, COALESCE(SUM(selisih_qty), 0) as s,'
+            .' SUM(CASE WHEN selisih_qty < 0 THEN 1 ELSE 0 END) as kurang,'
+            .' SUM(CASE WHEN selisih_qty > 0 THEN 1 ELSE 0 END) as lebih'
+        )->first();
+
+        return [
+            'total_item' => (int) $agg->c,
+            'total_selisih' => (float) $agg->s,
+            'item_kurang' => (int) $agg->kurang,
+            'item_lebih' => (int) $agg->lebih,
+        ];
     }
 
     public function selisihQtyExport(Request $request)
@@ -96,8 +114,18 @@ class ReportController extends Controller
         $this->validateRencanaKirimRequest($request);
 
         $query = $this->rencanaKirimQuery($request);
-        // Ringkasan selalu dihitung dari SELURUH baris terfilter, bukan hanya halaman aktif.
-        $allRows = (clone $query)->get();
+        // Ringkasan selalu dihitung dari SELURUH baris terfilter via agregasi
+        // SQL — bukan hanya halaman aktif, dan tanpa memuat seluruh tabel.
+        $statusCountsRaw = (clone $query)->toBase()
+            ->selectRaw('status, COUNT(*) as c')
+            ->groupBy('status')
+            ->pluck('c', 'status');
+        $headerIds = (clone $query)->toBase()->select('rencana_kirim.id');
+        $totalKubikasi = (float) DB::table('rencana_kirim_items as i')
+            ->join('npn as n', 'n.id', '=', 'i.npn_id')
+            ->whereIn('i.rencana_kirim_id', $headerIds)
+            ->selectRaw('COALESCE(SUM(ROUND(COALESCE(i.jumlah, 0) * COALESCE(n.decVolume, 0) * COALESCE(CAST(n.SAPdecUom AS DOUBLE), 0) / 1000000, 4)), 0) as k')
+            ->value('k');
 
         $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
         $paginated = $query->paginate($perPage);
@@ -116,22 +144,17 @@ class ReportController extends Controller
         $statusCounts = [];
         foreach ($statusLabels as $status => $label) {
             $statusCounts[$status] = [
-                'count' => $allRows->where('status', $status)->count(),
+                'count' => (int) ($statusCountsRaw[$status] ?? 0),
                 'label' => $label,
             ];
         }
 
-        $totalKubikasi = 0.0;
-        foreach ($allRows as $rk) {
-            $totalKubikasi += (float) $this->rencanaKirimRow($rk)['total_kubikasi'];
-        }
-
         $summary = [
-            'total' => $allRows->count(),
-            'total_qty' => (int) $allRows->sum('total_qty'),
+            'total' => (int) (clone $query)->toBase()->count(),
+            'total_qty' => (int) (clone $query)->sum('total_qty'),
             'total_kubikasi' => round($totalKubikasi, 2),
-            'completed_count' => $allRows->where('status', 'COMPLETED')->count(),
-            'cancelled_count' => $allRows->where('status', 'CANCELLED')->count(),
+            'completed_count' => (int) ($statusCountsRaw['COMPLETED'] ?? 0),
+            'cancelled_count' => (int) ($statusCountsRaw['CANCELLED'] ?? 0),
             'status_counts' => $statusCounts,
         ];
 
@@ -228,21 +251,27 @@ class ReportController extends Controller
         $this->validatePenerimaanRequest($request);
 
         $query = $this->penerimaanQuery($request);
-        // Ringkasan selalu dihitung dari SELURUH baris terfilter, bukan hanya halaman aktif.
-        $allItems = (clone $query)->get();
-        $allData = $allItems->map(fn (ReceivingItem $item) => $this->penerimaanRow($item));
+        // Ringkasan selalu dihitung dari SELURUH baris terfilter via agregasi
+        // SQL — bukan hanya halaman aktif, dan tanpa memuat seluruh tabel.
+        $agg = (clone $query)->toBase()->selectRaw(
+            'COUNT(*) as c, COALESCE(SUM(actual_qty), 0) as crt, COALESCE(SUM(qty_pcs), 0) as pcs,'
+            .' COALESCE(SUM(selisih_qty), 0) as s,'
+            .' SUM(CASE WHEN source = ? THEN 1 ELSE 0 END) as sj,'
+            .' SUM(CASE WHEN source = ? THEN 1 ELSE 0 END) as manual',
+            [ReceivingItem::SOURCE_VALIDASI, ReceivingItem::SOURCE_IMPORT]
+        )->first();
 
         $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
         $paginated = $query->paginate($perPage);
         $data = $paginated->getCollection()->map(fn (ReceivingItem $item) => $this->penerimaanRow($item));
 
         $summary = [
-            'total_item' => $allData->count(),
-            'total_qty_crt' => $allData->sum('qty_crt'),
-            'total_qty_pcs' => $allData->sum('qty_pcs'),
-            'item_sj' => $allData->where('sumber', ReceivingItem::SOURCE_VALIDASI)->count(),
-            'item_manual' => $allData->where('sumber', ReceivingItem::SOURCE_IMPORT)->count(),
-            'total_selisih' => $allData->sum('selisih_qty'),
+            'total_item' => (int) $agg->c,
+            'total_qty_crt' => (float) $agg->crt,
+            'total_qty_pcs' => (float) $agg->pcs,
+            'item_sj' => (int) $agg->sj,
+            'item_manual' => (int) $agg->manual,
+            'total_selisih' => (float) $agg->s,
         ];
 
         return response()->json([
@@ -269,19 +298,22 @@ class ReportController extends Controller
         $this->validateBiayaRequest($request);
 
         $query = $this->biayaThlQuery($request);
-        // Ringkasan selalu dihitung dari SELURUH baris terfilter, bukan hanya halaman aktif.
-        $allItems = (clone $query)->get();
-        $allData = $allItems->map(fn (BiayaThlDetail $detail) => $this->biayaThlRow($detail));
+        // Ringkasan selalu dihitung dari SELURUH baris terfilter via agregasi
+        // SQL — bukan hanya halaman aktif, dan tanpa memuat seluruh tabel.
+        $agg = (clone $query)->toBase()->selectRaw(
+            'COUNT(*) as c, COUNT(DISTINCT biaya_thl_id) as p, COALESCE(SUM(nominal_biaya), 0) as n,'
+            ." COUNT(DISTINCT CASE WHEN nama_thl IS NOT NULL AND nama_thl != '' THEN nama_thl END) as t"
+        )->first();
 
         $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
         $paginated = $query->paginate($perPage);
         $data = $paginated->getCollection()->map(fn (BiayaThlDetail $detail) => $this->biayaThlRow($detail));
 
         $summary = [
-            'total_pengajuan' => $allItems->map(fn (BiayaThlDetail $d) => $d->biaya_thl_id)->unique()->count(),
-            'total_detail' => $allData->count(),
-            'total_nominal' => (float) $allData->sum('nominal_biaya'),
-            'total_tenaga_kerja' => $allData->map(fn ($row) => $row['nama_thl'])->filter()->unique()->count(),
+            'total_pengajuan' => (int) $agg->p,
+            'total_detail' => (int) $agg->c,
+            'total_nominal' => (float) $agg->n,
+            'total_tenaga_kerja' => (int) $agg->t,
         ];
 
         return response()->json([
@@ -308,18 +340,20 @@ class ReportController extends Controller
         $this->validateBiayaRequest($request);
 
         $query = $this->biayaRetribusiQuery($request);
-        // Ringkasan selalu dihitung dari SELURUH baris terfilter, bukan hanya halaman aktif.
-        $allItems = (clone $query)->get();
-        $allData = $allItems->map(fn (BiayaRetribusiDetail $detail) => $this->biayaRetribusiRow($detail));
+        // Ringkasan selalu dihitung dari SELURUH baris terfilter via agregasi
+        // SQL — bukan hanya halaman aktif, dan tanpa memuat seluruh tabel.
+        $agg = (clone $query)->toBase()->selectRaw(
+            'COUNT(*) as c, COUNT(DISTINCT biaya_retribusi_id) as p, COALESCE(SUM(nominal_biaya), 0) as n'
+        )->first();
 
         $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
         $paginated = $query->paginate($perPage);
         $data = $paginated->getCollection()->map(fn (BiayaRetribusiDetail $detail) => $this->biayaRetribusiRow($detail));
 
         $summary = [
-            'total_pengajuan' => $allItems->map(fn (BiayaRetribusiDetail $d) => $d->biaya_retribusi_id)->unique()->count(),
-            'total_detail' => $allData->count(),
-            'total_nominal' => (float) $allData->sum('nominal_biaya'),
+            'total_pengajuan' => (int) $agg->p,
+            'total_detail' => (int) $agg->c,
+            'total_nominal' => (float) $agg->n,
         ];
 
         return response()->json([

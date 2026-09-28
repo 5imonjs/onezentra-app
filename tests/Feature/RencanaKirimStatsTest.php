@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\RencanaKirim;
+use App\Models\RencanaKirimItem;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -133,5 +135,28 @@ class RencanaKirimStatsTest extends TestCase
 
         $this->assertSame(1, $res->json('total'));
         $this->assertSame(1, $res->json('data.SCHEDULED.count'));
+    }
+
+    public function test_stats_kubikasi_matches_item_formula(): void
+    {
+        $user = $this->viewer();
+        $npn = Npn::create([
+            'szNickName' => 'Produk Kubikasi', 'BOSnetszProductId' => 'B-KUB',
+            'SAPszProductId' => 'SAP-KUB', 'szBarcode' => 'BC-KUB', 'szStatus' => 'EXISTING',
+            'decVolume' => 500000, 'SAPdecUom' => '2',
+        ]);
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-KUB', 'status' => 'SCHEDULED',
+            'rkh_date' => now()->toDateString(), 'created_by' => $user->id,
+        ]);
+        RencanaKirimItem::create(['rencana_kirim_id' => $rk->id, 'npn_id' => $npn->id, 'jumlah' => 10]);
+        RencanaKirimItem::create(['rencana_kirim_id' => $rk->id, 'npn_id' => $npn->id, 'jumlah' => 5]);
+
+        Sanctum::actingAs($user);
+        $res = $this->getJson('/api/v1/rencana-kirim/stats')->assertOk();
+
+        // 10*500000*2/1e6 + 5*500000*2/1e6 = 10 + 5.
+        $this->assertEquals(15.0, $res->json('data.SCHEDULED.sum_kubikasi'));
+        $this->assertEquals(15.0, $res->json('total_kubikasi'));
     }
 }

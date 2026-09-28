@@ -449,6 +449,10 @@ class BiayaApprovalService
 
     private function ensureApprover(Model $biaya, User $actor, string $level): void
     {
+        // Segregasi tugas: pembuat pengajuan tidak boleh memproses
+        // pengajuannya sendiri di sisi approval (check/approve/rfah/reject/revise).
+        abort_if($biaya->created_by === $actor->id, 403, 'Pembuat pengajuan tidak boleh memproses pengajuannya sendiri.');
+
         $assigned = ApprovalAssignment::query()
             ->where('module', ApprovalAssignment::moduleFor($biaya))
             ->where('user_id', $actor->id)

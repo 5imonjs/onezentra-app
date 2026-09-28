@@ -17,6 +17,7 @@ use App\Services\EmailNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
@@ -461,53 +462,75 @@ class RencanaKirimController extends Controller
     /**
      * Statistik global rencana kirim: hitungan per status, total, dan
      * agregat kalender (rkh_date x status) untuk dashboard halaman.
+     *
+     * Semua ringkasan dihitung dengan agregasi SQL — tabel tidak pernah
+     * dimuat seluruhnya ke memori.
      */
     public function stats(Request $request): JsonResponse
     {
         $user = $request->user();
-        $rks = RencanaKirim::with('items.npn')->forUserDepot($user)
+        $base = RencanaKirim::forUserDepot($user)
             ->when(
                 ! $user->isDepotScoped() && trim((string) $request->input('kode_depo', '')) !== '',
                 fn ($query) => $query->where('kode_depo', trim((string) $request->input('kode_depo', '')))
-            )
-            ->get();
+            );
 
         $statuses = ['DRAFT', 'SCHEDULED', 'CHECKED_IN', 'VERIFIED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+
+        $perStatus = (clone $base)->toBase()
+            ->selectRaw('status, COUNT(*) as c, COALESCE(SUM(total_qty), 0) as q')
+            ->groupBy('status')
+            ->get()
+            ->keyBy('status');
+
+        // Kubikasi per item = jumlah x npn.decVolume x npn.SAPdecUom / 1.000.000
+        // (rumus sama dengan attachKubikasi; NULL = 0), diagregasi per status.
+        $headers = (clone $base)->toBase()->select('rencana_kirim.id', 'rencana_kirim.status');
+        $kubikasi = DB::table('rencana_kirim_items as i')
+            ->join('npn as n', 'n.id', '=', 'i.npn_id')
+            ->joinSub($headers, 'h', 'h.id', '=', 'i.rencana_kirim_id')
+            ->selectRaw('h.status as status, COALESCE(SUM(ROUND(COALESCE(i.jumlah, 0) * COALESCE(n.decVolume, 0) * COALESCE(CAST(n.SAPdecUom AS DOUBLE), 0) / 1000000, 4)), 0) as k')
+            ->groupBy('h.status')
+            ->pluck('k', 'status');
+
         $stats = [];
+        $totalKubikasi = 0.0;
         foreach ($statuses as $status) {
-            $group = $rks->where('status', $status);
+            $k = (float) ($kubikasi[$status] ?? 0);
+            $totalKubikasi += $k;
             $stats[$status] = [
-                'count' => $group->count(),
-                'sum_qty' => (int) $group->sum('total_qty'),
-                'sum_kubikasi' => round($group->sum(fn (RencanaKirim $rk) => $this->totalKubikasi($rk->items)), 2),
+                'count' => (int) ($perStatus[$status]->c ?? 0),
+                'sum_qty' => (int) ($perStatus[$status]->q ?? 0),
+                'sum_kubikasi' => round($k, 2),
             ];
         }
 
         $today = now()->toDateString();
 
-        $calendar = $rks
-            ->groupBy(fn (RencanaKirim $rk) => $rk->rkh_date?->toDateString())
-            ->map(function ($group, $date) use ($statuses) {
-                $breakdown = [];
-                foreach ($statuses as $status) {
-                    $count = $group->where('status', $status)->count();
-                    if ($count > 0) {
-                        $breakdown[$status] = $count;
-                    }
-                }
+        $calendarRows = (clone $base)->toBase()
+            ->selectRaw('DATE(rkh_date) as d, status, COUNT(*) as c')
+            ->groupBy('d', 'status')
+            ->orderByDesc('d')
+            ->get();
 
-                return ['date' => $date, 'count' => $group->count(), 'breakdown' => $breakdown];
-            })
-            ->sortByDesc('date')
-            ->values()
-            ->all();
+        $byDate = [];
+        foreach ($calendarRows as $row) {
+            $date = $row->d ?? '';
+            $byDate[$date]['count'] = ($byDate[$date]['count'] ?? 0) + (int) $row->c;
+            $byDate[$date]['breakdown'][$row->status] = (int) $row->c;
+        }
+        krsort($byDate);
+        $calendar = [];
+        foreach ($byDate as $date => $entry) {
+            $calendar[] = ['date' => $date, 'count' => $entry['count'], 'breakdown' => $entry['breakdown']];
+        }
 
         return response()->json([
             'data' => $stats,
-            'total' => $rks->count(),
-            'total_qty' => (int) $rks->sum('total_qty'),
-            'total_kubikasi' => round($rks->sum(fn (RencanaKirim $rk) => $this->totalKubikasi($rk->items)), 2),
-            'today_count' => $rks->filter(fn (RencanaKirim $rk) => $rk->rkh_date?->toDateString() === $today)->count(),
+            'total' => (int) (clone $base)->toBase()->count(),
+            'total_qty' => (int) (clone $base)->sum('total_qty'),
+            'total_kubikasi' => round($totalKubikasi, 2),
+            'today_count' => (int) (clone $base)->whereDate('rkh_date', $today)->count(),
             'calendar' => $calendar,
         ]);
     }
@@ -534,6 +557,8 @@ class RencanaKirimController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            Log::error('rencana_kirim import failed', ['exception' => $e]);
+
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
         }
     }
@@ -555,6 +580,8 @@ class RencanaKirimController extends Controller
             $import = new RencanaKirimItemImport;
             Excel::import($import, $request->file('file'));
         } catch (\Exception $e) {
+            Log::error('rencana_kirim import failed', ['exception' => $e]);
+
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
         }
 
