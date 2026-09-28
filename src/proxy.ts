@@ -16,12 +16,21 @@ const SKIP_PATTERNS = [
   '\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|eot|css|js|map|txt|xml|webmanifest)$',
 ];
 
+// axios memakai baseURL '/api/v1', sehingga request CSRF menjadi
+// '/api/v1/sanctum/csrf-cookie'. Rute Sanctum di backend hanya ada di
+// '/sanctum/csrf-cookie' — terjemahkan path-nya di sini.
+export function resolveBackendPath(pathname: string): string {
+  return pathname.endsWith('/sanctum/csrf-cookie')
+    ? '/sanctum/csrf-cookie'
+    : pathname;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Forward API requests and Sanctum CSRF to Laravel backend.
   if (pathname.startsWith('/api/') || pathname.startsWith('/sanctum/')) {
-    const targetUrl = new URL(pathname + request.nextUrl.search, BACKEND_URL);
+    const targetUrl = new URL(resolveBackendPath(pathname) + request.nextUrl.search, BACKEND_URL);
     try {
       // Gunakan fetch langsung dengan opsi duplex agar Edge Runtime
       // mengizinkan body dikirim. Ini memastikan cookie sesi
