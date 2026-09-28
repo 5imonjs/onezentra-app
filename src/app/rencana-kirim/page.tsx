@@ -165,8 +165,8 @@ function NamaBarangInput({
         setShowDropdown(res.data.data.length > 0);
         setActiveIndex(res.data.data.length > 0 ? 0 : -1);
       } catch (e) {
-        console.error(e);
-      } finally {
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat produk NPN.'), 'error');
+    } finally {
         setLoading(false);
       }
     }, 300);

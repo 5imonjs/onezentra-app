@@ -163,6 +163,7 @@ function RolesTab() {
   const { hasPermission } = useAuthStore();
   const [roleList, setRoleList] = useState<Role[]>([]);
   const [totalPermissions, setTotalPermissions] = useState(0);
+  const [_error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -215,7 +216,7 @@ function RolesTab() {
       setRoleList(res.data.data);
       setTotalPermissions(res.data.meta?.total_permissions || 0);
     } catch (e) {
-      console.error(e);
+      setError(getErrorMessage(e, 'Gagal memuat data roles.'));
     } finally {
       setLoading(false);
     }
@@ -920,6 +921,7 @@ function PermissionsTab() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [_error, setError] = useState<string | null>(null);
 
   useEffect(() => { loadPermissions(); }, []);
 
@@ -929,7 +931,7 @@ function PermissionsTab() {
       setPermList(res.data.data);
       setExpandedGroups(new Set(res.data.groups || []));
     } catch (e) {
-      console.error(e);
+      setError(getErrorMessage(e, 'Gagal memuat data roles.'));
     } finally {
       setLoading(false);
     }

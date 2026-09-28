@@ -80,6 +80,7 @@ function NpnProductPicker({
 }) {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<NpnProduct[]>([]);
+  const [_error, setError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -109,8 +110,8 @@ function NpnProductPicker({
         setResults(res.data.data);
         setShowDropdown(res.data.data.length > 0);
       } catch (e) {
-        console.error(e);
-      } finally {
+      setError(getErrorMessage(e, 'Gagal memuat produk NPN.'));
+    } finally {
         setLoading(false);
       }
     }, 300);
@@ -223,7 +224,7 @@ const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
       setTotal(listRes.data.total ?? listRes.data.data.length);
       if (statsRes.data?.data) setStats(statsRes.data.data);
     } catch (e) {
-      console.error(e);
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat data standarisasi'), 'error');
     } finally {
       setLoading(false);
     }
@@ -246,8 +247,8 @@ const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
             setShowCreate(true);
           }
         } catch (e) {
-          console.error(e);
-        }
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat produk'), 'error');
+    }
       };
       fetchProduct();
     }

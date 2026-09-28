@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
@@ -14,15 +14,17 @@ export default function LoginPage() {
   const { login, isLoading, user, loadUser } = useAuthStore();
   const router = useRouter();
 
+  const loadUserFn = useCallback(() => loadUser(), [loadUser]);
+
   useEffect(() => {
     // Hanya verifikasi sesi bila cookie Sanctum ada — cegah 401 noise di /login untuk tamu.
     if (!user) {
       const hasSession = typeof document !== 'undefined' && document.cookie.includes('laravel-session');
       if (hasSession) {
-        loadUser();
+        loadUserFn();
       }
     }
-  }, [user, loadUser]);
+  }, [user, loadUserFn]);
 
   useEffect(() => {
     if (user) {

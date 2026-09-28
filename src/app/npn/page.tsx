@@ -67,6 +67,7 @@ interface NpnItem {
 
 export default function NpnPage() {
   const [items, setItems] = useState<NpnItem[]>([]);
+  const [_error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -114,7 +115,9 @@ export default function NpnPage() {
       setItems(data.data);
       setLastPage(data.last_page);
       setTotalCount(data.total);
-    } catch (e) { console.error(e); }
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, 'Gagal memuat data NPN.'));
+    }
   }, [search, page, statusFilter, sortKey, sortDir]);
 
   useEffect(() => { loadItems(); }, [loadItems]);

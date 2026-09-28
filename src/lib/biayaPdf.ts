@@ -1,14 +1,14 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { PDFDocument } from 'pdf-lib';
-import { API_ROOT, API_URL } from './api';
+import { API_ROOT, API_URL, apiClient } from './api';
 
 type PdfMode = 'save' | 'preview';
 
 /** True bila font Roboto berhasil diregistrasi; selain itu pakai helvetica. */
 let robotoReady = false;
 
-function useFont(doc: jsPDF, style: 'normal' | 'bold'): void {
+function setDocFont(doc: jsPDF, style: 'normal' | 'bold'): void {
   try {
     doc.setFont(robotoReady ? 'Roboto' : 'helvetica', style);
   } catch {
@@ -145,18 +145,22 @@ async function readLampiran(doc: LampiranDoc): Promise<{ dataUrl: string; format
       return { dataUrl, format: doc.file.type === 'image/png' ? 'PNG' : 'JPEG' };
     }
     if (doc.id) {
-      const response = await fetch(`${API_URL}/biaya-retribusi/documents/${doc.id}`, { credentials: 'include' });
-      if (!response.ok) return null;
-      const blob = await response.blob();
+      const { data: blob, status } = await apiClient.get(
+        `${API_URL}/biaya-retribusi/documents/${doc.id}`,
+        { responseType: 'blob' }
+      );
+      if (status !== 200) return null;
       if (!blob.type.startsWith('image/')) return null;
       return readBlob(blob);
     }
     if (!doc.file_path) return null;
-    const response = await fetch(`${API_ROOT}/storage/${doc.file_path}`, { credentials: 'include' });
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob.type.startsWith('image/')) return null;
-    return readBlob(blob);
+    const { data: storageBlob, status: storageStatus } = await apiClient.get(
+      `${API_ROOT}/storage/${doc.file_path}`,
+      { responseType: 'blob' }
+    );
+    if (storageStatus !== 200) return null;
+    if (!storageBlob.type.startsWith('image/')) return null;
+    return readBlob(storageBlob);
   } catch {
     return null;
   }
@@ -193,7 +197,7 @@ async function appendLampiranPages(doc: jsPDF, data: RetribusiData): Promise<voi
     if (image) {
       try {
         doc.addPage('a4', 'landscape');
-        useFont(doc, 'bold');
+        setDocFont(doc, 'bold');
         doc.setFontSize(9);
         doc.setTextColor(20, 20, 20);
         doc.text(`LAMPIRAN ${lampiranNo} — ${String(item.document_type || '').toUpperCase()} — ${item.file_name || '-'}`, pageMargin, 14);
@@ -221,11 +225,11 @@ async function appendLampiranPages(doc: jsPDF, data: RetribusiData): Promise<voi
 
   if (manifest.length > 0) {
     doc.addPage('a4', 'landscape');
-    useFont(doc, 'bold');
+    setDocFont(doc, 'bold');
     doc.setFontSize(9);
     doc.setTextColor(20, 20, 20);
     doc.text('DAFTAR LAMPIRAN DOKUMEN', pageMargin, 14);
-    useFont(doc, 'normal');
+    setDocFont(doc, 'normal');
     doc.setFontSize(7);
     doc.setTextColor(100, 100, 100);
     doc.text('Dokumen PDF di bawah ini digabungkan pada halaman-halaman berikutnya dalam satu kesatuan dokumen.', pageMargin, 20);
@@ -416,7 +420,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
 }
 
 function drawStamp(doc: jsPDF, cx: number, cy: number, stamp: StampSpec) {
-  useFont(doc, 'bold');
+  setDocFont(doc, 'bold');
   doc.setFontSize(10);
   const w = Math.max(doc.getTextWidth(stamp.text) + 16, 34);
   const h = 12;
@@ -433,7 +437,7 @@ function drawStamp(doc: jsPDF, cx: number, cy: number, stamp: StampSpec) {
 
   doc.setDrawColor(stamp.color[0], stamp.color[1], stamp.color[2]);
   doc.line(left + 3, top + 6.7, left + w - 3, top + 6.7);
-  useFont(doc, 'normal');
+  setDocFont(doc, 'normal');
   doc.setFontSize(5.5);
   const dateLabel = stamp.date || '-';
   doc.text(dateLabel, cx, top + 10.2, { align: 'center' });
@@ -454,9 +458,12 @@ async function loadApprovalSections(data: RetribusiData): Promise<ApprovalSectio
 
   try {
     const approvalModule = 'no_kendaraan' in data && 'kubikasi_base' in data ? 'biaya_thl' : 'biaya_retribusi';
-    const response = await fetch(`${API_URL}/approval-assignments?kode_depo=${encodeURIComponent(data.kode_depo)}&module=${approvalModule}`, { credentials: 'include' });
-    if (response.ok) {
-      const payload = await response.json() as { data?: Record<string, { user?: { full_name?: string } }> };
+    const { data: payloadData, status: approvalStatus } = await apiClient.get(
+        `${API_URL}/approval-assignments?kode_depo=${encodeURIComponent(data.kode_depo)}&module=${approvalModule}`,
+        { responseType: 'json' }
+      );
+      if (approvalStatus === 200) {
+      const payload = payloadData as { data?: Record<string, { user?: { full_name?: string } }> };
       const titles: Record<string, string> = { BLC: 'Mengajukan', BAC: 'Mengetahui', RLH: 'Menyetujui', RFAH: 'RFAH*' };
       const sections = ['BLC', 'BAC', 'RLH', 'RFAH'].map((level) => ({
         title: titles[level],
@@ -500,7 +507,7 @@ async function loadPdfFonts(doc: jsPDF): Promise<void> {
   if (!pdfFontsReady) {
     pdfFontsReady = Promise.all([
       fetch('/fonts/Roboto-Regular.ttf').then(fontToBase64),
-        fetch('/fonts/Roboto-Bold.ttf').then(fontToBase64),
+      fetch('/fonts/Roboto-Bold.ttf').then(fontToBase64),
     ]).then(([regular, bold]) => ({ regular, bold }));
   }
 
@@ -509,7 +516,7 @@ async function loadPdfFonts(doc: jsPDF): Promise<void> {
   doc.addFileToVFS('Roboto-Bold.ttf', fonts.bold);
   doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
   doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
-  useFont(doc, 'normal');
+  setDocFont(doc, 'normal');
 }
 
 function showPreview(doc: jsPDF) {
@@ -580,17 +587,16 @@ function loadHeaderLogo(): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } |
 
       for (const logoUrl of logoUrls) {
         try {
-          const res = await fetch(logoUrl, { credentials: 'include' });
-          if (!res.ok) continue;
-          const blob = await res.blob();
-          if (!blob.type.startsWith('image/')) continue;
+          const { data: logoBlob, status: logoStatus } = await apiClient.get(logoUrl, { responseType: 'blob' });
+          if (logoStatus !== 200) continue;
+          if (!logoBlob.type.startsWith('image/')) continue;
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = () => reject(new Error('read'));
-            reader.readAsDataURL(blob);
+            reader.readAsDataURL(logoBlob);
           });
-          return { dataUrl, format: blob.type === 'image/png' ? 'PNG' : 'JPEG' };
+          return { dataUrl, format: logoBlob.type === 'image/png' ? 'PNG' : 'JPEG' };
         } catch {
           // Try the backend asset when the Next public path is unavailable.
         }
@@ -612,9 +618,11 @@ async function drawHeaderLogo(doc: jsPDF, cx: number, cy: number, size = 16): Pr
 async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' } | null> {
   if (!(photo instanceof File) && typeof photo.id === 'number') {
     try {
-      const response = await fetch(`${API_URL}/biaya-thl/photos/${photo.id}`, { credentials: 'include' });
-      if (!response.ok) return null;
-      const blob = await response.blob();
+      const { data: blob, status } = await apiClient.get(
+        `${API_URL}/biaya-thl/photos/${photo.id}`,
+        { responseType: 'blob' }
+      );
+      if (status !== 200) return null;
       if (!blob.type.startsWith('image/')) return null;
       return readBlob(blob);
     } catch {
@@ -632,16 +640,18 @@ async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'J
   }
 
   if (!photo.file_path) return null;
-  const response = await fetch(`${API_ROOT}/storage/${photo.file_path}`, { credentials: 'include' });
-  if (!response.ok) return null;
-  const blob = await response.blob();
+  const { data: photoBlobData, status: photoStatus } = await apiClient.get(
+    `${API_ROOT}/storage/${photo.file_path}`,
+    { responseType: 'blob' }
+  );
+  if (photoStatus !== 200) return null;
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = reject;
-    reader.readAsDataURL(blob);
+    reader.readAsDataURL(photoBlobData);
   });
-  return { dataUrl, format: blob.type === 'image/png' ? 'PNG' : 'JPEG' };
+  return { dataUrl, format: photoBlobData.type === 'image/png' ? 'PNG' : 'JPEG' };
 }
 
 const isPdfDoc = (doc: LampiranDoc, blobType = ''): boolean => {
@@ -662,16 +672,15 @@ async function readPdfBytes(doc: LampiranDoc): Promise<ArrayBuffer> {
       ? `${API_ROOT}/storage/${doc.file_path}`
       : null;
   if (!url) throw new Error(`Dokumen ${doc.file_name || '-'} tidak punya sumber file`);
-  let response: Response;
   try {
-    response = await fetch(url, { credentials: 'include' });
+    const { data: responseData, status: responseStatus } = await apiClient.get(url, { responseType: 'arraybuffer' });
+    if (responseStatus !== 200) throw new Error('Gagal memuat dokumen');
+    const arrayBuffer = responseData as ArrayBuffer;
+    if (!isPdfDoc(doc)) throw new Error(`File ${doc.file_name || '-'} bukan PDF valid`);
+    return arrayBuffer;
   } catch {
     throw new Error(`Tidak dapat mengunduh ${doc.file_name || '-'} (jaringan/CORS)`);
   }
-  if (!response.ok) throw new Error(`Unduhan ${doc.file_name || '-'} gagal (HTTP ${response.status})`);
-  const blob = await response.blob();
-  if (!isPdfDoc(doc, blob.type)) throw new Error(`File ${doc.file_name || '-'} bukan PDF valid`);
-  return await blob.arrayBuffer();
 }
 
 /**
@@ -740,13 +749,13 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
   doc.setLineWidth(0.35);
   doc.rect(pageMargin, 7, pageWidth, 18, 'FD');
   doc.line(pageMargin + 18, 7, pageMargin + 18, 25);
-  useFont(doc, 'bold');
+  setDocFont(doc, 'bold');
   doc.setFontSize(10);
   if (!(await loadHeaderLogo())) doc.text('SNS', pageMargin + 9, 18, { align: 'center' });
   else await drawHeaderLogo(doc, pageMargin + 9, 16);
   doc.setFontSize(11.5);
   doc.text('FORM KLAIM BIAYA PENGAJUAN RETRIBUSI', 148, 17.5, { align: 'center' });
-  useFont(doc, 'normal');
+  setDocFont(doc, 'normal');
   doc.setFontSize(7.2);
   doc.text(`DEPO: ${value(data.nama_depo || data.kode_depo)}`, 210, 12.5);
   doc.text(`Tanggal Pengajuan: ${date(data.tanggal_pengajuan)}`, 210, 18.5);
@@ -809,7 +818,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
     const stamp = cleanDraftPreview ? null : stampFor(section, data, audit);
     if (stamp) drawStamp(doc, x + approvalWidth / 2, approvalY + 16, stamp);
   });
-  useFont(doc, 'normal');
+  setDocFont(doc, 'normal');
   doc.setFontSize(6.2);
   doc.text('Note: * Jika pengajuan biaya > Rp 750.000', pageMargin, approvalY + 47);
 
@@ -834,14 +843,14 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
   const revisi = data.status === 'revisi';
   const thlTop = approvalY + (rejected ? 63 : revisi ? 63 : 52);
   if (rejected && data.rejection_reason) {
-    useFont(doc, 'bold');
+    setDocFont(doc, 'bold');
     doc.setFontSize(7);
     doc.setTextColor(185, 28, 28);
     doc.text(`DITOLAK — ${data.rejection_reason}`, pageMargin, approvalY + 46, { maxWidth: pageWidth });
     doc.setTextColor(20, 20, 20);
   }
   if (revisi && data.revisi_reason) {
-    useFont(doc, 'bold');
+    setDocFont(doc, 'bold');
     doc.setFontSize(7);
     doc.setTextColor(180, 83, 9);
     doc.text(`REVISI — ${data.revisi_reason}`, pageMargin, approvalY + 46, { maxWidth: pageWidth });
@@ -852,14 +861,14 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
   doc.setLineWidth(0.35);
   doc.rect(pageMargin, thlTop, pageWidth, 18, 'FD');
   doc.line(pageMargin + 18, thlTop, pageMargin + 18, thlTop + 18);
-  useFont(doc, 'bold');
+  setDocFont(doc, 'bold');
   doc.setFontSize(10);
   if (!(await loadHeaderLogo())) doc.text('SNS', pageMargin + 9, thlTop + 8.5, { align: 'center' });
   else await drawHeaderLogo(doc, pageMargin + 9, thlTop + 9, 16);
   doc.setFontSize(11.5);
   doc.text('FORM KLAIM TENAGA HARIAN LEPAS', 148, thlTop + 11, { align: 'center' });
   doc.rect(pageMargin, thlTop + 18, pageWidth, 6.5);
-  useFont(doc, 'normal');
+  setDocFont(doc, 'normal');
   doc.setFontSize(7);
   doc.text(`TANGGAL ${date(data.tanggal_pengajuan).toUpperCase()}`, pageMargin + 2, thlTop + 22.2);
 

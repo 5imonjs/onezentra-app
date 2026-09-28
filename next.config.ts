@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  images: {
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost', port: '8000' },
+      { protocol: 'http', hostname: '127.0.0.1', port: '8000' },
+    ],
+    contentDispositionType: 'inline',
+    contentSecurityPolicy: "default-src 'self'; base-uri 'self'; sandbox allow-same-origin allow-scripts allow-popups; img-src 'self' data: blob:;",
+  },
   async headers() {
     return [
       {

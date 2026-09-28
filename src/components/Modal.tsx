@@ -30,6 +30,7 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
   const handleDismiss = onCloseRequest ?? onClose;
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   // Focus trap & auto-focus
   const getFocusableElements = useCallback((): HTMLElement[] => {
@@ -51,26 +52,28 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
         const focusable = getFocusableElements();
         if (focusable.length > 0) focusable[0].focus();
       }, 50);
-      return () => { clearTimeout(timer); };
-    } else {
-      openModalCount = Math.max(0, openModalCount - 1);
-      if (openModalCount === 0) {
-        document.body.style.overflow = '';
-      }
-      // Restore focus
-      if (previousFocusRef.current) {
-        previousFocusRef.current.focus();
-        previousFocusRef.current = null;
-      }
-    }
-    return () => {
-      if (open) {
+      wasOpenRef.current = true;
+      return () => {
+        clearTimeout(timer);
         openModalCount = Math.max(0, openModalCount - 1);
         if (openModalCount === 0) {
           document.body.style.overflow = '';
         }
+      };
+    } else {
+      // Hanya restore focus jika modal sebelumnya terbuka dan kini ditutup
+      if (wasOpenRef.current) {
+        openModalCount = Math.max(0, openModalCount - 1);
+        if (openModalCount === 0) {
+          document.body.style.overflow = '';
+        }
+        if (previousFocusRef.current) {
+          previousFocusRef.current.focus();
+          previousFocusRef.current = null;
+        }
+        wasOpenRef.current = false;
       }
-    };
+    }
   }, [open, getFocusableElements]);
 
   // Focus trap: keep Tab within modal

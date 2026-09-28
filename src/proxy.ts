@@ -7,8 +7,28 @@ const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'laravel-session';
 
 const PUBLIC_PATHS = ['/login'];
 
+// Pola pengcocokan jalur: lewati file statis, API, favicon.
+// Ini digantikan oleh Next.js default ketika middleware/ditinggali proxy tanpa matcher,
+// namun kita tetap cek di dalam function untuk keamanan.
+const SKIP_PATTERNS = [
+  '/api',
+  '_next',
+  'favicon.ico',
+  '\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|eot|css|js|map|txt|xml|webmanifest)$',
+];
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Skip static assets - these don't carry session cookies and should load without auth
+  const isStaticAsset = SKIP_PATTERNS.some((pattern) => {
+    const regex = new RegExp(pattern);
+    return regex.test(pathname);
+  });
+
+  if (isStaticAsset) {
+    return NextResponse.next();
+  }
 
   if (pathname === '/') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -30,10 +50,3 @@ export function proxy(request: NextRequest) {
 
   return NextResponse.next();
 }
-
-export const config = {
-  // Kecualikan aset statis (public/*) dari guard auth: kalau ikut di-redirect
-  // ke /login, image optimizer (_next/image) menerima HTML bukan gambar
-  // dan menjawab 400 "The requested resource isn't a valid image."
-  matcher: ['/((?!api|_next|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|eot|css|js|map|txt|xml|webmanifest)).*)'],
-};

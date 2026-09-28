@@ -65,14 +65,14 @@ export default function DashboardLayout({
   const closeMobileNav = useCallback(() => setMobileOpen(false), []);
   const [splash, setSplash] = useState<{ visible: boolean; leaving: boolean; immersive: boolean }>({ visible: false, leaving: false, immersive: false });
 
+  const loadUserFn = useCallback(() => loadUser(), [loadUser]);
+
   useEffect(() => {
     setMounted(true);
     if (!user) {
-      loadUser();
+      loadUserFn();
     }
-
-    return () => undefined;
-  }, [user, loadUser]);
+  }, [user, loadUserFn]);
 
   useEffect(() => {
     if (!mounted || !user) return;

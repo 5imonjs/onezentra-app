@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
 import { rencanaKirim, gateTransactions, receivingItems, receivings, sjValidations, npn, standarUmurProduk, standarisasiTumpukan } from '@/lib/api';
@@ -164,8 +164,13 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
+  const memoizedVisibleSources = useMemo(
+    () => STAT_SOURCES.filter((s) => hasPermission(s.permission)),
+    [hasPermission],
+  );
+
   const loadFallback = useCallback(async () => {
-    const visible = STAT_SOURCES.filter((s) => hasPermission(s.permission));
+    const visible = memoizedVisibleSources;
     setLoading(true);
     const results = await Promise.all(
       visible.map(async (s) => {
@@ -185,7 +190,7 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
     setCounts(next);
     setFailed(nextFailed);
     setLoading(false);
-  }, [hasPermission]);
+  }, [memoizedVisibleSources]);
 
   useEffect(() => {
     if (!summaryLoading && !summaryFailed) {
@@ -202,9 +207,9 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
     }
   }, [summaryLoading, summaryFailed, summary, loadFallback]);
 
-  const visible = STAT_SOURCES.filter((s) => hasPermission(s.permission));
-  const operasional = visible.filter((s) => s.group === 'operasional');
-  const master = visible.filter((s) => s.group === 'master');
+  const visible = useMemo(() => STAT_SOURCES.filter((s) => hasPermission(s.permission)), [hasPermission]);
+  const operasional = useMemo(() => visible.filter((s) => s.group === 'operasional'), [visible]);
+  const master = useMemo(() => visible.filter((s) => s.group === 'master'), [visible]);
 
   if (visible.length === 0) {
     return null;

@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 
 const menuItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: 'home', permission: 'dashboard.view', roles: [] as string[] },
+  { name: 'Dashboard', path: '/dashboard', icon: 'home', permission: 'dashboard.view' },
 ];
 
 const operasionalMenus = [
@@ -449,7 +449,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
         </div>
       </nav>
 
-      {user && (
+      {user && !mobileOpen && (
         <div className="border-t border-slate-800/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className={`flex items-center gap-3 ${!isExpanded ? 'justify-center' : 'px-2 py-1.5 rounded-xl bg-white/5 ring-1 ring-white/5'}`}>
             <Link href="/dashboard/profile" aria-label="Buka profil saya" className="flex items-center gap-3 min-w-0 flex-1">
