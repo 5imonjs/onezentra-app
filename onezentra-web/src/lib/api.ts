@@ -2,9 +2,11 @@ import axios from 'axios';
 import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { notifyPermissionDenied } from '@/store/globalToast';
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const CSRF_URL = '/sanctum/csrf-cookie';
+
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 const normalizedApiUrl = API_URL.replace(/\/$/, '');
-export const API_ROOT = normalizedApiUrl.replace(/\/api\/v1$/, '');
+export const API_ROOT = normalizedApiUrl;
 
 type ApiErrorResponse = {
   message?: string;
@@ -66,7 +68,7 @@ function redirectToLogin(): void {
  */
 export function registerResponseInterceptors(
   client: AxiosInstance,
-  refreshCsrf: () => Promise<unknown> = () => client.get(`${API_ROOT}/sanctum/csrf-cookie`),
+  refreshCsrf: () => Promise<unknown> = () => client.get(CSRF_URL),
 ): void {
   // Tanda retry ditaruh sebagai symbol property di config: axios `mergeConfig`
   // menyalin properti non-objek dari config asal ke config baru saat retry,
@@ -120,9 +122,9 @@ export function registerResponseInterceptors(
 registerResponseInterceptors(apiClient);
 
 export const auth = {
-  csrf: () => apiClient.get(`${API_ROOT}/sanctum/csrf-cookie`),
+  csrf: () => apiClient.get(CSRF_URL),
   login: async (email: string, password: string) => {
-    await apiClient.get(`${API_ROOT}/sanctum/csrf-cookie`);
+    await apiClient.get(CSRF_URL);
     return apiClient.post('/login', { email, password });
   },
   register: (data: Record<string, unknown>) => apiClient.post('/register', data),

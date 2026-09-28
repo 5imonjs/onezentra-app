@@ -311,11 +311,20 @@ Excel exports + templates: `BiayaThl`, `BiayaThlReport`, `BiayaRetribusi`, `Biay
 
 ### Proxy / Middleware (`src/proxy.ts`)
 
-Next.js 16 `proxy.ts` — authentication guard:
+Next.js 16 `proxy.ts` — authentication guard + API proxy:
 - Redirects `/` → `/dashboard`
 - Allows `/login` without cookie
 - Redirects to `/login` if `SESSION_COOKIE` absent
-- Skips static assets (API, `_next`, favicon, fonts, images)
+- Skips static assets (`_next`, favicon, fonts, images)
+- **Forwards `/api/*` to Laravel backend** (`http://localhost:8000`) — ensures `laravel-session` cookie is set on `localhost:3000` domain (critical for Sanctum stateful cookie auth)
+- **Forwards `/sanctum/*` to Laravel backend** — CSRF cookie exchange (`/sanctum/csrf-cookie`)
+
+**Why proxy forwarding is essential:** Without proxy forwarding, the frontend calls `apiClient` directly to `localhost:8000`. Cookies set by `localhost:8000` are NOT accessible to `localhost:3000` (different port = different origin). The proxy ensures all API/CSRF requests pass through `localhost:3000`, so cookies are bound to the correct domain.
+
+**Frontend API layer (`src/lib/api.ts`):**
+- `API_URL` = `/api/v1` (relative, via proxy)
+- `CSRF_URL` = `/sanctum/csrf-cookie` (separate endpoint, not under `/api/v1`)
+- `axios` configured with `withCredentials: true` + `withXSRFToken: true` for automatic CSRF token exchange
 
 ---
 
@@ -937,8 +946,8 @@ Email dikirim via SMTP yang dikonfigurasi di `email_settings`. Password disimpan
 1. **Tidak ada `any`** di seluruh kode frontend (`src/`) — disiplin tipis yang kuat.
 2. **0 `setInterval`** di seluruh kode frontend — tidak ada polling.
 3. **Auth state di memori saja** (Zustand tanpa persist) — tidak ada token di localStorage.
-4. **Proxy (Next.js 16)** menggantikan `middleware.ts` yang deprecated. `proxy.ts` berjalan di semua request kecuali static assets.
-5. **Frontend menggunakan `apiClient` (axios)** dengan `withCredentials: true` dan `withXSRFToken: true` untuk CSRF protection.
+4. **Proxy (Next.js 16)** menggantikan `middleware.ts` yang deprecated. `proxy.ts` mengautentikasi halaman DAN meneruskan `/api/*` serta `/sanctum/*` ke backend — ini esensial agar cookie sesi `laravel-session` dan `XSRF-TOKEN` ditetapkan di domain `localhost:3000` (tanpa proxy, cookie dari `localhost:8000` tidak dapat diakses).
+5. **Frontend menggunakan `apiClient` (axios)** dengan `withCredentials: true` dan `withXSRFToken: true` untuk CSRF protection. `API_URL` = `/api/v1` (relatif, via proxy), `CSRF_URL` = `/sanctum/csrf-cookie`.
 6. **Semua state-changing request** melalui `apiClient` — tidak ada raw `fetch` kecuali untuk font lokal dan file download PDF yang sudah diperbaiki.
 7. **File `storage/{path}` tanpa auth** — untuk melayani dokumen/photo yang di-upload. Path di-randomisasi (40-hex) sebagai mitigasi.
 8. **`next.config.ts`** memiliki security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, X-XSS-Protection, Permissions-Policy) dan `images.remotePatterns` untuk localhost:8000.

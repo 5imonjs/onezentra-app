@@ -5,20 +5,52 @@ import type { NextRequest } from 'next/server';
 // Str::slug(APP_NAME).'-session'). Bisa dioverride via env SESSION_COOKIE_NAME.
 const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'laravel-session';
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+
 const PUBLIC_PATHS = ['/login'];
 
-// Pola pengcocokan jalur: lewati file statis, API, favicon.
-// Ini digantikan oleh Next.js default ketika middleware/ditinggali proxy tanpa matcher,
-// namun kita tetap cek di dalam function untuk keamanan.
+// Pola pengcocokan jalur: lewati file statis, favicon.
 const SKIP_PATTERNS = [
-  '/api',
   '_next',
   'favicon.ico',
   '\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|eot|css|js|map|txt|xml|webmanifest)$',
 ];
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Forward API requests and Sanctum CSRF to Laravel backend.
+  if (pathname.startsWith('/api/') || pathname.startsWith('/sanctum/')) {
+    const targetUrl = new URL(pathname + request.nextUrl.search, BACKEND_URL);
+    try {
+      // Gunakan fetch langsung dengan opsi duplex agar Edge Runtime
+      // mengizinkan body dikirim. Ini memastikan cookie sesi
+      // dan CSRF ditetapkan di domain frontend (localhost:3000).
+      const fetchOptions: Record<string, unknown> = {
+        method: request.method,
+        headers: Object.fromEntries(request.headers),
+        body: request.body,
+        duplex: 'half',
+      };
+      // @ts-ignore — duplex adalah opsi Node.js undici yang tidak ada di RequestInit TypeScript
+      const resp = await fetch(targetUrl.toString(), fetchOptions);
+      // Copy Set-Cookie headers dari backend ke response
+      const responseHeaders = new Headers(resp.headers);
+      // Hapus header yang tidak boleh diteruskan
+      responseHeaders.delete('x-powered-by');
+      const nextResp = new NextResponse(resp.body, {
+        status: resp.status,
+        statusText: resp.statusText,
+        headers: responseHeaders,
+      });
+      return nextResp;
+    } catch (err) {
+      return NextResponse.json(
+        { message: 'Backend tidak dapat dihubungi.' },
+        { status: 502 }
+      );
+    }
+  }
 
   // Skip static assets - these don't carry session cookies and should load without auth
   const isStaticAsset = SKIP_PATTERNS.some((pattern) => {
