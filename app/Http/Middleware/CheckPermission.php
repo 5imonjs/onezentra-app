@@ -23,6 +23,10 @@ class CheckPermission
             return $next($request);
         }
 
-        return response()->json(['message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.'], Response::HTTP_FORBIDDEN);
+        // Return required permissions for better client-side error handling
+        return response()->json([
+            'message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.',
+            'required_permissions' => $allowedSlugs,
+        ], Response::HTTP_FORBIDDEN);
     }
 }

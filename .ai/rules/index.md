@@ -11,7 +11,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | **/*, **/*Seeder.php | .ai/rules/general.md |
 | app/Models/**, app/Models/StandarisasiTumpukan.php, app/Models/ReceivingItem.php | .ai/rules/models.md |
 | onezentra-web/** | .ai/rules/onezentra-web.md |
-| onezentra-mobile-flutter/** | .ai/rules/onezentra-mobile-flutter.md |
+
 | onezentra-web/src/app/opname-expired/** | .ai/rules/opname-expired.md |
 | onezentra-web/src/app/penerimaan/**, onezentra-web/src/components/DashboardStatCards.tsx, app/Http/Controllers/Api/V1/DashboardController.php, app/Models/Penerimaan.php, app/Http/Controllers/Api/V1/PenerimaanController.php | .ai/rules/penerimaan.md |
 | onezentra-web/src/app/rencana-kirim/page.tsx | .ai/rules/rencana-kirim.md |

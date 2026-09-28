@@ -46,8 +46,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     try {
       await auth.logout();
-    } catch {
-      // ignore
+    } catch (e) {
+      // Log logout failure so user can retry if needed
+      console.error('Logout request failed:', e);
     }
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('ow_login_splash');

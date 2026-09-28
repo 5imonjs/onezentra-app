@@ -33,6 +33,7 @@ const EMPTY_FORM = { name: '', code: '', capacity: '', notes: '' };
 export default function DocksPage() {
   const { hasPermission } = useAuthStore();
   const [items, setItems] = useState<Dock[]>([]);
+  const [_error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -59,7 +60,7 @@ export default function DocksPage() {
       setLastPage(data.last_page);
       setTotal(data.total);
     } catch (e) {
-      console.error(e);
+      setError(getErrorMessage(e, 'Gagal memuat data perkerabat.'));
     } finally {
       setLoading(false);
     }

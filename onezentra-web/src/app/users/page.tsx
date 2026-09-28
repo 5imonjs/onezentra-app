@@ -47,6 +47,7 @@ const emptyForm = {
 export default function UsersPage() {
   const { hasPermission } = useAuthStore();
   const [items, setItems] = useState<UserItem[]>([]);
+  const [_error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -90,7 +91,8 @@ export default function UsersPage() {
       setTotalCount(res.data.total ?? res.data.data?.length ?? 0);
       setStats(res.data.meta ?? { total: 0, active: 0, inactive: 0, admin_master: 0 });
     } catch (e) {
-      console.error(e);
+      // Jangan biarkan error menyamar sebagai 'belum ada data'
+      setError(getErrorMessage(e, 'Gagal memuat data pengguna.'));
     }
   }, [search, levelFilter, statusFilter, page]);
 

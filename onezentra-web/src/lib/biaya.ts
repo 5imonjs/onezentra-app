@@ -34,7 +34,7 @@ export function clearBiayaConfigCache(kodeDepo?: string, module?: ApprovalModule
   }
 }
 
-/** Ambil config segar (tanpa cache) — untuk form yang modenya mengikuti data. */
+/** Ambil config dengan cache (mengambil dari cache jika tersedia, atau fetch baru). */
 export function getBiayaConfigFresh(kodeDepo?: string, module: ApprovalModule = 'biaya_thl'): Promise<BiayaConfig> {
   const key = cacheKey(kodeDepo, module);
   const req = apiClient

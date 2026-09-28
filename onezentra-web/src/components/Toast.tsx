@@ -16,9 +16,10 @@ export default function Toast({ message, type = 'success', onClose, stackIndex =
     setVisible(true);
     const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(onClose, 300);
+      const closeTimer = setTimeout(onClose, 300);
+      return () => clearTimeout(closeTimer);
     }, 4000);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); };
   }, [onClose]);
 
   const icons = {

@@ -134,7 +134,7 @@ export default function EmailRecipientsPage() {
       const res = await emailRecipients.options();
       setOptions(res.data);
     } catch (e) {
-      console.error(e);
+      setToast({ message: getErrorMessage(e, 'Gagal memuat opsi'), type: 'error' });
     }
   };
 

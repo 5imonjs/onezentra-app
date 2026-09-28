@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import Modal from '@/components/Modal';
 
@@ -15,6 +15,8 @@ export default function BarcodeScanner({ open, onClose, onDetected }: BarcodeSca
   const controlsRef = useRef<{ stop: () => void } | null>(null);
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(true);
+
+  const onDetectedFn = useCallback((code: string) => onDetected(code), [onDetected]);
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +39,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }: BarcodeSca
               cancelled = true;
               controls?.stop();
               setScanning(false);
-              onDetected(text);
+              onDetectedFn(text);
             }
           }
         });
@@ -57,7 +59,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }: BarcodeSca
       try { controlsRef.current?.stop(); } catch { /* ignore */ }
       controlsRef.current = null;
     };
-  }, [open, onDetected]);
+  }, [open, onDetectedFn]);
 
   return (
     <Modal open={open} onClose={onClose} title="Scan Barcode PO Transporter" subtitle="Arahkan kamera ke barcode pada dokumen">

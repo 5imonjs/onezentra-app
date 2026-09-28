@@ -8,6 +8,26 @@ export default defineConfig({
     globals: true,
     css: false,
     include: ['src/**/*.test.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      reportsDirectory: './coverage',
+      thresholds: {
+        lines: 30,
+        functions: 30,
+        branches: 25,
+        statements: 30,
+      },
+      exclude: [
+        '**/node_modules/**',
+        '**/.next/**',
+        '**/coverage/**',
+        '**/*.test.{ts,tsx}',
+        '**/*.spec.{ts,tsx}',
+        '**/app/**/page.test.tsx',
+        '**/store/**/*.test.ts',
+      ],
+    },
   },
   resolve: {
     alias: {

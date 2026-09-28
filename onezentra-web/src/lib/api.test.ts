@@ -25,9 +25,9 @@ function rejectStatus(config: Record<string, unknown>, status: number) {
 }
 
 describe('isSessionLossStatus', () => {
-  it('401 dan 419 dianggap kehilangan sesi; status lain tidak', () => {
+  it('hanya 401 yang dianggap kehilangan sesi; 419 bukan sesi hilang (CSRF mismatch)', () => {
     expect(isSessionLossStatus(401)).toBe(true);
-    expect(isSessionLossStatus(419)).toBe(true);
+    expect(isSessionLossStatus(419)).toBe(false);
     expect(isSessionLossStatus(403)).toBe(false);
     expect(isSessionLossStatus(422)).toBe(false);
     expect(isSessionLossStatus(undefined)).toBe(false);

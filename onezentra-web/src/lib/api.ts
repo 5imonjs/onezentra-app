@@ -3,7 +3,8 @@ import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { notifyPermissionDenied } from '@/store/globalToast';
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-export const API_ROOT = API_URL.replace(/\/api\/v1\/?$/, '');
+const normalizedApiUrl = API_URL.replace(/\/$/, '');
+export const API_ROOT = normalizedApiUrl.replace(/\/api\/v1$/, '');
 
 type ApiErrorResponse = {
   message?: string;
@@ -40,7 +41,7 @@ export const apiClient = axios.create({
  * 401 = sesi kadaluwarsa/dihentikan; 419 = CSRF mismatch.
  */
 export function isSessionLossStatus(status?: number): boolean {
-  return status === 401 || status === 419;
+  return status === 401;
 }
 
 /** Reload penuh ke /login — state auth hanya di memori, jadi reload otomatis membersihkannya. */
@@ -83,9 +84,6 @@ export function registerResponseInterceptors(
         console.warn('[API 422]', {
           method: error.config?.method?.toUpperCase(),
           url: error.config?.url,
-          params: error.config?.params,
-          data: error.config?.data,
-          response: error.response?.data,
         });
       }
 
@@ -493,12 +491,12 @@ export const biayaRetribusi = {
   delete: (id: number) => apiClient.delete(`/biaya-retribusi/${id}`),
   documentUrl: (docId: number) => `${API_URL}/biaya-retribusi/documents/${docId}`,
   export: (params?: Record<string, unknown>) => apiClient.get('/biaya-retribusi/export', { params, responseType: 'blob' }),
-   submit: (id: number) => apiClient.post(`/biaya-retribusi/${id}/submit`),
-   check: (id: number) => apiClient.post(`/biaya-retribusi/${id}/check`),
-   approve: (id: number) => apiClient.post(`/biaya-retribusi/${id}/approve`),
-   rfahApprove: (id: number) => apiClient.post(`/biaya-retribusi/${id}/rfah-approve`),
-   reject: (id: number, reason: string) => apiClient.post(`/biaya-retribusi/${id}/reject`, { reason }),
-   revise: (id: number, reason: string) => apiClient.post(`/biaya-retribusi/${id}/revise`, { reason }),
+  submit: (id: number) => apiClient.post(`/biaya-retribusi/${id}/submit`),
+  check: (id: number) => apiClient.post(`/biaya-retribusi/${id}/check`),
+  approve: (id: number) => apiClient.post(`/biaya-retribusi/${id}/approve`),
+  rfahApprove: (id: number) => apiClient.post(`/biaya-retribusi/${id}/rfah-approve`),
+  reject: (id: number, reason: string) => apiClient.post(`/biaya-retribusi/${id}/reject`, { reason }),
+  revise: (id: number, reason: string) => apiClient.post(`/biaya-retribusi/${id}/revise`, { reason }),
   import: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

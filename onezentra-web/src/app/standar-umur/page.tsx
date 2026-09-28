@@ -159,6 +159,7 @@ const viewFields: [keyof StandarUmurItem, string, boolean?][] = [
 
 export default function StandarUmurPage() {
   const [items, setItems] = useState<StandarUmurItem[]>([]);
+  const [_error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -206,8 +207,8 @@ export default function StandarUmurPage() {
       setItems(data.data);
       setLastPage(data.last_page);
       setTotalCount(data.total);
-    } catch (e) {
-      console.error(e);
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, 'Gagal memuat data standar umur.'));
     }
   }, [search, page, sortKey, sortDir]);
 
