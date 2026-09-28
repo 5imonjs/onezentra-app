@@ -6,6 +6,7 @@ use App\Exports\OpnameExpiredExport;
 use App\Http\Controllers\Controller;
 use App\Models\OpnameExpiredWave;
 use App\Models\OpnameSetting;
+use App\Services\ExportGuard;
 use App\Services\OpnameExpiredService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -199,6 +200,7 @@ class OpnameExpiredController extends Controller
         }
 
         $filename = 'opname_expired_'.($request->week_start ?? Carbon::today()->toDateString()).'.xlsx';
+        ExportGuard::ensureWithinLimit($query);
 
         return Excel::download(new OpnameExpiredExport($query), $filename);
     }

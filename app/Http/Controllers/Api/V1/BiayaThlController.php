@@ -13,6 +13,7 @@ use App\Models\BiayaThlPhoto;
 use App\Models\User;
 use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
+use App\Services\ExportGuard;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -736,6 +737,7 @@ class BiayaThlController extends Controller
         $sortDir = $request->dir === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortField, $sortDir);
         $query->with('details.photos');
+        ExportGuard::ensureWithinLimit($query);
 
         return Excel::download(new BiayaThlExport($query), 'biaya_thl.xlsx');
     }

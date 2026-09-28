@@ -16,6 +16,7 @@ use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\SjValidation;
 use App\Services\EmailNotificationService;
+use App\Services\ExportGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -444,6 +445,7 @@ class ReceivingController extends Controller
             search: $request->input('search'),
             status: $request->input('status'),
         );
+        ExportGuard::ensureWithinLimit($export->query());
 
         return Excel::download($export, 'receivings_'.now()->format('Y-m-d').'.xlsx');
     }

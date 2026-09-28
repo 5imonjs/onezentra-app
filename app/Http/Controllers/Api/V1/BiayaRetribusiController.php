@@ -15,6 +15,7 @@ use App\Models\RetribusiRate;
 use App\Models\User;
 use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
+use App\Services\ExportGuard;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -702,6 +703,7 @@ class BiayaRetribusiController extends Controller
             $query->where('status', $request->status);
         }
         $query->with('details');
+        ExportGuard::ensureWithinLimit($query);
 
         return Excel::download(new BiayaRetribusiExport($query), 'biaya_retribusi.xlsx');
     }

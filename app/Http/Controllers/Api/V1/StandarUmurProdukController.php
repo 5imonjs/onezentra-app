@@ -7,6 +7,7 @@ use App\Exports\StandarUmurProdukTemplate;
 use App\Http\Controllers\Controller;
 use App\Imports\StandarUmurProdukImport;
 use App\Models\StandarUmurProduk;
+use App\Services\ExportGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -145,6 +146,7 @@ class StandarUmurProdukController extends Controller
             sort: (string) $request->input('sort', 'material_description'),
             direction: (string) $request->input('direction', 'asc'),
         );
+        ExportGuard::ensureWithinLimit($export->query());
 
         return Excel::download($export, 'standar_umur_produk_'.now()->format('Y-m-d').'.xlsx');
     }

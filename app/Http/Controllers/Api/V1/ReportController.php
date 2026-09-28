@@ -12,6 +12,7 @@ use App\Models\BiayaRetribusiDetail;
 use App\Models\BiayaThlDetail;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
+use App\Services\ExportGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -79,7 +80,7 @@ class ReportController extends Controller
      */
     private function selisihQtySummary($query): array
     {
-        $agg = (clone $query)->toBase()->selectRaw(
+        $agg = (clone $query)->reorder()->toBase()->selectRaw(
             'COUNT(*) as c, COALESCE(SUM(selisih_qty), 0) as s,'
             .' SUM(CASE WHEN selisih_qty < 0 THEN 1 ELSE 0 END) as kurang,'
             .' SUM(CASE WHEN selisih_qty > 0 THEN 1 ELSE 0 END) as lebih'
@@ -102,11 +103,10 @@ class ReportController extends Controller
         ]);
 
         $filename = 'laporan-selisih-qty_'.date('Y-m-d_His').'.xlsx';
+        $export = new SelisihQtyExport($request->date_from, $request->date_to, $request->kode_depo, $request->user());
+        ExportGuard::ensureWithinLimit($export->query());
 
-        return Excel::download(
-            new SelisihQtyExport($request->date_from, $request->date_to, $request->kode_depo, $request->user()),
-            $filename
-        );
+        return Excel::download($export, $filename);
     }
 
     public function rencanaKirim(Request $request): JsonResponse
@@ -150,8 +150,8 @@ class ReportController extends Controller
         }
 
         $summary = [
-            'total' => (int) (clone $query)->toBase()->count(),
-            'total_qty' => (int) (clone $query)->sum('total_qty'),
+            'total' => (int) (clone $query)->reorder()->toBase()->count(),
+            'total_qty' => (int) (clone $query)->reorder()->sum('total_qty'),
             'total_kubikasi' => round($totalKubikasi, 2),
             'completed_count' => (int) ($statusCountsRaw['COMPLETED'] ?? 0),
             'cancelled_count' => (int) ($statusCountsRaw['CANCELLED'] ?? 0),
@@ -173,18 +173,17 @@ class ReportController extends Controller
         $this->validateRencanaKirimRequest($request);
 
         $filename = 'laporan-rencana-kirim_'.date('Y-m-d_His').'.xlsx';
-
-        return Excel::download(
-            new RencanaKirimReportExport(
-                $request->date_from,
-                $request->date_to,
-                $request->status,
-                $request->kode_depo,
-                $request->search,
-                $request->user(),
-            ),
-            $filename
+        $export = new RencanaKirimReportExport(
+            $request->date_from,
+            $request->date_to,
+            $request->status,
+            $request->kode_depo,
+            $request->search,
+            $request->user(),
         );
+        ExportGuard::ensureWithinLimit($export->query());
+
+        return Excel::download($export, $filename);
     }
 
     private function validateRencanaKirimRequest(Request $request): void
@@ -253,7 +252,7 @@ class ReportController extends Controller
         $query = $this->penerimaanQuery($request);
         // Ringkasan selalu dihitung dari SELURUH baris terfilter via agregasi
         // SQL — bukan hanya halaman aktif, dan tanpa memuat seluruh tabel.
-        $agg = (clone $query)->toBase()->selectRaw(
+        $agg = (clone $query)->reorder()->toBase()->selectRaw(
             'COUNT(*) as c, COALESCE(SUM(actual_qty), 0) as crt, COALESCE(SUM(qty_pcs), 0) as pcs,'
             .' COALESCE(SUM(selisih_qty), 0) as s,'
             .' SUM(CASE WHEN source = ? THEN 1 ELSE 0 END) as sj,'
@@ -289,8 +288,10 @@ class ReportController extends Controller
         $this->validatePenerimaanRequest($request);
 
         $filename = 'laporan-penerimaan_'.date('Y-m-d_His').'.xlsx';
+        $query = $this->penerimaanQuery($request);
+        ExportGuard::ensureWithinLimit($query);
 
-        return Excel::download(new PenerimaanExport($this->penerimaanQuery($request)), $filename);
+        return Excel::download(new PenerimaanExport($query), $filename);
     }
 
     public function biayaThl(Request $request): JsonResponse
@@ -300,7 +301,7 @@ class ReportController extends Controller
         $query = $this->biayaThlQuery($request);
         // Ringkasan selalu dihitung dari SELURUH baris terfilter via agregasi
         // SQL — bukan hanya halaman aktif, dan tanpa memuat seluruh tabel.
-        $agg = (clone $query)->toBase()->selectRaw(
+        $agg = (clone $query)->reorder()->toBase()->selectRaw(
             'COUNT(*) as c, COUNT(DISTINCT biaya_thl_id) as p, COALESCE(SUM(nominal_biaya), 0) as n,'
             ." COUNT(DISTINCT CASE WHEN nama_thl IS NOT NULL AND nama_thl != '' THEN nama_thl END) as t"
         )->first();
@@ -331,8 +332,10 @@ class ReportController extends Controller
         $this->validateBiayaRequest($request);
 
         $filename = 'laporan-biaya-thl_'.date('Y-m-d_His').'.xlsx';
+        $query = $this->biayaThlQuery($request);
+        ExportGuard::ensureWithinLimit($query);
 
-        return Excel::download(new BiayaThlReportExport($this->biayaThlQuery($request)), $filename);
+        return Excel::download(new BiayaThlReportExport($query), $filename);
     }
 
     public function biayaRetribusi(Request $request): JsonResponse
@@ -342,7 +345,7 @@ class ReportController extends Controller
         $query = $this->biayaRetribusiQuery($request);
         // Ringkasan selalu dihitung dari SELURUH baris terfilter via agregasi
         // SQL — bukan hanya halaman aktif, dan tanpa memuat seluruh tabel.
-        $agg = (clone $query)->toBase()->selectRaw(
+        $agg = (clone $query)->reorder()->toBase()->selectRaw(
             'COUNT(*) as c, COUNT(DISTINCT biaya_retribusi_id) as p, COALESCE(SUM(nominal_biaya), 0) as n'
         )->first();
 
@@ -371,8 +374,10 @@ class ReportController extends Controller
         $this->validateBiayaRequest($request);
 
         $filename = 'laporan-biaya-retribusi_'.date('Y-m-d_His').'.xlsx';
+        $query = $this->biayaRetribusiQuery($request);
+        ExportGuard::ensureWithinLimit($query);
 
-        return Excel::download(new BiayaRetribusiReportExport($this->biayaRetribusiQuery($request)), $filename);
+        return Excel::download(new BiayaRetribusiReportExport($query), $filename);
     }
 
     private function validateBiayaRequest(Request $request): void

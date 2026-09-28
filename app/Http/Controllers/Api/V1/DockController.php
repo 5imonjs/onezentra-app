@@ -7,6 +7,7 @@ use App\Exports\DockTemplate;
 use App\Http\Controllers\Controller;
 use App\Imports\DockImport;
 use App\Models\Dock;
+use App\Services\ExportGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -128,6 +129,7 @@ class DockController extends Controller
             search: $request->input('search'),
             status: $request->input('status'),
         );
+        ExportGuard::ensureWithinLimit($export->query());
 
         return Excel::download($export, 'docks_'.now()->format('Y-m-d').'.xlsx');
     }

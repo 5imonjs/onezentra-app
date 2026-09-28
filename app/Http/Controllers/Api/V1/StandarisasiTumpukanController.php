@@ -11,6 +11,7 @@ use App\Models\Npn;
 use App\Models\StandarisasiTumpukan;
 use App\Models\User;
 use App\Services\EmailNotificationService;
+use App\Services\ExportGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -348,6 +349,7 @@ class StandarisasiTumpukanController extends Controller
             search: $request->input('search'),
             status: $request->input('status'),
         );
+        ExportGuard::ensureWithinLimit($export->query());
 
         return Excel::download($export, 'standarisasi-tumpukan_'.now()->format('Y-m-d').'.xlsx');
     }

@@ -542,7 +542,7 @@ class RencanaKirimController extends Controller
 
     public function import(Request $request): JsonResponse
     {
-        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv']);
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
 
         try {
             $import = new RencanaKirimImport($request->user());
@@ -574,7 +574,7 @@ class RencanaKirimController extends Controller
      */
     public function importItems(Request $request): JsonResponse
     {
-        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv']);
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
 
         try {
             $import = new RencanaKirimItemImport;

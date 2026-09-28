@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\NpnImport;
 use App\Models\Npn;
 use App\Models\StandarUmurProduk;
+use App\Services\ExportGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -209,6 +210,7 @@ class NpnController extends Controller
             sort: (string) $request->input('sort', 'szNickName'),
             direction: (string) $request->input('direction', 'asc'),
         );
+        ExportGuard::ensureWithinLimit($export->query());
 
         return Excel::download(
             $export,
