@@ -29,7 +29,7 @@ class RoleControllerTest extends TestCase
             'full_name' => 'Role Admin User',
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo Test',
-            'level' => 'admin',
+            'level' => 'admin_master',
             'status' => 'active',
         ]);
         $role->users()->attach($this->user->id);

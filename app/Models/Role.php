@@ -19,6 +19,7 @@ class Role extends Model
         'admin_planner',
         'cheker',
         'sac',
+        'operator',
     ];
 
     protected $table = 'roles';

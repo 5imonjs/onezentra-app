@@ -29,6 +29,10 @@
 .phpunit.result.cache
 .phpactor.json
 
+# SQLite database — jangan commit
+/onezentra_warehouse
+/database/*.sqlite
+
 # ===== Frontend (onezentra-web) =====
 onezentra-web/node_modules/
 onezentra-web/.next/

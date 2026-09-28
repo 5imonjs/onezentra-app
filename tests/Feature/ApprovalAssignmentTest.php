@@ -35,13 +35,13 @@ class ApprovalAssignmentTest extends TestCase
         $role->permissions()->attach([$permission->id, $editPermission->id, $managePermission->id]);
         $admin = User::create([
             'email' => 'approval-admin@test.com', 'password' => 'password', 'full_name' => 'Admin',
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'admin',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'admin_master',
             'status' => 'active', 'role_id' => $role->id,
         ]);
         $role->users()->attach($admin->id);
         $approvers = collect(['BAC' => 'BAC User', 'RLH' => 'RLH User', 'RFAH' => 'RFAH User'])->map(fn (string $name, string $level): User => User::create([
             'email' => strtolower($level).'@test.com', 'password' => 'password', 'full_name' => $name,
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => $level === 'BAC' ? 'supervisor' : ($level === 'RLH' ? 'supervisor' : 'supervisor'), 'status' => 'active',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active',
         ]));
 
         Sanctum::actingAs($admin);
@@ -78,7 +78,7 @@ class ApprovalAssignmentTest extends TestCase
         $role->users()->attach($admin->id);
         $approver = User::create([
             'email' => 'other-depot@test.com', 'password' => 'password', 'full_name' => 'Other',
-            'kode_depo' => 'DPT-B', 'nama_depo' => 'Depo B', 'level' => 'supervisor', 'status' => 'active',
+            'kode_depo' => 'DPT-B', 'nama_depo' => 'Depo B', 'level' => 'staff_logistic', 'status' => 'active',
         ]);
 
         Sanctum::actingAs($admin);
@@ -119,15 +119,15 @@ class ApprovalAssignmentTest extends TestCase
         $role->permissions()->attach(array_values($approvalPermissions));
         $submitter = User::create([
             'email' => 'workflow-submit@test.com', 'password' => 'password', 'full_name' => 'Submitter',
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'admin', 'status' => 'active', 'role_id' => $role->id,
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'admin_master', 'status' => 'active', 'role_id' => $role->id,
         ]);
         $checker = User::create([
             'email' => 'workflow-check@test.com', 'password' => 'password', 'full_name' => 'Checker',
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'supervisor', 'status' => 'active', 'role_id' => $role->id,
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active', 'role_id' => $role->id,
         ]);
         $approver = User::create([
             'email' => 'workflow-approve@test.com', 'password' => 'password', 'full_name' => 'Approver',
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'supervisor', 'status' => 'active', 'role_id' => $role->id,
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active', 'role_id' => $role->id,
         ]);
         $role->users()->attach([$submitter->id, $checker->id, $approver->id]);
         ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'BAC', 'user_id' => $checker->id]);
@@ -159,7 +159,7 @@ class ApprovalAssignmentTest extends TestCase
         ]);
 
         $this->actingAs($submitter)->postJson("/api/v1/biaya-thl/{$biaya->id}/submit")->assertOk();
-        $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'approval_pengajuan_level' => 'admin']);
+        $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'approval_pengajuan_level' => 'admin_master']);
         $this->actingAs($checker)->postJson("/api/v1/biaya-thl/{$biaya->id}/check")->assertOk();
         $this->actingAs($approver)->postJson("/api/v1/biaya-thl/{$biaya->id}/approve")->assertOk();
 
@@ -178,15 +178,15 @@ class ApprovalAssignmentTest extends TestCase
         $role->permissions()->attach(array_values($approvalPermissions));
         $submitter = User::create([
             'email' => 'revisi-submit@test.com', 'password' => 'password', 'full_name' => 'Submitter',
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'admin', 'status' => 'active', 'role_id' => $role->id,
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'admin_master', 'status' => 'active', 'role_id' => $role->id,
         ]);
         $checker = User::create([
             'email' => 'revisi-check@test.com', 'password' => 'password', 'full_name' => 'Checker',
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'supervisor', 'status' => 'active', 'role_id' => $role->id,
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active', 'role_id' => $role->id,
         ]);
         $approver = User::create([
             'email' => 'revisi-approve@test.com', 'password' => 'password', 'full_name' => 'Approver',
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'supervisor', 'status' => 'active', 'role_id' => $role->id,
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active', 'role_id' => $role->id,
         ]);
         $role->users()->attach([$submitter->id, $checker->id, $approver->id]);
         ApprovalAssignment::create(['kode_depo' => 'DPT-A', 'approval_level' => 'BAC', 'user_id' => $checker->id]);

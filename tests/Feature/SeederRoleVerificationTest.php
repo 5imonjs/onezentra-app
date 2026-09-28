@@ -22,7 +22,7 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertSame($levelSlugs, $roleSlugs);
     }
 
-    public function test_all_10_roles_have_correct_name_and_description(): void
+    public function test_all_12_roles_have_correct_name_and_description(): void
     {
         $this->seedRoles();
         $expectedMeta = [
@@ -36,6 +36,8 @@ class SeederRoleVerificationTest extends TestCase
             'admin_distirbusi' => ['name' => 'Admin Distribusi', 'description' => 'Admin Distribusi'],
             'admin_planner' => ['name' => 'Admin Planner', 'description' => 'Admin Planner'],
             'cheker' => ['name' => 'Cheker', 'description' => 'Cheker'],
+            'sac' => ['name' => 'SAC', 'description' => 'SAC'],
+            'operator' => ['name' => 'Operator', 'description' => 'Operator depot'],
         ];
 
         foreach ($expectedMeta as $slug => $meta) {
@@ -121,6 +123,8 @@ class SeederRoleVerificationTest extends TestCase
             'admin_distirbusi' => ['name' => 'Admin Distribusi', 'description' => 'Admin Distribusi'],
             'admin_planner' => ['name' => 'Admin Planner', 'description' => 'Admin Planner'],
             'cheker' => ['name' => 'Cheker', 'description' => 'Cheker'],
+            'sac' => ['name' => 'SAC', 'description' => 'SAC'],
+            'operator' => ['name' => 'Operator', 'description' => 'Operator depot'],
         ];
         foreach ($meta as $slug => $data) {
             Role::firstOrCreate(['slug' => $slug], $data);

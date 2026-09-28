@@ -130,7 +130,7 @@ class StateGuardTest extends TestCase
         $import->collection(new Collection([[
             'email' => 'victim@example.com',
             'full_name' => 'Victim',
-            'level' => 'admin',
+            'level' => 'admin_master',
             'status' => 'active',
         ]]));
 

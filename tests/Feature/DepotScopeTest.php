@@ -94,7 +94,7 @@ class DepotScopeTest extends TestCase
 
     public function test_admin_master_sees_all_depots(): void
     {
-        $admin = $this->makeUser('admin', 'ADMIN', 'Admin Utama');
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin Utama');
         $planner = $this->makeUser('admin_planner', 'PLAN-01', 'Depo Planner');
         $cheker = $this->makeUser('cheker', 'CHEK-01', 'Depo Cheker');
 
@@ -148,7 +148,7 @@ class DepotScopeTest extends TestCase
 
     public function test_depo_list_shows_all_for_admin_master(): void
     {
-        $admin = $this->makeUser('admin', 'ADMIN', 'Admin Utama');
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin Utama');
         $this->makeUser('cheker', 'CHEK-01', 'Depo Cheker');
 
         $this->grant($admin, 'rencana_kirim.view');
