@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Development only: the OneZentra API runs on the developer machine over plain
+  HTTP (10.0.2.2 on the emulator, or a LAN IP on a physical device), which
+  Android blocks by default since API 28.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

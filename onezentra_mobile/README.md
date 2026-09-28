@@ -1,0 +1,196 @@
+# OneZentra Mobile
+
+Aplikasi mobile Flutter untuk sistem manajemen gudang OneZentra, terintegrasi dengan API Laravel yang sudah ada.
+
+## Fitur
+
+- **Login Page** - Desain konsisten dengan web app (Tailwind CSS theme)
+- **Authentication** - Menggunakan Sanctum Bearer token untuk mobile
+- **Theme System** - Mencerminkan design system web app (Indigo primary, Teal accent)
+- **State Management** - Provider pattern untuk auth state
+- **Navigation** - GoRouter untuk routing dengan auth guard
+- **API Client** - HTTP client dengan auto token management
+
+## Tech Stack
+
+- Flutter 3.x
+- Dart 3.x
+- Provider (State Management)
+- GoRouter (Navigation)
+- HTTP (API Calls)
+- SharedPreferences (Token Storage)
+- Google Fonts (Roboto - matching web)
+
+## Struktur Project
+
+```
+lib/
+├── core/
+│   ├── network/
+│   │   └── api_client.dart          # HTTP client dengan auth
+│   └── theme/
+│       └── app_theme.dart           # Theme system matching web
+├── features/
+│   └── auth/
+│       ├── models/
+│       │   └── auth_models.dart     # User, Role, Permission, AuthResponse
+│       ├── repositories/
+│       │   └── auth_repository.dart # API calls untuk auth
+│       ├── providers/
+│       │   └── auth_provider.dart   # State management
+│       └── pages/
+│           └── login_page.dart      # Login UI
+├── shared/
+│   └── widgets/
+│       └── app_widgets.dart         # Reusable UI components
+└── main.dart                        # App entry point
+```
+
+## API Integration
+
+Aplikasi terintegrasi dengan endpoint Laravel yang sudah ada:
+
+- `POST /api/v1/mobile/login` - Login mobile (Bearer token)
+- `POST /api/v1/mobile/logout` - Logout mobile
+- `GET /api/v1/user` - Get current user profile
+- `PUT /api/v1/user` - Update profile
+
+## Setup & Installation
+
+### Prerequisites
+
+- Flutter SDK 3.11+
+- Android Studio / Xcode
+- Laravel backend running (default: http://10.0.2.2:8000 untuk Android emulator)
+
+### Install Dependencies
+
+```bash
+cd onezentra_mobile
+flutter pub get
+```
+
+### Konfigurasi API URL
+
+Edit `lib/core/network/api_client.dart` untuk mengubah base URL:
+
+```dart
+// Android Emulator
+static const String _baseUrl = 'http://10.0.2.2:8000/api/v1';
+
+// iOS Simulator
+static const String _baseUrl = 'http://localhost:8000/api/v1';
+
+// Physical Device (ganti dengan IP komputer Anda)
+static const String _baseUrl = 'http://192.168.x.x:8000/api/v1';
+```
+
+### Run Development
+
+```bash
+# Android
+flutter run
+
+# iOS
+flutter run -d ios
+```
+
+## Design System
+
+Theme mobile mencerminkan web app globals.css:
+
+### Colors
+- **Primary (Indigo)**: 50-950 scale
+- **Accent (Teal)**: 400, 500
+- **Gray Scale**: 50-900
+- **Semantic**: Success, Warning, Danger, Info
+
+### Typography
+- Font: Roboto (matching web)
+- Scale: xs(12) → sm(14) → base(16) → lg(18) → xl(20) → 2xl(24) → 3xl(30)
+
+### Components
+- **AppTextField** - Input field dengan style web
+- **AppPrimaryButton** - Button primary (indigo)
+- **AppSecondaryButton** - Button outline
+- **AppTextButton** - Text button
+- **AppCard** - Card dengan shadow
+- **AppBadge** - Badge variants (success, warning, danger, info)
+- **AppErrorDisplay** - Error message dengan retry
+- **AppEmptyState** - Empty state illustration
+- **AppLoadingOverlay** - Loading overlay
+
+## Authentication Flow
+
+1. User masukkan email & password
+2. App call `POST /api/v1/mobile/login` dengan `device_name`
+3. Server return `token` (Bearer) + `user` + `permissions`
+4. Token disimpan di SharedPreferences
+5. Request selanjutnya pakai header `Authorization: Bearer <token>`
+6. Logout hapus token local & call `POST /api/v1/mobile/logout`
+
+## Permissions
+
+User permissions di-load saat login dan tersedia via:
+```dart
+final authProvider = context.read<AuthProvider>();
+authProvider.user?.hasPermission('permission.slug');
+authProvider.user?.hasAnyPermission(['perm1', 'perm2']);
+```
+
+## Build Production
+
+```bash
+# Android APK
+flutter build apk --release
+
+# Android App Bundle
+flutter build appbundle --release
+
+# iOS
+flutter build ios --release
+```
+
+## Testing
+
+```bash
+# Unit & Widget tests
+flutter test
+
+# Coverage
+flutter test --coverage
+```
+
+## Troubleshooting
+
+### NDK Issue (macOS)
+Jika build Android gagal dengan error NDK:
+```bash
+rm -rf /opt/homebrew/share/android-commandlinetools/ndk/28.2.13676358
+flutter build apk --debug
+```
+
+### Clear Cache
+```bash
+flutter clean
+flutter pub get
+```
+
+### iOS Pods
+```bash
+cd ios
+pod install
+cd ..
+```
+
+## Contributing
+
+1. Follow Laravel Boost guidelines
+2. Run `flutter analyze` before commit
+3. Run `flutter test` before commit
+4. Follow existing code conventions
+5. Use package imports (`package:onezentra_mobile/...`)
+
+## License
+
+Private - OneZentra Warehouse Management System
