@@ -93,6 +93,8 @@ class PermissionSeeder extends Seeder
             ['name' => 'Standarisasi Tumpukan Template', 'slug' => 'standarisasi.template', 'menu_group' => 'Standarisasi Tumpukan', 'icon' => 'file-template', 'route' => 'standarisasi.template', 'sort_order' => 335],
             ['name' => 'Biaya THL Import', 'slug' => 'biaya_thl.import', 'menu_group' => 'Biaya THL', 'icon' => 'upload', 'route' => 'biaya_thl.import', 'sort_order' => 479],
             ['name' => 'Biaya Retribusi Import', 'slug' => 'biaya_retribusi.import', 'menu_group' => 'Biaya Retribusi', 'icon' => 'upload', 'route' => 'biaya_retribusi.import', 'sort_order' => 484],
+            ['name' => 'Biaya THL Export', 'slug' => 'biaya_thl.export', 'menu_group' => 'Biaya THL', 'icon' => 'download', 'route' => 'biaya_thl.export', 'sort_order' => 486],
+            ['name' => 'Biaya Retribusi Export', 'slug' => 'biaya_retribusi.export', 'menu_group' => 'Biaya Retribusi', 'icon' => 'download', 'route' => 'biaya_retribusi.export', 'sort_order' => 487],
             ['name' => 'Tarif Retribusi Manage', 'slug' => 'retribusi_rates.manage', 'menu_group' => 'Biaya Retribusi', 'icon' => 'coins', 'route' => 'retribusi_rates.manage', 'sort_order' => 485],
             ['name' => 'Receiving Import', 'slug' => 'receiving.import', 'menu_group' => 'Receiving', 'icon' => 'upload', 'route' => 'receiving.import', 'sort_order' => 166],
             ['name' => 'Receiving Export', 'slug' => 'receiving.export', 'menu_group' => 'Receiving', 'icon' => 'download', 'route' => 'receiving.export', 'sort_order' => 167],
@@ -211,6 +213,21 @@ class PermissionSeeder extends Seeder
                 'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.delete',
             ],
         ];
+
+        // Export mengikuti view: role yang boleh melihat modul biaya juga
+        // diberi biaya_*.export (sama dengan grant di migration
+        // add_biaya_export_permissions). Tombol Export di web di-gate slug
+        // ini; role baru menyentuhnya manual lewat Roles & Permissions.
+        foreach (array_keys($rolePermMap) as $roleSlug) {
+            if (in_array('biaya_thl.view', $rolePermMap[$roleSlug], true)
+                && ! in_array('biaya_thl.export', $rolePermMap[$roleSlug], true)) {
+                $rolePermMap[$roleSlug][] = 'biaya_thl.export';
+            }
+            if (in_array('biaya_retribusi.view', $rolePermMap[$roleSlug], true)
+                && ! in_array('biaya_retribusi.export', $rolePermMap[$roleSlug], true)) {
+                $rolePermMap[$roleSlug][] = 'biaya_retribusi.export';
+            }
+        }
 
         foreach ($rolePermMap as $roleSlug => $permSlugs) {
             $role = Role::where('slug', $roleSlug)->first();

@@ -46,8 +46,8 @@ class BiayaThlExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMap
         ];
     }
 
-    public function styles(Worksheet $sheet)
+    public function styles(Worksheet $sheet): array
     {
-        $sheet->getStyle('1')->getFont()->setBold(true);
+        return [1 => ['font' => ['bold' => true]]];
     }
 }

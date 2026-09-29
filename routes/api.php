@@ -142,7 +142,7 @@ Route::prefix('v1')->group(function () {
     Route::prefix('biaya-thl')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [BiayaThlController::class, 'index'])->middleware('permission:biaya_thl.view');
         Route::post('/', [BiayaThlController::class, 'store'])->middleware('permission:biaya_thl.create');
-        Route::get('/export', [BiayaThlController::class, 'export'])->middleware('permission:biaya_thl.view');
+        Route::get('/export', [BiayaThlController::class, 'export'])->middleware('permission:biaya_thl.export');
         Route::get('/photos/{photo}', [BiayaThlController::class, 'photo'])->middleware('permission:biaya_thl.view');
         Route::post('/{biayaThl}/submit', [BiayaThlController::class, 'submit'])->middleware('permission:approval.submit');
         Route::post('/{biayaThl}/check', [BiayaThlController::class, 'check'])->middleware('permission:approval.check');
@@ -161,7 +161,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [BiayaRetribusiController::class, 'index'])->middleware('permission:biaya_retribusi.view');
         Route::get('/candidates', [BiayaRetribusiController::class, 'candidates'])->middleware('permission:biaya_retribusi.view');
         Route::post('/', [BiayaRetribusiController::class, 'store'])->middleware('permission:biaya_retribusi.create');
-        Route::get('/export', [BiayaRetribusiController::class, 'export'])->middleware('permission:biaya_retribusi.view');
+        Route::get('/export', [BiayaRetribusiController::class, 'export'])->middleware('permission:biaya_retribusi.export');
         Route::get('/documents/{document}', [BiayaRetribusiController::class, 'document'])->middleware('permission:biaya_retribusi.view');
         Route::post('/{biayaRetribusi}/submit', [BiayaRetribusiController::class, 'submit'])->middleware('permission:approval.submit');
         Route::post('/{biayaRetribusi}/check', [BiayaRetribusiController::class, 'check'])->middleware('permission:approval.check');
