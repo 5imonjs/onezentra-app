@@ -18,7 +18,7 @@ void main() {
     await authProvider.init();
 
     await tester.pumpWidget(
-      OneZentraApp(authProvider: authProvider, router: buildRouter()),
+      OneZentraApp(authProvider: authProvider, router: buildRouter(authProvider)),
     );
     await tester.pumpAndSettle();
 

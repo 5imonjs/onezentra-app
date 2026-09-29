@@ -4,23 +4,25 @@ import 'package:go_router/go_router.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/core/network/api_client.dart';
+import 'package:onezentra_mobile/core/shell/main_shell.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
+import 'package:onezentra_mobile/features/dashboard/pages/dashboard_page.dart';
+import 'package:onezentra_mobile/features/modules/pages/modules_page.dart';
+import 'package:onezentra_mobile/features/common/pages/placeholder_page.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Main App Entry Point
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Restore the session before the first frame so the router redirect never
-  // flashes the login screen for a user who is still signed in.
+  // Restore the session before the first frame
   final authProvider = AuthProvider();
   await authProvider.init();
 
-  final router = buildRouter();
+  final router = buildRouter(authProvider);
 
-  // A rejected / expired token must always end on the login screen instead of
-  // a page that keeps failing every request.
+  // Handle unauthorized responses
   ApiClient().onUnauthorized = () {
     authProvider.handleSessionExpired();
     router.go('/login');
@@ -67,23 +69,211 @@ class OneZentraApp extends StatelessWidget {
 }
 
 /// App Router Configuration
-GoRouter buildRouter() {
+GoRouter buildRouter(AuthProvider authProvider) {
   return GoRouter(
     initialLocation: '/login',
     routes: [
+      // Login Page (no auth required)
       GoRoute(
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginPage(),
       ),
-      GoRoute(
-        path: '/dashboard',
-        name: 'dashboard',
-        builder: (context, state) => const DashboardPage(),
+
+      // Main Shell with Bottom Nav + Drawer (requires auth)
+      ShellRoute(
+        builder: (context, state, child) => MainShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/dashboard',
+            name: 'dashboard',
+            builder: (context, state) => const DashboardPage(),
+          ),
+          GoRoute(
+            path: '/modules',
+            name: 'modules',
+            builder: (context, state) => const ModulesPage(),
+          ),
+          GoRoute(
+            path: '/penerimaan',
+            name: 'penerimaan',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Penerimaan',
+              icon: Icons.inventory_2_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/rencana-kirim',
+            name: 'rencana_kirim',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Rencana Kirim',
+              icon: Icons.schedule_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/validasi-sj',
+            name: 'validasi_sj',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Validasi SJ',
+              icon: Icons.verified_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/gate',
+            name: 'gate',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Gate Check',
+              icon: Icons.door_front_door_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/opname-expired',
+            name: 'opname_expired',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Opname Expired',
+              icon: Icons.fact_check_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/biaya-thl',
+            name: 'biaya_thl',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Biaya THL',
+              icon: Icons.receipt_long_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/biaya-retribusi',
+            name: 'biaya_retribusi',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Biaya Retribusi',
+              icon: Icons.money_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/approval-settings',
+            name: 'approval_settings',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Approval Settings',
+              icon: Icons.approval_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/npn',
+            name: 'npn',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'NPN',
+              icon: Icons.settings_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/standar-umur',
+            name: 'standar_umur',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Standar Umur Produk',
+              icon: Icons.calendar_today_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/standarisasi',
+            name: 'standarisasi',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Standarisasi Tumpukan',
+              icon: Icons.layers_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/docks',
+            name: 'docks',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Dock Management',
+              icon: Icons.dock_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/tarif-retribusi',
+            name: 'tarif_retribusi',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Tarif Retribusi',
+              icon: Icons.attach_money_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/reports/penerimaan',
+            name: 'reports_penerimaan',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Laporan Penerimaan',
+              icon: Icons.inventory_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/reports/rencana-kirim',
+            name: 'reports_rencana_kirim',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Laporan Pengiriman',
+              icon: Icons.local_shipping_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/reports/biaya-thl',
+            name: 'reports_biaya_thl',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Laporan Biaya THL',
+              icon: Icons.receipt_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/reports/biaya-retribusi',
+            name: 'reports_biaya_retribusi',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Laporan Retribusi',
+              icon: Icons.money_off_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/reports/selisih-qty',
+            name: 'reports_selisih_qty',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Selisih Qty',
+              icon: Icons.compare_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/users',
+            name: 'users',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Users',
+              icon: Icons.people_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/roles',
+            name: 'roles',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Roles & Permissions',
+              icon: Icons.security_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/email-settings',
+            name: 'email_settings',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Email Settings',
+              icon: Icons.email_rounded,
+            ),
+          ),
+          GoRoute(
+            path: '/profile',
+            name: 'profile',
+            builder: (context, state) => const PlaceholderPage(
+              title: 'Profil Saya',
+              icon: Icons.person_rounded,
+            ),
+          ),
+        ],
       ),
     ],
     redirect: (context, state) {
-      final authProvider = context.read<AuthProvider>();
       final isLoginPage = state.matchedLocation == '/login';
       final isAuthenticated = authProvider.isAuthenticated;
 
@@ -100,92 +290,4 @@ GoRouter buildRouter() {
       return null;
     },
   );
-}
-
-/// Placeholder Dashboard Page
-class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () => _handleLogout(context, authProvider),
-            tooltip: 'Logout',
-          ),
-        ],
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.space6),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary100,
-                  borderRadius: AppTheme.radiusFull,
-                ),
-                child: const Icon(
-                  Icons.dashboard_rounded,
-                  size: 50,
-                  color: AppTheme.primary600,
-                ),
-              ),
-              const SizedBox(height: AppTheme.space6),
-              Text(
-                'Selamat Datang!',
-                style: Theme.of(
-                  context,
-                ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppTheme.space3),
-              Text(
-                'Halo, ${authProvider.user?.fullName ?? 'User'}',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: AppTheme.gray600),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppTheme.space2),
-              AppBadge(
-                text: authProvider.user?.roleDisplayName ?? 'User',
-                variant: AppBadgeVariant.primary,
-                icon: Icons.badge_rounded,
-              ),
-              const SizedBox(height: AppTheme.space8),
-              AppPrimaryButton(
-                text: 'Logout',
-                onPressed: () => _handleLogout(context, authProvider),
-                isFullWidth: false,
-                leadingIcon: Icons.logout_rounded,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Logs out and navigates back to the login screen. Without the explicit
-  /// navigation the router redirect is never re-evaluated, so the user would
-  /// stay on a dashboard that is already signed out.
-  Future<void> _handleLogout(
-    BuildContext context,
-    AuthProvider authProvider,
-  ) async {
-    await authProvider.logout();
-    if (context.mounted) {
-      context.go('/login');
-    }
-  }
 }

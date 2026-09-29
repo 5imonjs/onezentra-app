@@ -434,8 +434,8 @@ class AppBadge extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.space3,
-        vertical: AppTheme.space1,
+        horizontal: 6,
+        vertical: 1,
       ),
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -446,14 +446,18 @@ class AppBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: textColor),
-            const SizedBox(width: AppTheme.space1),
+            Icon(icon, size: 10, color: textColor),
+            const SizedBox(width: 2),
           ],
-          Text(
-            text,
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: textColor,
+          Flexible(
+            child: Text(
+              text,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: textColor,
+                fontSize: 9,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

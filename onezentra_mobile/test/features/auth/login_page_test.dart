@@ -63,7 +63,7 @@ Future<AuthProvider> _pumpApp(
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
-    OneZentraApp(authProvider: authProvider, router: buildRouter()),
+    OneZentraApp(authProvider: authProvider, router: buildRouter(authProvider)),
   );
   await tester.pumpAndSettle();
 
@@ -154,7 +154,7 @@ void main() {
 
       // No format error: the user reached the dashboard.
       expect(find.text('Format email tidak valid'), findsNothing);
-      expect(find.text('Selamat Datang!'), findsOneWidget);
+      expect(find.text('Selamat Datang,'), findsOneWidget);
     });
 
     testWidgets('menampilkan error server tanpa meninggalkan halaman login', (
@@ -194,7 +194,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Selamat Datang!'), findsOneWidget);
+      expect(find.text('Selamat Datang,'), findsOneWidget);
       expect(find.text('Selamat datang kembali'), findsNothing);
     });
 
