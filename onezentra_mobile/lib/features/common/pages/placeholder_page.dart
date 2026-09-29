@@ -1,26 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Placeholder Page for modules not yet implemented
 class PlaceholderPage extends StatelessWidget {
+
+  const PlaceholderPage({
+    required this.title, required this.icon, super.key,
+    this.color,
+  });
   final String title;
   final IconData icon;
   final Color? color;
 
-  const PlaceholderPage({
-    super.key,
-    required this.title,
-    required this.icon,
-    this.color,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final accentColor = color ?? AppTheme.primary600;
+    var theme = Theme.of(context);
+    var accentColor = color ?? AppTheme.primary600;
 
     return Scaffold(
       backgroundColor: AppTheme.background,

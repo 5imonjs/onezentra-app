@@ -67,14 +67,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Future<void> _handleLogin() async {
-    final formState = _formKey.currentState;
+    var formState = _formKey.currentState;
     if (formState == null || !formState.validate()) return;
 
     // Hide the keyboard so the user immediately sees the result of the login.
     FocusScope.of(context).unfocus();
 
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.login(
+    var authProvider = context.read<AuthProvider>();
+    var success = await authProvider.login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
@@ -90,9 +90,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final authProvider = context.watch<AuthProvider>();
+    var theme = Theme.of(context);
+    var isDark = theme.brightness == Brightness.dark;
+    var authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
       backgroundColor: AppTheme.primary950,
@@ -146,7 +146,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     AuthProvider authProvider,
   ) {
     // Glass card: translucent indigo in dark mode, solid white in light mode.
-    final cardColor = isDark
+    var cardColor = isDark
         ? AppTheme.primary950.withValues(alpha: 0.55)
         : Colors.white;
 
@@ -185,8 +185,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader(ThemeData theme, bool isDark) {
-    final titleColor = isDark ? Colors.white : AppTheme.gray900;
-    final subtitleColor = isDark
+    var titleColor = isDark ? Colors.white : AppTheme.gray900;
+    var subtitleColor = isDark
         ? const Color(0xFFC7D2FE) // primary-200
         : AppTheme.gray500;
 
@@ -225,16 +225,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildErrorMessage(AuthProvider authProvider, bool isDark) {
-    final error = authProvider.error;
+    var error = authProvider.error;
     if (error == null) return const SizedBox.shrink();
 
-    final background = isDark
+    var background = isDark
         ? AppTheme.danger.withValues(alpha: 0.16)
         : const Color(0xFFFEF2F2); // red-50
-    final border = isDark
+    var border = isDark
         ? AppTheme.danger.withValues(alpha: 0.45)
         : const Color(0xFFFECACA); // red-200
-    final textColor = isDark
+    var textColor = isDark
         ? const Color(0xFFFCA5A5) // red-300
         : const Color(0xFFB91C1C); // red-700
 
@@ -278,8 +278,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     ThemeData theme,
     bool isDark,
     AuthProvider authProvider,
-  ) {
-    return _FieldLabel(
+  ) => _FieldLabel(
       label: 'Email',
       isDark: isDark,
       child: TextFormField(
@@ -291,7 +290,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         // platform password manager fill the credentials in.
         autocorrect: false,
         enableSuggestions: false,
-        textCapitalization: TextCapitalization.none,
         autofillHints: const [AutofillHints.username],
         style: _fieldTextStyle(theme, isDark),
         cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
@@ -314,14 +312,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
       ),
     );
-  }
 
   Widget _buildPasswordField(
     ThemeData theme,
     bool isDark,
     AuthProvider authProvider,
   ) {
-    final iconColor = isDark
+    var iconColor = isDark
         ? const Color(0xFF94A3B8) // gray-400
         : AppTheme.gray400;
 
@@ -338,7 +335,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         // breaks the login.
         autocorrect: false,
         enableSuggestions: false,
-        textCapitalization: TextCapitalization.none,
         autofillHints: const [AutofillHints.password],
         style: _fieldTextStyle(theme, isDark),
         cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
@@ -376,12 +372,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  TextStyle? _fieldTextStyle(ThemeData theme, bool isDark) {
-    return theme.textTheme.bodyLarge?.copyWith(
+  TextStyle? _fieldTextStyle(ThemeData theme, bool isDark) => theme.textTheme.bodyLarge?.copyWith(
       color: isDark ? Colors.white : AppTheme.gray900,
       fontWeight: FontWeight.w500,
     );
-  }
 
   /// Pill shaped input shared by the email and password fields.
   InputDecoration _inputDecoration({
@@ -390,14 +384,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     required bool isDark,
     Widget? suffixIcon,
   }) {
-    final theme = Theme.of(context);
-    final borderColor = isDark
+    var theme = Theme.of(context);
+    var borderColor = isDark
         ? Colors.white.withValues(alpha: 0.14)
         : AppTheme.primary100;
-    final iconColor = isDark
+    var iconColor = isDark
         ? const Color(0xFF94A3B8) // gray-400
         : AppTheme.gray400;
-    final focusedColor = isDark ? AppTheme.primary300 : AppTheme.primary500;
+    var focusedColor = isDark ? AppTheme.primary300 : AppTheme.primary500;
 
     OutlineInputBorder pill(Color color, double width) => OutlineInputBorder(
       borderRadius: AppTheme.radiusFull,
@@ -445,7 +439,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     bool isDark,
     AuthProvider authProvider,
   ) {
-    final isLoading = authProvider.isLoading;
+    var isLoading = authProvider.isLoading;
 
     return Semantics(
       button: true,
@@ -514,7 +508,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildTrustNote(ThemeData theme, bool isDark) {
-    final noteColor = isDark
+    var noteColor = isDark
         ? const Color(0xFF94A3B8) // gray-400
         : AppTheme.gray400;
 
@@ -535,7 +529,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildFooter(ThemeData theme, bool isDark) {
-    final footerColor = isDark
+    var footerColor = isDark
         ? const Color(0xFF64748B) // gray-500
         : AppTheme.gray400;
 
@@ -561,7 +555,7 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelColor = isDark
+    var labelColor = isDark
         ? const Color(0xFFC7D2FE) // primary-200
         : AppTheme.gray600;
 
@@ -588,11 +582,10 @@ class _AuroraBackground extends StatelessWidget {
   const _AuroraBackground();
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
+  Widget build(BuildContext context) => const Stack(
       fit: StackFit.expand,
       children: [
-        const DecoratedBox(
+        DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -606,17 +599,16 @@ class _AuroraBackground extends StatelessWidget {
             ),
           ),
         ),
-        const Align(
+        Align(
           alignment: Alignment.topRight,
           child: _Glow(color: Color(0x4D2DD4BF), size: 280), // accent-400
         ),
-        const Align(
+        Align(
           alignment: Alignment.bottomLeft,
           child: _Glow(color: Color(0x4D818CF8), size: 320), // primary-400
         ),
       ],
     );
-  }
 }
 
 /// Radial blob used to soften the gradient.
@@ -627,8 +619,7 @@ class _Glow extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
+  Widget build(BuildContext context) => IgnorePointer(
       child: Container(
         width: size,
         height: size,
@@ -638,5 +629,4 @@ class _Glow extends StatelessWidget {
         ),
       ),
     );
-  }
 }

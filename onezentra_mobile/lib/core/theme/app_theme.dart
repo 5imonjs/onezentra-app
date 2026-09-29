@@ -218,29 +218,29 @@ class AppTheme {
       horizontal: space4,
       vertical: space3,
     ),
-    border: OutlineInputBorder(
+    border: const OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: const BorderSide(color: gray200, width: 1),
+      borderSide: BorderSide(color: gray200),
     ),
-    enabledBorder: OutlineInputBorder(
+    enabledBorder: const OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: const BorderSide(color: gray200, width: 1),
+      borderSide: BorderSide(color: gray200),
     ),
-    focusedBorder: OutlineInputBorder(
+    focusedBorder: const OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: const BorderSide(color: primary500, width: 2),
+      borderSide: BorderSide(color: primary500, width: 2),
     ),
-    errorBorder: OutlineInputBorder(
+    errorBorder: const OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: const BorderSide(color: danger, width: 1),
+      borderSide: BorderSide(color: danger),
     ),
-    focusedErrorBorder: OutlineInputBorder(
+    focusedErrorBorder: const OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: const BorderSide(color: danger, width: 2),
+      borderSide: BorderSide(color: danger, width: 2),
     ),
-    disabledBorder: OutlineInputBorder(
+    disabledBorder: const OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: const BorderSide(color: gray200, width: 1),
+      borderSide: BorderSide(color: gray200),
     ),
     labelStyle: textTheme.bodyMedium?.copyWith(color: gray600),
     hintStyle: textTheme.bodyMedium?.copyWith(color: gray400),
@@ -259,7 +259,7 @@ class AppTheme {
               foregroundColor: Colors.white,
               elevation: 4,
               shadowColor: primary600.withValues(alpha: 0.3),
-              shape: RoundedRectangleBorder(borderRadius: radiusXl),
+              shape: const RoundedRectangleBorder(borderRadius: radiusXl),
               padding: const EdgeInsets.symmetric(
                 horizontal: space6,
                 vertical: space3,
@@ -290,8 +290,8 @@ class AppTheme {
             OutlinedButton.styleFrom(
               foregroundColor: gray700,
               backgroundColor: surfaceCard,
-              side: const BorderSide(color: gray200, width: 1),
-              shape: RoundedRectangleBorder(borderRadius: radiusXl),
+              side: const BorderSide(color: gray200),
+              shape: const RoundedRectangleBorder(borderRadius: radiusXl),
               padding: const EdgeInsets.symmetric(
                 horizontal: space6,
                 vertical: space3,
@@ -320,7 +320,7 @@ class AppTheme {
     style:
         TextButton.styleFrom(
           foregroundColor: primary600,
-          shape: RoundedRectangleBorder(borderRadius: radiusLg),
+          shape: const RoundedRectangleBorder(borderRadius: radiusLg),
           padding: const EdgeInsets.symmetric(
             horizontal: space3,
             vertical: space2,
@@ -347,9 +347,9 @@ class AppTheme {
   static CardThemeData get cardTheme => CardThemeData(
     color: surfaceCard,
     elevation: 0,
-    shape: RoundedRectangleBorder(
+    shape: const RoundedRectangleBorder(
       borderRadius: radius2xl,
-      side: const BorderSide(color: gray100, width: 1),
+      side: BorderSide(color: gray100),
     ),
     shadowColor: Colors.black.withValues(alpha: 0.05),
     margin: EdgeInsets.zero,
@@ -422,7 +422,7 @@ class AppTheme {
       color: Colors.white,
     ),
     trackHeight: 4,
-    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+    thumbShape: const RoundSliderThumbShape(),
     overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
   );
 
@@ -489,13 +489,13 @@ class AppTheme {
           color: gray500,
         ),
         indicatorColor: primary50,
-        indicatorShape: RoundedRectangleBorder(borderRadius: radiusLg),
+        indicatorShape: const RoundedRectangleBorder(borderRadius: radiusLg),
         elevation: 0,
       );
 
   // Divider Theme
   static DividerThemeData get dividerTheme =>
-      DividerThemeData(color: gray200, thickness: 1, space: 1);
+      const DividerThemeData(color: gray200, thickness: 1, space: 1);
 
   // Chip Theme
   static ChipThemeData get chipTheme => ChipThemeData(
@@ -507,9 +507,8 @@ class AppTheme {
     labelStyle: textTheme.labelSmall?.copyWith(color: gray700),
     secondaryLabelStyle: textTheme.labelSmall?.copyWith(color: primary700),
     brightness: Brightness.light,
-    shape: RoundedRectangleBorder(
+    shape: const RoundedRectangleBorder(
       borderRadius: radiusFull,
-      side: BorderSide.none,
     ),
   );
 
@@ -519,7 +518,7 @@ class AppTheme {
     contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
     actionTextColor: accent400,
     behavior: SnackBarBehavior.floating,
-    shape: RoundedRectangleBorder(borderRadius: radiusLg),
+    shape: const RoundedRectangleBorder(borderRadius: radiusLg),
     elevation: 6,
   );
 
@@ -528,7 +527,7 @@ class AppTheme {
     backgroundColor: surfaceCard,
     elevation: 24,
     shadowColor: Colors.black.withValues(alpha: 0.15),
-    shape: RoundedRectangleBorder(borderRadius: radius2xl),
+    shape: const RoundedRectangleBorder(borderRadius: radius2xl),
     titleTextStyle: textTheme.headlineSmall?.copyWith(
       fontWeight: FontWeight.w700,
       color: foreground,
@@ -555,16 +554,13 @@ class AppTheme {
     fontFamily: GoogleFonts.roboto().fontFamily,
     colorScheme: const ColorScheme.light(
       primary: primary600,
-      onPrimary: Colors.white,
       secondary: accent500,
       onSecondary: Colors.white,
       tertiary: primary500,
       onTertiary: Colors.white,
-      surface: surfaceCard,
       onSurface: foreground,
       surfaceContainerHighest: surfaceHover,
       error: danger,
-      onError: Colors.white,
       outline: gray300,
       outlineVariant: gray200,
     ),
@@ -635,25 +631,25 @@ class AppTheme {
     focusColor: Colors.white.withValues(alpha: 0.10),
     cardTheme: cardTheme.copyWith(
       color: gray800,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: radius2xl,
-        side: const BorderSide(color: gray700, width: 1),
+        side: BorderSide(color: gray700),
       ),
     ),
     inputDecorationTheme: inputDecorationTheme.copyWith(
       filled: true,
       fillColor: gray800,
-      border: OutlineInputBorder(
+      border: const OutlineInputBorder(
         borderRadius: radiusXl,
-        borderSide: const BorderSide(color: gray700, width: 1),
+        borderSide: BorderSide(color: gray700),
       ),
-      enabledBorder: OutlineInputBorder(
+      enabledBorder: const OutlineInputBorder(
         borderRadius: radiusXl,
-        borderSide: const BorderSide(color: gray700, width: 1),
+        borderSide: BorderSide(color: gray700),
       ),
-      focusedBorder: OutlineInputBorder(
+      focusedBorder: const OutlineInputBorder(
         borderRadius: radiusXl,
-        borderSide: const BorderSide(color: primary400, width: 2),
+        borderSide: BorderSide(color: primary400, width: 2),
       ),
     ),
     bottomSheetTheme: bottomSheetTheme.copyWith(

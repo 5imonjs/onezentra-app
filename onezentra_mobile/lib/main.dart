@@ -8,19 +8,20 @@ import 'package:onezentra_mobile/core/shell/main_shell.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
 import 'package:onezentra_mobile/features/dashboard/pages/dashboard_page.dart';
+import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
+import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
 import 'package:onezentra_mobile/features/modules/pages/modules_page.dart';
 import 'package:onezentra_mobile/features/common/pages/placeholder_page.dart';
-import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Main App Entry Point
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Restore the session before the first frame
-  final authProvider = AuthProvider();
+  var authProvider = AuthProvider();
   await authProvider.init();
 
-  final router = buildRouter(authProvider);
+  var router = buildRouter(authProvider);
 
   // Handle unauthorized responses
   ApiClient().onUnauthorized = () {
@@ -33,44 +34,39 @@ void main() async {
 
 /// OneZentra Mobile App
 class OneZentraApp extends StatelessWidget {
+
+  const OneZentraApp({
+    required this.authProvider, required this.router, super.key,
+  });
   final AuthProvider authProvider;
   final GoRouter router;
 
-  const OneZentraApp({
-    super.key,
-    required this.authProvider,
-    required this.router,
-  });
-
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider<AuthProvider>.value(
+  Widget build(BuildContext context) => ChangeNotifierProvider<AuthProvider>.value(
       value: authProvider,
       child: MaterialApp.router(
         title: 'ONEZENTRA Mobile',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.system,
         routerConfig: router,
-        builder: (context, child) {
-          return MediaQuery(
+        builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
               textScaler: TextScaler.linear(
                 MediaQuery.of(context).textScaler.scale(1).clamp(0.85, 1.15),
               ),
             ),
             child: child!,
-          );
-        },
+          ),
       ),
     );
-  }
 }
 
 /// App Router Configuration
-GoRouter buildRouter(AuthProvider authProvider) {
-  return GoRouter(
+///
+/// [gateRepository] is injectable so tests can render the Check In Point
+/// screen without a server.
+GoRouter buildRouter(AuthProvider authProvider, {GateRepository? gateRepository}) => GoRouter(
     initialLocation: '/login',
     routes: [
       // Login Page (no auth required)
@@ -121,10 +117,7 @@ GoRouter buildRouter(AuthProvider authProvider) {
           GoRoute(
             path: '/gate',
             name: 'gate',
-            builder: (context, state) => const PlaceholderPage(
-              title: 'Gate Check',
-              icon: Icons.door_front_door_rounded,
-            ),
+            builder: (context, state) => GatePage(repository: gateRepository),
           ),
           GoRoute(
             path: '/opname-expired',
@@ -274,8 +267,8 @@ GoRouter buildRouter(AuthProvider authProvider) {
       ),
     ],
     redirect: (context, state) {
-      final isLoginPage = state.matchedLocation == '/login';
-      final isAuthenticated = authProvider.isAuthenticated;
+      var isLoginPage = state.matchedLocation == '/login';
+      var isAuthenticated = authProvider.isAuthenticated;
 
       // If not authenticated and not on login page, redirect to login
       if (!isAuthenticated && !isLoginPage) {
@@ -290,4 +283,3 @@ GoRouter buildRouter(AuthProvider authProvider) {
       return null;
     },
   );
-}

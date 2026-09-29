@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
-import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/dashboard/pages/dashboard_page.dart';
 import 'package:onezentra_mobile/features/modules/pages/modules_page.dart';
@@ -13,9 +12,9 @@ import 'package:onezentra_mobile/features/common/pages/placeholder_page.dart';
 /// Main Shell with Bottom Navigation + Drawer Menu
 /// Accepts [child] from ShellRoute for nested navigation
 class MainShell extends StatefulWidget {
-  final Widget child;
 
-  const MainShell({super.key, required this.child});
+  const MainShell({required this.child, super.key});
+  final Widget child;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -23,6 +22,22 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   int _currentIndex = 0;
+
+  /// Routes that render their own page instead of the bottom-nav tab stack.
+  /// `widget.child` from the ShellRoute was previously unreachable, because
+  /// every mapped index stayed inside the `IndexedStack`.
+  static const Set<String> _detailRoutes = {'/gate'};
+
+  /// One representative route per bottom-nav tab. Tapping a tab navigates
+  /// here so the router leaves any detail route — otherwise `/gate` would
+  /// stay the current location and keep rendering over the selected tab.
+  static const List<String> _tabRoutes = [
+    '/dashboard',
+    '/modules',
+    '/penerimaan',
+    '/biaya-thl',
+    '/reports/penerimaan',
+  ];
 
   final List<Widget> _pages = [
     const DashboardPage(),
@@ -79,26 +94,30 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   }
 
   void _listenToRouteChanges() {
-    final router = GoRouter.of(context);
+    var router = GoRouter.of(context);
     router.routeInformationProvider.addListener(_onRouteChanged);
   }
 
   void _onRouteChanged() {
-    final router = GoRouter.of(context);
-    final location = router.routerDelegate.currentConfiguration.uri.path;
+    var router = GoRouter.of(context);
+    var location = router.routerDelegate.currentConfiguration.uri.path;
 
     // Find matching route index
     int? newIndex;
-    for (final entry in _routeToIndex.entries) {
+    for (var entry in _routeToIndex.entries) {
       if (location.startsWith(entry.key)) {
         newIndex = entry.value;
         break;
       }
     }
 
-    if (newIndex != null && newIndex != _currentIndex) {
-      setState(() => _currentIndex = newIndex!);
-    }
+    // Always rebuild: the body also depends on whether the current location
+    // is a detail route (e.g. the drawer just opened `/gate`).
+    setState(() {
+      if (newIndex != null) {
+        _currentIndex = newIndex;
+      }
+    });
   }
 
   @override
@@ -106,7 +125,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     // Use the router from the widget tree instead of context
     if (mounted) {
       try {
-        final router = GoRouter.of(context);
+        var router = GoRouter.of(context);
         router.routeInformationProvider.removeListener(_onRouteChanged);
       } catch (_) {
         // Ignore if context is no longer valid
@@ -117,27 +136,27 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.user;
+    var authProvider = context.watch<AuthProvider>();
+    var user = authProvider.user;
+    var location = GoRouter.of(
+      context,
+    ).routerDelegate.currentConfiguration.uri.path;
+    var showDetail = _detailRoutes.contains(location);
 
     return Scaffold(
-      body: _currentIndex < 5
-          ? IndexedStack(
-              index: _currentIndex,
-              children: _pages,
-            )
-          : widget.child,
-      bottomNavigationBar: _currentIndex < 5 ? _buildBottomNavBar() : null,
+      body: showDetail
+          ? widget.child
+          : IndexedStack(index: _currentIndex, children: _pages),
+      bottomNavigationBar: _buildBottomNavBar(),
       drawer: _buildDrawer(context, user),
     );
   }
 
-  Widget _buildBottomNavBar() {
-    return Container(
+  Widget _buildBottomNavBar() => DecoratedBox(
       decoration: BoxDecoration(
         color: AppTheme.surfaceCard,
-        border: Border(
-          top: BorderSide(color: AppTheme.gray100, width: 1),
+        border: const Border(
+          top: BorderSide(color: AppTheme.gray100),
         ),
         boxShadow: [
           BoxShadow(
@@ -153,20 +172,21 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(_navItems.length, (index) {
-              final item = _navItems[index];
-              final isSelected = _currentIndex == index;
+              var item = _navItems[index];
+              var isSelected = _currentIndex == index;
               return _buildNavItem(item, isSelected, index);
             }),
           ),
         ),
       ),
     );
-  }
 
-  Widget _buildNavItem(_NavItem item, bool isSelected, int index) {
-    return Expanded(
+  Widget _buildNavItem(_NavItem item, bool isSelected, int index) => Expanded(
       child: InkWell(
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: () {
+          context.go(_tabRoutes[index]);
+          setState(() => _currentIndex = index);
+        },
         borderRadius: AppTheme.radiusLg,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -196,10 +216,8 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         ),
       ),
     );
-  }
 
-  Widget _buildDrawer(BuildContext context, user) {
-    return Drawer(
+  Widget _buildDrawer(BuildContext context, user) => Drawer(
       width: MediaQuery.of(context).size.width * 0.85,
       child: Column(
         children: [
@@ -207,7 +225,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(AppTheme.space6, AppTheme.space8, AppTheme.space6, AppTheme.space6),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -297,10 +315,10 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
               children: [
                 _buildDrawerSection('OPERASIONAL', [
+                  _DrawerItem(Icons.door_front_door_rounded, 'Check In Point', '/gate', ['gate.view']),
                   _DrawerItem(Icons.inventory_2_rounded, 'Penerimaan', '/penerimaan', ['penerimaan.view']),
                   _DrawerItem(Icons.local_shipping_rounded, 'Rencana Kirim', '/rencana-kirim', ['rencana_kirim.view']),
                   _DrawerItem(Icons.verified_rounded, 'Validasi SJ', '/validasi-sj', ['sj_validation.view']),
-                  _DrawerItem(Icons.door_front_door_rounded, 'Gate Check', '/gate', ['gate.view']),
                   _DrawerItem(Icons.fact_check_rounded, 'Opname Expired', '/opname-expired', ['opname.view']),
                 ]),
                 _buildDrawerSection('BIAYA & APPROVAL', [
@@ -336,8 +354,8 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
           // Footer
           Container(
             padding: const EdgeInsets.all(AppTheme.space4),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: AppTheme.gray100, width: 1)),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppTheme.gray100)),
             ),
             child: Row(
               children: [
@@ -374,9 +392,22 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         ],
       ),
     );
-  }
 
   Widget _buildDrawerSection(String title, List<_DrawerItem> items) {
+    // Same rule as the web sidebar: an item the role cannot use is hidden
+    // outright, and a section with nothing left to show disappears as well.
+    var user = context.watch<AuthProvider>().user;
+    var visibleItems = items
+        .where(
+          (item) =>
+              item.requiredPermissions.isEmpty ||
+              (user?.hasAnyPermission(item.requiredPermissions) ?? false),
+        )
+        .toList();
+    if (visibleItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -392,61 +423,51 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             ),
           ),
         ),
-        ...items.map((item) => _buildDrawerTile(context, item)).toList(),
+        ...visibleItems.map((item) => _buildDrawerTile(context, item)),
       ],
     );
   }
 
-  Widget _buildDrawerTile(BuildContext context, _DrawerItem item) {
-    final authProvider = context.read<AuthProvider>();
-    final hasPermission = item.requiredPermissions.isEmpty ||
-        authProvider.user?.hasAnyPermission(item.requiredPermissions) == true;
-
-    return ListTile(
+  Widget _buildDrawerTile(BuildContext context, _DrawerItem item) => ListTile(
       dense: true,
-      enabled: hasPermission,
-      leading: Icon(
-        item.icon,
-        size: 20,
-        color: hasPermission ? AppTheme.gray600 : AppTheme.gray300,
-      ),
+      leading: Icon(item.icon, size: 20, color: AppTheme.gray600),
       title: Text(
         item.label,
         style: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
-          color: hasPermission ? AppTheme.gray700 : AppTheme.gray300,
+          color: AppTheme.gray700,
         ),
       ),
-      onTap: hasPermission
-          ? () {
-              Navigator.of(context).pop();
-              if (item.route != '/profile') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${item.label} - Coming soon')),
-                );
-              } else {
-                Navigator.of(context).pushNamed(item.route);
-              }
-            }
-          : null,
+      onTap: () {
+        Navigator.of(context).pop();
+        if (_detailRoutes.contains(item.route)) {
+          // A real page exists: show it instead of a placeholder.
+          context.go(item.route);
+        } else if (item.route != '/profile') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${item.label} - Coming soon')),
+          );
+        } else {
+          Navigator.of(context).pushNamed(item.route);
+        }
+      },
     );
-  }
 }
 
 class _NavItem {
+
+  _NavItem(this.label, this.filledIcon, this.outlineIcon);
   final String label;
   final IconData filledIcon;
   final IconData outlineIcon;
-
-  _NavItem(this.label, this.filledIcon, this.outlineIcon);
 }
 
 class _DrawerItem {
+
+  _DrawerItem(this.icon, this.label, this.route, this.requiredPermissions);
   final IconData icon;
   final String label;
   final String route;
   final List<String> requiredPermissions;
-
-  _DrawerItem(this.icon, this.label, this.route, this.requiredPermissions);
 }

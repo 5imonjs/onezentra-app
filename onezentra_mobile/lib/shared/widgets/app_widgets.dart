@@ -3,23 +3,6 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 
 /// Custom text field matching the web app's input-field style
 class AppTextField extends StatelessWidget {
-  final TextEditingController? controller;
-  final String? label;
-  final String? hint;
-  final IconData? prefixIcon;
-  final Widget? suffixIcon;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-  final TextInputAction? textInputAction;
-  final String? Function(String?)? validator;
-  final void Function(String?)? onSaved;
-  final void Function(String)? onChanged;
-  final void Function()? onEditingComplete;
-  final bool enabled;
-  final int? maxLines;
-  final int? maxLength;
-  final FocusNode? focusNode;
-  final bool autofocus;
 
   const AppTextField({
     super.key,
@@ -41,10 +24,27 @@ class AppTextField extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
   });
+  final TextEditingController? controller;
+  final String? label;
+  final String? hint;
+  final IconData? prefixIcon;
+  final Widget? suffixIcon;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final String? Function(String?)? validator;
+  final void Function(String?)? onSaved;
+  final void Function(String)? onChanged;
+  final void Function()? onEditingComplete;
+  final bool enabled;
+  final int? maxLines;
+  final int? maxLength;
+  final FocusNode? focusNode;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,32 +89,32 @@ class AppTextField extends StatelessWidget {
               horizontal: AppTheme.space4,
               vertical: AppTheme.space3,
             ),
-            border: OutlineInputBorder(
+            border: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: const BorderSide(color: AppTheme.gray200, width: 1),
+              borderSide: BorderSide(color: AppTheme.gray200),
             ),
-            enabledBorder: OutlineInputBorder(
+            enabledBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: const BorderSide(color: AppTheme.gray200, width: 1),
+              borderSide: BorderSide(color: AppTheme.gray200),
             ),
-            focusedBorder: OutlineInputBorder(
+            focusedBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: const BorderSide(
+              borderSide: BorderSide(
                 color: AppTheme.primary500,
                 width: 2,
               ),
             ),
-            errorBorder: OutlineInputBorder(
+            errorBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: const BorderSide(color: AppTheme.danger, width: 1),
+              borderSide: BorderSide(color: AppTheme.danger),
             ),
-            focusedErrorBorder: OutlineInputBorder(
+            focusedErrorBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: const BorderSide(color: AppTheme.danger, width: 2),
+              borderSide: BorderSide(color: AppTheme.danger, width: 2),
             ),
-            disabledBorder: OutlineInputBorder(
+            disabledBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: const BorderSide(color: AppTheme.gray200, width: 1),
+              borderSide: BorderSide(color: AppTheme.gray200),
             ),
             labelStyle: theme.textTheme.bodyMedium?.copyWith(
               color: AppTheme.gray600,
@@ -137,6 +137,17 @@ class AppTextField extends StatelessWidget {
 
 /// Primary button matching the web app's btn-primary style
 class AppPrimaryButton extends StatelessWidget {
+
+  const AppPrimaryButton({
+    required this.text, super.key,
+    this.onPressed,
+    this.isLoading = false,
+    this.isFullWidth = true,
+    this.width,
+    this.height = 52,
+    this.leadingIcon,
+    this.trailingIcon,
+  });
   final String text;
   final VoidCallback? onPressed;
   final bool isLoading;
@@ -146,23 +157,11 @@ class AppPrimaryButton extends StatelessWidget {
   final IconData? leadingIcon;
   final IconData? trailingIcon;
 
-  const AppPrimaryButton({
-    super.key,
-    required this.text,
-    this.onPressed,
-    this.isLoading = false,
-    this.isFullWidth = true,
-    this.width,
-    this.height = 52,
-    this.leadingIcon,
-    this.trailingIcon,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
-    final button = ElevatedButton(
+    var button = ElevatedButton(
       onPressed: isLoading ? null : onPressed,
       style: theme.elevatedButtonTheme.style?.copyWith(
         minimumSize: WidgetStateProperty.all(
@@ -212,6 +211,17 @@ class AppPrimaryButton extends StatelessWidget {
 
 /// Secondary button matching the web app's btn-secondary style
 class AppSecondaryButton extends StatelessWidget {
+
+  const AppSecondaryButton({
+    required this.text, super.key,
+    this.onPressed,
+    this.isLoading = false,
+    this.isFullWidth = true,
+    this.width,
+    this.height = 52,
+    this.leadingIcon,
+    this.trailingIcon,
+  });
   final String text;
   final VoidCallback? onPressed;
   final bool isLoading;
@@ -221,23 +231,11 @@ class AppSecondaryButton extends StatelessWidget {
   final IconData? leadingIcon;
   final IconData? trailingIcon;
 
-  const AppSecondaryButton({
-    super.key,
-    required this.text,
-    this.onPressed,
-    this.isLoading = false,
-    this.isFullWidth = true,
-    this.width,
-    this.height = 52,
-    this.leadingIcon,
-    this.trailingIcon,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
-    final button = OutlinedButton(
+    var button = OutlinedButton(
       onPressed: isLoading ? null : onPressed,
       style: theme.outlinedButtonTheme.style?.copyWith(
         minimumSize: WidgetStateProperty.all(
@@ -287,20 +285,19 @@ class AppSecondaryButton extends StatelessWidget {
 
 /// Text button matching the web app's style
 class AppTextButton extends StatelessWidget {
+
+  const AppTextButton({
+    required this.text, super.key,
+    this.onPressed,
+    this.style,
+  });
   final String text;
   final VoidCallback? onPressed;
   final TextStyle? style;
 
-  const AppTextButton({
-    super.key,
-    required this.text,
-    this.onPressed,
-    this.style,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
     return TextButton(
       onPressed: onPressed,
@@ -320,6 +317,17 @@ class AppTextButton extends StatelessWidget {
 
 /// Card widget matching the web app's card style
 class AppCard extends StatelessWidget {
+
+  const AppCard({
+    required this.child, super.key,
+    this.padding,
+    this.margin,
+    this.color,
+    this.shadows,
+    this.borderRadius,
+    this.border,
+    this.onTap,
+  });
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -329,27 +337,15 @@ class AppCard extends StatelessWidget {
   final Border? border;
   final VoidCallback? onTap;
 
-  const AppCard({
-    super.key,
-    required this.child,
-    this.padding,
-    this.margin,
-    this.color,
-    this.shadows,
-    this.borderRadius,
-    this.border,
-    this.onTap,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final card = Container(
+    var card = Container(
       padding: padding ?? const EdgeInsets.all(AppTheme.space6),
       margin: margin,
       decoration: BoxDecoration(
         color: color ?? AppTheme.surfaceCard,
         borderRadius: borderRadius ?? AppTheme.radius2xl,
-        border: border ?? Border.all(color: AppTheme.gray100, width: 1),
+        border: border ?? Border.all(color: AppTheme.gray100),
         boxShadow:
             shadows ??
             [
@@ -380,20 +376,19 @@ class AppCard extends StatelessWidget {
 
 /// Badge widget matching the web app's badge style
 class AppBadge extends StatelessWidget {
+
+  const AppBadge({
+    required this.text, super.key,
+    this.variant = AppBadgeVariant.info,
+    this.icon,
+  });
   final String text;
   final AppBadgeVariant variant;
   final IconData? icon;
 
-  const AppBadge({
-    super.key,
-    required this.text,
-    this.variant = AppBadgeVariant.info,
-    this.icon,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
     Color backgroundColor;
     Color textColor;
@@ -440,7 +435,7 @@ class AppBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: AppTheme.radiusFull,
-        border: Border.all(color: borderColor, width: 1),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -470,20 +465,17 @@ enum AppBadgeVariant { success, warning, danger, info, primary, gray }
 
 /// Loading overlay
 class AppLoadingOverlay extends StatelessWidget {
+
+  const AppLoadingOverlay({
+    required this.isLoading, required this.child, super.key,
+    this.message,
+  });
   final bool isLoading;
   final Widget child;
   final String? message;
 
-  const AppLoadingOverlay({
-    super.key,
-    required this.isLoading,
-    required this.child,
-    this.message,
-  });
-
   @override
-  Widget build(BuildContext context) {
-    return Stack(
+  Widget build(BuildContext context) => Stack(
       children: [
         child,
         if (isLoading)
@@ -492,7 +484,7 @@ class AppLoadingOverlay extends StatelessWidget {
             child: Center(
               child: Container(
                 padding: const EdgeInsets.all(AppTheme.space6),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppTheme.surfaceCard,
                   borderRadius: AppTheme.radiusXl,
                   boxShadow: [AppTheme.shadowXl],
@@ -523,32 +515,30 @@ class AppLoadingOverlay extends StatelessWidget {
           ),
       ],
     );
-  }
 }
 
 /// Error display widget
 class AppErrorDisplay extends StatelessWidget {
+
+  const AppErrorDisplay({
+    required this.message, super.key,
+    this.onRetry,
+    this.retryText,
+  });
   final String message;
   final VoidCallback? onRetry;
   final String? retryText;
 
-  const AppErrorDisplay({
-    super.key,
-    required this.message,
-    this.onRetry,
-    this.retryText,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
         color: const Color(0xFFFEF2F2), // red-50
         borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: const Color(0xFFFECACA), width: 1), // red-200
+        border: Border.all(color: const Color(0xFFFECACA)), // red-200
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -556,8 +546,8 @@ class AppErrorDisplay extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEE2E2), // red-100
+            decoration: const BoxDecoration(
+              color: Color(0xFFFEE2E2), // red-100
               borderRadius: AppTheme.radiusLg,
             ),
             child: const Icon(
@@ -599,22 +589,20 @@ class AppErrorDisplay extends StatelessWidget {
 
 /// Empty state widget
 class AppEmptyState extends StatelessWidget {
+
+  const AppEmptyState({
+    required this.icon, required this.title, super.key,
+    this.subtitle,
+    this.action,
+  });
   final IconData icon;
   final String title;
   final String? subtitle;
   final Widget? action;
 
-  const AppEmptyState({
-    super.key,
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.action,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
     return Center(
       child: Padding(
@@ -625,7 +613,7 @@ class AppEmptyState extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.primary50,
                 borderRadius: AppTheme.radiusFull,
               ),
@@ -663,14 +651,14 @@ class AppEmptyState extends StatelessWidget {
 
 /// Divider with text
 class AppSectionDivider extends StatelessWidget {
+
+  const AppSectionDivider({required this.text, super.key, this.color});
   final String text;
   final Color? color;
 
-  const AppSectionDivider({super.key, required this.text, this.color});
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
     return Row(
       children: [

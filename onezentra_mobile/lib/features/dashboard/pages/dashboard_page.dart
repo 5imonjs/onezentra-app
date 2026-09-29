@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
@@ -42,9 +43,9 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.user;
+    var theme = Theme.of(context);
+    var authProvider = context.watch<AuthProvider>();
+    var user = authProvider.user;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -92,8 +93,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildWelcomeSection(ThemeData theme, user) {
-    return AppCard(
+  Widget _buildWelcomeSection(ThemeData theme, user) => AppCard(
       padding: const EdgeInsets.all(AppTheme.space6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +103,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
               Container(
                 width: 56,
                 height: 56,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppTheme.primary100,
                   borderRadius: AppTheme.radiusXl,
                 ),
@@ -208,10 +208,9 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
         ],
       ),
     );
-  }
 
   Widget _buildStatsCards(ThemeData theme) {
-    final stats = [
+    var stats = [
       _StatItem('Penerimaan', '12', 'Hari Ini', Icons.inventory_2_rounded, AppTheme.primary600),
       _StatItem('Pengiriman', '8', 'Hari Ini', Icons.local_shipping_rounded, AppTheme.accent500),
       _StatItem('Opname', '3', 'Aktif', Icons.assignment_rounded, AppTheme.warning),
@@ -248,8 +247,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildStatCard(ThemeData theme, _StatItem stat) {
-    return AppCard(
+  Widget _buildStatCard(ThemeData theme, _StatItem stat) => AppCard(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       onTap: () => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${stat.title} - Coming soon')),
@@ -264,7 +262,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
                 width: 18,
                 height: 18,
                 decoration: BoxDecoration(
-                  color: stat.color.withOpacity(0.15),
+                  color: stat.color.withValues(alpha: 0.15),
                   borderRadius: AppTheme.radiusLg,
                 ),
                 child: Icon(
@@ -311,17 +309,32 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
         ],
       ),
     );
-  }
 
   Widget _buildQuickActions(ThemeData theme) {
-    final actions = [
-      _ActionItem('Penerimaan Baru', Icons.add_box_rounded, AppTheme.primary600, () {}),
-      _ActionItem('Rencana Kirim', Icons.schedule_rounded, AppTheme.accent500, () {}),
-      _ActionItem('Validasi SJ', Icons.verified_rounded, AppTheme.success, () {}),
-      _ActionItem('Opname', Icons.fact_check_rounded, AppTheme.warning, () {}),
-      _ActionItem('Biaya THL', Icons.receipt_long_rounded, AppTheme.info, () {}),
-      _ActionItem('Gate Check', Icons.door_front_door_rounded, AppTheme.primary700, () {}),
+    var actions = [
+      _ActionItem(
+        'Check In Point',
+        Icons.door_front_door_rounded,
+        AppTheme.primary700,
+        () => context.go('/gate'),
+        ['gate.view'],
+      ),
+      _ActionItem('Penerimaan Baru', Icons.add_box_rounded, AppTheme.primary600, () {}, ['penerimaan.view']),
+      _ActionItem('Rencana Kirim', Icons.schedule_rounded, AppTheme.accent500, () {}, ['rencana_kirim.view']),
+      _ActionItem('Validasi SJ', Icons.verified_rounded, AppTheme.success, () {}, ['sj_validation.view']),
+      _ActionItem('Opname', Icons.fact_check_rounded, AppTheme.warning, () {}, ['opname.view']),
+      _ActionItem('Biaya THL', Icons.receipt_long_rounded, AppTheme.info, () {}, ['biaya_thl.view']),
     ];
+
+    // Same rule as the web sidebar: an action the role cannot use is hidden.
+    var user = context.watch<AuthProvider>().user;
+    var visibleActions = actions
+        .where(
+          (action) =>
+              action.permissions.isEmpty ||
+              (user?.hasAnyPermission(action.permissions) ?? false),
+        )
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,17 +365,10 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
           physics: const NeverScrollableScrollPhysics(),
           child: Row(
             children: [
-              _buildActionCard(theme, actions[0]),
-              const SizedBox(width: AppTheme.space4),
-              _buildActionCard(theme, actions[1]),
-              const SizedBox(width: AppTheme.space4),
-              _buildActionCard(theme, actions[2]),
-              const SizedBox(width: AppTheme.space4),
-              _buildActionCard(theme, actions[3]),
-              const SizedBox(width: AppTheme.space4),
-              _buildActionCard(theme, actions[4]),
-              const SizedBox(width: AppTheme.space4),
-              _buildActionCard(theme, actions[5]),
+              for (var (index, action) in visibleActions.indexed) ...[
+                if (index > 0) const SizedBox(width: AppTheme.space4),
+                _buildActionCard(theme, action),
+              ],
             ],
           ),
         ),
@@ -370,8 +376,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildActionCard(ThemeData theme, _ActionItem action) {
-    return SizedBox(
+  Widget _buildActionCard(ThemeData theme, _ActionItem action) => SizedBox(
       width: 100,
       child: AppCard(
         padding: const EdgeInsets.all(AppTheme.space4),
@@ -383,7 +388,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: action.color.withOpacity(0.15),
+                color: action.color.withValues(alpha: 0.15),
                 borderRadius: AppTheme.radiusLg,
               ),
               child: Icon(
@@ -408,10 +413,9 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
         ),
       ),
     );
-  }
 
   Widget _buildRecentActivity(ThemeData theme) {
-    final activities = [
+    var activities = [
       _ActivityItem('Penerimaan PO-2024-001', 'Diterima 50 items', '2 jam lalu', Icons.inventory_2_rounded, AppTheme.success),
       _ActivityItem('Pengiriman RK-2024-015', 'Dikirim ke Depo B', '4 jam lalu', Icons.local_shipping_rounded, AppTheme.primary600),
       _ActivityItem('Opname Wave-03', 'Selesai validasi', '1 hari lalu', Icons.assignment_rounded, AppTheme.accent500),
@@ -446,7 +450,7 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: activities.length,
-          separatorBuilder: (context, index) => Divider(
+          separatorBuilder: (context, index) => const Divider(
             height: 1,
             color: AppTheme.gray100,
             indent: 56,
@@ -457,14 +461,13 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildActivityTile(ThemeData theme, _ActivityItem activity) {
-    return ListTile(
+  Widget _buildActivityTile(ThemeData theme, _ActivityItem activity) => ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: activity.color.withOpacity(0.15),
+          color: activity.color.withValues(alpha: 0.15),
           borderRadius: AppTheme.radiusLg,
         ),
         child: Icon(
@@ -494,34 +497,42 @@ class _DashboardPageState extends State<DashboardPage> with TickerProviderStateM
       ),
       onTap: () {},
     );
-  }
 }
 
 class _StatItem {
+
+  _StatItem(this.title, this.value, this.subtitle, this.icon, this.color);
   final String title;
   final String value;
   final String subtitle;
   final IconData icon;
   final Color color;
-
-  _StatItem(this.title, this.value, this.subtitle, this.icon, this.color);
 }
 
 class _ActionItem {
+
+  _ActionItem(
+    this.title,
+    this.icon,
+    this.color,
+    this.onTap, [
+    this.permissions = const [],
+  ]);
   final String title;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
 
-  _ActionItem(this.title, this.icon, this.color, this.onTap);
+  /// Hidden when the role lacks every slug — same rule as the web menu.
+  final List<String> permissions;
 }
 
 class _ActivityItem {
+
+  _ActivityItem(this.title, this.subtitle, this.time, this.icon, this.color);
   final String title;
   final String subtitle;
   final String time;
   final IconData icon;
   final Color color;
-
-  _ActivityItem(this.title, this.subtitle, this.time, this.icon, this.color);
 }

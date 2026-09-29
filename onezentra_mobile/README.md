@@ -72,27 +72,58 @@ flutter pub get
 
 ### Konfigurasi API URL
 
-Edit `lib/core/network/api_client.dart` untuk mengubah base URL:
+Base URL diatur lewat `--dart-define` saat run, **tidak** perlu edit kode.
+`flutter run` me-restart penuh saat build berubah, jadi hot reload saja tidak
+cukup untuk mengganti alamat server.
 
-```dart
-// Android Emulator
-static const String _baseUrl = 'http://10.0.2.2:8000/api/v1';
+```bash
+# Android Emulator (10.0.2.2 = host machine dari dalam emulator)
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
 
-// iOS Simulator
-static const String _baseUrl = 'http://localhost:8000/api/v1';
+# iOS Simulator
+flutter run --dart-define=API_BASE_URL=http://localhost:8000/api/v1
 
-// Physical Device (ganti dengan IP komputer Anda)
-static const String _baseUrl = 'http://192.168.x.x:8000/api/v1';
+# Physical Device — wajib pakai IP LAN komputer, bukan localhost.
+# localhost di HP menunjuk ke HP itu sendiri, bukan ke PC.
+flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000/api/v1
 ```
+
+Tanpa `--dart-define`, app memakai default per platform: `10.0.2.2:8000` di
+Android dan `localhost:8000` di iOS. Default ini **tidak** bekerja di physical
+device dan akan berakhir dengan pesan "Tidak ada koneksi ke server".
+
+Catatan tambahan:
+
+- `php artisan serve` hanya bind ke `127.0.0.1` secara default, sehingga tidak
+  terjangkau dari physical device. Jalankan dengan
+  `php artisan serve --host=0.0.0.0 --port=8000`.
+- Server bawaan PHP bersifat single-threaded; permintaan yang tumpang tindih
+  bisa membuat koneksi terputus. app menangani ini dengan pesan yang jelas.
+- Android memblokir HTTP cleartext sejak API 28. Build `debug` sudah punya
+  `network_security_config.xml` yang mengizinkan; build `release` hanya
+  mengizinkan HTTPS.
+- iOS sudah punya `NSLocalNetworkUsageDescription` di `Info.plist`; pengguna
+  tetap harus menyetujui izin local network saat app pertama kali meminta.
 
 ### Run Development
 
 ```bash
 # Android
-flutter run
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
 
-# iOS
-flutter run -d ios
+# iOS Simulator
+flutter run --dart-define=API_BASE_URL=http://localhost:8000/api/v1
+```
+
+### Melihat error yang tidak terduga
+
+Layar login menampilkan pesan generik bila error tidak terpetakan. Penyebab
+aslinya tetap dicatat ke log console:
+
+```bash
+flutter logs
+# atau
+flutter run 2>&1 | grep -i 'ApiClient\|AuthProvider'
 ```
 
 ## Design System

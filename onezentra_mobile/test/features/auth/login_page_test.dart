@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -25,10 +26,13 @@ class _FakeAuthRepository extends AuthRepository {
     required String email,
     required String password,
     String? deviceName,
-  }) {
-    return onLogin(email, password);
-  }
+  }) => onLogin(email, password);
 }
+
+/// Serves a canned body so the repository's response validation can be
+/// exercised without a network. A plain string stands in for a non-JSON body,
+/// which is what a proxy error page or an empty 204 looks like on the wire.
+AuthRepository _repositoryAnswering(dynamic body) => AuthRepository(post: (_, _) async => body);
 
 User _fakeUser() => User.fromJson(const {
   'id': 1,
@@ -54,7 +58,7 @@ Future<AuthProvider> _pumpApp(
   WidgetTester tester,
   AuthRepository repository,
 ) async {
-  final authProvider = AuthProvider(repository: repository);
+  var authProvider = AuthProvider(repository: repository);
   await authProvider.init();
 
   // A phone-sized surface so the layout is exercised the way users see it.
@@ -82,20 +86,18 @@ Future<void> _submitCredentials(
 }
 
 /// Decoration of the email field, i.e. the first input on the login card.
-InputDecoration _emailFieldDecoration(WidgetTester tester) {
-  return tester.widget<InputDecorator>(find.byType(InputDecorator).first).decoration;
-}
+InputDecoration _emailFieldDecoration(WidgetTester tester) => tester.widget<InputDecorator>(find.byType(InputDecorator).first).decoration;
 
 /// Resolved colour of the text typed into the email field.
 Color _emailFieldTextColor(WidgetTester tester) {
-  final text = tester.widget<EditableText>(find.byType(EditableText).first);
+  var text = tester.widget<EditableText>(find.byType(EditableText).first);
   return text.style.color!;
 }
 
 /// WCAG contrast ratio between two opaque colours.
 double _contrastRatio(Color a, Color b) {
-  final lighter = math.max(a.computeLuminance(), b.computeLuminance());
-  final darker = math.min(a.computeLuminance(), b.computeLuminance());
+  var lighter = math.max(a.computeLuminance(), b.computeLuminance());
+  var darker = math.min(a.computeLuminance(), b.computeLuminance());
   return (lighter + 0.05) / (darker + 0.05);
 }
 
@@ -111,7 +113,7 @@ void main() {
     testWidgets('menampilkan pesan validasi saat form kosong', (tester) async {
       await _pumpApp(
         tester,
-        _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
       await tester.tap(find.text('Masuk'));
@@ -124,7 +126,7 @@ void main() {
     testWidgets('menolak email dengan format salah', (tester) async {
       await _pumpApp(
         tester,
-        _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
       await _submitCredentials(
@@ -142,7 +144,7 @@ void main() {
     ) async {
       await _pumpApp(
         tester,
-        _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
       await _submitCredentials(
@@ -163,7 +165,7 @@ void main() {
       await _pumpApp(
         tester,
         _FakeAuthRepository(
-          (_, __) async =>
+          (_, _) async =>
               throw const ApiException('Email atau password salah.', 422),
         ),
       );
@@ -184,7 +186,7 @@ void main() {
     ) async {
       await _pumpApp(
         tester,
-        _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
       await _submitCredentials(
@@ -202,7 +204,7 @@ void main() {
       await _pumpApp(
         tester,
         _FakeAuthRepository(
-          (_, __) async =>
+          (_, _) async =>
               throw const ApiException('Email atau password salah.', 422),
         ),
       );
@@ -225,19 +227,19 @@ void main() {
   group('AuthProvider', () {
     test('mengabaikan login kedua saat request pertama berjalan', () async {
       var calls = 0;
-      final completer = Completer<AuthResponse>();
-      final provider = AuthProvider(
-        repository: _FakeAuthRepository((_, __) {
+      var completer = Completer<AuthResponse>();
+      var provider = AuthProvider(
+        repository: _FakeAuthRepository((_, _) {
           calls++;
           return completer.future;
         }),
       );
 
-      final firstCall = provider.login(
+      var firstCall = provider.login(
         email: 'budi@onezentra.com',
         password: 'rahasia123',
       );
-      final secondCall = await provider.login(
+      var secondCall = await provider.login(
         email: 'budi@onezentra.com',
         password: 'rahasia123',
       );
@@ -252,8 +254,8 @@ void main() {
     });
 
     test('menyimpan token dan masa berlaku dari server', () async {
-      final provider = AuthProvider(
-        repository: _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+      var provider = AuthProvider(
+        repository: _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
       await provider.login(email: 'budi@onezentra.com', password: 'rahasia123');
@@ -264,8 +266,8 @@ void main() {
     });
 
     test('session kedaluwarsa mengembalikan state ke login', () async {
-      final provider = AuthProvider(
-        repository: _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+      var provider = AuthProvider(
+        repository: _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
       await provider.login(email: 'budi@onezentra.com', password: 'rahasia123');
       expect(provider.isAuthenticated, isTrue);
@@ -303,10 +305,102 @@ void main() {
     });
 
     test('device name tidak melebihi batas server', () {
-      final deviceName = AuthRepository.defaultDeviceName;
+      var deviceName = AuthRepository.defaultDeviceName;
 
       expect(deviceName, isNotEmpty);
       expect(deviceName.length, lessThanOrEqualTo(100));
+    });
+
+    test('respons login tanpa field user ditolak dengan pesan jelas', () async {
+      var repository = _repositoryAnswering({
+        'message': 'Login successful',
+        'token': '1|abc',
+      });
+
+      await expectLater(
+        repository.login(email: 'budi@onezentra.com', password: 'rahasia123'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            contains('tidak memuat data pengguna'),
+          ),
+        ),
+      );
+    });
+
+    test('respons 2xy non-JSON ditolak dengan pesan yang bisa ditindaklanjuti', () async {
+      // Halaman HTML dari proxy atau 204 kosong: `as Map` akan melempar
+      // TypeError dan hanya bisa ditampilkan sebagai "kesalahan tak terduga".
+      var repository = _repositoryAnswering('halaman error');
+
+      await expectLater(
+        repository.login(email: 'budi@onezentra.com', password: 'rahasia123'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.message, 'message', contains('tidak valid'))
+              .having((e) => e.isConnectionIssue, 'isConnectionIssue', isTrue),
+        ),
+      );
+    });
+  });
+
+  group('Pemetaan error jaringan', () {
+    test('exception transport terpetakan jadi ApiException yang bisa dibaca user', () {
+      // Semua ini dulu lolos ke `catch (_)` provider sehingga user hanya
+      // melihat "Terjadi kesalahan tidak terduga".
+      for (var error in <Object>[
+        const SocketException('Connection refused'),
+        const HttpException('Connection closed before full header was received'),
+        const HandshakeException('CERTIFICATE_VERIFY_FAILED'),
+        const TlsException('handshake failed'),
+        TimeoutException('timeout'),
+      ]) {
+        var mapped = ApiClient.mapTransportError(error);
+
+        expect(
+          mapped,
+          isA<ApiException>(),
+          reason: '$error harus dipetakan, bukan lolos sebagai error mentah',
+        );
+        expect(mapped.isConnectionIssue, isTrue);
+        expect(mapped.message, isNotEmpty);
+        expect(
+          mapped.message,
+          isNot(contains('Terjadi kesalahan tidak terduga')),
+        );
+      }
+    });
+
+    test('user dengan field null dari server tidak membuat parsing gagal', () {
+      // Kolom `level`/`status` bisa null pada user lama; `as String` yang
+      // sebelumnya dipakai akan melempar TypeError saat login.
+      var user = User.fromJson(const {
+        'id': 7,
+        'full_name': 'Budi',
+        'email': 'budi@onezentra.com',
+        'kode_depo': null,
+        'nama_depo': null,
+        'level': null,
+        'status': null,
+        'created_at': null,
+        'updated_at': null,
+      });
+
+      expect(user.id, 7);
+      expect(user.email, 'budi@onezentra.com');
+      expect(user.level, isNotEmpty);
+      expect(user.status, isNotEmpty);
+    });
+
+    test('AuthResponse dari server tanpa message tidak melempar TypeError', () {
+      var response = AuthResponse.fromJson(const {
+        'token': '1|abc',
+        'user': {'id': 1, 'email': 'budi@onezentra.com'},
+      });
+
+      expect(response.token, '1|abc');
+      expect(response.user.id, 1);
     });
   });
 
@@ -317,7 +411,7 @@ void main() {
 
       await _pumpApp(
         tester,
-        _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
       expect(find.text('Selamat datang kembali'), findsOneWidget);
@@ -333,12 +427,12 @@ void main() {
 
       await _pumpApp(
         tester,
-        _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
-      final decoration = _emailFieldDecoration(tester);
-      final textColor = _emailFieldTextColor(tester);
-      final theme = Theme.of(
+      var decoration = _emailFieldDecoration(tester);
+      var textColor = _emailFieldTextColor(tester);
+      var theme = Theme.of(
         tester.element(find.byType(InputDecorator).first),
       );
 
@@ -363,11 +457,11 @@ void main() {
     ) async {
       await _pumpApp(
         tester,
-        _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
-      final decoration = _emailFieldDecoration(tester);
-      final textColor = _emailFieldTextColor(tester);
+      var decoration = _emailFieldDecoration(tester);
+      var textColor = _emailFieldTextColor(tester);
 
       expect(decoration.focusColor!.a, lessThan(1));
 
@@ -384,10 +478,10 @@ void main() {
     ) async {
       await _pumpApp(
         tester,
-        _FakeAuthRepository((_, __) async => _fakeAuthResponse()),
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
       );
 
-      final logo = tester.widget<Image>(find.byType(Image));
+      var logo = tester.widget<Image>(find.byType(Image));
       expect((logo.image as AssetImage).assetName, 'assets/images/LOGO.png');
 
       // The mark is recoloured for the active brightness and nothing else.
@@ -397,11 +491,11 @@ void main() {
       // No tinted plate: no decorated Container may sit between the logo and
       // the card, so no pill, tint or border can render behind the mark.
       tester.element(find.byType(Image)).visitAncestorElements((ancestor) {
-        final widget = ancestor.widget;
+        var widget = ancestor.widget;
         if (widget is Container && widget.decoration != null) {
           fail('Logo should not be wrapped in a decorated Container');
         }
-        return !(widget is Form);
+        return widget is! Form;
       });
     });
   });

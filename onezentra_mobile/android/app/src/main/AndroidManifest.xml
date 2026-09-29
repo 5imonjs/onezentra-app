@@ -3,6 +3,8 @@
          permission into the debug manifest, so without it every API call fails
          silently on a real device. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Camera for the Check In Point barcode scanner (mobile_scanner). -->
+    <uses-permission android:name="android.permission.CAMERA"/>
 
     <application
         android:label="onezentra_mobile"

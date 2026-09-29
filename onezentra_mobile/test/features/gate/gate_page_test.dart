@@ -1,0 +1,387 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:onezentra_mobile/core/network/api_client.dart';
+import 'package:onezentra_mobile/core/theme/app_theme.dart';
+import 'package:onezentra_mobile/features/auth/models/auth_models.dart';
+import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
+import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart';
+import 'package:onezentra_mobile/features/gate/models/gate_models.dart';
+import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
+import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
+import 'package:onezentra_mobile/main.dart';
+import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
+
+/// Repository that answers from canned data so the Check In Point flow can be
+/// exercised without a running API.
+class _FakeGateRepository extends GateRepository {
+
+  _FakeGateRepository({
+    this.transactions = const [],
+    this.cannedStats = const GateStats(),
+    this.lookupResult,
+    this.lookupError,
+  });
+  final List<GateTransaction> transactions;
+  final GateStats cannedStats;
+  final RencanaKirim? lookupResult;
+  final Object? lookupError;
+
+  final List<String> recordCalls = [];
+  int listCalls = 0;
+  int statsCalls = 0;
+  int lookupCalls = 0;
+
+  @override
+  Future<GateTransactionPage> list({
+    String? search,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    listCalls++;
+    return GateTransactionPage(
+      items: transactions,
+      currentPage: page,
+      lastPage: 1,
+      total: transactions.length,
+    );
+  }
+
+  @override
+  Future<GateStats> stats() async {
+    statsCalls++;
+    return cannedStats;
+  }
+
+  @override
+  Future<RencanaKirim> findByNoDokumen(String nomor) async {
+    lookupCalls++;
+    var error = lookupError;
+    if (error != null) {
+      throw error;
+    }
+    return lookupResult!;
+  }
+
+  @override
+  Future<GateTransaction> record({
+    required RencanaKirim rencanaKirim,
+    required String gateType,
+  }) async {
+    recordCalls.add(gateType);
+    return GateTransaction(
+      id: recordCalls.length,
+      rencanaKirimId: rencanaKirim.id ?? 0,
+      gateType: gateType,
+      nopol: rencanaKirim.nopol,
+      driverName: rencanaKirim.driverName,
+      poTransporter: rencanaKirim.poTransporter,
+      status: 'COMPLETED',
+      scanTime: DateTime(2026, 1, 15, 9, 30),
+      rencanaKirim: rencanaKirim,
+    );
+  }
+
+  @override
+  Future<String> verify(int rencanaKirimId) async => 'VERIFIED';
+}
+
+/// Auth repository that answers a canned login payload, so the widget tests
+/// get a logged-in user with a controlled permission list.
+class _FakeAuthRepository extends AuthRepository {
+
+  _FakeAuthRepository(this.body);
+  final Map<String, dynamic> body;
+
+  @override
+  Future<AuthResponse> login({
+    required String email,
+    required String password,
+    String? deviceName,
+  }) async => AuthResponse.fromJson(body);
+}
+
+const List<String> _fullGatePermissions = [
+  'gate.view',
+  'gate.create',
+  'rencana_kirim.edit',
+];
+
+Map<String, dynamic> _loginBody({List<String> permissions = _fullGatePermissions}) => {
+  'message': 'Login successful',
+  'token': 'token-abc',
+  'token_type': 'Bearer',
+  'expires_at': '2030-01-01T00:00:00.000Z',
+  'user': {
+    'id': 7,
+    'full_name': 'Gate Officer',
+    'email': 'gate@onezentra.com',
+    'level': 'operator',
+    'status': 'active',
+    'created_at': '2026-01-01T00:00:00.000Z',
+    'updated_at': '2026-01-01T00:00:00.000Z',
+    'roles': [],
+  },
+  'permissions': permissions,
+};
+
+Future<AuthProvider> _loginAuth({
+  List<String> permissions = _fullGatePermissions,
+}) async {
+  var auth = AuthProvider(
+    repository: _FakeAuthRepository(_loginBody(permissions: permissions)),
+  );
+  var ok = await auth.login(email: 'gate@onezentra.com', password: 'x');
+  expect(ok, isTrue);
+  return auth;
+}
+
+/// Pumps the screen under an authenticated [AuthProvider] and lets the
+/// post-frame bootstrap plus the fake repository futures settle.
+Future<void> _pumpGatePage(
+  WidgetTester tester,
+  AuthProvider auth,
+  GateRepository repository, {
+  Future<String?> Function()? openScanner,
+}) async {
+  await tester.pumpWidget(
+    ChangeNotifierProvider<AuthProvider>.value(
+      value: auth,
+      child: MaterialApp(
+        theme: AppTheme.light,
+        home: GatePage(repository: repository, openScanner: openScanner),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+RencanaKirim _lookupDocument({String status = 'SCHEDULED'}) => RencanaKirim(
+  id: 11,
+  poTransporter: 'PO-042',
+  nopol: 'B 9999 ZZ',
+  driverName: 'Andi',
+  status: status,
+  itemCount: 3,
+);
+
+void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
+  testWidgets('tanpa gate.view hanya kartu izin, API tidak dipanggil', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository();
+    var auth = await _loginAuth(permissions: []);
+
+    await _pumpGatePage(tester, auth, repository);
+
+    expect(
+      find.text('Anda tidak memiliki izin untuk melihat Check In Point.'),
+      findsOneWidget,
+    );
+    expect(find.text('Quick Scan'), findsNothing);
+    expect(repository.listCalls, 0);
+    expect(repository.statsCalls, 0);
+  });
+
+  testWidgets('menampilkan statistik dan riwayat gate', (tester) async {
+    var repository = _FakeGateRepository(
+      transactions: [
+        GateTransaction(
+          id: 1,
+          rencanaKirimId: 11,
+          gateType: 'INBOUND',
+          nopol: 'B 1234 XY',
+          driverName: 'Budi',
+          poTransporter: 'PO-TEST-001',
+          scanTime: DateTime(2026, 1, 15, 8, 30, 5),
+          rencanaKirim: const RencanaKirim(
+            id: 11,
+            poTransporter: 'PO-TEST-001',
+            nopol: 'B 1234 XY',
+            driverName: 'Budi',
+            status: 'CHECKED_IN',
+          ),
+        ),
+      ],
+      cannedStats: const GateStats(total: 5, hariIni: 2, terjadwal: 3, selesai: 4),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(tester, auth, repository);
+
+    expect(find.text('Check In Point'), findsWidgets);
+    expect(find.text('Quick Scan'), findsOneWidget);
+    expect(find.text('Hari ini'), findsOneWidget);
+    expect(find.text('1 transaksi tercatat'), findsOneWidget);
+    expect(find.text('PO-TEST-001'), findsWidgets);
+    expect(find.text('INBOUND'), findsOneWidget);
+    expect(repository.listCalls, greaterThan(0));
+    expect(repository.statsCalls, greaterThan(0));
+  });
+
+  testWidgets('lookup → Gate IN → konfirmasi → transaksi tercatat', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(lookupResult: _lookupDocument());
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DOKUMEN DITEMUKAN'), findsOneWidget);
+    var gateInButton = find.widgetWithText(FilledButton, 'Gate IN →');
+    expect(gateInButton, findsOneWidget);
+
+    await tester.ensureVisible(gateInButton);
+    await tester.tap(gateInButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Catat Gate IN?'), findsOneWidget);
+    expect(
+      find.text('Gate IN tercatat → status dokumen menjadi Check In.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Ya, Catat IN'));
+    await tester.pumpAndSettle();
+
+    expect(repository.recordCalls, ['INBOUND']);
+    expect(find.textContaining('Gate IN berhasil dicatat'), findsOneWidget);
+    expect(find.text('DOKUMEN DITEMUKAN'), findsNothing);
+  });
+
+  testWidgets('lookup yang tidak ditemukan menampilkan pesan server', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(
+      lookupError: const ApiException('Rencana kirim tidak ditemukan.', 404),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-TIDAK-ADA');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Rencana kirim tidak ditemukan'),
+      findsOneWidget,
+    );
+    expect(find.text('DOKUMEN DITEMUKAN'), findsNothing);
+  });
+
+  testWidgets('status tanpa aksi gate menampilkan panduan, bukan tombol', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(
+      lookupResult: _lookupDocument(status: 'VERIFIED'),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('menunggu proses bongkar'), findsOneWidget);
+    expect(find.text('Gate IN →'), findsNothing);
+    expect(find.text('Verifikasi ✓'), findsNothing);
+    expect(find.text('Gate OUT'), findsNothing);
+  });
+
+  testWidgets('tanpa gate.create tombol Gate IN diganti peringatan izin', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(lookupResult: _lookupDocument());
+    var auth = await _loginAuth(permissions: ['gate.view']);
+
+    await _pumpGatePage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('DOKUMEN DITEMUKAN'), findsOneWidget);
+    expect(find.text('Gate IN →'), findsNothing);
+    expect(find.textContaining('izin gate.create'), findsOneWidget);
+  });
+
+  testWidgets('tombol kamera mengisi hasil pindai lalu lookup otomatis', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(lookupResult: _lookupDocument());
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(
+      tester,
+      auth,
+      repository,
+      openScanner: () async => 'PO-042',
+    );
+
+    await tester.tap(find.byIcon(Icons.photo_camera_rounded));
+    await tester.pumpAndSettle();
+
+    expect(repository.lookupCalls, 1);
+    var field = tester.widget<TextFormField>(find.byType(TextFormField).first);
+    expect(field.controller?.text, 'PO-042');
+    expect(find.text('DOKUMEN DITEMUKAN'), findsOneWidget);
+    expect(find.text('Gate IN →'), findsOneWidget);
+  });
+
+  testWidgets('membatalkan pindai kamera tidak menjalankan lookup', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(lookupResult: _lookupDocument());
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(tester, auth, repository, openScanner: () async => null);
+
+    await tester.tap(find.byIcon(Icons.photo_camera_rounded));
+    await tester.pumpAndSettle();
+
+    expect(repository.lookupCalls, 0);
+    var field = tester.widget<TextFormField>(find.byType(TextFormField).first);
+    expect(field.controller?.text, isEmpty);
+    expect(find.text('DOKUMEN DITEMUKAN'), findsNothing);
+  });
+
+  testWidgets('route /gate membuka halaman dan tab bawah bisa kembali', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository();
+    var auth = await _loginAuth();
+    var router = buildRouter(auth, gateRepository: repository);
+
+    await tester.pumpWidget(
+      OneZentraApp(authProvider: auth, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    router.go('/gate');
+    await tester.pumpAndSettle();
+
+    // Halaman Check In Point yang tampil, bukan placeholder.
+    expect(find.text('Quick Scan'), findsOneWidget);
+    expect(find.text('Modul ini sedang dalam pengembangan'), findsNothing);
+
+    // Menekan tab bawah keluar dari halaman detail.
+    await tester.tap(find.text('Modul'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quick Scan'), findsNothing);
+    expect(find.text('Semua Modul'), findsOneWidget);
+  });
+}

@@ -5,6 +5,12 @@ import 'package:onezentra_mobile/core/network/api_client.dart';
 
 /// Auth Provider - manages authentication state
 class AuthProvider extends ChangeNotifier {
+
+  /// Dependencies are injectable so widget tests can substitute the repository
+  /// without touching the network or the platform storage.
+  AuthProvider({AuthRepository? repository, ApiClient? apiClient})
+    : _repository = repository ?? AuthRepository(),
+      _apiClient = apiClient ?? ApiClient();
   final AuthRepository _repository;
   final ApiClient _apiClient;
 
@@ -13,12 +19,6 @@ class AuthProvider extends ChangeNotifier {
   DateTime? _expiresAt;
   bool _isLoading = false;
   String? _error;
-
-  /// Dependencies are injectable so widget tests can substitute the repository
-  /// without touching the network or the platform storage.
-  AuthProvider({AuthRepository? repository, ApiClient? apiClient})
-    : _repository = repository ?? AuthRepository(),
-      _apiClient = apiClient ?? ApiClient();
 
   User? get user => _user;
   String? get token => _token;
@@ -35,7 +35,7 @@ class AuthProvider extends ChangeNotifier {
     _token = _apiClient.token;
     _expiresAt = _apiClient.expiresAt;
 
-    final storedUser = _apiClient.user;
+    var storedUser = _apiClient.user;
     if (storedUser != null) {
       try {
         _user = User.fromJson(storedUser);
@@ -70,7 +70,7 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final response = await _repository.login(
+      var response = await _repository.login(
         email: email,
         password: password,
         deviceName: deviceName,
@@ -95,7 +95,12 @@ class AuthProvider extends ChangeNotifier {
       _setError(e.message);
       _setLoading(false);
       return false;
-    } catch (_) {
+    } catch (e, stack) {
+      // Every expected failure is already an [ApiException]; anything landing
+      // here is a bug or an unmapped platform error. The generic message is
+      // useless on its own, so the cause is logged for `flutter logs`.
+      debugPrint('AuthProvider.login: unhandled ${e.runtimeType}: $e');
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
       _setError('Terjadi kesalahan tidak terduga. Silakan coba lagi.');
       _setLoading(false);
       return false;
@@ -136,7 +141,7 @@ class AuthProvider extends ChangeNotifier {
     if (!isAuthenticated) return;
 
     try {
-      final user = await _repository.getUser();
+      var user = await _repository.getUser();
       _user = user;
       await _apiClient.setAuth(
         _token!,
@@ -163,7 +168,9 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final user = await _repository.updateProfile(
+      // The profile response omits `permissions`, so keep the list the
+      // session already had instead of dropping every permission check.
+      var user = await _repository.updateProfile(
         fullName: fullName,
         email: email,
         currentPassword: currentPassword,
@@ -171,7 +178,9 @@ class AuthProvider extends ChangeNotifier {
         passwordConfirmation: passwordConfirmation,
       );
 
-      _user = user;
+      _user = user.permissions == null
+          ? user.withPermissions(_user?.permissions)
+          : user;
       await _apiClient.setAuth(
         _token!,
         _user!.toJson(),

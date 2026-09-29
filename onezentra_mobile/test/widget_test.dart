@@ -14,7 +14,7 @@ void main() {
   });
 
   testWidgets('App loads login page', (WidgetTester tester) async {
-    final authProvider = AuthProvider();
+    var authProvider = AuthProvider();
     await authProvider.init();
 
     await tester.pumpWidget(

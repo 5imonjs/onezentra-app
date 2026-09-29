@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// read from a plain-text backup. The user profile is not a secret, so it
 /// stays in [SharedPreferences].
 class ApiClient {
+  // Singleton pattern
+  factory ApiClient() => _instance;
+  ApiClient._internal();
+
+  static final ApiClient _instance = ApiClient._internal();
+
   /// Base URL of the OneZentra API.
   ///
   /// Can be overridden per build without touching the source:
@@ -22,9 +29,15 @@ class ApiClient {
   static const String _overrideBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   /// The Android emulator cannot reach the host machine on `localhost`.
-  static String get _platformBaseUrl => Platform.isAndroid
-      ? 'http://10.0.2.2:8000/api/v1' // host machine, seen from the Android emulator
-      : 'http://localhost:8000/api/v1'; // iOS simulator / desktop
+  ///
+  /// [kIsWeb] is checked first: `Platform.isAndroid` throws UnsupportedError
+  /// in a web build (dart:io is not implemented there).
+  static String get _platformBaseUrl {
+    if (kIsWeb) return 'http://localhost:8000/api/v1';
+    return Platform.isAndroid
+        ? 'http://10.0.2.2:8000/api/v1' // host machine, seen from the Android emulator
+        : 'http://localhost:8000/api/v1'; // iOS simulator / desktop
+  }
 
   static String get resolvedBaseUrl =>
       _overrideBaseUrl.isNotEmpty ? _overrideBaseUrl : _platformBaseUrl;
@@ -49,11 +62,6 @@ class ApiClient {
   /// local session and send the user back to the login screen.
   void Function()? onUnauthorized;
 
-  // Singleton pattern
-  static final ApiClient _instance = ApiClient._internal();
-  factory ApiClient() => _instance;
-  ApiClient._internal();
-
   String get baseUrl => resolvedBaseUrl;
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
@@ -63,7 +71,7 @@ class ApiClient {
   /// The Sanctum token carries its own expiry. A token that is about to expire
   /// is treated as expired so we fail fast instead of waiting for a 401.
   bool get isExpired {
-    final expiry = _expiresAt;
+    var expiry = _expiresAt;
     if (expiry == null) return false;
     return !DateTime.now().isBefore(
       expiry.subtract(const Duration(seconds: 30)),
@@ -74,10 +82,10 @@ class ApiClient {
   Future<void> init() async {
     _token = await _readSecure(_tokenKey);
 
-    final prefs = await SharedPreferences.getInstance();
+    var prefs = await SharedPreferences.getInstance();
     if (_token == null) {
       // One-time migration from the previous plain-text storage.
-      final legacyToken = prefs.getString(_tokenKey);
+      var legacyToken = prefs.getString(_tokenKey);
       if (legacyToken != null && legacyToken.isNotEmpty) {
         _token = legacyToken;
         await _writeSecure(_tokenKey, legacyToken);
@@ -85,10 +93,10 @@ class ApiClient {
       }
     }
 
-    final expiresAt = await _readSecure(_expiresAtKey);
+    var expiresAt = await _readSecure(_expiresAtKey);
     _expiresAt = expiresAt == null ? null : DateTime.tryParse(expiresAt);
 
-    final userJson = prefs.getString(_userKey);
+    var userJson = prefs.getString(_userKey);
     if (userJson != null && userJson.isNotEmpty) {
       _user = _decodeMap(userJson);
     }
@@ -100,7 +108,7 @@ class ApiClient {
     Map<String, dynamic> user, {
     String? expiresAt,
   }) async {
-    final expiry = expiresAt == null ? null : DateTime.tryParse(expiresAt);
+    var expiry = expiresAt == null ? null : DateTime.tryParse(expiresAt);
 
     _token = token;
     _user = user;
@@ -113,7 +121,7 @@ class ApiClient {
       await _writeSecure(_expiresAtKey, expiry.toIso8601String());
     }
 
-    final prefs = await SharedPreferences.getInstance();
+    var prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userKey, jsonEncode(user));
   }
 
@@ -126,13 +134,13 @@ class ApiClient {
     await _secureStorage.delete(key: _tokenKey);
     await _secureStorage.delete(key: _expiresAtKey);
 
-    final prefs = await SharedPreferences.getInstance();
+    var prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userKey);
   }
 
   /// Get headers for authenticated requests
   Map<String, String> _getHeaders({bool requireAuth = true}) {
-    final headers = <String, String>{
+    var headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
@@ -146,7 +154,7 @@ class ApiClient {
 
   /// Handle response and throw on error
   dynamic _handleResponse(http.Response response, String endpoint) {
-    final body = _decodeBody(response);
+    var body = _decodeBody(response);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
@@ -175,7 +183,7 @@ class ApiClient {
   }
 
   Map<String, dynamic>? _decodeMap(String raw) {
-    final decoded = jsonDecode(raw);
+    var decoded = jsonDecode(raw);
     return decoded is Map<String, dynamic> ? decoded : null;
   }
 
@@ -190,10 +198,10 @@ class ApiClient {
       return 'Server sedang bermasalah. Silakan coba lagi nanti.';
     }
 
-    final validationError = _firstValidationMessage(body);
+    var validationError = _firstValidationMessage(body);
     if (validationError != null) return validationError;
 
-    final serverMessage = body?['message']?.toString();
+    var serverMessage = body?['message']?.toString();
     if (serverMessage != null && serverMessage.isNotEmpty) return serverMessage;
 
     return 'Permintaan gagal (HTTP $statusCode).';
@@ -201,10 +209,10 @@ class ApiClient {
 
   /// Laravel validation errors arrive as `{"errors": {"email": ["..."]}}`.
   String? _firstValidationMessage(Map<String, dynamic>? body) {
-    final errors = body?['errors'];
+    var errors = body?['errors'];
     if (errors is! Map) return null;
 
-    for (final messages in errors.values) {
+    for (var messages in errors.values) {
       if (messages is List && messages.isNotEmpty) {
         return messages.first.toString();
       }
@@ -218,8 +226,7 @@ class ApiClient {
   }
 
   /// GET request
-  Future<dynamic> get(String endpoint, {bool requireAuth = true}) {
-    return _send(
+  Future<dynamic> get(String endpoint, {bool requireAuth = true}) => _send(
       endpoint,
       () => http.get(
         _uri(endpoint),
@@ -227,15 +234,13 @@ class ApiClient {
       ),
       requireAuth: requireAuth,
     );
-  }
 
   /// POST request
   Future<dynamic> post(
     String endpoint,
     Map<String, dynamic> body, {
     bool requireAuth = true,
-  }) {
-    return _send(
+  }) => _send(
       endpoint,
       () => http.post(
         _uri(endpoint),
@@ -244,15 +249,13 @@ class ApiClient {
       ),
       requireAuth: requireAuth,
     );
-  }
 
   /// PUT request
   Future<dynamic> put(
     String endpoint,
     Map<String, dynamic> body, {
     bool requireAuth = true,
-  }) {
-    return _send(
+  }) => _send(
       endpoint,
       () => http.put(
         _uri(endpoint),
@@ -261,15 +264,13 @@ class ApiClient {
       ),
       requireAuth: requireAuth,
     );
-  }
 
   /// PATCH request
   Future<dynamic> patch(
     String endpoint,
     Map<String, dynamic> body, {
     bool requireAuth = true,
-  }) {
-    return _send(
+  }) => _send(
       endpoint,
       () => http.patch(
         _uri(endpoint),
@@ -278,11 +279,9 @@ class ApiClient {
       ),
       requireAuth: requireAuth,
     );
-  }
 
   /// DELETE request
-  Future<dynamic> delete(String endpoint, {bool requireAuth = true}) {
-    return _send(
+  Future<dynamic> delete(String endpoint, {bool requireAuth = true}) => _send(
       endpoint,
       () => http.delete(
         _uri(endpoint),
@@ -290,7 +289,6 @@ class ApiClient {
       ),
       requireAuth: requireAuth,
     );
-  }
 
   Uri _uri(String endpoint) => Uri.parse('$baseUrl$endpoint');
 
@@ -306,32 +304,71 @@ class ApiClient {
       throw const ApiException('Sesi berakhir. Silakan login kembali.', 401);
     }
 
-    final http.Response response;
+    http.Response response;
     try {
       response = await request().timeout(requestTimeout);
-    } on TimeoutException {
-      throw const ApiException(
+    } on Object catch (error) {
+      throw mapTransportError(error);
+    }
+
+    return _handleResponse(response, endpoint);
+  }
+
+  /// Translates a transport failure into an [ApiException] carrying a message
+  /// the user can act on.
+  ///
+  /// Exposed for tests: [HttpClient] cannot be stubbed, so the mapping itself
+  /// is verified directly. Any failure not listed still becomes an
+  /// [ApiException] rather than escaping as a raw error, because the login
+  /// screen can only surface a generic message for unmapped exceptions.
+  static ApiException mapTransportError(Object error) {
+    if (error is ApiException) return error;
+
+    if (error is TimeoutException) {
+      return const ApiException(
         'Server tidak merespons. Periksa koneksi Anda lalu coba lagi.',
         0,
       );
-    } on SocketException {
-      throw const ApiException(
-        'Tidak ada koneksi ke server. Periksa jaringan Anda.',
-        0,
-      );
-    } on HandshakeException {
-      throw const ApiException(
+    }
+    if (error is HandshakeException) {
+      return const ApiException(
         'Koneksi aman tidak dapat dibuat. Periksa konfigurasi server.',
         0,
       );
-    } on http.ClientException {
-      throw const ApiException(
+    }
+    if (error is TlsException) {
+      return const ApiException(
+        'Sertifikat server ditolak. Periksa konfigurasi keamanan server.',
+        0,
+      );
+    }
+    if (error is http.ClientException) {
+      return const ApiException(
         'Gagal menghubungi server. Periksa koneksi Anda.',
         0,
       );
     }
+    if (error is SocketException) {
+      return const ApiException(
+        'Tidak ada koneksi ke server. Periksa jaringan Anda.',
+        0,
+      );
+    }
+    if (error is HttpException) {
+      // Truncated response or incomplete headers. Common against
+      // `php artisan serve`, whose single-threaded PHP server drops
+      // connections when a second request overlaps the first.
+      return const ApiException(
+        'Koneksi ke server terputus di tengah transfer. Silakan coba lagi.',
+        0,
+      );
+    }
 
-    return _handleResponse(response, endpoint);
+    debugPrint('ApiClient: unhandled transport error ${error.runtimeType}: $error');
+    return const ApiException(
+      'Tidak ada koneksi ke server. Periksa jaringan Anda.',
+      0,
+    );
   }
 
   /// Secure storage is not available on every platform (e.g. a Linux host used
@@ -355,11 +392,11 @@ class ApiClient {
 
 /// Custom exception for API errors
 class ApiException implements Exception {
+
+  const ApiException(this.message, this.statusCode, [this.data]);
   final String message;
   final int statusCode;
   final dynamic data;
-
-  const ApiException(this.message, this.statusCode, [this.data]);
 
   /// The stored token was rejected or has expired.
   bool get isUnauthorized => statusCode == 401;

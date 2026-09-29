@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
+import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Modules Page - Grid of all available modules
@@ -10,13 +12,13 @@ class ModulesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    var theme = Theme.of(context);
 
-    final modules = [
+    var modules = [
+      _Module('Check In Point', 'Pemeriksaan masuk/keluar', Icons.door_front_door_rounded, AppTheme.primary700, ['gate.view'], route: '/gate'),
       _Module('Penerimaan', 'Terima & kelola barang masuk', Icons.inventory_2_rounded, AppTheme.primary600, ['penerimaan.view']),
       _Module('Rencana Kirim', 'Jadwalkan & kelola pengiriman', Icons.schedule_rounded, AppTheme.accent500, ['rencana_kirim.view']),
       _Module('Validasi SJ', 'Validasi Surat Jalan', Icons.verified_rounded, AppTheme.success, ['sj_validation.view']),
-      _Module('Gate Check', 'Pemeriksaan masuk/keluar', Icons.door_front_door_rounded, AppTheme.primary700, ['gate.view']),
       _Module('Opname Expired', 'Opname barang expired', Icons.fact_check_rounded, AppTheme.warning, ['opname.view']),
       _Module('Biaya THL', 'Pengajuan biaya THL', Icons.receipt_long_rounded, AppTheme.info, ['biaya_thl.view']),
       _Module('Biaya Retribusi', 'Pengajuan biaya retribusi', Icons.money_rounded, AppTheme.danger, ['biaya_retribusi.view']),
@@ -26,6 +28,17 @@ class ModulesPage extends StatelessWidget {
       _Module('Standarisasi', 'Standarisasi tumpukan', Icons.layers_rounded, AppTheme.gray800, ['standarisasi.view']),
       _Module('Dock Management', 'Kelola dok & jadwal', Icons.dock_rounded, AppTheme.gray900, ['receiving.view']),
     ];
+
+    // Same rule as the web sidebar: a module whose permission the role lacks
+    // is never rendered.
+    var user = context.watch<AuthProvider>().user;
+    var visibleModules = modules
+        .where(
+          (module) =>
+              module.permissions.isEmpty ||
+              (user?.hasAnyPermission(module.permissions) ?? false),
+        )
+        .toList();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -54,8 +67,8 @@ class ModulesPage extends StatelessWidget {
                 mainAxisSpacing: AppTheme.space4,
                 childAspectRatio: 1.1,
               ),
-              itemCount: modules.length,
-              itemBuilder: (context, index) => _buildModuleCard(context, theme, modules[index]),
+              itemCount: visibleModules.length,
+              itemBuilder: (context, index) => _buildModuleCard(context, theme, visibleModules[index]),
             ),
             const SizedBox(height: AppTheme.space8),
           ],
@@ -64,10 +77,14 @@ class ModulesPage extends StatelessWidget {
     );
   }
 
-  Widget _buildModuleCard(BuildContext context, ThemeData theme, _Module module) {
-    return AppCard(
+  Widget _buildModuleCard(BuildContext context, ThemeData theme, _Module module) => AppCard(
       padding: const EdgeInsets.all(AppTheme.space5),
       onTap: () {
+        var route = module.route;
+        if (route != null) {
+          context.go(route);
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${module.title} - Coming soon')),
         );
@@ -134,15 +151,25 @@ class ModulesPage extends StatelessWidget {
         ],
       ),
     );
-  }
 }
 
 class _Module {
+
+  _Module(
+    this.title,
+    this.description,
+    this.icon,
+    this.color,
+    this.permissions, {
+    this.route,
+  });
   final String title;
   final String description;
   final IconData icon;
   final Color color;
   final List<String> permissions;
 
-  _Module(this.title, this.description, this.icon, this.color, this.permissions);
+  /// When set, tapping the card navigates to this route instead of showing
+  /// a "Coming soon" snackbar.
+  final String? route;
 }

@@ -33,7 +33,11 @@ linter:
     prefer_constructors_over_static_methods: true
     prefer_expression_function_bodies: true
     prefer_final_fields: true
-    prefer_final_locals: true
+    # Bertentangan dengan unnecessary_final di bawah: yang ini menuntut
+    # `final` pada semua local, yang itu menagih `final` yang tidak perlu.
+    # Satu dari keduanya harus nonaktif; pilih yang tidak menuntut penulisan
+    # `final` pada setiap variabel lokal.
+    prefer_final_locals: false
     prefer_foreach: true
     prefer_function_declarations_over_variables: true
     prefer_generic_function_type_aliases: true
@@ -46,7 +50,11 @@ linter:
     prefer_iterable_whereType: true
     prefer_mixin: true
     prefer_null_aware_method_calls: true
-    prefer_relative_imports: true
+    # Bertentangan dengan always_use_package_imports di atas: yang satu
+    # menuntut import `package:`, yang lain menuntut import relatif untuk
+    # file di dalam lib/. Keduanya tidak bisa dipenuhi bersamaan, dan
+    # selalu_use_package_imports menang karena berlaku lintas package.
+    prefer_relative_imports: false
     prefer_single_quotes: true
     prefer_spread_collections: true
     prefer_typing_uninitialized_variables: true
