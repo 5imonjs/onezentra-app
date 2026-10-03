@@ -356,5 +356,5 @@ vendor/bin/pint --dirty --format agent
 | **Test database memakai refresh-in-memory, bukan MySQL produksi.** Perilaku index dan locking dapat berbeda. | Performa nyata bisa berbeda dari angka di sini |
 | **Mobile app (Flutter) belum diuji** — hanya API mobile (2 route) yang tercakup. | Risiko pada UI mobile belum dinilai |
 | **Tidak ada static analysis otomatis** (PHPStan/Psalm). | Bug logika yang lolos test belum terdeteksi |
-| **`app/Policies` belum ada.** Otorisasi masih berupa guard/permission langsung di dalam controller, tersebar. Guard depo yang berulang sudah dirapikan ke `AuthorizesDepotRow`, tapi pemisahan model → policy yang terpisah belum. | Sulit di-review: aturan akses harus dibaca dari dalam method controller, bukan dari satu tempat |
+| **`app/Policies` hanya menutup aturan actor-target.** `UserPolicy` memegang 3 aturan yang butuh tahu aktor DAN target (`admin_master` di store/update/destroy). Gate permission tetap di route, depot scoping tetap di `AuthorizesDepotRow`. Policy untuk model lain belum ada — dan memang belum dibutuhkan. | Aturan akses actor-target user terpusat; aturan lain tetap di tempat semula |
 | **Tidak ada remote git.** Seluruh riwayat masih lokal di branch `main`. | Tidak ada backup di luar mesin ini; riwayat hilang jika disk bermasalah |
