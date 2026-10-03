@@ -57,3 +57,10 @@ npm-debug.log*
 
 # Next.js build output
 .next/
+
+# Playwright E2E — artefak hasil run (trace, screenshot, video).
+# Hanya konfigurasi & spec yang di-commit, bukan hasil eksekusi.
+onezentra-web/test-results/
+onezentra-web/playwright-report/
+onezentra-web/blob-report/
+onezentra-web/.playwright/
