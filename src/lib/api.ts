@@ -184,6 +184,25 @@ export const npn = {
   searchProduct: (q: string) => apiClient.get('/npn/search-product', { params: { q } }),
 };
 
+export const clusterPrincipal = {
+  list: (params?: Record<string, unknown>) => apiClient.get('/cluster-principal', { params }),
+  filters: () => apiClient.get('/cluster-principal/filters'),
+  get: (id: number) => apiClient.get(`/cluster-principal/${id}`),
+  create: (data: Record<string, unknown>) => apiClient.post('/cluster-principal', data),
+  update: (id: number, data: Record<string, unknown>) => apiClient.put(`/cluster-principal/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/cluster-principal/${id}`),
+  bulkDelete: (ids: number[]) => apiClient.post('/cluster-principal/bulk-delete', { ids }),
+  import: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/cluster-principal/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  export: (params?: Record<string, unknown>) => apiClient.get('/cluster-principal/export', { params, responseType: 'blob' }),
+  template: () => apiClient.get('/cluster-principal/template', { responseType: 'blob' }),
+};
+
 export const penerimaan = {
   list: (params?: Record<string, unknown>) => apiClient.get('/penerimaan', { params }),
   get: (id: number) => apiClient.get(`/penerimaan/${id}`),
