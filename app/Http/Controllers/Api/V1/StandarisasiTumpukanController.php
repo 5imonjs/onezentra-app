@@ -36,8 +36,6 @@ class StandarisasiTumpukanController extends Controller
 
     private const NPN_LIST_COLUMNS = 'id,BOSnetszProductId,SAPszProductId,szNickName,szNickNameNew,szShortDescription,szBarcode,szBarcodeSekunder,szBarcodeTersier';
 
-    private const WORKFLOW_ROLES = ['blc', 'staff_logistic'];
-
     public function __construct(private EmailNotificationService $emailService) {}
 
     public function index(Request $request): JsonResponse
@@ -297,9 +295,23 @@ class StandarisasiTumpukanController extends Controller
         return $query;
     }
 
+    /**
+     * Siapa yang boleh melewati scoping depo ditentukan oleh permission
+     * `depot.view_all`, bukan daftar slug di sini.
+     *
+     * Daftar lama `['blc', 'staff_logistic']` ditulis langsung di source,
+     * sehingga user yang secara formal TIDAK punya `depot.view_all` tetap
+     * bisa menyentuh baris depo lain — permission bukan lagi sumber
+     * kebenaran dan selisihnya tidak terlihat dari mana pun kecuali membaca
+     * controller ini. Peran yang benar-benar lintas depo sekarang
+     * ditentukan di PermissionSeeder, sama seperti modul lain.
+     *
+     * `isAdminMaster()` tetap diperiksa eksplisit karena peran itu punya
+     * jalur admin tersendiri di luar permission.
+     */
     private function canManageRow(User $user, StandarisasiTumpukan $row): bool
     {
-        if ($user->isAdminMaster() || $user->hasAnyRole(self::WORKFLOW_ROLES)) {
+        if ($user->isAdminMaster()) {
             return true;
         }
 

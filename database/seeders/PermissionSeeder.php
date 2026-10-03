@@ -160,6 +160,13 @@ class PermissionSeeder extends Seeder
                 'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.delete',
                 'approval.submit',
                 'gate.edit', 'gate.delete',
+                // BLC menyetujui standarisasi lintas depo. Akses ini dulu
+                // datang dari daftar slug hardcode di controller
+                // (StandarisasiTumpukanController::canManageRow), sehingga
+                // tidak terdata di sini dan tidak bisa diaudit. Sekarang
+                // dicatat sebagai permission supaya menjadi sumber kebenaran
+                // tunggal, sama seperti modul lain.
+                'depot.view_all',
             ],
             'bac' => [
                 'dashboard.view', 'penerimaan.view', 'npn.view',
