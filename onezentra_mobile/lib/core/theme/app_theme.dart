@@ -2,9 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// OneZentra Mobile Theme
-/// Matches the web app design system from globals.css
+///
+/// Mirrors the web design system in `globals.css`: the neutral ramp is defined
+/// by ROLE, not by lightness, so the same token reads correctly in both
+/// brightness modes. In light the ramp runs light -> dark, in dark it runs
+/// dark -> light.
+///
+/// That role-based approach is what lets the two themes share ONE set of
+/// class-level tokens instead of every widget branching on brightness. The
+/// dark values are the defaults (field hardware is the primary use case, and
+/// the whole app is dark-first); [gray] and friends return the light variant
+/// when a light theme is requested.
 class AppTheme {
-  // Primary Colors (Indigo)
+  // Primary Colors (Indigo) — brand identity, identical in both themes.
   static const Color primary50 = Color(0xFFEEF2FF);
   static const Color primary100 = Color(0xFFE0E7FF);
   static const Color primary200 = Color(0xFFC7D2FE);
@@ -17,36 +27,64 @@ class AppTheme {
   static const Color primary900 = Color(0xFF312E81);
   static const Color primary950 = Color(0xFF1E1B4B);
 
-  // Accent Colors (Teal)
+  // Accent Colors (Teal) — brand identity, identical in both themes.
   static const Color accent400 = Color(0xFF2DD4BF);
   static const Color accent500 = Color(0xFF14B8A6);
 
-  // Surface Colors
-  static const Color surface = Color(0xFFF8FAFC);
-  static const Color surfaceCard = Color(0xFFFFFFFF);
-  static const Color surfaceHover = Color(0xFFF1F5F9);
+  // --- Dark palette (defaults) -------------------------------------------
+  // These static consts are the dark aurora values and are what the rest of
+  // the app references. A light theme supplies its own ramp via the
+  // brightness-aware getters below.
+  static const Color surface = Color(0xFF0F172A);
+  static const Color surfaceCard = Color(0xFF162033);
+  static const Color surfaceHover = Color(0xFF1D2942);
 
-  // Gray Scale
-  static const Color gray50 = Color(0xFFF8FAFC);
-  static const Color gray100 = Color(0xFFF1F5F9);
-  static const Color gray200 = Color(0xFFE2E8F0);
-  static const Color gray300 = Color(0xFFCBD5E1);
-  static const Color gray400 = Color(0xFF94A3B8);
-  static const Color gray500 = Color(0xFF64748B);
-  static const Color gray600 = Color(0xFF475569);
-  static const Color gray700 = Color(0xFF334155);
-  static const Color gray800 = Color(0xFF1E293B);
-  static const Color gray900 = Color(0xFF0F172A);
+  // Gray Scale — inverted to match the web ramp, so `gray50` is the deepest
+  // surface and `gray900` the brightest text. `gray400`–`gray600` stay in the
+  // mid band because that is where muted body text lives.
+  static const Color gray50 = Color(0xFF0A0F1C);
+  static const Color gray100 = Color(0xFF0F172A);
+  static const Color gray200 = Color(0xFF162033);
+  static const Color gray300 = Color(0xFF24324A);
+  static const Color gray400 = Color(0xFF64748B);
+  static const Color gray500 = Color(0xFF94A3B8);
+  static const Color gray600 = Color(0xFFC3CEDD);
+  static const Color gray700 = Color(0xFFE2E8F0);
+  static const Color gray800 = Color(0xFFF1F5F9);
+  static const Color gray900 = Color(0xFFFFFFFF);
 
-  // Semantic Colors
+  // Semantic Colors — solid tones for bars, dots and active states. The
+  // readable "on well" variants live in [successText] & friends.
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color danger = Color(0xFFEF4444);
   static const Color info = Color(0xFF3B82F6);
 
-  // Background
-  static const Color background = Color(0xFFF1F5F9);
-  static const Color foreground = Color(0xFF0F172A);
+  // Readable status text/icon tones for use on the dark tinted wells below.
+  static const Color successText = Color(0xFFA7F3D0);
+  static const Color warningText = Color(0xFFFDE68A);
+  static const Color dangerText = Color(0xFFFECACA);
+  static const Color infoText = Color(0xFFBFDBFE);
+
+  // Deeper well shade for the icon chip inside an already-tinted notice box,
+  // where the outer tint alone would leave the chip invisible.
+  static const Color warningDark = Color(0xFF451A03);
+
+  // Tinted status wells (the mobile equivalent of `bg-*-50` on the web).
+  static const Color successWell = Color(0xFF052E21);
+  static const Color warningWell = Color(0xFF2B1A03);
+  static const Color dangerWell = Color(0xFF2C0A0E);
+  static const Color infoWell = Color(0xFF0A1A33);
+
+  // Background — dark-first to match the web app's aurora canvas.
+  static const Color background = Color(0xFF0F172A);
+  static const Color foreground = Color(0xFFF1F5F9);
+
+  // Always-dark panels: hero headers, modal headers, dark buttons. Mirrors
+  // the web `ink` scale — these stay dark regardless of brightness.
+  static const Color ink800 = Color(0xFF16203A);
+  static const Color ink900 = Color(0xFF0F172A);
+  static const Color ink950 = Color(0xFF080D18);
 
   // Focus Ring
   static const Color focusRing = primary600;

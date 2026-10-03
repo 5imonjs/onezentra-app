@@ -1,0 +1,12 @@
+{
+    // Suggestions for everyone who opens this repo.
+    // The Tailwind extension is REQUIRED, not a nicety: globals.css uses
+    // Tailwind v4 at-rules (@theme, @apply, @variant, @utility) which VS Code's
+    // built-in CSS checker does not recognise. Without it the editor reports
+    // "Unknown at rule" on every one of them, and you also lose autocomplete
+    // for the custom theme tokens (bg-surface-card, ink-*, etc.).
+    "recommendations": [
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode"
+    ]
+}

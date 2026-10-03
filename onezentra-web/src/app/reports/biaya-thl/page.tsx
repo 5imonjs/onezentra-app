@@ -59,11 +59,11 @@ const STATUS_TONE: Record<string, { badge: string; dot: string }> = {
   revisi: { badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
   pending: { badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
   checked: { badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-  rlh_approved: { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500' },
+  rlh_approved: { badge: 'bg-chip-primary text-accent-text border-chip-primary-border', dot: 'bg-primary-500' },
 };
 
 const statusTone = (status: string): string => {
-  return STATUS_TONE[status]?.badge ?? 'bg-gray-50 text-gray-600 border-gray-200';
+  return STATUS_TONE[status]?.badge ?? 'bg-surface-raised text-gray-600 border-gray-300';
 };
 
 const statusDot = (status: string): string => {
@@ -242,15 +242,15 @@ export default function BiayaThlReportPage() {
     <DashboardLayout>
       <div className="space-y-6 animate-slide-up">
         {/* Header */}
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 lg:p-7 text-white shadow-sm">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 lg:p-7 text-white shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm shrink-0">
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659 1.171-1.671a4.5 4.5 0 0 1 5.07-1.651 3 3 0 0 1 1.482 5.369L12 12" /></svg>
             </div>
             <div className="min-w-0">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Laporan</p>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan</p>
               <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Biaya THL</h1>
-              <p className="text-gray-400 mt-0.5 text-sm">Rincian upah tenaga kerja lepas per surat jalan</p>
+              <p className="text-ink-fg-muted mt-0.5 text-sm">Rincian upah tenaga kerja lepas per surat jalan</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-4">
@@ -261,7 +261,7 @@ export default function BiayaThlReportPage() {
               </span>
             )}
             {status && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-semibold border border-white/10 text-gray-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-semibold border border-white/10 text-ink-fg">
                 <span className={`w-1.5 h-1.5 rounded-full ${statusDot(status)}`} aria-hidden="true" />
                 Status: {statusLabel(status)}
               </span>
@@ -280,11 +280,11 @@ export default function BiayaThlReportPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-white">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-slate-900 to-slate-700 text-white flex items-center justify-center shadow">
+                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-ink-900 to-slate-700 text-white flex items-center justify-center shadow">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
                 </div>
                 <div>
@@ -294,24 +294,24 @@ export default function BiayaThlReportPage() {
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4">
-              <div><label htmlFor="bt-from" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari Tanggal</label><input id="bt-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-slate-50 focus:bg-white" /></div>
-              <div><label htmlFor="bt-to" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai Tanggal</label><input id="bt-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-slate-50 focus:bg-white" /></div>
-              <div><label htmlFor="bt-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label><select id="bt-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-slate-50 focus:bg-white"><option value="">Semua Depo</option>{depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}</select></div>
-              <div><label htmlFor="bt-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label><select id="bt-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-slate-50 focus:bg-white">{STATUS_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}</select></div>
-              <div className="sm:col-span-2 lg:col-span-2"><label htmlFor="bt-search" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span><input id="bt-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Nama THL, SJ, nopol, depo…" className="input-field text-sm py-2 pl-9 bg-slate-50 focus:bg-white" /></div></div>
+              <div><label htmlFor="bt-from" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari Tanggal</label><input id="bt-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" /></div>
+              <div><label htmlFor="bt-to" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai Tanggal</label><input id="bt-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" /></div>
+              <div><label htmlFor="bt-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label><select id="bt-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"><option value="">Semua Depo</option>{depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}</select></div>
+              <div><label htmlFor="bt-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label><select id="bt-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card">{STATUS_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}</select></div>
+              <div className="sm:col-span-2 lg:col-span-2"><label htmlFor="bt-search" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span><input id="bt-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Nama THL, SJ, nopol, depo…" className="input-field text-sm py-2 pl-9 bg-surface-raised focus:bg-surface-card" /></div></div>
             </div>
             <div className="mt-4 flex items-center justify-between gap-2">
               <p className="text-xs text-slate-400 tabular-nums" aria-live="polite">
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all">Reset</button>
-                <button onClick={submit} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-slate-900 to-slate-800 text-white text-sm font-semibold hover:from-slate-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-surface-raised hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={submit} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
           </div>
@@ -320,10 +320,10 @@ export default function BiayaThlReportPage() {
         {/* Summary Cards */}
         {summary && (
           <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5" /></svg>
                 </div>
                 <div className="min-w-0">
@@ -333,7 +333,7 @@ export default function BiayaThlReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm shrink-0">
@@ -346,7 +346,7 @@ export default function BiayaThlReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm shrink-0">
@@ -359,7 +359,7 @@ export default function BiayaThlReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-linear-to-br from-primary-600 to-indigo-600 rounded-2xl shadow-lg p-5 text-white card-hover relative overflow-hidden group">
+            <div className="bg-linear-to-br from-primary-600 to-primary-600 rounded-2xl shadow-lg p-5 text-white card-hover relative overflow-hidden group">
               <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
@@ -376,8 +376,8 @@ export default function BiayaThlReportPage() {
         )}
 
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-white">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
@@ -405,7 +405,7 @@ export default function BiayaThlReportPage() {
             <table className="w-full min-w-[1200px] border-collapse">
               <caption className="sr-only">Laporan biaya THL</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-200">
+                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
                   <th scope="col" className="table-header whitespace-nowrap">Tgl Pengajuan</th>
                   <th scope="col" className="table-header whitespace-nowrap">Depo</th>
                   <th scope="col" className="table-header whitespace-nowrap">No SJ</th>
@@ -448,14 +448,14 @@ export default function BiayaThlReportPage() {
                           <p className="text-xs text-slate-400 mt-1">Belum ada detail pada rentang filter ini</p>
                         </div>
                         {activeFilterCount > 0 && (
-                          <button onClick={resetFilters} className="mt-1 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors">Reset filter</button>
+                          <button onClick={resetFilters} className="mt-1 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold hover:bg-ink-800 transition-colors">Reset filter</button>
                         )}
                       </div>
                     </td>
                   </tr>
                 ) : (
                   items.map((item) => (
-                    <tr key={item.id} className="even:bg-slate-50/60 hover:bg-slate-50 transition-colors">
+                    <tr key={item.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
                       <td className="table-cell text-sm text-slate-600 whitespace-nowrap font-mono">{item.tanggal_pengajuan}</td>
                       <td className="table-cell text-sm text-slate-600 whitespace-nowrap">{item.nama_depo} <span className="text-slate-400 text-xs">({item.kode_depo})</span></td>
                       <td className="table-cell text-sm font-mono font-medium text-slate-800 whitespace-nowrap">{item.no_surat_jalan}</td>
@@ -485,7 +485,7 @@ export default function BiayaThlReportPage() {
             {loading && (
               <div className="p-4 space-y-3" aria-hidden="true">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-2">
+                  <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-overlay-60 p-4 space-y-2">
                     <div className="h-4 w-32 bg-slate-200 rounded" />
                     <div className="h-3 w-48 bg-slate-200 rounded" />
                     <div className="grid grid-cols-3 gap-2 pt-1">
@@ -502,7 +502,7 @@ export default function BiayaThlReportPage() {
                 <p className="text-sm text-slate-600 font-bold">Tidak ada data biaya THL</p>
                 <p className="text-xs text-slate-400 mt-1">Belum ada detail pada rentang filter ini</p>
                 {activeFilterCount > 0 && (
-                  <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">Reset filter</button>
+                  <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold">Reset filter</button>
                 )}
               </div>
             )}
@@ -516,15 +516,15 @@ export default function BiayaThlReportPage() {
                   <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border shrink-0 shadow-sm ${statusTone(item.status)}`}><span className={`w-1.5 h-1.5 rounded-full ${statusDot(item.status)}`} aria-hidden="true" />{statusLabel(item.status)}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-xl bg-slate-50 p-2 text-center border border-slate-100">
+                  <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
                     <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Posisi</p>
                     <p className="font-black text-slate-900 text-xs truncate" title={item.posisi}>{item.posisi.replace('THL ', '')}</p>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-2 text-center border border-slate-100">
+                  <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
                     <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Type</p>
                     <p className="font-black text-slate-900 text-xs">{item.type_kendaraan || '-'}</p>
                   </div>
-                  <div className="rounded-xl bg-slate-900 text-white p-2 text-center">
+                  <div className="rounded-xl bg-ink-900 text-white p-2 text-center">
                     <p className="font-bold tracking-widest text-white/60 uppercase text-[9px]">Nominal</p>
                     <p className="font-black text-xs tabular-nums">{formatCurrency(item.nominal_biaya)}</p>
                   </div>
@@ -539,7 +539,7 @@ export default function BiayaThlReportPage() {
             ))}
           </div>
           {lastPage > 1 && (
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+            <div className="p-4 border-t border-gray-100 bg-overlay-50">
               <div className="flex flex-wrap justify-between items-center gap-3">
                 <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1 || loading} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
                   <span className="flex items-center gap-2 text-sm">
@@ -554,7 +554,7 @@ export default function BiayaThlReportPage() {
                       onClick={() => setPage(p)}
                       aria-label={`Halaman ${p}`}
                       aria-current={p === page ? 'page' : undefined}
-                      className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === page ? 'bg-slate-900 text-white shadow' : 'text-slate-500 hover:bg-slate-200/70'}`}
+                      className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === page ? 'bg-ink-900 text-white shadow' : 'text-slate-500 hover:bg-slate-200/70'}`}
                     >
                       {p}
                     </button>

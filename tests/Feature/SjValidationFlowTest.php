@@ -11,6 +11,7 @@ use App\Models\SjValidation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -199,6 +200,309 @@ class SjValidationFlowTest extends TestCase
         ])->assertOk()->assertJsonPath('data.status', 'VALIDATED');
     }
 
+    public function test_cancel_marks_session_and_its_batches_cancelled(): void
+    {
+        // Pembatalan satu-satunya jalur resmi (khusus web). Kalau batch label
+        // ikut batal tapi status validasi tidak, label tercetak jadi tak
+        // berlaku tanpa jejak pembatalan di dokumennya.
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create', 'sj_validation.validate', 'sj_validation.cancel']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+        $itemId = $validation['items'][0]['id'];
+
+        $scanned = $this->postJson("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertOk()->json('data');
+
+        $this->assertNotEmpty($scanned['batch']['barcode_label'], 'scan harus menerbitkan batch label');
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/cancel")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'CANCELLED');
+
+        $this->assertDatabaseHas('batches', [
+            'sj_validation_item_id' => $itemId,
+            'status' => 'CANCELLED',
+        ]);
+    }
+
+    /**
+     * Resolve helper: satu validasi yang sudah di-scan lalu di-complete, dengan
+     * Receiving masih PENDING (artinya masih bisa dikoreksi).
+     */
+    private function completedValidationWithOpenReceiving(User $user): array
+    {
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+        $itemId = $validation['items'][0]['id'];
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertOk();
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertOk();
+
+        return [$validation['id'], $itemId];
+    }
+
+    /**
+     * Operator biasa TIDAK boleh mengoreksi validasi yang sudah selesai walau
+     * punya `sj_validation.validate`. Opening koreksi-after-selesai adalah
+     * keputusan tingkat supervisor, bukan kelanjutan izin scan.
+     */
+    public function test_scan_after_completed_is_denied_without_edit_completed_permission(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
+        [$validationId, $itemId] = $this->completedValidationWithOpenReceiving($user);
+
+        $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 777,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseHas('sj_validation_items', ['id' => $itemId, 'actual_qty' => 100]);
+        $this->assertDatabaseHas('receiving_items', ['sj_validation_item_id' => $itemId, 'actual_qty' => 100]);
+    }
+
+    /**
+     * Pemegang `sj_validation.edit_completed` boleh mengoreksi selama Receiving
+     * belum COMPLETED — DANReceivingItem wajib ikut tersinkron, karena sanalah
+     * Opname Expired dan laporan Penerimaan membaca angkanya.
+     */
+    public function test_supervisor_correction_syncs_receiving_item(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.view', 'sj_validation.create', 'sj_validation.validate',
+            'sj_validation.complete', 'sj_validation.edit_completed',
+        ]));
+        [$validationId, $itemId] = $this->completedValidationWithOpenReceiving($user);
+
+        // QTY_KURANG wajib foto bukti (aturan yang sudah ada sebelumnya), jadi
+        // koreksi ini harus dikirim sebagai multipart seperti dari UI.
+        $this->post("/api/v1/sj-validations/{$validationId}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 80,
+            'expired_date' => '2027-01-31',
+            'condition' => 'QTY_KURANG',
+            'photo' => UploadedFile::fake()->image('bukti.jpg'),
+        ])->assertOk();
+        $this->assertDatabaseHas('sj_validation_items', ['id' => $itemId, 'actual_qty' => 80]);
+
+        // Inilah inti dari test ini: tanpa sync, tabel ini diam-diam beda.
+        $this->assertDatabaseHas('receiving_items', [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 80,
+            'condition' => 'QTY_KURANG',
+            'selisih_reason' => 'Qty kurang dari rencana',
+        ]);
+
+        // Header Receiving juga harus ikut, kalau tidak total dan detail beda.
+        $receiving = Receiving::first();
+        $this->assertEquals(80, (float) $receiving->total_received_qty);
+    }
+
+    /**
+     * Permission `sj_validation.edit_completed` tidak boleh membuka dokumen yang
+     * Receiving-nya sudah tutup.
+     * Di titik ini `receiving_items` sudah jadi buku besar; menyalin ulang
+     * angka hanya menghasilkan dua ledger yang berbeda tanpa ada yang berubah
+     * di sisi lain.
+     */
+    public function test_edit_completed_permission_cannot_reopen_closed_receiving(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.view', 'sj_validation.create', 'sj_validation.validate',
+            'sj_validation.complete', 'sj_validation.edit_completed',
+        ]));
+        [$validationId, $itemId] = $this->completedValidationWithOpenReceiving($user);
+
+        Receiving::query()->update(['status' => 'COMPLETED']);
+
+        $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 777,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseHas('receiving_items', ['sj_validation_item_id' => $itemId, 'actual_qty' => 100]);
+    }
+
+    /**
+     * Sesi CANCELLED tidak pernah bisa dihidupkan kembali, siapa pun pelakunya.
+     * Label batch-nya sudah dicoret dan tidak berlaku, jadi menghidupkan
+     * dokumen itu hanya mengembalikan kekacauan.
+     */
+    public function test_cancelled_validation_is_never_editable(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.view', 'sj_validation.create', 'sj_validation.validate',
+            'sj_validation.cancel', 'sj_validation.edit_completed',
+        ]));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+        $itemId = $validation['items'][0]['id'];
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/cancel")->assertOk();
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 777,
+        ])->assertStatus(422);
+    }
+
+    /**
+     * Durasi dicatat saat sesi mencapai status terminal, dan TIDAK diisi ulang
+     * tiap menit. Dua alasan:
+     *
+     * 1. Nilai yang sama harus muncul identik di tabel, laporan, dan setelah
+     *    reload. Kalau dihitung on-the-fly, angka歷史 lama ikut berubah.
+     * 2. Menyimpan tiap menit berarti menulis baris berulang untuk satu sesi.
+     */
+    public function test_duration_seconds_recorded_on_complete(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+
+        $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $validation['items'][0]['id'],
+            'actual_qty' => 100,
+        ])->assertOk();
+
+        // NULL sebelum selesai — belum final, bukan berarti 0.
+        $this->assertNull($this->validationRow($validation['id'])->duration_seconds);
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertOk();
+
+        $after = $this->validationRow($validation['id']);
+        $this->assertNotNull($after->duration_seconds);
+        $this->assertGreaterThanOrEqual(0, $after->duration_seconds);
+
+        // Durasi harus konsisten dengan kedua timestamp yang disimpan.
+        $this->assertSame(
+            $after->completed_at->getTimestamp() - $after->started_at->getTimestamp(),
+            $after->duration_seconds,
+        );
+    }
+
+    /**
+     * Sesi CANCELLED juga punya durasi — pembatalan adalah akhir pekerjaan —
+     * tapi `completed_at` tetap NULL supaya tidak terlihat seperti "selesai".
+     */
+    public function test_cancelled_session_records_duration_but_no_completed_at(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.cancel']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/cancel")->assertOk();
+
+        $after = $this->validationRow($validation['id']);
+        $this->assertSame('CANCELLED', $after->status);
+        $this->assertNull($after->completed_at, 'dokumen yang dibatalkan tidak pernah selesai');
+        $this->assertNotNull($after->duration_seconds);
+    }
+
+    /**
+     * Jam yang tidak konsisten (selesai sebelum mulai) menghasilkan NULL, bukan
+     * angka negatif. Negatif akan tampil sebagai "−3j" di tabel dan ikut terambil
+     * sebagai angka oleh laporan.
+     */
+    public function test_negative_duration_falls_back_to_null(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+
+        $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $validation['items'][0]['id'],
+            'actual_qty' => 100,
+        ])->assertOk();
+
+        // Majukan `started_at` ke masa depan, sehingga selesai < mulai.
+        SjValidation::whereKey($validation['id'])
+            ->update(['started_at' => now()->addDay()]);
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertOk();
+
+        $this->assertNull($this->validationRow($validation['id'])->duration_seconds);
+    }
+
+    private function validationRow(int $id): SjValidation
+    {
+        return SjValidation::findOrFail($id);
+    }
+
+    public function test_cancel_requires_permission(): void
+    {
+        // Tanpa sj_validation.cancel, operator hanya boleh menyelesaikan — bukan
+        // membatalkan. Membatalkan membuang pekerjaan validasi tim lain.
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create', 'sj_validation.complete']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/cancel")->assertStatus(403);
+
+        $this->assertDatabaseHas('sj_validations', [
+            'id' => $validation['id'],
+            'status' => 'IN_PROGRESS',
+        ]);
+    }
+
+    public function test_edit_permission_alone_does_not_allow_cancel(): void
+    {
+        // sj_validation.edit itu permission generik (penyuntingan biasa). Kalau
+        // edit ikut mengizinkan pembatalan, siapa pun yang boleh menyunting ikut
+        // bisa membuang sesi yang tidak bisa dipulihkan. Cancel di-gate terpisah.
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.view', 'sj_validation.create', 'sj_validation.edit',
+        ]));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/cancel")->assertStatus(403);
+
+        $this->assertDatabaseHas('sj_validations', [
+            'id' => $validation['id'],
+            'status' => 'IN_PROGRESS',
+        ]);
+    }
+
+    public function test_cancel_rejects_completed_validation(): void
+    {
+        // Setelah COMPLETED, materialisasi receiving sudah terjadi. Membatalkan
+        // di titik ini akan membuat dokumen menyesatkan: label dibatalkan tapi
+        // stok sudah masuk penerimaan.
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create', 'sj_validation.validate', 'sj_validation.complete', 'sj_validation.cancel']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+        $itemId = $validation['items'][0]['id'];
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertOk();
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertOk();
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/cancel")->assertStatus(422);
+
+        $this->assertDatabaseHas('sj_validations', [
+            'id' => $validation['id'],
+            'status' => 'COMPLETED',
+        ]);
+    }
+
     public function test_scan_rejects_item_from_another_validation(): void
     {
         Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
@@ -256,7 +560,7 @@ class SjValidationFlowTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertStatus(422);
 
         $this->assertSame(1, Receiving::count());
-        $this->assertSame(1, \DB::table('receiving_items')->count());
+        $this->assertSame(1, DB::table('receiving_items')->count());
     }
 
     public function test_index_supports_date_filter(): void

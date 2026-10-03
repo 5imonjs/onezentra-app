@@ -41,7 +41,7 @@ const STATUS_GUIDE: Record<string, string> = {
 
 // Pil status dokumen — pola yang sama dengan halaman laporan.
 const RK_STATUS_STYLE: Record<string, { color: string; bg: string; border: string; dot: string }> = {
-  DRAFT: { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', dot: 'bg-slate-400' },
+  DRAFT: { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-300', dot: 'bg-slate-400' },
   SCHEDULED: { color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100', dot: 'bg-blue-500' },
   CHECKED_IN: { color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100', dot: 'bg-amber-500' },
   VERIFIED: { color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100', dot: 'bg-purple-500' },
@@ -54,7 +54,7 @@ function StatusPill({ status }: { status: string | null | undefined }) {
   const st = (status && RK_STATUS_STYLE[status]) || null;
   const label = (status && statusLabels[status]) || status || '-';
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${st?.bg || 'bg-slate-100'} ${st?.color || 'text-slate-600'} ${st?.border || 'border-slate-200'}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${st?.bg || 'bg-slate-100'} ${st?.color || 'text-slate-600'} ${st?.border || 'border-slate-300'}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-slate-400'}`} />
       {label}
     </span>
@@ -254,7 +254,7 @@ export default function GatePage() {
     <DashboardLayout>
       <div className="space-y-5">
         {/* Header — reflektif, konsisten dengan pola desain modern */}
-        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+        <header className="rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
@@ -262,7 +262,7 @@ export default function GatePage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Check In Point</h1>
-                <p className="mt-0.5 text-gray-400">Scan PO / Nopol — IN ↔ OUT • auto status</p>
+                <p className="mt-0.5 text-ink-fg-muted">Scan PO / Nopol — IN ↔ OUT • auto status</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -293,10 +293,10 @@ export default function GatePage() {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
           {/* Quick Scan — panel pencarian + aksi gate */}
           <div className="lg:col-span-2">
-            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-white shadow-sm">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                   </div>
                   <div>
@@ -309,42 +309,42 @@ export default function GatePage() {
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span>
-                    <input type="text" value={scanNoDokumen} onChange={(e) => setScanNoDokumen(e.target.value)} placeholder="PO / Nopol..." className="input-field pl-9 text-sm py-2.5 bg-slate-50 focus:bg-white" onKeyDown={(e) => e.key === 'Enter' && handleLookup()} aria-label="Nomor PO transporter" />
+                    <input type="text" value={scanNoDokumen} onChange={(e) => setScanNoDokumen(e.target.value)} placeholder="PO / Nopol..." className="input-field pl-9 text-sm py-2.5 bg-surface-raised focus:bg-surface-card" onKeyDown={(e) => e.key === 'Enter' && handleLookup()} aria-label="Nomor PO transporter" />
                   </div>
-                  <button onClick={() => handleLookup()} disabled={lookupBusy || !hasPermission('gate.view')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] disabled:opacity-50">
+                  <button onClick={() => handleLookup()} disabled={lookupBusy || !hasPermission('gate.view')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98] disabled:opacity-50">
                     {lookupBusy ? '...' : 'Cari'}
                   </button>
-                  <button onClick={() => setShowScanner(true)} aria-label="Buka scanner barcode" className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-700 transition-colors hover:bg-slate-50">
+                  <button onClick={() => setShowScanner(true)} aria-label="Buka scanner barcode" className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-300 bg-surface-card px-3 py-2.5 text-slate-700 transition-colors hover:bg-surface-raised">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   </button>
                 </div>
 
                 {foundRencanaKirim && (
-                  <div className="relative mt-4 overflow-hidden rounded-2xl bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 p-4 text-white shadow-xl sm:p-5">
+                  <div className="relative mt-4 overflow-hidden rounded-2xl bg-linear-to-br from-ink-900 via-ink-900 to-ink-800 p-4 text-white shadow-xl sm:p-5">
                     <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-primary-500/10 blur-2xl" />
                     <div className="relative mb-4 grid grid-cols-2 gap-3">
                       <div className="rounded-xl border border-white/10 bg-white/10 p-3 backdrop-blur">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">PO</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-fg-muted">PO</p>
                         <p className="mt-0.5 break-all font-mono text-sm font-semibold text-white">{foundRencanaKirim.po_transporter as string}</p>
                       </div>
-                      <div className="rounded-xl bg-white p-3">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nopol</p>
+                      <div className="rounded-xl bg-surface-card p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-fg-muted">Nopol</p>
                         <p className="mt-0.5 break-all font-mono text-sm font-semibold text-slate-900">{foundRencanaKirim.nopol as string}</p>
                       </div>
                       <div className="col-span-2 rounded-xl border border-white/10 bg-white/10 p-3 backdrop-blur">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver • Status</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-fg-muted">Driver • Status</p>
                         <p className="mt-0.5 truncate text-sm font-semibold text-white">{foundRencanaKirim.driver_name as string} • {statusLabels[foundRencanaKirim.status as string] || (foundRencanaKirim.status as string)}</p>
                       </div>
                     </div>
                     <div className="relative flex flex-wrap gap-2">
-                      {foundRencanaKirim.status === 'SCHEDULED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('IN')} disabled={scanning} className="min-h-[44px] flex-1 px-4 py-2.5 rounded-xl bg-white text-slate-900 text-sm font-bold hover:bg-slate-100 transition-colors disabled:opacity-50">Gate IN →</button>)}
+                      {foundRencanaKirim.status === 'SCHEDULED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('IN')} disabled={scanning} className="min-h-[44px] flex-1 px-4 py-2.5 rounded-xl bg-surface-card text-slate-900 text-sm font-bold hover:bg-slate-100 transition-colors disabled:opacity-50">Gate IN →</button>)}
                       {foundRencanaKirim.status === 'CHECKED_IN' && hasPermission('rencana_kirim.edit') && (<button onClick={() => requestConfirm('VERIFY')} disabled={scanning} className="min-h-[44px] flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-50">Verify ✓</button>)}
                       {foundRencanaKirim.status === 'COMPLETED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('OUT')} disabled={scanning} className="min-h-[44px] flex-1 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm font-bold hover:bg-white/20 transition-colors disabled:opacity-50">Gate OUT</button>)}
                     </div>
                     {typeof foundRencanaKirim.status === 'string' && !['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) && (
-                      <p className="relative mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs leading-5 text-slate-300">
-                        {STATUS_GUIDE[foundRencanaKirim.status] ?? 'Status ini tidak memiliki aksi gate.'}
-                      </p>
+                        <p className="relative mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs leading-5 text-ink-fg">
+                          {STATUS_GUIDE[foundRencanaKirim.status] ?? 'Status ini tidak memiliki aksi gate.'}
+                        </p>
                     )}
                     {typeof foundRencanaKirim.status === 'string' && ['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) &&
                       ((foundRencanaKirim.status === 'CHECKED_IN' && !hasPermission('rencana_kirim.edit')) ||
@@ -370,11 +370,11 @@ export default function GatePage() {
             </section>
           </div>
           <div className="lg:col-span-3">
-            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50">
-                    <svg className="h-5 w-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-chip-primary">
+                    <svg className="h-5 w-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-slate-900">Riwayat Gate</h2>
@@ -401,7 +401,7 @@ export default function GatePage() {
                 <table className="w-full min-w-[760px] border-collapse">
                   <caption className="sr-only">Riwayat transaksi gate</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-200 bg-slate-50">
+                    <tr className="border-b border-slate-300 bg-surface-raised">
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Gate Type</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
@@ -425,7 +425,7 @@ export default function GatePage() {
                         </tr>
                       ))
                     ) : items.map((item, index) => (
-                      <tr key={item.id} className="transition-colors hover:bg-slate-50/70">
+                      <tr key={item.id} className="transition-colors hover:bg-overlay-70">
                         <td className="px-5 py-3 text-sm tabular-nums text-slate-500">{(page - 1) * 20 + index + 1}</td>
                         <td className="px-5 py-3">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${item.gate_type === 'INBOUND' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-violet-50 text-violet-700 ring-violet-200'}`}>
@@ -455,7 +455,7 @@ export default function GatePage() {
                             {hasSearch ? (
                               <>
                                 <p className="text-sm font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
-                                <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                                <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-accent-text hover:underline">Hapus pencarian</button>
                               </>
                             ) : (
                               <>
@@ -513,14 +513,14 @@ export default function GatePage() {
                   <div className="px-4 py-12 text-center">
                     <p className="text-sm font-medium text-slate-400">{hasSearch ? `Tidak ada hasil untuk "${search}"` : 'Belum ada transaksi gate'}</p>
                     {hasSearch && (
-                      <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="mt-1 text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                      <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="mt-1 text-xs font-semibold text-accent-text hover:underline">Hapus pencarian</button>
                     )}
                   </div>
                 )}
               </div>
 
               {lastPage > 1 && (
-                <div className="border-t border-gray-100 bg-slate-50/50 px-5 py-4">
+                <div className="border-t border-gray-100 bg-overlay-50 px-5 py-4">
                   <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
                     <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">
                       Sebelumnya
@@ -573,13 +573,13 @@ export default function GatePage() {
                   { label: 'Driver', value: String(foundRencanaKirim.driver_name ?? '-'), mono: false },
                   { label: 'Status', value: statusLabels[foundRencanaKirim.status as string] || String(foundRencanaKirim.status ?? '-'), mono: false },
                 ].map((row) => (
-                  <div key={row.label} className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                  <div key={row.label} className="rounded-xl bg-surface-raised border border-slate-100 px-3 py-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{row.label}</p>
                     <p className={`mt-0.5 truncate text-sm font-bold text-slate-800 ${row.mono ? 'font-mono' : ''}`}>{row.value}</p>
                   </div>
                 ))}
               </div>
-              <p className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-xs leading-5 text-slate-600">
+              <p className="rounded-xl bg-surface-raised border border-slate-100 px-3 py-2.5 text-xs leading-5 text-slate-600">
                 {confirmAction === 'IN' && 'Kendaraan masuk dicatat dan status rencana kirim berubah menjadi Check In.'}
                 {confirmAction === 'OUT' && 'Pastikan kendaraan benar-benar keluar dari area depo.'}
                 {confirmAction === 'VERIFY' && 'Dokumen dinyatakan terverifikasi dan status berubah menjadi Terverifikasi.'}

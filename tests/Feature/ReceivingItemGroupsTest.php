@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\Batch;
 use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
+use App\Models\RencanaKirimItem;
 use App\Models\Role;
+use App\Models\SjValidation;
+use App\Models\SjValidationItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -58,6 +62,51 @@ class ReceivingItemGroupsTest extends TestCase
         return Receiving::create([
             'rencana_kirim_id' => $rk->id,
             'status' => 'COMPLETED',
+        ]);
+    }
+
+    /**
+     * sj_validation_items dengan FK sungguhan (receiving_items.sj_validation_item_id
+     * punya FK ke sini, jadi tidak boleh pakai angka asal).
+     */
+    private function makeSjValidationItem(): SjValidationItem
+    {
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-SJ-'.uniqid(),
+            'driver_name' => 'Driver '.uniqid(),
+            'status' => 'COMPLETED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $rencanaItem = RencanaKirimItem::create([
+            'rencana_kirim_id' => $rk->id,
+            'item_number' => 1,
+            'kode_barang' => 'BRG-001',
+            'nama_barang' => 'Barang Satu',
+            'jumlah' => 5,
+            'satuan' => 'CRT',
+        ]);
+
+        $validation = SjValidation::create([
+            'rencana_kirim_id' => $rk->id,
+            'scan_code' => $rk->po_transporter,
+            'status' => 'COMPLETED',
+            'validated_by' => $this->user->id,
+            'started_at' => now(),
+            'completed_at' => now(),
+        ]);
+
+        return SjValidationItem::create([
+            'sj_validation_id' => $validation->id,
+            'rencana_kirim_item_id' => $rencanaItem->id,
+            'kode_barang' => 'BRG-001',
+            'nama_barang' => 'Barang Satu',
+            'expected_qty' => 5,
+            'actual_qty' => 5,
+            'satuan' => 'CRT',
+            'expired_date' => '2026-12-01',
+            'condition' => 'FISIK_BAGUS',
+            'status' => 'VALIDATED',
         ]);
     }
 
@@ -228,5 +277,77 @@ class ReceivingItemGroupsTest extends TestCase
             'condition' => 'FISIK_BAGUS',
             'notes' => 'cek ulang',
         ])->assertOk();
+    }
+
+    public function test_groups_expose_batch_label_for_printing_from_inbound(): void
+    {
+        // Label lahir di validasi SJ, tapi dicetak ulang paling sering dibutuhkan
+        // saat barang masuk. Endpoint groups harus mengirim batch per item,
+        // dicocokkan via sj_validation_item_id (per item), bukan receiving_id
+        // (per dokumen) yang bisa keliru cocok ke semua item dalam receiving.
+        $receiving = $this->makeReceiving();
+
+        // Satu helper call per item: tiap call membuat record sj_validation_item
+        // BERBEDA. Kalau batch dan receiving item menunjuk id berbeda, relasi
+        // tidak akan cocok dan test gagal karena setup, bukan karena bug API.
+        $svItemWithBatch = $this->makeSjValidationItem();
+        $svItemWithoutBatch = $this->makeSjValidationItem();
+
+        $withBatch = $this->makeSjItem([
+            'receiving_id' => $receiving->id,
+            'sj_validation_item_id' => $svItemWithBatch->id,
+            'kode_barang' => 'BRG-BATCH',
+        ]);
+        $withoutBatch = $this->makeSjItem([
+            'receiving_id' => $receiving->id,
+            'sj_validation_item_id' => $svItemWithoutBatch->id,
+            'kode_barang' => 'BRG-NOBATCH',
+        ]);
+
+        Batch::create([
+            'batch_number' => 'BATCH-INBOUND1',
+            'barcode_label' => 'LBL-INBOUND1',
+            'sj_validation_item_id' => $svItemWithBatch->id,
+            'receiving_id' => $receiving->id,
+            'status' => 'ACTIVE',
+        ]);
+
+        $res = $this->getJson('/api/v1/receiving-items/groups')->assertOk();
+        $items = collect($res->json('data.0.items'))->keyBy('kode_barang');
+
+        $this->assertSame('BATCH-INBOUND1', $items['BRG-BATCH']['batch']['batch_number']);
+        $this->assertSame('LBL-INBOUND1', $items['BRG-BATCH']['batch']['barcode_label']);
+        $this->assertSame('ACTIVE', $items['BRG-BATCH']['batch']['status']);
+
+        // Item tanpa batch tetap muncul dengan batch null (bukan key hilang),
+        // supaya frontend bisa membedakan "belum ada" dari "gagal ambil".
+        $this->assertTrue(array_key_exists('batch', $items['BRG-NOBATCH']));
+        $this->assertNull($items['BRG-NOBATCH']['batch']);
+    }
+
+    public function test_groups_expose_cancelled_batch_status_so_ui_can_block_printing(): void
+    {
+        // Batch CANCELLED = label sudah tidak berlaku. UI harus tahu supaya
+        // tidak menawarkan cetak ulang label mati dari halaman Inbound.
+        $receiving = $this->makeReceiving();
+        $svItem = $this->makeSjValidationItem();
+        $item = $this->makeSjItem([
+            'receiving_id' => $receiving->id,
+            'sj_validation_item_id' => $svItem->id,
+            'kode_barang' => 'BRG-CANCELLED',
+        ]);
+
+        Batch::create([
+            'batch_number' => 'BATCH-DEAD1',
+            'barcode_label' => 'LBL-DEAD1',
+            'sj_validation_item_id' => $svItem->id,
+            'receiving_id' => $receiving->id,
+            'status' => 'CANCELLED',
+        ]);
+
+        $res = $this->getJson('/api/v1/receiving-items/groups')->assertOk();
+        $batch = collect($res->json('data.0.items'))->firstWhere('kode_barang', 'BRG-CANCELLED')['batch'];
+
+        $this->assertSame('CANCELLED', $batch['status']);
     }
 }

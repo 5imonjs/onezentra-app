@@ -1,5 +1,299 @@
 @import "tailwindcss";
 
+/* ============================================
+   ONEZENTRA DESIGN TOKENS — dark aurora + light
+
+   The neutral ramp is defined by ROLE, not by lightness, so one class name
+   is correct in both themes:
+
+     50 deepest surface · 100 app shell · 200 card · 300 hairline
+     400 muted · 500 secondary · 600 body · 700 raised
+     800 heading · 900 max text
+
+   In dark those run dark->light; in light they run light->dark. Because the
+   ramp is role-based, every `bg-gray-200` / `text-gray-900` stays correct
+   when the theme flips — no per-page edits, no `dark:` variants.
+
+   `slate` is an alias of `gray` (they used to carry identical hexes under two
+   names, which is what made the app look half light / half dark).
+   `ink` + the brand ramps are theme-INDEPENDENT: hero panels, modals and the
+   logo chip stay dark in both themes.
+   ============================================ */
+
+/* ---------------- LIGHT (default) — ramp runs light -> dark --------- */
+:root {
+  color-scheme: light;
+
+  --oz-canvas: #f1f5f9;
+  --oz-card: #ffffff;
+  --oz-raised: #f8fafc;
+  --oz-hover: #f1f5f9;
+  --oz-text: #0f172a;
+
+  --oz-gray-50: #f8fafc;
+  --oz-gray-100: #f1f5f9;
+  --oz-gray-200: #e2e8f0;
+  --oz-gray-300: #cbd5e1;
+  /* 400-600 are ink steps and are tuned to clear 4.5:1 on the lightest
+     surface they land on (--oz-card). 500 was 4.34:1 and 400 only 2.56:1,
+     which is why ~520 call sites failed AA. */
+  --oz-gray-400: #5c6b80;
+  --oz-gray-500: #4d5a6d;
+  --oz-gray-600: #475569;
+  --oz-gray-700: #334155;
+  --oz-gray-800: #1e293b;
+  --oz-gray-900: #0f172a;
+
+  /* On a light canvas a "lift" is a DARKER tint, so overlays are neutral-900
+     at low alpha; the dark theme flips them to white. */
+  --oz-overlay-30: rgb(15 23 42 / 0.03);
+  --oz-overlay-40: rgb(15 23 42 / 0.04);
+  --oz-overlay-50: rgb(15 23 42 / 0.05);
+  --oz-overlay-60: rgb(15 23 42 / 0.06);
+  --oz-overlay-70: rgb(15 23 42 / 0.07);
+  --oz-overlay-80: rgb(15 23 42 / 0.08);
+  --oz-overlay-90: rgb(15 23 42 / 0.9);
+
+  --oz-zebra: rgb(15 23 42 / 0.02);
+  --oz-selection: #c7d2fe;
+  --oz-selection-text: #312e81;
+  --oz-focus-halo: #ffffff;
+
+  /* Active-row fill inside a listbox / table selection. `primary-100` is a
+     light pastel that works on white but flares on the dark canvas, and
+     `primary-600` text on top of it has almost no contrast left. This is the
+     dark-mode equivalent: a saturated indigo wash with light text. */
+  --oz-row-active: #312e81;
+  --oz-row-active-text: #e0e7ff;
+  --oz-row-active-icon: #1e1b4b;
+
+  /* Small brand chips (icon squares, count pills, role badges). These pair a
+     tinted fill with a darker tint of the same hue for text. The `primary`
+     ramp is a fixed brand scale, so its light pastel 100/50 fills flare on the
+     dark canvas; these role tokens give each theme a matching pair. */
+  --oz-chip-primary: #e0e7ff;
+  --oz-chip-primary-text: #4338ca;
+  --oz-chip-primary-border: #c7d2fe;
+
+  /* Indigo used as foreground on a surface. `primary-600`/`700` stay dark in
+     both themes because they also back white-on-brand buttons, which makes them
+     unreadable as text once the canvas is dark. These are the text-only twins. */
+  --oz-accent-text: #4338ca;
+  --oz-accent-text-strong: #3730a3;
+
+  /* Faint brand wash for large panels, gradient stops and focus rings. Same
+     reasoning as the chips: the pastel 50/200 tints need a dark-mode twin. */
+  --oz-brand-wash: #eef2ff;
+  --oz-brand-wash-strong: #c7d2fe;
+
+  /* Light aurora: a cool paper gradient. Saturated glows on white read as
+     smudges rather than depth, so the dark theme's blobs are dropped. */
+  --oz-aurora: linear-gradient(160deg, #ffffff 0%, #f8fafc 45%, #eef2f7 100%);
+
+  --oz-emerald-50: #ecfdf5; --oz-emerald-100: #d1fae5; --oz-emerald-200: #a7f3d0;
+  --oz-emerald-300: #6ee7b7; --oz-emerald-400: #34d399; --oz-emerald-500: #10b981;
+  --oz-emerald-600: #059669; --oz-emerald-700: #047857; --oz-emerald-800: #065f46;
+  --oz-emerald-900: #064e3b;
+
+  --oz-amber-50: #fffbeb; --oz-amber-100: #fef3c7; --oz-amber-200: #fde68a;
+  --oz-amber-300: #fcd34d; --oz-amber-400: #fbbf24; --oz-amber-500: #f59e0b;
+  --oz-amber-600: #d97706; --oz-amber-700: #b45309; --oz-amber-800: #92400e;
+  --oz-amber-900: #78350f;
+
+  --oz-orange-50: #fff7ed; --oz-orange-100: #ffedd5; --oz-orange-200: #fed7aa;
+  --oz-orange-300: #fdba74; --oz-orange-400: #fb923c; --oz-orange-500: #f97316;
+  --oz-orange-600: #ea580c; --oz-orange-700: #c2410c; --oz-orange-800: #9a3412;
+  --oz-orange-900: #7c2d12;
+
+  --oz-red-50: #fef2f2; --oz-red-100: #fee2e2; --oz-red-200: #fecaca;
+  --oz-red-300: #fca5a5; --oz-red-400: #f87171; --oz-red-500: #ef4444;
+  --oz-red-600: #dc2626; --oz-red-700: #b91c1c; --oz-red-800: #991b1b;
+  --oz-red-900: #7f1d1d;
+
+  --oz-rose-50: #fff1f2; --oz-rose-100: #ffe4e6; --oz-rose-200: #fecdd3;
+  --oz-rose-300: #fda4af; --oz-rose-400: #fb7185; --oz-rose-500: #f43f5e;
+  --oz-rose-600: #e11d48; --oz-rose-700: #be123c; --oz-rose-800: #9f1239;
+  --oz-rose-900: #881337;
+
+  --oz-blue-50: #eff6ff; --oz-blue-100: #dbeafe; --oz-blue-200: #bfdbfe;
+  --oz-blue-300: #93c5fd; --oz-blue-400: #60a5fa; --oz-blue-500: #3b82f6;
+  --oz-blue-600: #2563eb; --oz-blue-700: #1d4ed8; --oz-blue-800: #1e40af;
+  --oz-blue-900: #1e3a8a;
+
+  /* The remaining accent families are remapped by the same rules, so the
+     `bg-X-50 text-X-700` triplet keeps working on a dark canvas. They were
+     easy to miss because they are rarer than the emerald/red/amber families,
+     and they are what the dashboard charts are drawn with. */
+  --oz-cyan-50: #083344; --oz-cyan-100: #164e63; --oz-cyan-200: #0e7490;
+  --oz-cyan-300: #22d3ee; --oz-cyan-400: #67e8f9; --oz-cyan-500: #06b6d4;
+  --oz-cyan-600: #a5f3fc; --oz-cyan-700: #cffafe; --oz-cyan-800: #ecfeff;
+  --oz-cyan-900: #f0fdff;
+
+  --oz-sky-50: #082f49; --oz-sky-100: #0c4a6e; --oz-sky-200: #0284c7;
+  --oz-sky-300: #7dd3fc; --oz-sky-400: #38bdf8; --oz-sky-500: #0ea5e9;
+  --oz-sky-600: #bae6fd; --oz-sky-700: #d0eaff; --oz-sky-800: #e0f2fe;
+  --oz-sky-900: #f0f9ff;
+
+  --oz-teal-50: #042f2e; --oz-teal-100: #134e4a; --oz-teal-200: #0f766e;
+  --oz-teal-300: #5eead4; --oz-teal-400: #2dd4bf; --oz-teal-500: #14b8a6;
+  --oz-teal-600: #99f6e4; --oz-teal-700: #ccfbf1; --oz-teal-800: #f0fdfa;
+  --oz-teal-900: #f0fdfa;
+
+  --oz-purple-50: #2e1065; --oz-purple-100: #4c1d95; --oz-purple-200: #7e22ce;
+  --oz-purple-300: #d8b4fe; --oz-purple-400: #c084fc; --oz-purple-500: #a855f7;
+  --oz-purple-600: #e9d5ff; --oz-purple-700: #f3e8ff; --oz-purple-800: #faf5ff;
+  --oz-purple-900: #fdf4ff;
+
+  --oz-violet-50: #2e1065; --oz-violet-100: #4c1d95; --oz-violet-200: #7c3aed;
+  --oz-violet-300: #c4b5fd; --oz-violet-400: #a78bfa; --oz-violet-500: #8b5cf6;
+  --oz-violet-600: #ddd6fe; --oz-violet-700: #ede9fe; --oz-violet-800: #f5f3ff;
+  --oz-violet-900: #f5f3ff;
+
+  --oz-yellow-50: #2b2103; --oz-yellow-100: #422006; --oz-yellow-200: #a16207;
+  --oz-yellow-300: #fde047; --oz-yellow-400: #facc15; --oz-yellow-500: #eab308;
+  --oz-yellow-600: #fef08a; --oz-yellow-700: #fef9c3; --oz-yellow-800: #fefce8;
+  --oz-yellow-900: #fefce8;
+
+  --oz-pink-50: #500724; --oz-pink-100: #831843; --oz-pink-200: #be185d;
+  --oz-pink-300: #f9a8d4; --oz-pink-400: #f472b6; --oz-pink-500: #ec4899;
+  --oz-pink-600: #fbcfe8; --oz-pink-700: #fce7f3; --oz-pink-800: #fdf2f8;
+  --oz-pink-900: #fdf2f8;
+
+  --oz-lime-50: #1a2e05; --oz-lime-100: #365314; --oz-lime-200: #4d7c0f;
+  --oz-lime-300: #bef264; --oz-lime-400: #a3e635; --oz-lime-500: #84cc16;
+  --oz-lime-600: #d9f99d; --oz-lime-700: #ecfccb; --oz-lime-800: #f7fee7;
+  --oz-lime-900: #f7fee7;
+}
+/* ---------------- DARK — same roles, running dark -> light --------- */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --oz-canvas: #0f172a;
+  --oz-card: #162033;
+  --oz-raised: #24324a;
+  --oz-hover: #1d2942;
+  --oz-text: #f1f5f9;
+
+  --oz-gray-50: #0a0f1c;
+  --oz-gray-100: #0f172a;
+  --oz-gray-200: #162033;
+  --oz-gray-300: #24324a;
+  /* Mirror of the light ramp: 400-600 are lifted to clear 4.5:1 against
+     --oz-raised, the darkest ink surface they land on in this theme. */
+  --oz-gray-400: #909eb0;
+  --oz-gray-500: #b0bdcb;
+  --oz-gray-600: #ccd6e2;
+  --oz-gray-700: #e2e8f0;
+  --oz-gray-800: #f1f5f9;
+  --oz-gray-900: #ffffff;
+
+  --oz-overlay-30: rgb(255 255 255 / 0.03);
+  --oz-overlay-40: rgb(255 255 255 / 0.04);
+  --oz-overlay-50: rgb(255 255 255 / 0.05);
+  --oz-overlay-60: rgb(255 255 255 / 0.06);
+  --oz-overlay-70: rgb(255 255 255 / 0.07);
+  --oz-overlay-80: rgb(255 255 255 / 0.08);
+  --oz-overlay-90: rgb(255 255 255 / 0.9);
+
+  --oz-zebra: rgb(255 255 255 / 0.02);
+  --oz-selection: #312e81;
+  --oz-selection-text: #e0e7ff;
+  --oz-focus-halo: #162033;
+
+  /* See the light-theme note: the active row must be a dark indigo wash with
+     light text, not the light pastel that primary-100 provides. */
+  --oz-row-active: #1e1b4b;
+  --oz-row-active-text: #c7d2fe;
+  --oz-row-active-icon: #312e81;
+
+  /* Dark counterpart: dim indigo fill, light indigo text. */
+  --oz-chip-primary: rgb(99 102 241 / 0.18);
+  --oz-chip-primary-text: #a5b4fc;
+  --oz-chip-primary-border: rgb(99 102 241 / 0.38);
+
+  /* Lightened so indigo foreground keeps 4.5:1 on the dark canvas. */
+  --oz-accent-text: #a5b4fc;
+  --oz-accent-text-strong: #c7d2fe;
+
+  --oz-brand-wash: rgb(99 102 241 / 0.1);
+  --oz-brand-wash-strong: rgb(99 102 241 / 0.3);
+
+  --oz-aurora:
+    radial-gradient(42rem 42rem at 12% -8%, rgb(99 102 241 / 0.16), transparent 60%),
+    radial-gradient(36rem 36rem at 92% 8%, rgb(20 184 166 / 0.1), transparent 62%),
+    linear-gradient(160deg, #0a0f1c 0%, #0f172a 45%, #0b1020 100%);
+
+  --oz-emerald-50: #052e21; --oz-emerald-100: #064e3b; --oz-emerald-200: #047857;
+  --oz-emerald-300: #34d399; --oz-emerald-400: #6ee7b7; --oz-emerald-500: #10b981;
+  --oz-emerald-600: #a7f3d0; --oz-emerald-700: #d1fae5; --oz-emerald-800: #ecfdf5;
+  --oz-emerald-900: #f0fdf9;
+
+  --oz-amber-50: #2b1a03; --oz-amber-100: #451a03; --oz-amber-200: #b45309;
+  --oz-amber-300: #fcd34d; --oz-amber-400: #fbbf24; --oz-amber-500: #f59e0b;
+  --oz-amber-600: #fde68a; --oz-amber-700: #fef3c7; --oz-amber-800: #fffbeb;
+  --oz-amber-900: #fff7ed;
+
+  --oz-orange-50: #2b1203; --oz-orange-100: #431407; --oz-orange-200: #c2410c;
+  --oz-orange-300: #fdba74; --oz-orange-400: #fb923c; --oz-orange-500: #f97316;
+  --oz-orange-600: #fed7aa; --oz-orange-700: #ffedd5; --oz-orange-800: #fff7ed;
+  --oz-orange-900: #fffbf5;
+
+  --oz-red-50: #2c0a0e; --oz-red-100: #450a0f; --oz-red-200: #b91c1c;
+  --oz-red-300: #fca5a5; --oz-red-400: #f87171; --oz-red-500: #ef4444;
+  --oz-red-600: #fecaca; --oz-red-700: #fee2e2; --oz-red-800: #fef2f2;
+  --oz-red-900: #fff1f2;
+
+  --oz-rose-50: #4c0519; --oz-rose-100: #881337; --oz-rose-200: #be123c;
+  --oz-rose-300: #fda4af; --oz-rose-400: #fb7185; --oz-rose-500: #f43f5e;
+  --oz-rose-600: #fecdd3; --oz-rose-700: #ffe4e6; --oz-rose-800: #fff1f2;
+  --oz-rose-900: #fff5f7;
+
+  --oz-blue-50: #0a1a33; --oz-blue-100: #0c2551; --oz-blue-200: #1d4ed8;
+  --oz-blue-300: #93c5fd; --oz-blue-400: #60a5fa; --oz-blue-500: #3b82f6;
+  --oz-blue-600: #bfdbfe; --oz-blue-700: #dbeafe; --oz-blue-800: #eff6ff;
+  --oz-blue-900: #f0f7ff;
+
+  --oz-cyan-50: #052f38; --oz-cyan-100: #164e63; --oz-cyan-200: #0e7490;
+  --oz-cyan-300: #22d3ee; --oz-cyan-400: #67e8f9; --oz-cyan-500: #06b6d4;
+  --oz-cyan-600: #a5f3fc; --oz-cyan-700: #cffafe; --oz-cyan-800: #ecfeff;
+  --oz-cyan-900: #f0fdff;
+
+  --oz-sky-50: #082f49; --oz-sky-100: #0c4a6e; --oz-sky-200: #0284c7;
+  --oz-sky-300: #7dd3fc; --oz-sky-400: #38bdf8; --oz-sky-500: #0ea5e9;
+  --oz-sky-600: #bae6fd; --oz-sky-700: #d0eaff; --oz-sky-800: #e0f2fe;
+  --oz-sky-900: #f0f9ff;
+
+  --oz-teal-50: #042f2e; --oz-teal-100: #134e4a; --oz-teal-200: #0f766e;
+  --oz-teal-300: #5eead4; --oz-teal-400: #2dd4bf; --oz-teal-500: #14b8a6;
+  --oz-teal-600: #99f6e4; --oz-teal-700: #ccfbf1; --oz-teal-800: #f0fdfa;
+  --oz-teal-900: #f0fdfa;
+
+  --oz-purple-50: #2e1065; --oz-purple-100: #4c1d95; --oz-purple-200: #7e22ce;
+  --oz-purple-300: #d8b4fe; --oz-purple-400: #c084fc; --oz-purple-500: #a855f7;
+  --oz-purple-600: #e9d5ff; --oz-purple-700: #f3e8ff; --oz-purple-800: #faf5ff;
+  --oz-purple-900: #fdf4ff;
+
+  --oz-violet-50: #2e1065; --oz-violet-100: #4c1d95; --oz-violet-200: #7c3aed;
+  --oz-violet-300: #c4b5fd; --oz-violet-400: #a78bfa; --oz-violet-500: #8b5cf6;
+  --oz-violet-600: #ddd6fe; --oz-violet-700: #ede9fe; --oz-violet-800: #f5f3ff;
+  --oz-violet-900: #f5f3ff;
+
+  --oz-yellow-50: #2b2103; --oz-yellow-100: #422006; --oz-yellow-200: #a16207;
+  --oz-yellow-300: #fde047; --oz-yellow-400: #facc15; --oz-yellow-500: #eab308;
+  --oz-yellow-600: #fef08a; --oz-yellow-700: #fef9c3; --oz-yellow-800: #fefce8;
+  --oz-yellow-900: #fefce8;
+
+  --oz-pink-50: #500724; --oz-pink-100: #831843; --oz-pink-200: #be185d;
+  --oz-pink-300: #f9a8d4; --oz-pink-400: #f472b6; --oz-pink-500: #ec4899;
+  --oz-pink-600: #fbcfe8; --oz-pink-700: #fce7f3; --oz-pink-800: #fdf2f8;
+  --oz-pink-900: #fdf2f8;
+
+  --oz-lime-50: #1a2e05; --oz-lime-100: #365314; --oz-lime-200: #4d7c0f;
+  --oz-lime-300: #bef264; --oz-lime-400: #a3e635; --oz-lime-500: #84cc16;
+  --oz-lime-600: #d9f99d; --oz-lime-700: #ecfccb; --oz-lime-800: #f7fee7;
+  --oz-lime-900: #f7fee7;
+}
+
 @theme inline {
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;
@@ -16,33 +310,273 @@
   --color-accent-400: #2dd4bf;
   --color-accent-500: #14b8a6;
 
-  --color-surface: #f8fafc;
-  --color-surface-card: #ffffff;
-  --color-surface-hover: #f1f5f9;
+  /* --- Neutral ramp — role-based, so it points at the theme variables.
+     In light the ramp runs light->dark, in dark dark->light. --- */
+  --color-gray-50: var(--oz-gray-50);
+  --color-gray-100: var(--oz-gray-100);
+  --color-gray-200: var(--oz-gray-200);
+  --color-gray-300: var(--oz-gray-300);
+  --color-gray-400: var(--oz-gray-400);
+  --color-gray-500: var(--oz-gray-500);
+  --color-gray-600: var(--oz-gray-600);
+  --color-gray-700: var(--oz-gray-700);
+  --color-gray-800: var(--oz-gray-800);
+  --color-gray-900: var(--oz-gray-900);
 
-  --color-gray-50: #f8fafc;
-  --color-gray-100: #f1f5f9;
-  --color-gray-200: #e2e8f0;
-  --color-gray-300: #cbd5e1;
-  --color-gray-400: #94a3b8;
-  --color-gray-500: #64748b;
-  --color-gray-600: #475569;
-  --color-gray-700: #334155;
-  --color-gray-800: #1e293b;
-  --color-gray-900: #0f172a;
+  /* Slate is an alias, not a second palette. */
+  --color-slate-50: var(--oz-gray-50);
+  --color-slate-100: var(--oz-gray-100);
+  --color-slate-200: var(--oz-gray-200);
+  --color-slate-300: var(--oz-gray-300);
+  --color-slate-400: var(--oz-gray-400);
+  --color-slate-500: var(--oz-gray-500);
+  --color-slate-600: var(--oz-gray-600);
+  --color-slate-700: var(--oz-gray-700);
+  --color-slate-800: var(--oz-gray-800);
+  --color-slate-900: var(--oz-gray-900);
+  --color-slate-950: var(--oz-gray-50);
+
+  /* --- Status scales. The app paints status as a triplet
+     `bg-X-50 text-X-600/700 border-X-200`. In light those are the stock
+     pastels; in dark the same three slots are re-pointed at dark-well roles
+     so the triplet stays readable without any `dark:` variant. --- */
+  --color-emerald-50: var(--oz-emerald-50);
+  --color-emerald-100: var(--oz-emerald-100);
+  --color-emerald-200: var(--oz-emerald-200);
+  --color-emerald-300: var(--oz-emerald-300);
+  --color-emerald-400: var(--oz-emerald-400);
+  --color-emerald-500: var(--oz-emerald-500);
+  --color-emerald-600: var(--oz-emerald-600);
+  --color-emerald-700: var(--oz-emerald-700);
+  --color-emerald-800: var(--oz-emerald-800);
+  --color-emerald-900: var(--oz-emerald-900);
+
+  --color-amber-50: var(--oz-amber-50);
+  --color-amber-100: var(--oz-amber-100);
+  --color-amber-200: var(--oz-amber-200);
+  --color-amber-300: var(--oz-amber-300);
+  --color-amber-400: var(--oz-amber-400);
+  --color-amber-500: var(--oz-amber-500);
+  --color-amber-600: var(--oz-amber-600);
+  --color-amber-700: var(--oz-amber-700);
+  --color-amber-800: var(--oz-amber-800);
+  --color-amber-900: var(--oz-amber-900);
+
+  --color-orange-50: var(--oz-orange-50);
+  --color-orange-100: var(--oz-orange-100);
+  --color-orange-200: var(--oz-orange-200);
+  --color-orange-300: var(--oz-orange-300);
+  --color-orange-400: var(--oz-orange-400);
+  --color-orange-500: var(--oz-orange-500);
+  --color-orange-600: var(--oz-orange-600);
+  --color-orange-700: var(--oz-orange-700);
+  --color-orange-800: var(--oz-orange-800);
+  --color-orange-900: var(--oz-orange-900);
+
+  --color-red-50: var(--oz-red-50);
+  --color-red-100: var(--oz-red-100);
+  --color-red-200: var(--oz-red-200);
+  --color-red-300: var(--oz-red-300);
+  --color-red-400: var(--oz-red-400);
+  --color-red-500: var(--oz-red-500);
+  --color-red-600: var(--oz-red-600);
+  --color-red-700: var(--oz-red-700);
+  --color-red-800: var(--oz-red-800);
+  --color-red-900: var(--oz-red-900);
+
+  --color-rose-50: var(--oz-rose-50);
+  --color-rose-100: var(--oz-rose-100);
+  --color-rose-200: var(--oz-rose-200);
+  --color-rose-300: var(--oz-rose-300);
+  --color-rose-400: var(--oz-rose-400);
+  --color-rose-500: var(--oz-rose-500);
+  --color-rose-600: var(--oz-rose-600);
+  --color-rose-700: var(--oz-rose-700);
+  --color-rose-800: var(--oz-rose-800);
+  --color-rose-900: var(--oz-rose-900);
+
+  --color-blue-50: var(--oz-blue-50);
+  --color-blue-100: var(--oz-blue-100);
+  --color-blue-200: var(--oz-blue-200);
+  --color-blue-300: var(--oz-blue-300);
+  --color-blue-400: var(--oz-blue-400);
+  --color-blue-500: var(--oz-blue-500);
+  --color-blue-600: var(--oz-blue-600);
+  --color-blue-700: var(--oz-blue-700);
+  --color-blue-800: var(--oz-blue-800);
+  --color-blue-900: var(--oz-blue-900);
+
+  --color-cyan-50: var(--oz-cyan-50);
+  --color-cyan-100: var(--oz-cyan-100);
+  --color-cyan-200: var(--oz-cyan-200);
+  --color-cyan-300: var(--oz-cyan-300);
+  --color-cyan-400: var(--oz-cyan-400);
+  --color-cyan-500: var(--oz-cyan-500);
+  --color-cyan-600: var(--oz-cyan-600);
+  --color-cyan-700: var(--oz-cyan-700);
+  --color-cyan-800: var(--oz-cyan-800);
+  --color-cyan-900: var(--oz-cyan-900);
+
+  --color-sky-50: var(--oz-sky-50);
+  --color-sky-100: var(--oz-sky-100);
+  --color-sky-200: var(--oz-sky-200);
+  --color-sky-300: var(--oz-sky-300);
+  --color-sky-400: var(--oz-sky-400);
+  --color-sky-500: var(--oz-sky-500);
+  --color-sky-600: var(--oz-sky-600);
+  --color-sky-700: var(--oz-sky-700);
+  --color-sky-800: var(--oz-sky-800);
+  --color-sky-900: var(--oz-sky-900);
+
+  --color-teal-50: var(--oz-teal-50);
+  --color-teal-100: var(--oz-teal-100);
+  --color-teal-200: var(--oz-teal-200);
+  --color-teal-300: var(--oz-teal-300);
+  --color-teal-400: var(--oz-teal-400);
+  --color-teal-500: var(--oz-teal-500);
+  --color-teal-600: var(--oz-teal-600);
+  --color-teal-700: var(--oz-teal-700);
+  --color-teal-800: var(--oz-teal-800);
+  --color-teal-900: var(--oz-teal-900);
+
+  --color-purple-50: var(--oz-purple-50);
+  --color-purple-100: var(--oz-purple-100);
+  --color-purple-200: var(--oz-purple-200);
+  --color-purple-300: var(--oz-purple-300);
+  --color-purple-400: var(--oz-purple-400);
+  --color-purple-500: var(--oz-purple-500);
+  --color-purple-600: var(--oz-purple-600);
+  --color-purple-700: var(--oz-purple-700);
+  --color-purple-800: var(--oz-purple-800);
+  --color-purple-900: var(--oz-purple-900);
+
+  --color-violet-50: var(--oz-violet-50);
+  --color-violet-100: var(--oz-violet-100);
+  --color-violet-200: var(--oz-violet-200);
+  --color-violet-300: var(--oz-violet-300);
+  --color-violet-400: var(--oz-violet-400);
+  --color-violet-500: var(--oz-violet-500);
+  --color-violet-600: var(--oz-violet-600);
+  --color-violet-700: var(--oz-violet-700);
+  --color-violet-800: var(--oz-violet-800);
+  --color-violet-900: var(--oz-violet-900);
+
+  --color-yellow-50: var(--oz-yellow-50);
+  --color-yellow-100: var(--oz-yellow-100);
+  --color-yellow-200: var(--oz-yellow-200);
+  --color-yellow-300: var(--oz-yellow-300);
+  --color-yellow-400: var(--oz-yellow-400);
+  --color-yellow-500: var(--oz-yellow-500);
+  --color-yellow-600: var(--oz-yellow-600);
+  --color-yellow-700: var(--oz-yellow-700);
+  --color-yellow-800: var(--oz-yellow-800);
+  --color-yellow-900: var(--oz-yellow-900);
+
+  --color-pink-50: var(--oz-pink-50);
+  --color-pink-100: var(--oz-pink-100);
+  --color-pink-200: var(--oz-pink-200);
+  --color-pink-300: var(--oz-pink-300);
+  --color-pink-400: var(--oz-pink-400);
+  --color-pink-500: var(--oz-pink-500);
+  --color-pink-600: var(--oz-pink-600);
+  --color-pink-700: var(--oz-pink-700);
+  --color-pink-800: var(--oz-pink-800);
+  --color-pink-900: var(--oz-pink-900);
+
+  --color-lime-50: var(--oz-lime-50);
+  --color-lime-100: var(--oz-lime-100);
+  --color-lime-200: var(--oz-lime-200);
+  --color-lime-300: var(--oz-lime-300);
+  --color-lime-400: var(--oz-lime-400);
+  --color-lime-500: var(--oz-lime-500);
+  --color-lime-600: var(--oz-lime-600);
+  --color-lime-700: var(--oz-lime-700);
+  --color-lime-800: var(--oz-lime-800);
+  --color-lime-900: var(--oz-lime-900);
+
+  /* `indigo` was a second name for `primary` (identical hexes). Alias it so
+     the residual indigo-* classes can never drift from the brand ramp. */
+  --color-indigo-50: var(--color-primary-50);
+  --color-indigo-100: var(--color-primary-100);
+  --color-indigo-200: var(--color-primary-200);
+  --color-indigo-300: var(--color-primary-300);
+  --color-indigo-400: var(--color-primary-400);
+  --color-indigo-500: var(--color-primary-500);
+  --color-indigo-600: var(--color-primary-600);
+  --color-indigo-700: var(--color-primary-700);
+  --color-indigo-800: var(--color-primary-800);
+  --color-indigo-900: var(--color-primary-900);
+
+  /* --- `ink` — always-dark surfaces ---------------------------------------
+     Hero headers, modal headers, dark buttons and thumbnail scrims are dark in
+     BOTH themes, so they cannot live on the neutral ramp (which flips). They
+     get their own fixed-dark scale. The white logo is the reason: it is
+     white-on-transparent art, unreadable on a light canvas.
+  -------------------------------------------------------------------- */
+  --color-ink-700: #1e293b;
+  --color-ink-800: #16203a;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #080d18;
+
+  /* Foreground for ink-* panels. These panels are dark in BOTH themes, so their
+     text must not come from the neutral ramp: `gray-300` is #cbd5e1 on light
+     (10.6:1 on ink, fine) but #24324a on dark — 1.2:1, effectively invisible.
+     Fixed values that clear AA on every ink step in either theme. */
+  --color-ink-fg: #e2e8f0;
+  --color-ink-fg-muted: #b6c2d2;
+
+  /* Semantic surface aliases — prefer these over raw gray in new code. */
+  --color-surface: var(--oz-canvas);
+  --color-surface-card: var(--oz-card);
+  --color-surface-raised: var(--oz-raised);
+  --color-surface-hover: var(--oz-hover);
+  --color-foreground: var(--oz-text);
+
+  /* Gradient end-cap for card headers. Plain `to-white` cannot be used here:
+     a card header fades into it, so on the dark theme the whole strip would
+     flare white and swamp the title sitting on top of it. */
+  --color-surface-end: var(--oz-card);
+
+  /* Elevation overlays. A "lift" is a lighter tint on dark and a darker tint on
+     light, so these must be variables rather than a fixed white/black. */
+  --color-overlay-30: var(--oz-overlay-30);
+  --color-overlay-40: var(--oz-overlay-40);
+  --color-overlay-50: var(--oz-overlay-50);
+  --color-overlay-60: var(--oz-overlay-60);
+  --color-overlay-70: var(--oz-overlay-70);
+  --color-overlay-80: var(--oz-overlay-80);
+  --color-overlay-90: var(--oz-overlay-90);
+  --color-zebra: var(--oz-zebra);
+
+  /* Active-row tokens for listboxes and selectable tables. */
+  --color-row-active: var(--oz-row-active);
+  --color-row-active-text: var(--oz-row-active-text);
+  --color-row-active-icon: var(--oz-row-active-icon);
+
+  --color-chip-primary: var(--oz-chip-primary);
+  --color-chip-primary-text: var(--oz-chip-primary-text);
+  --color-chip-primary-border: var(--oz-chip-primary-border);
+
+  --color-accent-text: var(--oz-accent-text);
+  --color-accent-text-strong: var(--oz-accent-text-strong);
+
+  --color-brand-wash: var(--oz-brand-wash);
+  --color-brand-wash-strong: var(--oz-brand-wash-strong);
 
   --font-sans: var(--font-roboto), 'Roboto', system-ui, -apple-system, sans-serif;
 }
 
 :root {
-  --background: #f1f5f9;
-  --foreground: #0f172a;
+  --background: var(--oz-canvas);
+  --foreground: var(--oz-text);
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 72px;
 
-  /* Accessible focus ring (3:1+ contrast on primary bg) */
-  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #4f46e5;
-  --focus-ring-inset: inset 0 0 0 2px #ffffff, inset 0 0 0 4px #4f46e5;
+  /* Accessible focus ring (3:1+ contrast on the dark canvas). The inner
+     halo is the surface colour, not white, so the ring stays visible where
+     it lands on a card instead of blooming into a white blob. */
+  --focus-ring: 0 0 0 2px #162033, 0 0 0 4px #6366f1;
+  --focus-ring-inset: inset 0 0 0 2px #162033, inset 0 0 0 4px #6366f1;
 }
 
 /* ============================================
@@ -82,7 +616,7 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--color-gray-300) transparent;
 }
 
 body {
@@ -95,14 +629,29 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Aurora backdrop — the brand's signature gradient, now the app shell's
+   floor in BOTH themes so the canvas reads as the same branded space the
+   user signs in from. Fixed + non-interactive so it never intercepts clicks
+   or scrolls with the content. The gradient itself is a variable: dark gets
+   the indigo/teal glow blobs, light gets a cool paper wash (saturated glows
+   on white read as smudges, not depth). */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--oz-aurora);
+}
+
 input, select, textarea {
   font-family: var(--font-sans);
   font-size: 14px;
 }
 
 ::selection {
-  background-color: #c7d2fe;
-  color: #312e81;
+  background-color: var(--oz-selection);
+  color: var(--oz-selection-text);
 }
 
 @keyframes slideIn {
@@ -165,7 +714,7 @@ input, select, textarea {
 
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px -10px rgb(0 0 0 / 0.28);
 }
 
 input:focus, select:focus, textarea:focus {
@@ -177,7 +726,7 @@ input:focus, select:focus, textarea:focus {
 a:focus-visible,
 button:focus-visible,
 [role="button"]:focus-visible {
-  outline: 2px solid #4f46e5;
+  outline: 2px solid #6366f1;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -200,7 +749,7 @@ button:focus-visible,
 }
 
 .btn-secondary {
-  @apply bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98];
+  @apply bg-surface-card border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 hover:bg-surface-hover hover:border-gray-400 active:scale-[0.98];
 }
 
 .btn-danger {
@@ -230,12 +779,12 @@ button:focus-visible,
 }
 
 .input-field {
-  @apply w-full px-4 py-3 border border-gray-200 rounded-xl transition-all duration-200 bg-white text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent focus:shadow-lg focus:shadow-primary-500/10;
+  @apply w-full px-4 py-3 border border-gray-300 rounded-xl transition-all duration-200 bg-surface-card text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:shadow-lg focus:shadow-primary-500/20;
 }
 
 .select-field {
-  @apply px-4 py-3 pr-10 border border-gray-200 rounded-xl transition-all duration-200 bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent focus:shadow-lg focus:shadow-primary-500/10 appearance-none cursor-pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  @apply px-4 py-3 pr-10 border border-gray-300 rounded-xl transition-all duration-200 bg-surface-card text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:shadow-lg focus:shadow-primary-500/20 appearance-none cursor-pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235c6b80' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 16px;
@@ -243,19 +792,19 @@ button:focus-visible,
 
 .select-field-sm {
   @apply px-3 py-2 pr-8 text-sm rounded-lg appearance-none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235c6b80' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 14px;
 }
 
 .table-header {
-  @apply px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border border-gray-200 bg-linear-to-b from-gray-50 to-gray-100;
+  @apply px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border border-gray-300 bg-linear-to-b from-gray-100 to-gray-200;
   white-space: nowrap;
 }
 
 .table-cell {
-  @apply px-6 py-4 border border-gray-200;
+  @apply px-6 py-4 border border-gray-300;
   white-space: nowrap;
   overflow: visible;
 }
@@ -280,14 +829,16 @@ button:focus-visible,
   @apply bg-blue-50 text-blue-700 border border-blue-200;
 }
 
-/* Excel-like Table Styles */
+/* Excel-like Table Styles — the densest surface in a WMS, so contrast here
+   is tuned explicitly rather than inherited: near-white cells on a near-black
+   header keeps row boundaries legible when rows are only 1px separated. */
 .excel-header {
-  @apply px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-200 bg-linear-to-b from-gray-50 to-gray-100;
+  @apply px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border border-gray-300 bg-linear-to-b from-gray-100 to-gray-200;
   white-space: nowrap;
 }
 
 .excel-header-sortable {
-  @apply cursor-pointer select-none hover:bg-gray-200 transition-colors;
+  @apply cursor-pointer select-none hover:bg-gray-300 transition-colors;
 }
 
 .excel-header-sortable .sort-arrow {
@@ -304,17 +855,19 @@ button:focus-visible,
 }
 
 .excel-cell {
-  @apply px-4 py-3 text-sm text-gray-700 border border-gray-200;
+  @apply px-4 py-3 text-sm text-gray-700 border border-gray-300;
   white-space: nowrap;
   overflow: visible;
 }
 
 .excel-row {
-  @apply hover:bg-primary-50/30 transition-colors;
+  @apply hover:bg-primary-500/10 transition-colors;
 }
 
+/* Zebra striping is a barely-there lift. It flips with the theme: a white
+   overlay glares on dark, a black overlay muddies light. */
 .excel-row:nth-child(even) {
-  @apply bg-gray-50/50;
+  @apply bg-zebra;
 }
 
 /* Sticky action column: solid bg per row state so scrolled content stays hidden behind */
@@ -322,12 +875,12 @@ button:focus-visible,
   position: sticky;
   right: 0;
   z-index: 10;
-  @apply bg-white;
-  box-shadow: -8px 0 12px -8px rgb(0 0 0 / 0.15);
+  @apply bg-surface-card;
+  box-shadow: -8px 0 12px -8px rgb(0 0 0 / 0.6);
 }
 
 thead .excel-sticky-right {
-  @apply bg-gray-100;
+  @apply bg-gray-200;
 }
 
 tbody .excel-row:nth-child(even) .excel-sticky-right {
@@ -336,7 +889,7 @@ tbody .excel-row:nth-child(even) .excel-sticky-right {
 
 /* Higher specificity than the nth-child rule above so selection wins on even rows */
 tbody tr.excel-row-selected td.excel-cell.excel-sticky-right {
-  @apply bg-primary-50;
+  @apply bg-primary-500/15;
 }
 
 /* ============================================

@@ -150,7 +150,7 @@ export default function TarifRetribusiPage() {
     return (
       <DashboardLayout>
         <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="max-w-sm rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
+          <div className="max-w-sm rounded-2xl border border-gray-100 bg-surface-card p-8 text-center shadow-sm">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
               <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
             </div>
@@ -165,19 +165,19 @@ export default function TarifRetribusiPage() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        <header className="rounded-2xl bg-linear-to-r from-emerald-900 via-emerald-800 to-emerald-700 p-6 text-white shadow-sm">
+        <header className="rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 text-emerald-300">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 text-primary-400">
               <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.125 2.25h-4.5c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125v-9M10.125 2.25h.375a9 9 0 019 9v.375M10.125 2.25A3.375 3.375 0 0113.5 5.625v1.5c0 .621.504 1.125 1.125 1.125h1.5a3.375 3.375 0 013.375 3.375v9" /></svg>
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-bold leading-tight">Tarif Retribusi</h1>
-              <p className="mt-0.5 text-emerald-100/80">Atur mode perhitungan &amp; tarif per depo — borongan (nominal manual) atau koli (zak × crt)</p>
+              <p className="mt-0.5 text-ink-fg-muted">Atur mode perhitungan &amp; tarif per depo — borongan (nominal manual) atau koli (zak × crt)</p>
             </div>
           </div>
         </header>
 
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
           <div className="border-b border-gray-100 px-5 py-4">
             <p className="text-sm font-semibold text-slate-800">Tarif khusus per depo</p>
             <p className="mt-1 text-xs text-slate-500">
@@ -199,7 +199,7 @@ export default function TarifRetribusiPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-slate-50/60 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-gray-100 bg-overlay-60 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     <th className="px-5 py-3">Depo</th>
                     <th className="px-3 py-3">Mode</th>
                     <th className="px-3 py-3 text-right">Tarif / zak (Rp)</th>
@@ -278,7 +278,7 @@ export default function TarifRetribusiPage() {
                               type="button"
                               onClick={() => void saveRow(depot.kode_depo)}
                               disabled={isSaving}
-                              className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="rounded-lg bg-ink-900 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {isSaving ? 'Menyimpan...' : 'Simpan'}
                             </button>
@@ -288,7 +288,7 @@ export default function TarifRetribusiPage() {
                                 onClick={() => void resetRow(depot.kode_depo)}
                                 disabled={isSaving}
                                 title="Kembalikan ke nilai bawaan config"
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Reset
                               </button>
@@ -303,7 +303,7 @@ export default function TarifRetribusiPage() {
             </div>
           )}
 
-          <div className="border-t border-gray-100 bg-slate-50/60 px-5 py-3">
+          <div className="border-t border-gray-100 bg-overlay-60 px-5 py-3">
             <p className="text-xs text-slate-500">
               Rumus mode koli: <span className="font-semibold text-slate-700">nominal = qty zak × tarif zak + qty crt × tarif crt</span>. Mode borongan memakai nominal manual saat input biaya.
             </p>

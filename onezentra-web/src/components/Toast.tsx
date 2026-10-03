@@ -24,7 +24,7 @@ export default function Toast({ message, type = 'success', onClose, stackIndex =
 
   const icons = {
     success: (
-      <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
@@ -40,8 +40,16 @@ export default function Toast({ message, type = 'success', onClose, stackIndex =
     ),
   };
 
+  // Warna sukses memakai token `emerald`, bukan `green`. `green` tidak pernah
+  // didaftarkan di @theme globals.css, jadi kelas `bg-green-50` jatuh ke palet
+  // default Tailwind yang nilainya STATIS dan tidak ikut berbalik saat ganti
+  // tema. Digabung ramp netral yang membalik, hasilnya teks terang di atas
+  // latar terang — toast sukses praktis tak terlihat di dark theme, sementara
+  // di light theme tetap terbaca normal. Aturan: warna status memakai `emerald`
+  // (lihat .badge-success di globals.css). Guard: themeContrast.test.ts
+  // "palette families are registered in @theme".
   const bgColors = {
-    success: 'bg-green-50 border-green-200',
+    success: 'bg-emerald-50 border-emerald-200',
     error: 'bg-red-50 border-red-200',
     info: 'bg-blue-50 border-blue-200',
   };

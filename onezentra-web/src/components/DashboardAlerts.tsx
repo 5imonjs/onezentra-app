@@ -21,7 +21,7 @@ function AlertCard({ href, label, value, hint, tone }: {
     <Link
       href={href}
       aria-label={`${label}: ${value}. ${hint}`}
-      className={`group bg-white rounded-2xl border p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${t.box}`}
+      className={`group bg-surface-card rounded-2xl border p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${t.box}`}
     >
       <p className={`text-xl leading-none tabular-nums font-black ${t.num}`}>{value}</p>
       <p className={`text-xs font-semibold tracking-wider uppercase truncate mt-1 ${t.label}`}>{label}</p>

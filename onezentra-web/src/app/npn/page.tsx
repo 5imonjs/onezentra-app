@@ -283,7 +283,7 @@ export default function NpnPage() {
       case 'A': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'DEL': return 'bg-red-50 text-red-700 border-red-200';
       case 'EXISTING': return 'bg-blue-50 text-blue-700 border-blue-200';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200';
+      default: return 'bg-surface-raised text-gray-700 border-gray-300';
     }
   };
 
@@ -309,7 +309,7 @@ export default function NpnPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 text-white">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
@@ -319,14 +319,14 @@ export default function NpnPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">NPN Products</h1>
-                <p className="text-gray-400 mt-0.5">Kelola data produk NPN</p>
+                <p className="text-ink-fg-muted mt-0.5">Kelola data produk NPN</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Table Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Search Bar */}
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center gap-4">
@@ -392,14 +392,14 @@ export default function NpnPage() {
             <table className="w-full border-collapse">
               <caption className="sr-only">Daftar produk NPN</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50">
+                <tr className="bg-surface-raised">
                   {hasPermission('npn.delete') && (
                     <th scope="col" className="w-10 px-5 py-3 text-left align-middle">
                       <input
                         type="checkbox"
                         checked={items.length > 0 && selectedIds.length === items.length}
                         onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                       />
                     </th>
                   )}
@@ -428,14 +428,14 @@ export default function NpnPage() {
               </thead>
               <tbody>
                 {items.map((item, index) => (
-                  <tr key={item.id} className={`transition-colors even:bg-slate-50/30 hover:bg-slate-50/70 ${selectedIds.includes(item.id) ? 'bg-primary-50/50' : ''}`}>
+                  <tr key={item.id} className={`transition-colors even:bg-overlay-30 hover:bg-overlay-70 ${selectedIds.includes(item.id) ? 'bg-chip-primary/50' : ''}`}>
                     {hasPermission('npn.delete') && (
                       <td className="px-5 py-3 text-center text-sm align-middle">
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
                           onChange={() => toggleSelect(item.id)}
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                         />
                       </td>
                     )}
@@ -488,7 +488,7 @@ export default function NpnPage() {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-2 p-3">
             {items.map(item => (
-              <div key={item.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+              <div key={item.id} className="bg-surface-raised rounded-xl p-4 border border-slate-100">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="font-medium text-gray-900 text-sm">{item.szNickName || '-'}</p>
@@ -519,18 +519,18 @@ export default function NpnPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 bg-slate-50/50 px-4 py-3 border-t border-slate-100">
+          <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 bg-overlay-50 px-4 py-3 border-t border-slate-100">
             <span className="text-xs text-slate-500 font-medium order-2 sm:order-1">
               Halaman {page} dari {lastPage}
             </span>
             <div className="flex items-center gap-2 order-1 sm:order-2">
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-[44px] px-3 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-[44px] px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
                 <span className="flex items-center gap-1.5">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                   Sebelumnya
                 </span>
               </button>
-              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-[44px] px-3 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
+              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-[44px] px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
                 <span className="flex items-center gap-1.5">
                   Selanjutnya
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -543,10 +543,10 @@ export default function NpnPage() {
 
       {/* Floating bulk-action bar */}
       {selectedIds.length > 0 && hasPermission('npn.delete') && (
-        <div role="status" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-gray-900 text-white pl-5 pr-3 py-2.5 rounded-2xl shadow-2xl border border-white/10 animate-fade-in">
+        <div role="status" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-ink-900 text-white pl-5 pr-3 py-2.5 rounded-2xl shadow-2xl border border-white/10 animate-fade-in">
           <span className="text-sm font-medium whitespace-nowrap">{selectedIds.length} produk terpilih</span>
           <span aria-hidden="true" className="w-px h-6 bg-white/20" />
-          <button onClick={() => setSelectedIds([])} className="min-h-[44px] px-4 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
+          <button onClick={() => setSelectedIds([])} className="min-h-[44px] px-4 text-sm font-medium text-ink-fg hover:text-white hover:bg-white/10 rounded-xl transition-colors">
             Batal
           </button>
           <button onClick={handleBulkDelete} className="min-h-[44px] px-4 text-sm font-medium bg-red-600 hover:bg-red-500 rounded-xl transition-colors">
@@ -590,7 +590,7 @@ export default function NpnPage() {
                 ['szTaxTypeId', viewItem.szTaxTypeId],
                 ['decRate', viewItem.decRate],
               ].map(([label, value]) => (
-                <div key={label as string} className="bg-gray-50 rounded-xl p-3">
+                <div key={label as string} className="bg-surface-raised rounded-xl p-3">
                   <span className="text-xs font-medium text-gray-400 uppercase">{label as string}</span>
                   <p className="text-sm text-gray-900 mt-1 font-medium">{fmt(value)}</p>
                 </div>
@@ -605,8 +605,8 @@ export default function NpnPage() {
                     const desc = viewItem[`szCat${i + 1}Description` as keyof NpnItem] as string;
                     if (!cat && !desc) return null;
                     return (
-                      <div key={i} className="bg-primary-50 rounded-xl p-3 border border-primary-100">
-                        <span className="text-xs font-mono text-primary-600">{cat}</span>
+                      <div key={i} className="bg-chip-primary rounded-xl p-3 border border-chip-primary-border">
+                        <span className="text-xs font-mono text-accent-text">{cat}</span>
                         <p className="text-xs text-gray-600 truncate mt-1">{desc}</p>
                       </div>
                     );
@@ -731,7 +731,7 @@ export default function NpnPage() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">File Excel</label>
             <div
-              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-primary-50' : selectedFile ? 'border-primary-300 bg-primary-50/30' : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'}`}
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-chip-primary' : selectedFile ? 'border-primary-300 bg-chip-primary/30' : 'border-gray-300 hover:border-primary-300 hover:bg-surface-raised'}`}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
@@ -744,8 +744,8 @@ export default function NpnPage() {
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { pickFile(e.target.files?.[0] || null); e.target.value = ''; }} className="hidden" />
               {selectedFile ? (
                 <div className="flex flex-col items-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-primary-100 flex items-center justify-center">
-                    <svg className="w-7 h-7 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                  <div className="w-14 h-14 rounded-2xl bg-chip-primary flex items-center justify-center">
+                    <svg className="w-7 h-7 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>

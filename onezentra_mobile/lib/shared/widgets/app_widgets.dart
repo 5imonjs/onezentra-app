@@ -345,7 +345,7 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? AppTheme.surfaceCard,
         borderRadius: borderRadius ?? AppTheme.radius2xl,
-        border: border ?? Border.all(color: AppTheme.gray100),
+        border: border ?? Border.all(color: AppTheme.gray300),
         boxShadow:
             shadows ??
             [
@@ -396,34 +396,34 @@ class AppBadge extends StatelessWidget {
 
     switch (variant) {
       case AppBadgeVariant.success:
-        backgroundColor = const Color(0xFFECFDF5); // emerald-50
-        textColor = const Color(0xFF047857); // emerald-700
-        borderColor = const Color(0xFFA7F3D0); // emerald-200
+        backgroundColor = AppTheme.successWell;
+        textColor = AppTheme.successText;
+        borderColor = AppTheme.success;
         break;
       case AppBadgeVariant.warning:
-        backgroundColor = const Color(0xFFFFFBE6); // amber-50
-        textColor = const Color(0xFFB45309); // amber-700
-        borderColor = const Color(0xFFFDE68A); // amber-200
+        backgroundColor = AppTheme.warningWell;
+        textColor = AppTheme.warningText;
+        borderColor = AppTheme.warning;
         break;
       case AppBadgeVariant.danger:
-        backgroundColor = const Color(0xFFFEF2F2); // red-50
-        textColor = const Color(0xFFB91C1C); // red-700
-        borderColor = const Color(0xFFFECACA); // red-200
+        backgroundColor = AppTheme.dangerWell;
+        textColor = AppTheme.dangerText;
+        borderColor = AppTheme.danger;
         break;
       case AppBadgeVariant.info:
-        backgroundColor = const Color(0xFFEFF6FF); // blue-50
-        textColor = const Color(0xFF1D4ED8); // blue-700
-        borderColor = const Color(0xFFBFDBFE); // blue-200
+        backgroundColor = AppTheme.infoWell;
+        textColor = AppTheme.infoText;
+        borderColor = AppTheme.info;
         break;
       case AppBadgeVariant.primary:
-        backgroundColor = AppTheme.primary50;
-        textColor = AppTheme.primary700;
-        borderColor = AppTheme.primary200;
+        backgroundColor = AppTheme.primary950;
+        textColor = AppTheme.primary200;
+        borderColor = AppTheme.primary700;
         break;
       case AppBadgeVariant.gray:
-        backgroundColor = AppTheme.gray100;
+        backgroundColor = AppTheme.gray200;
         textColor = AppTheme.gray700;
-        borderColor = AppTheme.gray200;
+        borderColor = AppTheme.gray300;
         break;
     }
 
@@ -536,9 +536,9 @@ class AppErrorDisplay extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2), // red-50
+        color: AppTheme.dangerWell,
         borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: const Color(0xFFFECACA)), // red-200
+        border: Border.all(color: AppTheme.danger),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,13 +547,13 @@ class AppErrorDisplay extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: const BoxDecoration(
-              color: Color(0xFFFEE2E2), // red-100
+              color: Color(0xFF450A0F),
               borderRadius: AppTheme.radiusLg,
             ),
             child: const Icon(
               Icons.error_outline_rounded,
               size: 16,
-              color: AppTheme.danger,
+              color: AppTheme.dangerText,
             ),
           ),
           const SizedBox(width: AppTheme.space3),
@@ -564,7 +564,7 @@ class AppErrorDisplay extends StatelessWidget {
                 Text(
                   message,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFFDC2626), // red-600
+                    color: AppTheme.dangerText,
                   ),
                 ),
                 if (onRetry != null) ...[

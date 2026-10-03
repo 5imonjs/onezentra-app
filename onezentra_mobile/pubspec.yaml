@@ -20,6 +20,13 @@ dependencies:
   google_fonts: ^6.2.1
   intl: ^0.19.0
   mobile_scanner: ^7.4.2
+  # Printer thermal label batch.
+  #
+  # Classic Bluetooth (RFCOMM/SPP), bukan BLE: printer thermal murah (Xprinter,
+  # Goojprt, Zjiang, dan sejenisnya) hampir semuanya memakainya. Paket BLE seperti
+  # flutter_blue_plus TIDAK akan menemukannya — dan versi 2.x-nya mewajibkan
+  # commercial license untuk penggunaan komersial.
+  flutter_bluetooth_serial: ^0.4.0
 
 dev_dependencies:
   flutter_test:

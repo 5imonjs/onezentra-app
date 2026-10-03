@@ -1,0 +1,1243 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import 'package:onezentra_mobile/core/theme/app_theme.dart';
+import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
+import 'package:onezentra_mobile/features/gate/pages/gate_scanner_page.dart';
+import 'package:onezentra_mobile/features/unload/models/unload_models.dart';
+import 'package:onezentra_mobile/features/unload/providers/unload_provider.dart';
+import 'package:onezentra_mobile/features/unload/repositories/unload_repository.dart';
+import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
+import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
+
+/// Bongkar — scan a PO to open its receiving, start the unloading, scan
+/// each unloaded product, then finish.
+///
+/// Only PENDING / IN_PROGRESS records open here; finished ones belong to
+/// Hasil Penerimaan. The PO lookup demands an exact match (like the web
+/// app) so a mistyped barcode can never finish the wrong unloading.
+class UnloadPage extends StatefulWidget {
+  const UnloadPage({super.key, this.repository, this.openScanner});
+
+  /// Injectable so tests can run the screen against a fake repository.
+  final UnloadRepository? repository;
+
+  /// Opens the barcode scanner and resolves with the scanned code (null when
+  /// the user backs out). Defaults to pushing [GateScannerPage]; tests inject
+  /// a fake so no camera is ever started.
+  final Future<String?> Function()? openScanner;
+
+  @override
+  State<UnloadPage> createState() => _UnloadPageState();
+}
+
+class _UnloadPageState extends State<UnloadPage> {
+  late final UnloadProvider _provider = UnloadProvider(
+    repository: widget.repository,
+  );
+  final _scanController = TextEditingController();
+
+  @override
+  void dispose() {
+    _scanController.dispose();
+    _provider.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      ChangeNotifierProvider<UnloadProvider>.value(
+        value: _provider,
+        child: Builder(builder: _buildPage),
+      );
+
+  Widget _buildPage(BuildContext context) {
+    var user = context.watch<AuthProvider>().user;
+    var canView = user?.hasPermission('receiving.view') ?? false;
+    var canEdit = user?.hasPermission('receiving.edit') ?? false;
+    var unload = context.watch<UnloadProvider>();
+
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(title: const Text('Bongkar'), elevation: 0),
+      body: SafeArea(
+        child: !canView
+            ? _buildNoAccess()
+            : SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(AppTheme.space4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: AppTheme.space4),
+                    _buildScanCard(unload),
+                    const SizedBox(height: AppTheme.space4),
+                    if (unload.active != null)
+                      _buildActiveCard(
+                        unload.active!,
+                        unload: unload,
+                        canEdit: canEdit,
+                      ),
+                    if (unload.active != null)
+                      const SizedBox(height: AppTheme.space4),
+                    const SizedBox(height: AppTheme.space4),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildNoAccess() => SingleChildScrollView(
+    padding: const EdgeInsets.all(AppTheme.space5),
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space5),
+      decoration: BoxDecoration(
+        color: AppTheme.warningWell,
+        borderRadius: AppTheme.radiusXl,
+        border: Border.all(color: AppTheme.warningText),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Text(
+              'Anda tidak memiliki izin untuk melihat Bongkar.',
+              style: GoogleFonts.roboto(
+                fontSize: 13,
+                height: 1.4,
+                color: AppTheme.warningText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildHeader() => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space5),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppTheme.ink900, AppTheme.ink800],
+      ),
+      borderRadius: AppTheme.radius2xl,
+      boxShadow: [
+        BoxShadow(
+          color: AppTheme.ink900.withValues(alpha: 0.2),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: AppTheme.radiusLg,
+          ),
+          child: const Icon(
+            Icons.forklift,
+            color: Colors.white,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: AppTheme.space3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bongkar',
+                style: GoogleFonts.roboto(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Scan PO — mulai — pindai produk — selesai',
+                style: GoogleFonts.roboto(
+                  fontSize: 12,
+                  color: AppTheme.gray400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  // ---------------------------------------------------------------------
+  // PO scan
+  // ---------------------------------------------------------------------
+
+  Widget _buildScanCard(UnloadProvider unload) => AppCard(
+    padding: const EdgeInsets.all(AppTheme.space5),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.gray900,
+                borderRadius: AppTheme.radiusLg,
+              ),
+              child: const Icon(
+                Icons.qr_code_scanner_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Scan Bongkar',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.foreground,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Harus cocok persis dengan PO — tidak ada tebakan',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      color: AppTheme.gray400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space4),
+        Row(
+          children: [
+            Expanded(
+              child: AppTextField(
+                controller: _scanController,
+                hint: 'Barcode PO...',
+                prefixIcon: Icons.qr_code_scanner_rounded,
+                suffixIcon: IconButton(
+                  tooltip: 'Pindai dengan kamera',
+                  onPressed: unload.lookupBusy ? null : _openScanner,
+                  icon: const Icon(Icons.photo_camera_rounded),
+                ),
+                textInputAction: TextInputAction.done,
+                onEditingComplete: _submitScan,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space3),
+            AppPrimaryButton(
+              text: 'Buka',
+              height: 48,
+              isFullWidth: false,
+              isLoading: unload.lookupBusy,
+              onPressed: unload.lookupBusy ? null : _submitScan,
+            ),
+          ],
+        ),
+        if (unload.message != null) _buildBanner(unload.message!),
+      ],
+    ),
+  );
+
+  Future<void> _submitScan() async {
+    FocusScope.of(context).unfocus();
+    // Uses the state field, not `context.read`: this State's context sits
+    // above the ChangeNotifierProvider that owns the UnloadProvider.
+    var code = _scanController.text;
+    await _provider.lookup(code);
+    if (_provider.active != null) {
+      _scanController.clear();
+    }
+  }
+
+  Future<void> _openScanner() async {
+    var injected = widget.openScanner;
+    var code = await (injected != null
+        ? injected()
+        : Navigator.of(context).push<String>(
+            MaterialPageRoute(
+              builder: (_) => const GateScannerPage(
+                title: 'Pindai Bongkar',
+                hint: 'Arahkan kamera ke barcode PO / surat jalan.',
+                subtitle: 'Harus cocok persis — PO yang salah ditolak.',
+                cameraErrorHint:
+                    'Kamera tidak dapat dijalankan. Masukkan barcode PO '
+                    'secara manual di halaman Bongkar.',
+              ),
+            ),
+          ));
+    if (!mounted || code == null || code.isEmpty) {
+      return;
+    }
+    _scanController.text = code;
+    await _provider.lookup(code);
+    if (_provider.active != null) {
+      _scanController.clear();
+    }
+  }
+
+  Widget _buildBanner(UnloadActionMessage message) => Container(
+    margin: const EdgeInsets.only(top: AppTheme.space4),
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: message.success
+          ? AppTheme.successWell
+          : const Color(0xFFFFF1F2),
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(
+        color: message.success
+            ? AppTheme.successText
+            : const Color(0xFFFECDD3),
+      ),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          message.success ? Icons.check_circle_rounded : Icons.error_rounded,
+          size: 18,
+          color: message.success
+              ? AppTheme.success
+              : AppTheme.danger,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            message.message,
+            style: GoogleFonts.roboto(
+              fontSize: 12.5,
+              height: 1.4,
+              color: AppTheme.gray700,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  // ---------------------------------------------------------------------
+  // Active session
+  // ---------------------------------------------------------------------
+
+  Widget _buildActiveCard(
+    UnloadSession session, {
+    required UnloadProvider unload,
+    required bool canEdit,
+  }) {
+    var received = session.totalReceivedQty ?? 0;
+    var expected = session.totalExpectedQty ?? 0;
+    var selisih = received - expected;
+    var progress = session.plan.isEmpty
+        ? 0.0
+        : (session.coveredCount / session.plan.length).clamp(0.0, 1.0);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space4),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppTheme.ink900, AppTheme.ink800],
+        ),
+        borderRadius: AppTheme.radius2xl,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _sessionHeadline(session),
+                  style: GoogleFonts.roboto(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                    color: AppTheme.gray400,
+                  ),
+                ),
+              ),
+              AppBadge(
+                text: _sessionBadge(session.status),
+                variant: session.status == 'IN_PROGRESS'
+                    ? AppBadgeVariant.primary
+                    : session.status == 'COMPLETED'
+                        ? AppBadgeVariant.success
+                        : session.status == 'CANCELLED'
+                            ? AppBadgeVariant.gray
+                            : AppBadgeVariant.warning,
+              ),
+              IconButton(
+                onPressed: unload.actionBusy ? null : unload.clearActive,
+                tooltip: 'Tutup',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: Colors.white.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Row(
+            children: [
+              Expanded(
+                child: _darkField(
+                  'PO Transporter',
+                  session.poTransporter ?? '-',
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: _darkField(
+                  'No. Polisi',
+                  session.nopol ?? '-',
+                  highlight: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Row(
+            children: [
+              Expanded(
+                child: _darkField(
+                  'Ekspektasi',
+                  _formatQty(session.totalExpectedQty),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: _darkField(
+                  'Diterima',
+                  _formatQty(session.totalReceivedQty),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: _darkField(
+                  'Selisih',
+                  _formatQty(selisih),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space3),
+          ClipRRect(
+            borderRadius: AppTheme.radiusFull,
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppTheme.success,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppTheme.space4),
+          if (session.status == 'PENDING')
+            if (canEdit)
+              _darkActionButton(
+                label: 'Mulai Bongkar',
+                background: Colors.white,
+                foreground: AppTheme.gray900,
+                loading: unload.actionBusy,
+                onPressed: () => unload.startActive(),
+              )
+            else
+              _inlineWarning(
+                'Anda tidak memiliki izin receiving.edit untuk memulai bongkar.',
+              )
+          else if (session.status == 'IN_PROGRESS') ...[
+            ...[
+              for (var i = 0; i < session.plan.length; i++) ...[
+                _planTile(
+                  session.plan[i],
+                  session,
+                  unload: unload,
+                  canEdit: canEdit,
+                ),
+                if (i != session.plan.length - 1)
+                  const SizedBox(height: AppTheme.space2),
+              ],
+            ],
+            const SizedBox(height: AppTheme.space4),
+            _buildCompleteSection(session, unload, canEdit: canEdit),
+            const SizedBox(height: AppTheme.space2),
+            _darkActionButton(
+              label: 'Batalkan Bongkar',
+              background: Colors.transparent,
+              foreground: Colors.white,
+              outline: true,
+              loading: unload.actionBusy,
+              onPressed: () => _confirmCancel(unload),
+            ),
+          ] else ...[
+            // COMPLETED / CANCELLED: nothing left to do here — a finished
+            // document continues to Check Out.
+            const SizedBox(height: AppTheme.space4),
+            if (session.status == 'COMPLETED' &&
+                (session.poTransporter ?? '').isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: FilledButton.icon(
+                  onPressed: () => context.push(
+                    '/checkout',
+                    extra: session.poTransporter,
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppTheme.gray900,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppTheme.radiusLg,
+                    ),
+                    textStyle: GoogleFonts.roboto(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  icon: const Icon(Icons.output_rounded, size: 18),
+                  label: Text(
+                    'Lanjut ke Check Out ${session.poTransporter}',
+                  ),
+                ),
+              )
+            else
+              _guideBox(
+                'Sesi ${session.status == 'CANCELLED' ? 'dibatalkan' : 'selesai'} — '
+                'tidak ada aksi tersisa.',
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _planTile(
+    UnloadPlanLine line,
+    UnloadSession session, {
+    required UnloadProvider unload,
+    required bool canEdit,
+  }) {
+    var code = (line.kodeBarang ?? '').toLowerCase();
+    var scans = session.scanned
+        .where((s) => (s.kodeBarang ?? '').toLowerCase() == code)
+        .toList();
+    var covered = line.kodeBarang != null && scans.isNotEmpty;
+    var scannedQty = scans.fold<double>(
+      0,
+      (sum, s) => sum + (s.actualQty ?? 0),
+    );
+
+    return InkWell(
+      onTap: !canEdit || unload.actionBusy
+          ? null
+          : () => _openScanSheet(line, session),
+      borderRadius: AppTheme.radiusLg,
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.space3),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.07),
+          borderRadius: AppTheme.radiusLg,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: covered
+                    ? AppTheme.success.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.1),
+                borderRadius: AppTheme.radiusLg,
+              ),
+              child: Icon(
+                covered
+                    ? Icons.check_circle_rounded
+                    : Icons.hourglass_empty_rounded,
+                size: 18,
+                color: covered
+                    ? AppTheme.success
+                    : AppTheme.gray400,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    line.namaBarang ?? line.kodeBarang ?? '-',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.roboto(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    covered
+                        ? 'Terima ${_formatQty(scannedQty)}'
+                              ' / ${_formatQty(line.jumlah)}'
+                              '${line.satuan != null ? ' ${line.satuan}' : ''}'
+                        : 'Ekspektasi ${_formatQty(line.jumlah)}'
+                              '${line.satuan != null ? ' ${line.satuan}' : ''}',
+                    style: GoogleFonts.robotoMono(
+                      fontSize: 11,
+                      color: AppTheme.gray400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppTheme.space2),
+            // Fast path for the common case: the unloaded qty matches the
+            // plan, so one tap records it. Anything else opens the sheet.
+            if (!covered && canEdit)
+              SizedBox(
+                height: 40,
+                child: FilledButton.icon(
+                  onPressed: unload.actionBusy
+                      ? null
+                      : () => unload.scanLine(
+                          kodeBarang: line.kodeBarang ?? '',
+                          actualQty: line.jumlah ?? 0,
+                          namaBarang: line.namaBarang,
+                          satuan: line.satuan,
+                          rencanaKirimItemId: line.id,
+                        ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.space3,
+                    ),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppTheme.radiusLg,
+                    ),
+                    textStyle: GoogleFonts.roboto(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  icon: const Icon(Icons.check_rounded, size: 16),
+                  label: const Text('Sesuai'),
+                ),
+              )
+            else
+              AppBadge(
+                text: covered ? 'Tercatat' : 'Belum',
+                variant: covered
+                    ? AppBadgeVariant.success
+                    : AppBadgeVariant.gray,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openScanSheet(
+    UnloadPlanLine line,
+    UnloadSession session,
+  ) async {
+    // The sheet lives on a modal route above this page, so the page-scoped
+    // provider is re-exposed explicitly — otherwise `context.read` inside
+    // the sheet throws ProviderNotFoundException.
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChangeNotifierProvider<UnloadProvider>.value(
+        value: _provider,
+        child: _UnloadScanSheet(line: line, receivingId: session.id),
+      ),
+    );
+  }
+
+  /// Complete section: finishing with zero scans would write an empty
+  /// receiving, so the button stays disabled until the first line lands.
+  Widget _buildCompleteSection(
+    UnloadSession session,
+    UnloadProvider unload, {
+    required bool canEdit,
+  }) {
+    if (!canEdit) {
+      return _inlineWarning(
+        'Anda tidak memiliki izin receiving.edit untuk menyelesaikan bongkar.',
+      );
+    }
+    var empty = session.scanned.isEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _darkActionButton(
+          label: empty
+              ? 'Selesai Bongkar (belum ada item)'
+              : 'Selesaikan Bongkar ✓',
+          background: AppTheme.success,
+          foreground: Colors.white,
+          loading: unload.actionBusy,
+          onPressed: empty ? null : () => _confirmComplete(unload),
+        ),
+        if (empty) ...[
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            'Pindai dulu minimal 1 produk — tombol aktif otomatis.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.roboto(
+              fontSize: 11.5,
+              color: AppTheme.gray400,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _confirmComplete(UnloadProvider unload) async {
+    var session = unload.active;
+    if (session == null || unload.actionBusy) {
+      return;
+    }
+    var received = session.totalReceivedQty ?? 0;
+    var expected = session.totalExpectedQty ?? 0;
+    var selisih = received - expected;
+
+    var confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Selesaikan bongkar?',
+          style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'PO ${session.poTransporter ?? '-'} — diterima ${_formatQty(received)} '
+          'dari ${_formatQty(expected)} (selisih ${_formatQty(selisih)}). '
+          'Aksi ini menyelesaikan receiving, melepas dock, dan mengirim email; '
+          'tidak dapat dibatalkan.',
+          style: GoogleFonts.roboto(
+            fontSize: 13,
+            height: 1.4,
+            color: AppTheme.gray600,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.success,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ya, Selesaikan'),
+          ),
+        ],
+      ),
+    );
+    if ((confirmed ?? false) && mounted) {
+      var done = await unload.completeActive();
+      if (done && mounted) {
+        _scanController.clear();
+      }
+    }
+  }
+
+  Future<void> _confirmCancel(UnloadProvider unload) async {
+    var confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Batalkan bongkar?',
+          style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Bongkar berjalan dibatalkan. Item yang sudah dipindai ikut hangus.',
+          style: GoogleFonts.roboto(
+            fontSize: 13,
+            height: 1.4,
+            color: AppTheme.gray600,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Kembali'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ya, Batalkan'),
+          ),
+        ],
+      ),
+    );
+    if ((confirmed ?? false) && mounted) {
+      await unload.cancelActive();
+    }
+  }
+
+  Widget _guideBox(String guide) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppTheme.space3),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: AppTheme.radiusLg,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 16,
+              color: AppTheme.gray400,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                guide,
+                style: GoogleFonts.roboto(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: AppTheme.gray300,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _darkField(String label, String value, {bool highlight = false}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.space3,
+          vertical: AppTheme.space2,
+        ),
+        decoration: highlight
+            ? const BoxDecoration(
+                color: Colors.white,
+                borderRadius: AppTheme.radiusLg,
+              )
+            : BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.07),
+                borderRadius: AppTheme.radiusLg,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.roboto(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: highlight ? AppTheme.gray500 : AppTheme.gray400,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.robotoMono(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: highlight ? AppTheme.gray900 : Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _inlineWarning(String warning) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: AppTheme.warningDark,
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.lock_rounded, size: 16, color: AppTheme.warning),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            warning,
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              height: 1.4,
+              color: AppTheme.warning,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _darkActionButton({
+    required String label,
+    required Color background,
+    required Color foreground,
+    required VoidCallback? onPressed,
+    bool outline = false,
+    bool loading = false,
+  }) => SizedBox(
+    width: double.infinity,
+    height: 44,
+    child: FilledButton(
+      onPressed: loading ? null : onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: background,
+        foregroundColor: foreground,
+        disabledBackgroundColor: background.withValues(alpha: 0.6),
+        side: outline
+            ? BorderSide(color: Colors.white.withValues(alpha: 0.4))
+            : null,
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppTheme.radiusLg,
+        ),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      child: loading
+          ? SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: foreground,
+              ),
+            )
+          : Text(label),
+    ),
+  );
+
+  static String _sessionHeadline(UnloadSession session) =>
+      switch (session.status) {
+        'IN_PROGRESS' =>
+          'BONGKAR BERJALAN • ${session.coveredCount}/${session.plan.length} PRODUK',
+        'COMPLETED' => 'BONGKAR SELESAI • ${session.plan.length} PRODUK',
+        'CANCELLED' => 'BONGKAR DIBATALKAN',
+        _ => 'SIAP BONGKAR • ${session.plan.length} PRODUK',
+      };
+
+  static String _sessionBadge(String status) => switch (status) {
+    'IN_PROGRESS' => 'Berjalan',
+    'COMPLETED' => 'Selesai',
+    'CANCELLED' => 'Dibatalkan',
+    _ => 'Menunggu',
+  };
+
+  static String _formatQty(double? value) {
+    if (value == null) {
+      return '-';
+    }
+    return value == value.truncateToDouble()
+        ? '${value.toInt()}'
+        : '$value';
+  }
+}
+
+/// Bottom sheet for scanning one unloaded line: actual qty, condition
+/// chips, optional product barcode and notes.
+///
+/// Scan contracts carry no expiry/photo fields, so the sheet stays short:
+/// qty → kondisi → simpan.
+class _UnloadScanSheet extends StatefulWidget {
+  const _UnloadScanSheet({required this.line, required this.receivingId});
+  final UnloadPlanLine line;
+  final int receivingId;
+
+  @override
+  State<_UnloadScanSheet> createState() => _UnloadScanSheetState();
+}
+
+class _UnloadScanSheetState extends State<_UnloadScanSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _qtyController = TextEditingController(
+    text: _initialQty(widget.line.jumlah),
+  );
+  final _barcodeController = TextEditingController();
+  final _notesController = TextEditingController();
+  String _condition = 'FISIK_BAGUS';
+  bool _saving = false;
+  String? _error;
+
+  static String _initialQty(double? value) {
+    if (value == null) {
+      return '';
+    }
+    return value == value.truncateToDouble()
+        ? '${value.toInt()}'
+        : '$value';
+  }
+
+  @override
+  void dispose() {
+    _qtyController.dispose();
+    _barcodeController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var line = widget.line;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        left: AppTheme.space5,
+        right: AppTheme.space5,
+        top: AppTheme.space4,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppTheme.space5,
+      ),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.gray200,
+                      borderRadius: AppTheme.radiusFull,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space4),
+                Text(
+                  line.namaBarang ?? line.kodeBarang ?? 'Produk',
+                  style: GoogleFonts.roboto(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.foreground,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${line.kodeBarang ?? '-'} • Rencana ${_formatQty(line.jumlah)}'
+                  '${line.satuan != null ? ' ${line.satuan}' : ''}',
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 12,
+                    color: AppTheme.gray500,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space4),
+                AppTextField(
+                  controller: _qtyController,
+                  label: 'Qty turun aktual',
+                  hint: '0',
+                  prefixIcon: Icons.inventory_rounded,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textInputAction: TextInputAction.next,
+                  validator: (value) {
+                    var qty = double.tryParse(
+                      (value ?? '').replaceAll(',', '.'),
+                    );
+                    if (qty == null || qty < 0) {
+                      return 'Isi qty aktual dengan angka ≥ 0';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppTheme.space3),
+                Text(
+                  'Kondisi',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.gray700,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space2),
+                Wrap(
+                  spacing: AppTheme.space2,
+                  runSpacing: AppTheme.space2,
+                  children: [
+                    for (var value in ValidationCondition.values)
+                      _conditionChip(value),
+                  ],
+                ),
+                const SizedBox(height: AppTheme.space3),
+                AppTextField(
+                  controller: _barcodeController,
+                  label: 'Barcode produk (opsional)',
+                  hint: 'Scan / ketik barcode kemasan',
+                  prefixIcon: Icons.barcode_reader,
+                ),
+                const SizedBox(height: AppTheme.space3),
+                AppTextField(
+                  controller: _notesController,
+                  label: 'Catatan (opsional)',
+                  hint: 'Keterangan tambahan',
+                  prefixIcon: Icons.note_rounded,
+                  maxLines: 2,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: AppTheme.space3),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppTheme.space3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.dangerWell,
+                      borderRadius: AppTheme.radiusLg,
+                      border: Border.all(color: AppTheme.dangerText),
+                    ),
+                    child: Text(
+                      _error!,
+                      style: GoogleFonts.roboto(
+                        fontSize: 12.5,
+                        height: 1.4,
+                        color: AppTheme.dangerText,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppTheme.space4),
+                AppPrimaryButton(
+                  text: 'Simpan Hasil Pindai',
+                  isLoading: _saving,
+                  onPressed: _saving ? null : _save,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _conditionChip(String value) {
+    var selected = _condition == value;
+    return InkWell(
+      onTap: () => setState(() => _condition = value),
+      borderRadius: AppTheme.radiusFull,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.space4,
+          vertical: AppTheme.space2,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary600 : AppTheme.gray100,
+          borderRadius: AppTheme.radiusFull,
+          border: Border.all(
+            color: selected ? AppTheme.primary600 : AppTheme.gray200,
+          ),
+        ),
+        child: Text(
+          ValidationCondition.label(value),
+          style: GoogleFonts.roboto(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppTheme.gray700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _formatQty(double? value) {
+    if (value == null) {
+      return '-';
+    }
+    return value == value.truncateToDouble()
+        ? '${value.toInt()}'
+        : '$value';
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    var provider = context.read<UnloadProvider>();
+    var success = await provider.scanLine(
+      kodeBarang: widget.line.kodeBarang ?? '',
+      actualQty: double.parse(
+        _qtyController.text.trim().replaceAll(',', '.'),
+      ),
+      namaBarang: widget.line.namaBarang,
+      satuan: widget.line.satuan,
+      condition: _condition,
+      barcode: _barcodeController.text.trim().isEmpty
+          ? null
+          : _barcodeController.text.trim(),
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
+      rencanaKirimItemId: widget.line.id,
+    );
+
+    if (!mounted) {
+      return;
+    }
+    if (success) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _saving = false;
+        _error =
+            provider.message?.message ?? 'Gagal menyimpan. Silakan coba lagi.';
+      });
+    }
+  }
+}

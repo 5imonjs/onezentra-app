@@ -19,6 +19,7 @@ use App\Services\EmailNotificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -93,6 +94,12 @@ class SjValidationController extends Controller
         ]);
         $this->attachStandarUmur($sjValidation->items);
         $this->attachStandarisasiTumpukan($sjValidation->items);
+
+        // Apakah pengguna ini boleh mengoreksi item pada sesi yang sudah selesai.
+        // Dihitung di server karena hanya server yang tahu status Receiving, dan
+        // UI harus menampilkan aksi yang benar-benar akan berhasil — bukan
+        // tombol yang tetap terlihat lalu ditolak 422 saat ditekan.
+        $sjValidation->can_correct_completed = $this->itemEditability($sjValidation)[0];
 
         return response()->json(['data' => $sjValidation]);
     }
@@ -326,16 +333,136 @@ class SjValidationController extends Controller
     }
 
     /**
-     * Scan barcode produk kemasan + masukkan qty aktual & expired.
+     * Hitung durasi (detik) dari `started_at` sampai waktu terminal sekarang.
+     *
+     * Dipakai `complete()` dan `cancel()` supaya keduanya menghitung dengan
+     * aturan yang sama — dua implementasi dari aturan yang sama pasti akan
+     * berbeda begitu salah satunya lupa diperbarui.
+     *
+     * Mengembalikan null bila `started_at` kosong atau jamnya tidak konsisten
+     * (selesai sebelum mulai). Nilai negatif lebih buruk daripada null: akan
+     * tampil sebagai "−3j" di tabel dan ikut terambil sebagai angka laporan.
      */
+    protected function elapsedSeconds(SjValidation $sjValidation, Carbon $endedAt): ?int
+    {
+        if (! $sjValidation->started_at) {
+            return null;
+        }
+
+        $seconds = $endedAt->getTimestamp() - $sjValidation->started_at->getTimestamp();
+
+        return $seconds < 0 ? null : $seconds;
+    }
+
+    /**
+     * Salin ulang nilai item validasi ke baris ReceivingItem-nya.
+     *
+     * No-op untuk sesi IN_PROGRESS (Receiving-nya belum ada) dan untuk sesi
+     * yang Receiving-nya sudah COMPLETED — pada kasus itu `itemEditability()`
+     * sudah menolak lebih dulu, jadi method ini tidak akan pernah dipanggil
+     * dengan Receiving tertutup.
+     *
+     * Total di header Receiving ikut dihitung ulang karena `total_received_qty`
+     * disimpan sebagai hasil SUM saat materialisasi; kalau tidak dihitung ulang,
+     * angka header akan terlihat tidak sinkron dengan detailnya.
+     */
+    protected function syncReceivingItem(SjValidationItem $item): void
+    {
+        $receivingItem = ReceivingItem::where('sj_validation_item_id', $item->id)->first();
+        if (! $receivingItem) {
+            return;
+        }
+
+        $selisihQty = (float) $item->actual_qty - (float) $item->expected_qty;
+
+        $receivingItem->update([
+            'actual_qty' => $item->actual_qty,
+            'condition' => $item->condition ?? 'FISIK_BAGUS',
+            'expired_date' => $item->expired_date,
+            'barcode' => $item->barcode,
+            'notes' => $item->notes,
+            'photo' => $item->photo,
+            'selisih_qty' => $selisihQty,
+            'selisih_reason' => $selisihQty != 0 ? match ($item->condition) {
+                'FISIK_RUSAK' => 'Barang rusak',
+                'QTY_KURANG' => 'Qty kurang dari rencana',
+                'ISI_KEMASAN_KURANG' => 'Isi kemasan kurang',
+                'EXPIRED_TIDAK_STANDAR' => 'Expired tidak standar',
+                'LAINNYA' => 'Lainnya',
+                default => 'Selisih qty',
+            } : null,
+        ]);
+
+        $receiving = $receivingItem->receiving;
+        $receiving?->update([
+            'total_received_qty' => $receiving->items()->sum('actual_qty'),
+        ]);
+    }
+
+    /**
+     * Apakah hasil item pada sesi validasi ini masih boleh diubah.
+     *
+     * Menggantikan gate `abort_unless(status === 'IN_PROGRESS')` yang dulu
+     * diulang di dua tempat terpisah (`scanItem` dan `deleteItem`),
+     * karena dua implementasi dari aturan yang sama pasti akan berbeda
+     * begitu salah satunya lupa diperbarui.
+     *
+     * Tiga lapis, berurutan dari yang paling umum:
+     *
+     * 1. `IN_PROGRESS` — bebas ubah. Ini jalur normal operator.
+     *
+     * 2. `COMPLETED` — hanya untuk pemegang `sj_validation.edit_completed`
+     *    DAN Receiving-nya belum COMPLETED. Sesi yang sudah `complete()`
+     *    menyalin nilai item ke `receiving_items`, jadi koreksi di sini
+     *    harus ikut tersalin; kalau Receiving sudah COMPLETED tidak ada
+     *    yang akan menyalin dan angkanya akan selamanya berbeda — Opname
+     *    Expired serta laporan Penerimaan membaca `receiving_items`, bukan
+     *    `sj_validation_items`.
+     *
+     * 3. `CANCELLED` — tidak pernah bisa diubah, oleh siapa pun. Sesi
+     *    dibatalkan karena tidak dipakai; label batch-nya sudah dicoret dan
+     *    tidak berlaku. Menghidupkan kembali dokumen yang sengaja dibuang
+     *    hanya mengembalikan kekacauan.
+     *
+     * Status tak dikenal gagal DEFAULT ke tutup, supaya nilai baru di masa
+     * depan tidak diam-diam mendapat akses edit.
+     *
+     * @return array{0: bool, 1: string|null} [boleh?, pesan penolakan]
+     */
+    protected function itemEditability(SjValidation $sjValidation): array
+    {
+        if ($sjValidation->status === 'IN_PROGRESS') {
+            return [true, null];
+        }
+
+        if ($sjValidation->status === 'COMPLETED') {
+            if (! $this->currentUser()->hasPermission('sj_validation.edit_completed')) {
+                return [false, 'Validasi sudah selesai sehingga hasil item tidak dapat diubah.'];
+            }
+
+            $receiving = Receiving::where('rencana_kirim_id', $sjValidation->rencana_kirim_id)
+                ->whereIn('status', ['PENDING', 'IN_PROGRESS'])
+                ->first();
+
+            if (! $receiving) {
+                return [false, 'Receiving sudah selesai. Koreksi harus dilakukan lewat menu Receiving, bukan Validasi Dokumen.'];
+            }
+
+            return [true, null];
+        }
+
+        if ($sjValidation->status === 'CANCELLED') {
+            return [false, 'Validasi sudah dibatalkan sehingga isinya tidak dapat diubah.'];
+        }
+
+        return [false, "Validasi berstatus {$sjValidation->status} tidak dapat diubah."];
+    }
+
     public function scanItem(Request $request, SjValidation $sjValidation): JsonResponse
     {
         $this->authorizeDepot($sjValidation);
-        abort_unless(
-            $sjValidation->status === 'IN_PROGRESS',
-            422,
-            "Item hanya dapat divalidasi saat validasi berjalan (saat ini: {$sjValidation->status})."
-        );
+        [$editable, $reason] = $this->itemEditability($sjValidation);
+        abort_unless($editable, 422, $reason);
         $validated = $request->validate([
             'sj_validation_item_id' => 'required|exists:sj_validation_items,id',
             'barcode' => 'nullable|string|max:100',
@@ -424,6 +551,12 @@ class SjValidationController extends Controller
         $item->load('npn');
         $this->attachStandarUmur([$item]);
 
+        // Koreksi setelah `complete()` hanya sah kalau baris Receiving ikut
+        // diperbarui. `receiving_items` adalah salinan yang dibaca Opname Expired
+        // dan laporan Penerimaan; menyalin ulang di sini adalah satu-satunya cara
+        // supaya dua tabel tidak berbeda setelah supervisor memperbaiki angka.
+        $this->syncReceivingItem($item);
+
         // Standarisasi tumpukan: jika frontend mengirim tier/tinggi (produk belum
         // punya standarisasi tersimpan), catat agar tidak diminta berulang.
         if (isset($validated['tier']) || isset($validated['tinggi_tumpukan'])) {
@@ -431,6 +564,12 @@ class SjValidationController extends Controller
         }
 
         $this->standarisasiForItem($item);
+
+        // Batch ikut dikembalikan di respons scan. Label batch ditempel fisik ke
+        // produk tepat setelah operator memvalidasi, jadi frontend (web maupun
+        // mobile) harus bisa mencetak tanpa fetch kedua — dan satu produk memang
+        // satu batch, jadi tidak ada ambiguitas label mana yang dicetak.
+        $item->load('batch');
 
         return response()->json([
             'message' => 'Item divalidasi',
@@ -467,9 +606,12 @@ class SjValidationController extends Controller
             $pending = $locked->items()->where('status', 'PENDING')->count();
             abort_if($pending > 0, 422, 'Masih ada item yang belum divalidasi ('.$pending.')');
 
+            $finishedAt = now();
+
             $locked->update([
                 'status' => 'COMPLETED',
-                'completed_at' => now(),
+                'completed_at' => $finishedAt,
+                'duration_seconds' => $this->elapsedSeconds($locked, $finishedAt),
             ]);
 
             [$locked, $receiving] = $this->ensureReceiving($locked);
@@ -518,11 +660,10 @@ class SjValidationController extends Controller
     public function deleteItem(Request $request, SjValidation $sjValidation, mixed $item): JsonResponse
     {
         $this->authorizeDepot($sjValidation);
-        abort_unless(
-            $sjValidation->status === 'IN_PROGRESS',
-            422,
-            "Item hanya dapat dihapus saat validasi berjalan (saat ini: {$sjValidation->status})."
-        );
+        // Gate yang sama persis dengan scanItem — aturan "boleh ubah atau tidak"
+        // harus punya satu implementasi, bukan dua yang bisa berbeda.
+        [$editable, $reason] = $this->itemEditability($sjValidation);
+        abort_unless($editable, 422, $reason);
         $row = SjValidationItem::findOrFail($item);
         if ($row->sj_validation_id !== $sjValidation->id) {
             return response()->json(['message' => 'Item tidak sesuai validasi ini'], 422);
@@ -546,7 +687,15 @@ class SjValidationController extends Controller
         );
 
         DB::transaction(function () use ($sjValidation) {
-            $sjValidation->update(['status' => 'CANCELLED']);
+            // `completed_at` sengaja TIDAK diisi di sini: dokumen yang dibatalkan
+            // tidak pernah "selesai", dan mengisinya akan membuat UI menampilkan
+            // waktu selesai untuk dokumen yang tidak pernah diselesaikan.
+            // Durasi tetap dicatat karena pekerjaan memang berakhir di sini.
+            $cancelledAt = now();
+            $sjValidation->update([
+                'status' => 'CANCELLED',
+                'duration_seconds' => $this->elapsedSeconds($sjValidation, $cancelledAt),
+            ]);
             Batch::whereIn(
                 'sj_validation_item_id',
                 $sjValidation->items()->pluck('id')

@@ -9,8 +9,23 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 ///
 /// Reads a PO / surat jalan code with the device camera and pops the raw
 /// value ([Navigator.pop]) so the caller can look it up.
+///
+/// The copy defaults to the Check In Point wording; other menus (e.g.
+/// Validasi SJ) override [title], [hint], [subtitle] and [cameraErrorHint].
 class GateScannerPage extends StatefulWidget {
-  const GateScannerPage({super.key});
+  const GateScannerPage({
+    super.key,
+    this.title = 'Pindai QR / Barcode',
+    this.hint = 'Arahkan kamera ke QR / barcode PO atau surat jalan.',
+    this.subtitle = 'Hasil pindai otomatis dicari di Check In Point.',
+    this.cameraErrorHint =
+        'Kamera tidak dapat dijalankan. Masukkan kode PO / Nopol '
+        'secara manual di halaman Check In Point.',
+  });
+  final String title;
+  final String hint;
+  final String subtitle;
+  final String cameraErrorHint;
 
   @override
   State<GateScannerPage> createState() => _GateScannerPageState();
@@ -62,7 +77,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          'Pindai QR / Barcode',
+          widget.title,
           style: GoogleFonts.roboto(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         actions: [
@@ -116,8 +131,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
             denied
                 ? 'Izin kamera ditolak. Aktifkan izin kamera di pengaturan '
                       'perangkat, lalu buka lagi.'
-                : 'Kamera tidak dapat dijalankan. Masukkan kode PO / Nopol '
-                      'secara manual di halaman Check In Point.',
+                : widget.cameraErrorHint,
             textAlign: TextAlign.center,
             style: GoogleFonts.roboto(
               color: Colors.white70,
@@ -173,7 +187,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
                 child: Column(
                   children: [
                     Text(
-                      'Arahkan kamera ke QR / barcode PO atau surat jalan.',
+                      widget.hint,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.roboto(
                         color: Colors.white,
@@ -184,7 +198,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
                     ),
                     const SizedBox(height: AppTheme.space2),
                     Text(
-                      'Hasil pindai otomatis dicari di Check In Point.',
+                      widget.subtitle,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.roboto(
                         color: Colors.white70,

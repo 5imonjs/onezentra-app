@@ -48,22 +48,22 @@ export default function DashboardPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="rounded-2xl bg-slate-950 p-5 text-white shadow-lg">
+      <div className="rounded-2xl bg-ink-950 p-5 text-white shadow-lg">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white text-slate-900 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-surface-card text-slate-900 flex items-center justify-center shadow-lg">
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight">
                 {greeting}, <span className="text-primary-300">{user?.full_name?.split(' ')[0]}</span>
               </h1>
-              <p className="text-slate-300 text-sm">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p className="text-ink-fg-muted text-sm">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
           </div>
           {canFilterDepot && (
             <label className="flex items-center gap-2 text-sm">
-              <span className="text-slate-400 font-medium">Depo</span>
+              <span className="text-ink-fg-muted font-medium">Depo</span>
               <select
                 value={kodeDepo}
                 onChange={(e) => setKodeDepo(e.target.value)}

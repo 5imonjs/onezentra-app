@@ -5,6 +5,7 @@ import DashboardLayout from '@/app/dashboard/layout';
 import { auth, getErrorMessage } from '@/lib/api';
 import Toast from '@/components/Toast';
 import Modal from '@/components/Modal';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useAuthStore } from '@/store/auth';
 
 export default function ProfilePage() {
@@ -73,7 +74,7 @@ export default function ProfilePage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 text-white">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm" aria-hidden="true">
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -82,14 +83,14 @@ export default function ProfilePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Profil Saya</h1>
-              <p className="text-gray-400 mt-0.5">Kelola informasi akun dan keamanan Anda</p>
+              <p className="text-ink-fg-muted mt-0.5">Kelola informasi akun dan keamanan Anda</p>
             </div>
           </div>
         </div>
 
         {/* Profile Info Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-white">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Informasi Profil</h2>
               {!editing && (
@@ -144,19 +145,19 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-surface-raised rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Nama Lengkap</span>
                   <p className="text-sm font-medium text-gray-900 mt-1">{user.full_name}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-surface-raised rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Email</span>
                   <p className="text-sm font-medium text-gray-900 mt-1">{user.email}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-surface-raised rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Level</span>
                   <p className="text-sm font-medium text-gray-900 mt-1">{user.level}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-surface-raised rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Status</span>
                   <p className="mt-1">
                     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${user.status?.toLowerCase() === 'active' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-700 ring-red-200'}`}>
@@ -165,11 +166,11 @@ export default function ProfilePage() {
                     </span>
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-surface-raised rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Depo</span>
                   <p className="text-sm font-medium text-gray-900 mt-1">{user.nama_depo || '-'} ({user.kode_depo || '-'})</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-surface-raised rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Roles</span>
                   <p className="text-sm font-medium text-gray-900 mt-1">
                     {user.roles?.length > 0 ? user.roles.map(r => r.name).join(', ') : user.level}
@@ -181,8 +182,8 @@ export default function ProfilePage() {
         </div>
 
         {/* Security Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-white">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card">
             <h2 className="text-lg font-semibold text-gray-900">Keamanan</h2>
           </div>
           <div className="p-6">
@@ -197,6 +198,23 @@ export default function ProfilePage() {
                   Ubah Password
                 </span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Appearance — theme preference. Lives on the profile page rather than
+            the sidebar so the choice is a deliberate setting, not a stray
+            toggle, and it persists per browser via localStorage. */}
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card">
+            <h2 className="text-lg font-semibold text-gray-900">Tampilan</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Pilih tema terang atau gelap. Pilihan ini tersimpan di browser Anda.
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="max-w-md">
+              <ThemeToggle />
             </div>
           </div>
         </div>

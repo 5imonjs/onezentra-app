@@ -6,6 +6,21 @@
     <!-- Camera for the Check In Point barcode scanner (mobile_scanner). -->
     <uses-permission android:name="android.permission.CAMERA"/>
 
+    <!-- Bluetooth thermal printer (label batch).
+         Android 12 (API 31) membelah izin: BLUETOOTH_SCAN/CONNECT menggantikan
+         BLUETOOTH/BLUETOOTH_ADMIN yang sudah deprecated. BLUETOOTH_SCAN
+         butuh usesPermissionFlags="neverForLocation" supaya tidak memicu
+        -location permission — printer bukan perangkat pelacak lokasi.
+         maxSdkVersion="30" dipakai untuk izin lama supaya tetap jalan di
+         Android 10/11. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+
+    <!-- Printer thermal Bluetooth LE. -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false"/>
+
     <application
         android:label="onezentra_mobile"
         android:name="${applicationName}"

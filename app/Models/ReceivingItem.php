@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class ReceivingItem extends Model
@@ -71,6 +72,19 @@ class ReceivingItem extends Model
     public function validationItem(): BelongsTo
     {
         return $this->belongsTo(SjValidationItem::class);
+    }
+
+    /**
+     * Batch label untuk item ini.
+     *
+     * Dicocokkan lewat `sj_validation_item_id`, bukan `batches.receiving_id`:
+     * kolom itu menunjuk level DOKUMEN, jadi satu batch bisa keliru cocok ke
+     * semua item dalam receiving yang sama. Batch dibuat satu per item
+     * tervalidasi, jadi pengait per item inilah yang tepat.
+     */
+    public function batch(): HasOne
+    {
+        return $this->hasOne(Batch::class, 'sj_validation_item_id');
     }
 
     public function rencanaKirimItem(): BelongsTo

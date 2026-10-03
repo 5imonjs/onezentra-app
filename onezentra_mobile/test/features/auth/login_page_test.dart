@@ -154,9 +154,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // No format error: the user reached the dashboard.
+      // No format error: the user reached the home menu.
       expect(find.text('Format email tidak valid'), findsNothing);
-      expect(find.text('Selamat Datang,'), findsOneWidget);
+      expect(find.text('Pilih pekerjaan'), findsOneWidget);
     });
 
     testWidgets('menampilkan error server tanpa meninggalkan halaman login', (
@@ -181,7 +181,7 @@ void main() {
       expect(find.text('Selamat datang kembali'), findsOneWidget);
     });
 
-    testWidgets('mengarahkan ke dashboard setelah login berhasil', (
+    testWidgets('mengarahkan ke home setelah login berhasil', (
       tester,
     ) async {
       await _pumpApp(
@@ -196,7 +196,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Selamat Datang,'), findsOneWidget);
+      expect(find.text('Pilih pekerjaan'), findsOneWidget);
       expect(find.text('Selamat datang kembali'), findsNothing);
     });
 

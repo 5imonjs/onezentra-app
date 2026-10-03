@@ -244,7 +244,7 @@ export default function OpnameExpiredReportPage() {
 
   const badge = (status?: string | null, meta?: { label: string; badge: string; dot: string }) => {
     const s = status || '-';
-    const m = meta || STATUS_META[s] || { label: s, badge: 'bg-gray-50 text-gray-600 ring-gray-200', dot: 'bg-gray-400' };
+    const m = meta || STATUS_META[s] || { label: s, badge: 'bg-surface-raised text-gray-600 ring-gray-200', dot: 'bg-gray-400' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium shadow-sm ${m.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} aria-hidden="true" />
@@ -278,7 +278,7 @@ export default function OpnameExpiredReportPage() {
           <span className="text-sm font-semibold text-slate-800">{fnum(crt)} CRT</span>
           {pcs > 0 && <span className="text-xs text-slate-400">/ {fnum(pcs)} PCS</span>}
           {koreksiCrt !== 0 && (
-            <span className="text-xs text-primary-600 tabular-nums mt-0.5">koreksi {fnum(koreksiCrt)} CRT / {fnum(koreksiPcs)} PCS</span>
+            <span className="text-xs text-accent-text tabular-nums mt-0.5">koreksi {fnum(koreksiCrt)} CRT / {fnum(koreksiPcs)} PCS</span>
           )}
           {(laluCrt > 0 || laluPcs > 0) && (
             <span className="text-xs text-slate-400 tabular-nums">sebelumnya {fnum(laluCrt)} CRT / {fnum(laluPcs)} PCS</span>
@@ -302,15 +302,15 @@ export default function OpnameExpiredReportPage() {
     <DashboardLayout>
       <div className="space-y-6 animate-slide-up">
         {/* Header */}
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 lg:p-7 text-white shadow-sm">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 lg:p-7 text-white shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm shrink-0">
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div className="min-w-0">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Laporan operasional · read-only</p>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan operasional · read-only</p>
               <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Batch Expired</h1>
-              <p className="text-gray-400 mt-0.5 text-sm">Ringkasan mingguan kedaluwarsa batch per status & depo</p>
+              <p className="text-ink-fg-muted mt-0.5 text-sm">Ringkasan mingguan kedaluwarsa batch per status & depo</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-4">
@@ -324,7 +324,7 @@ export default function OpnameExpiredReportPage() {
               {fnum(summary.berisikoCount)} berisiko • {summary.pctBerisiko}%
             </span>
             {weekLabel && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-semibold border border-white/10 text-gray-300 tabular-nums">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-semibold border border-white/10 text-ink-fg tabular-nums">
                 {weekLabel}
               </span>
             )}
@@ -346,11 +346,11 @@ export default function OpnameExpiredReportPage() {
         )}
 
         {/* Filter panel */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-white">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-slate-900 to-slate-700 text-white flex items-center justify-center shadow">
+                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-ink-900 to-slate-700 text-white flex items-center justify-center shadow">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
                 </div>
                 <div>
@@ -359,7 +359,7 @@ export default function OpnameExpiredReportPage() {
                 </div>
               </div>
               {(kodeDepo || statusFilter) && (
-                <button onClick={resetFilters} className="text-xs font-bold text-primary-600 hover:text-primary-700 transition-colors">Reset filter</button>
+                <button onClick={resetFilters} className="text-xs font-bold text-accent-text hover:text-accent-text transition-colors">Reset filter</button>
               )}
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.2fr)_minmax(190px,1fr)_minmax(180px,1fr)_auto] mt-4">
@@ -369,7 +369,7 @@ export default function OpnameExpiredReportPage() {
                   id="oe-week"
                   value={weekStart}
                   onChange={(e) => { setWeekStart(e.target.value); setPage(1); }}
-                  className="select-field w-full text-sm py-2 bg-slate-50 focus:bg-white"
+                  className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"
                 >
                   <option value="">— Pilih Minggu —</option>
                   {weeks.map((w) => (
@@ -383,7 +383,7 @@ export default function OpnameExpiredReportPage() {
                   id="oe-depo"
                   value={kodeDepo}
                   onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
-                  className="select-field w-full text-sm py-2 bg-slate-50 focus:bg-white"
+                  className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"
                 >
                   <option value="">Semua Depo</option>
                   {depots.map((d) => (
@@ -397,14 +397,14 @@ export default function OpnameExpiredReportPage() {
                   id="oe-status"
                   value={statusFilter}
                   onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                  className="select-field w-full text-sm py-2 bg-slate-50 focus:bg-white"
+                  className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"
                 >
                   <option value="">Semua Status</option>
                   {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
                 </select>
               </div>
               <div className="flex items-end gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-surface-raised hover:border-slate-300 transition-all">Reset</button>
                 <button
                   onClick={handleExport}
                   disabled={!canExport}
@@ -429,10 +429,10 @@ export default function OpnameExpiredReportPage() {
 
         {/* KPI Cards */}
         <div className={`grid grid-cols-2 gap-4 xl:grid-cols-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>
               </div>
               <div className="min-w-0">
@@ -455,7 +455,7 @@ export default function OpnameExpiredReportPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/20 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm shrink-0">
@@ -468,10 +468,10 @@ export default function OpnameExpiredReportPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-primary-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-primary-500/20 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center shadow-sm shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-chip-primary text-accent-text flex items-center justify-center shadow-sm shrink-0">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m16.5 0V6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v.75" /></svg>
               </div>
               <div className="min-w-0">
@@ -484,8 +484,8 @@ export default function OpnameExpiredReportPage() {
         </div>
 
         {/* Rekap per depo */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-white">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ringkasan distribusi</p>
@@ -499,7 +499,7 @@ export default function OpnameExpiredReportPage() {
             <table className="w-full min-w-[760px] border-collapse">
               <caption className="sr-only">Rekap per depo</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-200">
+                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
                   <th scope="col" className="table-header">Depo</th>
                   {STATUS_ORDER.map((s) => (
                     <th key={s} scope="col" className="table-header text-right">
@@ -527,7 +527,7 @@ export default function OpnameExpiredReportPage() {
                     <td colSpan={7} className="table-cell text-center py-12">
                       <p className="text-sm text-slate-600 font-bold">Belum ada data untuk periode ini.</p>
                       {activeFilterCount > 0 && (
-                        <button onClick={resetFilters} className="mt-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors">Reset filter</button>
+                        <button onClick={resetFilters} className="mt-2 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold hover:bg-ink-800 transition-colors">Reset filter</button>
                       )}
                     </td>
                   </tr>
@@ -536,7 +536,7 @@ export default function OpnameExpiredReportPage() {
                     const totalCount = STATUS_ORDER.reduce((a, s) => a + (row.status[s]?.count ?? 0), 0);
                     const totalCrt = STATUS_ORDER.reduce((a, s) => a + (row.status[s]?.qty_crt ?? 0), 0);
                     return (
-                      <tr key={row.kode} className="even:bg-slate-50/60 hover:bg-slate-50 transition-colors">
+                      <tr key={row.kode} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
                         <td className="table-cell whitespace-nowrap">
                           <span className="text-sm font-semibold text-slate-700">{row.nama}</span>
                           <span className="ml-1.5 text-xs text-slate-400 font-mono">{row.kode}</span>
@@ -568,7 +568,7 @@ export default function OpnameExpiredReportPage() {
             {loading && depotRows.length === 0 && (
               <div className="p-4 space-y-3" aria-hidden="true">
                 {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-2">
+                  <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-overlay-60 p-4 space-y-2">
                     <div className="h-4 w-32 bg-slate-200 rounded" />
                     <div className="grid grid-cols-4 gap-2 pt-1">
                       <div className="h-12 bg-slate-200 rounded-xl" />
@@ -584,7 +584,7 @@ export default function OpnameExpiredReportPage() {
               <div className="p-10 text-center">
                 <p className="text-sm text-slate-600 font-bold">Belum ada data untuk periode ini.</p>
                 {activeFilterCount > 0 && (
-                  <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">Reset filter</button>
+                  <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold">Reset filter</button>
                 )}
               </div>
             )}
@@ -601,7 +601,7 @@ export default function OpnameExpiredReportPage() {
                     {STATUS_ORDER.map((s) => {
                       const c = row.status[s];
                       return (
-                        <div key={s} className="rounded-xl bg-slate-50 p-2 text-center border border-slate-100">
+                        <div key={s} className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
                           <p className="font-bold tracking-widest uppercase text-[9px] text-slate-400 inline-flex items-center gap-1">
                             <span className={`w-1.5 h-1.5 rounded-full ${STATUS_META[s].dot}`} aria-hidden="true" />
                             {STATUS_META[s].label}
@@ -619,8 +619,8 @@ export default function OpnameExpiredReportPage() {
         </div>
 
         {/* Detail batch */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-white flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Data detail</p>
               <h2 className="text-base font-bold text-slate-900">Detail Batch</h2>
@@ -658,7 +658,7 @@ export default function OpnameExpiredReportPage() {
                   <p className="text-xs text-slate-400 mt-1">Coba ubah minggu, depo, atau status</p>
                 </div>
                 {activeFilterCount > 0 && (
-                  <button onClick={resetFilters} className="mt-1 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors">Reset filter</button>
+                  <button onClick={resetFilters} className="mt-1 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold hover:bg-ink-800 transition-colors">Reset filter</button>
                 )}
               </div>
             </div>
@@ -669,7 +669,7 @@ export default function OpnameExpiredReportPage() {
                 <table className="w-full min-w-[900px] border-collapse">
                   <caption className="sr-only">Laporan opname expired</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-200">
+                    <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
                       <th scope="col" className="table-header">Status</th>
                       <th scope="col" className="table-header">Produk</th>
                       <th scope="col" className="table-header">Depo</th>
@@ -683,7 +683,7 @@ export default function OpnameExpiredReportPage() {
                     {waves.map((w) => {
                       const meta = STATUS_META[w.status_ini];
                       return (
-                        <tr key={w.id} className="even:bg-slate-50/60 hover:bg-slate-50 transition-colors">
+                        <tr key={w.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
                           <td className="table-cell whitespace-nowrap">{badge(w.status_ini)}</td>
                           <td className="table-cell min-w-[200px] max-w-[300px]">
                             <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
@@ -694,7 +694,7 @@ export default function OpnameExpiredReportPage() {
                           <td className="table-cell whitespace-nowrap text-sm text-slate-700 font-mono">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
                           <td className="table-cell whitespace-nowrap">
                             <span className="text-sm text-slate-700 font-mono">{fmtDate(w.expired_date_ini)}</span>
-                            <span className={`mt-0.5 inline-flex px-2 py-0.5 rounded-md text-xs font-semibold tabular-nums border ${meta ? meta.chip : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                            <span className={`mt-0.5 inline-flex px-2 py-0.5 rounded-md text-xs font-semibold tabular-nums border ${meta ? meta.chip : 'bg-slate-100 text-slate-600 border-slate-300'}`}>
                               {w.sisa_hari} hr
                             </span>
                           </td>
@@ -720,16 +720,16 @@ export default function OpnameExpiredReportPage() {
                         {badge(w.status_ini)}
                       </div>
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-xl bg-slate-50 p-2 text-center border border-slate-100">
+                        <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
                           <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Qty</p>
                           <p className="font-black text-slate-900 text-sm tabular-nums">{fnum(num(w.qty_ini_crt))} <span className="text-[10px] font-bold text-slate-400">CRT</span></p>
                           {num(w.qty_ini_pcs) > 0 && <p className="text-[10px] text-slate-400 tabular-nums">/ {fnum(num(w.qty_ini_pcs))} PCS</p>}
                         </div>
-                        <div className="rounded-xl bg-slate-50 p-2 text-center border border-slate-100">
+                        <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
                           <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Sisa</p>
                           <p className="font-black text-slate-900 text-sm tabular-nums">{w.sisa_hari} <span className="text-[10px] font-bold text-slate-400">hr</span></p>
                         </div>
-                        <div className={`rounded-xl p-2 text-center border ${meta ? meta.chip : 'bg-slate-50 border-slate-100'}`}>
+                        <div className={`rounded-xl p-2 text-center border ${meta ? meta.chip : 'bg-surface-raised border-slate-100'}`}>
                           <p className="font-bold tracking-widest uppercase text-[9px] opacity-70">Expired</p>
                           <p className="font-black text-xs">{fmtDate(w.expired_date_ini)}</p>
                         </div>
@@ -742,7 +742,7 @@ export default function OpnameExpiredReportPage() {
                           <div className="col-span-2"><span className="text-slate-400">Sebelumnya: </span><span className="font-medium text-slate-700 tabular-nums">{fnum(num(w.qty_lalu_crt))} CRT / {fnum(num(w.qty_lalu_pcs))} PCS</span></div>
                         )}
                         {num(w.qty_koreksi_crt) !== 0 && (
-                          <div className="col-span-2"><span className="text-slate-400">Koreksi: </span><span className="font-medium text-primary-600 tabular-nums">{fnum(num(w.qty_koreksi_crt))} CRT / {fnum(num(w.qty_koreksi_pcs))} PCS</span></div>
+                          <div className="col-span-2"><span className="text-slate-400">Koreksi: </span><span className="font-medium text-accent-text tabular-nums">{fnum(num(w.qty_koreksi_crt))} CRT / {fnum(num(w.qty_koreksi_pcs))} PCS</span></div>
                         )}
                       </div>
                     </article>
@@ -751,7 +751,7 @@ export default function OpnameExpiredReportPage() {
               </div>
 
               {pagination && pagination.total > ITEMS_PER_PAGE && (
-                <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                <div className="p-4 border-t border-gray-100 bg-overlay-50">
                   <div className="flex flex-wrap justify-between items-center gap-3">
                     <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pagination.current_page <= 1 || loading} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
                       <span className="flex items-center gap-2 text-sm">
@@ -766,7 +766,7 @@ export default function OpnameExpiredReportPage() {
                           onClick={() => setPage(p)}
                           aria-label={`Halaman ${p}`}
                           aria-current={p === pagination.current_page ? 'page' : undefined}
-                          className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === pagination.current_page ? 'bg-slate-900 text-white shadow' : 'text-slate-500 hover:bg-slate-200/70'}`}
+                          className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === pagination.current_page ? 'bg-ink-900 text-white shadow' : 'text-slate-500 hover:bg-slate-200/70'}`}
                         >
                           {p}
                         </button>

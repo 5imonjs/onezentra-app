@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Batch;
 use App\Models\OpnameExpiredWave;
 use App\Models\OpnameSetting;
 use App\Models\ReceivingItem;
@@ -116,9 +117,29 @@ class OpnameExpiredService
     {
         $weekRange = [$weekStart->toDateString(), $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->toDateString()];
 
+        // Batch label punya status sendiri (ACTIVE / CANCELLED). Batch yang
+        // dibatalkan — mis. karena sesi validasi di-cancel — labelnya sudah
+        // tercetak tapi tidak berlaku, jadi stoknya tidak boleh masuk opname:
+        // operator akan melihat rekomendasi kirim/retur untuk label mati.
+        //
+        // Batch relating ke Receiving lewat `receiving_id` (level dokumen), bukan
+        // per item. Jadi satu batch CANCELLED mengeluarkan semua item pada
+        // receiving tersebut dari opname — conservative dan sesuai makna "seluruh
+        // batch label ikut dibatalkan" saat pembatalan sesi.
+        $cancelledItemIds = Batch::query()
+            ->where('status', 'CANCELLED')
+            ->whereNotNull('receiving_id')
+            ->pluck('receiving_id')
+            ->map(fn ($rid) => ReceivingItem::where('receiving_id', $rid)->pluck('id'))
+            ->flatten();
+
         $items = ReceivingItem::with(['receiving.rencanaKirim'])
             ->whereNotNull('expired_date')
             ->whereNotNull('kode_barang')
+            ->when(
+                $cancelledItemIds->isNotEmpty(),
+                fn ($q) => $q->whereNotIn('id', $cancelledItemIds)
+            )
             ->whereRaw('COALESCE(tanggal_penerimaan, DATE(scan_time), DATE(created_at)) BETWEEN ? AND ?', $weekRange)
             ->get();
 

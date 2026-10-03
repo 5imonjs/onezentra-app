@@ -84,7 +84,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     // The app is wired to GoRouter: `Navigator.pushReplacementNamed` would throw
     // because GoRouter does not expose named routes on its Navigator.
     if (success) {
-      context.go('/dashboard');
+      context.go('/home');
     }
   }
 
@@ -230,13 +230,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
     var background = isDark
         ? AppTheme.danger.withValues(alpha: 0.16)
-        : const Color(0xFFFEF2F2); // red-50
+        : AppTheme.dangerWell; // red-50
     var border = isDark
         ? AppTheme.danger.withValues(alpha: 0.45)
-        : const Color(0xFFFECACA); // red-200
+        : AppTheme.dangerText; // red-200
     var textColor = isDark
         ? const Color(0xFFFCA5A5) // red-300
-        : const Color(0xFFB91C1C); // red-700
+        : AppTheme.dangerText; // red-700
 
     // `liveRegion` makes screen readers announce the error as soon as it shows.
     return Semantics(

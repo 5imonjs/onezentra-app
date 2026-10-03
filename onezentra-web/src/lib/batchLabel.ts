@@ -1,0 +1,214 @@
+import jsPDF from 'jspdf';
+import { encodeCode39 } from './suratJalanPdf';
+
+/** Data label yang perlu dicetak setelah satu produk divalidasi. */
+export type BatchLabelData = {
+  batch_number: string | null;
+  barcode_label: string | null;
+  kode_barang: string | null;
+  nama_barang: string | null;
+  actual_qty: number | null;
+  satuan: string | null;
+  expired_date: string | null;
+  condition?: string | null;
+  nama_depo?: string | null;
+  po_transporter?: string | null;
+};
+
+/**
+ * Lebar kertas thermal printer. 58 mm dipakai hampir semua printer label
+ * gudang; 80 mm hanya perlu kalau nama barang panjang sekali.
+ */
+export type LabelWidth = 58 | 80;
+
+const CONDITION_LABEL: Record<string, string> = {
+  FISIK_BAGUS: 'Fisik Bagus',
+  FISIK_RUSAK: 'Fisik Rusak',
+  QTY_KURANG: 'Qty Kurang',
+  ISI_KEMASAN_KURANG: 'Isi Kemasan Kurang',
+  EXPIRED_TIDAK_STANDAR: 'Expired / Tidak Standar',
+  LAINNYA: 'Lainnya',
+};
+
+/**
+ * Tanggal dicetak apa adanya (YYYY-MM-DD dari API), bukan lewat `new Date()`.
+ *
+ * Label adalah dokumen fisik yang menempel di rak. Kalau someday dicetak
+ * ulang di zona waktu berbeda, tanggal bisa bergeser sehari — dan tanggal
+ * expired yang bergeser berarti produk berada di rak yang salah. Format ISO
+ * tidak ambigu dan persis sama dengan yang tersimpan di database.
+ */
+function safeDate(value: string | null | undefined): string {
+  return value && value.length > 0 ? value : '-';
+}
+
+function safe(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return '-';
+  const text = String(value).trim();
+  return text.length > 0 ? text : '-';
+}
+
+/** Potong teks agar tidak melebihi lebar label dan menggeser barcode. */
+function clamp(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${value.slice(0, Math.max(1, maxChars - 1))}…`;
+}
+
+/** Gambar Code39 memakai encoder yang sama dengan PDF surat jalan. */
+function drawBarcode(
+  doc: jsPDF,
+  value: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  height: number,
+): void {
+  const modules = encodeCode39(value);
+  // Modul terlalu rapat saat dicetak printer thermal, dan barcode yang terlalu
+  // rapat juga sulit dibaca scanner. 0.28 mm adalah kompromis lazim untuk 58 mm.
+  const moduleWidth = Math.min(maxWidth / modules.length, 0.28);
+  const barWidth = modules.length * moduleWidth;
+  let cursor = x + (maxWidth - barWidth) / 2;
+
+  doc.setFillColor(0, 0, 0);
+  // `module` dicadangkan Next.js (mematikan bundler), jadi bit barcode
+  // dinamai `bit` supaya tidak menabrak scheduler Turbopack/webpack.
+  for (const bit of modules) {
+    if (bit === '1') {
+      doc.rect(cursor, y, moduleWidth, height, 'F');
+    }
+    cursor += moduleWidth;
+  }
+}
+
+/**
+ * Susun PDF label untuk satu batch/produk.
+ *
+ * `height` dalam mm. Default 40 mm cocok untuk label 58×40; naikkan hanya
+ * kalau nama_barang memuat dua baris dan tidak mau terpotong.
+ */
+export function buildBatchLabelPdf(
+  data: BatchLabelData,
+  options: { width?: LabelWidth; height?: number } = {},
+): jsPDF {
+  const width: LabelWidth = options.width ?? 58;
+  const height = options.height ?? 40;
+  // Margin kecil: printer thermal punya area tidak cetak di tepi.
+  const margin = 2;
+  const innerWidth = width - margin * 2;
+
+  /**
+   * jsPDF menebak orientasi dari `format`: begitu width > height, halaman
+   * dibalik dan `format: [58, 40]` berakhir jadi 40×58 — seluruh koordinat x
+   * jatuh di luar label dan barcode tergeser. `orientation: 'landscape'`
+   * memaksa sumbu lebar-lebar itu, sesuai roll label thermal yang selalu lebih
+   * lebar daripada tingginya.
+   */
+  const doc = new jsPDF({ unit: 'mm', format: [width, height], orientation: 'landscape' });
+
+  doc.setFillColor(0, 0, 0);
+  doc.rect(0, 0, width, 6, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('BATCH LABEL', margin, 4);
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  const headerRight = data.po_transporter ? `PO ${data.po_transporter}` : '';
+  if (headerRight) {
+    doc.text(clamp(headerRight, 24), width - margin, 4, { align: 'right' });
+  }
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(safe(data.kode_barang), margin, 11);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text(clamp(safe(data.nama_barang), 38), margin, 15);
+
+  // Baris ringkas: qty + satuan di kiri, kondisi di kanan.
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`QTY ${safe(data.actual_qty)} ${safe(data.satuan)}`.trim(), margin, 19.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(90, 90, 90);
+  const conditionText = CONDITION_LABEL[data.condition ?? ''] ?? safe(data.condition);
+  doc.text(clamp(conditionText, 20), margin + 30, 19.5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text(`EXP ${safeDate(data.expired_date)}`, margin, 23.5);
+
+  if (data.nama_depo) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(90, 90, 90);
+    doc.text(clamp(data.nama_depo, 30), margin + 26, 23.5);
+  }
+
+  // Teks barcode harus PERSIS sama dengan yang dicetak di atas: kalau berbeda,
+  // produk tidak akan ketemu saat operator memindai label ini.
+  const labelText = safe(data.barcode_label);
+  const barcodeY = 26.5;
+  drawBarcode(doc, labelText, margin, barcodeY, innerWidth, 8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text(labelText, width / 2, barcodeY + 10.5, { align: 'center' });
+
+  doc.setFontSize(5);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`BATCH ${safe(data.batch_number)}`, width / 2, barcodeY + 13.2, { align: 'center' });
+
+  return doc;
+}
+
+/** Unduh label sebagai file PDF. */
+export function downloadBatchLabel(
+  data: BatchLabelData,
+  options?: { width?: LabelWidth; height?: number },
+): void {
+  const doc = buildBatchLabelPdf(data, options);
+  const fileName = safe(data.kode_barang).replace(/[^\w-]+/g, '_');
+  doc.save(`label-batch-${fileName}.pdf`);
+}
+
+/**
+ * Kirim label ke printer.
+ *
+ * `window.print()` membuka dialog cetak browser; pengguna memilih printer
+ * thermal dan mengatur ukuran kertas ke "Label" agar tidak ada margin putih.
+ * Printer Bluetooth langsung hanya mungkin di mobile — browser tidak boleh
+ * berbicara ke perangkat BLE tanpa izin eksplisit pengguna per perangkat.
+ */
+export function printBatchLabel(
+  data: BatchLabelData,
+  options?: { width?: LabelWidth; height?: number },
+): void {
+  const doc = buildBatchLabelPdf(data, options);
+  const url = doc.output('bloburl');
+  const frame = document.createElement('iframe');
+  frame.style.position = 'fixed';
+  frame.style.right = '0';
+  frame.style.bottom = '0';
+  frame.style.width = '0';
+  frame.style.height = '0';
+  frame.style.border = '0';
+  frame.src = String(url);
+  frame.onload = () => {
+    try {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+    } finally {
+      // Beri dialog print waktu mengambil dokumen sebelum iframe dibuang.
+      window.setTimeout(() => frame.remove(), 1000);
+    }
+  };
+  document.body.appendChild(frame);
+}

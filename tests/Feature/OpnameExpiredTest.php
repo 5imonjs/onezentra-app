@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Imports\ReceivingItemImport;
+use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\OpnameExpiredWave;
 use App\Models\Permission;
@@ -399,5 +400,65 @@ class OpnameExpiredTest extends TestCase
 
         $this->assertSame(2, $filtered->json('data.total'));
         $this->assertSame(['EXPIRED', 'KRITIS'], collect($filtered->json('data.data'))->pluck('status_ini')->unique()->sort()->values()->all());
+    }
+
+    public function test_cancelled_batch_is_excluded_from_opname(): void
+    {
+        // Batch label yang sudah tercetak jadi tidak berlaku begitu sesi
+        // validasi dibatalkan (backend cancel() -> batches.status = CANCELLED).
+        // Kalau Batch Expired tetap menghitungnya, operator akan melihat
+        // stok yang labelnya sudah dibatalkan masih harus dikirim/retur.
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-BATCH-TEST',
+            'status' => 'DRAFT',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+        ]);
+
+        $receiving = Receiving::create([
+            'rencana_kirim_id' => $rencana->id,
+            'status' => 'DRAFT',
+        ]);
+
+        $item = ReceivingItem::create([
+            'receiving_id' => $receiving->id,
+            'source' => 'IMPORT_MANUAL',
+            'kode_barang' => 'B-CANCEL-01',
+            'nama_barang' => 'Produk Dibatalkan',
+            'actual_qty' => 10,
+            'expected_qty' => 10,
+            'qty_pcs' => 10,
+            'satuan' => 'CRT',
+            'expired_date' => '2027-01-01',
+            'tanggal_penerimaan' => '2026-09-09',
+            'sumber_material' => 'PT Pengirim Test',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'condition' => 'GOOD',
+            'scanned_by' => $this->user->id,
+        ]);
+
+        $batch = Batch::create([
+            'batch_number' => 'BATCH-TEST01',
+            'barcode_label' => 'LBL-TEST01',
+            'receiving_id' => $receiving->id,
+            'status' => 'ACTIVE',
+        ]);
+
+        app(OpnameExpiredService::class)->generate();
+        $this->assertDatabaseHas('opname_expired_waves', [
+            'kode_barang' => 'B-CANCEL-01',
+            'qty_ini_crt' => 10,
+        ]);
+
+        // Batalkan sesi -> label jadi tidak berlaku.
+        $batch->update(['status' => 'CANCELLED']);
+        OpnameExpiredWave::query()->delete();
+
+        app(OpnameExpiredService::class)->generate();
+
+        $this->assertDatabaseMissing('opname_expired_waves', [
+            'kode_barang' => 'B-CANCEL-01',
+        ]);
     }
 }

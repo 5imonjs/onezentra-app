@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -39,6 +40,10 @@ class _GatePageState extends State<GatePage> {
   );
   final _scanController = TextEditingController();
   final _searchController = TextEditingController();
+
+  /// PO of the last successful Gate IN in this visit — offered as a
+  /// one-tap handoff into Validasi SJ so the operator never retypes it.
+  String? _justCheckedInPo;
 
   @override
   void initState() {
@@ -92,31 +97,33 @@ class _GatePageState extends State<GatePage> {
           ),
         ],
       ),
-      body: !canView
-          ? _buildNoAccess()
-          : RefreshIndicator(
-              onRefresh: gate.refresh,
-              color: AppTheme.primary600,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(AppTheme.space4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(gate),
-                    const SizedBox(height: AppTheme.space4),
-                    _buildQuickScan(
-                      gate,
-                      canCreate: canCreate,
-                      canVerify: canVerify,
-                    ),
-                    const SizedBox(height: AppTheme.space4),
-                    _buildHistory(gate),
-                    const SizedBox(height: AppTheme.space8),
-                  ],
+      body: SafeArea(
+        child: !canView
+            ? _buildNoAccess()
+            : RefreshIndicator(
+                onRefresh: gate.refresh,
+                color: AppTheme.primary600,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppTheme.space4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(gate),
+                      const SizedBox(height: AppTheme.space4),
+                      _buildQuickScan(
+                        gate,
+                        canCreate: canCreate,
+                        canVerify: canVerify,
+                      ),
+                      const SizedBox(height: AppTheme.space4),
+                      _buildHistory(gate),
+                      const SizedBox(height: AppTheme.space8),
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 
@@ -130,14 +137,14 @@ class _GatePageState extends State<GatePage> {
         width: double.infinity,
         padding: const EdgeInsets.all(AppTheme.space5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
+          color: AppTheme.warningWell,
           borderRadius: AppTheme.radiusXl,
-          border: Border.all(color: const Color(0xFFFDE68A)),
+          border: Border.all(color: AppTheme.warningText),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.lock_rounded, size: 20, color: Color(0xFFB45309)),
+            const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
             const SizedBox(width: AppTheme.space3),
             Expanded(
               child: Text(
@@ -145,7 +152,7 @@ class _GatePageState extends State<GatePage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   height: 1.4,
-                  color: const Color(0xFF92400E),
+                  color: AppTheme.warningText,
                 ),
               ),
             ),
@@ -165,12 +172,12 @@ class _GatePageState extends State<GatePage> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppTheme.gray900, Color(0xFF1E293B)],
+          colors: [AppTheme.ink900, AppTheme.ink800],
         ),
         borderRadius: AppTheme.radius2xl,
         boxShadow: [
           BoxShadow(
-            color: AppTheme.gray900.withValues(alpha: 0.2),
+            color: AppTheme.ink900.withValues(alpha: 0.2),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -233,12 +240,12 @@ class _GatePageState extends State<GatePage> {
               _StatChip(
                 label: 'Terjadwal',
                 value: gate.stats.terjadwal,
-                dotColor: const Color(0xFF60A5FA),
+                dotColor: AppTheme.info,
               ),
               _StatChip(
                 label: 'Selesai',
                 value: gate.stats.selesai,
-                dotColor: const Color(0xFF34D399),
+                dotColor: AppTheme.success,
               ),
               _StatChip(
                 label: 'Total',
@@ -311,18 +318,20 @@ class _GatePageState extends State<GatePage> {
                 ),
               ),
               const SizedBox(width: AppTheme.space3),
-              SizedBox(
-                width: 104,
-                child: AppPrimaryButton(
-                  text: 'Cari',
-                  height: 48,
-                  isLoading: gate.lookupBusy,
-                  onPressed: gate.lookupBusy ? null : _submitScan,
-                ),
+              // Natural width: a fixed 104px box overflows on narrow
+              // screens once the label outgrows the leftover space.
+              AppPrimaryButton(
+                text: 'Cari',
+                height: 48,
+                isFullWidth: false,
+                isLoading: gate.lookupBusy,
+                onPressed: gate.lookupBusy ? null : _submitScan,
               ),
             ],
           ),
           if (gate.message != null) _buildBanner(gate.message!),
+          if (_justCheckedInPo != null)
+            _buildHandoffCard(_justCheckedInPo!),
           if (gate.found != null)
             _buildFoundCard(
               gate.found!,
@@ -336,6 +345,7 @@ class _GatePageState extends State<GatePage> {
 
   Future<void> _submitScan() async {
     FocusScope.of(context).unfocus();
+    setState(() => _justCheckedInPo = null);
     // Uses the state field, not `context.read`: this State's context sits
     // above the ChangeNotifierProvider that owns the GateProvider.
     await _provider.lookup(_scanController.text);
@@ -353,21 +363,34 @@ class _GatePageState extends State<GatePage> {
     if (!mounted || code == null || code.isEmpty) {
       return;
     }
+    setState(() => _justCheckedInPo = null);
     _scanController.text = code;
     await _provider.lookup(code);
   }
+
+  /// One-tap handoff into Validasi SJ carrying the checked-in PO, so the
+  /// operator skips the second scan entirely.
+  Widget _buildHandoffCard(String po) => Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(top: AppTheme.space4),
+    child: AppPrimaryButton(
+      text: 'Lanjut validasi $po',
+      trailingIcon: Icons.arrow_forward_rounded,
+      onPressed: () => context.push('/validasi-sj', extra: po),
+    ),
+  );
 
   Widget _buildBanner(GateActionMessage message) => Container(
       margin: const EdgeInsets.only(top: AppTheme.space4),
       padding: const EdgeInsets.all(AppTheme.space3),
       decoration: BoxDecoration(
         color: message.success
-            ? const Color(0xFFECFDF5)
+            ? AppTheme.successWell
             : const Color(0xFFFFF1F2),
         borderRadius: AppTheme.radiusLg,
         border: Border.all(
           color: message.success
-              ? const Color(0xFFA7F3D0)
+              ? AppTheme.successText
               : const Color(0xFFFECDD3),
         ),
       ),
@@ -380,7 +403,7 @@ class _GatePageState extends State<GatePage> {
                 : Icons.error_rounded,
             size: 18,
             color: message.success
-                ? const Color(0xFF059669)
+                ? AppTheme.success
                 : AppTheme.danger,
           ),
           const SizedBox(width: 8),
@@ -414,7 +437,7 @@ class _GatePageState extends State<GatePage> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+          colors: [AppTheme.ink900, AppTheme.ink800],
         ),
         borderRadius: AppTheme.radius2xl,
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
@@ -490,7 +513,7 @@ class _GatePageState extends State<GatePage> {
             canVerify
                 ? _darkActionButton(
                     label: 'Verifikasi ✓',
-                    background: const Color(0xFF10B981),
+                    background: AppTheme.success,
                     foreground: Colors.white,
                     loading: gate.actionBusy,
                     onPressed: () => _confirmAction(action),
@@ -499,18 +522,12 @@ class _GatePageState extends State<GatePage> {
                     'Anda tidak memiliki izin rencana_kirim.edit untuk memverifikasi dokumen.',
                   )
           else
-            canCreate
-                ? _darkActionButton(
-                    label: 'Gate OUT',
-                    background: Colors.transparent,
-                    foreground: Colors.white,
-                    outline: true,
-                    loading: gate.actionBusy,
-                    onPressed: () => _confirmAction(action),
-                  )
-                : _warningBox(
-                    'Anda tidak memiliki izin gate.create untuk mencatat Gate OUT.',
-                  ),
+            // Gate OUT lives in the dedicated Check Out Point menu — Check
+            // In Point only records IN and verifies, so one action never
+            // hides in two places.
+            _guideBox(
+              'Dokumen selesai. Catat Gate OUT dari menu Check Out Point.',
+            ),
         ],
       ),
     );
@@ -588,14 +605,14 @@ class _GatePageState extends State<GatePage> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space3),
       decoration: BoxDecoration(
-        color: const Color(0xFF422006),
+        color: AppTheme.warningDark,
         borderRadius: AppTheme.radiusLg,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.lock_rounded, size: 16, color: Color(0xFFFBBF24)),
+          const Icon(Icons.lock_rounded, size: 16, color: AppTheme.warning),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -603,7 +620,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.roboto(
                 fontSize: 12,
                 height: 1.4,
-                color: const Color(0xFFFCD34D),
+                color: AppTheme.warning,
               ),
             ),
           ),
@@ -687,7 +704,7 @@ class _GatePageState extends State<GatePage> {
               width: double.infinity,
               padding: const EdgeInsets.all(AppTheme.space3),
               decoration: const BoxDecoration(
-                color: Color(0xFFEFF6FF),
+                color: AppTheme.infoWell,
                 borderRadius: AppTheme.radiusMd,
               ),
               child: Text(
@@ -733,9 +750,18 @@ class _GatePageState extends State<GatePage> {
       return;
     }
 
+    // Captured before the action: a successful record clears the found
+    // document, and Gate IN hands its PO to Validasi SJ.
+    var checkedInPo = action == GateStatusAction.gateIn
+        ? gate.found?.poTransporter
+        : null;
     var success = await _executeAction(action, gate);
     if (success && mounted) {
       _scanController.clear();
+      setState(() {
+        _justCheckedInPo =
+            checkedInPo != null && checkedInPo.isNotEmpty ? checkedInPo : null;
+      });
     }
   }
 

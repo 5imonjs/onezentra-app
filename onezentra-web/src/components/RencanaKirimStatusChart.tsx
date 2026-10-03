@@ -26,15 +26,19 @@ interface StatusDef {
  * Palet ramah buta warna: alur progres memakai skala intensitas satu hue (biru
  * muda -> gelap) sehingga urutan tahap tetap terbaca tanpa mengandalkan perbedaan
  * warna; abu untuk draf, merah hanya untuk status pengecualian (dibatalkan).
+ *
+ * `hex` points at a CSS variable rather than a literal. A raw hex in the
+ * conic-gradient bypasses the theme entirely, so the ring would keep its
+ * light-mode tints on the dark canvas. `var()` resolves per theme instead.
  */
 const STATUSES: StatusDef[] = [
-  { key: 'DRAFT',        label: 'Draf',            hex: '#94a3b8', color: 'bg-slate-400',   dot: 'bg-slate-400',   bg: 'bg-slate-50' },
-  { key: 'SCHEDULED',    label: 'Dijadwalkan',     hex: '#bfdbfe', color: 'bg-blue-200',    dot: 'bg-blue-300',    bg: 'bg-blue-50' },
-  { key: 'CHECKED_IN',   label: 'Check In',        hex: '#93c5fd', color: 'bg-blue-300',    dot: 'bg-blue-400',    bg: 'bg-blue-50' },
-  { key: 'VERIFIED',     label: 'Terverifikasi',   hex: '#60a5fa', color: 'bg-blue-400',    dot: 'bg-blue-500',    bg: 'bg-blue-50' },
-  { key: 'IN_PROGRESS',  label: 'Diterima',        hex: '#3b82f6', color: 'bg-blue-500',    dot: 'bg-blue-600',    bg: 'bg-blue-50' },
-  { key: 'COMPLETED',    label: 'Selesai',         hex: '#1d4ed8', color: 'bg-blue-700',    dot: 'bg-blue-700',    bg: 'bg-blue-50' },
-  { key: 'CANCELLED',    label: 'Dibatalkan',      hex: '#dc2626', color: 'bg-red-500',     dot: 'bg-red-500',     bg: 'bg-red-50' },
+  { key: 'DRAFT',        label: 'Draf',            hex: 'var(--oz-gray-400)',  color: 'bg-slate-400',   dot: 'bg-slate-400',   bg: 'bg-surface-raised' },
+  { key: 'SCHEDULED',    label: 'Dijadwalkan',     hex: 'var(--oz-blue-300)',  color: 'bg-blue-300',    dot: 'bg-blue-400',    bg: 'bg-blue-50' },
+  { key: 'CHECKED_IN',   label: 'Check In',        hex: 'var(--oz-blue-400)',  color: 'bg-blue-400',    dot: 'bg-blue-500',    bg: 'bg-blue-50' },
+  { key: 'VERIFIED',     label: 'Terverifikasi',   hex: 'var(--oz-blue-500)',  color: 'bg-blue-500',    dot: 'bg-blue-600',    bg: 'bg-blue-50' },
+  { key: 'IN_PROGRESS',  label: 'Diterima',        hex: 'var(--oz-blue-600)',  color: 'bg-blue-600',    dot: 'bg-blue-700',    bg: 'bg-blue-50' },
+  { key: 'COMPLETED',    label: 'Selesai',         hex: 'var(--oz-blue-700)',  color: 'bg-blue-700',    dot: 'bg-blue-700',    bg: 'bg-blue-50' },
+  { key: 'CANCELLED',    label: 'Dibatalkan',      hex: 'var(--oz-red-500)',   color: 'bg-red-500',     dot: 'bg-red-500',     bg: 'bg-red-50' },
 ];
 
 const EMPTY_COUNTS: Record<StatusKey, number> = {
@@ -113,10 +117,10 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
     }, []);
 
   return (
-    <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow">
-      <div className="px-6 py-4 border-b border-slate-100 bg-linear-to-r from-slate-50 to-white flex flex-wrap items-center justify-between gap-3">
+    <section className="bg-surface-card rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow">
+      <div className="px-6 py-4 border-b border-slate-100 bg-linear-to-r from-slate-50 to-surface-card flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow">
+          <div className="w-9 h-9 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
           </div>
           <div>
@@ -129,7 +133,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
           onClick={load}
           disabled={loading}
           aria-label="Muat ulang data"
-          className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px] flex items-center justify-center border border-transparent hover:border-slate-200"
+          className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px] flex items-center justify-center border border-transparent hover:border-slate-300"
         >
           <svg
             className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}
@@ -149,13 +153,13 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
             <div className="w-36 h-36 bg-slate-100 rounded-full animate-pulse" />
             <div className="flex-1 space-y-2">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-11 bg-slate-50 rounded-xl animate-pulse" />
+                <div key={i} className="h-11 bg-surface-raised rounded-xl animate-pulse" />
               ))}
             </div>
           </div>
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-2xl bg-surface-raised flex items-center justify-center mb-4">
               <svg className="w-7 h-7 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
             </div>
             <p className="text-sm font-semibold text-slate-700">Belum ada rencana kirim</p>
@@ -172,7 +176,11 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
                 role="img"
                 aria-label={`Distribusi status ${total} rencana kirim: ${STATUSES.filter((s) => counts[s.key] > 0).map((s) => `${s.label} ${counts[s.key]}`).join(', ')}`}
               />
-              <div className="absolute inset-4 rounded-full bg-white flex flex-col items-center justify-center shadow-inner">
+              {/* The hole is a surface, not a fixed white. A literal
+                  `bg-white` here punches a white disc through the middle of
+                  the donut on the dark theme, and the dark `text-gray-900`
+                  number lands on it with no contrast left. */}
+              <div className="absolute inset-4 rounded-full bg-surface-card flex flex-col items-center justify-center shadow-inner">
                 <p className="text-3xl font-bold text-gray-900 tabular-nums">{total}</p>
                 <p className="text-xs text-gray-500">Total</p>
               </div>

@@ -22,10 +22,11 @@ vi.mock('next/image', () => ({
         .filter(([, value]) => value !== undefined && value !== null)
         .map(([key, value]) => [key, String(value)]),
     );
-    return (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img {...htmlProps} alt="" />
-        );
+    // `eslint-disable-next-line` sits above `return (` rather than between it
+    // and the element: a `//` comment in that position is legal but is
+    // mis-parsed by some editors' TS services, producing phantom syntax errors.
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img {...htmlProps} alt="" />;
   },
 }));
 

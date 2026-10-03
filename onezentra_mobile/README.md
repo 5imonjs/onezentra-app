@@ -128,13 +128,43 @@ flutter run 2>&1 | grep -i 'ApiClient\|AuthProvider'
 
 ## Design System
 
-Theme mobile mencerminkan web app globals.css:
+Theme mobile mengikuti **dark aurora** yang sama dengan web app (`globals.css`)
+dan halaman login: indigo primary, teal accent, Roboto, kanvas gelap.
 
 ### Colors
+Ramp netral **dibalik** terhadap Tailwind: `gray50` = permukaan terdalam,
+`gray900` = teks paling terang. Konsekuensinya, angka besar bukan "lebih
+terang" — pilih berdasarkan **peran**:
+
+| Peran | Token |
+|---|---|
+| Kanvas aplikasi | `background`, `gray100` |
+| Card | `surfaceCard`, `gray200` |
+| Border / hairline | `gray300` |
+| Teks muted | `gray400`, `gray500` |
+| Teks body | `gray600`, `gray700` |
+| Judul | `gray800`, `gray900` |
+| Panel selalu gelap (hero, header modal) | `ink800`, `ink900`, `ink950` |
+| Well status gelap | `successWell`, `warningWell`, `dangerWell`, `infoWell` |
+| Teks status terbaca | `successText`, `warningText`, `dangerText`, `infoText` |
+| Aksen solid (bar, dot, state aktif) | `success`, `warning`, `danger`, `info` |
+
+**Jangan** menulis warna langsung (`Color(0x...)`) untuk status — pakai token
+di atas. Semua warna status hardcode yang tersisa sudah dipetakan; menambah
+hex baru berpotensi menghasilkan teks tak terbaca di kanvas gelap.
+
+`main.dart` mengunci `ThemeMode.dark`. Dulu tidak ada `themeMode` sehingga
+default `ThemeMode.system` menukar `AppTheme.dark` masuk sementara halaman
+masih menyematkan `AppTheme.background` (terang) — teks hitam di atas
+background terang. Jangan dikembalikan ke `system` tanpa sekalian membuat
+seluruh halaman memakai `Theme.of(context)` dan bukan warna statis.
+
+### Brand
 - **Primary (Indigo)**: 50-950 scale
 - **Accent (Teal)**: 400, 500
-- **Gray Scale**: 50-900
-- **Semantic**: Success, Warning, Danger, Info
+- **Gray Scale**: 50-900 (dark-first, lihat tabel di atas)
+- **Ink Scale**: 700-950 (selalu gelap)
+- **Semantic**: `success`/`warning`/`danger`/`info` + pasangan `*Text`/`*Well`
 
 ### Typography
 - Font: Roboto (matching web)

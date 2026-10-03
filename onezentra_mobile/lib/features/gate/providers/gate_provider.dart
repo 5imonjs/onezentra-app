@@ -14,6 +14,22 @@ class GateProvider extends ChangeNotifier {
     : _repository = repository ?? GateRepository();
   final GateRepository _repository;
 
+  /// Set in [dispose].
+  ///
+  /// Every loader here awaits the network and then calls [notifyListeners]. If
+  /// the screen is closed while a request is in flight, that call lands after
+  /// dispose and ChangeNotifier throws "used after being disposed", crashing
+  /// instead of merely skipping a repaint. Same guard as CheckoutProvider.
+  bool _disposed = false;
+
+  /// Safe to call after dispose: a disposed provider simply stops notifying.
+  void _notify() {
+    if (_disposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
   List<GateTransaction> _items = const [];
   GateStats _stats = const GateStats();
   bool _isLoading = false;
@@ -68,7 +84,7 @@ class GateProvider extends ChangeNotifier {
 
   Future<void> loadStats() async {
     _isLoadingStats = true;
-    notifyListeners();
+    _notify();
     try {
       _stats = await _repository.stats();
     } on ApiException catch (e) {
@@ -78,14 +94,14 @@ class GateProvider extends ChangeNotifier {
       debugPrintStack(stackTrace: stack, maxFrames: 8);
     } finally {
       _isLoadingStats = false;
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> loadItems() async {
     _isLoading = true;
     _listError = null;
-    notifyListeners();
+    _notify();
     try {
       var page = await _repository.list(
         search: _search.isEmpty ? null : _search,
@@ -102,7 +118,7 @@ class GateProvider extends ChangeNotifier {
       _listError = 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -134,14 +150,14 @@ class GateProvider extends ChangeNotifier {
         _message = const GateActionMessage.failure(
           'Masukkan PO / Nopol terlebih dahulu.',
         );
-        notifyListeners();
+        _notify();
       }
       return;
     }
 
     _lookupBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       _found = await _repository.findByNoDokumen(nomor);
@@ -157,7 +173,7 @@ class GateProvider extends ChangeNotifier {
       );
     } finally {
       _lookupBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -182,7 +198,7 @@ class GateProvider extends ChangeNotifier {
 
     _actionBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       var status = await _repository.verify(id);
@@ -204,7 +220,7 @@ class GateProvider extends ChangeNotifier {
       return false;
     } finally {
       _actionBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -216,7 +232,7 @@ class GateProvider extends ChangeNotifier {
 
     _actionBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       await _repository.record(rencanaKirim: found, gateType: gateType);
@@ -236,7 +252,7 @@ class GateProvider extends ChangeNotifier {
       return false;
     } finally {
       _actionBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -247,7 +263,7 @@ class GateProvider extends ChangeNotifier {
       return;
     }
     _found = null;
-    notifyListeners();
+    _notify();
   }
 
   void clearMessage() {
@@ -255,11 +271,12 @@ class GateProvider extends ChangeNotifier {
       return;
     }
     _message = null;
-    notifyListeners();
+    _notify();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _searchDebounce?.cancel();
     super.dispose();
   }

@@ -12,6 +12,8 @@ import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart
 import 'package:onezentra_mobile/features/gate/models/gate_models.dart';
 import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
 import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
+import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
+import 'package:onezentra_mobile/features/validation/repositories/validation_repository.dart';
 import 'package:onezentra_mobile/main.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
@@ -103,6 +105,62 @@ class _FakeAuthRepository extends AuthRepository {
     String? deviceName,
   }) async => AuthResponse.fromJson(body);
 }
+
+/// Validation repository answering a canned session, so the Gate IN →
+/// Validasi handoff can be exercised end to end without a server.
+class _FakeValidationRepository extends ValidationRepository {
+  _FakeValidationRepository(this.session);
+  final SjValidation session;
+
+  int startCalls = 0;
+
+  @override
+  Future<ValidationHistoryPage> list({
+    String? search,
+    int page = 1,
+    int perPage = 20,
+  }) async => const ValidationHistoryPage(
+    items: [],
+    currentPage: 1,
+    lastPage: 1,
+    total: 0,
+  );
+
+  @override
+  Future<ValidationStats> stats() async => const ValidationStats();
+
+  @override
+  Future<SjValidation> startByCode(String scanCode) async {
+    startCalls++;
+    return session;
+  }
+
+  @override
+  Future<SjValidation> show(int id) async => session;
+}
+
+const _handedOffSession = SjValidation(
+  id: 9,
+  scanCode: 'PO-042',
+  status: 'IN_PROGRESS',
+  document: ValidationDocument(
+    id: 11,
+    poTransporter: 'PO-042',
+    nopol: 'B 9999 ZZ',
+    driverName: 'Andi',
+    status: 'CHECKED_IN',
+  ),
+  items: [
+    SjValidationItem(
+      id: 31,
+      validationId: 9,
+      kodeBarang: 'BRG-1',
+      namaBarang: 'Gula 50kg',
+      expectedQty: 100,
+      satuan: 'zak',
+    ),
+  ],
+);
 
 const List<String> _fullGatePermissions = [
   'gate.view',
@@ -358,7 +416,7 @@ void main() {
     expect(find.text('DOKUMEN DITEMUKAN'), findsNothing);
   });
 
-  testWidgets('route /gate membuka halaman dan tab bawah bisa kembali', (
+  testWidgets('route /gate membuka halaman dan kembali ke home', (
     tester,
   ) async {
     var repository = _FakeGateRepository();
@@ -370,18 +428,73 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    router.go('/gate');
+    router.push('/gate');
     await tester.pumpAndSettle();
 
-    // Halaman Check In Point yang tampil, bukan placeholder.
+    // Halaman Check In Point yang tampil.
     expect(find.text('Quick Scan'), findsOneWidget);
-    expect(find.text('Modul ini sedang dalam pengembangan'), findsNothing);
 
-    // Menekan tab bawah keluar dari halaman detail.
-    await tester.tap(find.text('Modul'));
+    // Kembali ke daftar menu utama.
+    router.pop();
     await tester.pumpAndSettle();
 
     expect(find.text('Quick Scan'), findsNothing);
-    expect(find.text('Semua Modul'), findsOneWidget);
+    expect(find.text('Pilih pekerjaan'), findsOneWidget);
+  });
+
+  testWidgets('Gate IN → lanjut validasi membawa PO otomatis', (
+    tester,
+  ) async {
+    var gateRepository = _FakeGateRepository(
+      lookupResult: _lookupDocument(),
+    );
+    var validationRepository = _FakeValidationRepository(_handedOffSession);
+    var auth = await _loginAuth(
+      permissions: [
+        ..._fullGatePermissions,
+        'sj_validation.view',
+        'sj_validation.create',
+        'sj_validation.validate',
+      ],
+    );
+    var router = buildRouter(
+      auth,
+      gateRepository: gateRepository,
+      validationRepository: validationRepository,
+    );
+
+    await tester.pumpWidget(
+      OneZentraApp(authProvider: auth, router: router),
+    );
+    await tester.pumpAndSettle();
+
+    router.push('/gate');
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    var gateInButton = find.widgetWithText(FilledButton, 'Gate IN →');
+    await tester.ensureVisible(gateInButton);
+    await tester.tap(gateInButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Ya, Catat IN'));
+    await tester.pumpAndSettle();
+
+    // Handoff appears without retyping the PO…
+    var handoff = find.widgetWithText(
+      AppPrimaryButton,
+      'Lanjut validasi PO-042',
+    );
+    expect(handoff, findsOneWidget);
+    await tester.ensureVisible(handoff);
+    await tester.tap(handoff);
+    await tester.pumpAndSettle();
+
+    // …and the validation session opens by itself.
+    expect(validationRepository.startCalls, 1);
+    expect(find.textContaining('SESI BERJALAN'), findsOneWidget);
+    expect(find.text('Gula 50kg'), findsOneWidget);
   });
 }

@@ -1,0 +1,36 @@
+{
+  // Dipakai saat folder onezentra_mobile dibuka langsung di VS Code.
+  // Pilih config di Run & Debug (F5) — tidak perlu hafal flag lagi.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Mobile Web (Chrome, port tetap)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      // WAJIB port tetap: backend hanya mengizinkan origin
+      // localhost:51266 via FRONTEND_URL (lihat config/cors.php).
+      // Tanpa ini Chrome dapat port acak -> diblokir CORS.
+      "args": ["--web-port=51266"]
+    },
+    {
+      "name": "Mobile Android Emulator",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      // 10.0.2.2 = host machine dilihat dari dalam emulator.
+      "args": ["--dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1"]
+    },
+    {
+      "name": "Mobile HP Fisik (LAN)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      // localhost di HP = HP itu sendiri, jadi wajib IP LAN PC.
+      // Cek IP: ipconfig getifaddr en0. Backend harus jalan dengan
+      // php artisan serve --host=0.0.0.0 --port=8000.
+      "args": ["--dart-define=API_BASE_URL=http://192.168.1.18:8000/api/v1"]
+    }
+  ]
+}

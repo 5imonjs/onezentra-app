@@ -145,7 +145,10 @@ class ReceivingItemController extends Controller
 
         // Item dimuat sekaligus untuk semua group di halaman ini (1 query,
         // tanpa N+1), lalu dikelompokkan di memori.
-        $itemsQuery = ReceivingItem::query()->with(['receiving.rencanaKirim'])
+        // `batch` di-eager-load supaya halaman Inbound bisa mencetak label ulang.
+        // Batch label lahir di tahap validasi SJ, tapi dicetak ulang justru paling
+        // sering dibutuhkan saat barang masuk — label harus ditempel di rak.
+        $itemsQuery = ReceivingItem::query()->with(['receiving.rencanaKirim', 'batch'])
             ->where(function ($q) use ($pageCandidates) {
                 foreach ($pageCandidates as $b) {
                     $q->orWhere(function ($sub) use ($b) {

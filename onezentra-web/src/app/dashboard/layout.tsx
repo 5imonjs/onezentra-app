@@ -35,7 +35,7 @@ const MENU_FALLBACK: [string, string][] = [
 
 function SplashScreen({ leaving = false, immersive = false }: { leaving?: boolean; immersive?: boolean }) {
   return (
-    <div role="status" aria-live="polite" className={`pointer-events-none fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 transition-opacity duration-500 ${immersive ? 'bg-slate-950' : ''} ${leaving ? 'opacity-0' : 'opacity-100'}`}>
+    <div role="status" aria-live="polite" className={`pointer-events-none fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 transition-opacity duration-500 ${immersive ? 'bg-ink-950' : ''} ${leaving ? 'opacity-0' : 'opacity-100'}`}>
       {/* priority: logo splash adalah LCP halaman (di atas fold & besar),
           jadi ia satu-satunya pemilik preload — memuaskan peringatan LCP Next
           sekaligus menghindari preload ganda tak terpakai. Sidebar bukan LCP:
@@ -169,7 +169,7 @@ export default function DashboardLayout({
         <div
           aria-hidden="true"
           onClick={closeMobileNav}
-          className="fixed inset-0 z-30 animate-fade-in bg-slate-950/60 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-30 animate-fade-in bg-ink-950/60 backdrop-blur-[2px] lg:hidden"
         />
       )}
 
