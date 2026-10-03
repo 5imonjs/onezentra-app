@@ -58,11 +58,7 @@ class UserController extends Controller
             'status' => 'nullable|in:active,inactive',
         ]);
 
-        abort_unless(
-            $request->user()->isAdminMaster() || ($validated['level'] ?? null) !== 'admin_master',
-            403,
-            'Hanya admin master yang dapat menetapkan role admin master.'
-        );
+        $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
         $validated['password'] = Hash::make($validated['password']);
         $validated['status'] = $validated['status'] ?? 'active';
@@ -115,16 +111,10 @@ class UserController extends Controller
             'status' => 'sometimes|in:active,inactive',
         ]);
 
-        abort_unless(
-            $request->user()->isAdminMaster() || ($validated['level'] ?? null) !== 'admin_master',
-            403,
-            'Hanya admin master yang dapat menetapkan role admin master.'
-        );
+        $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
         // Hanya admin master yang boleh mengubah user admin master.
-        if ($user->isAdminMaster() && ! $request->user()->isAdminMaster()) {
-            abort(403, 'Hanya admin master yang dapat mengubah akun admin master.');
-        }
+        $this->authorize('update', $user);
 
         if (! empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
@@ -170,11 +160,7 @@ class UserController extends Controller
             return response()->json(['message' => 'Cannot delete your own account'], 422);
         }
         if ($user->isAdminMaster()) {
-            abort_unless(
-                $this->currentUser()->isAdminMaster(),
-                403,
-                'Hanya admin master yang dapat menghapus akun admin master.'
-            );
+            $this->authorize('delete', $user);
             abort_unless(
                 User::where('level', 'admin_master')->whereKeyNot($user->id)->exists(),
                 422,

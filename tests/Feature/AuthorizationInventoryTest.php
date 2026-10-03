@@ -128,9 +128,10 @@ class AuthorizationInventoryTest extends TestCase
     // ------------------------------------------------------------------
 
     /**
-     * `admin_master` adalah role tertinggi. Aturan ini masih hidup di
-     * UserController (bukan policy), dan dikunci di sini supaya nilainya tidak
-     * bergeser saat dipindahkan.
+     * `admin_master` adalah role tertinggi. Sebelum policy diperkenalkan, aturan
+     * ini hidup inline di UserController; kini dievaluasi oleh UserPolicy
+     * (`assignAdminMaster`). Test ini mengunci NILAINYA — bukan lokasinya —
+     * supaya pemindahan ke policy tidak melonggarkan akses.
      */
     public function test_hanya_admin_master_boleh_menetapkan_admin_master(): void
     {
@@ -175,5 +176,33 @@ class AuthorizationInventoryTest extends TestCase
             'password' => 'password123', 'password_confirmation' => 'password123',
             'level' => 'staff_logistic',
         ])->assertStatus(403);
+    }
+
+    /**
+     * Staff tidak boleh MENGUBAH akun admin master (jalur update).
+     * Tanpa ini, hanya sisi create yang terkunci — update/delete tetap
+     * bisa jadi celah eskalasi walau create sudah lewat policy.
+     */
+    public function test_staff_tidak_boleh_mengubah_akun_admin_master(): void
+    {
+        $staff = $this->userWith('staff_logistic', ['users.edit']);
+        $master = $this->userWith('master_victim', [], 'admin_master');
+        Sanctum::actingAs($staff);
+
+        $this->putJson("/api/v1/users/{$master->id}", [
+            'full_name' => 'Diubah Staff',
+        ])->assertStatus(403);
+    }
+
+    /**
+     * Staff tidak boleh MENGHAPUS akun admin master (jalur delete).
+     */
+    public function test_staff_tidak_boleh_menghapus_akun_admin_master(): void
+    {
+        $staff = $this->userWith('staff_logistic', ['users.delete']);
+        $master = $this->userWith('master_victim_del', [], 'admin_master');
+        Sanctum::actingAs($staff);
+
+        $this->deleteJson("/api/v1/users/{$master->id}")->assertStatus(403);
     }
 }

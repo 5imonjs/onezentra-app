@@ -3,10 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 abstract class Controller
 {
+    // Menyediakan `authorize()`, `can()`, dan `cannot()`.
+    //
+    // Dipakai UserPolicy untuk aturan yang butuh knowing actor DAN target
+    // (mis. hanya admin master boleh mengubah akun admin master). Gate
+    // permission tetap di level route lewat middleware `permission:` — trait
+    // ini tidak menggantikannya.
+    use AuthorizesRequests;
+
     /**
      * Return the authenticated user as concrete User model (for Intelephense).
      */
