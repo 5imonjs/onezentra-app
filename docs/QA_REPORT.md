@@ -143,24 +143,48 @@ dipasang.
 
 Test guard: `DepotScopeConsistencyTest`.
 
-### CATATAN-1: `StandarisasiTumpukanController` tidak memakai trait guard — **BELUM DIPUTUSKAN**
+### CATATAN-1: `StandarisasiTumpukanController` — **SUDAH DIPERBAIKI**
 
-`canManageRow()` memberi jalur kedua sebelum cek depo:
+Dulu `canManageRow()` memberi bypass scoping depo ke daftar slug hardcode:
 
 ```php
 if ($user->isAdminMaster() || $user->hasAnyRole(self::WORKFLOW_ROLES)) {
-    return true;   // bypass scoping depo
+    return true;   // bypass
 }
 return $user->canAccessDepotRow($row->kode_depo, $row->nama_depo);
 ```
 
-Jadi `authorizeDepot()` di controller ini tidak bisa ikut `AuthorizesDepotRow`
-tanpa mengubah siapa yang boleh mengakses — dan itu pertanyaan produk, bukan
-sekadar refactor.
+Masalahnya: `blc` **tidak punya** `depot.view_all` di `PermissionSeeder` (hanya
+admin_planner dan admin yang punya), jadi ada user yang secara formal tidak
+berhak lintas depo tapi praktis bisa. Permission berhenti jadi sumber
+kebenaran, dan selisihnya tidak terlihat dari mana pun kecuali membaca
+controller itu.
 
-`SjValidationController` juga belum ikut, dan itu murni teknis: ia memeriksa
-`Auth::user() instanceof User` lebih dulu, jadi memaksanya masuk trait
-mengubah urutan evaluasi.
+**Perbaikan.** Bypass dihapus; `blc` diberi `depot.view_all` via
+`PermissionSeeder`, jadi akses lintas depo sekarang tercatat dan bisa
+diaudit seperti modul lain. Const `WORKFLOW_ROLES` dihapus.
+
+**Dampak yang disengaja:** `staff_logistic` kehilangan bypass dan kini
+ter-scope ke depo-nya. Test `test_staff_logistic_tidak_lagi_melewati_scoping`
+mengunci itu. Kalau nanti ada alur yang bergantung pada akses lintas depo
+untuk role ini, gejalanya akan muncul di QA — dan itu memang yang
+seharusnya.
+
+Guard: `StandarisasiDepotScopeTest` (5 test).
+
+### CATATAN-2: pola slug hardcode serupa masih ada di 2 controller
+
+`BiayaRetribusiController` dan `BiayaThlController` masih memakai
+`hasRole('blc') || hasRole('staff_logistic')` di dalam pemeriksaan akses.
+Polanya sama persis dengan yang sudah dibetulkan di atas, tapi **belum
+disentuh** karena tiap modul punya aturan bisnis sendiri dan keputusan
+scope-nya terpisah. Perlu audit per modul, bukan perubahan sekali gus.
+
+### CATATAN-3: `SjValidationController` belum memakai trait guard
+
+Controller ini memeriksa `Auth::user() instanceof User` sebelum cek depo,
+jadi memaksanya masuk `AuthorizesDepotRow` akan mengubah urutan evaluasi.
+Perlu penyesuaian trait dulu, bukan peminjaman paksa.
 
 ### BUG-2: Rincian `Validasi SJ` bocorkan data di luar depo
 
