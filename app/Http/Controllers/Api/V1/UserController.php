@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\StoreUserRequest;
+use App\Http\Requests\Api\V1\UpdateUserRequest;
 use App\Imports\UserImport;
 use App\Models\Role;
 use App\Models\User;
@@ -46,17 +48,9 @@ class UserController extends Controller
         return response()->json($payload);
     }
 
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        $validated = $request->validate([
-            'kode_depo' => 'required|string|max:20',
-            'nama_depo' => 'required|string|max:100',
-            'full_name' => 'required|string|max:100',
-            'email' => 'required|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'level' => 'required|in:'.implode(',', Role::LEVEL_SLUGS),
-            'status' => 'nullable|in:active,inactive',
-        ]);
+        $validated = $request->validated();
 
         $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
@@ -97,19 +91,11 @@ class UserController extends Controller
         return response()->json(['data' => $user->load('roles')]);
     }
 
-    public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user)
     {
         $this->authorizeDepot($user);
 
-        $validated = $request->validate([
-            'kode_depo' => 'sometimes|string|max:20',
-            'nama_depo' => 'sometimes|string|max:100',
-            'full_name' => 'sometimes|string|max:100',
-            'email' => 'sometimes|email|max:255|unique:users,email,'.$user->id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'level' => 'sometimes|in:'.implode(',', Role::LEVEL_SLUGS),
-            'status' => 'sometimes|in:active,inactive',
-        ]);
+        $validated = $request->validated();
 
         $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
