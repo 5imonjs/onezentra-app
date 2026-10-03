@@ -10,7 +10,6 @@ use App\Models\BiayaThl;
 use App\Models\RetribusiRate;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -333,7 +332,7 @@ class BiayaApprovalService
         return $refreshed;
     }
 
-    public function reject(Model $biaya, User $actor, Request $request): Model
+    public function reject(Model $biaya, User $actor, string $reason): Model
     {
         $level = match ($biaya->status) {
             'rlh_approved' => 'RFAH',
@@ -341,7 +340,6 @@ class BiayaApprovalService
             default => 'RLH',
         };
         $this->ensureApprover($biaya, $actor, $level);
-        $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
 
         $refreshed = $this->persistTransition(
             $biaya,
@@ -366,10 +364,9 @@ class BiayaApprovalService
         return $refreshed;
     }
 
-    public function revise(Model $biaya, User $actor, Request $request): Model
+    public function revise(Model $biaya, User $actor, string $reason): Model
     {
         $this->ensureApprover($biaya, $actor, $biaya->status === 'rlh_approved' ? 'RFAH' : ($biaya->status === 'pending' ? 'BAC' : 'RLH'));
-        $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
 
         $refreshed = $this->persistTransition(
             $biaya,

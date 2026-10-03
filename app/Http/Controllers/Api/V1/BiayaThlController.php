@@ -347,12 +347,16 @@ class BiayaThlController extends Controller
 
     public function reject(Request $request, BiayaThl $biayaThl, BiayaApprovalService $approvalService)
     {
-        return response()->json(['message' => 'Pengajuan THL ditolak.', 'data' => $approvalService->reject($biayaThl, $request->user(), $request)]);
+        $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
+
+        return response()->json(['message' => 'Pengajuan THL ditolak.', 'data' => $approvalService->reject($biayaThl, $request->user(), $reason)]);
     }
 
     public function revise(Request $request, BiayaThl $biayaThl, BiayaApprovalService $approvalService)
     {
-        return response()->json(['message' => 'Pengajuan THL dikirim kembali untuk direvisi.', 'data' => $approvalService->revise($biayaThl, $request->user(), $request)]);
+        $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
+
+        return response()->json(['message' => 'Pengajuan THL dikirim kembali untuk direvisi.', 'data' => $approvalService->revise($biayaThl, $request->user(), $reason)]);
     }
 
     /**

@@ -379,12 +379,16 @@ class BiayaRetribusiController extends Controller
 
     public function reject(Request $request, BiayaRetribusi $biayaRetribusi, BiayaApprovalService $approvalService)
     {
-        return response()->json(['message' => 'Pengajuan retribusi ditolak.', 'data' => $approvalService->reject($biayaRetribusi, $request->user(), $request)]);
+        $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
+
+        return response()->json(['message' => 'Pengajuan retribusi ditolak.', 'data' => $approvalService->reject($biayaRetribusi, $request->user(), $reason)]);
     }
 
     public function revise(Request $request, BiayaRetribusi $biayaRetribusi, BiayaApprovalService $approvalService)
     {
-        return response()->json(['message' => 'Pengajuan retribusi dikirim kembali untuk direvisi.', 'data' => $approvalService->revise($biayaRetribusi, $request->user(), $request)]);
+        $reason = $request->validate(['reason' => ['required', 'string', 'max:1000']])['reason'];
+
+        return response()->json(['message' => 'Pengajuan retribusi dikirim kembali untuk direvisi.', 'data' => $approvalService->revise($biayaRetribusi, $request->user(), $reason)]);
     }
 
     /**
