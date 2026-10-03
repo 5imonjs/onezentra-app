@@ -9,6 +9,9 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
 const PUBLIC_PATHS = ['/login'];
 
+/** Batas waktu validasi sesi server-side agar halaman login tidak tertahan. */
+const SESSION_CHECK_TIMEOUT_MS = 3000;
+
 // Pola pengcocokan jalur: lewati file statis, favicon.
 const SKIP_PATTERNS = [
   '_next',
@@ -23,6 +26,41 @@ export function resolveBackendPath(pathname: string): string {
   return pathname.endsWith('/sanctum/csrf-cookie')
     ? '/sanctum/csrf-cookie'
     : pathname;
+}
+
+/**
+ * Validasi sesi server-side untuk halaman publik. Cookie sesi ber-flag httpOnly
+ * sehingga hanya sisi server yang bisa melihatnya — memindahkan probe ke sini
+ * membuat tamu tanpa cookie tidak lagi memicu `GET /user` dari browser (dulu
+ * menghasilkan 401 di console, walau itu jawaban yang benar).
+ *
+ * Referer/Origin wajib dikirim: `EnsureFrontendRequestsAreStateful::fromFrontend()`
+ * hanya mengaktifkan middleware session kalau domain-nya terdaftar di
+ * `sanctum.stateful`. Tanpa itu Sanctum membaca request sebagai stateless →
+ * cookie sesi diabaikan → sesi yang valid pun dianggap 401.
+ */
+async function hasValidSession(request: NextRequest): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SESSION_CHECK_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/v1/user`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Cookie: request.headers.get('cookie') ?? '',
+        Origin: request.nextUrl.origin,
+        Referer: `${request.nextUrl.origin}${request.nextUrl.pathname}`,
+      },
+      signal: controller.signal,
+    });
+
+    return response.ok;
+  } catch {
+    // Fail-open: backend tak bisa dihubungi TIDAK boleh memblokir halaman login.
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -77,6 +115,14 @@ export async function proxy(request: NextRequest) {
   }
 
   if (PUBLIC_PATHS.includes(pathname)) {
+    // Halaman publik + cookie sesi ada → validasi server-side; sesi yang masih
+    // hidup langsung diarahkan ke /dashboard. Tamu tanpa cookie melewati blok
+    // ini tanpa request apa pun, jadi tidak ada 401 /user di console browser.
+    if (pathname === '/login' && request.cookies.has(SESSION_COOKIE)) {
+      if (await hasValidSession(request)) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    }
     return NextResponse.next();
   }
 

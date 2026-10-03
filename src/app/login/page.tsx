@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
@@ -11,31 +11,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading, user, loadUser } = useAuthStore();
+  const { login, isLoading, user } = useAuthStore();
   const router = useRouter();
 
-  const loadUserFn = useCallback(() => loadUser(), [loadUser]);
-
-  // Ref dideklarasikan di luar effect: memanggil hook di dalam effect (walau
-  // secara teknis di dalam komponen) melanggar aturan Rules of Hooks —
-  // React error #321 kalau urutan hook berubah antar render.
-  const sessionChecked = useRef(false);
-
-  useEffect(() => {
-    // Hanya verifikasi sesi yang SUDAH ada saat halaman dibuka — jangan pernah
-    // bergantung pada document.cookie, karena cookie sesi laravel-session
-    // ber-flag httpOnly dan tidak bisa dibaca JS. Memeriksa namanya selalu
-    // false → user yang baru login tetap dipantulkan balik ke /login.
-    //
-    // Ref ini penting: tanpa itu, setiap kali `user` berubah (setelah login
-    // sukses) effect ini jalan lagi dan memanggil loadUser() yang menimpa
-    // state — dan halaman tetap tertahan di /login.
-    if (!user && !sessionChecked.current) {
-      sessionChecked.current = true;
-      loadUserFn();
-    }
-  }, [user, loadUserFn]);
-
+  // Catatan: TIDAK ada probe `GET /user` di sini. Validasi sesi yang sudah ada
+  // dilakukan server-side di proxy.ts (cookie sesi ber-flag httpOnly, jadi hanya
+  // sisi server yang bisa melihatnya). Sebelumnya probe client-side ini membuat
+  // tamu memicu 401 yang selalu tercatat di console browser. Bounce user yang
+  // sudah login kini ditangani proxy sebelum halaman ini dirender.
   useEffect(() => {
     if (user) {
       router.push('/dashboard');
@@ -186,7 +169,7 @@ export default function LoginPage() {
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                     aria-pressed={showPassword}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors min-w-11 min-h-11 flex items-center justify-center -mr-2"
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

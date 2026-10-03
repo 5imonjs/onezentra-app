@@ -1,0 +1,12 @@
+{
+  // VS Code hanya membaca .vscode/settings.json dari folder yang DIBUKA.
+  // Berkas ini ada supaya pengaturan di bawah tetap berlaku ketika
+  // onezentra-web/ dibuka langsung, bukan lewat folder repo root (yang punya
+  // settings kembarannya). Tanpa ini, editor memakai TypeScript bawaannya.
+  //
+  // TS bawaan sesekali melaporkan phantom syntax error pada berkas yang
+  // `npx tsc --noEmit` DAN `next build` sama-sama terima — termasuk berkas
+  // yang isinya sudah berubah di disk. Pakai TypeScript milik proyek (v5).
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": false
+}

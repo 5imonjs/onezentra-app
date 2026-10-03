@@ -13,6 +13,8 @@ type Group = {
   key: string;
   label: string;
   items: ActionItem[];
+  /** Total baris di server (bukan hanya yang muat di halaman ini). */
+  total: number;
   moreCount: number;
   href: string;
   tone: Tone;
@@ -27,21 +29,68 @@ const TONE_STYLES: Record<Tone, { iconBg: string; chip: string }> = {
 
 const MAX_PER_GROUP = 4;
 
-type ListResponse<T> = { data?: { data?: T[] } };
+type ListResponse<T> = { data?: { data?: T[]; total?: number } };
 
 type GroupJob = () => Promise<Group | null>;
 
-function pickList<T>(response: unknown): T[] {
+/**
+ * Respons paginate Laravel: `data` = baris halaman ini, `total` = seluruh
+ * baris terfilter. `total` dipakai untuk badge & "+N lainnya" agar angka yang
+ * dibaca user adalah jumlah sebenarnya, bukan isi halaman (maks. 4).
+ */
+function pickPage<T>(response: unknown): { items: T[]; total: number } {
   const res = response as ListResponse<T>;
-  return Array.isArray(res?.data?.data) ? res.data.data : [];
+  const items = Array.isArray(res?.data?.data) ? res.data.data : [];
+  const total = typeof res?.data?.total === 'number' ? res.data.total : items.length;
+
+  return { items, total };
 }
+
+function buildGroup<T>(options: {
+  key: string;
+  label: string;
+  href: string;
+  tone: Tone;
+  response: unknown;
+  map: (item: T) => ActionItem;
+}): Group | null {
+  const { items, total } = pickPage<T>(options.response);
+  if (total === 0) return null;
+
+  return {
+    key: options.key,
+    label: options.label,
+    href: options.href,
+    tone: options.tone,
+    total,
+    moreCount: Math.max(0, total - items.length),
+    items: items.slice(0, MAX_PER_GROUP).map(options.map),
+  };
+}
+
+/** Sisipkan filter depo hanya bila dipilih (user global dengan depot.view_all). */
+function depotFilter(kodeDepo?: string): Record<string, string> {
+  return kodeDepo ? { kode_depo: kodeDepo } : {};
+}
+
+/** Bentuk baris yang relevan dari tiap endpoint list (untuk pemetaan grup). */
+type ThlItem = { id: number; no_kendaraan?: string; nama_depo?: string; kode_depo?: string };
+type RetribusiItem = { id: number; nama_depo?: string; kode_depo?: string };
+type SjValidationItem = {
+  id: number;
+  scan_code?: string | null;
+  rencana_kirim?: { po_transporter?: string; nama_depo?: string; kode_depo?: string } | null;
+};
+type RkItem = { id: number; nopol?: string; nama_depo?: string; kode_depo?: string };
+type GateItem = { id: number; po_transporter?: string; nopol?: string };
 
 /**
  * Section "Perlu Tindakan": item kerja yang menunggu aksi user, dikelompokkan
- * per modul. Hanya memuat modul yang izinnya dimiliki user; jika semua kosong,
- * section tidak dirender sama sekali (bukan menampilkan kartu kosong).
+ * per modul dan mengikuti filter depo dashboard. Hanya memuat modul yang
+ * izinnya dimiliki user; jika semua kosong, section tidak dirender sama sekali
+ * (bukan menampilkan kartu kosong).
  */
-export default function PendingActions() {
+export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
   const { hasPermission } = useAuthStore();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,114 +102,101 @@ export default function PendingActions() {
 
     const jobs: GroupJob[] = [];
 
-    if (hasPermission('biaya_thl.view') && hasPermission('biaya_thl.check')) {
-      jobs.push(async () => {
-        const items = pickList<{ id: number; no_kendaraan?: string; nama_depo?: string; kode_depo?: string; submitted_at?: string | null }>(
-          await biayaThl.list({ status: 'submitted', per_page: MAX_PER_GROUP, sort: 'submitted_at', direction: 'asc' }),
-        );
-        if (items.length === 0) return null;
-        return {
-          key: 'thl_check',
-          label: 'Pengajuan THL menunggu pemeriksaan',
+    // Pengajuan biaya menunggu pemeriksaan: hasil submit berstatus 'pending'
+    // (tak ada status 'submitted'); gate aksi pemeriksaan = approval.check.
+    if (hasPermission('biaya_thl.view') && hasPermission('approval.check')) {
+      jobs.push(async () => buildGroup<ThlItem>({
+        key: 'thl_check',
+        label: 'Pengajuan THL menunggu pemeriksaan',
+        href: '/biaya-thl',
+        tone: 'amber',
+        response: await biayaThl.list({
+          status: 'pending', per_page: MAX_PER_GROUP,
+          sort: 'created_at', dir: 'asc', ...depotFilter(kodeDepo),
+        }),
+        map: (item) => ({
+          id: `thl-${item.id}`,
+          primary: item.no_kendaraan || 'Pengajuan THL',
+          secondary: item.nama_depo || item.kode_depo || '-',
           href: '/biaya-thl',
-          tone: 'amber' as Tone,
-          moreCount: Math.max(0, items.length - MAX_PER_GROUP),
-          items: items.slice(0, MAX_PER_GROUP).map((item) => ({
-            id: `thl-${item.id}`,
-            primary: item.no_kendaraan || 'Pengajuan THL',
-            secondary: item.nama_depo || item.kode_depo || '-',
-            href: '/biaya-thl',
-          })),
-        };
-      });
+        }),
+      }));
     }
 
-    if (hasPermission('retribusi.view') && hasPermission('retribusi.check')) {
-      jobs.push(async () => {
-        const items = pickList<{ id: number; nama_depo?: string; kode_depo?: string; submitted_at?: string | null }>(
-          await biayaRetribusi.list({ status: 'submitted', per_page: MAX_PER_GROUP, sort: 'submitted_at', direction: 'asc' }),
-        );
-        if (items.length === 0) return null;
-        return {
-          key: 'retribusi_check',
-          label: 'Retribusi menunggu pemeriksaan',
+    if (hasPermission('biaya_retribusi.view') && hasPermission('approval.check')) {
+      jobs.push(async () => buildGroup<RetribusiItem>({
+        key: 'retribusi_check',
+        label: 'Retribusi menunggu pemeriksaan',
+        href: '/biaya-retribusi',
+        tone: 'violet',
+        response: await biayaRetribusi.list({
+          status: 'pending', per_page: MAX_PER_GROUP,
+          sort: 'created_at', dir: 'asc', ...depotFilter(kodeDepo),
+        }),
+        map: (item) => ({
+          id: `retribusi-${item.id}`,
+          primary: item.nama_depo || item.kode_depo || 'Pengajuan retribusi',
+          secondary: 'Menunggu verifikasi BAC',
           href: '/biaya-retribusi',
-          tone: 'violet' as Tone,
-          moreCount: Math.max(0, items.length - MAX_PER_GROUP),
-          items: items.slice(0, MAX_PER_GROUP).map((item) => ({
-            id: `retribusi-${item.id}`,
-            primary: item.nama_depo || item.kode_depo || 'Pengajuan retribusi',
-            secondary: 'Menunggu verifikasi BAC',
-            href: '/biaya-retribusi',
-          })),
-        };
-      });
+        }),
+      }));
     }
 
+    // sj_validations.status hanya IN_PROGRESS/COMPLETED/CANCELLED — 'PENDING'
+    // tidak pernah ada di tabel ini (PENDING hanya milik item validasinya).
     if (hasPermission('sj_validation.view')) {
-      jobs.push(async () => {
-        const items = pickList<{ id: number; no_surat_jalan?: string; kode_depo?: string; nama_depo?: string }>(
-          await sjValidations.list({ status: 'PENDING', per_page: MAX_PER_GROUP }),
-        );
-        if (items.length === 0) return null;
-        return {
-          key: 'sj_pending',
-          label: 'Surat jalan belum divalidasi',
+      jobs.push(async () => buildGroup<SjValidationItem>({
+        key: 'sj_pending',
+        label: 'Surat jalan belum divalidasi',
+        href: '/validasi-sj',
+        tone: 'sky',
+        response: await sjValidations.list({
+          status: 'IN_PROGRESS', per_page: MAX_PER_GROUP, ...depotFilter(kodeDepo),
+        }),
+        map: (item) => ({
+          id: `sj-${item.id}`,
+          primary: item.rencana_kirim?.po_transporter || item.scan_code || `Validasi #${item.id}`,
+          secondary: item.rencana_kirim?.nama_depo || item.rencana_kirim?.kode_depo || '-',
           href: '/validasi-sj',
-          tone: 'sky' as Tone,
-          moreCount: Math.max(0, items.length - MAX_PER_GROUP),
-          items: items.slice(0, MAX_PER_GROUP).map((item) => ({
-            id: `sj-${item.id}`,
-            primary: item.no_surat_jalan || `Validasi #${item.id}`,
-            secondary: item.nama_depo || item.kode_depo || '-',
-            href: '/validasi-sj',
-          })),
-        };
-      });
+        }),
+      }));
     }
 
-    if (hasPermission('rencana_kirim.view') && hasPermission('rencana_kirim.verify')) {
-      jobs.push(async () => {
-        const items = pickList<{ id: number; kode_depo?: string; nama_depo?: string; nopol?: string }>(
-          await rencanaKirim.list({ status: 'CHECKED_IN', per_page: MAX_PER_GROUP }),
-        );
-        if (items.length === 0) return null;
-        return {
-          key: 'rk_verify',
-          label: 'Rencana kirim menunggu verifikasi',
+    // Aksi verify memakai permission rencana_kirim.edit (lihat route /verify).
+    if (hasPermission('rencana_kirim.view') && hasPermission('rencana_kirim.edit')) {
+      jobs.push(async () => buildGroup<RkItem>({
+        key: 'rk_verify',
+        label: 'Rencana kirim menunggu verifikasi',
+        href: '/rencana-kirim',
+        tone: 'blue',
+        response: await rencanaKirim.list({
+          status: 'CHECKED_IN', per_page: MAX_PER_GROUP, ...depotFilter(kodeDepo),
+        }),
+        map: (item) => ({
+          id: `rk-${item.id}`,
+          primary: item.nopol || `Rencana kirim #${item.id}`,
+          secondary: item.nama_depo || item.kode_depo || '-',
           href: '/rencana-kirim',
-          tone: 'blue' as Tone,
-          moreCount: Math.max(0, items.length - MAX_PER_GROUP),
-          items: items.slice(0, MAX_PER_GROUP).map((item) => ({
-            id: `rk-${item.id}`,
-            primary: item.nopol || `Rencana kirim #${item.id}`,
-            secondary: item.nama_depo || item.kode_depo || '-',
-            href: '/rencana-kirim',
-          })),
-        };
-      });
+        }),
+      }));
     }
 
     if (hasPermission('gate.view')) {
-      jobs.push(async () => {
-        const items = pickList<{ id: number; po_transporter?: string; nopol?: string; status?: string }>(
-          await gateTransactions.list({ status: 'CHECKED_IN', per_page: MAX_PER_GROUP }),
-        );
-        if (items.length === 0) return null;
-        return {
-          key: 'gate_checkin',
-          label: 'Kendaraan sedang di gate',
+      jobs.push(async () => buildGroup<GateItem>({
+        key: 'gate_checkin',
+        label: 'Kendaraan sedang di gate',
+        href: '/gate',
+        tone: 'blue',
+        response: await gateTransactions.list({
+          status: 'CHECKED_IN', per_page: MAX_PER_GROUP, ...depotFilter(kodeDepo),
+        }),
+        map: (item) => ({
+          id: `gate-${item.id}`,
+          primary: item.po_transporter || item.nopol || `Transaksi #${item.id}`,
+          secondary: item.nopol || '-',
           href: '/gate',
-          tone: 'blue' as Tone,
-          moreCount: Math.max(0, items.length - MAX_PER_GROUP),
-          items: items.slice(0, MAX_PER_GROUP).map((item) => ({
-            id: `gate-${item.id}`,
-            primary: item.po_transporter || item.nopol || `Transaksi #${item.id}`,
-            secondary: item.nopol || '-',
-            href: '/gate',
-          })),
-        };
-      });
+        }),
+      }));
     }
 
     try {
@@ -171,7 +207,7 @@ export default function PendingActions() {
     } finally {
       setLoading(false);
     }
-  }, [hasPermission]);
+  }, [hasPermission, kodeDepo]);
 
   useEffect(() => {
     load();
@@ -213,7 +249,7 @@ export default function PendingActions() {
           <p className="text-sm text-gray-500">Item yang menunggu aksi Anda hari ini</p>
         </div>
         <span className="inline-flex items-center rounded-full bg-red-50 text-red-700 px-3 py-1 text-xs font-bold tabular-nums">
-          {groups.reduce((sum, g) => sum + g.items.length + g.moreCount, 0)} item
+          {groups.reduce((sum, g) => sum + g.total, 0)} item
         </span>
       </div>
       <div className="p-5 space-y-5">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { dashboard, getErrorMessage } from '@/lib/api';
+import { useDashboardSummary } from '@/lib/dashboardSummary';
 
 type UsageDay = { date: string; requests: number; active_users: number };
 type TopUser = { id: number; name: string; level: string; requests: number };
@@ -23,6 +24,9 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
   const [usage, setUsage] = useState<UsagePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Tren 7 hari vs minggu sebelumnya dihitung backend di dashboard/summary
+  // (field activity_trend) — dikambil lewat cache bersama, tanpa request ekstra.
+  const { summary, loading: summaryLoading } = useDashboardSummary(kodeDepo);
 
   const load = useCallback(async (days: number, depot?: string) => {
     setLoading(true);
@@ -53,13 +57,31 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
   const isEmpty = totalRequests === 0;
   // Label tanggal hanya ditampilkan pada sebagian bar agar tidak sesak di layar kecil.
   const labelStep = daily.length > 45 ? 7 : daily.length > 20 ? 3 : daily.length > 10 ? 2 : 1;
+  const { current_7d: trendNow, prev_7d: trendPrev } = summary.activity_trend;
+  const trendPct = trendPrev > 0 ? Math.round(((trendNow - trendPrev) / trendPrev) * 100) : null;
+  const trendBaru = !summaryLoading && trendPrev === 0 && trendNow > 0;
 
   return (
     <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Mobilitas Penggunaan Sistem</h2>
-          <p className="text-sm text-gray-500">{usage ? `${formatDate(usage.from)} - ${formatDate(usage.to)}` : `${periodDays} hari terakhir`}</p>
+          <p className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span>{usage ? `${formatDate(usage.from)} - ${formatDate(usage.to)}` : `${periodDays} hari terakhir`}</span>
+            {trendPct !== null && (
+              <span
+                aria-label={`Aktivitas 7 hari terakhir ${trendPct >= 0 ? 'naik' : 'turun'} ${Math.abs(trendPct)} persen dibanding minggu sebelumnya`}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${trendPct >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}
+              >
+                {trendPct >= 0 ? '▲' : '▼'} {Math.abs(trendPct)}% vs minggu lalu
+              </span>
+            )}
+            {trendBaru && (
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                Baru minggu ini
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div role="group" aria-label="Pilih periode" className="flex rounded-lg border border-gray-300 bg-surface-card p-0.5">
@@ -69,7 +91,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
                 type="button"
                 onClick={() => setPeriodDays(p.days)}
                 aria-pressed={periodDays === p.days}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors min-h-[36px] ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors min-h-9 ${
                   periodDays === p.days ? 'bg-ink-900 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-surface-raised'
                 }`}
               >
@@ -77,7 +99,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => load(periodDays)} disabled={loading} aria-label="Muat ulang penggunaan sistem" className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px] flex items-center justify-center">
+          <button type="button" onClick={() => load(periodDays, kodeDepo)} disabled={loading} aria-label="Muat ulang penggunaan sistem" className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 min-w-11 min-h-11 flex items-center justify-center">
             <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
           </button>
         </div>
@@ -97,7 +119,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
         {!loading && error && (
           <div className="flex items-center justify-between gap-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
             <span>{error}</span>
-            <button type="button" onClick={() => load(periodDays)} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+            <button type="button" onClick={() => load(periodDays, kodeDepo)} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
           </div>
         )}
         {!loading && !error && usage && isEmpty && (

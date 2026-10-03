@@ -15,7 +15,17 @@ interface StatSource {
   /** Warna ikon: aksen solid untuk modul operasional, netral untuk master data. */
   iconBg: string;
   group: 'operasional' | 'master';
-  load: () => Promise<number>;
+  /**
+   * `kodeDepo` diteruskan hanya untuk modul yang juga difilter per depo di
+   * `dashboard/summary` — npn & standar umur sengaja global agar angka
+   * fallback identik dengan angka summary.
+   */
+  load: (kodeDepo?: string) => Promise<number>;
+}
+
+/** Sisipkan filter depo hanya bila dipilih (user global dengan depot.view_all). */
+function depotParam(kodeDepo?: string): Record<string, string> {
+  return kodeDepo ? { kode_depo: kodeDepo } : {};
 }
 
 const STAT_SOURCES: StatSource[] = [
@@ -27,7 +37,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'truck',
     iconBg: 'bg-amber-500',
     group: 'operasional',
-    load: async () => (await rencanaKirim.list({ per_page: 1 })).data.total ?? 0,
+    load: async (kodeDepo?: string) => (await rencanaKirim.list({ per_page: 1, ...depotParam(kodeDepo) })).data.total ?? 0,
   },
   {
     key: 'gate',
@@ -37,7 +47,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'gate',
     iconBg: 'bg-sky-600',
     group: 'operasional',
-    load: async () => (await gateTransactions.list({ per_page: 1 })).data.total ?? 0,
+    load: async (kodeDepo?: string) => (await gateTransactions.list({ per_page: 1, ...depotParam(kodeDepo) })).data.total ?? 0,
   },
   {
     key: 'penerimaan',
@@ -47,7 +57,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'clipboard',
     iconBg: 'bg-emerald-600',
     group: 'operasional',
-    load: async () => (await receivingItems.list({ source: 'VALIDASI_SJ', per_page: 1 })).data.total ?? 0,
+    load: async (kodeDepo?: string) => (await receivingItems.list({ source: 'VALIDASI_SJ', per_page: 1, ...depotParam(kodeDepo) })).data.total ?? 0,
   },
   {
     key: 'receiving',
@@ -57,7 +67,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'receive',
     iconBg: 'bg-teal-600',
     group: 'operasional',
-    load: async () => (await receivings.list({ per_page: 1 })).data.total ?? 0,
+    load: async (kodeDepo?: string) => (await receivings.list({ per_page: 1, ...depotParam(kodeDepo) })).data.total ?? 0,
   },
   {
     key: 'sj_validation',
@@ -67,7 +77,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'check',
     iconBg: 'bg-primary-600',
     group: 'operasional',
-    load: async () => (await sjValidations.list({ per_page: 1 })).data.total ?? 0,
+    load: async (kodeDepo?: string) => (await sjValidations.list({ per_page: 1, ...depotParam(kodeDepo) })).data.total ?? 0,
   },
   {
     key: 'npn',
@@ -77,6 +87,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'package',
     iconBg: 'bg-slate-400',
     group: 'master',
+    // Tanpa kodeDepo: summary memuat npn global, fallback harus identik.
     load: async () => (await npn.list({ per_page: 1 })).data.total ?? 0,
   },
   {
@@ -87,6 +98,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'clock',
     iconBg: 'bg-slate-400',
     group: 'master',
+    // Tanpa kodeDepo: summary memuat standar umur global, fallback harus identik.
     load: async () => (await standarUmurProduk.list({ per_page: 1 })).data.total ?? 0,
   },
   {
@@ -97,7 +109,7 @@ const STAT_SOURCES: StatSource[] = [
     icon: 'grid',
     iconBg: 'bg-slate-400',
     group: 'master',
-    load: async () => (await standarisasiTumpukan.list({ per_page: 1 })).data.total ?? 0,
+    load: async (kodeDepo?: string) => (await standarisasiTumpukan.list({ per_page: 1, ...depotParam(kodeDepo) })).data.total ?? 0,
   },
 ];
 
@@ -169,13 +181,13 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
     [hasPermission],
   );
 
-  const loadFallback = useCallback(async () => {
+  const loadFallback = useCallback(async (kodeDepo?: string) => {
     const visible = memoizedVisibleSources;
     setLoading(true);
     const results = await Promise.all(
       visible.map(async (s) => {
         try {
-          return [s.key, await s.load(), false] as const;
+          return [s.key, await s.load(kodeDepo), false] as const;
         } catch {
           return [s.key, 0, true] as const;
         }
@@ -203,9 +215,9 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
       return;
     }
     if (!summaryLoading && summaryFailed) {
-      loadFallback();
+      loadFallback(kodeDepo);
     }
-  }, [summaryLoading, summaryFailed, summary, loadFallback]);
+  }, [summaryLoading, summaryFailed, summary, loadFallback, kodeDepo]);
 
   const visible = useMemo(() => STAT_SOURCES.filter((s) => hasPermission(s.permission)), [hasPermission]);
   const operasional = useMemo(() => visible.filter((s) => s.group === 'operasional'), [visible]);
