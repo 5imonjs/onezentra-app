@@ -223,7 +223,7 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
             {photoPreview ? (
               <div className="relative">
                 <Image src={photoPreview} alt="Pratinjau foto kondisi baru" className="w-full h-48 object-cover rounded-xl" width={400} height={200} unoptimized />
-                <button type="button" onClick={clearPhotoSelection} className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Hapus foto baru">
+                <button type="button" onClick={clearPhotoSelection} className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-colors min-w-11 min-h-11 flex items-center justify-center" aria-label="Hapus foto baru">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>

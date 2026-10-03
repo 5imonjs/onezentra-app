@@ -617,7 +617,7 @@ export default function ValidasiSjPage() {
                         <div key={item.label}><p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">{item.label}</p><p className={`text-sm ${item.mono ? 'font-mono font-bold text-slate-800' : 'text-slate-700'}`}>{item.value}</p></div>
                       ))}
                     </div>
-                    <button type="button" onClick={startValidation} disabled={busy || !hasPermission('sj_validation.create')} className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98] disabled:opacity-50">
+                    <button type="button" onClick={startValidation} disabled={busy || !hasPermission('sj_validation.create')} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98] disabled:opacity-50">
                       {busy ? 'Memulai...' : 'Mulai Validasi'}
                     </button>
                   </div>
@@ -741,13 +741,13 @@ export default function ValidasiSjPage() {
                                   onClick={() => setCancelTarget(item)}
                                   disabled={busy || !hasPermission('sj_validation.cancel')}
                                   title={!hasPermission('sj_validation.cancel') ? 'Anda tidak memiliki izin membatalkan validasi' : `Batalkan seluruh validasi PO ${item.rencana_kirim?.po_transporter || ''}`}
-                                  className="btn-danger inline-flex min-h-[32px] items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="btn-danger inline-flex min-h-8 items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                   Batalkan
                                 </button>
                               )}
-                              <button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-slate-300 bg-surface-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button>
+                              <button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-slate-300 bg-surface-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button>
                             </div>
                           </td>
                         </tr>
@@ -1021,12 +1021,12 @@ export default function ValidasiSjPage() {
                         <td className="px-4 py-3 text-right">
                           {canEditItems(active, { canCorrectCompleted: active?.can_correct_completed }) && hasPermission('sj_validation.validate') ? (
                             item.status === 'PENDING' ? (
-                              <button type="button" onClick={() => openItem(item)} className={`inline-flex min-h-[36px] items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-chip-primary-border bg-chip-primary text-accent-text hover:bg-chip-primary'}`}>
+                              <button type="button" onClick={() => openItem(item)} className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-chip-primary-border bg-chip-primary text-accent-text hover:bg-chip-primary'}`}>
                                 {item.standarisasi?.status && item.standarisasi.status !== 'approved' && <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
                                 Validasi
                               </button>
                             ) : (
-                              <button type="button" onClick={() => openItem(item)} title="Ubah hasil validasi item ini" className="inline-flex min-h-[36px] items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 bg-surface-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-surface-raised">
+                              <button type="button" onClick={() => openItem(item)} title="Ubah hasil validasi item ini" className="inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 bg-surface-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-surface-raised">
                                 <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                                 Ubah
                               </button>
@@ -1199,7 +1199,7 @@ export default function ValidasiSjPage() {
               </div>
             )}
             <label className="block text-xs font-bold text-slate-600">Catatan <span className="font-medium text-slate-400">(opsional)</span>
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Tambahkan catatan pemeriksaan..." className="input-field mt-1.5 min-h-[88px] resize-y py-2.5 text-sm" rows={3} />
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Tambahkan catatan pemeriksaan..." className="input-field mt-1.5 min-h-22 resize-y py-2.5 text-sm" rows={3} />
             </label>
           </div>
         )}

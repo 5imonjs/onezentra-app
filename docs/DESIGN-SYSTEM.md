@@ -96,8 +96,11 @@ Design system ini mendefinisikan token, komponen, dan pedoman aksesibilitas untu
 ### Minimum Touch Targets (WCAG 2.5.8)
 All interactive elements must be at least **44x44px**:
 ```css
-min-w-[44px] min-h-[44px]
+min-w-11 min-h-11
 ```
+> Gunakan kelas kanonik skala spacing (Tailwind v4: `--spacing` = 0.25rem),
+> bukan nilai arbitrary — 11 × 4px = 44px, identik, dan editor tidak lagi
+> menandai kelasnya sebagai "bukan kanonik".
 
 ---
 
@@ -287,7 +290,7 @@ Standard table cell with border.
 - Ensure all form inputs have associated labels
 - Use `role="alert"` for error messages
 - Use `role="status"` for loading/empty states
-- Add `min-w-[44px] min-h-[44px]` to all interactive elements
+- Add `min-w-11 min-h-11` to all interactive elements (setara 44x44px)
 - Use `scope="col"` on table headers
 - Add `<caption>` to tables for screen readers
 

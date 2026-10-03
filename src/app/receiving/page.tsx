@@ -343,7 +343,7 @@ export default function ReceivingPage() {
               <p className="mt-0.5 text-xs text-slate-400">Pilih data aktif di tabel, atau scan barcode PO transporter.</p>
             </div>
             {!foundReceiving && (
-              <button onClick={() => setShowScanner(true)} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98]">
+              <button onClick={() => setShowScanner(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98]">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" /></svg>
                 Scan Barcode
               </button>
@@ -399,11 +399,11 @@ export default function ReceivingPage() {
                 </div>
                 <div className="relative flex flex-wrap gap-2">
                   {['PENDING', 'IN_PROGRESS'].includes(foundReceiving.status) && canFinish && (
-                    <button onClick={() => setShowFinishConfirm(true)} disabled={scanning} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-surface-card px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50">
+                    <button onClick={() => setShowFinishConfirm(true)} disabled={scanning} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-surface-card px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50">
                       {scanning ? 'Memproses...' : 'Selesai Bongkar'}
                     </button>
                   )}
-                  <button onClick={() => { setFoundReceiving(null); setScanResult(null); setScanNoDokumen(''); setNotifiedRecipients(null); }} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-[0.98]">
+                  <button onClick={() => { setFoundReceiving(null); setScanResult(null); setScanNoDokumen(''); setNotifiedRecipients(null); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-[0.98]">
                     Pilih Lain
                   </button>
                 </div>

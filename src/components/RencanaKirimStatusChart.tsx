@@ -133,7 +133,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
           onClick={load}
           disabled={loading}
           aria-label="Muat ulang data"
-          className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px] flex items-center justify-center border border-transparent hover:border-slate-300"
+          className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 min-w-11 min-h-11 flex items-center justify-center border border-transparent hover:border-slate-300"
         >
           <svg
             className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}

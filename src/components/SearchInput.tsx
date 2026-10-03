@@ -81,7 +81,7 @@ export default function SearchInput({
                 onFilterChange?.('');
                 setShowDropdown(false);
               }}
-              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-surface-raised transition-colors flex items-center gap-2 min-h-[40px] ${
+              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-surface-raised transition-colors flex items-center gap-2 min-h-10 ${
                 !activeFilter ? 'text-accent-text bg-chip-primary' : 'text-gray-700'
               }`}
             >
@@ -99,7 +99,7 @@ export default function SearchInput({
                   onFilterChange?.(filter.key);
                   setShowDropdown(false);
                 }}
-                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-surface-raised transition-colors flex items-center gap-2 min-h-[40px] ${
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-surface-raised transition-colors flex items-center gap-2 min-h-10 ${
                   activeFilter === filter.key ? 'text-accent-text bg-chip-primary' : 'text-gray-700'
                 }`}
               >
