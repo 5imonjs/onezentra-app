@@ -120,7 +120,9 @@ class UserImport implements ToCollection, WithHeadingRow
         $role = Role::where('slug', $level)->first();
         if ($role) {
             $user->roles()->sync([$role->id]);
-            $user->update(['role_id' => $role->id]);
+            // forceFill: 'role_id' sengaja tidak fillable (lihat User::$fillable),
+            // jadi kolom legacy ini hanya boleh ditulis lewat jalur eksplisit.
+            $user->forceFill(['role_id' => $role->id])->save();
         }
     }
 }

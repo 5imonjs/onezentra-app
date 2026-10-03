@@ -31,7 +31,6 @@ class DepotScopeTest extends TestCase
             'kode_depo' => $kodeDepo,
             'nama_depo' => $namaDepo,
             'level' => $level,
-            'role_id' => $role->id,
             'status' => 'active',
         ]);
         $role->users()->attach($user->id);
@@ -45,7 +44,11 @@ class DepotScopeTest extends TestCase
             'name' => ucfirst($slug),
             'menu_group' => 'Test',
         ]);
-        Role::where('id', $user->role_id)->first()->permissions()->attach($perm);
+        // Lewat relasi `roles`, bukan kolom legacy `users.role_id`. Kolom itu
+        // sengaja tidak fillable lagi, dan resolusi permission memang membacanya
+        // dari pivot `role_user` — jadi relasi ini juga sumber kebenaran yang
+        // sebenarnya diuji di sini.
+        $user->roles()->firstOrFail()->permissions()->attach($perm);
     }
 
     public function test_npn_is_global_across_depots(): void

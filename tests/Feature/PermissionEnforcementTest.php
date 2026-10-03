@@ -29,7 +29,6 @@ class PermissionEnforcementTest extends TestCase
             'kode_depo' => $kodeDepo,
             'nama_depo' => 'Depo Satu',
             'level' => $roleSlug,
-            'role_id' => $role->id,
             'status' => 'active',
         ]);
         $role->users()->attach($user->id);
@@ -39,7 +38,10 @@ class PermissionEnforcementTest extends TestCase
 
     private function attach(User $user, string $slug, bool $permActive = true, bool $roleActive = true): void
     {
-        $role = Role::find($user->role_id);
+        // Lewat relasi `roles`, bukan kolom legacy `users.role_id` — kolom itu
+        // sengaja tidak fillable lagi, sementara resolusi permission membaca
+        // dari pivot `role_user`.
+        $role = $user->roles()->firstOrFail();
         $role->update(['is_active' => $roleActive]);
         $perm = Permission::firstOrCreate(['slug' => $slug], [
             'name' => ucfirst($slug),

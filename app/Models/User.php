@@ -13,7 +13,16 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['kode_depo', 'nama_depo', 'full_name', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'role_id', 'status'])]
+// 'role_id' SENGAJA TIDAK ada di daftar ini.
+//
+// Kolomnya masih ada di tabel (legacy) dan masih ditulis server lewat
+// forceFill(), tapi tidak pernah dipakai untuk resolusi permission — itu lewat
+// pivot `role_user`. Membiarkannya fillable hanya membuka satu jalan: begitu
+// rules() suatu saat memuat field ini, user bisa elevating role-nya sendiri.
+//
+// Penulisan ke kolom ini harus selalu eksplisit di sisi server, lihat
+// SecurityAuditTest::test_role_id_bisa_ditulis_server_walau_tidak_fillable.
+#[Fillable(['kode_depo', 'nama_depo', 'full_name', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'status'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {

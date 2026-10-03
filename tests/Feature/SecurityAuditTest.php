@@ -41,28 +41,65 @@ class SecurityAuditTest extends TestCase
     }
 
     /**
-     * TEMUAN RISIKO TINGGI (TERBUKTI): `role_id` termasuk $fillable User.
+     * `role_id` TIDAK lagi mass-assignable.
      *
-     * Fillable itu datang dari trait HasApiTokens (Sanctum), bukan ditulis di
-     * User.php — jadi grep pada file itu sendiri tidak menemukannya. Yang
-     * membuat berbahaya bukan mass-assignment-nya, tapi BERAPA DIAM-DIAM DIISI
-     * controller: UserController::store() memanggil User::create($validated),
-     * lalu role_id di-set dari slug `level`. Bila Role::where(slug)->first()
-     * mengembalikan null, $user->update(['role_id' => ...]) tidak dijalankan —
-     * dan role_id dari payload tetap bisa tersimpan.
+     * Nilai assertion ini sengaja dibalik dari assertContains ke
+     * assertNotContains: nilai lama mengunci status quo yang justru
+     * menjadi celahnya.
      *
-     * Test di bawah mengunci apa yang sebenarnya terjadi: apakah role_id dari
-     * request bisa menimpa role yang ditentukan server.
+     * Kolom `role_id` sendiri masih ada di tabel `users` (legacy, tidak
+     * dibaca otorisasi mana pun — permission resolving lewat pivot
+     * `role_user`). Yang dijaga test ini HANYA bahwa kolom itu tidak lagi
+     * bisa diisi dari payload request lewat create()/update(). Server tetap
+     * boleh menuliskannya secara eksplisit — lihat test berikutnya.
      */
-    public function test_role_id_is_mass_assignable_on_user(): void
+    public function test_role_id_is_not_mass_assignable_on_user(): void
     {
-        $user = new User;
-
-        $this->assertContains(
+        $this->assertNotContains(
             'role_id',
-            $user->getFillable(),
-            'role_id mass-assignable. Bila rules() suatu saat mengizinkan, '
-            .'user bisa elevating role sendiri lewat request.'
+            (new User)->getFillable(),
+            'role_id kembali mass-assignable. Bila rules() suatu saat mengizinkan '
+            .'field ini tanpa sengaja, user bisa elevating role sendiri lewat request.'
+        );
+    }
+
+    /**
+     * Melindungi terhadap asumsi "mass-assignment sudah aman karena fillable
+     * sempit", yang tetap bisa keliru di arah lain: `update(['role_id' => ...])`
+     * milik server diam-diam berubah jadi no-op begitu kolomnya dikeluarkan
+     * dari fillable, sehingga kolom legacy tidak pernah terisi lagi.
+     *
+     * Test ini mengunci kedua sisi sekaligus — payload tidak bisa menimpa,
+     * tapi server tetap bisa mengisi.
+     */
+    public function test_role_id_bisa_ditulis_server_walau_tidak_fillable(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'staff_logistic'], ['name' => 'Staff', 'slug' => 'staff_logistic']);
+
+        $user = User::create([
+            'email' => 'legacy-'.uniqid().'@example.com',
+            'password' => 'password',
+            'full_name' => 'Legacy',
+            'kode_depo' => 'AA',
+            'nama_depo' => 'Depo AA',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
+
+        // Mass-assignment TIDAK boleh mengisi kolom ini.
+        $user->update(['role_id' => $role->id]);
+        $this->assertNotSame(
+            $role->id,
+            (int) $user->fresh()->role_id,
+            'role_id masih bisa diisi lewat update() — fillable belum diketatkan.'
+        );
+
+        // Penulisan eksplisit oleh server TETAP harus bisa.
+        $user->forceFill(['role_id' => $role->id])->save();
+        $this->assertSame(
+            $role->id,
+            (int) $user->fresh()->role_id,
+            'forceFill tidak bisa menulis role_id — kolom legacy tidak akan pernah terisi.'
         );
     }
 

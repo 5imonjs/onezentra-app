@@ -39,7 +39,8 @@ class AuthController extends Controller
         $role = Role::where('slug', $validated['level'])->first();
         if ($role) {
             $user->roles()->attach($role);
-            $user->update(['role_id' => $role->id]);
+            // forceFill: 'role_id' sengaja tidak fillable (lihat User::$fillable).
+            $user->forceFill(['role_id' => $role->id])->save();
         }
 
         return response()->json([

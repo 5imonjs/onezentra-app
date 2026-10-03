@@ -73,7 +73,10 @@ class UserController extends Controller
         $role = Role::where('slug', $validated['level'])->first();
         if ($role) {
             $user->roles()->attach($role);
-            $user->update(['role_id' => $role->id]);
+            // forceFill, bukan update(): 'role_id' sengaja tidak fillable supaya
+            // tidak bisa datang dari payload. Kolom legacy ini harus tetap terisi
+            // karena masih dibaca kode lama di luar resolusi permission.
+            $user->forceFill(['role_id' => $role->id])->save();
         }
 
         return response()->json([
@@ -149,7 +152,8 @@ class UserController extends Controller
             $role = Role::where('slug', $validated['level'])->first();
             if ($role) {
                 $user->roles()->attach($role);
-                $user->update(['role_id' => $role->id]);
+                // forceFill: 'role_id' sengaja tidak fillable (lihat User::$fillable).
+                $user->forceFill(['role_id' => $role->id])->save();
             }
         }
 
