@@ -107,7 +107,7 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm animate-fade-in sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/60 p-2 backdrop-blur-sm animate-fade-in sm:p-4"
       onClick={handleDismiss}
       role="presentation"
     >
@@ -116,7 +116,7 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-slide-up sm:max-h-[90vh] sm:rounded-3xl ${sizeClasses[size]}`}
+        className={`flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-2xl bg-surface-card shadow-2xl animate-slide-up sm:max-h-[90vh] sm:rounded-3xl ${sizeClasses[size]}`}
         onClick={(e) => e.stopPropagation()}
       >
         {(title || subtitle) && (
@@ -136,7 +136,7 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
           {children}
         </div>
         {footer && (
-          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-slate-50/90 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-surface-card px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
             {footer}
           </div>
         )}

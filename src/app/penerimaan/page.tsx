@@ -9,6 +9,74 @@ import ManualBatchManager from '@/components/ManualBatchManager';
 import SearchInput from '@/components/SearchInput';
 import { useAuthStore } from '@/store/auth';
 import { conditionMeta } from '@/lib/condition';
+import { downloadBatchLabel, printBatchLabel, type BatchLabelData } from '@/lib/batchLabel';
+
+/**
+ * Aksi cetak label untuk satu item Inbound.
+ *
+ * Batch label lahir di tahap validasi SJ, tapi dicetak ulang justru paling
+ * sering dibutuhkan di Inbound — label harus ditempel saat barang masuk dan
+ * ditata di rak. Jadi halaman ini memakai generator PDF/Code39 yang sama
+ * dengan validasi-sj supaya tidak ada dua format label yang berbeda.
+ *
+ * Item tanpa batch tidak punya label untuk dicetak, jadi tombol disembunyikan
+ * (bukan disabled) — tidak ada aksi berguna yang bisa dilakukan operator.
+ */
+function LabelActions({ item, po, depo }: { item: ReceivingItem; po: string; depo: string }) {
+  const batch = item.batch;
+  if (!batch || !batch.barcode_label) return null;
+
+  // Label sudah tercetak fisik tapi tidak berlaku (sesi validasi dibatalkan).
+  // Mencetak ulang akan menempel label mati di rak — lebih baik terlihat
+  // jelas tidak bisa dicetak daripada gagal diam-diam saat dipindai.
+  if (batch.status === 'CANCELLED') {
+    return (
+      <span className="badge badge-warning whitespace-nowrap" title="Label tidak berlaku: sesi validasi dibatalkan">
+        Label dibatalkan
+      </span>
+    );
+  }
+
+  const labelData: BatchLabelData = {
+    batch_number: batch.batch_number,
+    barcode_label: batch.barcode_label,
+    kode_barang: item.kode_barang,
+    nama_barang: item.nama_barang,
+    actual_qty: item.actual_qty,
+    satuan: item.satuan,
+    expired_date: item.expired_date,
+    condition: item.condition,
+    nama_depo: depo === '-' ? null : depo,
+    po_transporter: po === '-' ? null : po,
+  };
+
+  const labelName = batch.batch_number || item.kode_barang;
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <button
+        onClick={() => printBatchLabel(labelData)}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-chip-primary hover:text-accent-text"
+        title={`Cetak label ${labelName}`}
+        aria-label={`Cetak label ${labelName}`}
+      >
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0010.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659" />
+        </svg>
+      </button>
+      <button
+        onClick={() => downloadBatchLabel(labelData)}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-chip-primary hover:text-accent-text"
+        title="Unduh PDF label"
+        aria-label={`Unduh PDF label ${labelName}`}
+      >
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 interface NpnProduct {
   id: number;
@@ -38,6 +106,16 @@ interface ReceivingItem {
   nama_depo: string | null;
   condition: string | null;
   created_at: string;
+  /**
+   * Batch label untuk item ini (dari validasi SJ). `null` = belum ada batch,
+   * atau sesi validasi dibatalkan sehingga label dicabut. Bedakan keduanya
+   * lewat `status`.
+   */
+  batch?: {
+    batch_number: string | null;
+    barcode_label: string | null;
+    status?: string | null;
+  } | null;
   receiving?: {
     id?: number;
     rencana_kirim?: {
@@ -262,13 +340,14 @@ export default function PenerimaanPage() {
 
   const fnum = (v: number) => v.toLocaleString('id-ID');
 
-  const colSpan = hasPermission('penerimaan.edit') ? 8 : 7;
+  // 8 kolom statis (aksi selalu ada), bukan bergantung permission edit.
+  const colSpan = 8;
 
   return (
     <DashboardLayout>
       <div className="space-y-5 animate-slide-up">
         {/* Header — reflektif, konsisten dengan pola desain modern */}
-        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+        <header className="rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
@@ -276,7 +355,7 @@ export default function PenerimaanPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Inbound</h1>
-                <p className="mt-0.5 text-gray-400">Hasil penerimaan SJ — tiap batch menjadi sumber Batch Expired</p>
+                <p className="mt-0.5 text-ink-fg-muted">Hasil penerimaan SJ — tiap batch menjadi sumber Batch Expired</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -295,7 +374,7 @@ export default function PenerimaanPage() {
         </header>
 
         {/* Worklist table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
             <SearchInput
               value={search}
@@ -337,7 +416,7 @@ export default function PenerimaanPage() {
               <div className="hidden overflow-x-auto p-5 md:block">
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={'skel-' + i} className="animate-pulse rounded-xl border border-gray-100 bg-white p-4">
+                    <div key={'skel-' + i} className="animate-pulse rounded-xl border border-gray-100 bg-surface-card p-4">
                       <div className="h-4 w-1/3 rounded bg-gray-100" />
                       <div className="mt-3 h-3 w-2/3 rounded bg-gray-100" />
                       <div className="mt-2 h-3 w-1/2 rounded bg-gray-100" />
@@ -347,7 +426,7 @@ export default function PenerimaanPage() {
               </div>
               <div className="space-y-3 p-5 md:hidden">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={'skel-m-' + i} className="animate-pulse rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div key={'skel-m-' + i} className="animate-pulse rounded-2xl border border-slate-100 bg-surface-card p-4 shadow-sm">
                     <div className="h-4 w-32 rounded bg-slate-100" />
                     <div className="mt-3 h-3 w-48 rounded bg-slate-100" />
                     <div className="mt-2 h-3 w-40 rounded bg-slate-100" />
@@ -363,7 +442,7 @@ export default function PenerimaanPage() {
               {search.trim() ? (
                 <>
                   <p className="text-slate-600 font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
-                  <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="mt-2 text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                  <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="mt-2 text-xs font-semibold text-accent-text hover:underline">Hapus pencarian</button>
                 </>
               ) : (
                 <p className="text-slate-500 font-medium">Belum ada data penerimaan dari SJ.</p>
@@ -375,7 +454,7 @@ export default function PenerimaanPage() {
                     <button
                       type="button"
                       onClick={() => router.push('/opname-expired')}
-                      className="font-semibold text-primary-600 hover:underline"
+                      className="font-semibold text-accent-text hover:underline"
                     >
                       Batch Expired
                     </button>
@@ -392,7 +471,7 @@ export default function PenerimaanPage() {
                 <table className="w-full min-w-[920px] border-collapse">
                   <caption className="sr-only">Daftar penerimaan barang</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-200 bg-slate-50">
+                    <tr className="border-b border-slate-300 bg-surface-raised">
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode Barang</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Barang</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Qty CRT</th>
@@ -400,9 +479,10 @@ export default function PenerimaanPage() {
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Satuan</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Expired</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kondisi</th>
-                      {hasPermission('penerimaan.edit') && (
-                        <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
-                      )}
+                      {/* Aksi selalu ada: kolom ini memuat cetak label (bukan
+                          hanya Edit), jadi tidak boleh hilang saat user tanpa
+                          permission edit — header dan baris harus sinkron. */}
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -429,7 +509,7 @@ export default function PenerimaanPage() {
           )}
 
           {pagination && pagination.total > GROUPS_PER_PAGE && (
-            <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3.5 sm:px-5">
+            <div className="border-t border-gray-100 bg-overlay-60 px-4 py-3.5 sm:px-5">
               <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
                 <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pagination.current_page <= 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">
                   Sebelumnya
@@ -474,7 +554,7 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
   return (
     <>
       <tr
-        className="bg-slate-50/70 hover:bg-slate-100/60 transition-colors cursor-pointer"
+        className="bg-overlay-70 hover:bg-slate-100/60 transition-colors cursor-pointer"
         onClick={onToggle}
         tabIndex={0}
         role="button"
@@ -505,7 +585,7 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
        {isOpen && group.items.map((item, itemIndex) => {
          const cf = (item as ReceivingItem & { resolvedConversionFactor: number | null }).resolvedConversionFactor;
          return (
-           <tr key={item.id} className={`transition-colors hover:bg-primary-50/30 ${itemIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+           <tr key={item.id} className={`transition-colors hover:bg-chip-primary/30 ${itemIndex % 2 === 0 ? 'bg-surface-card' : 'bg-overlay-30'}`}>
              <td className="px-5 py-3 whitespace-nowrap"><span className="font-mono text-sm font-medium text-gray-800">{item.kode_barang}</span></td>
              <td className="px-5 py-3 min-w-[240px] max-w-[340px]">
                <span className="block line-clamp-2 break-words text-sm text-gray-700" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
@@ -519,13 +599,16 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
               <td className="px-5 py-3 whitespace-nowrap">
                 <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
               </td>
-             {hasEdit && (
-               <td className="px-5 py-3 whitespace-nowrap text-right">
-                 <button onClick={() => onEdit(item)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-primary-50 hover:text-primary-600" title="Edit penerimaan" aria-label="Edit penerimaan">
-                   <PencilIcon />
-                 </button>
-               </td>
-            )}
+              <td className="px-5 py-3 whitespace-nowrap text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <LabelActions item={item} po={group.po} depo={group.depo} />
+                  {hasEdit && (
+                    <button onClick={() => onEdit(item)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-chip-primary hover:text-accent-text" title="Edit penerimaan" aria-label="Edit penerimaan">
+                      <PencilIcon />
+                    </button>
+                  )}
+                </div>
+              </td>
           </tr>
         );
       })}
@@ -544,7 +627,7 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
   num: (v: unknown) => number;
 }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition-colors ${isOpen ? 'border-primary-200' : 'border-slate-100'}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-surface-card shadow-sm transition-colors ${isOpen ? 'border-chip-primary-border' : 'border-slate-100'}`}>
       <button
         onClick={onToggle}
         tabIndex={0}
@@ -593,11 +676,14 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
-                  {hasEdit && (
-                    <button onClick={() => onEdit(item)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-primary-50 hover:text-primary-600" title="Edit penerimaan" aria-label="Edit penerimaan">
-                      <PencilIcon />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <LabelActions item={item} po={group.po} depo={group.depo} />
+                    {hasEdit && (
+                      <button onClick={() => onEdit(item)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-chip-primary hover:text-accent-text" title="Edit penerimaan" aria-label="Edit penerimaan">
+                        <PencilIcon />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

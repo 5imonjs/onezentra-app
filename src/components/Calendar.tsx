@@ -58,12 +58,12 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
   }, [firstDay, daysInMonth]);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sticky top-6" role="region" aria-label="Kalender pengiriman">
+    <div className="bg-surface-card rounded-2xl shadow-sm border border-slate-100 p-5 sticky top-6" role="region" aria-label="Kalender pengiriman">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center">
-            <svg className="w-4 h-4 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+          <div className="w-8 h-8 rounded-lg bg-chip-primary flex items-center justify-center">
+            <svg className="w-4 h-4 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-800">Kalender Kirim</h3>
@@ -128,7 +128,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
                 isToday(day)
                   ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-600/30'
                   : isSelected(day)
-                  ? 'bg-primary-50 text-primary-700 ring-2 ring-primary-500 font-semibold'
+                  ? 'bg-chip-primary text-accent-text ring-2 ring-primary-500 font-semibold'
                   : 'hover:bg-slate-100 text-slate-700'
               }`}
             >
@@ -142,13 +142,13 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
                       key={i}
                       className={`w-1 h-1 rounded-full ${
                         isToday(day)
-                          ? 'bg-white'
+                          ? 'bg-surface-card'
                           : event.status === 'DRAFT'
                           ? 'bg-gray-400'
                           : event.status === 'SCHEDULED'
                           ? 'bg-blue-500'
                           : event.status === 'COMPLETED'
-                          ? 'bg-green-500'
+                          ? 'bg-emerald-500'
                           : event.status === 'CANCELLED'
                           ? 'bg-red-500'
                           : 'bg-yellow-500'
@@ -159,7 +159,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
               )}
               {hasEvents && (
                 <span className={`absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-[1.25rem] px-1 text-[10px] font-bold rounded-full flex items-center justify-center border-2 ${
-                  isToday(day) ? 'bg-white text-primary-600 border-primary-100' : 'bg-primary-500 text-white border-white'
+                  isToday(day) ? 'bg-surface-card text-accent-text border-chip-primary-border' : 'bg-primary-500 text-white border-white'
                 }`}>
                   {dayEvents.length}
                 </span>
@@ -180,7 +180,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
           <span className="text-[11px] text-slate-600">Dijadwalkan</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-green-500" aria-hidden="true" />
+          <div className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
           <span className="text-[11px] text-slate-600">Completed</span>
         </div>
         <div className="flex items-center gap-1.5">

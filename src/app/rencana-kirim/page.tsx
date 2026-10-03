@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { rencanaKirim, npn, depo, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
@@ -10,6 +10,7 @@ import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Calendar from '@/components/Calendar';
 import { downloadSuratJalan, previewSuratJalan } from '@/lib/suratJalanPdf';
+import { findDuplicateIndexes, firstIndexOfCode, takenCodesExcept } from '@/lib/itemDuplicates';
 import { useAuthStore } from '@/store/auth';
 
 interface RencanaKirimItem {
@@ -83,12 +84,12 @@ interface RkStats {
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {
-  DRAFT: { label: 'Draft', color: 'text-gray-600', bg: 'bg-white', dot: 'bg-gray-400', border: 'border-gray-200' },
+  DRAFT: { label: 'Draft', color: 'text-gray-600', bg: 'bg-surface-card', dot: 'bg-gray-400', border: 'border-gray-300' },
   SCHEDULED: { label: 'Dijadwalkan', color: 'text-blue-700', bg: 'bg-blue-50', dot: 'bg-blue-500', border: 'border-blue-100' },
   CHECKED_IN: { label: 'Check In', color: 'text-yellow-700', bg: 'bg-yellow-50', dot: 'bg-yellow-500', border: 'border-yellow-100' },
   VERIFIED: { label: 'Terverifikasi', color: 'text-purple-700', bg: 'bg-purple-50', dot: 'bg-purple-500', border: 'border-purple-100' },
   IN_PROGRESS: { label: 'Diproses', color: 'text-orange-700', bg: 'bg-orange-50', dot: 'bg-orange-500', border: 'border-orange-100' },
-  COMPLETED: { label: 'Selesai', color: 'text-green-700', bg: 'bg-green-50', dot: 'bg-green-500', border: 'border-green-100' },
+  COMPLETED: { label: 'Selesai', color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500', border: 'border-emerald-100' },
   CANCELLED: { label: 'Dibatalkan', color: 'text-red-700', bg: 'bg-red-50', dot: 'bg-red-500', border: 'border-red-100' },
 };
 
@@ -103,6 +104,12 @@ const emptyForm: Partial<RencanaKirim> = {
 
 const jenisKendaraanOptions = ['CDD', 'CDE', 'L300', 'FUSO', 'TRONTON', 'CONTAINER 20 FT', 'CONTAINER 40 FT', 'LAINNYA'];
 
+/**
+ * Stabil di identitasnya. Dipakai sebagai fallback `takenCodes` agar baris tanpa
+ * array hasil memo tidak memaksa `NamaBarangInput` rebuild Set-nya tiap render.
+ */
+const EMPTY_CODES: string[] = [];
+
 const emptyItem: RencanaKirimItem = {
   npn_id: undefined,
   item_number: 1, kode_barang: '', nama_barang: '',
@@ -116,12 +123,15 @@ function NamaBarangInput({
   onClear,
   onTypingChange,
   inputId,
+  takenCodes = [],
 }: {
   namaValue: string;
   onSelect: (product: NpnProduct) => void;
   onClear: () => void;
   onTypingChange?: (isTyping: boolean) => void;
   inputId?: string;
+  /** Kode barang yang sudah dipakai baris lain; dipakai untuk menandai opsi. */
+  takenCodes?: string[];
 }) {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<NpnProduct[]>([]);
@@ -129,6 +139,18 @@ function NamaBarangInput({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
   const isLocked = !!namaValue;
+  // One of these is rendered per item row, so the listbox ids have to be
+  // scoped to the row or every row would share one combobox target.
+  const listboxId = `npn-search-${inputId ?? 'standalone'}`;
+  const takenSet = useMemo(
+    () => new Set(takenCodes.filter((c) => c.trim().length > 0)),
+    [takenCodes],
+  );
+  /** Baris ini sendiri tidak boleh menandai pilihannya sebagai bentrok. */
+  const isTakenElsewhere = useCallback(
+    (code?: string | null) => !!code && takenSet.has(code),
+    [takenSet],
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -139,6 +161,16 @@ function NamaBarangInput({
   });
 
   useEffect(() => () => onTypingChangeRef.current?.(false), []);
+
+  // The debounce timer survives unmount otherwise: typing and then closing the
+  // modal within 300ms would still fire the request and setState on a dead
+  // component.
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -161,16 +193,19 @@ function NamaBarangInput({
       setLoading(true);
       try {
         const res = await npn.searchProduct(query);
-        setResults(res.data.data);
-        setShowDropdown(res.data.data.length > 0);
-        setActiveIndex(res.data.data.length > 0 ? 0 : -1);
+        const found = res.data.data;
+        setResults(found);
+        setShowDropdown(found.length > 0);
+        // Hasil pencarian bisa jadi seluruhnya sudah terpakai; jangan sampai
+        // kursor mendarat di opsi yang tidak bisa dipilih.
+        setActiveIndex(found.findIndex((p: NpnProduct) => !isTakenElsewhere(p.BOSnetszProductId)));
       } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal memuat produk NPN.'), 'error');
     } finally {
         setLoading(false);
       }
     }, 300);
-  }, []);
+  }, [isTakenElsewhere]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -180,9 +215,29 @@ function NamaBarangInput({
     onTypingChange?.(value.trim().length > 0);
   };
 
+  /** Melompat ke indeks terpilih berikutnya yang masih boleh dipakai. */
+  const stepActiveIndex = useCallback(
+    (from: number, delta: 1 | -1): number => {
+      if (results.length === 0) return -1;
+      let next = from;
+      // Berjalan melewati opsi yang sudah terpakai, dibatasi agar tidak loop
+      // tak terbatas saat seluruh hasil sudah terpakai.
+      for (let step = 0; step < results.length; step++) {
+        next += delta;
+        if (next < 0 || next >= results.length) return -1;
+        if (!isTakenElsewhere(results[next].BOSnetszProductId)) return next;
+      }
+      return -1;
+    },
+    [results, isTakenElsewhere],
+  );
+
   const handleSelectIndex = (index: number) => {
     const product = results[index];
     if (!product) return;
+    // Penjaga terakhir: UI sudah menonaktifkan opsinya, tapi ini menutup jalur
+    // programatik (mis. restored state dari draft) yang tidak lewat klik.
+    if (isTakenElsewhere(product.BOSnetszProductId)) return;
     setSearch('');
     setResults([]);
     setShowDropdown(false);
@@ -200,20 +255,20 @@ function NamaBarangInput({
 
   if (isLocked) {
     return (
-      <div className="flex items-start gap-1">
+      <div className="flex items-center gap-2">
         <div
           title={namaValue}
-          className="w-full min-w-0 px-2 py-1.5 text-sm leading-snug border border-gray-200 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed break-words"
+          className="w-full min-w-0 px-3 py-2.5 text-sm font-semibold leading-snug border border-slate-300 rounded-xl bg-surface-raised text-gray-900 cursor-default break-words"
         >
           {namaValue}
         </div>
         <button
           onClick={handleUnlock}
           aria-label="Ganti barang"
-          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0 mt-1"
+          className="shrink-0 h-10 w-10 inline-flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 rounded-xl transition-colors"
           title="Ganti barang"
         >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -230,24 +285,24 @@ function NamaBarangInput({
           type="text"
           role="combobox"
           aria-expanded={showDropdown && results.length > 0}
-          aria-controls="npn-search-listbox"
+          aria-controls={`${listboxId}-listbox`}
           aria-autocomplete="list"
-          aria-activedescendant={activeIndex >= 0 ? `npn-option-${activeIndex}` : undefined}
+          aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
           value={search}
           onChange={handleSearchChange}
           onFocus={() => results.length > 0 && setShowDropdown(true)}
           onKeyDown={(e) => {
-            if (e.key === 'ArrowDown') { e.preventDefault(); if (results.length > 0) { setShowDropdown(true); setActiveIndex(i => Math.min(results.length - 1, i + 1)); } }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(0, i - 1)); }
+            if (e.key === 'ArrowDown') { e.preventDefault(); if (results.length > 0) { setShowDropdown(true); setActiveIndex(i => stepActiveIndex(i, 1)); } }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => stepActiveIndex(i, -1)); }
             else if (e.key === 'Enter') { if (showDropdown && activeIndex >= 0 && results.length > 0) { e.preventDefault(); handleSelectIndex(activeIndex); } }
             else if (e.key === 'Escape' && showDropdown) { e.stopPropagation(); setShowDropdown(false); setActiveIndex(-1); }
           }}
           placeholder="Ketik nama barang..."
-          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent focus:bg-white bg-white transition-all pr-7"
+          className="w-full px-3 py-2.5 text-sm font-semibold border border-slate-300 rounded-xl bg-surface-card text-gray-900 transition-all focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm pr-9"
         />
         {loading && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <svg className="animate-spin w-3.5 h-3.5 text-primary-500" viewBox="0 0 24 24" fill="none">
+            <svg className="animate-spin w-3.5 h-3.5 text-accent-text" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
@@ -256,26 +311,39 @@ function NamaBarangInput({
       </div>
 
       {showDropdown && results.length > 0 && (
-        <ul id="npn-search-listbox" role="listbox" aria-label="Hasil pencarian barang NPN" className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
-          {results.map((product, i) => (
-            <li key={product.id} role="option" id={`npn-option-${i}`} aria-selected={i === activeIndex}>
+        <ul id={`${listboxId}-listbox`} role="listbox" aria-label="Hasil pencarian barang NPN" className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
+          {results.map((product, i) => {
+            const taken = isTakenElsewhere(product.BOSnetszProductId);
+            return (
+            <li key={product.id} role="option" id={`${listboxId}-option-${i}`} aria-selected={i === activeIndex} aria-disabled={taken || undefined}>
             <button
               type="button"
               onClick={() => handleSelectIndex(i)}
-              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-100 last:border-0 ${i === activeIndex ? 'bg-primary-100' : 'hover:bg-primary-50'}`}
+              disabled={taken}
+              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
+                taken ? 'opacity-45 cursor-not-allowed' : i === activeIndex
+                  ? 'bg-row-active text-row-active-text'
+                  : 'hover:bg-surface-hover text-gray-900'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-primary-600">{product.BOSnetszProductId?.charAt(0) || '?'}</span>
+                <div className="w-8 h-8 rounded-lg bg-row-active-icon flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-row-active-text">{product.BOSnetszProductId?.charAt(0) || '?'}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 truncate">{product.szShortDescription || product.szNickName || product.szNickNameNew || '-'}</p>
-                  <span className="text-xs font-mono text-gray-400">{product.BOSnetszProductId}</span>
+                  <p className="text-sm truncate">{product.szShortDescription || product.szNickName || product.szNickNameNew || '-'}</p>
+                  <span className="text-xs font-mono opacity-70">{product.BOSnetszProductId}</span>
                 </div>
+                {taken && (
+                  <span className="shrink-0 rounded-full bg-surface-raised border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+                    Sudah dipakai
+                  </span>
+                )}
               </div>
             </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>
@@ -298,6 +366,7 @@ function NamaDepoInput({
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listboxId = 'depo-listbox';
 
   useEffect(() => {
     if (disabled) {
@@ -332,9 +401,9 @@ function NamaDepoInput({
         type="text"
         role="combobox"
         aria-expanded={showDropdown && filtered.length > 0}
-        aria-controls="depo-listbox"
+        aria-controls={`${listboxId}-listbox`}
         aria-autocomplete="list"
-        aria-activedescendant={activeIndex >= 0 ? `depo-option-${activeIndex}` : undefined}
+        aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
         value={value}
         onChange={(e) => { onChange(e.target.value); setShowDropdown(e.target.value.trim().length > 0); setActiveIndex(-1); }}
         onFocus={() => { if (!disabled) setShowDropdown(value.trim().length > 0); }}
@@ -362,21 +431,25 @@ function NamaDepoInput({
         </button>
       )}
       {showDropdown && filtered.length > 0 && (
-        <ul id="depo-listbox" role="listbox" aria-label="Daftar depo" className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+        <ul id={`${listboxId}-listbox`} role="listbox" aria-label="Daftar depo" className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
           {filtered.map((d, i) => (
-            <li key={d.kode_depo} role="option" id={`depo-option-${i}`} aria-selected={i === activeIndex}>
+            <li key={d.kode_depo} role="option" id={`${listboxId}-option-${i}`} aria-selected={i === activeIndex}>
             <button
               type="button"
               onClick={() => handleSelectIndex(i)}
-              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-100 last:border-0 ${i === activeIndex ? 'bg-primary-100' : 'hover:bg-primary-50'}`}
+              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
+                i === activeIndex
+                  ? 'bg-row-active text-row-active-text'
+                  : 'hover:bg-surface-hover text-gray-900'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-primary-600 uppercase">{d.kode_depo?.slice(0, 2) || '?'}</span>
+                <div className="w-8 h-8 rounded-lg bg-row-active-icon flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-row-active-text uppercase">{d.kode_depo?.slice(0, 2) || '?'}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 truncate">{d.nama_depo || '-'}</p>
-                  <span className="text-xs font-mono text-gray-400 uppercase">{d.kode_depo}</span>
+                  <p className="text-sm truncate">{d.nama_depo || '-'}</p>
+                  <span className="text-xs font-mono uppercase opacity-70">{d.kode_depo}</span>
                 </div>
               </div>
             </button>
@@ -820,11 +893,26 @@ export default function RencanaKirimPage() {
   // agar penjumlahan di layar selalu konsisten (0.69 + 7.64 = 8.33, bukan 8.32).
   // Angka final tetap dihitung ulang oleh backend saat simpan — ini hanya penyajian.
   const totalKubikasiDisplay = createItems.reduce((sum, item) => sum + Number(itemKubikasi(item).toFixed(2)), 0);
+  // Duplikat dihitung sekali di sini lalu dipakai ulang oleh badge, ringkasan,
+  // dropdown dan validasi simpan. Kalau tiap pemakai menghitung sendiri, suatu
+  // saat satu layar akan memutuskan "bukan duplikat" dan yang lain sebaliknya.
+  const duplicateIndexes = useMemo(() => findDuplicateIndexes(createItems), [createItems]);
+  const duplicateCount = duplicateIndexes.size;
+  // Kode yang terpakai baris LAIN, per indeks baris. Sebelumnya ini dipanggil
+  // inline di JSX, jadi tiap render membuat array baru — useMemo di dalam
+  // NamaBarangInput tak pernah bisa cache dan selalu hitung ulang Set-nya.
+  const takenCodesByIndex = useMemo(() => {
+    const byIndex = new Map<number, string[]>();
+    createItems.forEach((_, i) => byIndex.set(i, takenCodesExcept(createItems, i)));
+    return byIndex;
+  }, [createItems]);
   const sectionComplete = {
     dokumen: !!(createForm.po_transporter?.trim() && createForm.rkh_date),
     kendaraan: !!(createForm.driver_name?.trim() && createForm.nopol?.trim() && createForm.expedisi?.trim() && createForm.jenis_kendaraan),
     pengirim: !!(createForm.shipper_name?.trim() && createForm.nama_depo?.trim() && createForm.kode_depo?.trim()),
-    barang: createItems.some(i => i.kode_barang && Number(i.jumlah) > 0),
+    // Duplikat tidak boleh dianggap "selesai" — kalau tidak, satu produk bisa
+    // terhitung dua kali dan ikut ter-simpan ke backend.
+    barang: createItems.some(i => i.kode_barang && Number(i.jumlah) > 0) && duplicateCount === 0,
     catatan: !!createForm.notes?.trim(),
   };
   const completedCount = Object.values(sectionComplete).filter(Boolean).length;
@@ -844,7 +932,7 @@ export default function RencanaKirimPage() {
     <DashboardLayout>
       <div className="space-y-5">
         {/* Header — reflektif, konsisten dengan pola desain modern */}
-        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+        <header className="rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
@@ -852,7 +940,7 @@ export default function RencanaKirimPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Replenishment</h1>
-                <p className="mt-0.5 text-gray-400">Kelola pengiriman • auto kubikasi & umur</p>
+                <p className="mt-0.5 text-ink-fg-muted">Kelola pengiriman • auto kubikasi & umur</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -895,12 +983,12 @@ export default function RencanaKirimPage() {
           {/* Table */}
           <div className="lg:col-span-2">
             {/* Table Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-white">
+            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                    <div className="w-9 h-9 rounded-lg bg-chip-primary flex items-center justify-center">
+                      <svg className="w-5 h-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                     </div>
                     <div>
                       <h2 className="text-base font-bold text-slate-800">Daftar Rencana Pengiriman</h2>
@@ -927,7 +1015,7 @@ export default function RencanaKirimPage() {
             <table className="w-full min-w-[980px] border-collapse">
               <caption className="sr-only">Daftar rencana pengiriman</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
+                <tr className="bg-surface-raised border-b border-slate-300 shadow-sm">
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">No</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
@@ -956,7 +1044,7 @@ export default function RencanaKirimPage() {
                   </>
                 )}
                 {items.map((item, index) => (
-                  <tr key={item.id} className="group hover:bg-slate-50/70 transition-colors">
+                  <tr key={item.id} className="group hover:bg-overlay-70 transition-colors">
                     <td className="px-5 py-3.5 text-sm text-slate-500 whitespace-nowrap">{(page - 1) * 20 + index + 1}</td>
                     <td className="px-5 py-3.5 text-sm text-slate-600 whitespace-nowrap"><span className="font-mono">{item.created_at?.split('T')[0] || '-'}</span></td>
                     <td className="px-5 py-3.5 text-sm text-slate-800 font-medium whitespace-nowrap"><span className="font-mono">{fmt(item.po_transporter)}</span></td>
@@ -975,7 +1063,7 @@ export default function RencanaKirimPage() {
                         : '-'}
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium shadow-sm ${statusConfig[item.status]?.bg || 'bg-white'} ${statusConfig[item.status]?.color || 'text-gray-600'} ${statusConfig[item.status]?.border || 'border-gray-200'}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium shadow-sm ${statusConfig[item.status]?.bg || 'bg-surface-card'} ${statusConfig[item.status]?.color || 'text-gray-600'} ${statusConfig[item.status]?.border || 'border-gray-300'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${statusConfig[item.status]?.dot || 'bg-gray-400'}`} />
                         {statusConfig[item.status]?.label || item.status}
                       </span>
@@ -987,7 +1075,7 @@ export default function RencanaKirimPage() {
                             onClick={() => handleStatusChange(item, 'SCHEDULED')}
                             disabled={statusBusyId === item.id}
                             aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-wait shadow-sm shadow-blue-600/25 rounded-lg transition-colors min-h-[36px]"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-blue-50 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-wait shadow-sm shadow-blue-600/25 rounded-lg transition-colors min-h-[36px]"
                           >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             Jadwalkan
@@ -1004,7 +1092,7 @@ export default function RencanaKirimPage() {
                             Batalkan
                           </button>
                         )}
-                        <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 ml-1 shadow-sm">
+                        <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-300 bg-surface-card p-0.5 ml-1 shadow-sm">
                           <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">
                             <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                           </button>
@@ -1033,7 +1121,7 @@ export default function RencanaKirimPage() {
                         {search.trim() ? (
                           <>
                             <p className="text-sm font-medium text-slate-600">Tidak ada hasil untuk &quot;{search}&quot;</p>
-                            <button onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                            <button onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-accent-text hover:underline">Hapus pencarian</button>
                           </>
                         ) : (
                           <>
@@ -1042,7 +1130,7 @@ export default function RencanaKirimPage() {
                           </>
                         )}
                         {!search.trim() && hasPermission('rencana_kirim.create') && (
-                          <button onClick={() => openCreate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98]">
+                          <button onClick={() => openCreate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98]">
                             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             Buat Rencana
                           </button>
@@ -1080,7 +1168,7 @@ export default function RencanaKirimPage() {
                       <p className="font-mono text-sm font-bold text-slate-800 truncate">{fmt(item.po_transporter)}</p>
                       <p className="mt-0.5 text-xs text-slate-400">RK {item.rkh_date?.split('T')[0] || '-'} • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
                     </div>
-                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-white'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-200'}`}>
+                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-surface-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} />
                       {st?.label || item.status}
                     </span>
@@ -1096,7 +1184,7 @@ export default function RencanaKirimPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {hasPermission('rencana_kirim.edit') && item.status === 'DRAFT' && (
-                      <button onClick={() => handleStatusChange(item, 'SCHEDULED')} disabled={statusBusyId === item.id} aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-wait rounded-lg transition-colors min-h-[36px]">
+                      <button onClick={() => handleStatusChange(item, 'SCHEDULED')} disabled={statusBusyId === item.id} aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-blue-50 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-wait rounded-lg transition-colors min-h-[36px]">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         Jadwalkan
                       </button>
@@ -1107,7 +1195,7 @@ export default function RencanaKirimPage() {
                         Batalkan
                       </button>
                     )}
-                    <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 ml-auto">
+                    <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-300 bg-surface-card p-0.5 ml-auto">
                       <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">
                         <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       </button>
@@ -1134,7 +1222,7 @@ export default function RencanaKirimPage() {
                 {search.trim() ? (
                   <>
                     <p className="text-sm font-medium text-slate-600">Tidak ada hasil untuk &quot;{search}&quot;</p>
-                    <button onClick={() => { setSearch(''); setPage(1); }} className="mt-2 text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                    <button onClick={() => { setSearch(''); setPage(1); }} className="mt-2 text-xs font-semibold text-accent-text hover:underline">Hapus pencarian</button>
                   </>
                 ) : (
                   <>
@@ -1143,7 +1231,7 @@ export default function RencanaKirimPage() {
                   </>
                 )}
                 {!search.trim() && hasPermission('rencana_kirim.create') && (
-                  <button onClick={() => openCreate()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98]">
+                  <button onClick={() => openCreate()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98]">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Buat Rencana
                   </button>
@@ -1152,7 +1240,7 @@ export default function RencanaKirimPage() {
             )}
           </div>
 
-          <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3.5 sm:px-5">
+          <div className="border-t border-gray-100 bg-overlay-60 px-4 py-3.5 sm:px-5">
             <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
               <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="font-semibold text-slate-800">{page}</strong> dari <strong className="font-semibold text-slate-800">{lastPage}</strong></span>
               <div className="flex w-full items-center justify-center gap-2 sm:w-auto">
@@ -1176,32 +1264,32 @@ export default function RencanaKirimPage() {
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
               {hasPermission('rencana_kirim.view') && (
-              <button onClick={() => viewItem && previewSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">
+              <button onClick={() => viewItem && previewSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface-card border border-slate-300 text-sm font-bold text-slate-700 hover:bg-surface-raised">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 Preview
               </button>
               )}
               {hasPermission('rencana_kirim.view') && (
-              <button onClick={() => viewItem && downloadSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-black shadow-lg">
+              <button onClick={() => viewItem && downloadSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-ink-900 text-white text-sm font-bold hover:bg-black shadow-lg">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                 Download PDF
               </button>
               )}
             </div>
-            <button onClick={() => setViewItem(null)} className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50">Tutup</button>
+            <button onClick={() => setViewItem(null)} className="px-4 py-2 rounded-xl bg-surface-card border border-slate-300 text-sm font-bold text-slate-600 hover:bg-surface-raised">Tutup</button>
           </div>
         }
       >
         {viewItem && (
           <div className="space-y-5">
-            <div className="rounded-2xl bg-slate-900 p-5 text-white">
+            <div className="rounded-2xl bg-ink-900 p-5 text-white">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
                   <p className="mt-1 text-xs text-white/70"><span className="font-semibold">RK:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-900">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-card px-3 py-1 text-xs font-black text-gray-900 ring-1 ring-inset ring-gray-300">
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}
                 </span>
               </div>
@@ -1214,7 +1302,7 @@ export default function RencanaKirimPage() {
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">Kubikasi</p>
                   <p className="text-lg font-black">{typeof viewItem.total_kubikasi === 'number' ? `${Number(viewItem.total_kubikasi).toFixed(2)}` : '-'} <span className="text-xs font-normal">m³</span></p>
                 </div>
-                <div className="rounded-xl bg-white text-slate-900 p-3 text-center">
+                <div className="rounded-xl bg-surface-card text-slate-900 p-3 text-center">
                   <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Tujuan</p>
                   <p className="text-sm font-black truncate">{fmt(viewItem.destination_name)}</p>
                 </div>
@@ -1222,7 +1310,7 @@ export default function RencanaKirimPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
+              <div className="rounded-2xl border border-slate-100 bg-surface-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
                 <div className="space-y-2.5 text-sm">
                   <div className="flex justify-between"><span className="text-slate-400">Driver</span><span className="font-bold text-slate-900">{fmt(viewItem.driver_name)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-400">Nopol</span><span className="font-mono font-bold">{fmt(viewItem.nopol)}</span></div>
@@ -1230,7 +1318,7 @@ export default function RencanaKirimPage() {
                   <div className="flex justify-between"><span className="text-slate-400">Jenis</span><span className="rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{fmt(viewItem.jenis_kendaraan)}</span></div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
+              <div className="rounded-2xl border border-slate-100 bg-surface-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
                 <div className="space-y-2.5 text-sm">
                   <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Pengirim</p><p className="font-bold text-slate-900">{fmt(viewItem.shipper_name)}</p><p className="text-xs text-slate-500">{fmt(viewItem.shipper_address)}</p></div>
                   <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Kepada</p><p className="font-bold text-slate-900">{fmt(viewItem.destination_name)}</p><p className="text-xs text-slate-500">{fmt(viewItem.destination_address) || '-'}</p></div>
@@ -1238,15 +1326,15 @@ export default function RencanaKirimPage() {
               </div>
             </div>
             {viewItem.items && viewItem.items.length > 0 && (
-              <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
+              <div className="overflow-hidden rounded-2xl border border-slate-100 bg-surface-card shadow-sm">
+                <div className="flex items-center justify-between px-4 py-3 bg-surface-raised border-b border-slate-100">
                   <h4 className="text-xs font-black tracking-widest text-slate-500 uppercase">Daftar barang • {viewItem.items.length}</h4>
                   <span className="text-xs font-mono text-slate-500">{viewItem.items.reduce((s, i) => s + Number(i.jumlah || 0), 0).toLocaleString('id-ID')} qty</span>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-64 overflow-auto">
                   {viewItem.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
-                      <span className="w-6 h-6 rounded-lg bg-slate-900 text-white text-xs font-black flex items-center justify-center shrink-0">{item.item_number}</span>
+                    <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-raised">
+                      <span className="w-6 h-6 rounded-lg bg-ink-900 text-white text-xs font-black flex items-center justify-center shrink-0">{item.item_number}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-slate-900 truncate">{item.nama_barang}</p>
                         <p className="text-xs font-mono text-slate-400">{item.kode_barang} • {Number(item.jumlah).toLocaleString('id-ID')} {item.satuan}</p>
@@ -1285,7 +1373,7 @@ export default function RencanaKirimPage() {
               <button
                 onClick={handleCreate}
                 disabled={saving || typingItems.size > 0 || !canSave || poDuplicate || editLocked || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create'))}
-                title={poDuplicate ? 'PO Transporter sudah dipakai di depo yang sama' : !canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : 'Isi minimal 1 barang') : undefined}
+                title={poDuplicate ? 'PO Transporter sudah dipakai di depo yang sama' : !canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : duplicateCount > 0 ? `${duplicateCount} nama barang terduplikasi — gabungkan atau hapus dulu` : 'Isi minimal 1 barang') : undefined}
                 className="btn-primary min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-600/20"
               >
                 <span className="flex items-center justify-center gap-2">
@@ -1302,7 +1390,7 @@ export default function RencanaKirimPage() {
       >
         <div className="space-y-5">
           {editingId && editLocked && (
-            <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${editingStatus === 'CANCELLED' ? 'bg-red-50 border-red-200 text-red-700' : editingStatus === 'COMPLETED' ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+            <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${editingStatus === 'CANCELLED' ? 'bg-red-50 border-red-200 text-red-700' : editingStatus === 'COMPLETED' ? 'bg-slate-100 border-slate-300 text-slate-600' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
               {editingStatus === 'CANCELLED'
                 ? 'Rencana kirim ini sudah dibatalkan. Perubahan tidak dapat disimpan.'
                 : editingStatus === 'COMPLETED'
@@ -1311,7 +1399,7 @@ export default function RencanaKirimPage() {
             </div>
           )}
           {/* Modern Stepper */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-gray-100 bg-surface-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               {[
                 { n: 1, label: 'Dokumen', key: 'dokumen', icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25' },
@@ -1334,10 +1422,10 @@ export default function RencanaKirimPage() {
                       }}
                       className={`flex flex-col items-center gap-1.5 flex-1 ${step.n <= currentStep || isDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                     >
-                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500 border border-gray-300'}`}>
                         {isDone && !isActive ? '✓' : step.n}
                       </span>
-                      <span className={`text-[11px] font-semibold ${isActive ? 'text-primary-700' : isDone ? 'text-emerald-600' : 'text-gray-400'}`}>{step.label}</span>
+                      <span className={`text-[11px] font-semibold ${isActive ? 'text-accent-text' : isDone ? 'text-emerald-600' : 'text-gray-400'}`}>{step.label}</span>
                     </button>
                     {idx < 4 && <div className={`h-0.5 flex-1 rounded-full transition-colors ${currentStep > step.n || isDone ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
                   </div>
@@ -1346,7 +1434,7 @@ export default function RencanaKirimPage() {
             </div>
             <div className="mt-3 flex items-center justify-between text-xs">
               <span className="font-medium text-gray-500">Langkah {currentStep} dari 5</span>
-              <span className={`font-semibold ${canSave ? 'text-emerald-600' : 'text-primary-600'}`}>{completedCount}/5 lengkap • {canSave ? 'Siap simpan' : 'Lengkapi dulu'}</span>
+              <span className={`font-semibold ${canSave ? 'text-emerald-600' : 'text-accent-text'}`}>{completedCount}/5 lengkap • {canSave ? 'Siap simpan' : 'Lengkapi dulu'}</span>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
               <div className="h-full rounded-full bg-linear-to-r from-primary-500 to-emerald-500 transition-all duration-500" style={{ width: `${(completedCount / 5) * 100}%` }} />
@@ -1354,8 +1442,8 @@ export default function RencanaKirimPage() {
           </div>
 
           {currentStep === 1 && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600 text-xs font-bold">1</span> Informasi Dokumen</h3>
+          <div className="bg-surface-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
+            <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-chip-primary flex items-center justify-center text-accent-text text-xs font-bold">1</span> Informasi Dokumen</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="f-po-transporter" className="block text-xs font-medium text-gray-500 mb-1">PO Transporter <span className="text-red-500">*</span></label>
@@ -1375,7 +1463,7 @@ export default function RencanaKirimPage() {
           )}
 
           {currentStep === 2 && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm animate-fade-in">
+          <div className="bg-surface-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">2</span> Kendaraan & Driver</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -1402,10 +1490,10 @@ export default function RencanaKirimPage() {
           )}
 
           {currentStep === 3 && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center text-green-600 text-xs font-bold">3</span> Alamat Pengiriman & Tujuan</h3>
+          <div className="bg-surface-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
+            <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs font-bold">3</span> Alamat Pengiriman & Tujuan</h3>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="space-y-3 rounded-xl bg-gray-50/70 p-4">
+              <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">Asal Pengirim</h4>
                 <div>
                   <label htmlFor="f-shipper-name" className="block text-xs font-medium text-gray-500 mb-1">Asal Pengirim <span className="text-red-500">*</span></label>
@@ -1420,7 +1508,7 @@ export default function RencanaKirimPage() {
                   <input id="f-shipper-phone" type="text" value={createForm.shipper_phone ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_phone: e.target.value }))} placeholder="cth: 08xx-xxxx-xxxx" className="input-field text-sm py-2" />
                 </div>
               </div>
-              <div className="space-y-3 rounded-xl bg-gray-50/70 p-4">
+              <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">Ditujukan</h4>
                 <div>
                   <label htmlFor="f-nama-depo" className="block text-xs font-medium text-gray-500 mb-1">Nama Depo <span className="text-red-500">*</span></label>
@@ -1457,19 +1545,19 @@ export default function RencanaKirimPage() {
                     <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Daftar Barang</h3>
                     <p className="text-xs text-gray-500 mt-0.5">Kelola produk NPN • auto hitung umur & kubikasi</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm' : 'bg-white text-amber-700 border-amber-200'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-white' : 'bg-amber-500'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm' : 'bg-surface-card text-amber-700 border-amber-200'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-surface-card' : 'bg-amber-500'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
                       </span>
                       {sectionComplete.barang && (
                         <>
-                          <span className="inline-flex items-center rounded-full bg-slate-900 text-white px-2.5 py-1 text-xs font-bold">{totalQty} Qty</span>
+                          <span className="inline-flex items-center rounded-full bg-ink-900 text-white px-2.5 py-1 text-xs font-bold">{totalQty} Qty</span>
                           <span className="inline-flex items-center gap-1 rounded-full bg-teal-600 text-white px-2.5 py-1 text-xs font-bold">{totalKubikasiDisplay.toFixed(2)} m³</span>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
-                <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border shadow-sm ${sectionComplete.barang ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-gray-400 border-gray-200'}`}>
+                <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border shadow-sm ${sectionComplete.barang ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-surface-card text-gray-400 border-gray-300'}`}>
                   {sectionComplete.barang ? '✓ Lengkap' : '• Belum'}
                 </span>
               </div>
@@ -1481,19 +1569,19 @@ export default function RencanaKirimPage() {
                 <div className="text-xs leading-relaxed text-amber-800"><b>Lengkapi dulu</b> Informasi Dokumen, Kendaraan & Alamat — baru kelola barang. Progress {completedCount}/5.</div>
               </div>
             ) : itemCount === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-8 text-center">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center mb-3">
+              <div className="rounded-2xl border-2 border-dashed border-gray-300 bg-overlay-50 p-8 text-center">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-surface-card border border-gray-100 shadow-sm flex items-center justify-center mb-3">
                   <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
                 <h4 className="text-sm font-bold text-gray-800">Belum ada barang</h4>
                 <p className="text-xs text-gray-500 mt-1">Tambah manual atau import Excel — minimal 1 barang dengan jumlah &gt;0</p>
                 <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
-                  <button onClick={() => setShowBarangModal(true)} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-black shadow-lg">
+                  <button onClick={() => setShowBarangModal(true)} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-ink-900 text-white text-sm font-semibold hover:bg-black shadow-lg">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah Barang
                   </button>
                   {hasPermission('rencana_kirim.import') && (
-                  <button onClick={() => { setShowBarangModal(true); setTimeout(()=>{ setShowImport(true); }, 150); }} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                  <button onClick={() => { setShowBarangModal(true); setTimeout(()=>{ setShowImport(true); }, 150); }} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-surface-raised">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                     Import Excel
                   </button>
@@ -1501,17 +1589,17 @@ export default function RencanaKirimPage() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+              <div className="rounded-2xl border border-gray-300 bg-surface-card shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 bg-surface-raised border-b border-gray-100">
                   <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Ringkasan barang</span>
-                  <button onClick={() => setShowBarangModal(true)} className="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                  <button onClick={() => setShowBarangModal(true)} className="text-xs font-semibold text-accent-text hover:text-accent-text flex items-center gap-1">
                     Kelola <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                   </button>
                 </div>
                 <div className="divide-y divide-gray-100 max-h-52 overflow-auto">
                   {createItems.filter(i=>i.kode_barang).map((it, idx) => (
-                    <div key={idx} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50">
-                      <span className="w-6 h-6 rounded-lg bg-slate-900 text-white text-xs font-bold flex items-center justify-center shrink-0">{idx+1}</span>
+                    <div key={idx} className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-raised">
+                      <span className="w-6 h-6 rounded-lg bg-ink-900 text-white text-xs font-bold flex items-center justify-center shrink-0">{idx+1}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-900 truncate">{it.nama_barang}</p>
                         <p className="text-xs font-mono text-gray-400">{it.kode_barang} • {it.umur != null ? `${it.umur} bln` : '-'}</p>
@@ -1521,8 +1609,8 @@ export default function RencanaKirimPage() {
                     </div>
                   ))}
                 </div>
-                <div className="flex items-center justify-between px-4 py-3 bg-slate-900 text-white">
-                  <span className="text-xs font-medium text-slate-300">Total {itemCount} barang</span>
+                <div className="flex items-center justify-between px-4 py-3 bg-ink-900 text-white">
+                  <span className="text-xs font-medium text-ink-fg-muted">Total {itemCount} barang</span>
                   <span className="text-sm font-bold">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
                 </div>
               </div>
@@ -1532,7 +1620,7 @@ export default function RencanaKirimPage() {
           )}
 
           {currentStep === 5 && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm animate-fade-in">
+          <div className="bg-surface-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-bold">5</span> Catatan</h3>
             <textarea id="f-notes" aria-label="Catatan tambahan" value={createForm.notes ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Catatan tambahan untuk pengiriman ini..." rows={3} className="input-field text-sm py-2 w-full resize-none" />
           </div>
@@ -1579,73 +1667,106 @@ export default function RencanaKirimPage() {
         size="2xl"
         footer={
           <div className="flex w-full items-center justify-between">
-            <span className="text-xs text-gray-500">{sectionComplete.barang ? 'Barang siap disimpan' : 'Isi minimal 1 barang dengan jumlah >0'}</span>
+            <span className="text-xs text-gray-500">
+              {duplicateCount > 0
+                ? `${duplicateCount} baris duplikat — gabungkan atau hapus dulu`
+                : sectionComplete.barang
+                  ? 'Barang siap disimpan'
+                  : 'Isi minimal 1 barang dengan jumlah >0'}
+            </span>
             <button onClick={() => setShowBarangModal(false)} className="btn-primary">Selesai</button>
           </div>
         }
       >
         <div className="space-y-4">
+          {duplicateCount > 0 && (
+            <div role="alert" className="flex gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3">
+              <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div className="text-xs leading-relaxed text-red-800">
+                <b>{duplicateCount} nama barang terduplikasi.</b> Satu produk hanya boleh muncul sekali per rencana —
+                gabungkan jumlahnya ke baris pertama, atau hapus baris yang tidak dipakai. Rencana tidak bisa disimpan selama duplikat ada.
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
             {createItems.map((item, index) => {
-              const firstSame = item.kode_barang ? createItems.findIndex(other => other.kode_barang && other.kode_barang === item.kode_barang) : -1;
-              const isDuplicate = item.kode_barang !== '' && firstSame !== -1 && firstSame !== index;
+              const isDuplicate = duplicateIndexes.has(index);
+              const duplicateOf = isDuplicate
+                ? firstIndexOfCode(createItems, item.kode_barang)
+                : -1;
               const needsAttention = typingItems.has(index) || (item.nama_barang.trim().length > 0 && !item.kode_barang) || isDuplicate;
               const rowKubikasi = itemKubikasi(item);
               return (
-              <div key={index} className={`group relative rounded-2xl border bg-white p-5 shadow-sm transition-all ${needsAttention ? 'border-amber-200 bg-amber-50/20' : 'border-slate-100 hover:border-slate-200 hover:shadow-md'}`}>
+              <div key={index} className={`group relative rounded-2xl border bg-surface-card p-5 shadow-sm transition-all ${needsAttention ? 'border-amber-200 bg-amber-50/20' : 'border-slate-100 hover:border-slate-300 hover:shadow-md'}`}>
                 <div className="flex items-start gap-3">
-                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-amber-500 text-white' : 'bg-white border border-slate-200 text-slate-700 shadow-sm'}`}>{item.item_number}</span>
+                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-amber-500 text-white' : 'bg-surface-card border border-slate-300 text-slate-700 shadow-sm'}`}>{item.item_number}</span>
                   <div className="flex-1 min-w-0 space-y-3">
                     <div>
                       <label htmlFor={`item-nama-${index}`} className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Barang <span className="text-red-500">*</span></label>
-                      <NamaBarangInput inputId={`item-nama-${index}`} namaValue={item.nama_barang} onSelect={(p) => handleNamaBarangSelect(index, p)} onClear={() => handleClearItem(index)} onTypingChange={(v) => markTyping(index, v)} />
+                      <NamaBarangInput
+                        inputId={`item-nama-${index}`}
+                        namaValue={item.nama_barang}
+                        onSelect={(p) => handleNamaBarangSelect(index, p)}
+                        onClear={() => handleClearItem(index)}
+                        onTypingChange={(v) => markTyping(index, v)}
+                        takenCodes={takenCodesByIndex.get(index) ?? EMPTY_CODES}
+                      />
                       {item.kode_barang ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 text-white px-2.5 py-1 text-xs font-mono font-bold">{item.kode_barang}</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-ink-900 text-white px-2.5 py-1 text-xs font-mono font-bold">{item.kode_barang}</span>
                           <span title="Umur diambil dari master Standar Umur Produk" className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${item.umur != null ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{item.umur != null ? `${item.umur} bulan` : 'Umur belum diset'}</span>
                           <span className="inline-flex items-center rounded-full bg-teal-50 text-teal-700 border border-teal-200 px-2.5 py-1 text-xs font-bold">{rowKubikasi > 0 ? `${rowKubikasi.toFixed(2)} m³` : '0 m³'}</span>
                           {isDuplicate && (
-                            <span role="alert" className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 border border-amber-200 px-2.5 py-1 text-xs font-bold">Duplikat baris #{firstSame + 1}</span>
+                            <span role="alert" className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 border border-red-300 px-2.5 py-1 text-xs font-bold">
+                              <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                              </svg>
+                              Duplikat dari baris #{duplicateOf + 1} — gabungkan ke sana
+                            </span>
                           )}
                         </div>
                       ) : (
-                        <p className="mt-1.5 text-xs text-slate-400">Ketik nama barang lalu pilih dari NPN</p>
+                        <p className="mt-1.5 text-xs text-slate-500">Ketik nama barang lalu pilih dari NPN</p>
                       )}
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-2 sm:col-span-1">
                         <label htmlFor={`item-jumlah-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Jumlah <span className="text-red-500">*</span></label>
-                        <input id={`item-jumlah-${index}`} type="number" value={item.jumlah || ''} onChange={(e) => updateItem(index, 'jumlah', parseFloat(e.target.value) || 0)} placeholder="0" min="0" className="w-full px-3 py-2.5 text-center text-base font-black text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm" />
+                        <input id={`item-jumlah-${index}`} type="number" value={item.jumlah || ''} onChange={(e) => updateItem(index, 'jumlah', parseFloat(e.target.value) || 0)} placeholder="0" min="0" className="w-full px-3 py-2.5 text-center text-base font-black text-slate-900 bg-surface-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm" />
                       </div>
                       <div>
                         <label htmlFor={`item-satuan-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Satuan</label>
-                        <select id={`item-satuan-${index}`} value={item.satuan} onChange={(e) => updateItem(index, 'satuan', e.target.value)} className="w-full px-3 py-2.5 text-sm font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-center">
+                        <select id={`item-satuan-${index}`} value={item.satuan} onChange={(e) => updateItem(index, 'satuan', e.target.value)} className="w-full px-3 py-2.5 text-sm font-bold bg-surface-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 text-center">
                           <option value="CRT">CRT</option><option value="PCS">PCS</option><option value="DUS">DUS</option><option value="BOX">BOX</option><option value="KG">KG</option><option value="LUSIN">LUSIN</option><option value="ZAK">ZAK</option>
                         </select>
                       </div>
                       <div className="hidden sm:block">
                         <label htmlFor={`item-ket-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Keterangan</label>
-                        <input id={`item-ket-${index}`} type="text" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Opsional" className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500" />
+                        <input id={`item-ket-${index}`} type="text" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Opsional" className="w-full px-3 py-2.5 text-sm bg-surface-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500" />
                       </div>
                     </div>
                     <div className="sm:hidden">
-                      <input type="text" aria-label="Keterangan barang (opsional)" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-500" />
+                      <input type="text" aria-label="Keterangan barang (opsional)" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-surface-raised border border-slate-300 rounded-xl focus:bg-surface-card focus:ring-2 focus:ring-primary-500" />
                     </div>
                   </div>
-                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} aria-label={`Hapus barang ${item.item_number}`} className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-30 shrink-0 transition-colors">
+                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} aria-label={`Hapus barang ${item.item_number}`} className="w-8 h-8 rounded-xl bg-surface-card border border-slate-300 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-30 shrink-0 transition-colors">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
               </div>
               );
             })}
-            <button onClick={addItem} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 transition-colors">
-              <span className="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></span>
+            <button onClick={addItem} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-slate-300 bg-surface-card text-sm font-bold text-slate-600 hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text transition-colors">
+              <span className="w-7 h-7 rounded-xl bg-ink-900 text-white flex items-center justify-center"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></span>
               Tambah barang lagi
             </button>
-            <div className="flex items-center justify-between rounded-2xl bg-slate-900 text-white px-4 py-3">
-              <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">Total • {itemCount} barang</span>
+            <div className="flex items-center justify-between rounded-2xl bg-ink-900 text-white px-4 py-3">
+              <span className="text-xs font-bold tracking-widest text-ink-fg-muted uppercase">Total • {itemCount} barang</span>
               <span className="text-sm font-black">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
             </div>
             {createItems.some(i => i.kode_barang && i.umur == null) && (
@@ -1681,13 +1802,13 @@ export default function RencanaKirimPage() {
         <div className="space-y-5">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-semibold text-gray-700">File Excel</label>
-            <button onClick={handleItemTemplate} className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-primary-50 transition-colors">
+            <button onClick={handleItemTemplate} className="text-xs text-accent-text hover:text-accent-text font-medium flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-chip-primary transition-colors">
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
               Download Template
             </button>
           </div>
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${selectedFile ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200 hover:border-amber-300 hover:bg-gray-50'}`}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${selectedFile ? 'border-amber-300 bg-amber-50/30' : 'border-gray-300 hover:border-amber-300 hover:bg-surface-raised'}`}
             onClick={() => fileInputRef.current?.click()}
           >
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="hidden" />

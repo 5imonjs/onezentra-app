@@ -55,14 +55,14 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
   const labelStep = daily.length > 45 ? 7 : daily.length > 20 ? 3 : daily.length > 10 ? 2 : 1;
 
   return (
-    <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-white flex flex-wrap items-center justify-between gap-3">
+    <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Mobilitas Penggunaan Sistem</h2>
           <p className="text-sm text-gray-500">{usage ? `${formatDate(usage.from)} - ${formatDate(usage.to)}` : `${periodDays} hari terakhir`}</p>
         </div>
         <div className="flex items-center gap-2">
-          <div role="group" aria-label="Pilih periode" className="flex rounded-lg border border-gray-200 bg-white p-0.5">
+          <div role="group" aria-label="Pilih periode" className="flex rounded-lg border border-gray-300 bg-surface-card p-0.5">
             {PERIODS.map((p) => (
               <button
                 key={p.days}
@@ -70,7 +70,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
                 onClick={() => setPeriodDays(p.days)}
                 aria-pressed={periodDays === p.days}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors min-h-[36px] ${
-                  periodDays === p.days ? 'bg-slate-900 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                  periodDays === p.days ? 'bg-ink-900 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-surface-raised'
                 }`}
               >
                 {p.label}
@@ -87,11 +87,11 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
         {loading && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <div className="h-20 bg-gray-50 rounded-xl animate-pulse" />
-              <div className="h-20 bg-gray-50 rounded-xl animate-pulse" />
-              <div className="h-20 bg-gray-50 rounded-xl animate-pulse" />
+              <div className="h-20 bg-surface-raised rounded-xl animate-pulse" />
+              <div className="h-20 bg-surface-raised rounded-xl animate-pulse" />
+              <div className="h-20 bg-surface-raised rounded-xl animate-pulse" />
             </div>
-            <div className="h-56 bg-gray-50 rounded-xl animate-pulse" />
+            <div className="h-56 bg-surface-raised rounded-xl animate-pulse" />
           </div>
         )}
         {!loading && error && (
@@ -102,7 +102,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
         )}
         {!loading && !error && usage && isEmpty && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-2xl bg-surface-raised flex items-center justify-center mb-4">
               <svg className="w-7 h-7 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
             </div>
             <p className="text-sm font-semibold text-gray-700">Belum ada aktivitas pada periode ini</p>
@@ -112,7 +112,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
         {!loading && !error && usage && !isEmpty && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-              <div className="rounded-xl bg-slate-50 px-4 py-3">
+              <div className="rounded-xl bg-surface-raised px-4 py-3">
                 <p className="text-xs text-gray-500">Total aktivitas</p>
                 <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">{totalRequests.toLocaleString('id-ID')}</p>
               </div>
@@ -156,7 +156,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
                 <h3 className="text-sm font-semibold text-gray-800 mb-3">User paling aktif</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {topUsers.slice(0, 4).map((user) => (
-                    <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2.5 hover:bg-gray-100 transition-colors">
+                    <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised px-3 py-2.5 hover:bg-gray-100 transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 bg-linear-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0">
                           {user.name?.charAt(0) || 'U'}

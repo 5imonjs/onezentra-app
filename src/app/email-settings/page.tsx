@@ -100,14 +100,14 @@ export default function EmailSettingsPage() {
     <DashboardLayout>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="space-y-6">
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 text-white">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
             </div>
             <div>
               <h1 className="text-2xl font-bold leading-tight">Setting Email</h1>
-              <p className="text-gray-400 mt-0.5">Konfigurasi SMTP untuk notifikasi email otomatis</p>
+              <p className="text-ink-fg-muted mt-0.5">Konfigurasi SMTP untuk notifikasi email otomatis</p>
             </div>
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function EmailSettingsPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-base font-bold text-gray-800 mb-1">SMTP Server</h2>
                 <p className="text-xs text-gray-400 mb-5">Atur kredensial server email. Jika &quot;Gunakan .env&quot; aktif, kredensial SMTP diambil dari file .env.</p>
 
@@ -173,7 +173,7 @@ export default function EmailSettingsPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-3 rounded-xl bg-surface-raised p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <input type="checkbox" id="from_system_env" checked={form.from_system_env} onChange={(e) => input('from_system_env', e.target.checked)} className="w-4 h-4 accent-primary-600" />
                       <label htmlFor="from_system_env" className="text-sm text-gray-600"><strong>Gunakan kredensial dari .env</strong><br /><span className="text-xs text-gray-400">Mengabaikan host/port/username di atas</span></label>
@@ -188,7 +188,7 @@ export default function EmailSettingsPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-base font-bold text-gray-800 mb-4">Kirim Email Test</h3>
                 <label htmlFor="test-email" className="block text-xs font-medium text-gray-500 mb-1">Alamat Email Test</label>
                 <input id="test-email" type="email" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} disabled={!canEdit} placeholder="alamat@penerima.com" className="input-field text-sm py-2 mb-3" />
@@ -197,7 +197,7 @@ export default function EmailSettingsPage() {
                 </button>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-base font-bold text-gray-800 mb-3">Informasi</h3>
                 <ul className="text-xs text-gray-500 space-y-2 list-disc pl-4">
                   <li>Notifikasi dikirim otomatis saat rencana kirim dibuat.</li>

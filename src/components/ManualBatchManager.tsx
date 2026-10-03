@@ -344,19 +344,19 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
             </div>
           )}
 
-          <div className="rounded-2xl border border-gray-200 p-4">
+          <div className="rounded-2xl border border-gray-300 p-4">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Tambah Baris Manual</p>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="kode-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Kode Barang *</label>
-                  <input id="kode-barang" value={form.kode_barang || ''} readOnly className="input-field bg-gray-50 cursor-not-allowed" placeholder="Otomatis dari nama barang" required />
+                  <input id="kode-barang" value={form.kode_barang || ''} readOnly className="input-field bg-surface-raised cursor-not-allowed" placeholder="Otomatis dari nama barang" required />
                 </div>
                 <div>
                   <label htmlFor="nama-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Nama Barang *</label>
                   {form.nama_barang && form.kode_barang ? (
                     <div className="flex items-center gap-1">
-                      <input value={form.nama_barang} id="nama-barang" readOnly className="input-field bg-gray-50 flex-1" />
+                      <input value={form.nama_barang} id="nama-barang" readOnly className="input-field bg-surface-raised flex-1" />
                       <button type="button" onClick={() => setForm((p) => ({ ...p, kode_barang: '', nama_barang: '', satuan: 'CRT' }))} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" aria-label="Hapus produk terpilih">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
@@ -402,7 +402,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                         </div>
                       )}
                       {showDropdown && searchResults.length > 0 && (
-                        <div id="nama-barang-options" role="listbox" aria-label="Hasil pencarian barang" className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+                        <div id="nama-barang-options" role="listbox" aria-label="Hasil pencarian barang" className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
                           {searchResults.map((product) => (
                             <button
                               key={product.id}
@@ -412,16 +412,20 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                               aria-selected={searchResults[activeIndex]?.id === product.id}
                               onClick={() => handleSelectProduct(product)}
                               onMouseEnter={() => setActiveIndex(searchResults.findIndex((p) => p.id === product.id))}
-                              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-100 last:border-0 ${searchResults[activeIndex]?.id === product.id ? 'bg-primary-50' : 'hover:bg-primary-50'}`}
+                              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
+                                searchResults[activeIndex]?.id === product.id
+                                  ? 'bg-row-active text-row-active-text'
+                                  : 'hover:bg-surface-hover text-gray-900'
+                              }`}
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
-                                  <span className="text-xs font-bold text-primary-600">{product.szNickName?.charAt(0) || '?'}</span>
+                                <div className="w-8 h-8 rounded-lg bg-row-active-icon flex items-center justify-center shrink-0">
+                                  <span className="text-xs font-bold text-row-active-text">{product.szNickName?.charAt(0) || '?'}</span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-gray-900 truncate">{product.szShortDescription || '-'}</p>
+                                  <p className="text-sm truncate">{product.szShortDescription || '-'}</p>
                                   <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-xs font-mono text-gray-400">{product.szNickName}</span>
+                                    <span className="text-xs font-mono opacity-70">{product.szNickName}</span>
                                     {product.SAPszUomId && (
                                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">{product.SAPszUomId}</span>
                                     )}
@@ -445,7 +449,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 </div>
                 <div>
                   <label htmlFor="satuan" className="block text-sm font-medium text-gray-700 mb-1.5">Satuan</label>
-                  <input id="satuan" value={form.satuan || ''} readOnly placeholder="Otomatis dari nama barang" className="input-field bg-gray-50 cursor-not-allowed" />
+                  <input id="satuan" value={form.satuan || ''} readOnly placeholder="Otomatis dari nama barang" className="input-field bg-surface-raised cursor-not-allowed" />
                 </div>
                 <div>
                   <label htmlFor="expired-date" className="block text-sm font-medium text-gray-700 mb-1.5">Expired Date *</label>
@@ -494,11 +498,11 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
               </div>
             ) : items.length > 0 ? (
-              <div className="overflow-x-auto border border-gray-200 rounded-xl">
+              <div className="overflow-x-auto border border-gray-300 rounded-xl">
                 <table className="w-full min-w-[720px]">
                   <caption className="sr-only">Daftar batch manual tersimpan</caption>
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
+                    <tr className="bg-surface-raised border-b border-gray-300">
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Barang</th>
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nama</th>
                       <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Qty CRT</th>
@@ -510,7 +514,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {items.map((it) => (
-                      <tr key={it.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={it.id} className="hover:bg-overlay-50 transition-colors">
                         <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap"><span className="font-mono">{it.kode_barang}</span></td>
                         <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{it.nama_barang || '-'}</td>
                         <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-gray-900 whitespace-nowrap">{num(it.actual_qty)}</td>
@@ -519,7 +523,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                         <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{it.sumber_material || '-'}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           {hasPermission('penerimaan.edit') && (
-                            <button onClick={() => setEditing(it)} className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-all" aria-label="Edit batch manual">
+                            <button onClick={() => setEditing(it)} className="p-1.5 text-gray-400 hover:text-accent-text hover:bg-chip-primary rounded-md transition-all" aria-label="Edit batch manual">
                               <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                             </button>
                           )}
@@ -535,7 +539,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 </table>
               </div>
             ) : (
-              <div className="border border-dashed border-gray-200 rounded-xl py-8 text-center">
+              <div className="border border-dashed border-gray-300 rounded-xl py-8 text-center">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
                     <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>

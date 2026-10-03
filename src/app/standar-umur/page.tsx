@@ -424,7 +424,7 @@ export default function StandarUmurPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 text-white">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
               <svg aria-hidden="true" className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -433,13 +433,13 @@ export default function StandarUmurPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold leading-tight">Standar Umur Produk</h1>
-              <p className="text-gray-400 mt-0.5">Kelola standar umur dan DOI produk</p>
+              <p className="text-ink-fg-muted mt-0.5">Kelola standar umur dan DOI produk</p>
             </div>
           </div>
         </div>
 
         {/* Table Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Search Bar */}
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
@@ -512,7 +512,7 @@ export default function StandarUmurPage() {
                         type="checkbox"
                         checked={items.length > 0 && selectedIds.length === items.length}
                         onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                       />
                     </th>
                   )}
@@ -573,14 +573,14 @@ export default function StandarUmurPage() {
               </thead>
               <tbody>
                 {items.map((item, index) => (
-                  <tr key={item.id} className={`excel-row ${selectedIds.includes(item.id) ? 'excel-row-selected bg-primary-50/50' : ''} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                  <tr key={item.id} className={`excel-row ${selectedIds.includes(item.id) ? 'excel-row-selected bg-chip-primary/50' : ''} ${index % 2 === 0 ? 'bg-surface-card' : 'bg-overlay-30'}`}>
                     {hasPermission('standar_umur.delete') && (
                       <td className="excel-cell text-center">
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
                           onChange={() => toggleSelect(item.id)}
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                         />
                       </td>
                     )}
@@ -664,7 +664,7 @@ export default function StandarUmurPage() {
           </div>
 
           {/* Pagination */}
-          <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+          <div className="p-4 border-t border-gray-100 bg-overlay-50">
             <div className="flex justify-between items-center">
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
                 <span className="flex items-center gap-2">
@@ -691,7 +691,7 @@ export default function StandarUmurPage() {
         {viewItem && (
           <div className="grid grid-cols-2 gap-3">
             {viewFields.map(([key, label, full]) => (
-              <div key={key as string} className={`bg-gray-50 rounded-xl p-3 ${full ? 'col-span-2' : ''}`}>
+              <div key={key as string} className={`bg-surface-raised rounded-xl p-3 ${full ? 'col-span-2' : ''}`}>
                 <span className="text-xs font-medium text-gray-400 uppercase">{label as string}</span>
                 <p className="text-sm text-gray-900 mt-1 font-medium">{fmt(viewItem[key as keyof typeof viewItem])}</p>
               </div>
@@ -773,7 +773,7 @@ export default function StandarUmurPage() {
       >
         <div className="space-y-4">
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-primary-50' : selectedFile ? 'border-primary-300 bg-primary-50/30' : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'}`}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-chip-primary' : selectedFile ? 'border-primary-300 bg-chip-primary/30' : 'border-gray-300 hover:border-primary-300 hover:bg-surface-raised'}`}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}

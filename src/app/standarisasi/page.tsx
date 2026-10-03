@@ -58,7 +58,7 @@ function fmtDate(v: string | null | undefined): string {
 
 function InfoItem({ label, children, bare = false }: { label: string; children: React.ReactNode; bare?: boolean }) {
   return (
-    <div className="bg-slate-50 rounded-xl p-3 min-w-0">
+    <div className="bg-surface-raised rounded-xl p-3 min-w-0">
       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
       {bare ? (
         <div className="mt-1">{children}</div>
@@ -127,7 +127,7 @@ function NpnProductPicker({
   if (selected) {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+        <div className="flex-1 rounded-xl border border-gray-300 bg-surface-raised px-3 py-2.5">
           <p className="text-sm font-medium text-gray-900 truncate">
             {selected.szShortDescription || selected.szNickName || selected.szNickNameNew || '-'}
           </p>
@@ -164,12 +164,12 @@ function NpnProductPicker({
         </div>
       )}
       {showDropdown && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
           {results.map((product) => (
             <button
               key={product.id}
               onClick={() => { setSearch(''); setResults([]); setShowDropdown(false); onSelect(product); }}
-              className="w-full px-3 py-2.5 text-left hover:bg-primary-50 transition-colors border-b border-gray-100 last:border-0"
+              className="w-full px-3 py-2.5 text-left hover:bg-chip-primary transition-colors border-b border-gray-100 last:border-0"
             >
               <p className="text-sm text-gray-900 truncate">{product.szShortDescription || product.szNickName || product.szNickNameNew || '-'}</p>
               <span className="text-xs font-mono text-gray-400">{product.BOSnetszProductId} · {product.SAPszProductId || '-'}</span>
@@ -447,7 +447,7 @@ const confirmApprove = async () => {
 
 
   const badge = (status: string) => {
-    const meta = STATUS_META[status] || { label: status, badge: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
+    const meta = STATUS_META[status] || { label: status, badge: 'bg-slate-100 text-slate-600 border-slate-300', dot: 'bg-slate-400' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
@@ -476,7 +476,7 @@ const confirmApprove = async () => {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 lg:p-7 text-white shadow-sm">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 lg:p-7 text-white shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
               <svg aria-hidden="true" className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -484,9 +484,9 @@ const confirmApprove = async () => {
               </svg>
             </div>
             <div>
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Master data</p>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Master data</p>
               <h1 className="text-2xl font-bold leading-tight">Standarisasi Tumpukan</h1>
-              <p className="text-gray-400 mt-0.5 text-sm">Kelola standarisasi tumpukan produk per depo</p>
+              <p className="text-ink-fg-muted mt-0.5 text-sm">Kelola standarisasi tumpukan produk per depo</p>
             </div>
           </div>
         </div>
@@ -529,7 +529,7 @@ const confirmApprove = async () => {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L2.25 12l4.179 2.25m0 0l5.571 3 5.571-3m-11.142 0L2.25 17.25 12 22.5l9.75-5.25-4.179-2.25" /></svg>
@@ -540,7 +540,7 @@ const confirmApprove = async () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -551,7 +551,7 @@ const confirmApprove = async () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
@@ -562,7 +562,7 @@ const confirmApprove = async () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -576,7 +576,7 @@ const confirmApprove = async () => {
         </div>
 
         {/* Table Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center gap-4">
               <div className="flex-1">
@@ -613,14 +613,14 @@ const confirmApprove = async () => {
             <table className="w-full border-collapse">
               <caption className="sr-only">Daftar standarisasi tumpukan</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-surface-raised border-b border-slate-300">
                   <th scope="col" className="table-header w-10">
                     {hasPermission('standarisasi.delete') && (
                       <input
                         type="checkbox"
                         checked={items.length > 0 && selectedIds.length === items.length}
                         onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                       />
                     )}
                   </th>
@@ -654,14 +654,14 @@ const confirmApprove = async () => {
                     </tr>
                   ))
                 ) : items.map((item, index) => (
-                  <tr key={item.id} className={`hover:bg-slate-50/50 transition-colors ${selectedIds.includes(item.id) ? 'bg-primary-50/30' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                  <tr key={item.id} className={`hover:bg-overlay-50 transition-colors ${selectedIds.includes(item.id) ? 'bg-chip-primary/30' : index % 2 === 0 ? 'bg-surface-card' : 'bg-overlay-30'}`}>
                     <td className="table-cell text-center">
                       {hasPermission('standarisasi.delete') && (
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
                           onChange={() => toggleSelect(item.id)}
-                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                         />
                       )}
                     </td>
@@ -676,13 +676,13 @@ const confirmApprove = async () => {
                       <span className="text-sm text-slate-600 font-mono">{item.npn?.szBarcode || '-'}</span>
                     </td>
                     <td className="table-cell text-center">
-                      <span className="text-sm font-semibold text-primary-600">{item.tier ?? '-'}</span>
+                      <span className="text-sm font-semibold text-accent-text">{item.tier ?? '-'}</span>
                     </td>
                     <td className="table-cell text-center">
                       <span className="text-sm font-semibold text-amber-600">{item.tinggi_tumpukan ?? '-'}</span>
                     </td>
                     <td className="table-cell text-center">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-primary-50 text-primary-700 text-xs font-semibold">{item.total_tier_tinggi ?? '-'}</span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-chip-primary text-accent-text text-xs font-semibold">{item.total_tier_tinggi ?? '-'}</span>
                     </td>
                     <td className="table-cell">
                       {badge(item.status || 'pending')}
@@ -807,17 +807,17 @@ const confirmApprove = async () => {
             <div className="border-t border-slate-100 pt-4 mt-4">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">Perhitungan Tumpukan</h3>
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-center">
+                <div className="bg-surface-raised rounded-xl p-4 border border-slate-300 text-center">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tier</span>
                   <p className="text-2xl font-bold text-slate-700 mt-1 tabular-nums">{viewItem.tier ?? '-'}</p>
                 </div>
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-center">
+                <div className="bg-surface-raised rounded-xl p-4 border border-slate-300 text-center">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tinggi</span>
                   <p className="text-2xl font-bold text-slate-700 mt-1 tabular-nums">{viewItem.tinggi_tumpukan ?? '-'}</p>
                 </div>
-                <div className="bg-primary-50 rounded-xl p-4 border border-primary-100 text-center">
+                <div className="bg-chip-primary rounded-xl p-4 border border-chip-primary-border text-center">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-primary-500">Total</span>
-                  <p className="text-2xl font-bold text-primary-700 mt-1 tabular-nums">{viewItem.total_tier_tinggi ?? '-'}</p>
+                  <p className="text-2xl font-bold text-accent-text mt-1 tabular-nums">{viewItem.total_tier_tinggi ?? '-'}</p>
                 </div>
               </div>
               {viewItem.tier != null && viewItem.tinggi_tumpukan != null && (
@@ -913,10 +913,10 @@ const confirmApprove = async () => {
                 <input id="edit-tinggi" type="number" min="1" max="100" value={editForm.tinggi_tumpukan || 1} onChange={(e) => setEditForm(prev => ({ ...prev, tinggi_tumpukan: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
               </div>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4 mt-4">
+            <div className="bg-surface-raised rounded-xl p-4 mt-4">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Preview Perhitungan</span>
               <p className="text-sm text-slate-800 mt-1">
-                {editForm.tier || 1} tier x {editForm.tinggi_tumpukan || 1} tinggi = <span className="font-bold text-primary-600">{(editForm.tier || 1) * (editForm.tinggi_tumpukan || 1)}</span> total
+                {editForm.tier || 1} tier x {editForm.tinggi_tumpukan || 1} tinggi = <span className="font-bold text-accent-text">{(editForm.tier || 1) * (editForm.tinggi_tumpukan || 1)}</span> total
               </p>
             </div>
           </>
@@ -969,10 +969,10 @@ const confirmApprove = async () => {
             <input type="number" min="1" max="100" value={createForm.tinggi_tumpukan || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tinggi_tumpukan: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
           </div>
         </div>
-        <div className="bg-slate-50 rounded-xl p-4 mt-4">
+        <div className="bg-surface-raised rounded-xl p-4 mt-4">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Preview Perhitungan</span>
           <p className="text-sm text-slate-800 mt-1">
-            {createForm.tier || 1} tier x {createForm.tinggi_tumpukan || 1} tinggi = <span className="font-bold text-primary-600">{(createForm.tier || 1) * (createForm.tinggi_tumpukan || 1)}</span> total
+            {createForm.tier || 1} tier x {createForm.tinggi_tumpukan || 1} tinggi = <span className="font-bold text-accent-text">{(createForm.tier || 1) * (createForm.tinggi_tumpukan || 1)}</span> total
           </p>
         </div>
       </Modal>
@@ -1044,7 +1044,7 @@ const confirmApprove = async () => {
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
             />
             <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: npn_id, tier, tinggi_tumpukan</p>
           </div>

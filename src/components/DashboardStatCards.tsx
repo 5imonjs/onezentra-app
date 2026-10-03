@@ -65,7 +65,7 @@ const STAT_SOURCES: StatSource[] = [
     href: '/validasi-sj',
     permission: 'sj_validation.view',
     icon: 'check',
-    iconBg: 'bg-indigo-600',
+    iconBg: 'bg-primary-600',
     group: 'operasional',
     load: async () => (await sjValidations.list({ per_page: 1 })).data.total ?? 0,
   },
@@ -114,12 +114,12 @@ const ICONS: Record<StatSource['icon'], React.ReactNode> = {
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 animate-pulse">
+    <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 animate-pulse">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 bg-gray-100 rounded-2xl" />
         <div className="flex-1">
           <div className="h-7 w-12 bg-gray-100 rounded-lg" />
-          <div className="h-4 w-20 bg-gray-50 rounded mt-2" />
+          <div className="h-4 w-20 bg-surface-raised rounded mt-2" />
         </div>
       </div>
     </div>
@@ -132,7 +132,7 @@ function StatCard({ source, count, failed, delta }: { source: StatSource; count?
     <Link
       href={source.href}
       aria-label={`${source.label}: ${failed ? 'data tidak tersedia' : (count ?? 0)}`}
-      className={`group relative bg-white rounded-2xl border p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden ${
+      className={`group relative bg-surface-card rounded-2xl border p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden ${
         failed ? 'border-amber-200' : isEmpty ? 'border-slate-100 opacity-75' : 'border-slate-100'
       }`}
     >

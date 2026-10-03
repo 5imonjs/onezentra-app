@@ -9,7 +9,7 @@ export interface ApprovalPipelineStep {
 
 const STATE_STYLE: Record<ApprovalPipelineState, { dot: string; text: string; title: string }> = {
   done: { dot: 'bg-emerald-500', text: 'text-emerald-600', title: 'tahap selesai' },
-  current: { dot: 'bg-primary-500', text: 'text-primary-700', title: 'menunggu pada tahap ini' },
+  current: { dot: 'bg-primary-500', text: 'text-accent-text', title: 'menunggu pada tahap ini' },
   todo: { dot: 'bg-slate-300', text: 'text-slate-400', title: 'belum tercapai' },
   reject: { dot: 'bg-red-500', text: 'text-red-600', title: 'pengajuan ditolak pada tahap ini' },
   revisi: { dot: 'bg-orange-500', text: 'text-orange-600', title: 'diminta revisi pada tahap ini' },

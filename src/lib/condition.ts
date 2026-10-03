@@ -31,6 +31,22 @@ export function conditionRequiresPhoto(condition?: string | null): boolean {
   return (PHOTO_REQUIRED_CONDITIONS as readonly string[]).includes(canonicalCondition(condition));
 }
 
+/**
+ * Apakah qty aktual sudah diisi?
+ *
+ * Sengaja TIDAK memakai `!value`. `actual_qty = 0` adalah hasil validasi yang
+ * sah — barang tidak datang sama sekali — dan backend menerimanya
+ * (`required|numeric|min:0`, statusnya jadi MISMATCH). Uji falsy akan ikut
+ * menolaknya, sehingga kasus "barang hilang total" justru tidak bisa direkam,
+ * padahal itu hasil yang paling perlu dibuktikan. Yang ditolak hanya kondisi
+ * benar-benar belum diisi: string kosong, `null`, `undefined`, dan `NaN`
+ * (hasil `Number('')` pada input yang dikosongkan user).
+ */
+export function hasQty(value: string | number | null | undefined): boolean {
+  if (typeof value === 'number') return Number.isFinite(value);
+  return (value ?? '').trim().length > 0;
+}
+
 interface ConditionMeta {
   label: string;
   canonical: string;

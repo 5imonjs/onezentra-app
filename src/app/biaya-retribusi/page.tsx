@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { biayaRetribusi, retribusiRates, getErrorMessage, API_ROOT } from '@/lib/api';
+import { AUTHENTICATED_FILE_REL } from '@/lib/storageFile';
 import { useAuthStore } from '@/store/auth';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
@@ -130,10 +131,10 @@ const normalizeBiayaRetribusiItem = (item: BiayaRetribusiItem): BiayaRetribusiIt
 };
 
 const STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
-  draft: { label: 'Draft', badge: 'bg-gray-50 text-gray-600 ring-gray-200', dot: 'bg-gray-400' },
+  draft: { label: 'Draft', badge: 'bg-surface-raised text-gray-600 ring-gray-200', dot: 'bg-gray-400' },
   pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
   checked: { label: 'Checked', badge: 'bg-blue-50 text-blue-700 ring-blue-200', dot: 'bg-blue-500' },
-  rlh_approved: { label: 'Disetujui RLH', badge: 'bg-indigo-50 text-indigo-700 ring-indigo-200', dot: 'bg-indigo-500' },
+  rlh_approved: { label: 'Disetujui RLH', badge: 'bg-chip-primary text-accent-text ring-brand-wash-strong', dot: 'bg-primary-500' },
   approved: { label: 'Approved', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500' },
   rejected: { label: 'Rejected', badge: 'bg-red-50 text-red-700 ring-red-200', dot: 'bg-red-500' },
   revisi: { label: 'Revisi', badge: 'bg-orange-50 text-orange-700 ring-orange-200', dot: 'bg-orange-500' },
@@ -228,7 +229,7 @@ const APPROVAL_ACTION_META: Record<string, { label: string; badge: string }> = {
   submit: { label: 'Dikirim', badge: 'bg-blue-50 text-blue-700 border-blue-200' },
   check: { label: 'Diperiksa', badge: 'bg-sky-50 text-sky-700 border-sky-200' },
   approve: { label: 'Disetujui', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  rfah_approve: { label: 'Disetujui RFAH', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  rfah_approve: { label: 'Disetujui RFAH', badge: 'bg-chip-primary text-accent-text border-chip-primary-border' },
   reject: { label: 'Ditolak', badge: 'bg-red-50 text-red-700 border-red-200' },
   revise: { label: 'Revisi Diminta', badge: 'bg-orange-50 text-orange-700 border-orange-200' },
 };
@@ -238,18 +239,18 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
   return (
     <div className="pt-1">
       <div className="flex items-center gap-2.5 mb-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </span>
         <div>
           <h3 className="text-sm font-black text-slate-800">Riwayat Persetujuan</h3>
           <p className="text-[11px] text-slate-400">Jejak aksi tiap tahap approval</p>
         </div>
-        <span className="ml-auto inline-flex items-center rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700">{histories.length} aktivitas</span>
+        <span className="ml-auto inline-flex items-center rounded-full bg-chip-primary border border-chip-primary-border px-2.5 py-0.5 text-[11px] font-bold text-accent-text">{histories.length} aktivitas</span>
       </div>
       <ol className="space-y-0">
         {histories.map((h, i) => {
-          const meta = APPROVAL_ACTION_META[h.action] ?? { label: h.action, badge: 'bg-gray-50 text-gray-600 border-gray-200' };
+          const meta = APPROVAL_ACTION_META[h.action] ?? { label: h.action, badge: 'bg-surface-raised text-gray-600 border-gray-300' };
           return (
             <li key={h.id} className="relative flex gap-3 pb-4 last:pb-0">
               {i < histories.length - 1 && (
@@ -268,7 +269,7 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
                 <p className="mt-0.5 text-xs text-slate-400">
                   {h.actor?.full_name ? <span className="font-medium text-slate-600">{h.actor.full_name}</span> : null}{h.actor?.full_name && ' · '}{formatDateTime(h.created_at)}
                 </p>
-                {h.reason ? <p className="mt-1 text-xs text-slate-600 whitespace-pre-line rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5">{h.reason}</p> : null}
+                {h.reason ? <p className="mt-1 text-xs text-slate-600 whitespace-pre-line rounded-lg bg-surface-raised border border-slate-100 px-2.5 py-1.5">{h.reason}</p> : null}
               </div>
             </li>
           );
@@ -310,17 +311,17 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-      <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-slate-50 to-white border-b border-slate-100">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+    <div className="rounded-2xl border border-slate-300 overflow-hidden shadow-sm">
+      <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-slate-50 to-surface-card border-b border-slate-100">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 8H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M7 17L21 3m0 0h-5.5M21 3v5.5" /></svg>
         </span>
         <div>
           <h3 className="text-sm font-black text-slate-800">Alur Persetujuan</h3>
           <p className="text-[11px] text-slate-400">Tahapan approval pengajuan ini</p>
         </div>
-        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${revised ? 'bg-orange-50 text-orange-700 border-orange-200' : rejected ? 'bg-red-50 text-red-700 border-red-200' : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : item.status === 'rlh_approved' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : item.status === 'checked' ? 'bg-blue-50 text-blue-700 border-blue-200' : item.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'rlh_approved' ? 'bg-indigo-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
+        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${revised ? 'bg-orange-50 text-orange-700 border-orange-200' : rejected ? 'bg-red-50 text-red-700 border-red-200' : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : item.status === 'rlh_approved' ? 'bg-chip-primary text-accent-text border-chip-primary-border' : item.status === 'checked' ? 'bg-blue-50 text-blue-700 border-blue-200' : item.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-surface-raised text-gray-600 border-gray-300'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'rlh_approved' ? 'bg-primary-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
           {revised ? 'Perlu Revisi' : rejected ? 'Ditolak' : STATUS_META[item.status]?.label ?? item.status}
         </span>
       </div>
@@ -347,15 +348,15 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
                       <span className="relative block h-2.5 w-2.5 rounded-full bg-primary-500" />
                     </span>
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-400">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 border border-slate-300 text-slate-400">
                       <span className="block h-2 w-2 rounded-full bg-slate-300" />
                     </span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`text-sm font-semibold ${state === 'done' ? 'text-slate-900' : state === 'current' ? 'text-primary-700' : 'text-slate-500'}`}>{step.label}</p>
-                    <span className="inline-flex rounded-md bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-500">{step.role}</span>
+                    <p className={`text-sm font-semibold ${state === 'done' ? 'text-slate-900' : state === 'current' ? 'text-accent-text' : 'text-slate-500'}`}>{step.label}</p>
+                    <span className="inline-flex rounded-md bg-slate-100 border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-500">{step.role}</span>
                   </div>
                   <p className="mt-0.5 text-xs text-slate-400">
                     {step.at ? (
@@ -443,7 +444,7 @@ export default function BiayaRetribusiPage() {
   };
   const sortIndicator = (field: string) => {
     if (sortField !== field) return <span className="text-slate-300 ml-1 text-xs">↕</span>;
-    return <span className="text-primary-600 ml-1 text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+    return <span className="text-accent-text ml-1 text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>;
   };
   /** Daftar unik dari details pengajuan (fallback ke kolom header bila kosong). */
   const uniqVals = (vals: (string | undefined)[]): string[] => [...new Set(vals.map((v) => upper(v)).filter(Boolean))];
@@ -1245,7 +1246,7 @@ export default function BiayaRetribusiPage() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+        <header className="rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
@@ -1253,7 +1254,7 @@ export default function BiayaRetribusiPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Biaya Retribusi</h1>
-                <p className="mt-0.5 text-gray-400">Queue pengajuan biaya retribusi berbasis penerimaan (receiving)</p>
+                <p className="mt-0.5 text-ink-fg-muted">Queue pengajuan biaya retribusi berbasis penerimaan (receiving)</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1265,7 +1266,7 @@ export default function BiayaRetribusiPage() {
           </div>
         </header>
 
-        <div className={`rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
+        <div className={`rounded-2xl border border-gray-100 bg-surface-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <div className="px-2 py-1">
               <p className="text-xs text-slate-500">Total Nominal</p>
@@ -1290,7 +1291,7 @@ export default function BiayaRetribusiPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
           <div className="flex flex-col items-start gap-3 border-b border-gray-100 px-5 py-3 sm:flex-row sm:items-center">
             <div className="flex-1 w-full sm:w-auto">
               <SearchInput value={search} onChange={(v) => { setSearch(v); }} placeholder="Cari nopol, SJ, type, depo..." />
@@ -1313,7 +1314,7 @@ export default function BiayaRetribusiPage() {
               </select>
             </div>
             {hasPermission('biaya_retribusi.create') && (
-            <button onClick={openCreateModal} className="inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] sm:w-auto">
+            <button onClick={openCreateModal} className="inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98] sm:w-auto">
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               Buat Pengajuan
             </button>
@@ -1341,7 +1342,7 @@ export default function BiayaRetribusiPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="border-b border-slate-300 bg-surface-raised">
                   <th scope="col" className="table-header cursor-pointer select-none" onClick={() => handleSort('tanggal_pengajuan')}>
                     Tanggal {sortIndicator('tanggal_pengajuan')}
                   </th>
@@ -1382,7 +1383,7 @@ export default function BiayaRetribusiPage() {
                       <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                         <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                         <span className="text-sm font-medium">Tidak ada data</span>
-                        <button onClick={fetchItems} className="mt-1 text-xs font-bold text-primary-600 hover:text-primary-700 hover:underline inline-flex items-center gap-1">
+                        <button onClick={fetchItems} className="mt-1 text-xs font-bold text-accent-text hover:text-accent-text hover:underline inline-flex items-center gap-1">
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                           Muat ulang
                         </button>
@@ -1391,7 +1392,7 @@ export default function BiayaRetribusiPage() {
                   </tr>
                 ) : (
                   items.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                    <tr key={item.id} className="hover:bg-overlay-50 transition-colors">
                       <td className="px-5 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(item.tanggal_pengajuan)}</td>
                       <td className="px-5 py-3 text-sm text-slate-600">{renderChips(getSJShorts(item), getSJFull(item))}</td>
                       <td className="px-5 py-3 text-sm text-slate-600">{renderChips(getKendaraanTypes(item), getKendaraanTypes(item).join(', ') || '-')}</td>
@@ -1444,18 +1445,18 @@ export default function BiayaRetribusiPage() {
         {/* Cards - Mobile */}
         <div className="md:hidden space-y-3">
           {loading ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <div className="bg-surface-card rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
               <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                 <svg className="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                 <span className="text-sm font-medium">Memuat data...</span>
               </div>
             </div>
           ) : items.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <div className="bg-surface-card rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
               <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                 <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 <span className="text-sm font-medium">Tidak ada data</span>
-                <button onClick={fetchItems} className="mt-1 text-xs font-bold text-primary-600 hover:text-primary-700 inline-flex items-center gap-1">
+                <button onClick={fetchItems} className="mt-1 text-xs font-bold text-accent-text hover:text-accent-text inline-flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                   Muat ulang
                 </button>
@@ -1463,11 +1464,11 @@ export default function BiayaRetribusiPage() {
             </div>
           ) : (
             items.map((item) => (
-              <div key={item.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
+              <div key={item.id} className="bg-surface-card rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 0h7.5m-7.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h7.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h7.5a3 3 0 013 3m-16.5 0a3 3 0 00-3 3v7.5a3 3 0 003 3h7.5a3 3 0 003-3v-7.5a3 3 0 00-3-3h-7.5a3 3 0 00-3 3z" /></svg>
+                    <div className="w-10 h-10 rounded-xl bg-chip-primary flex items-center justify-center shrink-0">
+                      <svg className="w-5 h-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 0h7.5m-7.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h7.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h7.5a3 3 0 013 3m-16.5 0a3 3 0 00-3 3v7.5a3 3 0 003 3h7.5a3 3 0 003-3v-7.5a3 3 0 00-3-3h-7.5a3 3 0 00-3 3z" /></svg>
                     </div>
                     <div>
                       <p className="text-sm font-bold text-gray-800">{getNopols(item).slice(0, 2).join(', ') || item.nama_depo}</p>
@@ -1525,7 +1526,7 @@ export default function BiayaRetribusiPage() {
           <div className="flex items-center justify-center gap-2 mt-4">
             <p className="text-xs text-slate-500 tabular-nums mr-2">Halaman {page} dari {totalPages}</p>
             {Array.from({ length: totalPages }, (_, i) => (
-              <button key={i + 1} onClick={() => setPage(i + 1)} className={`min-h-[44px] min-w-[44px] rounded-xl text-sm font-medium transition-all ${page === i + 1 ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{i + 1}</button>
+              <button key={i + 1} onClick={() => setPage(i + 1)} className={`min-h-[44px] min-w-[44px] rounded-xl text-sm font-medium transition-all ${page === i + 1 ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-surface-card border border-gray-300 text-gray-600 hover:bg-surface-raised'}`}>{i + 1}</button>
             ))}
           </div>
         )}
@@ -1587,11 +1588,11 @@ export default function BiayaRetribusiPage() {
           </div>
         }>
           <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <aside className="hidden rounded-3xl bg-slate-950 p-5 text-white shadow-xl lg:block">
+            <aside className="hidden rounded-3xl bg-ink-950 p-5 text-white shadow-xl lg:block">
               <div className="mb-8">
-                <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-200">Retribusi Claim</span>
+                <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary-200">Retribusi Claim</span>
                 <h3 className="mt-4 text-xl font-black tracking-tight">Susun biaya dengan cepat.</h3>
-                <p className="mt-2 text-xs leading-5 text-slate-300">Gunakan kandidat THL atau tambahkan baris manual, lalu lampirkan dokumen pendukung.</p>
+                <p className="mt-2 text-xs leading-5 text-ink-fg-muted">Gunakan kandidat THL atau tambahkan baris manual, lalu lampirkan dokumen pendukung.</p>
               </div>
               <div className="space-y-2">
                 {[
@@ -1605,24 +1606,24 @@ export default function BiayaRetribusiPage() {
                   const canJump = stepNo < formStep && stepNo >= minStep;
                   return (
                   <button key={item.label} type="button" disabled={!canJump} onClick={() => setFormStep(stepNo)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors ${isCurrent ? 'bg-white/15' : ''} ${canJump ? 'hover:bg-white/10 cursor-pointer' : item.done ? '' : 'cursor-default'}`}>
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black ${item.done ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-primary-500 text-white' : 'bg-white/10 text-slate-300'}`}>{item.done ? '✓' : stepNo}</span>
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black ${item.done ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-primary-500 text-white' : 'bg-white/10 text-ink-fg'}`}>{item.done ? '✓' : stepNo}</span>
                     <span className="min-w-0">
                       <span className="block text-xs font-black">{item.label}</span>
-                      <span className="mt-0.5 block truncate text-[10px] text-slate-400">{item.note}</span>
+                      <span className="mt-0.5 block truncate text-[10px] text-ink-fg-muted">{item.note}</span>
                     </span>
                   </button>
                   );
                 })}
               </div>
               <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-200">Total pengajuan</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary-200">Total pengajuan</p>
                 <p className="mt-2 text-2xl font-black tabular-nums">{formatCurrency(totalNominal)}</p>
-                <p className="mt-1 text-[10px] text-slate-400">{isRfahRequired ? 'RFAH diperlukan untuk pengajuan ini' : 'Belum melewati ambang RFAH'}</p>
+                <p className="mt-1 text-[10px] text-ink-fg-muted">{isRfahRequired ? 'RFAH diperlukan untuk pengajuan ini' : 'Belum melewati ambang RFAH'}</p>
                 {selectedRowCount > 0 && (
                   <ul className="mt-3 space-y-1 border-t border-white/10 pt-3">
                     {formData.details.slice(0, 3).map((d, i) => (
                       <li key={`e-${i}`} className="flex items-center justify-between gap-2 text-[10px]">
-                        <span className="truncate font-mono text-slate-300">{upper(d.nopol_kendaraan) || `Baris #${i + 1}`}</span>
+                        <span className="truncate font-mono text-ink-fg-muted">{upper(d.nopol_kendaraan) || `Baris #${i + 1}`}</span>
                         <span className="shrink-0 font-bold tabular-nums text-white">{formatCurrency(existingNominal(d))}</span>
                       </li>
                     ))}
@@ -1631,25 +1632,25 @@ export default function BiayaRetribusiPage() {
                       if (!c) return null;
                       return (
                         <li key={id} className="flex items-center justify-between gap-2 text-[10px]">
-                          <span className="truncate font-mono text-slate-300">{upper(c.nopol_kendaraan)}</span>
+                          <span className="truncate font-mono text-ink-fg-muted">{upper(c.nopol_kendaraan)}</span>
                           <span className="shrink-0 font-bold tabular-nums text-white">{formatCurrency(candidateNominal(id))}</span>
                         </li>
                       );
                     })}
                     {manualDetails.slice(0, Math.max(0, 3 - formData.details.length - Math.min(selectedCandidates.length, 3))).map((md, i) => (
                       <li key={`m-${i}`} className="flex items-center justify-between gap-2 text-[10px]">
-                        <span className="truncate font-mono text-slate-300">{upper(md.nopol_kendaraan) || `Manual #${i + 1}`}</span>
+                        <span className="truncate font-mono text-ink-fg-muted">{upper(md.nopol_kendaraan) || `Manual #${i + 1}`}</span>
                         <span className="shrink-0 font-bold tabular-nums text-white">{formatCurrency(manualNominal(md))}</span>
                       </li>
                     ))}
-                    {selectedRowCount > 3 && <li className="text-[10px] text-slate-400">+{selectedRowCount - 3} baris lainnya</li>}
+                    {selectedRowCount > 3 && <li className="text-[10px] text-ink-fg-muted">+{selectedRowCount - 3} baris lainnya</li>}
                   </ul>
                 )}
               </div>
             </aside>
             <div className="min-w-0">
           <div className="space-y-4 sm:space-y-5">
-            <div className="lg:hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="lg:hidden rounded-2xl border border-slate-300 bg-surface-card px-4 py-3 shadow-sm">
               <div className="flex items-center gap-1.5">
                 {WIZARD_LABELS.map((label, i) => {
                   const stepNo = i + 1;
@@ -1657,21 +1658,21 @@ export default function BiayaRetribusiPage() {
                   const isDone = stepDone[i];
                   return (
                   <div key={label} className="flex flex-1 items-center gap-1.5 last:flex-none">
-                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ring-2 ${isDone ? 'bg-emerald-500 text-white ring-emerald-200' : isCurrent ? 'bg-primary-600 text-white ring-primary-200' : 'bg-slate-100 text-slate-400 ring-slate-100'}`}>{isDone ? '✓' : stepNo}</span>
-                    <span className={`text-[10px] font-bold ${isDone ? 'text-emerald-700' : isCurrent ? 'text-primary-700' : 'text-slate-400'}`}>{label}</span>
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ring-2 ${isDone ? 'bg-emerald-500 text-white ring-emerald-200' : isCurrent ? 'bg-primary-600 text-white ring-brand-wash-strong' : 'bg-slate-100 text-slate-400 ring-slate-100'}`}>{isDone ? '✓' : stepNo}</span>
+                    <span className={`text-[10px] font-bold ${isDone ? 'text-emerald-700' : isCurrent ? 'text-accent-text' : 'text-slate-400'}`}>{label}</span>
                     {i < 3 && <span className={`h-0.5 flex-1 rounded-full ${isDone ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
                   </div>
                   );
                 })}
               </div>
             </div>
-            <div className="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:block">
+            <div className="hidden rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm lg:block">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Alur pengajuan</p>
                   <p className="mt-0.5 text-sm font-bold text-slate-800">Langkah {formStep} dari 4</p>
                 </div>
-                <span className="rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-[10px] font-black text-primary-700">
+                <span className="rounded-full border border-chip-primary-border bg-chip-primary px-2.5 py-1 text-[10px] font-black text-accent-text">
                   {selectedRowCount} baris
                 </span>
               </div>
@@ -1683,7 +1684,7 @@ export default function BiayaRetribusiPage() {
                   const isLast = i === WIZARD_LABELS.length - 1;
                   return (
                   <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
-                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-black ring-2 transition-all ${isDone ? 'bg-emerald-500 text-white ring-emerald-200' : isCurrent ? 'bg-primary-600 text-white ring-primary-200 shadow-md' : 'bg-slate-100 text-slate-400 ring-slate-100'}`}>{isDone ? '✓' : stepNo}</span>
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-black ring-2 transition-all ${isDone ? 'bg-emerald-500 text-white ring-emerald-200' : isCurrent ? 'bg-primary-600 text-white ring-brand-wash-strong shadow-md' : 'bg-slate-100 text-slate-400 ring-slate-100'}`}>{isDone ? '✓' : stepNo}</span>
                     {!isLast && <div className={`mx-2 h-0.5 flex-1 rounded-full ${isDone ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
                   </div>
                   );
@@ -1694,13 +1695,13 @@ export default function BiayaRetribusiPage() {
                   const isDone = stepDone[i];
                   const isCurrent = formStep === i + 1;
                   return (
-                  <span key={label} className={`text-[10px] font-bold ${isDone ? 'text-emerald-700' : isCurrent ? 'text-primary-700' : 'text-slate-400'}`}>{isDone ? `✓ ${label}` : label}</span>
+                  <span key={label} className={`text-[10px] font-bold ${isDone ? 'text-emerald-700' : isCurrent ? 'text-accent-text' : 'text-slate-400'}`}>{isDone ? `✓ ${label}` : label}</span>
                   );
                 })}
               </div>
               <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className="h-full rounded-full bg-linear-to-r from-primary-500 to-indigo-500 transition-all"
+                  className="h-full rounded-full bg-linear-to-r from-primary-500 to-primary-500 transition-all"
                   style={{ width: `${Math.max(stepProgress, 6)}%` }}
                 />
               </div>
@@ -1709,19 +1710,19 @@ export default function BiayaRetribusiPage() {
             {formStep === 2 && (
             <div className="grid gap-3 sm:grid-cols-2">
             {/* Depo Badge */}
-            <div className="flex flex-col gap-3 rounded-2xl border border-primary-100 bg-linear-to-r from-primary-50 via-indigo-50 to-white p-4 shadow-sm sm:flex-row sm:items-center">
-              <div className="w-10 h-10 rounded-xl bg-white shadow-sm ring-1 ring-primary-100 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+            <div className="flex flex-col gap-3 rounded-2xl border border-chip-primary-border bg-linear-to-r from-brand-wash via-brand-wash to-surface-card p-4 shadow-sm sm:flex-row sm:items-center">
+              <div className="w-10 h-10 rounded-xl bg-surface-card shadow-sm ring-1 ring-chip-primary-border flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-primary-600 uppercase tracking-wider">Depo Pengajuan</p>
+                <p className="text-[10px] font-bold text-accent-text uppercase tracking-wider">Depo Pengajuan</p>
                 <p className="text-sm font-bold text-gray-900 truncate">{targetDepoLabel}</p>
-                {(isCandidateDepoUniform || isDepoInherited) && <p className="mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-primary-600"><span className="h-1 w-1 rounded-full bg-primary-500" />Mengikuti depo receiving</p>}
+                {(isCandidateDepoUniform || isDepoInherited) && <p className="mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-accent-text"><span className="h-1 w-1 rounded-full bg-primary-500" />Mengikuti depo receiving</p>}
               </div>
             </div>
 
             {/* Tanggal */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                 <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                 Tanggal Pengajuan <span className="text-red-500">*</span>
@@ -1732,15 +1733,15 @@ export default function BiayaRetribusiPage() {
             )}
 
             {!editingId && formStep === 1 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
                 <p className="text-sm font-bold text-gray-700">Pilih tipe pengajuan dulu <span className="text-red-400">*</span></p>
                 <p className="mt-1 text-[11px] text-slate-400">Dua cara isi biaya — pilih yang sesuai, form berikutnya menyesuaikan otomatis.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <button type="button" aria-pressed={sourceType === 'receiving'} onClick={() => switchSourceType('receiving')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'receiving' ? 'border-primary-600 bg-primary-50 shadow-md' : 'border-primary-200 bg-primary-50/50 hover:border-primary-400'}`}>
+                  <button type="button" aria-pressed={sourceType === 'receiving'} onClick={() => switchSourceType('receiving')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'receiving' ? 'border-primary-600 bg-chip-primary shadow-md' : 'border-chip-primary-border bg-chip-primary/50 hover:border-primary-400'}`}>
                     <span className="mt-2 block text-sm font-black text-slate-900">Otomatis dari Receiving</span>
                     <span className="mt-1 block text-[11px] leading-5 text-slate-500">Qty zak/crt & tanggal terisi sendiri dari receiving COMPLETED. Nominal mengikuti tarif koli depo.</span>
                   </button>
-                  <button type="button" aria-pressed={sourceType === 'manual'} onClick={() => switchSourceType('manual')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'manual' ? 'border-slate-700 bg-slate-50 shadow-md' : 'border-slate-200 bg-white hover:border-slate-400'}`}>
+                  <button type="button" aria-pressed={sourceType === 'manual'} onClick={() => switchSourceType('manual')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'manual' ? 'border-slate-700 bg-surface-raised shadow-md' : 'border-slate-300 bg-surface-card hover:border-slate-400'}`}>
                     <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-600">MANUAL</span>
                     <span className="mt-2 block text-sm font-black text-slate-900">Borongan / Manual</span>
                     <span className="mt-1 block text-[11px] leading-5 text-slate-500">Ketik nopol, qty, dan nominal sendiri. Cocok untuk biaya satuan borongan.</span>
@@ -1752,25 +1753,25 @@ export default function BiayaRetribusiPage() {
             {/* Ringkasan tipe & panel tarif hanya untuk koli/otomatis receiving.
                     Borongan/Manual tidak menampilkan kartu ini — nominal diisi manual. */}
             {!editingId && sourceType === 'receiving' && formStep === 2 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-sm font-bold text-gray-700">Otomatis dari Receiving</p>
-                  <button type="button" onClick={() => switchSourceType(null)} className="shrink-0 text-[11px] font-bold text-primary-600 hover:text-primary-700 hover:underline">‹ Ganti tipe</button>
+                  <button type="button" onClick={() => switchSourceType(null)} className="shrink-0 text-[11px] font-bold text-accent-text hover:text-accent-text hover:underline">‹ Ganti tipe</button>
                 </div>
                 {isKoliMode && (
-                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                <div className="mt-3 rounded-xl bg-surface-raised border border-slate-300 px-3 py-2.5">
                   <button type="button" onClick={() => setTariffOpen((v) => !v)} aria-expanded={tariffOpen} className="flex w-full flex-wrap items-center gap-2 text-left">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tarif berlaku</span>
                     <span className="text-xs font-bold text-slate-800">{targetDepoLabel}</span>
                     {isKoliMode ? (
-                      <span className="text-xs font-semibold text-indigo-700">1 zak Rp {Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · 1 crt Rp {Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')}</span>
+                      <span className="text-xs font-semibold text-accent-text">1 zak Rp {Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · 1 crt Rp {Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')}</span>
                     ) : (
                       <span className="text-xs font-semibold text-slate-500">Borongan — nominal diisi manual</span>
                     )}
                     <svg className={`ml-auto w-4 h-4 text-slate-400 transition-transform ${tariffOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                   </button>
                   {tariffOpen && (
-                    <div className="mt-2 border-t border-slate-200 pt-2">
+                    <div className="mt-2 border-t border-slate-300 pt-2">
                       <p className="text-[11px] text-slate-500">
                         {isKoliMode
                           ? 'Nominal tiap baris = qty zak × tarif zak + qty crt × tarif crt, dihitung otomatis.'
@@ -1788,7 +1789,7 @@ export default function BiayaRetribusiPage() {
                           <label className="flex items-center gap-1 text-[11px] text-slate-500">Rp/crt
                             <input type="number" min={0} value={rateDraft.rate_crt || ''} disabled={rateDraft.mode !== 'koli'} onChange={(e) => setRateDraft((p) => ({ ...p, rate_crt: Number(e.target.value) }))} placeholder="0" className="input-field w-24 py-1.5 text-right text-xs disabled:bg-slate-100" aria-label="Tarif per crt" />
                           </label>
-                          <button type="button" onClick={saveRates} disabled={rateSaving || !effectiveKode} className="min-h-[36px] rounded-lg bg-slate-900 px-3 text-[11px] font-bold text-white hover:bg-slate-800 disabled:opacity-50">
+                          <button type="button" onClick={saveRates} disabled={rateSaving || !effectiveKode} className="min-h-[36px] rounded-lg bg-ink-900 px-3 text-[11px] font-bold text-white hover:bg-ink-800 disabled:opacity-50">
                             {rateSaving ? 'Menyimpan...' : 'Simpan tarif'}
                           </button>
                         </div>
@@ -1805,16 +1806,16 @@ export default function BiayaRetribusiPage() {
               <div>
                 <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
                   <span className="flex items-center gap-2 text-sm font-bold text-gray-800">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-chip-primary text-accent-text">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
                     </span>
                     Pilih dari Penerimaan (Receiving)
                   </span>
                   {selectedCandidates.length > 0 && (
-                    <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">{selectedCandidates.length} dipilih</span>
+                    <span className="rounded-full bg-chip-primary px-2 py-0.5 text-[10px] font-bold text-accent-text">{selectedCandidates.length} dipilih</span>
                   )}
                   {isKoliMode ? (
-                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">Mode Koli: 1 zak Rp {Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · 1 crt Rp {Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')}</span>
+                    <span className="rounded-full bg-chip-primary px-2 py-0.5 text-[10px] font-bold text-accent-text">Mode Koli: 1 zak Rp {Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · 1 crt Rp {Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')}</span>
                   ) : (
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">Mode Borongan: nominal manual</span>
                   )}
@@ -1825,8 +1826,8 @@ export default function BiayaRetribusiPage() {
                 </button>
                 <p className="mb-3 text-[11px] text-slate-400">Hanya receiving COMPLETED yang sudah divalidasi checker dan belum diklaim. Qty zak/crt dan tanggal pengajuan terisi otomatis dari receiving — tanpa input ulang.</p>
                 {candidates.length === 0 && !busy && (
-                  <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
-                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                  <div className="rounded-xl border-2 border-dashed border-slate-300 bg-overlay-60 p-6 text-center">
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-surface-card shadow-sm ring-1 ring-gray-300">
                       <svg className="h-5 w-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M10 3v18" /></svg>
                     </div>
                     <p className="mt-2 text-sm font-semibold text-slate-600">Belum ada data receiving</p>
@@ -1835,12 +1836,12 @@ export default function BiayaRetribusiPage() {
                 )}
                 {candidates.length > 0 && (
                   <>
-                  <div className="max-h-72 overflow-auto rounded-xl border border-gray-200 shadow-sm hidden sm:block">
+                  <div className="max-h-72 overflow-auto rounded-xl border border-gray-300 shadow-sm hidden sm:block">
                     <table className="min-w-[680px] w-full text-xs">
-                      <thead className="sticky top-0 bg-gray-50">
+                      <thead className="sticky top-0 bg-surface-raised">
                         <tr>
                           <th className="table-header text-center w-10">
-                            <input type="checkbox" checked={selectedCandidates.length === candidates.length} onChange={() => setSelectedCandidates(selectedCandidates.length === candidates.length ? [] : candidates.map(c => c.id))} className="rounded border-gray-300 text-primary-600 w-4 h-4" />
+                            <input type="checkbox" checked={selectedCandidates.length === candidates.length} onChange={() => setSelectedCandidates(selectedCandidates.length === candidates.length ? [] : candidates.map(c => c.id))} className="rounded border-gray-300 text-accent-text w-4 h-4" />
                           </th>
                           <th className="table-header">Tgl Selesai</th>
                           <th className="table-header">Nopol</th>
@@ -1855,8 +1856,8 @@ export default function BiayaRetribusiPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {candidates.map((c) => (
-                          <tr key={c.id} className={`hover:bg-gray-50/50 cursor-pointer transition-colors ${selectedCandidates.includes(c.id) ? 'bg-primary-50/50' : ''}`} onClick={() => toggleCandidate(c.id)}>
-                            <td className="table-cell text-center"><input type="checkbox" checked={selectedCandidates.includes(c.id)} onChange={() => toggleCandidate(c.id)} className="rounded border-gray-300 text-primary-600 w-4 h-4" onClick={(e) => e.stopPropagation()} /></td>
+                          <tr key={c.id} className={`hover:bg-overlay-50 cursor-pointer transition-colors ${selectedCandidates.includes(c.id) ? 'bg-chip-primary/50' : ''}`} onClick={() => toggleCandidate(c.id)}>
+                            <td className="table-cell text-center"><input type="checkbox" checked={selectedCandidates.includes(c.id)} onChange={() => toggleCandidate(c.id)} className="rounded border-gray-300 text-accent-text w-4 h-4" onClick={(e) => e.stopPropagation()} /></td>
                             <td className="table-cell whitespace-nowrap">{formatDate(c.tanggal_selesai)}</td>
                             <td className="table-cell font-mono font-medium">{upper(c.nopol_kendaraan)}</td>
                             <td className="table-cell">{upper(c.type_kendaraan)}</td>
@@ -1881,9 +1882,9 @@ export default function BiayaRetribusiPage() {
                     {candidates.map((c) => {
                       const checked = selectedCandidates.includes(c.id);
                       return (
-                        <div key={c.id} onClick={() => toggleCandidate(c.id)} className={`rounded-xl border p-3 transition-colors ${checked ? 'border-primary-300 bg-primary-50/50' : 'border-gray-200 bg-white'}`}>
+                        <div key={c.id} onClick={() => toggleCandidate(c.id)} className={`rounded-xl border p-3 transition-colors ${checked ? 'border-primary-300 bg-chip-primary/50' : 'border-gray-300 bg-surface-card'}`}>
                           <div className="flex items-center gap-2">
-                            <input type="checkbox" checked={checked} onChange={() => toggleCandidate(c.id)} onClick={(e) => e.stopPropagation()} className="rounded border-gray-300 text-primary-600 w-4 h-4 shrink-0" aria-label={`Pilih ${c.nopol_kendaraan}`} />
+                            <input type="checkbox" checked={checked} onChange={() => toggleCandidate(c.id)} onClick={(e) => e.stopPropagation()} className="rounded border-gray-300 text-accent-text w-4 h-4 shrink-0" aria-label={`Pilih ${c.nopol_kendaraan}`} />
                             <p className="font-mono font-bold text-sm text-slate-800">{upper(c.nopol_kendaraan)}</p>
                             <span className="ml-auto text-[11px] text-slate-500">{formatDate(c.tanggal_selesai)}</span>
                           </div>
@@ -1915,7 +1916,7 @@ export default function BiayaRetribusiPage() {
                   </span>
                   Baris Manual
                   {manualDetails.length > 0 && (
-                    <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">{manualDetails.length} baris</span>
+                    <span className="rounded-full bg-chip-primary px-2 py-0.5 text-[10px] font-bold text-accent-text">{manualDetails.length} baris</span>
                   )}
                 </label>
                 <button type="button" onClick={addManualDetail} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-700 transition-colors inline-flex items-center gap-1 shadow-sm">
@@ -1925,7 +1926,7 @@ export default function BiayaRetribusiPage() {
               </div>
 
               {manualDetails.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-primary-200 bg-white p-4 shadow-sm">
+                <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-surface-card p-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                       <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -1975,9 +1976,9 @@ export default function BiayaRetribusiPage() {
               ) : (
                 <div className="space-y-2">
                   {manualDetails.map((md, i) => (
-                    <details key={i} open className="group relative rounded-lg border border-gray-100 bg-white">
-                      <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors list-none">
-                        <div className="w-6 h-6 rounded-md bg-primary-100 border border-primary-200 flex items-center justify-center text-[10px] font-bold text-primary-700 shrink-0">
+                    <details key={i} open className="group relative rounded-lg border border-gray-100 bg-surface-card">
+                      <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-raised rounded-lg transition-colors list-none">
+                        <div className="w-6 h-6 rounded-md bg-chip-primary border border-chip-primary-border flex items-center justify-center text-[10px] font-bold text-accent-text shrink-0">
                           {i + 1}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -2048,7 +2049,7 @@ export default function BiayaRetribusiPage() {
                   <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 0h7.5m-7.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h7.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h7.5a3 3 0 013 3m-16.5 0a3 3 0 00-3 3v7.5a3 3 0 003 3h7.5a3 3 0 003-3v-7.5a3 3 0 00-3-3h-7.5a3 3 0 00-3 3z" /></svg>
                   Dokumen Lampiran
                   {formData.documents.length > 0 && (
-                    <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold text-primary-700">{formData.documents.length} dokumen</span>
+                    <span className="rounded-full bg-chip-primary px-2 py-0.5 text-[10px] font-bold text-accent-text">{formData.documents.length} dokumen</span>
                   )}
                 </label>
                 <button type="button" onClick={addDocument} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-700 transition-colors inline-flex items-center gap-1 shadow-sm">
@@ -2058,7 +2059,7 @@ export default function BiayaRetribusiPage() {
               </div>
 
               {formData.documents.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-primary-200 bg-white p-4 shadow-sm">
+                <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-surface-card p-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -2078,7 +2079,7 @@ export default function BiayaRetribusiPage() {
                         if (file) startDocument('file', file);
                         e.target.value = '';
                       }} />
-                      <label htmlFor="doc-file-start" className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-primary-50/50 cursor-pointer transition-colors">
+                      <label htmlFor="doc-file-start" className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-surface-raised px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-chip-primary/50 cursor-pointer transition-colors">
                         <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A4 4 0 1118.8 7.372l-10.94 10.938a2.5 2.5 0 01-3.536-3.536l10.94-10.938a1 1 0 011.414 1.414l-10.94 10.938a.5.5 0 01-.707-.707l7.693-7.693a1 1 0 011.414 1.414z" /></svg>
                         <span className="min-w-0 flex-1 truncate">Pilih file (PDF, JPG, PNG, WEBP — maks 20 MB)</span>
                       </label>
@@ -2092,8 +2093,8 @@ export default function BiayaRetribusiPage() {
               ) : (
                 <div className="space-y-2">
                   {formData.documents.map((doc, i) => (
-                    <details key={i} open className="group relative rounded-lg border border-gray-100 bg-white">
-                      <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors list-none">
+                    <details key={i} open className="group relative rounded-lg border border-gray-100 bg-surface-card">
+                      <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-raised rounded-lg transition-colors list-none">
                         <div className="w-6 h-6 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-[10px] font-bold text-amber-600 shrink-0">
                           {i + 1}
                         </div>
@@ -2126,7 +2127,7 @@ export default function BiayaRetribusiPage() {
                               if (file) void handleDocFile(i, file);
                               e.target.value = '';
                             }} />
-                            <label htmlFor={`doc-file-${i}`} className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-primary-50/50 cursor-pointer transition-colors">
+                            <label htmlFor={`doc-file-${i}`} className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-surface-raised px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-chip-primary/50 cursor-pointer transition-colors">
                               <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A4 4 0 1118.8 7.372l-10.94 10.938a2.5 2.5 0 01-3.536-3.536l10.94-10.938a1 1 0 011.414 1.414l-10.94 10.938a.5.5 0 01-.707-.707l7.693-7.693a1 1 0 011.414 1.414z" /></svg>
                               <span className="min-w-0 flex-1 truncate">{doc.file_name || 'Pilih file (PDF, JPG, PNG, WEBP — maks 20 MB)'}</span>
                               {doc.file && <span className="shrink-0 text-[11px] font-bold text-slate-500 tabular-nums">{formatBytes(doc.file.size)}</span>}
@@ -2143,7 +2144,7 @@ export default function BiayaRetribusiPage() {
 
             {/* Review ringkasan */}
             {formStep === 4 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
                 <p className="text-sm font-bold text-gray-700">Periksa kembali sebelum dikirim</p>
                 <dl className="mt-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
@@ -2201,10 +2202,10 @@ export default function BiayaRetribusiPage() {
 
             {/* Total */}
             {(formStep === 2 || formStep === 4) && (
-            <div className={`rounded-2xl border-2 p-4 transition-all sm:p-5 ${isRfahRequired ? 'border-amber-300 bg-linear-to-r from-amber-50 via-orange-50 to-amber-50 shadow-amber-100/50 shadow-lg' : 'border-primary-100 bg-linear-to-br from-primary-50/70 to-white shadow-sm'}`}>
+            <div className={`rounded-2xl border-2 p-4 transition-all sm:p-5 ${isRfahRequired ? 'border-amber-300 bg-linear-to-r from-amber-50 via-orange-50 to-amber-50 shadow-amber-100/50 shadow-lg' : 'border-chip-primary-border bg-linear-to-br from-brand-wash/70 to-surface-card shadow-sm'}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${isRfahRequired ? 'bg-amber-100 text-amber-600' : 'bg-primary-100 text-primary-600'}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${isRfahRequired ? 'bg-amber-100 text-amber-600' : 'bg-chip-primary text-accent-text'}`}>
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659 1.171-1.671a4.5 4.5 0 015.07-1.651 3 3 0 011.482 5.369L12 12" /></svg>
                   </div>
                   <div>
@@ -2214,7 +2215,7 @@ export default function BiayaRetribusiPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black ${isKoliSession ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black ${isKoliSession ? 'bg-chip-primary text-accent-text' : 'bg-slate-100 text-slate-600'}`}>
                     {isKoliSession ? 'MODE KOLI' : 'MODE BORONGAN'}
                   </span>
                   {isRfahRequired && (
@@ -2257,9 +2258,9 @@ export default function BiayaRetribusiPage() {
           {viewItem && (
             <div className="space-y-5">
               {/* Dark header card */}
-              <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 p-5 sm:p-6 text-white shadow-xl">
+              <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-ink-900 via-ink-900 to-ink-800 p-5 sm:p-6 text-white shadow-xl">
                 <div aria-hidden="true" className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary-500/25 blur-3xl" />
-                <div aria-hidden="true" className="absolute -bottom-24 -left-14 h-52 w-52 rounded-full bg-indigo-500/15 blur-3xl" />
+                <div aria-hidden="true" className="absolute -bottom-24 -left-14 h-52 w-52 rounded-full bg-primary-500/15 blur-3xl" />
                 <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
                 <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3.5">
@@ -2270,15 +2271,15 @@ export default function BiayaRetribusiPage() {
                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-300/90">Biaya Retribusi</p>
                       <p className="mt-1 text-lg sm:text-xl font-black tracking-tight text-white truncate">{viewItem.nama_depo}</p>
                       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-ink-fg">
                           <svg className="w-3 h-3 text-primary-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                           {viewItem.kode_depo}
                         </span>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-ink-fg">
                           <svg className="w-3 h-3 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
                           {formatCurrency(viewItem.nominal_biaya)}
                         </span>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-slate-100">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-ink-fg">
                           <svg className="w-3 h-3 text-sky-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                           {viewItem.details?.length || 0} baris
                         </span>
@@ -2293,18 +2294,18 @@ export default function BiayaRetribusiPage() {
 
               {/* Info ringkas */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
+                <div className="rounded-xl bg-surface-card border border-gray-100 shadow-sm p-4">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tanggal Pengajuan</span>
                   </div>
                   <p className="text-sm font-bold text-slate-800 mt-2.5">{formatDate(viewItem.tanggal_pengajuan)}</p>
                 </div>
-                <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
+                <div className="rounded-xl bg-surface-card border border-gray-100 shadow-sm p-4">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">No Surat Jalan</span>
@@ -2315,7 +2316,7 @@ export default function BiayaRetribusiPage() {
                     )) : <p>-</p>}
                   </div>
                 </div>
-                <div className="rounded-xl sm:col-span-2 bg-linear-to-r from-emerald-50/80 to-white border border-emerald-100 shadow-sm p-4">
+                <div className="rounded-xl sm:col-span-2 bg-linear-to-r from-emerald-50/80 to-surface-card border border-emerald-100 shadow-sm p-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200">
@@ -2344,21 +2345,21 @@ export default function BiayaRetribusiPage() {
               {viewItem.details.length > 0 && (
                 <div className="pt-1">
                   <div className="flex items-center gap-2.5 mb-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                     </span>
                     <div>
                       <h3 className="text-sm font-black text-slate-800">Detail Retribusi</h3>
                       <p className="text-[11px] text-slate-400">Baris kendaraan beserta qty zak & crt</p>
                     </div>
-                    <span className="ml-auto inline-flex items-center rounded-full bg-primary-50 border border-primary-100 px-2.5 py-0.5 text-[11px] font-bold text-primary-700">
+                    <span className="ml-auto inline-flex items-center rounded-full bg-chip-primary border border-chip-primary-border px-2.5 py-0.5 text-[11px] font-bold text-accent-text">
                       {viewItem.details.length} baris
                     </span>
                   </div>
-                  <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="overflow-x-auto rounded-2xl border border-slate-300 shadow-sm">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="bg-slate-50">
+                        <tr className="bg-surface-raised">
                           <th className="table-header text-center w-8">#</th>
                           <th className="table-header">Nopol</th>
                           <th className="table-header">Type</th>
@@ -2369,7 +2370,7 @@ export default function BiayaRetribusiPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {viewItem.details.map((d, i) => (
-                          <tr key={i} className="hover:bg-slate-50/60 transition-colors">
+                          <tr key={i} className="hover:bg-overlay-60 transition-colors">
                             <td className="table-cell text-center">
                               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500 mx-auto">{i + 1}</span>
                             </td>
@@ -2377,7 +2378,7 @@ export default function BiayaRetribusiPage() {
                               <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium font-mono text-slate-700">{upper(d.nopol_kendaraan) || '-'}</span>
                             </td>
                             <td className="table-cell">
-                              <span className="inline-flex items-center rounded-md bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">{upper(d.type_kendaraan) || '-'}</span>
+                              <span className="inline-flex items-center rounded-md bg-chip-primary border border-chip-primary-border px-1.5 py-0.5 text-[10px] font-bold text-accent-text">{upper(d.type_kendaraan) || '-'}</span>
                             </td>
                             <td className="table-cell font-mono text-slate-600">{d.no_surat_jalan || '-'}</td>
                             <td className="table-cell text-right">
@@ -2414,9 +2415,9 @@ export default function BiayaRetribusiPage() {
                     {(viewItem.documents as { id?: number; document_type: string; file_name: string; file_path?: string }[]).map((doc, i) => {
                       const url = docUrl(doc);
                       return (
-                      <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white shadow-sm p-3 hover:border-primary-200 hover:shadow transition-all">
-                        <div className="w-9 h-9 rounded-lg bg-primary-50 ring-1 ring-primary-100 flex items-center justify-center shrink-0">
-                          <svg className="w-4 h-4 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                      <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-300 bg-surface-card shadow-sm p-3 hover:border-chip-primary-border hover:shadow transition-all">
+                        <div className="w-9 h-9 rounded-lg bg-chip-primary ring-1 ring-chip-primary-border flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-gray-800">{doc.document_type.toUpperCase()}</p>
@@ -2424,7 +2425,7 @@ export default function BiayaRetribusiPage() {
                         </div>
                         {url ? (
                           <div className="flex shrink-0 items-center gap-1">
-                            <a href={url} target="_blank" rel="noopener noreferrer" title="Lihat" aria-label={`Lihat ${doc.file_name}`} className="min-h-[36px] min-w-[36px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all inline-flex items-center justify-center">
+                            <a href={url} target="_blank" rel={AUTHENTICATED_FILE_REL} title="Lihat" aria-label={`Lihat ${doc.file_name}`} className="min-h-[36px] min-w-[36px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all inline-flex items-center justify-center">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             </a>
                             <a href={url} download={doc.file_name} title="Unduh" aria-label={`Unduh ${doc.file_name}`} className="min-h-[36px] min-w-[36px] p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all inline-flex items-center justify-center">
@@ -2442,7 +2443,7 @@ export default function BiayaRetribusiPage() {
               )}
 
               {/* Status footer */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="rounded-2xl border border-slate-300 bg-overlay-70 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-xs font-semibold text-slate-500">Status pengajuan</p>
                 {badge(viewItem.status)}
               </div>
@@ -2481,8 +2482,8 @@ export default function BiayaRetribusiPage() {
         >
           {decision && (
             <div className="space-y-4">
-              <div className="rounded-xl overflow-hidden border border-slate-200">
-                <div className="bg-slate-900 px-4 py-3 text-white flex items-center gap-2.5">
+              <div className="rounded-xl overflow-hidden border border-slate-300">
+                <div className="bg-ink-900 px-4 py-3 text-white flex items-center gap-2.5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/10 text-primary-300">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659 1.171-1.671a4.5 4.5 0 0 1 5.07-1.651 3 3 0 0 1 1.482 5.369L12 12" /></svg>
                   </span>
@@ -2492,7 +2493,7 @@ export default function BiayaRetribusiPage() {
                   </div>
                   <span className="ml-auto shrink-0">{badge(decision.item.status)}</span>
                 </div>
-                <div className="divide-y divide-slate-100 bg-white text-sm">
+                <div className="divide-y divide-slate-100 bg-surface-card text-sm">
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <span className="text-slate-500">Depo</span>
                     <span className="font-semibold text-slate-800 font-mono">{decision.item.nama_depo}</span>
@@ -2573,7 +2574,7 @@ export default function BiayaRetribusiPage() {
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
               />
               <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: nopol_kendaraan, nominal_biaya</p>
             </div>

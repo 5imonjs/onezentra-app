@@ -35,13 +35,14 @@ export async function proxy(request: NextRequest) {
       // Gunakan fetch langsung dengan opsi duplex agar Edge Runtime
       // mengizinkan body dikirim. Ini memastikan cookie sesi
       // dan CSRF ditetapkan di domain frontend (localhost:3000).
-      const fetchOptions: Record<string, unknown> = {
+      const fetchOptions: RequestInit & { duplex?: 'half' } = {
         method: request.method,
         headers: Object.fromEntries(request.headers),
         body: request.body,
+        // `duplex` wajib untuk stream body di undici, tapi belum ada di
+        // RequestInit DOM standar — karena itu tipe disempitkan di atas.
         duplex: 'half',
       };
-      // @ts-ignore — duplex adalah opsi Node.js undici yang tidak ada di RequestInit TypeScript
       const resp = await fetch(targetUrl.toString(), fetchOptions);
       // Copy Set-Cookie headers dari backend ke response
       const responseHeaders = new Headers(resp.headers);
@@ -53,7 +54,7 @@ export async function proxy(request: NextRequest) {
         headers: responseHeaders,
       });
       return nextResp;
-    } catch (err) {
+    } catch {
       return NextResponse.json(
         { message: 'Backend tidak dapat dihubungi.' },
         { status: 502 }

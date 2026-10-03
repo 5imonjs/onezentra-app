@@ -294,7 +294,7 @@ export default function OpnameExpiredPage() {
 
   const badge = (status?: string | null) => {
     const s = status || '-';
-    const meta = STATUS_META[s] || { label: s, badge: 'bg-gray-50 text-gray-600', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-gray-600' };
+    const meta = STATUS_META[s] || { label: s, badge: 'bg-surface-raised text-gray-600', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-gray-600' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
@@ -307,7 +307,7 @@ export default function OpnameExpiredPage() {
     <DashboardLayout>
       <div className="space-y-5">
         {/* Header */}
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 text-white">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
@@ -315,14 +315,14 @@ export default function OpnameExpiredPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Batch Expired</h1>
-                <p className="text-gray-400 mt-0.5">Queue kerja mingguan: batch mendekati kedaluwarsa & yang perlu ditindak</p>
+                <p className="text-ink-fg-muted mt-0.5">Queue kerja mingguan: batch mendekati kedaluwarsa & yang perlu ditindak</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* KPI strip */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-x-4 gap-y-4">
             <div className="px-2 py-1">
               <div className="flex items-center gap-3">
@@ -378,7 +378,7 @@ export default function OpnameExpiredPage() {
         </div>
 
         {/* Filter + Tabs + Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Toolbar: week + search */}
           <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-gray-100">
             <label htmlFor="week-start" className="flex items-center gap-2">
@@ -422,7 +422,7 @@ export default function OpnameExpiredPage() {
                     aria-selected={active}
                     aria-controls="opname-table-panel"
                     id={`tab-${tab.key}`}
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${active ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${active ? 'bg-ink-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}
                   >
                     {tab.label}
                     <span className={`px-1.5 py-0.5 rounded-md text-[11px] tabular-nums ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500'}`}>
@@ -515,7 +515,7 @@ export default function OpnameExpiredPage() {
                 <table className="w-full min-w-[980px] border-collapse">
                   <caption className="sr-only">Daftar opname expired</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-200 bg-slate-50">
+                    <tr className="border-b border-slate-300 bg-surface-raised">
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Produk</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
@@ -530,7 +530,7 @@ export default function OpnameExpiredPage() {
                     {waves.map((w) => {
                       const meta = STATUS_META[w.status_ini] || STATUS_META.AMAN;
                       return (
-                        <tr key={w.id} className="hover:bg-slate-50/70 transition-colors">
+                        <tr key={w.id} className="hover:bg-overlay-70 transition-colors">
                           <td className="px-5 py-3 whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               {badge(w.status_ini)}
@@ -612,11 +612,11 @@ export default function OpnameExpiredPage() {
                         {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi {num(w.qty_koreksi_crt)} CRT</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                        <div className="rounded-lg bg-surface-raised px-2.5 py-2">
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Penerimaan</p>
                           <p className="mt-0.5 font-medium text-slate-700">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</p>
                         </div>
-                        <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                        <div className="rounded-lg bg-surface-raised px-2.5 py-2">
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Expired</p>
                           <p className="mt-0.5 font-medium text-slate-700">{fmtDate(w.expired_date_ini)}</p>
                         </div>
@@ -649,7 +649,7 @@ export default function OpnameExpiredPage() {
               </div>
 
               {pagination && pagination.total > ITEMS_PER_PAGE && (
-                <div className="border-t border-gray-100 bg-slate-50/50 px-5 py-4">
+                <div className="border-t border-gray-100 bg-overlay-50 px-5 py-4">
                   <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
                   <p className="text-xs text-slate-500 tabular-nums">
                     Menampilkan {pagination.from ?? 0}–{pagination.to ?? 0} dari {pagination.total} baris
@@ -683,11 +683,11 @@ export default function OpnameExpiredPage() {
       {/* Detail drawer */}
       <div className={`fixed inset-0 z-40 ${selectedId !== null ? 'pointer-events-auto' : 'pointer-events-none'}`}>
         <div
-          className={`absolute inset-0 bg-slate-900/50 backdrop-blur-[2px] transition-opacity duration-300 ${selectedId !== null ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-ink-900/50 backdrop-blur-[2px] transition-opacity duration-300 ${selectedId !== null ? 'opacity-100' : 'opacity-0'}`}
           onClick={() => setSelectedId(null)}
         />
         <aside
-          className={`absolute right-0 top-0 h-full w-full max-w-[480px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ${selectedId !== null ? 'translate-x-0' : 'translate-x-full'}`}
+          className={`absolute right-0 top-0 h-full w-full max-w-[480px] bg-surface-card shadow-2xl flex flex-col transition-transform duration-300 ${selectedId !== null ? 'translate-x-0' : 'translate-x-full'}`}
         >
           {current && (
             <>
@@ -708,7 +708,7 @@ export default function OpnameExpiredPage() {
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
                 {/* Ringkasan */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 rounded-xl p-3">
+                  <div className="bg-surface-raised rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Qty Minggu Ini</p>
                     <p className="text-lg font-bold text-slate-800 tabular-nums mt-1">{fnum(num(current.qty_ini_crt))} CRT</p>
                     {num(current.qty_ini_pcs) > 0 && <p className="text-xs text-slate-500 tabular-nums">{fnum(num(current.qty_ini_pcs))} PCS</p>}
@@ -716,7 +716,7 @@ export default function OpnameExpiredPage() {
                       <p className="text-[11px] text-blue-600 tabular-nums mt-0.5">koreksi {num(current.qty_koreksi_crt)} CRT / {num(current.qty_koreksi_pcs)} PCS</p>
                     )}
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-3">
+                  <div className="bg-surface-raised rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Expired Date</p>
                     <p className="text-lg font-bold text-slate-800 mt-1">{fmtDate(current.expired_date_ini)}</p>
                     <div className="flex items-center gap-2 mt-1">
@@ -724,11 +724,11 @@ export default function OpnameExpiredPage() {
                       <span className={`text-xs font-bold tabular-nums ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).text}`}>{current.sisa_hari} hr</span>
                     </div>
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-3">
+                  <div className="bg-surface-raised rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Depo</p>
                     <p className="text-sm font-semibold text-slate-800 mt-1">{current.nama_depo || current.kode_depo || '-'}</p>
                   </div>
-                  <div className="bg-slate-50 rounded-xl p-3">
+                  <div className="bg-surface-raised rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Sumber Material</p>
                     <p className="text-sm font-semibold text-slate-800 mt-1 break-words">{current.sumber_material || '-'}</p>
                   </div>
@@ -743,10 +743,10 @@ export default function OpnameExpiredPage() {
                 {/* Perbandingan mingguan */}
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Perbandingan Minggu</h3>
-                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="rounded-xl border border-gray-300 overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        <tr className="bg-surface-raised text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                           <th scope="col" className="px-3 py-2 text-left">Aspek</th>
                           <th scope="col" className="px-3 py-2 text-right">Minggu Ini</th>
                           <th scope="col" className="px-3 py-2 text-right">Minggu Lalu</th>
@@ -785,7 +785,7 @@ export default function OpnameExpiredPage() {
 
                 {/* Validasi info */}
                 {current.validated_at && (
-                  <div className="text-xs text-slate-500 bg-gray-50 rounded-xl px-3 py-2.5">
+                  <div className="text-xs text-slate-500 bg-surface-raised rounded-xl px-3 py-2.5">
                     <span className="font-semibold text-slate-700">Divalidasi:</span> oleh {current.validator?.full_name || '-'} · {fmtDate(current.validated_at)}
                   </div>
                 )}
@@ -796,7 +796,7 @@ export default function OpnameExpiredPage() {
                 <button
                   onClick={() => navNext(-1)}
                   disabled={currentIndex <= 0}
-                  className="p-2.5 rounded-xl border border-gray-200 text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2.5 rounded-xl border border-gray-300 text-slate-500 hover:bg-surface-raised transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label="Batch sebelumnya"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
@@ -810,7 +810,7 @@ export default function OpnameExpiredPage() {
                 <button
                   onClick={() => navNext(1)}
                   disabled={currentIndex >= waves.length - 1}
-                  className="p-2.5 rounded-xl border border-gray-200 text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2.5 rounded-xl border border-gray-300 text-slate-500 hover:bg-surface-raised transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label="Batch berikutnya"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>

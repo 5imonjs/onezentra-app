@@ -193,7 +193,7 @@ export default function UsersPage() {
       rh: 'bg-purple-100 text-purple-700',
       blc: 'bg-cyan-100 text-cyan-700',
       bac: 'bg-pink-100 text-pink-700',
-      admin_distirbusi: 'bg-indigo-100 text-indigo-700',
+      admin_distirbusi: 'bg-chip-primary text-accent-text',
       admin_planner: 'bg-teal-100 text-teal-700',
       cheker: 'bg-orange-100 text-orange-700',
       sac: 'bg-lime-100 text-lime-700',
@@ -225,7 +225,7 @@ export default function UsersPage() {
             <p className="text-xs text-gray-500">{item.email}</p>
           </div>
         </div>
-        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-300'}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
           {item.status === 'active' ? 'Active' : 'Inactive'}
         </span>
@@ -255,7 +255,7 @@ export default function UsersPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-6 text-white">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -264,16 +264,16 @@ export default function UsersPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold leading-tight">Users Management</h1>
-              <p className="text-gray-400 mt-0.5">Kelola akun pengguna sistem</p>
+              <p className="text-ink-fg-muted mt-0.5">Kelola akun pengguna sistem</p>
             </div>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center">
-              <svg className="w-6 h-6 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-chip-primary flex items-center justify-center">
+              <svg className="w-6 h-6 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
               </svg>
             </div>
@@ -282,7 +282,7 @@ export default function UsersPage() {
               <p className="text-sm text-gray-500">Total User</p>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
               <svg className="w-6 h-6 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -293,7 +293,7 @@ export default function UsersPage() {
               <p className="text-sm text-gray-500">User Aktif</p>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
               <svg className="w-6 h-6 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
@@ -304,7 +304,7 @@ export default function UsersPage() {
                 <p className="text-sm text-gray-500">Admin Master</p>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
               <svg className="w-6 h-6 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -318,7 +318,7 @@ export default function UsersPage() {
         </div>
 
         {/* Search & Filter */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             <div className="flex-1 min-w-0">
               <SearchInput
@@ -347,7 +347,7 @@ export default function UsersPage() {
               <button
                 type="button"
                 onClick={() => setGroupByDepo(prev => !prev)}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${groupByDepo ? 'border-primary-200 bg-primary-50 text-primary-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${groupByDepo ? 'border-chip-primary-border bg-chip-primary text-accent-text' : 'border-gray-300 bg-surface-card text-gray-600 hover:bg-surface-raised'}`}
                 aria-pressed={groupByDepo}
                 title="Kelompokkan user berdasarkan nama depo"
               >
@@ -380,13 +380,13 @@ export default function UsersPage() {
           </div>
         </div>
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Desktop table */}
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px]">
               <caption className="sr-only">Daftar pengguna</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50">
+                <tr className="bg-surface-raised">
                   <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">User</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
@@ -397,25 +397,25 @@ export default function UsersPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {(groupByDepo ? Object.entries(groupedItems).flatMap(([depoName, depoItems]) => [
-                  <tr key={`depo-${depoName}`} className="bg-slate-50/70">
+                  <tr key={`depo-${depoName}`} className="bg-overlay-70">
                     <td colSpan={6} className="px-5 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-chip-primary text-accent-text">
                             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21M8.25 8.25h.008v.008H8.25V8.25zm0 3.75h.008v.008H8.25V12zm0 3.75h.008v.008H8.25v-.008zm3.75-7.5h.008v.008H12V8.25zm0 3.75h.008v.008H12V12zm0 3.75h.008v.008H12v-.008zM15.75 8.25h.008v.008h-.008V8.25zm0 3.75h.008v.008h-.008V12zm0 3.75h.008v.008h-.008v-.008z" />
                             </svg>
                           </span>
                           <span className="font-bold text-slate-700">{depoName}</span>
                         </div>
-                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
+                        <span className="rounded-full bg-surface-card px-2.5 py-1 text-xs font-medium text-gray-500 ring-1 ring-inset ring-gray-300">
                           {depoItems.length} user
                         </span>
                       </div>
                     </td>
                   </tr>,
                   ...depoItems.map((item) => (
-                    <tr key={item.id} className="group hover:bg-slate-50/70 transition-colors">
+                    <tr key={item.id} className="group hover:bg-overlay-70 transition-colors">
                     <td className="px-5 py-4 text-sm text-slate-500">{(page - 1) * 20 + items.indexOf(item) + 1}</td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -443,7 +443,7 @@ export default function UsersPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-300'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
                         {item.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
@@ -465,7 +465,7 @@ export default function UsersPage() {
                     </tr>
                   )),
                 ]) : items.map((item, index) => (
-                  <tr key={item.id} className="group hover:bg-slate-50/70 transition-colors">
+                  <tr key={item.id} className="group hover:bg-overlay-70 transition-colors">
                     <td className="table-cell text-sm text-slate-500">{(page - 1) * 20 + index + 1}</td>
                     <td className="table-cell">
                       <div className="flex items-center gap-3">
@@ -483,7 +483,7 @@ export default function UsersPage() {
                     </td>
                     <td className="table-cell"><div className="text-sm"><span className="font-mono font-medium text-gray-700">{item.kode_depo || '-'}</span>{item.nama_depo && <span className="text-gray-400 ml-1">· {item.nama_depo}</span>}</div></td>
                     <td className="table-cell"><span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{levels.find(l => l.value === item.level)?.label || item.level}</span></td>
-                    <td className="table-cell"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}><span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>{item.status === 'active' ? 'Active' : 'Inactive'}</span></td>
+                    <td className="table-cell"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-300'}`}><span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>{item.status === 'active' ? 'Active' : 'Inactive'}</span></td>
                     <td className="table-cell"><div className="flex items-center justify-end gap-1">{hasPermission('users.edit') && (<button onClick={() => handleEdit(item)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200" title="Edit" aria-label="Edit"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg></button>)}{hasPermission('users.delete') && (<button onClick={() => handleDelete(item.id)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Hapus" aria-label="Hapus"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>)}</div></td>
                   </tr>
                 )))}
@@ -505,14 +505,14 @@ export default function UsersPage() {
           <div className="divide-y divide-gray-100 md:hidden">
             {groupByDepo ? (
               Object.entries(groupedItems).flatMap(([depoName, depoItems]) => [
-                <div key={`depo-${depoName}`} className="flex items-center justify-between gap-3 bg-slate-50/70 px-4 py-2.5">
+                <div key={`depo-${depoName}`} className="flex items-center justify-between gap-3 bg-overlay-70 px-4 py-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-chip-primary text-accent-text">
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21M8.25 8.25h.008v.008H8.25V8.25zm0 3.75h.008v.008H8.25V12zm0 3.75h.008v.008H8.25v-.008zm3.75-7.5h.008v.008H12V8.25zm0 3.75h.008v.008H12V12zm0 3.75h.008v.008H12v-.008zM15.75 8.25h.008v.008h-.008V8.25zm0 3.75h.008v.008h-.008V12zm0 3.75h.008v.008h-.008v-.008z" /></svg>
                     </span>
                     <span className="font-bold text-slate-700 text-sm">{depoName}</span>
                   </div>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">{depoItems.length} user</span>
+                  <span className="rounded-full bg-surface-card px-2 py-0.5 text-[11px] font-medium text-gray-500 ring-1 ring-inset ring-gray-300">{depoItems.length} user</span>
                 </div>,
                 ...depoItems.map((item) => <React.Fragment key={item.id}>{mobileCard(item)}</React.Fragment>)
               ])
@@ -521,15 +521,15 @@ export default function UsersPage() {
 
           {/* Pagination */}
           {lastPage > 1 && (
-            <div className="border-t border-gray-100 bg-slate-50/50 px-5 py-4">
+            <div className="border-t border-gray-100 bg-overlay-50 px-5 py-4">
               <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
               <p className="text-xs text-slate-500">
                 Menampilkan <span className="font-medium text-slate-700">{fromCount}</span>–<span className="font-medium text-slate-700">{toCount}</span> dari <span className="font-medium text-slate-700">{totalCount}</span> user
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">← Sebelumnya</button>
+                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="rounded-lg border border-gray-300 bg-surface-card px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed">← Sebelumnya</button>
                 <span className="text-xs text-slate-500">Halaman <span className="font-medium text-gray-700">{page}</span> / <span className="font-medium text-gray-700">{lastPage}</span></span>
-                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">Selanjutnya →</button>
+                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="rounded-lg border border-gray-300 bg-surface-card px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed">Selanjutnya →</button>
               </div>
               </div>
             </div>
@@ -627,7 +627,7 @@ export default function UsersPage() {
       >
         <div className="space-y-4">
           <div
-            className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-primary-300"
+            className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-primary-300"
             onClick={() => fileInputRef.current?.click()}
           >
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />

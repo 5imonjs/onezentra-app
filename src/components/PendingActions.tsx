@@ -22,7 +22,7 @@ const TONE_STYLES: Record<Tone, { iconBg: string; chip: string }> = {
   amber:  { iconBg: 'bg-amber-500',  chip: 'bg-amber-50 text-amber-700' },
   blue:   { iconBg: 'bg-blue-600',   chip: 'bg-blue-50 text-blue-700' },
   sky:    { iconBg: 'bg-sky-600',    chip: 'bg-sky-50 text-sky-700' },
-  violet: { iconBg: 'bg-indigo-600', chip: 'bg-indigo-50 text-indigo-700' },
+  violet: { iconBg: 'bg-primary-600', chip: 'bg-chip-primary text-accent-text' },
 };
 
 const MAX_PER_GROUP = 4;
@@ -179,11 +179,11 @@ export default function PendingActions() {
 
   if (loading) {
     return (
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" aria-busy="true">
+      <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5" aria-busy="true">
         <div className="h-5 w-40 bg-gray-100 rounded animate-pulse mb-4" />
         <div className="space-y-2">
-          <div className="h-14 bg-gray-50 rounded-xl animate-pulse" />
-          <div className="h-14 bg-gray-50 rounded-xl animate-pulse" />
+          <div className="h-14 bg-surface-raised rounded-xl animate-pulse" />
+          <div className="h-14 bg-surface-raised rounded-xl animate-pulse" />
         </div>
       </section>
     );
@@ -191,7 +191,7 @@ export default function PendingActions() {
 
   if (error) {
     return (
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between gap-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
           <span>{error}</span>
           <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
@@ -206,8 +206,8 @@ export default function PendingActions() {
   }
 
   return (
-    <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Item yang memerlukan tindakan Anda">
-      <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-white flex flex-wrap items-center justify-between gap-3">
+    <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Item yang memerlukan tindakan Anda">
+      <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Perlu Tindakan</h2>
           <p className="text-sm text-gray-500">Item yang menunggu aksi Anda hari ini</p>
@@ -232,7 +232,7 @@ export default function PendingActions() {
                   <li key={item.id}>
                     <Link
                       href={item.href}
-                      className="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2.5 hover:border-gray-200 hover:bg-gray-50 transition-colors group"
+                      className="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2.5 hover:border-gray-300 hover:bg-surface-raised transition-colors group"
                     >
                       <span className={`w-2 h-2 rounded-full shrink-0 ${tone.iconBg}`} aria-hidden="true" />
                       <span className="min-w-0 flex-1">

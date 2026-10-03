@@ -57,7 +57,7 @@ export default function SearchInput({
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
         </svg>
         {activeFilter && (
-          <span className="absolute left-10 top-1/2 -translate-y-1/2 text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-200">
+          <span className="absolute left-10 top-1/2 -translate-y-1/2 text-xs font-medium text-accent-text bg-chip-primary px-2 py-0.5 rounded-md border border-chip-primary-border">
             {activeFilterObj?.label || activeFilter}
           </span>
         )}
@@ -73,7 +73,7 @@ export default function SearchInput({
           className={`input-field pl-10 ${activeFilter && value ? 'pl-28' : activeFilter ? 'pl-24' : ''}`}
         />
         {showDropdown && filters.length > 0 && (
-          <div role="listbox" aria-label="Filter pencarian" className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50">
+          <div role="listbox" aria-label="Filter pencarian" className="absolute top-full left-0 mt-1 w-56 bg-surface-card rounded-xl shadow-lg border border-gray-300 py-1 z-50">
             <button
               role="option"
               aria-selected={!activeFilter}
@@ -81,8 +81,8 @@ export default function SearchInput({
                 onFilterChange?.('');
                 setShowDropdown(false);
               }}
-              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 min-h-[40px] ${
-                !activeFilter ? 'text-primary-600 bg-primary-50' : 'text-gray-700'
+              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-surface-raised transition-colors flex items-center gap-2 min-h-[40px] ${
+                !activeFilter ? 'text-accent-text bg-chip-primary' : 'text-gray-700'
               }`}
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -99,20 +99,20 @@ export default function SearchInput({
                   onFilterChange?.(filter.key);
                   setShowDropdown(false);
                 }}
-                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 min-h-[40px] ${
-                  activeFilter === filter.key ? 'text-primary-600 bg-primary-50' : 'text-gray-700'
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-surface-raised transition-colors flex items-center gap-2 min-h-[40px] ${
+                  activeFilter === filter.key ? 'text-accent-text bg-chip-primary' : 'text-gray-700'
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 ${
-                  filter.key === 'A' ? 'bg-green-500' :
+                  filter.key === 'A' ? 'bg-emerald-500' :
                   filter.key === 'DEL' ? 'bg-yellow-500' :
                   filter.key === 'EXISTING' ? 'bg-blue-500' :
-                  filter.key === 'active' ? 'bg-green-500' :
+                  filter.key === 'active' ? 'bg-emerald-500' :
                   filter.key === 'inactive' ? 'bg-yellow-500' :
-                  filter.key === 'approved' ? 'bg-green-500' :
+                  filter.key === 'approved' ? 'bg-emerald-500' :
                   filter.key === 'rejected' ? 'bg-red-500' :
                   filter.key === 'pending' ? 'bg-yellow-500' :
-                  filter.key === 'completed' ? 'bg-green-500' :
+                  filter.key === 'completed' ? 'bg-emerald-500' :
                   filter.key === 'cancelled' ? 'bg-red-500' :
                   'bg-gray-400'
                 }`} />

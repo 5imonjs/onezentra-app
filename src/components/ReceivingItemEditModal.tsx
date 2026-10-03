@@ -3,9 +3,10 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
-import { opnameExpired, getErrorMessage, API_ROOT } from '@/lib/api';
+import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import { CONDITIONS, CONDITION_LABELS, canonicalCondition, conditionRequiresPhoto } from '@/lib/condition';
+import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
 
 interface EditItem {
   id: number;
@@ -161,7 +162,7 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
               Qty PCS {item?.conversion_factor != null ? '(otomatis)' : '(opsional)'}
             </label>
             {item?.conversion_factor != null ? (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+              <div className="rounded-xl border border-gray-300 bg-surface-raised px-3 py-2.5">
                 <p className="text-sm font-semibold text-gray-800 tabular-nums">
                   {parseFloat(form.qty_crt || '0') * item.conversion_factor}
                 </p>
@@ -210,10 +211,10 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
             )}
             {item?.photo && !photoFile && (
               <a
-                href={item.photo.startsWith('http') ? item.photo : `${API_ROOT}/storage/${item.photo}`}
+                href={storageFileUrl(item.photo) ?? '#'}
                 target="_blank"
-                rel="noopener noreferrer"
-                className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-800"
+                rel={AUTHENTICATED_FILE_REL}
+                className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-accent-text hover:text-accent-text-strong"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                 Lihat foto tersimpan

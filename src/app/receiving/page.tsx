@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { receivings, getErrorMessage, API_ROOT } from '@/lib/api';
+import { receivings, getErrorMessage } from '@/lib/api';
+import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -306,7 +307,7 @@ export default function ReceivingPage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="space-y-5">
         {/* Header — reflektif; angka status dari total server */}
-        <header className="rounded-2xl bg-linear-to-r from-gray-900 via-gray-900 to-gray-800 p-6 text-white shadow-sm">
+        <header className="rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
@@ -314,12 +315,12 @@ export default function ReceivingPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Check Out Point</h1>
-                <p className="mt-0.5 text-gray-400">Konfirmasi selesai bongkar dengan scan barcode PO transporter.</p>
+                <p className="mt-0.5 text-ink-fg-muted">Konfirmasi selesai bongkar dengan scan barcode PO transporter.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {[
-                { label: 'Total', value: statusTotals.total, badge: 'bg-white/20 text-white', dot: 'bg-white' },
+                { label: 'Total', value: statusTotals.total, badge: 'bg-white/20 text-white', dot: 'bg-surface-card' },
                 { label: 'Menunggu', value: statusTotals.pending, badge: 'bg-amber-400 text-amber-950', dot: 'bg-amber-400' },
                 { label: 'Diproses', value: statusTotals.inProgress, badge: 'bg-blue-400 text-blue-950', dot: 'bg-blue-400' },
                 { label: 'Selesai', value: statusTotals.completed, badge: 'bg-emerald-400 text-emerald-950', dot: 'bg-emerald-400' },
@@ -335,14 +336,14 @@ export default function ReceivingPage() {
         </header>
 
         {/* Konfirmasi Selesai Bongkar */}
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Konfirmasi Selesai Bongkar</h2>
               <p className="mt-0.5 text-xs text-slate-400">Pilih data aktif di tabel, atau scan barcode PO transporter.</p>
             </div>
             {!foundReceiving && (
-              <button onClick={() => setShowScanner(true)} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98]">
+              <button onClick={() => setShowScanner(true)} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98]">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" /></svg>
                 Scan Barcode
               </button>
@@ -350,8 +351,8 @@ export default function ReceivingPage() {
           </div>
           <div className="p-5">
             {!foundReceiving ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-linear-to-br from-slate-50/80 to-primary-50/40 px-6 py-10 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-linear-to-br from-slate-50/80 to-brand-wash/40 px-6 py-10 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-card shadow-sm ring-1 ring-slate-200">
                   <svg className="h-6 w-6 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
                 <h3 className="text-sm font-bold text-slate-800">Belum ada receiving dipilih</h3>
@@ -360,23 +361,23 @@ export default function ReceivingPage() {
                 </p>
               </div>
             ) : (
-              <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-slate-900 via-slate-900 to-slate-800 p-5 text-white shadow-xl sm:p-6">
+              <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-ink-900 via-ink-900 to-ink-800 p-5 text-white shadow-xl sm:p-6">
                 <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary-500/10 blur-2xl" />
                 <div className="relative mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">PO Transporter</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-ink-fg-muted">PO Transporter</p>
                     <p className="mt-0.5 break-all font-mono text-sm font-semibold text-white">{foundReceiving.rencana_kirim?.po_transporter || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Driver</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-ink-fg-muted">Driver</p>
                     <p className="mt-0.5 text-sm font-medium text-white">{foundReceiving.rencana_kirim?.driver_name || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nopol</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-ink-fg-muted">Nopol</p>
                     <p className="mt-0.5 text-sm font-medium text-white">{foundReceiving.rencana_kirim?.nopol || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-ink-fg-muted">Status</p>
                     <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold text-white ring-1 ring-white/15">
                       <span className={`h-1.5 w-1.5 rounded-full ${statusConfig[foundReceiving.status]?.dot || 'bg-slate-400'}`} />{statusConfig[foundReceiving.status]?.label || foundReceiving.status}
                     </span>
@@ -384,7 +385,7 @@ export default function ReceivingPage() {
                 </div>
                 <div className="relative mb-5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-300">Progres bongkar</span>
+                    <span className="font-medium text-ink-fg-muted">Progres bongkar</span>
                     <span className="font-bold tabular-nums text-white">{foundReceiving.total_received_qty}<span className="text-slate-400"> / {foundReceiving.total_expected_qty}</span></span>
                   </div>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
@@ -398,7 +399,7 @@ export default function ReceivingPage() {
                 </div>
                 <div className="relative flex flex-wrap gap-2">
                   {['PENDING', 'IN_PROGRESS'].includes(foundReceiving.status) && canFinish && (
-                    <button onClick={() => setShowFinishConfirm(true)} disabled={scanning} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50">
+                    <button onClick={() => setShowFinishConfirm(true)} disabled={scanning} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-surface-card px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50">
                       {scanning ? 'Memproses...' : 'Selesai Bongkar'}
                     </button>
                   )}
@@ -427,7 +428,7 @@ export default function ReceivingPage() {
                   </p>
                 </div>
                 {scanResult.success && notifiedRecipients && (
-                  <div className="border-t border-emerald-100 px-4 py-3 bg-white">
+                  <div className="border-t border-emerald-100 px-4 py-3 bg-surface-card">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email dikirim ke:</p>
                     <div className="flex flex-wrap gap-2">
                       {notifiedRecipients.to.map((r) => (
@@ -451,7 +452,7 @@ export default function ReceivingPage() {
         </section>
 
         {/* Daftar Receiving */}
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Daftar Check Out Point</h2>
@@ -492,7 +493,7 @@ export default function ReceivingPage() {
               <table className="w-full min-w-[720px] border-collapse">
                 <caption className="sr-only">Daftar receiving</caption>
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-200 bg-slate-50">
+                  <tr className="border-b border-slate-300 bg-surface-raised">
                     <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
                     <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No. PO Transporter</th>
                     <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
@@ -527,7 +528,7 @@ export default function ReceivingPage() {
                           {hasSearch ? (
                             <>
                               <p className="text-sm font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
-                              <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-primary-600 hover:underline">Hapus pencarian</button>
+                              <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="text-xs font-semibold text-accent-text hover:underline">Hapus pencarian</button>
                             </>
                           ) : (
                             <p className="text-sm font-medium">Belum ada receiving</p>
@@ -537,13 +538,13 @@ export default function ReceivingPage() {
                     </tr>
                   ) : (
                     items.map((item, index) => {
-                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
+                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-surface-raised', text: 'text-gray-600', dot: 'bg-gray-400' };
                       const isActive = foundReceiving?.id === item.id;
                       return (
                         <tr
                           key={item.id}
                           onClick={() => handleSelect(item)}
-                          className={`cursor-pointer transition-colors duration-150 ${isActive ? 'bg-primary-50 ring-1 ring-inset ring-primary-200' : 'hover:bg-gray-50/50'}`}
+                          className={`cursor-pointer transition-colors duration-150 ${isActive ? 'bg-chip-primary ring-1 ring-inset ring-brand-wash-strong' : 'hover:bg-overlay-50'}`}
                         >
                           <td className="px-5 py-3 text-xs font-mono text-slate-400">{(page - 1) * 20 + index + 1}</td>
                           <td className="px-5 py-3"><span className="font-mono text-sm font-semibold text-slate-900">{fmt(item.rencana_kirim?.po_transporter)}</span></td>
@@ -551,7 +552,7 @@ export default function ReceivingPage() {
                           <td className="px-5 py-3 text-right"><ProgressCell received={item.total_received_qty} expected={item.total_expected_qty} /></td>
                           <td className="px-5 py-3 text-center"><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text}`}><span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span></td>
                           <td className="px-5 py-3 text-right">
-                            <button onClick={(e) => { e.stopPropagation(); handleView(item); }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-primary-50 hover:text-primary-700">
+                            <button onClick={(e) => { e.stopPropagation(); handleView(item); }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-chip-primary hover:text-accent-text">
                               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                               Detail
                             </button>
@@ -570,22 +571,22 @@ export default function ReceivingPage() {
             {loading ? (
               <div className="animate-pulse space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={`skel-m-${i}`} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div key={`skel-m-${i}`} className="rounded-2xl border border-slate-100 bg-surface-card p-4 shadow-sm">
                     <div className="h-4 w-28 rounded bg-slate-100" />
                     <div className="mt-3 h-4 w-40 rounded bg-slate-100" />
                   </div>
                 ))}
               </div>
             ) : items.length === 0 ? (
-              <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center text-sm text-slate-400">
+              <div className="rounded-2xl border border-slate-100 bg-surface-card p-10 text-center text-sm text-slate-400">
                 {hasSearch ? 'Tidak ada hasil untuk pencarian Anda.' : 'Belum ada receiving'}
               </div>
             ) : (
               items.map((item) => {
-                const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
+                const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-surface-raised', text: 'text-gray-600', dot: 'bg-gray-400' };
                 const isActive = foundReceiving?.id === item.id;
                 return (
-                  <div key={item.id} onClick={() => handleSelect(item)} className={`cursor-pointer rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md ${isActive ? 'border-primary-200 ring-1 ring-primary-200' : 'border-slate-100'}`}>
+                  <div key={item.id} onClick={() => handleSelect(item)} className={`cursor-pointer rounded-2xl border bg-surface-card p-4 shadow-sm transition-all hover:shadow-md ${isActive ? 'border-chip-primary-border ring-1 ring-brand-wash-strong' : 'border-slate-100'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-mono text-sm font-bold text-slate-800">{fmt(item.rencana_kirim?.po_transporter)}</p>
@@ -598,7 +599,7 @@ export default function ReceivingPage() {
                     </div>
                     <div className="mt-3 flex items-end justify-between gap-3">
                       <ProgressCell received={item.total_received_qty} expected={item.total_expected_qty} />
-                      <button onClick={(e) => { e.stopPropagation(); handleView(item); }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-primary-50 hover:text-primary-700" aria-label="Lihat detail">
+                      <button onClick={(e) => { e.stopPropagation(); handleView(item); }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-chip-primary hover:text-accent-text" aria-label="Lihat detail">
                         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       </button>
                     </div>
@@ -609,7 +610,7 @@ export default function ReceivingPage() {
           </div>
 
           {/* Pagination */}
-          <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3.5 sm:px-5">
+          <div className="border-t border-gray-100 bg-overlay-60 px-4 py-3.5 sm:px-5">
             <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">Sebelumnya</button>
               <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
@@ -640,7 +641,7 @@ export default function ReceivingPage() {
           {viewItem && (
             <div className="space-y-5">
               {/* Ringkasan */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className="rounded-2xl border border-slate-300 bg-surface-raised p-5">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">PO Transporter</p>
@@ -648,11 +649,11 @@ export default function ReceivingPage() {
                     <p className="text-xs text-slate-500 mt-0.5">{viewItem.rencana_kirim?.driver_name || '-'} · {viewItem.rencana_kirim?.nopol || '-'}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-white border border-slate-200 p-3 text-center min-w-[76px]">
+                    <div className="rounded-xl bg-surface-card border border-slate-300 p-3 text-center min-w-[76px]">
                       <p className="text-[9px] font-bold tracking-widest text-slate-400 uppercase">Expected</p>
                       <p className="text-lg font-bold mt-0.5 text-slate-700 tabular-nums">{viewItem.total_expected_qty}</p>
                     </div>
-                    <div className="rounded-xl bg-white border border-slate-200 p-3 text-center min-w-[76px]">
+                    <div className="rounded-xl bg-surface-card border border-slate-300 p-3 text-center min-w-[76px]">
                       <p className="text-[9px] font-bold tracking-widest text-slate-400 uppercase">Received</p>
                       <p className="text-lg font-bold mt-0.5 text-emerald-600 tabular-nums">{viewItem.total_received_qty}</p>
                     </div>
@@ -670,7 +671,7 @@ export default function ReceivingPage() {
               </div>
 
               {/* Items Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="bg-surface-card rounded-2xl border border-slate-300 overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-900">Daftar Barang</h3>
                   <span className="text-[11px] text-slate-400">{viewItem.items?.length ?? 0} item</span>
@@ -680,7 +681,7 @@ export default function ReceivingPage() {
                     <table className="w-full min-w-[1020px] border-collapse">
                       <caption className="sr-only">Detail item receiving</caption>
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200">
+                        <tr className="bg-surface-raised border-b border-slate-300">
                           <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode</th>
                           <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama</th>
                           <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Expected</th>
@@ -695,7 +696,7 @@ export default function ReceivingPage() {
                         {viewItem.items.map((item) => {
                           const selisih = Number(item.actual_qty) - Number(item.expected_qty);
                           return (
-                          <tr key={item.id} className="even:bg-slate-50/40 hover:bg-slate-50 transition-colors">
+                          <tr key={item.id} className="even:bg-overlay-40 hover:bg-surface-raised transition-colors">
                             <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.kode_barang}</td>
                             <td className="px-4 py-3 text-sm text-slate-800 font-medium">{item.nama_barang}</td>
                             <td className="px-4 py-3 text-right text-sm text-slate-600 tabular-nums">{item.expected_qty}</td>
@@ -717,7 +718,7 @@ export default function ReceivingPage() {
                             <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
                             <td className="px-4 py-3 text-center">
                               {item.photo ? (
-                                <a href={item.photo.startsWith('http') ? item.photo : `${API_ROOT}/storage/${item.photo}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 font-medium">
+                                <a href={storageFileUrl(item.photo) ?? '#'} target="_blank" rel={AUTHENTICATED_FILE_REL} className="inline-flex items-center gap-1 text-xs text-accent-text hover:text-accent-text-strong font-medium">
                                   <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                                   Lihat
                                 </a>
@@ -763,7 +764,7 @@ export default function ReceivingPage() {
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
             />
             <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: no_surat_jalan, nama_thl</p>
           </div>
