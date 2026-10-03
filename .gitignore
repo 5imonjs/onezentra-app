@@ -29,9 +29,19 @@
 .phpunit.result.cache
 .phpactor.json
 
-# SQLite database — jangan commit
+# SQLite database — jangan commit.
+#
+# Catatan: pola "/nama" (tanpa wildcard) hanya cocok untuk path PERSIS di root.
+# File DB bisa muncul sebagai "onezentra_warehouse" (tanpa ekstensi) maupun
+# "onezentra_warehouse.sqlite" — keduanya harus tertangkap, makanya ada
+# versi wildcard.
 /onezentra_warehouse
+/onezentra_warehouse.*
+/*.sqlite
+/*.sqlite3
+/*.db
 /database/*.sqlite
+/database/*.db
 
 # ===== Frontend (onezentra-web) =====
 onezentra-web/node_modules/

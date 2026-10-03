@@ -49,8 +49,10 @@ onezentra-warehouse-system/
 │   ├── vitest.config.ts          # test config + coverage thresholds
 │   └── tsconfig.json
 ├── .ai/rules/                    # Project-specific AI rules
-├── project_flow.md               # ← file ini
-└── THL_RETRIBUSI_SYSTEM_FLOW.md  # Dokumentasi alur THL retribusi
+└── docs/                         # Dokumentasi proyek
+    ├── project_flow.md               # ← file ini
+    ├── THL_RETRIBUSI_SYSTEM_FLOW.md  # Dokumentasi alur THL retribusi
+    └── QA_REPORT.md                  # Laporan QA & hasil pengujian
 ```
 
 ---

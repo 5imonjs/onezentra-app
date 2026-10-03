@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasDepotScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class BiayaThl extends Model
 {
     use HasDepotScope;
+    use HasFactory;
 
     protected $table = 'biaya_thls';
 

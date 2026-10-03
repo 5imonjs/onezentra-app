@@ -41,6 +41,16 @@ php artisan boost:install
 
 Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
 
+## Dokumentasi
+
+| Dokumen | Isi |
+|---|---|
+| [`docs/project_flow.md`](docs/project_flow.md) | Struktur sistem & alur utama |
+| [`docs/THL_RETRIBUSI_SYSTEM_FLOW.md`](docs/THL_RETRIBUSI_SYSTEM_FLOW.md) | Alur detail biaya THL & retribusi |
+| [`docs/QA_REPORT.md`](docs/QA_REPORT.md) | Laporan QA: cakupan, temuan, batas pengujian |
+| [`AGENTS.md`](AGENTS.md) | Panduan kerja untuk AI coding agent |
+| [`onezentra-web/docs/DESIGN-SYSTEM.md`](onezentra-web/docs/DESIGN-SYSTEM.md) | Token, komponen, dan standar aksesibilitas UI |
+
 ## Contributing
 
 Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).

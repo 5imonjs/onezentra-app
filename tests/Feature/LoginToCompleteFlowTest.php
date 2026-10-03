@@ -25,7 +25,7 @@ class LoginToCompleteFlowTest extends TestCase
     {
         parent::setUp();
 
-        // Permission set lengkap sesuai project_flow.md
+        // Permission set lengkap sesuai docs/project_flow.md
         $allPerms = [
             'rencana_kirim.view', 'rencana_kirim.create', 'rencana_kirim.edit', 'rencana_kirim.delete',
             'gate.view', 'gate.create',
