@@ -451,16 +451,16 @@ export default function NpnPage() {
                     </td>
                     <td className="px-5 py-3 text-right text-sm">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setViewItem(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200" title="Lihat Detail" aria-label="Lihat Detail">
+                        <button onClick={() => setViewItem(item)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200" title="Lihat Detail" aria-label="Lihat Detail">
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         </button>
                         {hasPermission('npn.edit') && (
-                          <button onClick={() => handleEdit(item)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-all duration-200" title="Edit" aria-label="Edit">
+                          <button onClick={() => handleEdit(item)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-all duration-200" title="Edit" aria-label="Edit">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                             </button>
                         )}
                         {hasPermission('npn.delete') && (
-                          <button onClick={() => handleDelete(item.id)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200" title="Hapus" aria-label="Hapus">
+                          <button onClick={() => handleDelete(item.id)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200" title="Hapus" aria-label="Hapus">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                             </button>
                         )}
@@ -502,9 +502,9 @@ export default function NpnPage() {
                   <p className="text-slate-500 col-span-2">Barcode: <span className="font-mono text-slate-700">{item.szBarcode || 'Belum diisi'}</span></p>
                 </div>
                 <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
-                  <button onClick={() => setViewItem(item)} className="min-h-[36px] px-2 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors" aria-label="Lihat Detail">Lihat</button>
-                  {hasPermission('npn.edit') && <button onClick={() => handleEdit(item)} className="min-h-[36px] px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label="Edit">Edit</button>}
-                  {hasPermission('npn.delete') && <button onClick={() => handleDelete(item.id)} className="min-h-[36px] px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label="Hapus">Hapus</button>}
+                  <button onClick={() => setViewItem(item)} className="min-h-9 px-2 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors" aria-label="Lihat Detail">Lihat</button>
+                  {hasPermission('npn.edit') && <button onClick={() => handleEdit(item)} className="min-h-9 px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label="Edit">Edit</button>}
+                  {hasPermission('npn.delete') && <button onClick={() => handleDelete(item.id)} className="min-h-9 px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label="Hapus">Hapus</button>}
                 </div>
               </div>
             ))}
@@ -524,13 +524,13 @@ export default function NpnPage() {
               Halaman {page} dari {lastPage}
             </span>
             <div className="flex items-center gap-2 order-1 sm:order-2">
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-[44px] px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
                 <span className="flex items-center gap-1.5">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                   Sebelumnya
                 </span>
               </button>
-              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-[44px] px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
+              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
                 <span className="flex items-center gap-1.5">
                   Selanjutnya
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -546,10 +546,10 @@ export default function NpnPage() {
         <div role="status" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-ink-900 text-white pl-5 pr-3 py-2.5 rounded-2xl shadow-2xl border border-white/10 animate-fade-in">
           <span className="text-sm font-medium whitespace-nowrap">{selectedIds.length} produk terpilih</span>
           <span aria-hidden="true" className="w-px h-6 bg-white/20" />
-          <button onClick={() => setSelectedIds([])} className="min-h-[44px] px-4 text-sm font-medium text-ink-fg hover:text-white hover:bg-white/10 rounded-xl transition-colors">
+          <button onClick={() => setSelectedIds([])} className="min-h-11 px-4 text-sm font-medium text-ink-fg hover:text-white hover:bg-white/10 rounded-xl transition-colors">
             Batal
           </button>
-          <button onClick={handleBulkDelete} className="min-h-[44px] px-4 text-sm font-medium bg-red-600 hover:bg-red-500 rounded-xl transition-colors">
+          <button onClick={handleBulkDelete} className="min-h-11 px-4 text-sm font-medium bg-red-600 hover:bg-red-500 rounded-xl transition-colors">
             Hapus
           </button>
         </div>
@@ -754,7 +754,7 @@ export default function NpnPage() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                    className="text-xs font-medium text-gray-400 hover:text-red-500 transition-colors min-h-[44px] px-4"
+                    className="text-xs font-medium text-gray-400 hover:text-red-500 transition-colors min-h-11 px-4"
                     aria-label="Hapus file terpilih"
                   >
                     Hapus file

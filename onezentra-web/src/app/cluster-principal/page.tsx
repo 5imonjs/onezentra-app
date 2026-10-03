@@ -466,12 +466,12 @@ return (
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {hasPermission('cluster_principal.edit') && (
-                          <button onClick={() => handleEdit(row)} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-all duration-200" title="Edit" aria-label={`Edit ${row.product_sku}`}>
+                          <button onClick={() => handleEdit(row)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-all duration-200" title="Edit" aria-label={`Edit ${row.product_sku}`}>
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                           </button>
                         )}
                         {hasPermission('cluster_principal.delete') && (
-                          <button onClick={() => { setEditItem(row); setShowDeleteConfirm(true); }} className="min-h-[44px] min-w-[44px] p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200" title="Hapus" aria-label={`Hapus ${row.product_sku}`}>
+                          <button onClick={() => { setEditItem(row); setShowDeleteConfirm(true); }} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200" title="Hapus" aria-label={`Hapus ${row.product_sku}`}>
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0v-.916c0-1.18.91-2.164 2.09-2.201a51.964 51.964 0 003.32 0c1.18-.037 2.09-1.022 2.09-2.201v-.916m-16.538 0H4.772M16.5 4.5h-3a1.125 1.125 0 01-1.125-1.125V3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125h-3m1.5-1.5h-3.75m2.25 5.25v5.25" /></svg>
                           </button>
                         )}
@@ -501,8 +501,8 @@ return (
                   <p className="text-slate-500 col-span-2">Principal 2: <span className="text-slate-700">{row.principal_2 || '-'}</span></p>
                 </div>
                 <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
-                  {hasPermission('cluster_principal.edit') && <button onClick={() => handleEdit(row)} className="min-h-[36px] px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label={`Edit ${row.product_sku}`}>Edit</button>}
-                  {hasPermission('cluster_principal.delete') && <button onClick={() => { setEditItem(row); setShowDeleteConfirm(true); }} className="min-h-[36px] px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label={`Hapus ${row.product_sku}`}>Hapus</button>}
+                  {hasPermission('cluster_principal.edit') && <button onClick={() => handleEdit(row)} className="min-h-9 px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label={`Edit ${row.product_sku}`}>Edit</button>}
+                  {hasPermission('cluster_principal.delete') && <button onClick={() => { setEditItem(row); setShowDeleteConfirm(true); }} className="min-h-9 px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label={`Hapus ${row.product_sku}`}>Hapus</button>}
                 </div>
               </div>
             ))}
@@ -521,13 +521,13 @@ return (
               Menampilkan <span className="font-medium text-slate-800">{items.length > 0 ? (page - 1) * 20 + 1 : 0}-{Math.min(page * 20, totalCount)}</span> dari <span className="font-medium text-slate-800">{totalCount}</span>
             </p>
             <div className="flex items-center gap-2">
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-[44px] px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
                 Sebelumnya
               </button>
               <span className="text-sm text-slate-500">
                 Halaman <span className="font-medium text-slate-800">{page}</span> dari <span className="font-medium text-slate-800">{lastPage}</span>
               </span>
-              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-[44px] px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
+              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
                 Berikutnya
               </button>
             </div>

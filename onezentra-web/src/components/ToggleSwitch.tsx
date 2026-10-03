@@ -37,7 +37,7 @@ export default function ToggleSwitch({
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
         className={`
-          relative inline-flex items-center rounded-full transition-all duration-200 ease-in-out min-w-[44px] min-h-[44px] p-[10px]
+          relative inline-flex items-center rounded-full transition-all duration-200 ease-in-out min-w-11 min-h-11 p-[10px]
           ${s.track}
           ${checked ? 'bg-primary-600 shadow-sm shadow-primary-600/30' : 'bg-gray-200'}
           ${disabled ? '' : 'hover:shadow-md'}
