@@ -29,6 +29,8 @@ class PermissionSeeder extends Seeder
             ['name' => 'Validasi Dokumen Validasi Item', 'slug' => 'sj_validation.validate', 'menu_group' => 'Validasi Dokumen', 'icon' => 'check-badge', 'route' => 'sj_validation.scan', 'sort_order' => 122],
             ['name' => 'Validasi Dokumen Selesaikan', 'slug' => 'sj_validation.complete', 'menu_group' => 'Validasi Dokumen', 'icon' => 'check-double', 'route' => 'sj_validation.complete', 'sort_order' => 124],
             ['name' => 'Validasi Dokumen Delete', 'slug' => 'sj_validation.delete', 'menu_group' => 'Validasi Dokumen', 'icon' => 'check-delete', 'route' => 'sj_validation.destroy', 'sort_order' => 130],
+            ['name' => 'Validasi Dokumen Ubah Setelah Selesai', 'slug' => 'sj_validation.edit_completed', 'menu_group' => 'Validasi Dokumen', 'icon' => 'unlock', 'route' => 'sj_validation.edit_completed', 'sort_order' => 128],
+            ['name' => 'Validasi Dokumen Batalkan', 'slug' => 'sj_validation.cancel', 'menu_group' => 'Validasi Dokumen', 'icon' => 'ban', 'route' => 'sj_validation.cancel', 'sort_order' => 126],
             ['name' => 'Receiving View', 'slug' => 'receiving.view', 'menu_group' => 'Receiving', 'icon' => 'receive', 'route' => 'receiving.index', 'sort_order' => 140],
             ['name' => 'Receiving Create', 'slug' => 'receiving.create', 'menu_group' => 'Receiving', 'icon' => 'plus', 'route' => 'receiving.create', 'sort_order' => 150],
             ['name' => 'Receiving Edit', 'slug' => 'receiving.edit', 'menu_group' => 'Receiving', 'icon' => 'edit', 'route' => 'receiving.edit', 'sort_order' => 160],
@@ -41,6 +43,10 @@ class PermissionSeeder extends Seeder
             ['name' => 'NPN Create', 'slug' => 'npn.create', 'menu_group' => 'NPN', 'icon' => 'plus', 'route' => 'npn.create', 'sort_order' => 220],
             ['name' => 'NPN Edit', 'slug' => 'npn.edit', 'menu_group' => 'NPN', 'icon' => 'edit', 'route' => 'npn.edit', 'sort_order' => 230],
             ['name' => 'NPN Delete', 'slug' => 'npn.delete', 'menu_group' => 'NPN', 'icon' => 'trash', 'route' => 'npn.destroy', 'sort_order' => 240],
+            ['name' => 'Cluster Principal View', 'slug' => 'cluster_principal.view', 'menu_group' => 'Cluster Principal', 'icon' => 'building-office', 'route' => 'cluster_principal.index', 'sort_order' => 245],
+            ['name' => 'Cluster Principal Create', 'slug' => 'cluster_principal.create', 'menu_group' => 'Cluster Principal', 'icon' => 'plus', 'route' => 'cluster_principal.create', 'sort_order' => 246],
+            ['name' => 'Cluster Principal Edit', 'slug' => 'cluster_principal.edit', 'menu_group' => 'Cluster Principal', 'icon' => 'edit', 'route' => 'cluster_principal.edit', 'sort_order' => 247],
+            ['name' => 'Cluster Principal Delete', 'slug' => 'cluster_principal.delete', 'menu_group' => 'Cluster Principal', 'icon' => 'trash', 'route' => 'cluster_principal.destroy', 'sort_order' => 248],
             ['name' => 'Standar Umur View', 'slug' => 'standar_umur.view', 'menu_group' => 'Standar Umur', 'icon' => 'clock', 'route' => 'standar_umur.index', 'sort_order' => 250],
             ['name' => 'Standar Umur Create', 'slug' => 'standar_umur.create', 'menu_group' => 'Standar Umur', 'icon' => 'plus', 'route' => 'standar_umur.create', 'sort_order' => 260],
             ['name' => 'Standar Umur Edit', 'slug' => 'standar_umur.edit', 'menu_group' => 'Standar Umur', 'icon' => 'edit', 'route' => 'standar_umur.edit', 'sort_order' => 270],
@@ -205,7 +211,7 @@ class PermissionSeeder extends Seeder
                 'dashboard.view', 'penerimaan.view', 'penerimaan.create', 'penerimaan.edit',
                 'npn.view',
                 'standar_umur.view', 'standarisasi.view',
-                'sj_validation.view', 'sj_validation.create', 'sj_validation.edit', 'sj_validation.validate', 'sj_validation.complete', 'sj_validation.delete',
+                'sj_validation.view', 'sj_validation.create', 'sj_validation.edit', 'sj_validation.validate', 'sj_validation.complete', 'sj_validation.delete', 'sj_validation.cancel',
                 'rencana_kirim.view', 'rencana_kirim.edit',
                 'gate.view', 'gate.create', 'gate.edit', 'gate.delete',
                 'receiving.view', 'receiving.create', 'receiving.edit', 'receiving.delete',
@@ -226,6 +232,20 @@ class PermissionSeeder extends Seeder
             if (in_array('biaya_retribusi.view', $rolePermMap[$roleSlug], true)
                 && ! in_array('biaya_retribusi.export', $rolePermMap[$roleSlug], true)) {
                 $rolePermMap[$roleSlug][] = 'biaya_retribusi.export';
+            }
+        }
+
+        // Cluster/principal mengikuti grant NPN 1:1 (view->view, create->create,
+        // dst). Menu ini juga master produk, jadi role yang sudah dipercaya
+        // mengelola NPN otomatis managingnya juga di sini. Diturunkan dari peta
+        // yang sudah ada, bukan ditulis ulang per role, supaya permission baru
+        // di masa depan tidak harus dicatat di dua tempat.
+        foreach (array_keys($rolePermMap) as $roleSlug) {
+            foreach (['view', 'create', 'edit', 'delete'] as $action) {
+                if (in_array('npn.'.$action, $rolePermMap[$roleSlug], true)
+                    && ! in_array('cluster_principal.'.$action, $rolePermMap[$roleSlug], true)) {
+                    $rolePermMap[$roleSlug][] = 'cluster_principal.'.$action;
+                }
             }
         }
 

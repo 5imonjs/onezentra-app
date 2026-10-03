@@ -21,6 +21,7 @@ const operasionalMenus = [
 
 const masterDataMenus = [
   { name: 'NPN', path: '/npn', icon: 'package', permission: 'npn.view' },
+  { name: 'Cluster Principal', path: '/cluster-principal', icon: 'building-office', permission: 'cluster_principal.view' },
   { name: 'Standar Umur', path: '/standar-umur', icon: 'clock', permission: 'standar_umur.view' },
   { name: 'Standarisasi', path: '/standarisasi', icon: 'grid', permission: 'standarisasi.view' },
 ];
@@ -52,6 +53,7 @@ const Icon = ({ name, className = '' }: { name: string; className?: string }) =>
   const icons: { [key: string]: React.ReactNode } = {
     home: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>,
     clipboard: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" /></svg>,
+    'building-office': <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>,
     package: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>,
     layers: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>,
     grid: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>,
@@ -215,7 +217,7 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
         />
         <span className={`flex-1 text-left text-[11px] font-bold uppercase tracking-[0.12em] ${accent ? 'text-emerald-300' : ''}`}>{title}</span>
         <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md transition-colors duration-150 ${
-          open ? 'bg-primary-500/15 text-primary-300' : 'bg-white/5 text-slate-400'
+          open ? 'bg-primary-500/15 text-primary-300' : 'bg-white/5 text-ink-fg-muted'
         }`}>
           {visibleItems.length}
         </span>
@@ -323,19 +325,19 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       aria-label="Navigasi utama"
-      className={`fixed top-0 left-0 h-dvh bg-linear-to-b from-slate-900 via-slate-900 to-slate-950 text-white flex flex-col z-40 sidebar-transition shadow-2xl lg:shadow-none ${
+      className={`fixed top-0 left-0 h-dvh bg-linear-to-b from-[#0b1020] via-[#0f172a] to-[#080d18] text-white flex flex-col z-40 sidebar-transition shadow-2xl lg:shadow-none ${
         mobileOpen ? 'translate-x-0 visible' : '-translate-x-full invisible lg:visible lg:translate-x-0'
       } ${
         isExpanded ? 'w-[280px] max-w-[85vw] lg:max-w-none lg:w-[260px]' : 'w-[280px] max-w-[85vw] lg:max-w-none lg:w-[72px]'
       }`}
     >
-      <div className={`border-b border-slate-800/80 flex items-center ${isExpanded ? 'justify-between px-5 py-4' : 'justify-center py-4'}`}>
+      <div className={`border-b border-ink-700/80 flex items-center ${isExpanded ? 'justify-between px-5 py-4' : 'justify-center py-4'}`}>
         {isExpanded ? (
           <div className="relative h-14 flex-1 min-w-0 animate-fade-in">
             <Image src="/LOGO.png" alt="ONEZENTRA" fill sizes="200px" className="object-contain object-left" />
           </div>
         ) : (
-          <div className="relative w-9 h-9 rounded-xl bg-white/[0.06] ring-1 ring-white/10 overflow-hidden">
+          <div className="relative w-9 h-9 rounded-xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
             <Image src="/LOGO.png" alt="ONEZENTRA" fill sizes="36px" className="object-contain p-1" />
           </div>
         )}
@@ -450,7 +452,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
       </nav>
 
       {user && !mobileOpen && (
-        <div className="border-t border-slate-800/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="border-t border-ink-700/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className={`flex items-center gap-3 ${!isExpanded ? 'justify-center' : 'px-2 py-1.5 rounded-xl bg-white/5 ring-1 ring-white/5'}`}>
             <Link href="/dashboard/profile" aria-label="Buka profil saya" className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-9 h-9 bg-linear-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-primary-600/20 ring-1 ring-white/10">

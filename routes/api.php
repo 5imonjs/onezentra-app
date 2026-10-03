@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\BiayaConfigController;
 use App\Http\Controllers\Api\V1\BiayaRetribusiController;
 use App\Http\Controllers\Api\V1\BiayaThlController;
 use App\Http\Controllers\Api\V1\BiayaThlPdfSettingController;
+use App\Http\Controllers\Api\V1\ClusterPrincipalController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DepoController;
 use App\Http\Controllers\Api\V1\DockController;
@@ -105,6 +106,19 @@ Route::prefix('v1')->group(function () {
         Route::get('/{penerimaan}', [PenerimaanController::class, 'show'])->middleware('permission:penerimaan.view');
         Route::put('/{penerimaan}', [PenerimaanController::class, 'update'])->middleware('permission:penerimaan.edit');
         Route::delete('/{penerimaan}', [PenerimaanController::class, 'destroy'])->middleware('permission:penerimaan.delete');
+    });
+
+    Route::prefix('cluster-principal')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [ClusterPrincipalController::class, 'index'])->middleware('permission:cluster_principal.view');
+        Route::post('/', [ClusterPrincipalController::class, 'store'])->middleware('permission:cluster_principal.create');
+        Route::get('/filters', [ClusterPrincipalController::class, 'filters'])->middleware('permission:cluster_principal.view');
+        Route::get('/export', [ClusterPrincipalController::class, 'export'])->middleware('permission:cluster_principal.view');
+        Route::get('/template', [ClusterPrincipalController::class, 'template'])->middleware('permission:cluster_principal.view');
+        Route::get('/{clusterPrincipal}', [ClusterPrincipalController::class, 'show'])->middleware('permission:cluster_principal.view');
+        Route::put('/{clusterPrincipal}', [ClusterPrincipalController::class, 'update'])->middleware('permission:cluster_principal.edit');
+        Route::delete('/{clusterPrincipal}', [ClusterPrincipalController::class, 'destroy'])->middleware('permission:cluster_principal.delete');
+        Route::post('/bulk-delete', [ClusterPrincipalController::class, 'bulkDestroy'])->middleware('permission:cluster_principal.delete');
+        Route::post('/import', [ClusterPrincipalController::class, 'import'])->middleware('permission:cluster_principal.create');
     });
 
     Route::prefix('standar-umur-produk')->middleware('auth:sanctum')->group(function () {
@@ -302,7 +316,11 @@ Route::prefix('v1')->group(function () {
         Route::post('/{sjValidation}/scan', [SjValidationController::class, 'scanItem'])->middleware('permission:sj_validation.validate');
         Route::delete('/{sjValidation}/items/{item}', [SjValidationController::class, 'deleteItem'])->middleware('permission:sj_validation.delete');
         Route::post('/{sjValidation}/complete', [SjValidationController::class, 'complete'])->middleware('permission:sj_validation.complete');
-        Route::post('/{sjValidation}/cancel', [SjValidationController::class, 'cancel'])->middleware('permission:sj_validation.edit');
+        // Gate memakai permission `cancel` (bukan `edit`): membatalkan validasi adalah
+        // aksi berisiko tersendiri, tidak sama dengan mengoreksi item.
+        // Kalau dipaksa memakai `edit`, role yang boleh memperbaiki data tapi
+        // tidak boleh membatalkan dokumen ikut bisa cancel — atau sebaliknya.
+        Route::post('/{sjValidation}/cancel', [SjValidationController::class, 'cancel'])->middleware('permission:sj_validation.cancel');
     });
 
     Route::prefix('reports')->middleware('auth:sanctum')->group(function () {
