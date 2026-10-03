@@ -45,6 +45,11 @@ class BiayaRetribusiController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        // Filter depo untuk dashboard (user global); forUserDepot di atas sudah
+        // menjadi batas akses, filter ini hanya mempersempit.
+        if ($request->filled('kode_depo')) {
+            $query->where('kode_depo', $request->input('kode_depo'));
+        }
         $sortField = in_array($request->sort, ['tanggal_pengajuan', 'nominal_biaya', 'status', 'created_at']) ? $request->sort : 'created_at';
         $sortDir = $request->dir === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortField, $sortDir);

@@ -28,6 +28,12 @@ class GateTransactionController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Filter depo untuk dashboard (user global); user depot-scoped sudah
+        // terkunci forUserDepot di atas sehingga filter ini hanya mempersempit.
+        if ($request->filled('kode_depo')) {
+            $query->whereHas('rencanaKirim', fn ($q) => $q->where('kode_depo', $request->input('kode_depo')));
+        }
+
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('nopol', 'like', "%{$request->search}%")

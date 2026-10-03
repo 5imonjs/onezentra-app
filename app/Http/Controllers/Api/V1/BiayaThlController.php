@@ -61,6 +61,11 @@ class BiayaThlController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        // Filter depo untuk dashboard (user global); scoping approval/forUserDepot
+        // di atas sudah menjadi batas akses, filter ini hanya mempersempit.
+        if ($request->filled('kode_depo')) {
+            $query->where('kode_depo', $request->input('kode_depo'));
+        }
         $sortField = in_array($request->sort, ['tanggal_pengajuan', 'type_kendaraan', 'nominal_biaya', 'status', 'no_kendaraan', 'created_at']) ? $request->sort : 'created_at';
         $sortDir = $request->dir === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortField, $sortDir);

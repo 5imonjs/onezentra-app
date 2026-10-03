@@ -32,9 +32,22 @@ function AlertCard({ href, label, value, hint, tone }: {
 
 export default function DashboardAlerts({ kodeDepo }: { kodeDepo?: string }) {
   const { hasPermission } = useAuthStore();
-  const { summary, loading, failed } = useDashboardSummary(kodeDepo);
+  const { summary, loading, failed, reload } = useDashboardSummary(kodeDepo);
 
-  if (loading || failed) return null;
+  if (loading) return null;
+
+  // Gagal memuat harus terlihat: mengembalikan null diam-diam membuat user
+  // mengira "tidak ada peringatan" padahal datanya tidak terbaca.
+  if (failed) {
+    return (
+      <section aria-label="Peringatan" className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+          <span>Gagal memuat peringatan — bisa jadi ada yang terlewat.</span>
+          <button type="button" onClick={reload} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+        </div>
+      </section>
+    );
+  }
 
   const cards: React.ReactNode[] = [];
   if (hasPermission('opname.view') && summary.alerts.expired_total > 0) {

@@ -30,8 +30,9 @@ class SjValidationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = SjValidation::with(['rencanaKirim:id,po_transporter,driver_name,nopol,destination_name', 'validator:id,full_name'])
+        $query = SjValidation::with(['rencanaKirim:id,po_transporter,driver_name,nopol,destination_name,kode_depo,nama_depo', 'validator:id,full_name'])
             ->when($request->user()->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->forUserDepot($request->user())))
+            ->when($request->filled('kode_depo'), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->where('kode_depo', $request->input('kode_depo'))))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->date_from, fn ($q) => $q->whereDate('created_at', '>=', $request->date_from))
             ->when($request->date_to, fn ($q) => $q->whereDate('created_at', '<=', $request->date_to))

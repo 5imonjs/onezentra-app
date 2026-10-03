@@ -11,9 +11,23 @@ const TYPE_TONES: Record<string, string> = {
 };
 
 export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
-  const { summary, loading, failed } = useDashboardSummary(kodeDepo);
+  const { summary, loading, failed, reload } = useDashboardSummary(kodeDepo);
 
-  if (loading || failed || summary.recent.length === 0) return null;
+  if (loading) return null;
+
+  // Gagal memuat harus terlihat, bukan lenyap diam-diam (lihat DashboardAlerts).
+  if (failed) {
+    return (
+      <section aria-label="Aktivitas terbaru" className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+          <span>Gagal memuat aktivitas terbaru.</span>
+          <button type="button" onClick={reload} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+        </div>
+      </section>
+    );
+  }
+
+  if (summary.recent.length === 0) return null;
 
   return (
     <section aria-label="Aktivitas terbaru" className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

@@ -66,4 +66,10 @@ describe('LoginPage', () => {
     expect(replace).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
   });
+
+  it('regresi: tidak memanggil loadUser saat dibuka — validasi sesi kini di proxy, bukan GET /user di browser', () => {
+    render(<LoginPage />);
+
+    expect(loadUser).not.toHaveBeenCalled();
+  });
 });

@@ -219,3 +219,24 @@ ditukar saat runtime. Sebelum mobile bisa mendukung light mode,
 
 ## Surat Jalan PDF: client-side & wajib paginasi
 PDF di-render client-side di `onezentra-web/src/lib/suratJalanPdf.ts` memakai `jsPDF` + `jspdf-autotable` (bukan endpoint backend). Tabel item HARUS lewat autoTable agar satu RKH dengan banyak item tidak kehilangan baris di luar A4 (autoTable mengulang header tiap halaman + wrap teks sel). Catatan & area tanda tangan diletakkan setelah tabel dengan cek page-break. Barcode yang di-render adalah `po_transporter` (= no_dokumen, nilai yang di-scan di Receiving). Tabel `CODE39_CHARS` disimpan sebagai modul ber-run-length (12 modul, elemen wide = 2 modul) — render lewat run-length (`encodeCode39`), JANGAN memakai paritas index per-bit karena menghasilkan barcode tidak valid. Teks human-readable barcode wajib sama dengan nilai ter-sanitasi (`sanitizeCode39Value`). `normalizeRkhDate` HARUS parse tanggal secara tekstual (regex `^(\d{4})-(\d{2})-(\d{2})`), BUKAN `new Date()` — tanggal ISO tanpa offset diparse sebagai UTC sehingga di timezone negatif tanggal PDF bergeser satu hari.
+
+## Validasi sesi di /login lewat proxy, BUKAN probe /user dari browser
+Cookie sesi (`laravel-session`) ber-flag httpOnly, jadi hanya sisi server yang
+bisa melihatnya. Validasi "sesi yang sudah ada" dilakukan di
+`onezentra-web/src/proxy.ts`: bila `/login` diminta DAN cookie sesi ADA, proxy
+memanggil `BACKEND_URL/api/v1/user` dengan header `Cookie` + `Referer`/`Origin`
+(wajib — lihat `.ai/rules/general.md`: Sanctum hanya stateful untuk domain
+terdaftar). Sesi valid → redirect `/dashboard`; selain itu halaman login
+dirender. Backend tak terjangkau = fail-open (jangan pernah memblokir login);
+timeout 3 dtk.
+
+**JANGAN** menambahkan kembali probe `loadUser()` / `GET /user` di
+`login/page.tsx`. Tamu tanpa cookie memicu 401 yang SELALU tercatat di console
+browser — itu log network-level yang tidak bisa disembunyikan JS, walau 401
+memang jawaban yang benar (dulu bikin seolah ada error di halaman login).
+Halaman login cukup mengurus `if (user) router.push('/dashboard')` pasca-login;
+bounce user yang sudah login terjadi di proxy sebelum halaman dirender.
+
+Guard: `proxy.test.ts` (tamu `/login` → nol request; sesi valid → `/dashboard`;
+401 → 200; fetch gagal → 200) dan `login/page.test.tsx` (`loadUser` tidak dipanggil).
+
