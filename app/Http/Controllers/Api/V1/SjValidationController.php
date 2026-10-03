@@ -548,9 +548,8 @@ class SjValidationController extends Controller
             ]);
         }
 
-        $item->load('npn');
+        $item->load(['npn', 'batch']);
         $this->attachStandarUmur([$item]);
-
         // Koreksi setelah `complete()` hanya sah kalau baris Receiving ikut
         // diperbarui. `receiving_items` adalah salinan yang dibaca Opname Expired
         // dan laporan Penerimaan; menyalin ulang di sini adalah satu-satunya cara
@@ -569,8 +568,7 @@ class SjValidationController extends Controller
         // produk tepat setelah operator memvalidasi, jadi frontend (web maupun
         // mobile) harus bisa mencetak tanpa fetch kedua — dan satu produk memang
         // satu batch, jadi tidak ada ambiguitas label mana yang dicetak.
-        $item->load('batch');
-
+        // (batch sudah di-load di atas bersama npn — jangan load ulang.)
         return response()->json([
             'message' => 'Item divalidasi',
             'data' => $item,
