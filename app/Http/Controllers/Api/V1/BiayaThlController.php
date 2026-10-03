@@ -15,9 +15,11 @@ use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
 use Dompdf\Dompdf;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
@@ -168,6 +170,7 @@ class BiayaThlController extends Controller
     public function update(Request $request, BiayaThl $biayaThl)
     {
         $this->authorizeCreator($biayaThl);
+        /** @var User|null $editor */
         $editor = Auth::user();
         $hasFullControl = $editor && $editor->hasPermission('biaya_thl.full_control');
         if (! in_array($biayaThl->status, ['draft', 'rejected', 'revisi'], true) && ! $hasFullControl) {
@@ -306,6 +309,7 @@ class BiayaThlController extends Controller
     public function destroy(BiayaThl $biayaThl)
     {
         $this->authorizeCreator($biayaThl);
+        /** @var User|null $destroyer */
         $destroyer = Auth::user();
         $destroyerHasFullControl = $destroyer && $destroyer->hasPermission('biaya_thl.full_control');
         if (! $destroyerHasFullControl) {
@@ -371,10 +375,12 @@ class BiayaThlController extends Controller
         if ($user->isDepotScoped() && $biayaThl->kode_depo !== $user->kode_depo) {
             abort(403, 'Anda tidak memiliki akses ke foto depo ini.');
         }
-        abort_unless($photo->file_path && Storage::disk('public')->exists($photo->file_path), 404);
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk('public');
+        abort_unless($photo->file_path && $disk->exists($photo->file_path), 404);
         $safeName = str_replace(['"', "\n", "\r"], '', $photo->file_name ?: basename($photo->file_path));
 
-        return Storage::disk('public')->response(
+        return $disk->response(
             $photo->file_path,
             $safeName,
             ['Content-Type' => $photo->mime_type ?: 'application/octet-stream']
@@ -808,7 +814,7 @@ class BiayaThlController extends Controller
                 'data' => ['imported' => $import->imported, 'updated' => $import->updated, 'errors' => $import->errors],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Biaya THL Import Error', ['error' => $e->getMessage()]);
+            Log::error('Biaya THL Import Error', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
         }

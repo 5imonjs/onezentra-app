@@ -22,6 +22,7 @@ use App\Services\ExportGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -452,7 +453,7 @@ class ReceivingController extends Controller
         } catch (\Exception $e) {
             // 500: masalah sistem, bukan masalah file. Tidak ada detail internal
             // yang dikembalikan ke user — hanya dicatat di log.
-            \Log::error('Receiving Import Error', ['error' => $e->getMessage()]);
+            Log::error('Receiving Import Error', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
         }

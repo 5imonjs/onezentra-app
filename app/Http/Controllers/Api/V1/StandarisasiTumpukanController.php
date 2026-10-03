@@ -15,6 +15,7 @@ use App\Services\ExportGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class StandarisasiTumpukanController extends Controller
@@ -349,7 +350,7 @@ class StandarisasiTumpukanController extends Controller
                 'data' => ['imported' => $import->imported, 'updated' => $import->updated, 'errors' => $import->errors],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Standarisasi Import Error', ['error' => $e->getMessage()]);
+            Log::error('Standarisasi Import Error', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
         }
