@@ -1,7 +1,116 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { isSessionLossStatus, registerResponseInterceptors } from './api';
+import { getErrorMessage, isSessionLossStatus, registerResponseInterceptors } from './api';
+
+/** Bangun AxiosError dengan payload `data` tertentu, untuk uji getErrorMessage. */
+function apiError(data: Record<string, unknown>, status = 422) {
+  const config = { headers: {} } as never;
+  return new AxiosError(
+    'Request failed',
+    AxiosError.ERR_BAD_REQUEST,
+    config,
+    undefined,
+    { data, status, statusText: '', headers: {}, config } as AxiosResponse,
+  );
+}
+
+describe('isSessionLossStatus', () => {
+  it('hanya 401 yang dianggap kehilangan sesi; 419 bukan sesi hilang (CSRF mismatch)', () => {
+    expect(isSessionLossStatus(401)).toBe(true);
+    expect(isSessionLossStatus(419)).toBe(false);
+    expect(isSessionLossStatus(403)).toBe(false);
+    expect(isSessionLossStatus(422)).toBe(false);
+    expect(isSessionLossStatus(undefined)).toBe(false);
+  });
+});
+
+describe('getErrorMessage — payload import per-baris', () => {
+  // Payload ini SALINAN dari ReceivingImportFailed (backend). Kalau bentuknya
+  // berubah, test ini gagal dan wajib diperbarui di sini.
+  //
+  // Diverifikasi langsung terhadap instance asli:
+  //   (new ReceivingImportFailed([['row'=>3,...],['row'=>5,...]])) → JSON di bawah.
+  const payloadImport = {
+    message: 'Import gagal: 2 baris tidak valid. Tidak ada data yang disimpan.',
+    errors: [
+      { row: 3, errors: "PO Transporter 'PO-B-MIX' tidak ditemukan." },
+      { row: 5, errors: 'PO Transporter wajib diisi' },
+    ],
+  };
+
+  it('menampilkan daftar baris, bukan "[object Object]"', () => {
+    const msg = getErrorMessage(apiError(payloadImport));
+
+    // Regression guard: bentuk `[{ row, errors }]` adalah ARRAY OF OBJECT.
+    // Kalau diproses Object.values().join(), hasilnya literal
+    // "[object Object]" karena join() memanggil toString() objek.
+    expect(msg).not.toContain('[object Object]');
+    expect(msg).toContain('Baris 3');
+    expect(msg).toContain('Baris 5');
+    expect(msg).toContain("PO Transporter 'PO-B-MIX' tidak ditemukan.");
+    expect(msg).toContain('PO Transporter wajib diisi');
+  });
+
+  it('mempertahankan ringkasan backend bahwa tidak ada data yang disimpan', () => {
+    const msg = getErrorMessage(apiError(payloadImport));
+
+    // Ringkasan ini yang memberi tahu user hasil import di-rollback.
+    // Tanpa itu user bisa mengira sebagian baris tetap masuk.
+    expect(msg).toContain('Tidak ada data yang disimpan');
+    expect(msg).toContain('Import gagal');
+  });
+
+  it('setiap baris pada baris terpisah agar mudah dibaca', () => {
+    const msg = getErrorMessage(apiError(payloadImport));
+    const lines = msg.split('\n');
+
+    expect(lines.length).toBe(3); // ringkasan + 2 baris
+    expect(lines[0]).toContain('Import gagal');
+    expect(lines[1]).toMatch(/^Baris 3:/);
+    expect(lines[2]).toMatch(/^Baris 5:/);
+  });
+
+  it('menangani errors tanpa row (bentuk sederhana) tanpa merusak informasi', () => {
+    const msg = getErrorMessage(apiError({
+      message: 'Gagal',
+      errors: [{ errors: 'Kesalahan umum' }],
+    }));
+
+    expect(msg).not.toContain('[object Object]');
+    expect(msg).toContain('Kesalahan umum');
+  });
+});
+
+describe('getErrorMessage — validasi Laravel (tidak boleh regresi)', () => {
+  it('tetap menangani bentuk { field: [pesan] }', () => {
+    const msg = getErrorMessage(apiError({
+      message: 'Validasi gagal',
+      errors: { product_sku: ['Product SKU wajib diisi', 'Sudah dipakai'] },
+    }, 422));
+
+    expect(msg).toContain('Product SKU wajib diisi');
+    expect(msg).toContain('Sudah dipakai');
+  });
+
+  it('tetap menangani errors berupa string tunggal', () => {
+    const msg = getErrorMessage(apiError({ errors: { email: 'Email tidak valid' } }, 422));
+
+    expect(msg).toContain('Email tidak valid');
+  });
+
+  it('403 tetap memakai pesan dari backend', () => {
+    const msg = getErrorMessage(apiError({ message: 'Anda tidak memiliki izin.' }, 403));
+
+    expect(msg).toBe('Anda tidak memiliki izin.');
+  });
+
+  it('fallback dipakai saat tidak ada apa pun yang bisa dibaca', () => {
+    const msg = getErrorMessage(apiError({}, 500), 'Import gagal');
+
+    expect(msg).toBeTruthy();
+  });
+});
 
 /** Konstruksi `error.response` yang cukup untuk dibaca interceptor. */
 function errorResponse(config: Record<string, unknown>, status: number): AxiosResponse {
