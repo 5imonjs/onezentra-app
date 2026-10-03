@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
@@ -16,13 +16,23 @@ export default function LoginPage() {
 
   const loadUserFn = useCallback(() => loadUser(), [loadUser]);
 
+  // Ref dideklarasikan di luar effect: memanggil hook di dalam effect (walau
+  // secara teknis di dalam komponen) melanggar aturan Rules of Hooks —
+  // React error #321 kalau urutan hook berubah antar render.
+  const sessionChecked = useRef(false);
+
   useEffect(() => {
-    // Hanya verifikasi sesi bila cookie Sanctum ada — cegah 401 noise di /login untuk tamu.
-    if (!user) {
-      const hasSession = typeof document !== 'undefined' && document.cookie.includes('laravel-session');
-      if (hasSession) {
-        loadUserFn();
-      }
+    // Hanya verifikasi sesi yang SUDAH ada saat halaman dibuka — jangan pernah
+    // bergantung pada document.cookie, karena cookie sesi laravel-session
+    // ber-flag httpOnly dan tidak bisa dibaca JS. Memeriksa namanya selalu
+    // false → user yang baru login tetap dipantulkan balik ke /login.
+    //
+    // Ref ini penting: tanpa itu, setiap kali `user` berubah (setelah login
+    // sukses) effect ini jalan lagi dan memanggil loadUser() yang menimpa
+    // state — dan halaman tetap tertahan di /login.
+    if (!user && !sessionChecked.current) {
+      sessionChecked.current = true;
+      loadUserFn();
     }
   }, [user, loadUserFn]);
 
@@ -60,7 +70,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-900 via-primary-950 to-gray-900 flex">
+    <div className="min-h-screen bg-linear-to-br from-ink-900 via-primary-950 to-ink-900 flex">
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" aria-hidden="true">
         <div className="absolute inset-0 bg-linear-to-br from-primary-600/20 to-transparent"></div>
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl"></div>
@@ -126,7 +136,7 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">ONEZENTRA</h1>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-2xl shadow-gray-200/50 p-8 border border-gray-100">
+          <div className="bg-surface-card rounded-3xl shadow-2xl shadow-black/10 p-8 border border-gray-100">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Hallo, Welcome Back</h2>
               <p className="text-gray-500">Welcome Back to ONEZENTRA</p>
@@ -210,10 +220,10 @@ export default function LoginPage() {
             </form>
           </div>
 
-          <p className="text-center text-sm text-gray-400 mt-8 whitespace-nowrap">
-            &copy; {new Date().getFullYear()} <span className="font-semibold text-gray-300">ONEZENTRA</span>
+          <p className="text-center text-sm text-ink-fg-muted mt-8 whitespace-nowrap">
+            &copy; {new Date().getFullYear()} <span className="font-semibold text-ink-fg-muted">ONEZENTRA</span>
             <span className="mx-1.5 text-gray-500">&middot;</span>
-            Developed by <span className="font-semibold text-gray-300">Langkau_kami</span>
+            Developed by <span className="font-semibold text-ink-fg-muted">Langkau_kami</span>
             <span className="mx-1.5 text-gray-500">&middot;</span>
             All rights reserved
           </p>
