@@ -8,23 +8,61 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 const normalizedApiUrl = API_URL.replace(/\/$/, '');
 export const API_ROOT = normalizedApiUrl;
 
+type RowError = { row?: number; errors?: string };
+
 type ApiErrorResponse = {
   message?: string;
-  errors?: Record<string, string | string[]>;
+  /**
+   * Dua bentuk yang keduanya muncul dari backend:
+   *  - validasi Laravel: `{ field: ['pesan', ...] }`
+   *  - import per-baris:   `[{ row: 3, errors: 'pesan' }]`
+   */
+  errors?: Record<string, string | string[]> | RowError[];
 };
+
+/**
+ * Rawat baris import jadi "Baris 3: PO tidak ditemukan".
+ *
+ * Backend mengirim `errors: [{ row, errors }]` — bentuk ARRAY OF OBJECT.
+ * Kalau dilewatkan ke Object.values() lalu di-join, hasilnya literal
+ * "[object Object] [object Object]" karena bukan string. Bentuk itu diproses
+ * terpisah supaya user melihat nomor baris yang perlu diperbaiki, bukan
+ * output JavaScript mentah.
+ */
+function formatRowErrors(rows: RowError[]): string[] {
+  return rows
+    .map((r) => {
+      const detail = typeof r?.errors === 'string' ? r.errors : '';
+      return typeof r?.row === 'number' ? `Baris ${r.row}: ${detail}` : detail;
+    })
+    .filter(Boolean);
+}
 
 export function getErrorMessage(e: unknown, fallback = 'Terjadi kesalahan'): string {
   const err = e as AxiosError<ApiErrorResponse>;
   if (err.response?.status === 403) return err.response?.data?.message || 'Anda tidak memiliki izin untuk melakukan aksi ini.';
-  const validationErrors = err.response?.data?.errors;
-  if (validationErrors) {
-    const details = Object.values(validationErrors)
-      .flatMap((messages) => Array.isArray(messages) ? messages : [messages])
-      .filter(Boolean)
-      .join(' ');
-    if (details) return details;
+
+  const errors = err.response?.data?.errors;
+  const summary = err.response?.data?.message;
+
+  if (errors) {
+    if (Array.isArray(errors)) {
+      // Format import per-baris. Ringkasan backend ("Import gagal: 2 baris
+      // tidak valid") dipertahankan di atas daftar supaya user tahu hasil
+      // akhirnya di-ROLLBACK, bukan sekadar daftar kesalahan.
+      const details = formatRowErrors(errors);
+      if (details.length > 0) {
+        return summary ? `${summary}\n${details.join('\n')}` : details.join('\n');
+      }
+    } else {
+      const details = Object.values(errors)
+        .flatMap((messages) => Array.isArray(messages) ? messages : [messages])
+        .filter(Boolean)
+        .join(' ');
+      if (details) return details;
+    }
   }
-  return err.response?.data?.message || (err.message ?? fallback);
+  return summary || (err.message ?? fallback);
 }
 
 export const apiClient = axios.create({

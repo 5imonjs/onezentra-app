@@ -6,6 +6,7 @@ use App\Exports\ReceivingExport;
 use App\Exports\ReceivingTemplate;
 use App\Http\Controllers\Controller;
 use App\Imports\ReceivingImport;
+use App\Imports\ReceivingImportFailed;
 use App\Mail\ReceivingCompleted;
 use App\Models\Dock;
 use App\Models\GateTransaction;
@@ -424,15 +425,30 @@ class ReceivingController extends Controller
     public function import(Request $request)
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
+
+        $import = new ReceivingImport($request->user());
+
         try {
-            $import = new ReceivingImport;
+            // All-or-nothing: kalau ada satu baris tidak valid, seluruh import
+            // di-rollback. Import sebagian menghasilkan data yang tidak lengkap
+            // tanpa jejak jelas — lebih sulit ditelusuri daripada file yang
+            // ditolak utuh dengan daftar baris bermasalah.
             DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
             return response()->json([
                 'message' => 'Import berhasil',
-                'data' => ['imported' => $import->imported, 'updated' => $import->updated, 'errors' => $import->errors],
+                'data' => ['imported' => $import->imported, 'updated' => $import->updated, 'errors' => []],
             ]);
+        } catch (ReceivingImportFailed $e) {
+            // 422: file-nya valid, isinya tidak. Error per baris dikembalikan
+            // supaya user bisa memperbaiki file dan mencoba lagi.
+            return response()->json([
+                'message' => $e->getMessage(),
+                'errors' => $e->rowErrors,
+            ], 422);
         } catch (\Exception $e) {
+            // 500: masalah sistem, bukan masalah file. Tidak ada detail internal
+            // yang dikembalikan ke user — hanya dicatat di log.
             \Log::error('Receiving Import Error', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
