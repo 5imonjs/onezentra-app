@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
 use Illuminate\Http\JsonResponse;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class BatchController extends Controller
 {
+    use AuthorizesDepotRow;
+
     public function index(Request $request): JsonResponse
     {
         $query = Batch::with(['receiving.rencanaKirim']);
@@ -44,9 +47,9 @@ class BatchController extends Controller
     private function authorizeDepot(Batch $batch): void
     {
         $rk = $batch->receiving?->rencanaKirim ?? $batch->validationItem?->validation?->rencanaKirim;
-        abort_unless(
-            $this->currentUser()->canAccessDepotRow($rk?->kode_depo, $rk?->nama_depo),
-            403,
+        $this->authorizeDepotRow(
+            $rk?->kode_depo,
+            $rk?->nama_depo,
             'Batch tidak ditemukan di depo Anda.'
         );
     }

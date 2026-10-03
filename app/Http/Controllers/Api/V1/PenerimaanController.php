@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Models\Penerimaan;
 use Illuminate\Http\Request;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 
 class PenerimaanController extends Controller
 {
+    use AuthorizesDepotRow;
+
     public function index(Request $request)
     {
         $query = Penerimaan::query()->forUserDepot($request->user());
@@ -75,9 +78,9 @@ class PenerimaanController extends Controller
 
     private function authorizeDepot(Penerimaan $penerimaan): void
     {
-        abort_unless(
-            $this->currentUser()->canAccessDepotRow($penerimaan->kode_depo, $penerimaan->nama_depo),
-            403,
+        $this->authorizeDepotRow(
+            $penerimaan->kode_depo,
+            $penerimaan->nama_depo,
             'Data penerimaan tidak ditemukan di depo Anda.'
         );
     }

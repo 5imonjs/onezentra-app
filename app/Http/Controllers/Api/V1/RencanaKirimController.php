@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\RencanaKirimItemTemplate;
 use App\Exports\RencanaKirimTemplate;
+use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Imports\RencanaKirimImport;
 use App\Imports\RencanaKirimItemImport;
@@ -24,6 +25,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class RencanaKirimController extends Controller
 {
+    use AuthorizesDepotRow;
+
     private const TRANSITIONS = [
         'DRAFT' => ['SCHEDULED', 'CANCELLED'],
         'SCHEDULED' => ['CHECKED_IN', 'CANCELLED'],
@@ -72,9 +75,9 @@ class RencanaKirimController extends Controller
 
     private function authorizeDepot(RencanaKirim $rencanaKirim): void
     {
-        abort_unless(
-            $this->currentUser()->canAccessDepotRow($rencanaKirim->kode_depo, $rencanaKirim->nama_depo),
-            403,
+        $this->authorizeDepotRow(
+            $rencanaKirim->kode_depo,
+            $rencanaKirim->nama_depo,
             'Rencana kirim tidak ditemukan di depo Anda.'
         );
     }

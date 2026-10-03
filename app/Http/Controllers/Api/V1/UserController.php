@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Imports\UserImport;
 use App\Models\Role;
@@ -13,6 +14,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
 {
+    use AuthorizesDepotRow;
+
     public function index(Request $request)
     {
         $query = User::with('roles')->forUserDepot($request->user());
@@ -81,9 +84,9 @@ class UserController extends Controller
 
     private function authorizeDepot(User $user): void
     {
-        abort_unless(
-            $this->currentUser()->canAccessDepotRow($user->kode_depo, $user->nama_depo),
-            403,
+        $this->authorizeDepotRow(
+            $user->kode_depo,
+            $user->nama_depo,
             'Pengguna tidak ditemukan di depo Anda.'
         );
     }

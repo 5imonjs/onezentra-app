@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\ReceivingExport;
 use App\Exports\ReceivingTemplate;
+use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Imports\ReceivingImport;
 use App\Imports\ReceivingImportFailed;
@@ -26,6 +27,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ReceivingController extends Controller
 {
+    use AuthorizesDepotRow;
+
     public function __construct(private EmailNotificationService $emailService) {}
 
     public function index(Request $request): JsonResponse
@@ -165,9 +168,9 @@ class ReceivingController extends Controller
     private function authorizeDepot(Receiving $receiving): void
     {
         $rk = $receiving->rencanaKirim;
-        abort_unless(
-            $this->currentUser()->canAccessDepotRow($rk?->kode_depo, $rk?->nama_depo),
-            403,
+        $this->authorizeDepotRow(
+            $rk?->kode_depo,
+            $rk?->nama_depo,
             'Data receiving tidak ditemukan di depo Anda.'
         );
     }
