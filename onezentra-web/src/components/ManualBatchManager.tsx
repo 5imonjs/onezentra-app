@@ -12,6 +12,9 @@ interface ManualBatch {
   id: number;
   kode_barang: string;
   nama_barang: string | null;
+  // Batch label fisik (dari validasi SJ). Baris import tidak punya label
+  // sehingga null — ditampilkan '-' dan TIDAK difabrikasi.
+  batch?: { batch_number: string } | null;
   actual_qty: number;
   qty_pcs: number | null;
   satuan: string | null;
@@ -47,9 +50,14 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   const [form, setForm] = useState<Record<string, string>>({});
   // Banner sukses (simpan manual / import) + aksi generate opname langsung.
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  // Pratinjau gabungan: baris SJ + import yang siap masuk generate minggu ini.
+  const [pendingPreview, setPendingPreview] = useState<{ total: number; sj: number; import: number; week_start: string } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  // Hapus massal: null = tidak ada dialog, selain itu mode konfirmasi.
+  const [bulkMode, setBulkMode] = useState<null | 'selected' | 'all'>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<ManualBatch | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -78,8 +86,21 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   }, []);
 
   useEffect(() => {
-    if (open) load();
+    if (open) { setSuccessMsg(null); load(); }
   }, [open, load]);
+
+  const refreshPendingPreview = useCallback(async () => {
+    try {
+      const res = await opnameExpired.pending() as { data: { data: { pending: { total: number; sj: number; import: number }; week_start: string } } };
+      setPendingPreview({ ...res.data.data.pending, week_start: res.data.data.week_start });
+    } catch {
+      setPendingPreview(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) refreshPendingPreview();
+  }, [open, refreshPendingPreview]);
 
   useEffect(() => {
     if (open && user) {
@@ -162,6 +183,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
       setSearchResults([]);
       setShowDropdown(false);
       await load();
+      await refreshPendingPreview();
       onChanged?.();
       setSuccessMsg('Batch manual ditambahkan.');
     } catch (err) {
@@ -195,9 +217,13 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
     try {
       const res = await opnameExpired.manualImport(file);
       const { imported, skipped } = res.data;
-      setSuccessMsg(`Import selesai: ${imported} baris masuk, ${skipped} dilewati.`);
+      const duplicates = Number(res.data.duplicates ?? 0);
+      setSuccessMsg(
+        `Import selesai: ${imported} baris masuk, ${skipped} dilewati${duplicates > 0 ? `, ${duplicates} duplikat (sudah pernah diimport) dilewati` : ''}.`
+      );
       setSelectedFile(null);
       await load();
+      await refreshPendingPreview();
       onChanged?.();
     } catch (err) {
       handleImportError(err);
@@ -212,6 +238,8 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
     try {
       await opnameExpired.generate();
       notifyGlobal('Opname expired minggu ini berhasil di-generate.', 'success');
+      await refreshPendingPreview();
+      onChanged?.();
       setSuccessMsg(null);
     } catch (err) {
       notifyGlobal(getErrorMessage(err, 'Gagal generate opname'));
@@ -249,6 +277,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
       await opnameExpired.manualDelete(deleteId);
       setDeleteId(null);
       await load();
+      await refreshPendingPreview();
       onChanged?.();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal hapus batch manual'));
@@ -256,6 +285,37 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
       setBusy(false);
     }
   };
+
+  const confirmBulkDelete = async () => {
+    if (!bulkMode) return;
+    setBusy(true);
+    try {
+      const res = await opnameExpired.manualBulkDelete(
+        bulkMode === 'all' ? { all: true } : { ids: Array.from(selectedIds) }
+      ) as { data: { message?: string; deleted?: number } };
+      notifyGlobal(res.data.message ?? 'Hapus massal selesai.', 'success');
+      setBulkMode(null);
+      setSelectedIds(new Set());
+      await load();
+      await refreshPendingPreview();
+      onChanged?.();
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal hapus massal'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allLoadedSelected = items.length > 0 && items.every((it) => selectedIds.has(it.id));
 
   const fmtDate = (v?: string | null) =>
     v ? new Date(v).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
@@ -320,7 +380,13 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
               <div className="min-w-0">
                 <p className="font-semibold">{successMsg}</p>
-                <p className="text-emerald-700 mt-0.5">Batch belum masuk analisa opname sampai di-generate.</p>
+                {pendingPreview && pendingPreview.total > 0 ? (
+                  <p className="text-emerald-700 mt-0.5">
+                    Siap generate minggu {pendingPreview.week_start}: {pendingPreview.sj} baris SJ + {pendingPreview.import} baris import ({pendingPreview.total} baru).
+                  </p>
+                ) : (
+                  <p className="text-emerald-700 mt-0.5">Batch belum masuk analisa opname sampai di-generate.</p>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {hasPermission('opname.create') ? (
@@ -483,13 +549,33 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <p className="text-xs font-semibold text-gray-500 uppercase">Batch Manual Tersimpan {loading ? '(memuat...)' : `(${items.length})`}</p>
-              {items.length > 0 && hasPermission('penerimaan.delete') && (
-                <p className="text-[11px] text-gray-400">Gunakan ikon hapus untuk membatalkan batch</p>
-              )}
+              <div className="flex items-center gap-2">
+                {items.length > 0 && hasPermission('penerimaan.delete') && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setBulkMode('selected')}
+                      disabled={selectedIds.size === 0 || busy}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-h-9"
+                    >
+                      Hapus terpilih ({selectedIds.size})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBulkMode('all')}
+                      disabled={busy}
+                      title="Hapus seluruh batch manual dalam jangkauan depo Anda (data SJ tidak ikut)"
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-h-9"
+                    >
+                      Hapus semua
+                    </button>
+                  </>
+                )}
+              </div>
               {items.length >= 100 && (
-                <p className="text-[11px] text-amber-600">Menampilkan maksimal 100 batch terbaru</p>
+                <p className="text-[11px] text-amber-600 w-full">Menampilkan maksimal 100 batch terbaru — "Hapus semua" mencakup seluruh data, bukan hanya yang tampil</p>
               )}
             </div>
             {loadError ? (
@@ -499,11 +585,23 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
               </div>
             ) : items.length > 0 ? (
               <div className="overflow-x-auto border border-gray-300 rounded-xl">
-                <table className="w-full min-w-[720px]">
+                <table className="w-full min-w-[820px]">
                   <caption className="sr-only">Daftar batch manual tersimpan</caption>
                   <thead>
                     <tr className="bg-surface-raised border-b border-gray-300">
+                      {hasPermission('penerimaan.delete') && (
+                        <th scope="col" className="px-3 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={allLoadedSelected}
+                            onChange={() => setSelectedIds(allLoadedSelected ? new Set() : new Set(items.map((it) => it.id)))}
+                            aria-label="Pilih semua batch yang tampil"
+                            className="w-4 h-4 accent-red-600 cursor-pointer"
+                          />
+                        </th>
+                      )}
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Barang</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Batch</th>
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nama</th>
                       <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Qty CRT</th>
                       <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">PCS</th>
@@ -515,7 +613,19 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                   <tbody className="divide-y divide-gray-100">
                     {items.map((it) => (
                       <tr key={it.id} className="hover:bg-overlay-50 transition-colors">
+                        {hasPermission('penerimaan.delete') && (
+                          <td className="px-3 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(it.id)}
+                              onChange={() => toggleSelect(it.id)}
+                              aria-label={`Pilih batch ${it.kode_barang}`}
+                              className="w-4 h-4 accent-red-600 cursor-pointer"
+                            />
+                          </td>
+                        )}
                         <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap"><span className="font-mono">{it.kode_barang}</span></td>
+                        <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><span className="font-mono">{it.batch?.batch_number ?? '-'}</span></td>
                         <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{it.nama_barang || '-'}</td>
                         <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-gray-900 whitespace-nowrap">{num(it.actual_qty)}</td>
                         <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-600 whitespace-nowrap">{it.qty_pcs != null ? num(it.qty_pcs) : '-'}</td>
@@ -524,12 +634,12 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           {hasPermission('penerimaan.edit') && (
                             <button onClick={() => setEditing(it)} className="p-1.5 text-gray-400 hover:text-accent-text hover:bg-chip-primary rounded-md transition-all" aria-label="Edit batch manual">
-                              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                              <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                             </button>
                           )}
                           {hasPermission('penerimaan.delete') && (
                             <button onClick={() => setDeleteId(it.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all" aria-label="Hapus batch manual">
-                              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                              <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                             </button>
                           )}
                         </td>
@@ -559,6 +669,18 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
         title="Hapus Batch Manual"
         message="Apakah Anda yakin ingin menghapus batch manual ini?"
         confirmLabel="Hapus"
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        open={bulkMode !== null}
+        onClose={() => setBulkMode(null)}
+        onConfirm={confirmBulkDelete}
+        title={bulkMode === 'all' ? 'Hapus Semua Batch Manual' : `Hapus ${selectedIds.size} Batch Manual`}
+        message={bulkMode === 'all'
+          ? 'Seluruh batch manual dalam jangkauan depo Anda akan dihapus (bisa lebih dari 100 yang tampil). Data SJ tidak ikut terhapus. Tindakan ini tidak bisa dibatalkan.'
+          : `${selectedIds.size} batch manual terpilih akan dihapus. Tindakan ini tidak bisa dibatalkan.`}
+        confirmLabel="Ya, hapus"
         variant="danger"
       />
 

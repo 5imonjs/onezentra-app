@@ -19,7 +19,7 @@ class ReceivingItemController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = ReceivingItem::with(['receiving.rencanaKirim'])
+        $query = ReceivingItem::with(['receiving.rencanaKirim', 'batch'])
             ->orderByDesc('created_at');
 
         if ($request->user()->isDepotScoped()) {
@@ -230,7 +230,7 @@ class ReceivingItemController extends Controller
                 'tanggal' => $b['tanggal'],
                 'created_at' => optional($first->created_at)->toIso8601String(),
                 'total_crt' => (float) $groupItems->sum('actual_qty'),
-                'total_pcs' => (float) $groupItems->sum(fn ($item) => $item->qty_pcs ?? ($item->conversion_factor !== null ? $item->actual_qty * $item->conversion_factor : 0)),
+                'total_pcs' => (float) $groupItems->sum(fn ($item) => $item->totalPcs()),
                 'items' => $groupItems->values(),
             ];
         })->filter()->values();
@@ -388,6 +388,8 @@ class ReceivingItemController extends Controller
                 'message' => 'Import penerimaan manual selesai.',
                 'imported' => $import->imported,
                 'skipped' => $import->skipped,
+                'duplicates' => $import->duplicates,
+                'weeks' => $import->weeks,
             ]);
         } catch (ExcelValidationException $e) {
             $failures = $e->failures();
@@ -427,6 +429,42 @@ class ReceivingItemController extends Controller
         $receivingItem->delete();
 
         return response()->json(['message' => 'Penerimaan manual dihapus.']);
+    }
+
+    /**
+     * Hapus massal batch manual: by ids terpilih atau seluruhnya (`all`).
+     * Query selalu dikunci `source=IMPORT_MANUAL` sehingga data SJ tidak
+     * mungkin ikut terhapus walau id-nya dikirim; user depot-scoped hanya
+     * menyentuh depo-nya sendiri.
+     */
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'sometimes|array|max:1000',
+            'ids.*' => 'integer',
+            'all' => 'sometimes|boolean',
+        ]);
+
+        if (empty($validated['all'])) {
+            $request->validate(['ids' => 'required|array|min:1|max:1000']);
+        }
+
+        $query = ReceivingItem::where('source', ReceivingItem::SOURCE_IMPORT);
+
+        if (empty($validated['all'])) {
+            $query->whereIn('id', $validated['ids']);
+        }
+
+        if ($request->user()->isDepotScoped()) {
+            $query->where('kode_depo', $request->user()->kode_depo);
+        }
+
+        $deleted = $query->delete();
+
+        return response()->json([
+            'message' => "Hapus massal selesai: {$deleted} baris dihapus.",
+            'deleted' => $deleted,
+        ]);
     }
 
     public function searchProduct(Request $request): JsonResponse

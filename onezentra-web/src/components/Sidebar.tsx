@@ -15,7 +15,7 @@ const operasionalMenus = [
   { name: 'Check In Point', path: '/gate', icon: 'gate', permission: 'gate.view' },
   { name: 'Validasi Dokumen', path: '/validasi-sj', icon: 'check', permission: 'sj_validation.view' },
   { name: 'Check Out Point', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
-  { name: 'Inbound', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
+  { name: 'Inbound (SJ)', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
   { name: 'Batch Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
 ];
 
@@ -35,10 +35,11 @@ const biayaMenus = [
 const reportItems = [
   { name: 'Laporan Replenishment', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.view' },
   { name: 'Laporan Inbound', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.view' },
+  { name: 'Penerimaan & Expired (Semua)', path: '/reports/penerimaan-batch-expired', icon: 'clipboard', permission: 'reports.view' },
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.view' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
-  { name: 'Laporan Batch Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
+  { name: 'Monitoring Batch Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
 ];
 
 const systemItems = [
@@ -101,7 +102,7 @@ function NavItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
       }`}
     >
       {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-[18px] w-[3px] rounded-r-full bg-linear-to-b from-primary-400 to-primary-600" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4.5 w-0.75 rounded-r-full bg-linear-to-b from-primary-400 to-primary-600" />
       )}
       {icon && (
         <Icon
@@ -129,7 +130,7 @@ function NavSubItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
       }`}
     >
       {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-[16px] w-[3px] rounded-r-full bg-linear-to-b from-primary-400 to-primary-600" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.75 rounded-r-full bg-linear-to-b from-primary-400 to-primary-600" />
       )}
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ring-4 ring-transparent transition-colors duration-150 ${
         isActive ? 'bg-primary-400' : 'bg-slate-600 group-hover:bg-slate-400'
@@ -137,7 +138,7 @@ function NavSubItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
       {icon && (
         <Icon
           name={icon}
-          className={`w-[17px] h-[17px] shrink-0 transition-colors duration-150 ${
+          className={`w-4.25 h-4.25 shrink-0 transition-colors duration-150 ${
             isActive ? 'text-primary-300' : 'text-slate-500 group-hover:text-slate-300'
           }`}
         />
@@ -187,7 +188,7 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
         }`}
       >
         {isActiveAny && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-[18px] w-[3px] rounded-r-full bg-linear-to-b from-primary-400 to-primary-600" />
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4.5 w-0.75 rounded-r-full bg-linear-to-b from-primary-400 to-primary-600" />
         )}
         <Icon name={icon} className="w-5 h-5 shrink-0" />
       </button>
@@ -211,7 +212,7 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
       >
         <Icon
           name={icon}
-          className={`w-[18px] h-[18px] shrink-0 transition-colors duration-150 ${
+          className={`w-4.5 h-4.5 shrink-0 transition-colors duration-150 ${
             accent ? 'text-emerald-400' : isActiveAny || open ? 'text-primary-300' : 'text-slate-500'
           }`}
         />
@@ -328,7 +329,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
       className={`fixed top-0 left-0 h-dvh bg-linear-to-b from-[#0b1020] via-[#0f172a] to-[#080d18] text-white flex flex-col z-40 sidebar-transition shadow-2xl lg:shadow-none ${
         mobileOpen ? 'translate-x-0 visible' : '-translate-x-full invisible lg:visible lg:translate-x-0'
       } ${
-        isExpanded ? 'w-[280px] max-w-[85vw] lg:max-w-none lg:w-[260px]' : 'w-[280px] max-w-[85vw] lg:max-w-none lg:w-[72px]'
+        isExpanded ? 'w-70 max-w-[85vw] lg:max-w-none lg:w-65' : 'w-70 max-w-[85vw] lg:max-w-none lg:w-18'
       }`}
     >
       <div className={`border-b border-ink-700/80 flex items-center ${isExpanded ? 'justify-between px-5 py-4' : 'justify-center py-4'}`}>

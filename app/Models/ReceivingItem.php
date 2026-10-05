@@ -140,6 +140,28 @@ class ReceivingItem extends Model
         return $this->created_at?->toDateString();
     }
 
+    /**
+     * Total PCS untuk laporan.
+     *
+     * Baris dari validasi SJ/import lama bisa punya `qty_pcs` NULL padahal
+     * konversinya diketahui — jatuh ke `conversion_factor` dulu, baru 0 kalau
+     * dua-duanya kosong. Aturan ini sebelumnya hanya inline di
+     * ReceivingItemController::groups(); dipindah ke sini supaya laporan dan
+     * form import/enrich tidak lagi punya hitungan PCS yang berbeda.
+     */
+    public function totalPcs(): float
+    {
+        if ($this->qty_pcs !== null) {
+            return (float) $this->qty_pcs;
+        }
+
+        if ($this->conversion_factor !== null) {
+            return (float) $this->actual_qty * (float) $this->conversion_factor;
+        }
+
+        return 0.0;
+    }
+
     protected function getSumberMaterialAttribute(?string $value): ?string
     {
         return $value ?? $this->getSumberMaterialFallback();

@@ -328,6 +328,7 @@ export const receivingItems = {
 export const opnameExpired = {
   list: (params?: Record<string, unknown>) => apiClient.get('/opname-expired', { params }),
   generate: (weekStart?: string) => apiClient.post('/opname-expired/generate', weekStart ? { week_start: weekStart } : {}),
+  pending: (params?: Record<string, unknown>) => apiClient.get('/opname-expired/pending', { params }),
   settings: () => apiClient.get('/opname-expired/settings'),
   updateSettings: (data: Record<string, unknown>) => apiClient.put('/opname-expired/settings', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/opname-expired/${id}`, data),
@@ -357,6 +358,7 @@ export const opnameExpired = {
   },
   manualTemplate: () => apiClient.get('/receiving-items/template', { responseType: 'blob' }),
   manualDelete: (id: number) => apiClient.delete(`/receiving-items/${id}`),
+  manualBulkDelete: (data: { ids?: number[]; all?: boolean }) => apiClient.delete('/receiving-items/bulk', { data }),
   delete: (id: number) => apiClient.delete(`/opname-expired/${id}`),
 };
 
@@ -492,6 +494,8 @@ export const reports = {
   rencanaKirimExport: (params?: Record<string, unknown>) => apiClient.get('/reports/rencana-kirim/export', { params, responseType: 'blob' }),
   penerimaan: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan', { params }),
   penerimaanExport: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan/export', { params, responseType: 'blob' }),
+  penerimaanBatchExpired: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan-batch-expired', { params }),
+  penerimaanBatchExpiredExport: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan-batch-expired/export', { params, responseType: 'blob' }),
   biayaThl: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl', { params }),
   biayaThlExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl/export', { params, responseType: 'blob' }),
   biayaRetribusi: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi', { params }),

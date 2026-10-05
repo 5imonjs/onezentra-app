@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Imports\ReceivingItemImport;
 use App\Models\Batch;
+use App\Models\ClusterPrincipal;
 use App\Models\Npn;
 use App\Models\OpnameExpiredWave;
 use App\Models\Permission;
@@ -31,7 +32,7 @@ class OpnameExpiredTest extends TestCase
         $this->travelTo('2026-09-09 10:00:00');
 
         $role = Role::firstOrCreate(['slug' => 'opname_test'], ['name' => 'Opname Test']);
-        foreach (['penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'opname.view', 'opname.create', 'opname.edit'] as $slug) {
+        foreach (['penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete', 'opname.view', 'opname.create', 'opname.edit'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }
@@ -50,10 +51,10 @@ class OpnameExpiredTest extends TestCase
         Sanctum::actingAs($this->user);
     }
 
-    private function receipt(string $kode, string $nama, float $qty, string $expired, string $tanggalTerima, ?float $pcs = null): ReceivingItem
+    private function receipt(string $kode, string $nama, float $qty, string $expired, string $tanggalTerima, ?float $pcs = null, string $source = 'IMPORT_MANUAL'): ReceivingItem
     {
         return ReceivingItem::create([
-            'source' => 'IMPORT_MANUAL',
+            'source' => $source,
             'kode_barang' => $kode,
             'nama_barang' => $nama,
             'actual_qty' => $qty,
@@ -146,8 +147,10 @@ class OpnameExpiredTest extends TestCase
         $this->assertNotNull($result);
     }
 
-    public function test_generate_does_not_roll_forward_expired_batch(): void
+    public function test_generate_rolls_forward_expired_batch_until_acted_upon(): void
     {
+        // Aturan baku: batch EXPIRED tidak boleh hilang dari monitoring —
+        // terbawa ke minggu depan dengan qty + statusnya sampai ditindak.
         $this->receipt('B-OP-01', 'Produk Kadaluarsa', 10, '2026-09-01', '2026-09-09');
         app(OpnameExpiredService::class)->generate();
 
@@ -160,9 +163,12 @@ class OpnameExpiredTest extends TestCase
             'status_ini' => 'EXPIRED',
         ]);
 
-        $this->assertDatabaseMissing('opname_expired_waves', [
+        $this->assertDatabaseHas('opname_expired_waves', [
             'week_start' => '2026-09-14',
             'kode_barang' => 'B-OP-01',
+            'status_ini' => 'EXPIRED',
+            'qty_ini_crt' => 10,
+            'qty_lalu_crt' => 10,
         ]);
     }
 
@@ -285,6 +291,16 @@ class OpnameExpiredTest extends TestCase
         $import->collection($collection);
 
         $this->assertSame(1, $import->imported);
+        // Import mencatat minggu monitoring per baris: 2026-09-09 = minggu Senin 2026-09-07.
+        $this->assertSame(['2026-09-07' => 1], $import->weeks);
+
+        // Import ulang file yang sama: tidak menggandakan, dihitung duplikat.
+        $retry = new ReceivingItemImport($this->user);
+        $retry->collection($collection);
+
+        $this->assertSame(0, $retry->imported);
+        $this->assertSame(1, $retry->duplicates);
+        $this->assertSame(1, ReceivingItem::where('kode_barang', 'B-XL-01')->count());
         $this->assertDatabaseHas('receiving_items', [
             'kode_barang' => 'B-XL-01',
             'source' => 'IMPORT_MANUAL',
@@ -366,6 +382,38 @@ class OpnameExpiredTest extends TestCase
         $this->assertEquals(30, $item->qty_pcs);
         $this->assertEquals(15, $item->conversion_factor);
         $this->assertSame('CRT', $item->satuan);
+    }
+
+    public function test_import_resolves_both_old_and_new_product_names_to_stable_code(): void
+    {
+        // Gramatik nama bisa berubah (lama vs baru), tapi BOSnetszProductId
+        // tetap — import wajib menangkap keduanya dan menyimpan kode stabil.
+        Npn::create([
+            'BOSnetszProductId' => 'B-NAME-01',
+            'SAPszProductId' => 'SAP-NAME-01',
+            'szNickName' => 'NAMA-LAMA',
+            'szNickNameNew' => 'NAMA-BARU',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        $import = new ReceivingItemImport($this->user);
+        $import->collection(new Collection([
+            [
+                'produk' => 'NAMA-LAMA',
+                'qty_crt_zak' => '1',
+                'tgl_expired_date' => '2027-06-01',
+                'tgl_penerimaan' => '2026-09-09',
+            ],
+            [
+                'produk' => 'NAMA-BARU',
+                'qty_crt_zak' => '1',
+                'tgl_expired_date' => '2027-07-01',
+                'tgl_penerimaan' => '2026-09-09',
+            ],
+        ]));
+
+        $this->assertSame(2, $import->imported);
+        $this->assertSame(2, ReceivingItem::where('kode_barang', 'B-NAME-01')->count());
     }
 
     public function test_index_returns_status_summary_and_multi_status_filter(): void
@@ -460,5 +508,163 @@ class OpnameExpiredTest extends TestCase
         $this->assertDatabaseMissing('opname_expired_waves', [
             'kode_barang' => 'B-CANCEL-01',
         ]);
+    }
+
+    public function test_pending_reports_eligible_split_by_source_before_generate(): void
+    {
+        // Baseline campuran: 1 baris SJ + 2 baris import pada minggu berjalan.
+        // Sebelum generate, semuanya pending dan wave belum ada.
+        $this->receipt('B-PEND-SJ', 'Produk SJ', 4, '2027-02-01', '2026-09-09', null, 'VALIDASI_SJ');
+        $this->receipt('B-PEND-IM1', 'Produk Import 1', 3, '2027-02-01', '2026-09-09');
+        $this->receipt('B-PEND-IM2', 'Produk Import 2', 2, '2027-02-01', '2026-09-09');
+
+        $res = $this->getJson('/api/v1/opname-expired/pending?week_start=2026-09-07')->assertOk();
+
+        $this->assertSame('2026-09-07', $res->json('data.week_start'));
+        $this->assertFalse($res->json('data.wave_exists'));
+        $this->assertSame(3, $res->json('data.eligible.total'));
+        $this->assertSame(1, $res->json('data.eligible.sj'));
+        $this->assertSame(2, $res->json('data.eligible.import'));
+        $this->assertSame(3, $res->json('data.pending.total'));
+        $this->assertSame(1, $res->json('data.pending.sj'));
+        $this->assertSame(2, $res->json('data.pending.import'));
+    }
+
+    public function test_pending_is_zero_after_generate_and_tracks_new_import(): void
+    {
+        $this->receipt('B-PEND-G', 'Produk Generate', 5, '2027-02-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $afterGenerate = $this->getJson('/api/v1/opname-expired/pending?week_start=2026-09-07')->assertOk();
+        $this->assertTrue($afterGenerate->json('data.wave_exists'));
+        $this->assertSame(0, $afterGenerate->json('data.pending.total'));
+
+        // Import susulan dengan kombinasi barang+expired baru = pending lagi.
+        $this->receipt('B-PEND-NEW', 'Produk Susulan', 1, '2027-03-01', '2026-09-10');
+
+        $afterImport = $this->getJson('/api/v1/opname-expired/pending?week_start=2026-09-07')->assertOk();
+        $this->assertSame(1, $afterImport->json('data.pending.total'));
+        $this->assertSame(1, $afterImport->json('data.pending.import'));
+        $this->assertSame(0, $afterImport->json('data.pending.sj'));
+    }
+
+    public function test_bulk_destroy_deletes_selected_import_rows_but_never_sj(): void
+    {
+        $keep = $this->receipt('B-BULK-KEEP', 'Tetap Ada', 3, '2027-02-01', '2026-09-09');
+        $drop = $this->receipt('B-BULK-DROP', 'Dihapus', 2, '2027-02-01', '2026-09-09');
+        $sj = $this->receipt('B-BULK-SJ', 'Item SJ', 1, '2027-02-01', '2026-09-09', null, 'VALIDASI_SJ');
+
+        // ID SJ ikut dikirim: harus diabaikan, bukan error, bukan terhapus.
+        $res = $this->deleteJson('/api/v1/receiving-items/bulk', ['ids' => [$drop->id, $sj->id]])->assertOk();
+
+        $this->assertSame(1, $res->json('deleted'));
+        $this->assertDatabaseMissing('receiving_items', ['id' => $drop->id]);
+        $this->assertDatabaseHas('receiving_items', ['id' => $keep->id]);
+        $this->assertDatabaseHas('receiving_items', ['id' => $sj->id]);
+    }
+
+    public function test_bulk_destroy_all_clears_import_scope_only(): void
+    {
+        $this->receipt('B-BULK-A1', 'Import 1', 1, '2027-02-01', '2026-09-09');
+        $this->receipt('B-BULK-A2', 'Import 2', 1, '2027-02-01', '2026-09-09');
+        $sj = $this->receipt('B-BULK-A3', 'Item SJ', 1, '2027-02-01', '2026-09-09', null, 'VALIDASI_SJ');
+
+        $res = $this->deleteJson('/api/v1/receiving-items/bulk', ['all' => true])->assertOk();
+
+        $this->assertSame(2, $res->json('deleted'));
+        $this->assertSame(0, ReceivingItem::where('source', 'IMPORT_MANUAL')->count());
+        $this->assertDatabaseHas('receiving_items', ['id' => $sj->id]);
+    }
+
+    public function test_import_rows_anchor_to_import_week_regardless_of_file_date(): void
+    {        // Aturan baku: baris IMPORT ditambatkan ke minggu IMPORT (scan/created),
+        // bukan tanggal file. Baris bertanggal lama tapi diimport minggu ini
+        // tetap eligible minggu ini; baris SJ bertanggal lama tidak.
+        $baseline = $this->receipt('B-ANCHOR-IM', 'Baseline Lama', 2, '2027-02-01', '2026-08-06');
+        $sj = $this->receipt('B-ANCHOR-SJ', 'SJ Lama', 2, '2027-02-01', '2026-08-06', null, 'VALIDASI_SJ');
+
+        $res = $this->getJson('/api/v1/opname-expired/pending?week_start=2026-09-07')->assertOk();
+
+        $this->assertSame(1, $res->json('data.eligible.import'));
+        $this->assertSame(0, $res->json('data.eligible.sj'));
+        $this->assertSame(1, $res->json('data.pending.total'));
+
+        app(OpnameExpiredService::class)->generate();
+
+        $this->assertDatabaseHas('opname_expired_waves', [
+            'week_start' => '2026-09-07',
+            'kode_barang' => 'B-ANCHOR-IM',
+        ]);
+        $this->assertDatabaseMissing('opname_expired_waves', [
+            'week_start' => '2026-09-07',
+            'kode_barang' => 'B-ANCHOR-SJ',
+        ]);
+    }
+
+    public function test_index_returns_principal_2_from_cluster_principal_master(): void
+    {
+        // Join yang sama dengan laporan: BOSnet stabil dulu.
+        $cp = ClusterPrincipal::create(['product_sku' => 'B-PRIN-01', 'principal_1' => 'PRIN-A', 'principal_2' => 'PRIN-B']);
+        $cp->update(['bosnetsz_product_id' => 'B-PRIN-01']);
+        $this->receipt('B-PRIN-01', 'Produk Principal', 4, '2027-02-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $res = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')->assertOk();
+
+        $this->assertSame('PRIN-B', $res->json('data.data.0.principal_2'));
+        $this->assertSame('PRIN-A', $res->json('data.data.0.principal_1'));
+    }
+
+    public function test_index_falls_back_to_direct_product_sku_join(): void
+    {
+        // SKU pendek yang belum terdaftar di NPN tetap ketemu master bila
+        // product_sku-nya cocok langsung (jaring terakhir COALESCE).
+        ClusterPrincipal::create(['product_sku' => 'BBSG20', 'principal_2' => 'PRIN-SKU']);
+        $this->receipt('BBSG20', 'Produk SKU Pendek', 4, '2027-02-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $res = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')->assertOk();
+
+        $this->assertSame('PRIN-SKU', $res->json('data.data.0.principal_2'));
+    }
+
+    public function test_index_joins_cluster_principal_via_new_nickname(): void
+    {        // NPN kenal produk lewat nama baru; master CP memakai nama baru itu —
+        // join lama-baru wajib menangkapnya walau ID stabil CP belum terisi.
+        Npn::create([
+            'BOSnetszProductId' => 'B-NICK-01',
+            'SAPszProductId' => 'SAP-NICK-01',
+            'szNickName' => 'NAMA-LAMA-JOIN',
+            'szNickNameNew' => 'NAMA-BARU-JOIN',
+            'szStatus' => 'EXISTING',
+        ]);
+        ClusterPrincipal::create(['product_sku' => 'NAMA-BARU-JOIN', 'principal_2' => 'PRIN-NEW']);
+        $this->receipt('B-NICK-01', 'Produk Nama Baru', 4, '2027-02-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $res = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')->assertOk();
+
+        $this->assertSame('PRIN-NEW', $res->json('data.data.0.principal_2'));
+    }
+
+    public function test_index_sorts_by_allowlisted_columns(): void
+    {
+        $this->receipt('B-SORT-B', 'Produk B', 2, '2027-02-01', '2026-09-09');
+        $this->receipt('B-SORT-A', 'Produk A', 9, '2027-03-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $asc = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&sort_by=produk&sort_dir=asc')->assertOk();
+        $this->assertSame(['B-SORT-A', 'B-SORT-B'], collect($asc->json('data.data'))->pluck('kode_barang')->all());
+
+        $desc = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&sort_by=crt&sort_dir=desc')->assertOk();
+        $this->assertSame(['B-SORT-A', 'B-SORT-B'], collect($desc->json('data.data'))->pluck('kode_barang')->all());
+
+        // Kolom di luar allowlist diabaikan (tetap 200, urutan bawaan).
+        $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&sort_by=kode_depo;DROP&sort_dir=desc')->assertOk();
     }
 }

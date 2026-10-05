@@ -292,7 +292,7 @@ export default function OpnameExpiredReportPage() {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Anda tidak memiliki izin untuk melihat Laporan Batch Expired.
+          Anda tidak memiliki izin untuk melihat Monitoring Batch Expired.
         </div>
       </DashboardLayout>
     );
@@ -309,7 +309,7 @@ export default function OpnameExpiredReportPage() {
             </div>
             <div className="min-w-0">
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan operasional · read-only</p>
-              <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Batch Expired</h1>
+              <h1 className="text-2xl font-bold leading-tight tracking-tight">Monitoring Batch Expired</h1>
               <p className="text-ink-fg-muted mt-0.5 text-sm">Ringkasan mingguan kedaluwarsa batch per status & depo</p>
             </div>
           </div>
@@ -496,7 +496,7 @@ export default function OpnameExpiredReportPage() {
           </div>
           {/* Desktop */}
           <div className="overflow-x-auto hidden lg:block">
-            <table className="w-full min-w-[760px] border-collapse">
+            <table className="w-full min-w-190 border-collapse">
               <caption className="sr-only">Rekap per depo</caption>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
@@ -666,7 +666,7 @@ export default function OpnameExpiredReportPage() {
             <>
               {/* Desktop */}
               <div className="overflow-x-auto hidden lg:block">
-                <table className="w-full min-w-[900px] border-collapse">
+                <table className="w-full min-w-225 border-collapse">
                   <caption className="sr-only">Laporan opname expired</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
@@ -685,9 +685,9 @@ export default function OpnameExpiredReportPage() {
                       return (
                         <tr key={w.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
                           <td className="table-cell whitespace-nowrap">{badge(w.status_ini)}</td>
-                          <td className="table-cell min-w-[200px] max-w-[300px]">
+                          <td className="table-cell min-w-50 max-w-75">
                             <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
-                            <span className="block text-xs text-slate-500 line-clamp-1 break-words" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
+                            <span className="block text-xs text-slate-500 line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
                           </td>
                           <td className="table-cell whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
                           {renderQtyCell(w)}
@@ -698,7 +698,7 @@ export default function OpnameExpiredReportPage() {
                               {w.sisa_hari} hr
                             </span>
                           </td>
-                          <td className="table-cell max-w-[200px] text-xs text-slate-600 break-words">{w.perubahan || '-'}</td>
+                          <td className="table-cell max-w-50 text-xs text-slate-600 wrap-break-word">{w.perubahan || '-'}</td>
                         </tr>
                       );
                     })}

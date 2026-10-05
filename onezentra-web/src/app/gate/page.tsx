@@ -398,7 +398,7 @@ export default function GatePage() {
 
               {/* Table - Desktop */}
               <div className="overflow-x-auto hidden lg:block">
-                <table className="w-full min-w-[760px] border-collapse">
+                <table className="w-full min-w-190 border-collapse">
                   <caption className="sr-only">Riwayat transaksi gate</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-300 bg-surface-raised">

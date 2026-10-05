@@ -448,8 +448,8 @@ export default function PenerimaanReportPage() {
                         <td className="table-cell text-sm text-slate-600 whitespace-nowrap">{item.sumber_material}</td>
                         <td className="table-cell text-sm font-mono font-medium text-slate-800 whitespace-nowrap">{item.po_transporter}</td>
                         <td className="table-cell text-sm font-mono text-slate-600 whitespace-nowrap">{item.kode_barang}</td>
-                        <td className="table-cell text-sm text-slate-800 min-w-[220px] max-w-[300px]">
-                          <span className="block line-clamp-2 break-words" title={item.nama_barang}>{item.nama_barang}</span>
+                        <td className="table-cell text-sm text-slate-800 min-w-55 max-w-75">
+                          <span className="block line-clamp-2 wrap-break-word" title={item.nama_barang}>{item.nama_barang}</span>
                         </td>
                         <td className="table-cell text-sm text-right text-slate-800 tabular-nums font-bold">{item.qty_crt.toLocaleString('id-ID')}</td>
                         <td className="table-cell text-sm text-right text-slate-600 tabular-nums">{item.qty_pcs.toLocaleString('id-ID')}</td>

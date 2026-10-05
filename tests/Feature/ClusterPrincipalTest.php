@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ClusterPrincipal;
+use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -122,6 +123,66 @@ class ClusterPrincipalTest extends TestCase
 
         $this->assertSame(5, ClusterPrincipal::count(), 'SKU sama tidak boleh menggandakan baris');
         $this->assertSame('NESTLE', ClusterPrincipal::where('product_sku', 'TPECO110')->firstOrFail()->principal_1);
+    }
+
+    /**
+     * Kunci stabil diisi otomatis saat import: SKU komposit file sumber
+     * (NICKNEW/NICK) dipetakan ke BOSnetszProductId/SAPszProductId NPN supaya
+     * join laporan tahan terhadap perubahan nickname.
+     */
+    public function test_import_resolves_stable_ids_from_npn(): void
+    {
+        Sanctum::actingAs($this->userWithPermissions(['cluster_principal.view', 'cluster_principal.create']));
+
+        Npn::create([
+            'BOSnetszProductId' => '90103211143100',
+            'SAPszProductId' => '9000002608',
+            'szNickName' => 'JDO1A',
+            'szNickNameNew' => 'OJDJE8',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        $this->importRows([
+            ['Beverage', 'Juice', 'Jelly Drink', 'Flavour', 'Fruity', 'OJDJE8/JDO1A', 'GBS', null],
+        ])->assertOk();
+
+        $row = ClusterPrincipal::where('product_sku', 'OJDJE8/JDO1A')->firstOrFail();
+        $this->assertSame('90103211143100', $row->bosnetsz_product_id);
+        $this->assertSame('9000002608', $row->sap_product_id);
+    }
+
+    /** Ganti SKU lewat CRUD ikut menghitung ulang kunci stabil. */
+    public function test_update_recomputes_stable_ids_when_sku_changes(): void
+    {
+        Sanctum::actingAs($this->userWithPermissions([
+            'cluster_principal.view', 'cluster_principal.create', 'cluster_principal.edit',
+        ]));
+
+        Npn::create([
+            'BOSnetszProductId' => '90103211143100',
+            'SAPszProductId' => '9000002608',
+            'szNickName' => 'JDO1A',
+            'szNickNameNew' => 'OJDJE8',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        $id = $this->postJson('/api/v1/cluster-principal', [
+            'product_sku' => 'SKU-LAMA',
+            'principal_1' => 'GBS',
+        ])->assertCreated()->json('data.id');
+
+        $this->assertNull(ClusterPrincipal::findOrFail($id)->bosnetsz_product_id);
+
+        $this->putJson("/api/v1/cluster-principal/$id", [
+            'product_sku' => 'OJDJE8/JDO1A',
+            'principal_1' => 'GBS',
+        ])->assertOk();
+
+        $this->assertSame(
+            '90103211143100',
+            ClusterPrincipal::findOrFail($id)->bosnetsz_product_id,
+            'ganti SKU harus menghitung ulang kunci stabil'
+        );
     }
 
     /** Baris tanpa SKU tidak bisa di-update pada import berikutnya, jadi dilewati. */

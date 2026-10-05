@@ -11,24 +11,41 @@ use App\Services\OpnameExpiredService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class OpnameExpiredController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = OpnameExpiredWave::with('validator')->orderByDesc('week_start');
+        // Principal 2 dari master cluster_principal (join yang sama dengan
+        // laporan penerimaan: BOSnet stabil dulu, nickname sebagai transisi,
+        // product_sku langsung sebagai jaring terakhir bagi SKU yang belum
+        // terdaftar di NPN). Semua LEFT: wave tetap muncul walau master
+        // belum lengkap.
+        $query = OpnameExpiredWave::with('validator')
+            ->select('opname_expired_waves.*')
+            ->addSelect(DB::raw('COALESCE(cp.principal_1, cp_nick.principal_1, cp_sku.principal_1) as principal_1'))
+            ->addSelect(DB::raw('COALESCE(cp.principal_2, cp_nick.principal_2, cp_sku.principal_2) as principal_2'))
+            ->leftJoin('npn', 'npn.BOSnetszProductId', '=', 'opname_expired_waves.kode_barang')
+            ->leftJoin('cluster_principal as cp', 'cp.bosnetsz_product_id', '=', 'opname_expired_waves.kode_barang')
+            ->leftJoin('cluster_principal as cp_nick', function ($join): void {
+                // Nama lama DAN nama baru: gramatik boleh berubah, ID stabil tetap.
+                $join->on('cp_nick.product_sku', '=', 'npn.szNickName')
+                    ->orOn('cp_nick.product_sku', '=', 'npn.szNickNameNew');
+            })
+            ->leftJoin('cluster_principal as cp_sku', 'cp_sku.product_sku', '=', 'opname_expired_waves.kode_barang');
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo);
+            $query->where('opname_expired_waves.kode_depo', $request->user()->kode_depo);
         }
 
         if ($request->week_start) {
-            $query->where('week_start', $request->week_start);
+            $query->where('opname_expired_waves.week_start', $request->week_start);
         } else {
             $latest = $query->clone()->value('week_start');
             if ($latest) {
-                $query->where('week_start', $latest);
+                $query->where('opname_expired_waves.week_start', $latest);
             }
         }
 
@@ -39,22 +56,52 @@ class OpnameExpiredController extends Controller
             ->all();
 
         if ($request->status) {
-            $query->where('status_ini', strtoupper(trim($request->status)));
+            $query->where('opname_expired_waves.status_ini', strtoupper(trim($request->status)));
         } elseif ($statuses) {
-            $query->whereIn('status_ini', $statuses);
+            $query->whereIn('opname_expired_waves.status_ini', $statuses);
         }
 
         if ($request->kode_depo && ! $request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->kode_depo);
+            $query->where('opname_expired_waves.kode_depo', $request->kode_depo);
         }
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $like = "%{$request->search}%";
-                $q->where('kode_barang', 'like', $like)
-                    ->orWhere('nama_barang', 'like', $like)
-                    ->orWhere('sumber_material', 'like', $like);
+                $q->where('opname_expired_waves.kode_barang', 'like', $like)
+                    ->orWhere('opname_expired_waves.nama_barang', 'like', $like)
+                    ->orWhere('opname_expired_waves.sumber_material', 'like', $like)
+                    ->orWhere('cp.principal_1', 'like', $like)
+                    ->orWhere('cp_nick.principal_1', 'like', $like)
+                    ->orWhere('cp_sku.principal_1', 'like', $like)
+                    ->orWhere('cp.principal_2', 'like', $like)
+                    ->orWhere('cp_nick.principal_2', 'like', $like)
+                    ->orWhere('cp_sku.principal_2', 'like', $like);
             });
+        }
+
+        // Sortir klik-header ala Excel. Allowlist kolom (bukan input mentah
+        // ke orderBy — anti SQL injection); tanpa sort = urutan bawaan.
+        $sorts = [
+            'status' => 'opname_expired_waves.status_ini',
+            'produk' => 'opname_expired_waves.kode_barang',
+            'depo' => 'opname_expired_waves.nama_depo',
+            'principal_1' => 'principal_1',
+            'principal_2' => 'principal_2',
+            'crt' => 'opname_expired_waves.qty_ini_crt',
+            'pcs' => 'opname_expired_waves.qty_ini_pcs',
+            'penerimaan' => 'opname_expired_waves.tanggal_penerimaan',
+            'expired' => 'opname_expired_waves.expired_date_ini',
+            'sisa' => 'opname_expired_waves.sisa_hari',
+        ];
+
+        $sortBy = $sorts[$request->input('sort_by')] ?? null;
+        $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        if ($sortBy) {
+            $query->orderBy($sortBy, $sortDir)->orderBy('opname_expired_waves.id');
+        } else {
+            $query->orderByDesc('opname_expired_waves.week_start');
         }
 
         $perPage = $this->perPage($request);
@@ -100,6 +147,19 @@ class OpnameExpiredController extends Controller
         return response()->json([
             'message' => 'Opname expired berhasil dibuat/diperbarui.',
             'data' => $result,
+        ]);
+    }
+
+    public function pending(Request $request, OpnameExpiredService $service): JsonResponse
+    {
+        $request->validate([
+            'week_start' => 'nullable|date',
+        ]);
+
+        $weekStart = $request->week_start ? Carbon::parse($request->week_start) : Carbon::today();
+
+        return response()->json([
+            'data' => $service->pendingSummary($weekStart, $request->user()),
         ]);
     }
 

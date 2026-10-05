@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/dashboard/layout';
 import { receivingItems, npn, getErrorMessage } from '@/lib/api';
 import ReceivingItemEditModal from '@/components/ReceivingItemEditModal';
-import ManualBatchManager from '@/components/ManualBatchManager';
 import SearchInput from '@/components/SearchInput';
 import { useAuthStore } from '@/store/auth';
 import { conditionMeta } from '@/lib/condition';
@@ -384,8 +383,13 @@ export default function PenerimaanPage() {
               resultLabel="batch"
             />
             <div className="flex items-center gap-2">
-              {hasPermission('penerimaan.create') && (
-                <ManualBatchManager onChanged={load} buttonClassName="btn-primary" buttonLabel="+ Batch Manual" />
+              {hasPermission('opname.view') && (
+                <button onClick={() => router.push('/opname-expired')} title="Input dan import batch manual dikelola di Batch Expired" className="btn-primary">
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    Batch Manual
+                  </span>
+                </button>
               )}
               {hasPermission('emails.view') && (
                 <button onClick={() => router.push('/email-recipients?document_type=receiving')} className="btn-secondary">
@@ -536,7 +540,7 @@ export default function PenerimaanPage() {
 
 function PencilIcon() {
   return (
-    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+    <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
   );
 }
 
@@ -588,7 +592,7 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
            <tr key={item.id} className={`transition-colors hover:bg-chip-primary/30 ${itemIndex % 2 === 0 ? 'bg-surface-card' : 'bg-overlay-30'}`}>
              <td className="px-5 py-3 whitespace-nowrap"><span className="font-mono text-sm font-medium text-gray-800">{item.kode_barang}</span></td>
              <td className="px-5 py-3 min-w-[240px] max-w-[340px]">
-               <span className="block line-clamp-2 break-words text-sm text-gray-700" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
+               <span className="block line-clamp-2 wrap-break-word text-sm text-gray-700" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
              </td>
              <td className="px-5 py-3 text-right text-sm font-medium tabular-nums text-gray-800">{num(item.actual_qty)}</td>
              <td className="px-5 py-3 text-right text-sm tabular-nums text-gray-500" title={cf != null ? `QTY CRT × faktor konversi ${cf}` : undefined}>
@@ -666,7 +670,7 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-mono text-sm font-medium text-gray-800">{item.kode_barang}</p>
-                    <p className="mt-0.5 line-clamp-2 break-words text-xs text-gray-600" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</p>
+                    <p className="mt-0.5 line-clamp-2 wrap-break-word text-xs text-gray-600" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</p>
                     <p className="mt-1 text-[11px] text-gray-400">{item.satuan || '-'} · Exp {fmtDate(item.expired_date)}</p>
                   </div>
                   <div className="shrink-0 text-right">

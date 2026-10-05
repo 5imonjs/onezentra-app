@@ -270,6 +270,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/', [ReceivingItemController::class, 'store'])->middleware('permission:penerimaan.create');
         Route::get('/template', [ReceivingItemController::class, 'template'])->middleware('permission:penerimaan.view');
         Route::post('/import', [ReceivingItemController::class, 'import'])->middleware('permission:penerimaan.create');
+        // Rute statis wajib sebelum {receivingItem}.
+        Route::delete('/bulk', [ReceivingItemController::class, 'bulkDestroy'])->middleware('permission:penerimaan.delete');
         Route::put('/{receivingItem}', [ReceivingItemController::class, 'update'])->middleware('permission:penerimaan.edit');
         Route::delete('/{receivingItem}', [ReceivingItemController::class, 'destroy'])->middleware('permission:penerimaan.delete');
     });
@@ -277,6 +279,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('opname-expired')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [OpnameExpiredController::class, 'index'])->middleware('permission:opname.view');
         Route::post('/generate', [OpnameExpiredController::class, 'generate'])->middleware('permission:opname.create');
+        // Rute statis wajib sebelum {wave} — pola yang sama dengan batches/search.
+        Route::get('/pending', [OpnameExpiredController::class, 'pending'])->middleware('permission:opname.view');
         Route::get('/settings', [OpnameExpiredController::class, 'settings'])->middleware('permission:opname.view');
         Route::put('/settings', [OpnameExpiredController::class, 'updateSettings'])->middleware('permission:opname.edit');
         Route::get('/export', [OpnameExpiredController::class, 'export'])->middleware('permission:opname.view');
@@ -328,6 +332,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/selisih-qty/export', [ReportController::class, 'selisihQtyExport'])->middleware('permission:reports.view');
         Route::get('/penerimaan', [ReportController::class, 'penerimaan'])->middleware('permission:reports.view');
         Route::get('/penerimaan/export', [ReportController::class, 'penerimaanExport'])->middleware('permission:reports.view');
+        Route::get('/penerimaan-batch-expired', [ReportController::class, 'penerimaanExpired'])->middleware('permission:reports.view');
+        Route::get('/penerimaan-batch-expired/export', [ReportController::class, 'penerimaanExpiredExport'])->middleware('permission:reports.view');
         Route::get('/rencana-kirim', [ReportController::class, 'rencanaKirim'])->middleware('permission:reports.view');
         Route::get('/rencana-kirim/export', [ReportController::class, 'rencanaKirimExport'])->middleware('permission:reports.view');
         Route::get('/biaya-thl', [ReportController::class, 'biayaThl'])->middleware('permission:reports.biaya_thl');

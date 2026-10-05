@@ -63,7 +63,7 @@ function InfoItem({ label, children, bare = false }: { label: string; children: 
       {bare ? (
         <div className="mt-1">{children}</div>
       ) : (
-        <p className="text-sm text-slate-800 mt-1 font-medium break-words">{children}</p>
+        <p className="text-sm text-slate-800 mt-1 font-medium wrap-break-word">{children}</p>
       )}
     </div>
   );

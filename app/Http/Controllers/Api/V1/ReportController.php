@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\BiayaRetribusiReportExport;
 use App\Exports\BiayaThlReportExport;
+use App\Exports\PenerimaanExpiredReportExport;
 use App\Exports\PenerimaanExport;
 use App\Exports\RencanaKirimReportExport;
 use App\Exports\SelisihQtyExport;
@@ -13,6 +14,7 @@ use App\Models\BiayaThlDetail;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Services\ExportGuard;
+use App\Services\PenerimaanExpiredReportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -292,6 +294,51 @@ class ReportController extends Controller
         ExportGuard::ensureWithinLimit($query);
 
         return Excel::download(new PenerimaanExport($query), $filename);
+    }
+
+    /**
+     * Laporan gabungan penerimaan + batch expired.
+     *
+     * Satu baris = satu penerimaan produk. Data penerimaan dan tanggal expired
+     * digabung dalam satu tabel (bukan dua tabel yang harus dicocokkan manual),
+     * dan pengelompokan dilakukan per cluster.
+     */
+    public function penerimaanExpired(Request $request): JsonResponse
+    {
+        $filters = PenerimaanExpiredReportService::validate($request);
+        $user = $request->user();
+
+        $query = PenerimaanExpiredReportService::query($filters, $user);
+        $perPage = min(max((int) $request->input('per_page', 25), 1), 100);
+        $paginated = $query->paginate($perPage);
+
+        // Nomor urut global di seluruh hasil filter, bukan nomor di halaman ini.
+        $offset = ($paginated->currentPage() - 1) * $perPage;
+        $data = $paginated->getCollection()
+            ->values()
+            ->map(fn (ReceivingItem $item, int $index) => PenerimaanExpiredReportService::row($item, $offset + $index + 1));
+
+        return response()->json([
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+            'data' => $data,
+            'summary' => PenerimaanExpiredReportService::summary($filters, $user),
+            'cluster_options' => PenerimaanExpiredReportService::clusterOptions(),
+        ]);
+    }
+
+    public function penerimaanExpiredExport(Request $request)
+    {
+        $filters = PenerimaanExpiredReportService::validate($request);
+        $query = PenerimaanExpiredReportService::query($filters, $request->user());
+
+        ExportGuard::ensureWithinLimit($query);
+
+        $filename = 'laporan-penerimaan-expired-produk_'.date('Y-m-d_His').'.xlsx';
+
+        return Excel::download(new PenerimaanExpiredReportExport($query), $filename);
     }
 
     public function biayaThl(Request $request): JsonResponse

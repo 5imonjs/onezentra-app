@@ -13,9 +13,10 @@ class ReceivingItemTemplate implements FromArray, ShouldAutoSize, WithHeadings, 
     public function array(): array
     {
         return [
+            // Operator cukup mengisi 5 kolom di bawah — KODE BARANG akan
+            // ditulis sistem dari lookup NPN, begitu pula CLUSTER + PRINCIPAL.
             [
-                'B-0001', 'Produk Contoh', '10', '120', '2027-01-31', '2026-09-09',
-                'PT Pengirim Contoh', 'DPO001', 'Depo Contoh', 'CRT',
+                'ESVAG150', '10', '120', '2027-01-31', '2026-09-09',
             ],
         ];
     }
@@ -23,16 +24,11 @@ class ReceivingItemTemplate implements FromArray, ShouldAutoSize, WithHeadings, 
     public function headings(): array
     {
         return [
-            'KODE BARANG',
-            'NAMA BARANG',
-            'QTY CRT/ZAK',
+            'PRODUK',
+            'QTY DUS/BALL',
             'QTY PCS',
-            'TGL EXPIRED DATE',
-            'TGL PENERIMAAN',
-            'SUMBER MATERIAL',
-            'KODE DEPO',
-            'NAMA DEPO',
-            'SATUAN',
+            'EXPIRED',
+            'TANGGAL PENERIMAAN',
         ];
     }
 

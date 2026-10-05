@@ -16,6 +16,10 @@ interface Wave {
   nama_depo: string;
   kode_barang: string;
   nama_barang: string;
+  // Principal 1 & 2 dari master cluster_principal (LEFT JOIN backend).
+  // Null = master belum lengkap, tampil '-'.
+  principal_1?: string | null;
+  principal_2?: string | null;
   sumber_material: string;
   tanggal_penerimaan: string | null;
   qty_ini_crt: number;
@@ -63,6 +67,14 @@ interface ListResponse {
   meta: ListMeta;
 }
 
+interface PendingSummary {
+  week_start: string;
+  week_end: string;
+  wave_exists: boolean;
+  eligible: { total: number; sj: number; import: number };
+  pending: { total: number; sj: number; import: number };
+}
+
 const ITEMS_PER_PAGE = 50;
 
 const STATUS_ORDER = ['EXPIRED', 'KRITIS', 'PERHATIAN', 'AMAN'] as const;
@@ -77,6 +89,32 @@ const STATUS_META: Record<string, { label: string; badge: string; dot: string; b
 };
 
 const num = (v: unknown): number => Number(v ?? 0);
+
+// Sortir klik-header ala Excel: klik = A-Z, klik lagi = Z-A.
+type SortKey = 'status' | 'produk' | 'depo' | 'principal_1' | 'principal_2' | 'crt' | 'pcs' | 'penerimaan' | 'expired' | 'sisa';
+
+function SortHeader({ label, sortKey, sort, onSort, align = 'left' }: {
+  label: string;
+  sortKey: SortKey;
+  sort: { key: SortKey | null; dir: 'asc' | 'desc' } | null;
+  onSort: (key: SortKey) => void;
+  align?: 'left' | 'right';
+}) {
+  const active = sort?.key === sortKey;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      aria-label={`Urutkan ${label} ${active && sort.dir === 'asc' ? 'menurun' : 'menaik'}`}
+      className={`inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[11px] transition-colors hover:text-slate-800 ${active ? 'text-slate-800' : 'text-slate-500'} ${align === 'right' ? 'flex-row-reverse' : ''}`}
+    >
+      <span>{label}</span>
+      <span aria-hidden="true" className={`text-[10px] leading-none ${active ? 'text-primary-500' : 'text-slate-300'}`}>
+        {active ? (sort.dir === 'asc' ? '▲' : '▼') : '△'}
+      </span>
+    </button>
+  );
+}
 
 function DaysBar({ sisaHari, maxHari, status }: { sisaHari: number; maxHari: number; status: string }) {
   const meta = STATUS_META[status] || STATUS_META.AMAN;
@@ -105,6 +143,8 @@ export default function OpnameExpiredPage() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [pending, setPending] = useState<PendingSummary | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey | null; dir: 'asc' | 'desc' }>({ key: null, dir: 'asc' });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [thresholdForm, setThresholdForm] = useState<Record<string, number>>({
@@ -137,6 +177,8 @@ export default function OpnameExpiredPage() {
         week_start: weekStart || undefined,
         search: searchApply || undefined,
         statuses: tabStatuses?.join(',') || undefined,
+        sort_by: sort.key || undefined,
+        sort_dir: sort.key ? sort.dir : undefined,
         per_page: ITEMS_PER_PAGE,
         page,
       }) as { data: ListResponse };
@@ -152,9 +194,30 @@ export default function OpnameExpiredPage() {
     } finally {
       setLoading(false);
     }
-  }, [weekStart, searchApply, tabStatuses, page]);
+  }, [weekStart, searchApply, tabStatuses, page, sort]);
+
+  const handleSort = (key: SortKey) => {
+    setSort((prev) => prev.key === key
+      ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+      : { key, dir: 'asc' });
+    setPage(1);
+  };
 
   useEffect(() => { load(); }, [load]);
+
+  // Indikator "belum di-generate": baris ledger (SJ + import) yang lolos syarat
+  // generate minggu berjalan tapi kuncinya belum ada di wave. Basisnya sama
+  // dengan backend generate() — lihat GET /opname-expired/pending.
+  const loadPending = useCallback(async (week?: string) => {
+    try {
+      const res = await opnameExpired.pending({ week_start: week || undefined }) as { data: { data: PendingSummary } };
+      setPending(res.data.data);
+    } catch {
+      setPending(null);
+    }
+  }, []);
+
+  useEffect(() => { loadPending(weekStart || undefined); }, [loadPending, weekStart]);
 
   useEffect(() => {
     if (weeks.length > 0 && !weekStart) setWeekStart(weeks[0]);
@@ -215,6 +278,7 @@ export default function OpnameExpiredPage() {
       setWeekStart(res.data.data.week_start);
       setPage(1);
       await load();
+      await loadPending(res.data.data.week_start);
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal generate opname'));
     } finally {
@@ -437,8 +501,19 @@ export default function OpnameExpiredPage() {
             <div className="ml-auto flex flex-wrap items-center gap-2 px-2">
             <ManualBatchManager
               buttonClassName="btn-primary"
-              onChanged={() => { setPage(1); load(); }}
+              onChanged={() => { setPage(1); load(); loadPending(weekStart || undefined); }}
             />
+            {(pending?.pending.total ?? 0) > 0 && (
+              <button
+                type="button"
+                onClick={handleGenerate}
+                title={`Siap generate minggu ${pending?.week_start}: ${pending?.pending.sj} baris SJ + ${pending?.pending.import} baris import`}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-500" aria-hidden="true" />
+                {pending?.pending.total} baris belum di-generate
+              </button>
+            )}
             {hasPermission('opname.create') && (
               <button onClick={handleGenerate} disabled={generating} className="btn-primary disabled:opacity-50">
                 <span className="flex items-center gap-2">
@@ -512,17 +587,20 @@ export default function OpnameExpiredPage() {
           ) : (
             <>
               <div className="hidden overflow-x-auto md:block" id="opname-table-panel" role="tabpanel" aria-labelledby="tab-ACTION">
-                <table className="w-full min-w-[980px] border-collapse">
+                <table className="w-full min-w-[1040px] border-collapse">
                   <caption className="sr-only">Daftar opname expired</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-300 bg-surface-raised">
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Produk</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Qty</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Tgl Penerimaan</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Expired</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Sisa</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Status" sortKey="status" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Produk" sortKey="produk" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Depo" sortKey="depo" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Principal 1" sortKey="principal_1" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Principal 2" sortKey="principal_2" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="CRT/Ball" sortKey="crt" sort={sort} onSort={handleSort} align="right" /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="PCS" sortKey="pcs" sort={sort} onSort={handleSort} align="right" /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Tgl Penerimaan" sortKey="penerimaan" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Expired" sortKey="expired" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Sisa" sortKey="sisa" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Tindakan</th>
                     </tr>
                   </thead>
@@ -539,16 +617,23 @@ export default function OpnameExpiredPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-5 py-3 min-w-[200px] max-w-[320px]">
+                          <td className="px-5 py-3 min-w-50 max-w-80">
                             <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
-                            <span className="block text-xs text-slate-500 line-clamp-1 break-words" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
+                            <span className="block text-xs text-slate-500 line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
                           </td>
                           <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
+                          <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_1 || '-'}</td>
+                          <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_2 || '-'}</td>
                           <td className="px-5 py-3 text-right whitespace-nowrap">
-                            <span className="text-sm font-semibold tabular-nums text-slate-800">{fnum(num(w.qty_ini_crt))} CRT</span>
-                            {num(w.qty_ini_pcs) > 0 && <span className="ml-1 text-xs tabular-nums text-slate-400">/ {fnum(num(w.qty_ini_pcs))} PCS</span>}
+                            <span className="text-sm font-semibold tabular-nums text-slate-800">{fnum(num(w.qty_ini_crt))}</span>
                             {num(w.qty_koreksi_crt) !== 0 && (
-                              <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_crt)} CRT / {num(w.qty_koreksi_pcs)} PCS</span>
+                              <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_crt)}</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3 text-right whitespace-nowrap">
+                            <span className="text-sm tabular-nums text-slate-600">{fnum(num(w.qty_ini_pcs))}</span>
+                            {num(w.qty_koreksi_pcs) !== 0 && (
+                              <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_pcs)}</span>
                             )}
                           </td>
                           <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-700">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
@@ -595,7 +680,7 @@ export default function OpnameExpiredPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate font-mono text-sm font-bold text-slate-800">{w.kode_barang}</p>
-                          <p className="mt-0.5 line-clamp-1 break-words text-xs text-slate-500" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
+                          <p className="mt-0.5 line-clamp-1 wrap-break-word text-xs text-slate-500" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-1">
                           {badge(w.status_ini)}
@@ -607,9 +692,12 @@ export default function OpnameExpiredPage() {
                           <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                           {w.nama_depo || w.kode_depo || '-'}
                         </span>
-                        <span className="tabular-nums font-semibold text-slate-700">{fnum(num(w.qty_ini_crt))} CRT</span>
-                        {num(w.qty_ini_pcs) > 0 && <span className="tabular-nums text-slate-400">/ {fnum(num(w.qty_ini_pcs))} PCS</span>}
-                        {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi {num(w.qty_koreksi_crt)} CRT</span>}
+                        <span className="tabular-nums text-slate-700"><span className="text-slate-400">CRT/Ball:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt))}</span></span>
+                        <span className="tabular-nums text-slate-700"><span className="text-slate-400">PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs))}</span></span>
+                        <span className="tabular-nums text-slate-700"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
+                        <span className="tabular-nums text-slate-700"><span className="text-slate-400">Principal 1:</span> <span className="font-semibold">{w.principal_1 || '-'}</span></span>
+                        {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi CRT {num(w.qty_koreksi_crt)}</span>}
+                        {num(w.qty_koreksi_pcs) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi PCS {num(w.qty_koreksi_pcs)}</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded-lg bg-surface-raised px-2.5 py-2">
@@ -730,7 +818,7 @@ export default function OpnameExpiredPage() {
                   </div>
                   <div className="bg-surface-raised rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Sumber Material</p>
-                    <p className="text-sm font-semibold text-slate-800 mt-1 break-words">{current.sumber_material || '-'}</p>
+                    <p className="text-sm font-semibold text-slate-800 mt-1 wrap-break-word">{current.sumber_material || '-'}</p>
                   </div>
                 </div>
 
