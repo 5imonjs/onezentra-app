@@ -22,7 +22,7 @@ import { downloadBatchLabel, printBatchLabel, type BatchLabelData } from '@/lib/
  * (bukan disabled) — tidak ada aksi berguna yang bisa dilakukan operator.
  */
 function LabelActions({ item, po, depo }: { item: ReceivingItem; po: string; depo: string }) {
-  const batch = item.batch;
+  const batch = item.batch ?? item.verifiedBatch;
   if (!batch || !batch.barcode_label) return null;
 
   // Label sudah tercetak fisik tapi tidak berlaku (sesi validasi dibatalkan).
@@ -111,6 +111,11 @@ interface ReceivingItem {
    * lewat `status`.
    */
   batch?: {
+    batch_number: string | null;
+    barcode_label: string | null;
+    status?: string | null;
+  } | null;
+  verifiedBatch?: {
     batch_number: string | null;
     barcode_label: string | null;
     status?: string | null;

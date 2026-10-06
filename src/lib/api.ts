@@ -325,6 +325,21 @@ export const receivingItems = {
   delete: (id: number) => apiClient.delete(`/receiving-items/${id}`),
 };
 
+export const opnameSessions = {
+  list: (params?: Record<string, unknown>) => apiClient.get('/opname-sessions', { params }),
+  create: (data: Record<string, unknown>) => apiClient.post('/opname-sessions', data),
+  get: (id: number) => apiClient.get(`/opname-sessions/${id}`),
+  start: (id: number) => apiClient.post(`/opname-sessions/${id}/start`),
+  verifyItem: (id: number, itemId: number, data: FormData | Record<string, unknown>) => {
+    const isForm = typeof FormData !== 'undefined' && data instanceof FormData;
+    return apiClient.post(`/opname-sessions/${id}/items/${itemId}`, data, isForm ? {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    } : undefined);
+  },
+  complete: (id: number) => apiClient.post(`/opname-sessions/${id}/complete`),
+  cancel: (id: number, notes?: string) => apiClient.post(`/opname-sessions/${id}/cancel`, notes ? { notes } : {}),
+};
+
 export const opnameExpired = {
   list: (params?: Record<string, unknown>) => apiClient.get('/opname-expired', { params }),
   generate: (weekStart?: string) => apiClient.post('/opname-expired/generate', weekStart ? { week_start: weekStart } : {}),

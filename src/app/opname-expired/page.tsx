@@ -20,6 +20,8 @@ interface Wave {
   // Null = master belum lengkap, tampil '-'.
   principal_1?: string | null;
   principal_2?: string | null;
+  // Jejak batch penyusun baris agregat ini (diisi Generate).
+  batch_numbers?: string[] | null;
   sumber_material: string;
   tanggal_penerimaan: string | null;
   qty_ini_crt: number;
@@ -826,6 +828,20 @@ export default function OpnameExpiredPage() {
                 <div className={`rounded-xl border px-4 py-3 ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).badge}`}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Rekomendasi</p>
                   <p className="text-sm text-slate-800 mt-0.5 leading-snug">{current.rekomendasi || '-'}</p>
+                </div>
+
+                {/* Batch penyusun: jejak identitas tiap baris ledger agregat ini */}
+                <div className="rounded-xl border border-gray-300 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Batch Penyusun ({(current.batch_numbers || []).length})</p>
+                  {(current.batch_numbers || []).length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {(current.batch_numbers || []).map((b) => (
+                        <span key={b} className="font-mono text-xs px-2 py-0.5 rounded-md bg-surface-raised text-slate-700">{b}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 mt-1">Belum ada — Generate ulang untuk mengisi jejak batch.</p>
+                  )}
                 </div>
 
                 {/* Perbandingan mingguan */}
