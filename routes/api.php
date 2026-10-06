@@ -296,6 +296,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/', [OpnameExpiredSessionController::class, 'store'])->middleware('permission:opname.create');
         Route::get('/{session}', [OpnameExpiredSessionController::class, 'show'])->middleware('permission:opname.view');
         Route::post('/{session}/start', [OpnameExpiredSessionController::class, 'start'])->middleware('permission:opname.edit');
+        Route::post('/{session}/waves', [OpnameExpiredSessionController::class, 'addWaves'])->middleware('permission:opname.create');
         Route::post('/{session}/items/{item}', [OpnameExpiredSessionController::class, 'verifyItem'])->middleware('permission:opname.edit');
         Route::post('/{session}/complete', [OpnameExpiredSessionController::class, 'complete'])->middleware('permission:opname.edit');
         Route::post('/{session}/cancel', [OpnameExpiredSessionController::class, 'cancel'])->middleware('permission:opname.edit');

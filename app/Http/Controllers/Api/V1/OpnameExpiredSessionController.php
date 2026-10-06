@@ -92,6 +92,16 @@ class OpnameExpiredSessionController extends Controller
                 422,
                 'Semua wave harus satu minggu dan satu depo dengan sesi.'
             );
+
+            // Kunci wave: yang sudah masuk sesi berjalan tidak boleh
+            // ditugaskan lagi — verifikasi ganda = koreksi ganda.
+            $lockedWave = OpnameExpiredSessionItem::where('wave_id', $wave->id)
+                ->whereHas('session', fn ($q) => $q->whereIn('status', [
+                    OpnameExpiredSession::STATUS_OPEN,
+                    OpnameExpiredSession::STATUS_IN_PROGRESS,
+                ]))
+                ->exists();
+            abort_if($lockedWave, 422, "Wave {$wave->kode_barang} sedang berjalan di sesi lain.");
         }
 
         // Pembuatan sesi + ekspansi item atomik: double-submit tidak boleh
@@ -152,7 +162,33 @@ class OpnameExpiredSessionController extends Controller
     {
         $this->authorizeSession($request, $session);
 
-        return response()->json(['data' => $session->load(['assignee', 'creator', 'items.wave', 'items.verifier'])]);
+        $session->load(['assignee', 'creator', 'items.wave', 'items.batch', 'items.verifier']);
+
+        // Qty acuan per batch (sistem) agar petugas tahu angka pembanding
+        // tiap label: satu query per sumber, bukan N+1.
+        $batches = $session->items->map->batch->filter()->unique('id')->values();
+        $byReceiving = ReceivingItem::whereIn('id', $batches->pluck('receiving_item_id')->filter()->all())
+            ->get()->keyBy('id');
+        $bySj = ReceivingItem::whereIn('sj_validation_item_id', $batches->pluck('sj_validation_item_id')->filter()->all())
+            ->get()->keyBy('sj_validation_item_id');
+
+        $items = $session->items->map(function (OpnameExpiredSessionItem $item) use ($byReceiving, $bySj): array {
+            $source = $item->batch
+                ? ($item->batch->receiving_item_id
+                    ? ($byReceiving[$item->batch->receiving_item_id] ?? null)
+                    : ($bySj[$item->batch->sj_validation_item_id] ?? null))
+                : null;
+
+            return array_merge($item->toArray(), [
+                'expected_crt' => $source ? (float) $source->actual_qty : null,
+                'expected_pcs' => $source && $source->qty_pcs !== null ? (float) $source->qty_pcs : null,
+            ]);
+        })->all();
+
+        $data = $session->toArray();
+        $data['items'] = $items;
+
+        return response()->json(['data' => $data]);
     }
 
     public function start(Request $request, OpnameExpiredSession $session): JsonResponse
@@ -185,9 +221,12 @@ class OpnameExpiredSessionController extends Controller
             'condition' => ['nullable', 'string', 'max:32', Rule::in(ReceivingItem::CONDITIONS)],
             'notes' => 'nullable|string',
             'photo' => 'nullable|image|max:10240',
+            // Base praktik: scan dulu, input qty kemudian. Identifikasi
+            // manual hanya fallback label rusak — wajib tercatat.
+            'identified_via' => 'required|string|in:scan,manual',
         ]);
 
-        if (($validated['condition'] ?? null) === 'FISIK_RUSAK' && empty($item->photo) && ! $request->hasFile('photo')) {
+        if (in_array($validated['condition'] ?? null, ReceivingItem::CONDITIONS_REQUIRING_PHOTO, true) && empty($item->photo) && ! $request->hasFile('photo')) {
             throw ValidationException::withMessages([
                 'photo' => ['Foto wajib disertakan untuk kondisi barang ini.'],
             ]);
@@ -261,6 +300,74 @@ class OpnameExpiredSessionController extends Controller
         return response()->json([
             'message' => 'Sesi dibatalkan.',
             'data' => $session->fresh(),
+        ]);
+    }
+
+    /**
+     * Tambah wave susulan ke sesi berjalan (wave minggu+depo sama yang
+     * belum masuk sesi berjalan mana pun). Diekspansi ke batch seperti store.
+     */
+    public function addWaves(Request $request, OpnameExpiredSession $session, OpnameExpiredService $service): JsonResponse
+    {
+        $this->authorizeSession($request, $session);
+
+        abort_unless($session->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
+
+        $validated = $request->validate([
+            'wave_ids' => 'required|array|min:1|max:500|distinct',
+            'wave_ids.*' => 'integer|exists:opname_expired_waves,id',
+        ]);
+
+        $user = $request->user();
+        $waves = OpnameExpiredWave::whereIn('id', $validated['wave_ids'])->get();
+        $added = 0;
+
+        DB::transaction(function () use ($user, $session, $waves, $service, &$added): void {
+            foreach ($waves as $wave) {
+                abort_unless(
+                    Carbon::parse($wave->week_start)->toDateString() === Carbon::parse($session->week_start)->toDateString()
+                        && $wave->kode_depo === $session->kode_depo
+                        && $user->canAccessDepotRow($wave->kode_depo, $wave->nama_depo),
+                    422,
+                    "Wave {$wave->kode_barang} tidak satu minggu/depo dengan sesi."
+                );
+
+                $lockedWave = OpnameExpiredSessionItem::where('wave_id', $wave->id)
+                    ->whereHas('session', fn ($q) => $q->whereIn('status', [
+                        OpnameExpiredSession::STATUS_OPEN,
+                        OpnameExpiredSession::STATUS_IN_PROGRESS,
+                    ]))
+                    ->exists();
+                abort_if($lockedWave, 422, "Wave {$wave->kode_barang} sedang berjalan di sesi lain.");
+
+                $sources = $service->waveSourceItems($wave);
+
+                if ($sources->isEmpty()) {
+                    OpnameExpiredSessionItem::firstOrCreate([
+                        'session_id' => $session->id,
+                        'wave_id' => $wave->id,
+                        'batch_id' => null,
+                    ]);
+                    $added++;
+
+                    continue;
+                }
+
+                foreach ($sources as $source) {
+                    $batch = $source->batch ?? $source->verifiedBatch;
+                    OpnameExpiredSessionItem::firstOrCreate([
+                        'session_id' => $session->id,
+                        'wave_id' => $wave->id,
+                        'batch_id' => $batch?->id,
+                    ]);
+                    $added++;
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => "Ditambahkan {$added} verifikasi ke sesi.",
+            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
         ]);
     }
 

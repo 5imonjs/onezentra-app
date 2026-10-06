@@ -362,7 +362,7 @@ class ReceivingItemController extends Controller
             $attributes['nama_depo'] = $request->user()->nama_depo;
         }
 
-        if ($request->input('condition') === 'FISIK_RUSAK' && empty($receivingItem->photo) && ! $request->hasFile('photo')) {
+        if (in_array($attributes['condition'] ?? $request->input('condition'), ReceivingItem::CONDITIONS_REQUIRING_PHOTO, true) && empty($receivingItem->photo) && ! $request->hasFile('photo')) {
             throw ValidationException::withMessages([
                 'photo' => ['Foto wajib disertakan untuk kondisi barang ini.'],
             ]);

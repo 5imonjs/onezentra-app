@@ -13,7 +13,9 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\OpnameExpiredService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -117,6 +119,7 @@ class OpnameExpiredSessionTest extends TestCase
         $item = $session->items()->first();
         $res = $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
             'qty_fisik_crt' => 8,
+            'identified_via' => 'scan',
             'qty_fisik_pcs' => 8,
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
@@ -139,6 +142,7 @@ class OpnameExpiredSessionTest extends TestCase
         $item2 = $session->items()->whereNull('verified_at')->first();
         $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item2->id}", [
             'qty_fisik_crt' => 5,
+            'identified_via' => 'scan',
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
 
@@ -148,6 +152,7 @@ class OpnameExpiredSessionTest extends TestCase
         // Sesi selesai tidak bisa diverifikasi lagi.
         $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
             'qty_fisik_crt' => 1,
+            'identified_via' => 'scan',
         ])->assertStatus(422);
     }
 
@@ -161,12 +166,14 @@ class OpnameExpiredSessionTest extends TestCase
         $item = $session->items()->first();
         $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
             'qty_fisik_crt' => 10,
+            'identified_via' => 'scan',
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
 
         // Verifikasi ulang baris yang sama: tidak ada label ganda.
         $res = $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
             'qty_fisik_crt' => 10,
+            'identified_via' => 'scan',
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
 
@@ -217,6 +224,7 @@ class OpnameExpiredSessionTest extends TestCase
         foreach ($session->items as $i => $si) {
             $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$si->id}", [
                 'qty_fisik_crt' => 10 - $i,
+                'identified_via' => 'scan',
                 'condition' => 'FISIK_BAGUS',
             ])->assertOk();
         }
@@ -244,6 +252,7 @@ class OpnameExpiredSessionTest extends TestCase
         foreach ($session->items as $si) {
             $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$si->id}", [
                 'qty_fisik_crt' => 5,
+                'identified_via' => 'scan',
                 'condition' => 'FISIK_BAGUS',
             ])->assertOk();
         }
@@ -252,5 +261,129 @@ class OpnameExpiredSessionTest extends TestCase
         Mail::assertSent(OpnameExpiredNotification::class, function ($mail) {
             return $mail->hasTo('selesai@example.com') && $mail->kind === 'completed';
         });
+    }
+
+    public function test_wave_locked_while_in_open_session(): void
+    {
+        $session = $this->makeSession();
+        $waveIds = $session->items->pluck('wave_id')->all();
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => $waveIds,
+        ])->assertStatus(422);
+
+        // Setelah sesi pertama selesai, wave bebas ditugaskan lagi.
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+        foreach ($session->items as $si) {
+            $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$si->id}", [
+                'qty_fisik_crt' => 5,
+                'identified_via' => 'scan',
+            ])->assertOk();
+        }
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/complete")->assertOk();
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => $waveIds,
+        ])->assertCreated();
+    }
+
+    public function test_verify_requires_identification_method(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+
+        // Tanpa identified_via = input qty tanpa scan/cari dulu → ditolak.
+        $item = $session->items()->first();
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
+            'qty_fisik_crt' => 5,
+        ])->assertStatus(422);
+        $this->assertNull($item->fresh()->verified_at);
+    }
+
+    public function test_show_includes_per_batch_expected_qty(): void
+    {
+        $r1 = $this->receipt('B-EXP-01', 10, '2027-02-01');
+        $r2 = $this->receipt('B-EXP-02', 5, '2027-02-01');
+        $b1 = Batch::issueForReceivingItem($r1);
+        Batch::issueForReceivingItem($r2);
+        app(OpnameExpiredService::class)->generate();
+
+        Sanctum::actingAs($this->supervisor);
+        $waveIds = OpnameExpiredWave::where('week_start', '2026-09-07')->pluck('id')->all();
+        $sessionId = $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => $waveIds,
+        ])->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($this->field);
+        $res = $this->getJson("/api/v1/opname-sessions/{$sessionId}")->assertOk();
+
+        $items = collect($res->json('data.items'));
+        $this->assertSame([5.0, 10.0], $items->pluck('expected_crt')->map(fn ($v) => (float) $v)->sort()->values()->all());
+        $this->assertSame($b1->batch_number, $items->firstWhere('expected_crt', 10)['batch']['batch_number']);
+    }
+
+    public function test_verify_problem_condition_requires_photo(): void
+    {
+        Storage::fake('public');
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+
+        $item = $session->items()->first();
+
+        // QTY_KURANG tanpa foto → ditolak (sejajar validasi penerimaan).
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
+            'qty_fisik_crt' => 5,
+            'condition' => 'QTY_KURANG',
+            'identified_via' => 'scan',
+        ])->assertStatus(422);
+
+        // Dengan foto → lolos.
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
+            'qty_fisik_crt' => 5,
+            'condition' => 'QTY_KURANG',
+            'identified_via' => 'scan',
+            'photo' => UploadedFile::fake()->image('rusak.jpg'),
+        ])->assertOk();
+        $this->assertNotNull($item->fresh()->photo);
+    }
+
+    public function test_add_waves_to_open_session(): void
+    {
+        $session = $this->makeSession();
+        $this->assertCount(2, $session->items);
+
+        // Wave baru muncul belakangan (generate susulan).
+        $this->receipt('B-SES-ADD', 7, '2027-04-01');
+        app(OpnameExpiredService::class)->generate();
+        $newWave = OpnameExpiredWave::where('kode_barang', 'B-SES-ADD')->first();
+        $this->assertNotNull($newWave);
+
+        Sanctum::actingAs($this->supervisor);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/waves", [
+            'wave_ids' => [$newWave->id],
+        ])->assertOk();
+
+        $this->assertCount(3, $session->fresh()->items);
+
+        // Wave milik sesi ini tak bisa ditambah dua kali.
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/waves", [
+            'wave_ids' => [$newWave->id],
+        ])->assertStatus(422);
     }
 }

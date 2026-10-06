@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
-import { formatDateId } from '@/lib/dates';
+import { formatDateId, formatDurationId } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ManualBatchManager from '@/components/ManualBatchManager';
@@ -96,7 +96,125 @@ const STATUS_META: Record<string, { label: string; badge: string; dot: string; b
 
 const num = (v: unknown): number => Number(v ?? 0);
 
-// Penanda sumber baris: SJ murni (sistem) / Import (manual) / Campuran.
+// Kotak cari dengan state lokal: ketikan TIDAK me-render ulang tabel.
+// Filter terkirim ke halaman hanya saat Enter (pola halaman ini).
+function SearchBox({ initial, onSearch }: { initial: string; onSearch: (value: string) => void }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <div className="relative flex-1 min-w-[240px]">
+      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') onSearch(value.trim()); }}
+        placeholder="Cari kode / nama barang..."
+        className="input-field pl-9 py-2 text-sm"
+        aria-label="Cari kode atau nama barang"
+      />
+    </div>
+  );
+}
+
+// Helper murni di modul agar WaveRow memo bisa pakai.
+const fmtDate = formatDateId;
+
+const fnum = (v: number) => v.toLocaleString('id-ID');
+
+function badge(status?: string | null) {
+  const s = status || '-';
+  const meta = STATUS_META[s] || { label: s, badge: 'bg-surface-raised text-gray-600', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-gray-600' };
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+      {meta.label}
+    </span>
+  );
+}
+
+// Baris tabel di-memo: parent me-render ulang tiap ketikan/filter harus
+// TIDAK me-render ulang 50 baris yang datanya tidak berubah.
+const WaveRow = memo(function WaveRow({ w, selected, canDelete, maxHari, onOpen, onDelete, onToggle }: {
+  w: Wave;
+  selected: boolean;
+  canDelete: boolean;
+  maxHari: number;
+  onOpen: (w: Wave) => void;
+  onDelete: (id: number) => void;
+  onToggle: (id: number) => void;
+}) {
+  const meta = STATUS_META[w.status_ini] || STATUS_META.AMAN;
+  return (
+    <tr className="hover:bg-overlay-70 transition-colors">
+      {canDelete && (
+        <td className="px-3 py-3">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggle(w.id)}
+            aria-label={`Pilih wave ${w.kode_barang}`}
+            className="w-4 h-4 accent-red-600 cursor-pointer"
+          />
+        </td>
+      )}
+      <td className="px-5 py-3 whitespace-nowrap">
+        <div className="flex items-center gap-1.5">
+          {badge(w.status_ini)}
+          {w.sisa_hari < 0 && (
+            <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">EXPIRED</span>
+          )}
+        </div>
+      </td>
+      <td className="px-5 py-3 min-w-50 max-w-80">
+        <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
+        <span className="block text-xs text-slate-500 line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
+      </td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
+      <td className="px-5 py-3 whitespace-nowrap">{sourceBadge(w.source_mix)}</td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_1 || '-'}</td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_2 || '-'}</td>
+      <td className="px-5 py-3 text-right whitespace-nowrap">
+        <span className="text-sm font-semibold tabular-nums text-slate-800">{fnum(num(w.qty_ini_crt))}</span>
+        {num(w.qty_koreksi_crt) !== 0 && (
+          <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_crt)}</span>
+        )}
+      </td>
+      <td className="px-5 py-3 text-right whitespace-nowrap">
+        <span className="text-sm tabular-nums text-slate-600">{fnum(num(w.qty_ini_pcs))}</span>
+        {num(w.qty_koreksi_pcs) !== 0 && (
+          <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_pcs)}</span>
+        )}
+      </td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-700">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-700">{fmtDate(w.expired_date_ini)}</td>
+      <td className="px-5 py-3 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <DaysBar sisaHari={w.sisa_hari} maxHari={maxHari} status={w.status_ini} />
+          <span title={`${w.sisa_hari} hari`} className={`text-sm font-bold tabular-nums whitespace-nowrap ${meta.text}`}>
+            {formatDurationId(w.sisa_hari)}
+          </span>
+        </div>
+      </td>
+      <td className="px-5 py-3 text-right whitespace-nowrap">
+        <button
+          onClick={() => onOpen(w)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors"
+        >
+          Detail
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        </button>
+        {canDelete && (
+          <button
+            onClick={() => onDelete(w.id)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+            Hapus
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+});
 function sourceBadge(mix?: { sj: number; import: number } | null) {
   const sj = num(mix?.sj);
   const imp = num(mix?.import);
@@ -160,7 +278,6 @@ export default function OpnameExpiredPage() {
   const [pagination, setPagination] = useState<ListResponse['data'] | null>(null);
   const [weeks, setWeeks] = useState<string[]>([]);
   const [weekStart, setWeekStart] = useState('');
-  const [search, setSearch] = useState('');
   const [searchApply, setSearchApply] = useState('');
   // Filter sumber data: '' semua, 'sj' murni sistem, 'import' manual, 'mixed' campuran.
   const [sourceFilter, setSourceFilter] = useState('');
@@ -311,7 +428,7 @@ export default function OpnameExpiredPage() {
     return '•';
   };
 
-  const openItem = (w: Wave) => setSelectedId(w.id);
+  const openItem = useCallback((w: Wave) => setSelectedId(w.id), []);
   const navNext = (delta: 1 | -1) => {
     if (waves.length === 0 || currentIndex < 0) return;
     const next = waves[(currentIndex + delta + waves.length) % waves.length];
@@ -368,7 +485,7 @@ export default function OpnameExpiredPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (!confirm('Apakah Anda yakin ingin menghapus wave ini?')) return;
     try {
       await opnameExpired.delete(id);
@@ -377,21 +494,21 @@ export default function OpnameExpiredPage() {
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Hapus gagal'), 'error');
     }
-  };
+  }, [load]);
 
   // Hapus massal wave terpilih (berurutan agar pesan gagal jelas per baris).
   const [selectedWaveIds, setSelectedWaveIds] = useState<Set<number>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  const toggleWaveSelect = (id: number) => {
+  const toggleWaveSelect = useCallback((id: number) => {
     setSelectedWaveIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
   const confirmBulkDeleteWaves = async () => {
     const ids = waves.filter((w) => selectedWaveIds.has(w.id)).map((w) => w.id);
@@ -456,20 +573,8 @@ export default function OpnameExpiredPage() {
     }
   };
 
-  const fmtDate = formatDateId;
-
-  const fnum = (v: number) => v.toLocaleString('id-ID');
-
-  const badge = (status?: string | null) => {
-    const s = status || '-';
-    const meta = STATUS_META[s] || { label: s, badge: 'bg-surface-raised text-gray-600', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-gray-600' };
-    return (
-      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-        {meta.label}
-      </span>
-    );
-  };
+  // Dipakai baris memo: boolean stabil per render (bukan hasil panggil di JSX).
+  const canDeleteWaves = hasPermission('opname.delete');
 
   return (
     <DashboardLayout>
@@ -602,17 +707,11 @@ export default function OpnameExpiredPage() {
                 ))}
               </select>
             </label>
-            <div className="relative flex-1 min-w-[240px]">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); setSearchApply(search.trim()); } }}
-                placeholder="Cari kode / nama barang..."
-                className="input-field pl-9 py-2 text-sm"
-                aria-label="Cari kode atau nama barang"
-              />
-            </div>
+            <SearchBox
+              key={searchApply}
+              initial={searchApply}
+              onSearch={(v) => { setPage(1); setSearchApply(v); }}
+            />
             <label className="flex items-center gap-2">
               <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-slate-500">Sumber</span>
               <select
@@ -744,7 +843,7 @@ export default function OpnameExpiredPage() {
                   <>
                     <p className="text-sm font-medium text-slate-600">Tidak ada hasil untuk &quot;{searchApply}&quot;</p>
                     <p className="text-xs text-slate-400">Coba kata kunci lain atau hapus pencarian.</p>
-                    <button type="button" onClick={() => { setSearch(''); setSearchApply(''); setPage(1); }} className="btn-secondary text-xs">Hapus pencarian</button>
+                    <button type="button" onClick={() => { setSearchApply(''); setPage(1); }} className="btn-secondary text-xs">Hapus pencarian</button>
                   </>
                 ) : (
                   <>
@@ -792,80 +891,18 @@ export default function OpnameExpiredPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {waves.map((w) => {
-                      const meta = STATUS_META[w.status_ini] || STATUS_META.AMAN;
-                      return (
-                        <tr key={w.id} className="hover:bg-overlay-70 transition-colors">
-                          {hasPermission('opname.delete') && (
-                            <td className="px-3 py-3">
-                              <input
-                                type="checkbox"
-                                checked={selectedWaveIds.has(w.id)}
-                                onChange={() => toggleWaveSelect(w.id)}
-                                aria-label={`Pilih wave ${w.kode_barang}`}
-                                className="w-4 h-4 accent-red-600 cursor-pointer"
-                              />
-                            </td>
-                          )}
-                          <td className="px-5 py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              {badge(w.status_ini)}
-                              {w.sisa_hari < 0 && (
-                                <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">EXPIRED</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-5 py-3 min-w-50 max-w-80">
-                            <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
-                            <span className="block text-xs text-slate-500 line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
-                          </td>
-                          <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">{sourceBadge(w.source_mix)}</td>
-                          <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_1 || '-'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_2 || '-'}</td>
-                          <td className="px-5 py-3 text-right whitespace-nowrap">
-                            <span className="text-sm font-semibold tabular-nums text-slate-800">{fnum(num(w.qty_ini_crt))}</span>
-                            {num(w.qty_koreksi_crt) !== 0 && (
-                              <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_crt)}</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3 text-right whitespace-nowrap">
-                            <span className="text-sm tabular-nums text-slate-600">{fnum(num(w.qty_ini_pcs))}</span>
-                            {num(w.qty_koreksi_pcs) !== 0 && (
-                              <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_pcs)}</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-700">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-700">{fmtDate(w.expired_date_ini)}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <DaysBar sisaHari={w.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={w.status_ini} />
-                              <span className={`text-sm font-bold tabular-nums whitespace-nowrap ${meta.text}`}>
-                                {w.sisa_hari} hr
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-3 text-right whitespace-nowrap">
-                            <button
-                              onClick={() => openItem(w)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors"
-                            >
-                              Detail
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                            </button>
-                            {hasPermission('opname.delete') && (
-                              <button
-                                onClick={() => handleDelete(w.id)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                              >
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                                Hapus
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {waves.map((w) => (
+                      <WaveRow
+                        key={w.id}
+                        w={w}
+                        selected={selectedWaveIds.has(w.id)}
+                        canDelete={canDeleteWaves}
+                        maxHari={num(thresholds.threshold_aman) || 90}
+                        onOpen={openItem}
+                        onDelete={handleDelete}
+                        onToggle={toggleWaveSelect}
+                      />
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -911,7 +948,7 @@ export default function OpnameExpiredPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <DaysBar sisaHari={w.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={w.status_ini} />
-                        <span className={`whitespace-nowrap text-sm font-bold tabular-nums ${meta.text}`}>{w.sisa_hari} hr</span>
+                        <span title={`${w.sisa_hari} hari`} className={`whitespace-nowrap text-sm font-bold tabular-nums ${meta.text}`}>{formatDurationId(w.sisa_hari)}</span>
                       </div>
                       <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
                         <button
@@ -1009,7 +1046,7 @@ export default function OpnameExpiredPage() {
                     <p className="text-lg font-bold text-slate-800 mt-1">{fmtDate(current.expired_date_ini)}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <DaysBar sisaHari={current.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={current.status_ini} />
-                      <span className={`text-xs font-bold tabular-nums ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).text}`}>{current.sisa_hari} hr</span>
+                      <span title={`${current.sisa_hari} hari`} className={`text-xs font-bold tabular-nums ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).text}`}>{formatDurationId(current.sisa_hari)}</span>
                     </div>
                   </div>
                   <div className="bg-surface-raised rounded-xl p-3">

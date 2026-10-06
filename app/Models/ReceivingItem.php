@@ -22,6 +22,18 @@ class ReceivingItem extends Model
         'LAINNYA',
     ];
 
+    /**
+     * Kondisi yang mewajibkan bukti foto — sejajar validasi SJ
+     * (SjValidationController::scanItem) dan verifikasi sesi opname.
+     */
+    public const CONDITIONS_REQUIRING_PHOTO = [
+        'FISIK_RUSAK',
+        'QTY_KURANG',
+        'ISI_KEMASAN_KURANG',
+        'EXPIRED_TIDAK_STANDAR',
+        'LAINNYA',
+    ];
+
     public const CONDITION_ALIASES = [
         'GOOD' => 'FISIK_BAGUS',
         'LESS' => 'QTY_KURANG',

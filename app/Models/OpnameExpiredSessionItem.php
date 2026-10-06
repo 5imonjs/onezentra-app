@@ -9,7 +9,7 @@ class OpnameExpiredSessionItem extends Model
 {
     protected $fillable = [
         'session_id', 'wave_id', 'batch_id', 'qty_fisik_crt', 'qty_fisik_pcs',
-        'condition', 'photo', 'notes', 'verified_at', 'verified_by',
+        'condition', 'photo', 'notes', 'verified_at', 'verified_by', 'verified_via',
     ];
 
     protected function casts(): array

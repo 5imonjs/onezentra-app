@@ -33,6 +33,20 @@ export function todayLocal(date = new Date()): string {
   return `${date.getFullYear()}-${m}-${d}`;
 }
 
+/**
+ * Sisa hari -> 'X Thn Y Bln Z Hr' (konvensi dagang: 1 thn = 365 hr,
+ * 1 bln = 30 hr). Negatif (kedaluwarsa) = 'Lewat ...'.
+ */
+export function formatDurationId(days: number): string {
+  if (!Number.isFinite(days)) return '-';
+  if (days < 0) return `Lewat ${formatDurationId(-days).toLowerCase()}`;
+  const thn = Math.floor(days / 365);
+  const rest = days % 365;
+  const bln = Math.floor(rest / 30);
+  const hr = rest % 30;
+  return `${thn} Thn ${bln} Bln ${hr} Hr`;
+}
+
 /** 'YYYY-MM-DD...' -> '12 Jan 2026' (id-ID), tanpa sentuhan Date. */
 export function formatDateId(value?: string | null): string {
   const parts = splitDateOnly(value ?? null);

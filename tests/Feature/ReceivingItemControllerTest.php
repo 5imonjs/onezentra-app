@@ -113,8 +113,8 @@ class ReceivingItemControllerTest extends TestCase
         $this->putJson("/api/v1/receiving-items/{$item->id}", ['condition' => 'GOOD'])->assertOk();
         $this->assertSame('FISIK_BAGUS', $item->fresh()->condition);
 
-        $this->putJson("/api/v1/receiving-items/{$item->id}", ['condition' => 'NOT GOOD'])->assertOk();
-        $this->assertSame('FISIK_RUSAK', $item->fresh()->condition);
+        // Kondisi bermasalah tanpa foto ditolak (sejajar validasi SJ).
+        $this->putJson("/api/v1/receiving-items/{$item->id}", ['condition' => 'NOT GOOD'])->assertStatus(422);
     }
 
     public function test_update_partial_fields_keeps_others(): void

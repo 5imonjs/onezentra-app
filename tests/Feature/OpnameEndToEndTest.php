@@ -161,6 +161,7 @@ class OpnameEndToEndTest extends TestCase
         $itemId = $session->items->first()->id;
         $verify = $this->postJson("/api/v1/opname-sessions/{$sessionId}/items/{$itemId}", [
             'qty_fisik_crt' => 9,
+            'identified_via' => 'scan',
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
         // Batch SJ sudah ada: tidak ada label ganda.

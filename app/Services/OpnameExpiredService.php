@@ -431,6 +431,7 @@ class OpnameExpiredService
                 'notes' => $data['notes'] ?? null,
                 'verified_at' => now(),
                 'verified_by' => $verifier->id,
+                'verified_via' => $data['identified_via'],
             ], $batch ? ['batch_id' => $batch->id] : []));
 
             $wave = OpnameExpiredWave::whereKey($item->wave_id)->lockForUpdate()->firstOrFail();
