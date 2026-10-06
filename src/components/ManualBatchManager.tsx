@@ -97,6 +97,14 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
     if (open) { setSuccessMsg(null); load(); }
   }, [open, load]);
 
+  const closeModal = () => {
+    setOpen(false);
+    // Banner sukses tidak boleh menghantui sesi berikutnya: generate dari
+    // toolbar halaman maupun tutup modal selalu meresetnya. Daftar batch
+    // (data ledger) memang tetap — yang hilang hanya banner konfirmasinya.
+    setSuccessMsg(null);
+  };
+
   const refreshPendingPreview = useCallback(async () => {
     try {
       const res = await opnameExpired.pending() as { data: { data: { pending: { total: number; sj: number; import: number }; week_start: string } } };
@@ -338,9 +346,9 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
         </button>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Input Batch Manual" subtitle="Data batch tambahan untuk analisa opname expired (tidak terkait penerimaan SJ)" size="xl"
+      <Modal open={open} onClose={closeModal} title="Input Batch Manual" subtitle="Data batch tambahan untuk analisa opname expired (tidak terkait penerimaan SJ)" size="xl"
         footer={
-          <button onClick={() => setOpen(false)} className="btn-secondary">Tutup</button>
+          <button onClick={closeModal} className="btn-secondary">Tutup</button>
         }
       >
         <div className="space-y-6">
