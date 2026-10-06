@@ -297,6 +297,7 @@ export const opnameSessions = {
   create: (data: Record<string, unknown>) => apiClient.post('/opname-sessions', data),
   get: (id: number) => apiClient.get(`/opname-sessions/${id}`),
   start: (id: number) => apiClient.post(`/opname-sessions/${id}/start`),
+  addWaves: (id: number, waveIds: number[]) => apiClient.post(`/opname-sessions/${id}/waves`, { wave_ids: waveIds }),
   verifyItem: (id: number, itemId: number, data: FormData | Record<string, unknown>) => {
     const isForm = typeof FormData !== 'undefined' && data instanceof FormData;
     return apiClient.post(`/opname-sessions/${id}/items/${itemId}`, data, isForm ? {
