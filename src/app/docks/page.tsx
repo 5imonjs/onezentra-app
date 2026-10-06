@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { docks, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
@@ -146,7 +147,7 @@ export default function DocksPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `docks-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.download = `docks-${todayLocal()}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
       notifyGlobal('Export dimulai', 'success');

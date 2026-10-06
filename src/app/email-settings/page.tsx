@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { emailSettings, getErrorMessage } from '@/lib/api';
+import { formatDateId } from '@/lib/dates';
 import Toast from '@/components/Toast';
 import { useAuthStore } from '@/store/auth';
 
@@ -31,6 +32,58 @@ const emptyForm: EmailSetting = {
   from_system_env: true,
   is_active: false,
 };
+
+interface NotificationLog {
+  id: number;
+  document_type: string;
+  trigger: string;
+  context_id: number | null;
+  recipients: string | null;
+  status: string;
+  error: string | null;
+  created_at: string;
+}
+
+/** Jejak kegagalan/skip notifikasi — yang sukses tidak dicatat (volume). */
+function NotificationLogPanel() {
+  const [logs, setLogs] = useState<NotificationLog[]>([]);
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    emailSettings.notificationLogs(filter ? { status: filter } : undefined)
+      .then((res) => setLogs(res.data?.data?.data ?? res.data?.data ?? []))
+      .catch(() => setLogs([]));
+  }, [filter]);
+
+  if (logs.length === 0 && !filter) return null;
+
+  return (
+    <div className="bg-surface-card rounded-2xl shadow-sm border border-amber-200 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h3 className="text-base font-bold text-gray-800">Notifikasi Gagal / Terlewat</h3>
+        <select value={filter} onChange={(e) => setFilter(e.target.value)} className="input-field text-xs py-1.5" aria-label="Filter status log">
+          <option value="">Semua</option>
+          <option value="failed">Gagal</option>
+          <option value="skipped">Terlewat</option>
+        </select>
+      </div>
+      {logs.length === 0 ? (
+        <p className="text-xs text-gray-500">Tidak ada catatan pada filter ini.</p>
+      ) : (
+        <ul className="space-y-2 max-h-64 overflow-auto">
+          {logs.map((l) => (
+            <li key={l.id} className="text-xs border border-gray-100 rounded-lg px-3 py-2">
+              <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold mr-2 ${l.status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{l.status}</span>
+              <span className="font-semibold text-gray-700">{l.document_type} · {l.trigger}</span>
+              <span className="text-gray-400"> #{l.context_id ?? '-'} · {formatDateId(l.created_at)}</span>
+              {l.error && <p className="text-gray-500 mt-1 wrap-break-word">{l.error}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default function EmailSettingsPage() {
   const { hasPermission } = useAuthStore();
@@ -205,6 +258,8 @@ export default function EmailSettingsPage() {
                   <li>Kelola penerima (TO/CC) di menu &quot;Penerima Email&quot;.</li>
                 </ul>
               </div>
+
+              <NotificationLogPanel />
             </div>
           </div>
         )}

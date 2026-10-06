@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { reports, depo, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 
 interface BiayaThlReportRow {
   id: number;
@@ -200,7 +201,7 @@ export default function BiayaThlReportPage() {
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `laporan-biaya-thl-${new Date().toISOString().split('T')[0]}.xlsx`);
+      link.setAttribute('download', `laporan-biaya-thl-${todayLocal()}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { opnameExpired, npn, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
+import { formatDateId } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ReceivingItemEditModal from '@/components/ReceivingItemEditModal';
@@ -324,8 +325,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
 
   const allLoadedSelected = items.length > 0 && items.every((it) => selectedIds.has(it.id));
 
-  const fmtDate = (v?: string | null) =>
-    v ? new Date(v).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+  const fmtDate = formatDateId;
 
   return (
     <>

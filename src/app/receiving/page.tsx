@@ -11,6 +11,7 @@ import Modal from '@/components/Modal';
 import Toast from '@/components/Toast';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 
 interface ReceivingItem {
   id: number;
@@ -183,7 +184,7 @@ export default function ReceivingPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `receivings-${new Date().toISOString().slice(0,10)}.xlsx`;
+      a.download = `receivings-${todayLocal()}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
       notifyGlobal('Export dimulai', 'success');

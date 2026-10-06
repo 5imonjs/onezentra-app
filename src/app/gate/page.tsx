@@ -96,6 +96,7 @@ export default function GatePage() {
       const res = await gateTransactions.list({ search: debouncedSearch, page, per_page: 20 });
       setItems(res.data.data);
       setLastPage(res.data.last_page ?? 1);
+      if (page > (res.data.last_page ?? 1)) setPage(res.data.last_page ?? 1);
       setTotalRows(res.data.total ?? 0);
       setListError('');
     } catch (e) {

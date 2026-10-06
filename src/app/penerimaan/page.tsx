@@ -8,6 +8,7 @@ import ReceivingItemEditModal from '@/components/ReceivingItemEditModal';
 import SearchInput from '@/components/SearchInput';
 import { useAuthStore } from '@/store/auth';
 import { conditionMeta } from '@/lib/condition';
+import { formatDateId } from '@/lib/dates';
 import { downloadBatchLabel, printBatchLabel, type BatchLabelData } from '@/lib/batchLabel';
 
 /**
@@ -339,8 +340,7 @@ export default function PenerimaanPage() {
     setCollapsed(collapse ? new Set(groups.map((g) => g.key)) : new Set());
   };
 
-  const fmtDate = (v?: string | null) =>
-    v ? new Date(v).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+  const fmtDate = formatDateId;
 
   const fnum = (v: number) => v.toLocaleString('id-ID');
 
