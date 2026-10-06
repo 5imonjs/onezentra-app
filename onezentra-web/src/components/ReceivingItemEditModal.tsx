@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
+import { toDateInput } from '@/lib/dates';
 import { notifyGlobal } from '@/store/globalToast';
 import { CONDITIONS, CONDITION_LABELS, canonicalCondition, conditionRequiresPhoto } from '@/lib/condition';
 import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
@@ -31,16 +32,6 @@ interface Props {
   item: EditItem | null;
   onClose: () => void;
   onSaved: () => void;
-}
-
-function toDateInput(value?: string | null): string {
-  if (!value) return '';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 const fmtDateInput = toDateInput;
@@ -80,18 +71,29 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!item) return;
+    const qtyCrt = parseFloat(form.qty_crt || '');
+    if (!Number.isFinite(qtyCrt) || qtyCrt < 0) {
+      notifyGlobal('Qty CRT harus angka ≥ 0.', 'error');
+      return;
+    }
     setBusy(true);
 
     const isDerived = item.conversion_factor != null;
     const qtyPcs = isDerived
-      ? parseFloat(form.qty_crt || '0') * (item.conversion_factor as number)
+      ? qtyCrt * (item.conversion_factor as number)
       : form.qty_pcs
         ? parseFloat(form.qty_pcs)
         : null;
 
+    if (qtyPcs !== null && !Number.isFinite(qtyPcs)) {
+      notifyGlobal('Qty PCS harus angka ≥ 0.', 'error');
+      setBusy(false);
+      return;
+    }
+
     try {
       await opnameExpired.manualUpdate(item.id, {
-        qty_crt: parseFloat(form.qty_crt || '0'),
+        qty_crt: qtyCrt,
         qty_pcs: qtyPcs,
         satuan: form.satuan || 'CRT',
         expired_date: form.expired_date,

@@ -28,9 +28,9 @@ use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SjValidationController;
 use App\Http\Controllers\Api\V1\StandarisasiTumpukanController;
 use App\Http\Controllers\Api\V1\StandarUmurProdukController;
+use App\Http\Controllers\Api\V1\StorageController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 
 Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
@@ -47,14 +47,10 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware('auth:sanctum')->group(function () {
-        // File bukti (foto validasi, dokumen biaya) WAJIB auth: path file
-        // dikembalikan polos di respons JSON sehingga route publik = bypass
-        // total atas gate permission photos/{photo} & documents/{document}.
-        Route::get('storage/{path}', function (string $path) {
-            abort_unless(Storage::disk('public')->exists($path), 404);
-
-            return response()->file(Storage::disk('public')->path($path));
-        })->where('path', '.*');
+        // File bukti (foto validasi, dokumen biaya) WAJIB auth + otorisasi
+        // depo pemilik (StorageController): path file dikembalikan polos di
+        // respons JSON sehingga route publik = bypass total atas gate file.
+        Route::get('storage/{path}', [StorageController::class, 'show'])->where('path', '.*');
 
         Route::get('user', [AuthController::class, 'user']);
         Route::put('user', [AuthController::class, 'updateProfile']);
@@ -282,6 +278,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/generate', [OpnameExpiredController::class, 'generate'])->middleware('permission:opname.create');
         // Rute statis wajib sebelum {wave} — pola yang sama dengan batches/search.
         Route::get('/pending', [OpnameExpiredController::class, 'pending'])->middleware('permission:opname.view');
+        Route::get('/progress', [OpnameExpiredController::class, 'progress'])->middleware('permission:opname.view');
+        Route::post('/remind', [OpnameExpiredController::class, 'remind'])->middleware('permission:opname.create');
         Route::get('/settings', [OpnameExpiredController::class, 'settings'])->middleware('permission:opname.view');
         Route::put('/settings', [OpnameExpiredController::class, 'updateSettings'])->middleware('permission:opname.edit');
         Route::get('/export', [OpnameExpiredController::class, 'export'])->middleware('permission:opname.view');
@@ -314,6 +312,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [EmailSettingController::class, 'show'])->middleware('permission:emails.view');
         Route::put('/', [EmailSettingController::class, 'update'])->middleware('permission:emails.edit');
         Route::post('/test', [EmailSettingController::class, 'test'])->middleware(['permission:emails.edit', 'throttle:3,1']);
+        Route::get('/notification-logs', [EmailSettingController::class, 'notificationLogs'])->middleware('permission:emails.view');
     });
 
     Route::prefix('email-recipients')->middleware('auth:sanctum')->group(function () {

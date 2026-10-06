@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ReceivingItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -34,8 +35,30 @@ class StorageFileAccessTest extends TestCase
 
         $this->get('/api/v1/storage/biaya_thl/9/bukti.jpg')->assertUnauthorized();
 
+        // Path tanpa pemilik di database = 404 (fail-closed anti enumerasi),
+        // walau user sudah login dan file-nya ada di disk.
         Sanctum::actingAs($this->makeUser());
-        $response = $this->get('/api/v1/storage/biaya_thl/9/bukti.jpg');
+        $this->get('/api/v1/storage/biaya_thl/9/bukti.jpg')->assertNotFound();
+    }
+
+    public function test_storage_file_owned_by_own_depot_is_served(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('validation-photos/milik.jpg', 'fake-image-bytes');
+
+        ReceivingItem::create([
+            'source' => 'IMPORT_MANUAL',
+            'kode_barang' => 'B-ST-OWN',
+            'actual_qty' => 1,
+            'expected_qty' => 1,
+            'expired_date' => '2027-01-01',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'photo' => 'validation-photos/milik.jpg',
+        ]);
+
+        Sanctum::actingAs($this->makeUser());
+        $response = $this->get('/api/v1/storage/validation-photos/milik.jpg');
         $response->assertOk();
 
         $file = $response->baseResponse->getFile();

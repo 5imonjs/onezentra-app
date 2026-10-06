@@ -138,7 +138,7 @@ function SkeletonCard() {
   );
 }
 
-function StatCard({ source, count, failed, delta }: { source: StatSource; count?: number; failed?: boolean; delta?: number }) {
+function StatCard({ source, count, failed, delta, kodeDepo }: { source: StatSource; count?: number; failed?: boolean; delta?: number; kodeDepo?: string }) {
   const isEmpty = !failed && count === 0;
   return (
     <Link
@@ -159,6 +159,9 @@ function StatCard({ source, count, failed, delta }: { source: StatSource; count?
             {failed ? '–' : (count ?? 0).toLocaleString('id-ID')}
           </p>
           <p className={`text-xs font-semibold tracking-wider uppercase truncate mt-1 ${isEmpty ? 'text-slate-300' : 'text-slate-500'}`}>{source.label}</p>
+          {source.group === 'master' && kodeDepo && (
+            <p className="text-[10px] text-slate-400 truncate">Global — semua depo</p>
+          )}
           {!failed && (delta ?? 0) > 0 && (
             <p className="text-[11px] font-semibold text-emerald-600 tabular-nums mt-0.5">+{delta} minggu ini</p>
           )}
@@ -228,7 +231,7 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
   }
 
   const renderCard = (s: StatSource) => (
-    <StatCard key={s.key} source={s} count={counts[s.key]} failed={failed[s.key]} delta={deltas[s.key]} />
+    <StatCard key={s.key} source={s} count={counts[s.key]} failed={failed[s.key]} delta={deltas[s.key]} kodeDepo={kodeDepo} />
   );
 
   return (

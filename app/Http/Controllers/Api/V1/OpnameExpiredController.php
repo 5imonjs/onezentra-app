@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\OpnameExpiredExport;
 use App\Http\Controllers\Controller;
+use App\Mail\OpnameExpiredNotification;
+use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredWave;
 use App\Models\OpnameSetting;
+use App\Services\EmailNotificationService;
 use App\Services\ExportGuard;
 use App\Services\OpnameExpiredService;
 use Illuminate\Http\JsonResponse;
@@ -170,6 +173,105 @@ class OpnameExpiredController extends Controller
 
         return response()->json([
             'data' => $service->pendingSummary($weekStart, $request->user()),
+        ]);
+    }
+
+    /**
+     * Progres kirim per depo untuk satu minggu: sudah vs belum kirim.
+     * "Sudah" = ada sesi COMPLETED, atau seluruh wave tervalidasi.
+     */
+    public function progress(Request $request): JsonResponse
+    {
+        $request->validate([
+            'week_start' => 'nullable|date',
+        ]);
+
+        $weekStart = $request->week_start
+            ? Carbon::parse($request->week_start)->startOfWeek(Carbon::MONDAY)->toDateString()
+            : Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString();
+
+        $user = $request->user();
+
+        $waves = OpnameExpiredWave::query()
+            ->where('week_start', $weekStart)
+            ->when($user->isDepotScoped(), fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->get();
+
+        $completedSessions = OpnameExpiredSession::query()
+            ->where('week_start', $weekStart)
+            ->where('status', OpnameExpiredSession::STATUS_COMPLETED)
+            ->when($user->isDepotScoped(), fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->pluck('kode_depo')
+            ->flip();
+
+        $openSessions = OpnameExpiredSession::query()
+            ->where('week_start', $weekStart)
+            ->whereIn('status', [OpnameExpiredSession::STATUS_OPEN, OpnameExpiredSession::STATUS_IN_PROGRESS])
+            ->when($user->isDepotScoped(), fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->pluck('kode_depo')
+            ->flip();
+
+        $depots = [];
+        foreach ($waves->groupBy('kode_depo') as $depo => $rows) {
+            $total = $rows->count();
+            $validated = $rows->whereNotNull('validated_by')->count();
+            $depots[] = [
+                'kode_depo' => $depo,
+                'nama_depo' => $rows->first()->nama_depo ?: $depo,
+                'total' => $total,
+                'validated' => $validated,
+                'has_session' => isset($openSessions[$depo]) || isset($completedSessions[$depo]),
+                'submitted' => isset($completedSessions[$depo]) || ($total > 0 && $validated === $total),
+            ];
+        }
+
+        return response()->json([
+            'data' => [
+                'week_start' => $weekStart,
+                'depots' => $depots,
+                'submitted_count' => collect($depots)->where('submitted', true)->count(),
+                'pending_count' => collect($depots)->where('submitted', false)->count(),
+            ],
+        ]);
+    }
+
+    /**
+     * Push pengingat email ke depo yang belum kirim (berdasar penerima
+     * terkonfigurasi untuk opname_expired/reminder di Penerima Email).
+     */
+    public function remind(Request $request, EmailNotificationService $emailService): JsonResponse
+    {
+        $validated = $request->validate([
+            'week_start' => 'nullable|date',
+            'kode_depo' => 'nullable|string|max:20',
+        ]);
+
+        $weekStart = isset($validated['week_start'])
+            ? Carbon::parse($validated['week_start'])->startOfWeek(Carbon::MONDAY)->toDateString()
+            : Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString();
+
+        $progressRequest = new Request(['week_start' => $weekStart]);
+        $progressRequest->setUserResolver(fn () => $request->user());
+        $depots = collect($this->progress($progressRequest)->getData(true)['data']['depots']);
+
+        if (! empty($validated['kode_depo'])) {
+            $depots = $depots->where('kode_depo', $validated['kode_depo'])->values();
+        }
+
+        $pending = $depots->where('submitted', false)->values()->all();
+
+        abort_unless(count($pending) > 0, 422, 'Semua depo sudah kirim — tidak ada yang perlu diingatkan.');
+
+        $emailService->send(
+            'opname_expired',
+            'reminder',
+            $request->user(),
+            new OpnameExpiredNotification('reminder', $weekStart, $pending)
+        );
+
+        return response()->json([
+            'message' => 'Pengingat dikirim ke '.count($pending).' depo yang belum kirim.',
+            'data' => ['reminded' => collect($pending)->pluck('kode_depo')->all()],
         ]);
     }
 
@@ -356,8 +458,14 @@ class OpnameExpiredController extends Controller
             ->all();
     }
 
-    public function destroy(OpnameExpiredWave $wave): JsonResponse
+    public function destroy(Request $request, OpnameExpiredWave $wave): JsonResponse
     {
+        abort_unless(
+            $request->user()->canAccessDepotRow($wave->kode_depo, $wave->nama_depo),
+            403,
+            'Anda tidak memiliki akses ke data ini.'
+        );
+
         $wave->delete();
 
         return response()->json(['message' => 'Wave deleted']);

@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { biayaRetribusi, retribusiRates, getErrorMessage, API_ROOT } from '@/lib/api';
 import { AUTHENTICATED_FILE_REL } from '@/lib/storageFile';
+import { pageWindow } from '@/lib/pagination';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
@@ -492,18 +494,24 @@ export default function BiayaRetribusiPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [candidateNominals, setCandidateNominals] = useState<Record<number, number>>({});
+  // Anti race: respons basi (filter sudah berubah) dibuang.
+  const reqIdRef = useRef(0);
 
   const fetchItems = useCallback(async () => {
+    const reqId = ++reqIdRef.current;
     try {
       const res = await biayaRetribusi.list({ search: debouncedSearch, status: statusFilter, page, per_page: perPage, sort: sortField, dir: sortDir });
+      if (reqIdRef.current !== reqId) return;
       const rawItems = res.data.data || res.data;
       setItems(Array.isArray(rawItems) ? rawItems.map(normalizeBiayaRetribusiItem) : []);
       setTotalPages(res.data.last_page || 1);
+      if (page > (res.data.last_page || 1)) setPage(res.data.last_page || 1);
       if (res.data.summary) setSummary(res.data.summary);
     } catch {
+      if (reqIdRef.current !== reqId) return;
       notifyGlobal('Gagal memuat data', 'error');
     } finally {
-      setLoading(false);
+      if (reqIdRef.current === reqId) setLoading(false);
     }
   }, [debouncedSearch, statusFilter, page, perPage, sortField, sortDir]);
 
@@ -1260,7 +1268,7 @@ export default function BiayaRetribusiPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
                 Total
-                <span className="rounded-md bg-primary-500 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{items.length}</span>
+                <span className="rounded-md bg-primary-500 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{summary?.total ?? items.length}</span>
               </span>
             </div>
           </div>
@@ -1320,7 +1328,7 @@ export default function BiayaRetribusiPage() {
             </button>
             )}
             {hasPermission('biaya_retribusi.export') && (
-              <button onClick={async () => { try { const res = await biayaRetribusi.export(); const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `biaya-retribusi-${new Date().toISOString().slice(0,10)}.xlsx`; a.click(); window.URL.revokeObjectURL(url); notifyGlobal('Export dimulai', 'success'); } catch (e) { notifyGlobal(getErrorMessage(e, 'Export gagal'), 'error'); } }} className="btn-secondary shrink-0">
+              <button onClick={async () => { try { const res = await biayaRetribusi.export(); const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `biaya-retribusi-${todayLocal()}.xlsx`; a.click(); window.URL.revokeObjectURL(url); notifyGlobal('Export dimulai', 'success'); } catch (e) { notifyGlobal(getErrorMessage(e, 'Export gagal'), 'error'); } }} className="btn-secondary shrink-0">
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 18v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" /></svg>
                   Export
@@ -1523,10 +1531,12 @@ export default function BiayaRetribusiPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4">
+          <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
             <p className="text-xs text-slate-500 tabular-nums mr-2">Halaman {page} dari {totalPages}</p>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button key={i + 1} onClick={() => setPage(i + 1)} className={`min-h-11 min-w-11 rounded-xl text-sm font-medium transition-all ${page === i + 1 ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-surface-card border border-gray-300 text-gray-600 hover:bg-surface-raised'}`}>{i + 1}</button>
+            {pageWindow(page, totalPages).map((p, idx) => p === '…' ? (
+              <span key={`e${idx}`} className="text-xs text-slate-400 px-1" aria-hidden="true">…</span>
+            ) : (
+              <button key={p} onClick={() => setPage(p)} className={`min-h-11 min-w-11 rounded-xl text-sm font-medium transition-all ${page === p ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-surface-card border border-gray-300 text-gray-600 hover:bg-surface-raised'}`}>{p}</button>
             ))}
           </div>
         )}

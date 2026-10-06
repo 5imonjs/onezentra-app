@@ -5,7 +5,9 @@ import Image from 'next/image';
 import DashboardLayout from '@/app/dashboard/layout';
 import { biayaThl, getErrorMessage, API_ROOT } from '@/lib/api';
 import { AUTHENTICATED_FILE_REL } from '@/lib/storageFile';
+import { pageWindow } from '@/lib/pagination';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
@@ -926,6 +928,8 @@ export default function BiayaThlPage() {
       notifyGlobal('Biaya THL berhasil dihapus', 'success');
       setShowDeleteConfirm(false);
       setDeleteTargetId(null);
+      // Tutup detail bila baris yang dibuka yang dihapus.
+      setViewItem((prev) => (prev?.id === deleteTargetId ? null : prev));
       fetchItems();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal menghapus'), 'error');
@@ -1766,10 +1770,12 @@ export default function BiayaThlPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4">
+          <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
             <p className="text-xs text-slate-500 tabular-nums mr-2">Halaman {page} dari {totalPages}</p>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button key={i + 1} onClick={() => setPage(i + 1)} className={`min-h-11 min-w-11 rounded-xl text-sm font-medium transition-all ${page === i + 1 ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-surface-card border border-gray-300 text-gray-600 hover:bg-surface-raised'}`}>{i + 1}</button>
+            {pageWindow(page, totalPages).map((p, idx) => p === '…' ? (
+              <span key={`e${idx}`} className="text-xs text-slate-400 px-1" aria-hidden="true">…</span>
+            ) : (
+              <button key={p} onClick={() => setPage(p)} className={`min-h-11 min-w-11 rounded-xl text-sm font-medium transition-all ${page === p ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-surface-card border border-gray-300 text-gray-600 hover:bg-surface-raised'}`}>{p}</button>
             ))}
           </div>
         )}
@@ -1926,7 +1932,7 @@ export default function BiayaThlPage() {
 
                 <label className="block">
                   <span className="text-[11px] font-black uppercase tracking-widest text-accent-text mb-2 block">Tanggal Pengajuan</span>
-                  <input type="date" value={toDateInputValue(formData.tanggal_pengajuan)} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setFormData({ ...formData, tanggal_pengajuan: e.target.value })} className="input-field w-full border-2 border-chip-primary-border px-4 py-3 text-sm font-bold focus:border-primary-500 focus:ring-4 focus:ring-chip-primary-border transition-all" />
+                  <input type="date" value={toDateInputValue(formData.tanggal_pengajuan)} max={todayLocal()} onChange={(e) => setFormData({ ...formData, tanggal_pengajuan: e.target.value })} className="input-field w-full border-2 border-chip-primary-border px-4 py-3 text-sm font-bold focus:border-primary-500 focus:ring-4 focus:ring-chip-primary-border transition-all" />
                 </label>
               </div>
 

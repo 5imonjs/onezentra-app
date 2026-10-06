@@ -34,11 +34,14 @@ Keputusan pemilik: tidak dibangun modul penindakan (retur/pengeluaran FEFO). Sat
 
 ## Sesi opname: verifikasi per batch (aturan A2 selesai)
 Sesi = satu minggu + satu depo + satu petugas (`opname_expired_sessions` + `opname_expired_session_items` berbutir per batch via `batch_id`, status OPEN → IN_PROGRESS → COMPLETED/CANCELLED). Endpoint `POST /v1/opname-sessions` (buat+assign dari wave_ids lalu diekspansi ke batch, `opname.create`), `/{session}/start`, `/{session}/items/{item}` (verifikasi fisik + foto bila rusak, `opname.edit`), `/{session}/complete` (wajib semua baris terverifikasi), `/{session}/cancel`. Verifikasi menulis koreksi wave sebagai SELISIH per batch (fisik − qty ledger batch itu) + `validated_by/at`; label untuk baris warisan diterbitkan susulan (satu-satunya penerbitan selain import/SJ). Guard: `OpnameExpiredSessionTest` (lifecycle, no-reissue, cancel-menulis-nol, ekspansi multi-batch).
+## Progres depo + email expired
+Panel "Progres Depo" di `/opname-expired` (`GET /opname-expired/progress`, `opname.view`): per depo per minggu — total/tervalidasi baris, ada sesi, flag terkirim (= sesi COMPLETED atau semua wave tervalidasi). Tombol "Ingatkan yang belum kirim" (`POST /remind`, `opname.create`) mengirim `OpnameExpiredNotification:reminder` ke penerima `opname_expired/reminder` (diatur di Penerima Email). Sesi selesai otomatis mengirim `completed`. Tipe `opname_expired` + trigger `reminder` terdaftar di opsi + validasi Penerima Email.
 ## UI sesi: /opname-sessions (kerja + lapangan satu halaman)
 Halaman `Sesi Opname` (sidebar, `opname.view`): filter minggu/status + tab "Tugas saya" (`?mine=1`), tabel sesi, modal buat (minggu+depo+petugas — dropdown bila `users.view` else ID manual — + checklist wave, default semua tercentang), drawer detail (progres x/y, tombol Mulai/Selesaikan/Batalkan gated `opname.edit` + status, form verifikasi per baris: fisik CRT/PCS, kondisi `CONDITIONS`, foto, POST multipart). Selesai/batal lewat ConfirmDialog.
 
 ## EXPIRED terbawa tiap minggu, tidak boleh hilang
 Batch berstatus EXPIRED WAJIB di-roll-forward ke wave minggu depan dengan qty + statusnya (`generate()` + `rollForwardCarried()` tidak mengenal pengecualian EXPIRED), sampai ada tindak (koreksi/retur). Alasannya: baseline opname manual mencakup barang yang memang sudah expired — mengeluarkannya dari wave = menghilangkan dari monitoring. Guard: `test_generate_rolls_forward_expired_batch_until_acted_upon`.
+Catatan desain (bukan bug): `threshold_kritis` hanya membelah TEKS rekomendasi KRITIS ("SEGERA" vs "Waspada"), bukan rentang klasifikasi — klasifikasi KRITIS = sisa di bawah ambang perhatian. Jangan "memperbaiki" ini tanpa mengubah arti dashboard.
 
 ## Jangkar minggu monitoring beda per sumber (aturan baku)
 - IMPORT_MANUAL (baseline): minggu IMPORT (`scan_time`/`created_at`). Tanggal di file adalah info historis dan TIDAK menentukan minggu — baseline yang diimport minggu ini dipantau minggu ini. Prinsipnya: data import masuk saja ke Batch Expired, tanpa pembatasan tanggal.
@@ -49,6 +52,8 @@ Batch berstatus EXPIRED WAJIB di-roll-forward ke wave minggu depan dengan qty + 
 
 ## Batasan yang dijaga test
 - Import baseline WAJIB `qty_crt > 0` + `expired_date` terisi; baris gagal dilaporkan per baris (422), bukan digugurkan diam-diam.
+- Tulis butuh cek depo per baris: `DELETE /opname-expired/{wave}`, `PUT/DELETE /receiving-items/{id}`, `PUT/DELETE /gate-transactions/{id}` menolak depo lain (403); hapus gate INBOUND mengembalikan RK ke SCHEDULED, OUTBOUND tak bisa dihapus (jejak audit).
+- Edit receiving mempertahankan `expected_qty` dan menghitung ulang `selisih_qty` (bukan menolkan); user depot-scoped dikunci ke depo sendiri.
 - Import ulang data yang sama TIDAK menggandakan: kunci batch (kode hasil resolusi NPN + depo final + expired) yang sudah ada di ledger dilewati sebagai `duplicates` (satu query preload, bukan N+1) dan dilaporkan di respons + banner. Stok tambahan untuk batch yang sama masuk lewat koreksi, bukan baris ganda — roll-forward sudah membawa qty lama.
 - Baris IMPORT bertanggal file lama TETAP eligible di minggu import (guard: `test_import_rows_anchor_to_import_week_regardless_of_file_date`); baris SJ bertanggal lama tidak ikut.
 - Data `VALIDASI_SJ` tidak bisa dihapus dari jalur manual (`ReceivingItemController::destroy` 422 untuk non-IMPORT).

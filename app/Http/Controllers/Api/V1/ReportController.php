@@ -49,7 +49,13 @@ class ReportController extends Controller
             $query->whereHas('receiving.rencanaKirim', fn ($q) => $q->where('kode_depo', $request->kode_depo));
         }
 
-        $items = $query->orderByDesc('receiving_items.created_at')->get();
+        // Batas aman respons JSON: rentang lebar bisa jutaan baris (OOM).
+        // Export penuh tetap lewat endpoint export (dijaga ExportGuard).
+        $limit = 2000;
+        $total = (clone $query)->count();
+        $items = $query->orderByDesc('receiving_items.created_at')->limit($limit + 1)->get();
+        $truncated = $items->count() > $limit;
+        $items = $items->take($limit);
 
         $data = $items->map(function ($item) {
             $rk = $item->receiving->rencanaKirim;
@@ -72,7 +78,7 @@ class ReportController extends Controller
 
         $summary = $this->selisihQtySummary($query);
 
-        return response()->json(['data' => $data, 'summary' => $summary]);
+        return response()->json(['data' => $data, 'summary' => $summary, 'meta' => ['total' => $total, 'truncated' => $truncated]]);
     }
 
     /**

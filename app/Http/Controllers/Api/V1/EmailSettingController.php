@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmailNotificationLog;
 use App\Models\EmailSetting;
 use App\Services\EmailNotificationService;
 use Illuminate\Http\JsonResponse;
@@ -91,5 +92,19 @@ class EmailSettingController extends Controller
 
             return response()->json(['message' => 'Gagal mengirim email uji.'], 500);
         }
+    }
+
+    /**
+     * Jejak kegagalan/skip notifikasi (hanya yang bermasalah yang dicatat).
+     */
+    public function notificationLogs(Request $request): JsonResponse
+    {
+        $query = EmailNotificationLog::query()->orderByDesc('id');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        return response()->json(['data' => $query->paginate($this->perPage($request, 25))]);
     }
 }

@@ -196,8 +196,12 @@ class BiayaApprovalService
             $actor,
             function (Model $locked) use ($actor): void {
                 $isRevisionResubmission = $locked->status === 'revisi';
-                $isThl = $locked instanceof BiayaThl;
-                $resubmissionStatus = $isThl ? $this->revisionReturnStatus($locked) : 'pending';
+                // Status kembali memakai jejak yang sama untuk THL maupun
+                // retribusi (revision_return_status, fallback level perevisi):
+                // progres approval yang sudah dicapai tidak hilang sia-sia.
+                $resubmissionStatus = $isRevisionResubmission
+                    ? $this->revisionReturnStatus($locked)
+                    : 'pending';
                 $approvalReset = match ($resubmissionStatus) {
                     'pending' => [
                         'checked_by' => null, 'checked_at' => null,
@@ -224,15 +228,10 @@ class BiayaApprovalService
                     'rejected_at' => null,
                     'rejection_reason' => null,
                     ...$approvalReset,
-                    ...($isRevisionResubmission && $isThl ? [
+                    ...($isRevisionResubmission ? [
                         'resubmitted_by' => $actor->id,
                         'resubmitted_at' => now(),
                         'revision_return_status' => null,
-                    ] : []),
-                    ...($isRevisionResubmission && ! $isThl ? [
-                        'revised_by' => null,
-                        'revised_at' => null,
-                        'revisi_reason' => null,
                     ] : []),
                 ]);
             },

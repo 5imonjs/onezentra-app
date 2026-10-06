@@ -84,6 +84,10 @@ class RencanaKirimController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'status' => 'nullable|string|in:DRAFT,SCHEDULED,CHECKED_IN,VERIFIED,IN_PROGRESS,COMPLETED,CANCELLED',
+        ]);
+
         $query = RencanaKirim::with(['items.npn', 'creator'])->forUserDepot($request->user());
 
         if ($request->search) {
@@ -295,6 +299,12 @@ class RencanaKirimController extends Controller
             unset($validated['items']);
         }
 
+        // User depot-scoped tidak boleh memindahkan dokumen ke depo lain
+        // lewat update: buang dari validated sehingga depo tersimpan utuh.
+        if ($request->user()->isDepotScoped()) {
+            unset($validated['kode_depo'], $validated['nama_depo']);
+        }
+
         // Header + items (delete-all lalu insert ulang) ditulis atomik: kegagalan di
         // tengah jalan tidak boleh meninggalkan item baru dengan total_qty lama.
         DB::transaction(function () use ($rencanaKirim, $validated, $items) {
@@ -380,15 +390,25 @@ class RencanaKirimController extends Controller
 
     private function normalizeItemsFromNpn(array $items): array
     {
-        return array_map(function (array $item): array {
+        // Muat master sekali (bukan 1 query per baris): peta by id + by nama.
+        // `first` koleksi mengikuti urutan query = semantik `->first()` semula.
+        $ids = collect($items)->pluck('npn_id')->filter()->unique()->values();
+        $names = collect($items)->pluck('nama_barang')->filter()->unique()->values();
+        $byId = Npn::whereIn('id', $ids)->get()->keyBy('id');
+        $candidates = Npn::query()
+            ->where(fn ($q) => $q->whereIn('szNickName', $names)->orWhereIn('szNickNameNew', $names))
+            ->get();
+        $byName = [];
+        foreach ($names as $name) {
+            $byName[$name] = $candidates->first(
+                fn (Npn $n) => $n->szNickName === $name || $n->szNickNameNew === $name
+            );
+        }
+
+        return array_map(function (array $item) use ($byId, $byName): array {
             $product = ! empty($item['npn_id'])
-                ? Npn::find($item['npn_id'])
-                : Npn::query()
-                    ->where(function ($query) use ($item) {
-                        $query->where('szNickName', $item['nama_barang'] ?? '')
-                            ->orWhere('szNickNameNew', $item['nama_barang'] ?? '');
-                    })
-                    ->first();
+                ? ($byId[$item['npn_id']] ?? null)
+                : ($byName[$item['nama_barang'] ?? ''] ?? null);
 
             if ($product) {
                 $item['npn_id'] = $product->id;

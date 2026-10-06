@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { reports, depo, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 
 interface SelisihItem {
   id: number;
@@ -53,6 +54,7 @@ export default function SelisihQtyReportPage() {
   const { hasPermission } = useAuthStore();
   const [items, setItems] = useState<SelisihItem[]>([]);
   const [summary, setSummary] = useState<SelisihSummary | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
@@ -86,6 +88,7 @@ export default function SelisihQtyReportPage() {
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
       setSummary(res.data.summary);
+      setTruncated(Boolean(res.data.meta?.truncated));
     } catch (e) {
       if (reqIdRef.current !== reqId) return;
       setError(getErrorMessage(e, 'Gagal memuat laporan'));
@@ -140,7 +143,7 @@ export default function SelisihQtyReportPage() {
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `laporan-selisih-qty-${new Date().toISOString().split('T')[0]}.xlsx`);
+      link.setAttribute('download', `laporan-selisih-qty-${todayLocal()}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -328,7 +331,7 @@ export default function SelisihQtyReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Detail Selisih</h2>
-                  <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{fmtNum(items.length)} item selisih ditemukan</p>
+                  <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{fmtNum(items.length)} item selisih ditemukan{truncated ? ' (dibatasi 2000 terbaru — persempit rentang atau unduh export)' : ''}</p>
                 </div>
               </div>
               <button

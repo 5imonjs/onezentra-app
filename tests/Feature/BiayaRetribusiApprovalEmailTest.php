@@ -180,7 +180,10 @@ class BiayaRetribusiApprovalEmailTest extends TestCase
 
         Sanctum::actingAs($users['operator']);
         $this->postJson("/api/v1/biaya-retribusi/{$biayaRetribusi->id}/submit")->assertOk();
-        $this->assertDatabaseHas('biaya_retribusis', ['id' => $biayaRetribusi->id, 'status' => 'pending', 'revisi_reason' => null]);
+        // Kontrak unifikasi: kembali ke status sebelum revisi (checked),
+        // jejak revisi dipertahankan, progres BAC tidak hilang.
+        $this->assertDatabaseHas('biaya_retribusis', ['id' => $biayaRetribusi->id, 'status' => 'checked', 'revisi_reason' => 'Foto detail belum terupload']);
+        $this->assertNotNull(BiayaRetribusi::find($biayaRetribusi->id)->resubmitted_by);
     }
 
     public function test_biaya_retribusi_without_rfah_requirement(): void

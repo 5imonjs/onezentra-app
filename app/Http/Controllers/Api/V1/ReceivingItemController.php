@@ -315,6 +315,12 @@ class ReceivingItemController extends Controller
 
     public function update(Request $request, ReceivingItem $receivingItem): JsonResponse
     {
+        abort_unless(
+            $request->user()->canAccessDepotRow($receivingItem->kode_depo, $receivingItem->nama_depo),
+            403,
+            'Anda tidak memiliki akses ke data ini.'
+        );
+
         $validated = $request->validate([
             'qty_crt' => 'sometimes|numeric|min:0',
             'qty_pcs' => 'nullable|numeric|min:0',
@@ -347,6 +353,13 @@ class ReceivingItemController extends Controller
             $attributes['condition'] = ReceivingItem::normalizeCondition($attributes['condition']);
         }
 
+        // User depot-scoped tidak boleh memindahkan baris ke depo lain lewat
+        // update: kunci ke depo sendiri (pola yang sama dengan store).
+        if ($request->user()->isDepotScoped()) {
+            $attributes['kode_depo'] = $request->user()->kode_depo;
+            $attributes['nama_depo'] = $request->user()->nama_depo;
+        }
+
         if ($request->input('condition') === 'FISIK_RUSAK' && empty($receivingItem->photo) && ! $request->hasFile('photo')) {
             throw ValidationException::withMessages([
                 'photo' => ['Foto wajib disertakan untuk kondisi barang ini.'],
@@ -361,8 +374,9 @@ class ReceivingItemController extends Controller
         }
 
         if (array_key_exists('actual_qty', $attributes)) {
-            $attributes['expected_qty'] = $attributes['actual_qty'];
-            $attributes['selisih_qty'] = 0;
+            // Jejak selisih SJ dipertahankan: expected tidak disentuh,
+            // selisih dihitung ulang (bukan dinolkan).
+            $attributes['selisih_qty'] = ((float) $attributes['actual_qty']) - (float) $receivingItem->expected_qty;
 
             // Qty PCS adalah nilai turunan dari faktor konversi (master NPN),
             // bukan entri bebas — hitung ulang bila tidak dikirim eksplisit.
@@ -425,6 +439,12 @@ class ReceivingItemController extends Controller
 
     public function destroy(Request $request, ReceivingItem $receivingItem): JsonResponse
     {
+        abort_unless(
+            $request->user()->canAccessDepotRow($receivingItem->kode_depo, $receivingItem->nama_depo),
+            403,
+            'Anda tidak memiliki akses ke data ini.'
+        );
+
         abort_unless(
             $receivingItem->source === ReceivingItem::SOURCE_IMPORT,
             422,

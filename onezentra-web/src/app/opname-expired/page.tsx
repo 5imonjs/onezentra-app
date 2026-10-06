@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
+import { formatDateId } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import ManualBatchManager from '@/components/ManualBatchManager';
 import { useAuthStore } from '@/store/auth';
@@ -146,6 +147,8 @@ export default function OpnameExpiredPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [pending, setPending] = useState<PendingSummary | null>(null);
+  const [depoProgress, setDepoProgress] = useState<{ kode_depo: string; nama_depo: string | null; total: number; validated: number; has_session: boolean; submitted: boolean }[] | null>(null);
+  const [reminding, setReminding] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: 'asc' | 'desc' }>({ key: null, dir: 'asc' });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -221,6 +224,33 @@ export default function OpnameExpiredPage() {
 
   useEffect(() => { loadPending(weekStart || undefined); }, [loadPending, weekStart]);
 
+  // Progres kirim per depo: sudah vs belum kirim hasil opname minggu ini.
+  const loadProgress = useCallback(async (week?: string) => {
+    try {
+      const res = await opnameExpired.progress({ week_start: week || undefined }) as {
+        data: { data: { depots: { kode_depo: string; nama_depo: string | null; total: number; validated: number; has_session: boolean; submitted: boolean }[] } };
+      };
+      setDepoProgress(res.data.data.depots);
+    } catch {
+      setDepoProgress(null);
+    }
+  }, []);
+
+  useEffect(() => { loadProgress(weekStart || undefined); }, [loadProgress, weekStart]);
+
+  const handleRemind = async () => {
+    setReminding(true);
+    try {
+      const res = await opnameExpired.remind({ week_start: weekStart || undefined }) as { data: { message?: string } };
+      notifyGlobal(res.data.message ?? 'Pengingat dikirim.', 'success');
+      await loadProgress(weekStart || undefined);
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengirim pengingat'));
+    } finally {
+      setReminding(false);
+    }
+  };
+
   useEffect(() => {
     if (weeks.length > 0 && !weekStart) setWeekStart(weeks[0]);
   }, [weeks, weekStart]);
@@ -281,6 +311,7 @@ export default function OpnameExpiredPage() {
       setPage(1);
       await load();
       await loadPending(res.data.data.week_start);
+      await loadProgress(res.data.data.week_start);
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal generate opname'));
     } finally {
@@ -353,8 +384,7 @@ export default function OpnameExpiredPage() {
     }
   };
 
-  const fmtDate = (v?: string | null) =>
-    v ? new Date(v).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+  const fmtDate = formatDateId;
 
   const fnum = (v: number) => v.toLocaleString('id-ID');
 
@@ -443,6 +473,48 @@ export default function OpnameExpiredPage() {
           </div>
         </div>
 
+        {/* Progres kirim per depo: pantau siapa sudah / belum kirim */}
+        {depoProgress !== null && depoProgress.length > 0 && (
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h2 className="text-sm font-bold text-slate-800">
+                Progres Depo
+                <span className="ml-2 font-medium text-slate-400">
+                  {depoProgress.filter((d) => d.submitted).length}/{depoProgress.length} sudah kirim
+                </span>
+              </h2>
+              {hasPermission('opname.create') && depoProgress.some((d) => !d.submitted) && (
+                <button
+                  type="button"
+                  onClick={handleRemind}
+                  disabled={reminding}
+                  title="Kirim email pengingat ke depo yang belum kirim (penerima diatur di Penerima Email)"
+                  className="btn-secondary text-sm disabled:opacity-50"
+                >
+                  {reminding ? 'Mengirim...' : 'Ingatkan yang belum kirim'}
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+              {depoProgress.map((d) => {
+                const pct = d.total > 0 ? Math.round((d.validated / d.total) * 100) : 100;
+                return (
+                  <div key={d.kode_depo} className="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${d.submitted ? 'bg-emerald-500' : 'bg-amber-500'}`} aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-700 truncate">{d.nama_depo || d.kode_depo}</p>
+                      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
+                        <div className={`h-full rounded-full ${d.submitted ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                    <span className="text-xs tabular-nums text-slate-500 whitespace-nowrap">{d.validated}/{d.total}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Filter + Tabs + Table */}
         <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Toolbar: week + search */}
@@ -503,7 +575,7 @@ export default function OpnameExpiredPage() {
             <div className="ml-auto flex flex-wrap items-center gap-2 px-2">
             <ManualBatchManager
               buttonClassName="btn-primary"
-              onChanged={() => { setPage(1); load(); loadPending(weekStart || undefined); }}
+              onChanged={() => { setPage(1); load(); loadPending(weekStart || undefined); loadProgress(weekStart || undefined); }}
             />
             {(pending?.pending.total ?? 0) > 0 && (
               <button

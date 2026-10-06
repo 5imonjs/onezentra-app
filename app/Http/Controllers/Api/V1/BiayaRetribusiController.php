@@ -30,6 +30,10 @@ class BiayaRetribusiController extends Controller
 {
     public function index(Request $request)
     {
+        $request->validate([
+            'status' => 'nullable|string|in:draft,pending,checked,rlh_approved,approved,rejected,revisi',
+        ]);
+
         $query = BiayaRetribusi::query()->forUserDepot($request->user());
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -297,9 +301,12 @@ class BiayaRetribusiController extends Controller
 
         $this->validateThlReferences($request, $validated['details']);
         $this->validateReceivingReferences($request, $validated['details'], $biayaRetribusi->id);
+        // Samakan dengan store: ganti set receiving ikut memindahkan depo +
+        // tarif (tanpa ini nominal dihitung dengan tarif depo lama).
+        $validated = $this->inheritReceivingDepot($validated);
 
         $validated['details'] = $this->normalizeDetailCasing($validated['details']);
-        $validated['details'] = $this->applyRetribusiCalc($biayaRetribusi->kode_depo, $validated['details']);
+        $validated['details'] = $this->applyRetribusiCalc($validated['kode_depo'] ?? $biayaRetribusi->kode_depo, $validated['details']);
         $validated['nominal_biaya'] = collect($validated['details'])->sum('nominal_biaya');
         $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.retribusi_rfah_threshold', 1000000);
         if ($validated['is_rfah_required']) {

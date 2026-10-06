@@ -8,6 +8,7 @@ import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 
 interface ClusterPrincipalRow {
   id: number;
@@ -107,6 +108,7 @@ export default function ClusterPrincipalPage() {
       const data = res.data;
       setItems(data.data);
       setLastPage(data.last_page);
+      if (page > data.last_page) setPage(data.last_page);
       setTotalCount(data.total);
       setError(null);
     } catch (e) {
@@ -139,7 +141,11 @@ export default function ClusterPrincipalPage() {
   };
 
   const toggleSelectAll = () => {
-    setSelectedIds((prev) => (prev.length === items.length ? [] : items.map((i) => i.id)));
+    const pageIds = items.map((i) => i.id);
+    setSelectedIds((prev) => {
+      const allOnPage = pageIds.length > 0 && pageIds.every((id) => prev.includes(id));
+      return allOnPage ? prev.filter((id) => !pageIds.includes(id)) : Array.from(new Set([...prev, ...pageIds]));
+    });
   };
 
   const toggleSelect = (id: number) => {
@@ -245,7 +251,7 @@ export default function ClusterPrincipalPage() {
         sort: sortKey,
         direction: sortDir,
       });
-      downloadBlob(res.data, `cluster_principal_${new Date().toISOString().split('T')[0]}.xlsx`);
+      downloadBlob(res.data, `cluster_principal_${todayLocal()}.xlsx`);
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Export gagal'), 'error');
     } finally {
@@ -398,7 +404,7 @@ return (
                       <input
                         type="checkbox"
                         aria-label="Pilih semua"
-                        checked={items.length > 0 && selectedIds.length === items.length}
+                        checked={items.length > 0 && items.every((i) => selectedIds.includes(i.id))}
                         onChange={toggleSelectAll}
                         className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                       />

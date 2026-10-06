@@ -160,12 +160,10 @@ export function registerResponseInterceptors(
 registerResponseInterceptors(apiClient);
 
 export const auth = {
-  csrf: () => apiClient.get(CSRF_URL),
   login: async (email: string, password: string) => {
     await apiClient.get(CSRF_URL);
     return apiClient.post('/login', { email, password });
   },
-  register: (data: Record<string, unknown>) => apiClient.post('/register', data),
   logout: () => apiClient.post('/logout'),
   getUser: () => apiClient.get('/user'),
   updateProfile: (data: Record<string, unknown>) => apiClient.put('/user', data),
@@ -178,7 +176,6 @@ export const dashboard = {
 
 export const roles = {
   list: (search?: string) => apiClient.get('/roles', { params: { search } }),
-  get: (id: number) => apiClient.get(`/roles/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/roles', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/roles/${id}`, data),
   delete: (id: number) => apiClient.delete(`/roles/${id}`),
@@ -197,7 +194,6 @@ export const roles = {
 
 export const permissions = {
   list: (search?: string, group?: string) => apiClient.get('/permissions', { params: { search, menu_group: group } }),
-  get: (id: number) => apiClient.get(`/permissions/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/permissions', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/permissions/${id}`, data),
   delete: (id: number) => apiClient.delete(`/permissions/${id}`),
@@ -205,8 +201,6 @@ export const permissions = {
 
 export const npn = {
   list: (params?: Record<string, unknown>) => apiClient.get('/npn', { params }),
-  get: (id: number) => apiClient.get(`/npn/${id}`),
-  create: (data: Record<string, unknown>) => apiClient.post('/npn', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/npn/${id}`, data),
   delete: (id: number) => apiClient.delete(`/npn/${id}`),
   bulkDelete: (ids: number[]) => apiClient.post('/npn/bulk-delete', { ids }),
@@ -225,7 +219,6 @@ export const npn = {
 export const clusterPrincipal = {
   list: (params?: Record<string, unknown>) => apiClient.get('/cluster-principal', { params }),
   filters: () => apiClient.get('/cluster-principal/filters'),
-  get: (id: number) => apiClient.get(`/cluster-principal/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/cluster-principal', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/cluster-principal/${id}`, data),
   delete: (id: number) => apiClient.delete(`/cluster-principal/${id}`),
@@ -241,17 +234,8 @@ export const clusterPrincipal = {
   template: () => apiClient.get('/cluster-principal/template', { responseType: 'blob' }),
 };
 
-export const penerimaan = {
-  list: (params?: Record<string, unknown>) => apiClient.get('/penerimaan', { params }),
-  get: (id: number) => apiClient.get(`/penerimaan/${id}`),
-  create: (data: Record<string, unknown>) => apiClient.post('/penerimaan', data),
-  update: (id: number, data: Record<string, unknown>) => apiClient.put(`/penerimaan/${id}`, data),
-  delete: (id: number) => apiClient.delete(`/penerimaan/${id}`),
-};
-
 export const standarUmurProduk = {
   list: (params?: Record<string, unknown>) => apiClient.get('/standar-umur-produk', { params }),
-  get: (id: number) => apiClient.get(`/standar-umur-produk/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/standar-umur-produk', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/standar-umur-produk/${id}`, data),
   delete: (id: number) => apiClient.delete(`/standar-umur-produk/${id}`),
@@ -271,17 +255,12 @@ export const standarisasiTumpukan = {
   list: (params?: Record<string, unknown>) => apiClient.get('/standarisasi-tumpukan', { params }),
   /** Jumlah per status untuk seluruh depo user (bukan hanya halaman aktif). */
   stats: (params?: Record<string, unknown>) => apiClient.get('/standarisasi-tumpukan/stats', { params }),
-  /** Pencarian produk khusus halaman ini — tidak butuh permission `npn.view`. */
-  searchProduct: (q: string) => apiClient.get('/standarisasi-tumpukan/search-product', { params: { q } }),
-  get: (id: number) => apiClient.get(`/standarisasi-tumpukan/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/standarisasi-tumpukan', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/standarisasi-tumpukan/${id}`, data),
   delete: (id: number) => apiClient.delete(`/standarisasi-tumpukan/${id}`),
   bulkDelete: (ids: number[]) => apiClient.post('/standarisasi-tumpukan/bulk-delete', { ids }),
   approve: (id: number) => apiClient.post(`/standarisasi-tumpukan/${id}/approve`),
   reject: (id: number) => apiClient.post(`/standarisasi-tumpukan/${id}/reject`),
-  /** Kirim ulang notifikasi email untuk status baris saat ini. */
-  notify: (id: number) => apiClient.post(`/standarisasi-tumpukan/${id}/notify`),
   import: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -311,18 +290,6 @@ export const receivingItems = {
    * Shape: { data: Group[], meta: { total, per_page, current_page, ... } }
    */
   groups: (params?: Record<string, unknown>) => apiClient.get('/receiving-items/groups', { params }),
-  create: (data: Record<string, unknown>) => apiClient.post('/receiving-items', data),
-  update: (id: number, data: Record<string, unknown>) => apiClient.put(`/receiving-items/${id}`, data),
-  searchProduct: (q: string) => apiClient.get('/receiving-items/search-product', { params: { q } }),
-  import: (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return apiClient.post('/receiving-items/import', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-  },
-  template: () => apiClient.get('/receiving-items/template', { responseType: 'blob' }),
-  delete: (id: number) => apiClient.delete(`/receiving-items/${id}`),
 };
 
 export const opnameSessions = {
@@ -344,9 +311,10 @@ export const opnameExpired = {
   list: (params?: Record<string, unknown>) => apiClient.get('/opname-expired', { params }),
   generate: (weekStart?: string) => apiClient.post('/opname-expired/generate', weekStart ? { week_start: weekStart } : {}),
   pending: (params?: Record<string, unknown>) => apiClient.get('/opname-expired/pending', { params }),
+  progress: (params?: Record<string, unknown>) => apiClient.get('/opname-expired/progress', { params }),
+  remind: (data: Record<string, unknown>) => apiClient.post('/opname-expired/remind', data),
   settings: () => apiClient.get('/opname-expired/settings'),
   updateSettings: (data: Record<string, unknown>) => apiClient.put('/opname-expired/settings', data),
-  update: (id: number, data: Record<string, unknown>) => apiClient.put(`/opname-expired/${id}`, data),
   export: (params?: Record<string, unknown>) => apiClient.get('/opname-expired/export', { params, responseType: 'blob' }),
   manualItems: (params?: Record<string, unknown>) => apiClient.get('/receiving-items', { params: { source: 'IMPORT_MANUAL', ...params } }),
   manualCreate: (data: Record<string, unknown>) => apiClient.post('/receiving-items', data),
@@ -387,14 +355,6 @@ export const rencanaKirim = {
   schedule: (id: number) => apiClient.post(`/rencana-kirim/${id}/schedule`),
   verify: (id: number) => apiClient.post(`/rencana-kirim/${id}/verify`),
   cancel: (id: number) => apiClient.post(`/rencana-kirim/${id}/cancel`),
-  import: (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return apiClient.post('/rencana-kirim/import', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-  },
-  template: () => apiClient.get('/rencana-kirim/template', { responseType: 'blob' }),
   importItems: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -407,7 +367,6 @@ export const rencanaKirim = {
 
 export const docks = {
   list: (params?: Record<string, unknown>) => apiClient.get('/docks', { params }),
-  get: (id: number) => apiClient.get(`/docks/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/docks', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/docks/${id}`, data),
   delete: (id: number) => apiClient.delete(`/docks/${id}`),
@@ -425,22 +384,14 @@ export const docks = {
 export const gateTransactions = {
   list: (params?: Record<string, unknown>) => apiClient.get('/gate-transactions', { params }),
   stats: () => apiClient.get('/gate-transactions/stats'),
-  get: (id: number) => apiClient.get(`/gate-transactions/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/gate-transactions', data),
   byNoDokumen: (poTransporter: string) => apiClient.get('/gate-transactions/search/by-dokumen', { params: { po_transporter: poTransporter } }),
-  update: (id: number, data: Record<string, unknown>) => apiClient.put(`/gate-transactions/${id}`, data),
-  delete: (id: number) => apiClient.delete(`/gate-transactions/${id}`),
 };
 
 export const receivings = {
   list: (params?: Record<string, unknown>) => apiClient.get('/receivings', { params }),
   get: (id: number) => apiClient.get(`/receivings/${id}`),
-  create: (data: Record<string, unknown>) => apiClient.post('/receivings', data),
-  start: (id: number) => apiClient.post(`/receivings/${id}/start`),
-  scan: (id: number, data: Record<string, unknown>) => apiClient.post(`/receivings/${id}/scan`, data),
   complete: (id: number, data?: Record<string, unknown>) => apiClient.post(`/receivings/${id}/complete`, data ?? {}),
-  cancel: (id: number) => apiClient.post(`/receivings/${id}/cancel`),
-  delete: (id: number) => apiClient.delete(`/receivings/${id}`),
   import: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -452,12 +403,6 @@ export const receivings = {
   template: () => apiClient.get('/receivings/template', { responseType: 'blob' }),
 };
 
-export const batches = {
-  list: (params?: Record<string, unknown>) => apiClient.get('/batches', { params }),
-  get: (id: number) => apiClient.get(`/batches/${id}`),
-  byNumber: (batchNumber: string) => apiClient.get('/batches/search/by-number', { params: { batch_number: batchNumber } }),
-};
-
 export const users = {
   list: (params?: Record<string, unknown>) => apiClient.get('/users', { params }),
   import: (file: File) => {
@@ -467,7 +412,6 @@ export const users = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-  get: (id: number) => apiClient.get(`/users/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/users', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/users/${id}`, data),
   delete: (id: number) => apiClient.delete(`/users/${id}`),
@@ -477,6 +421,7 @@ export const emailSettings = {
   get: () => apiClient.get('/email-settings'),
   update: (data: Record<string, unknown>) => apiClient.put('/email-settings', data),
   test: (to: string) => apiClient.post('/email-settings/test', { to }),
+  notificationLogs: (params?: Record<string, unknown>) => apiClient.get('/email-settings/notification-logs', { params }),
 };
 
 export const emailRecipients = {
@@ -536,7 +481,6 @@ export const biayaThl = {
   },
   delete: (id: number) => apiClient.delete(`/biaya-thl/${id}`),
   export: (params?: Record<string, unknown>) => apiClient.get('/biaya-thl/export', { params, responseType: 'blob' }),
-  pdf: (id: number) => apiClient.get(`/biaya-thl/${id}/pdf`, { responseType: 'blob' }),
   submit: (id: number) => apiClient.post(`/biaya-thl/${id}/submit`),
   check: (id: number) => apiClient.post(`/biaya-thl/${id}/check`),
   approve: (id: number) => apiClient.post(`/biaya-thl/${id}/approve`),
@@ -556,7 +500,6 @@ export const biayaRetribusi = {
   list: (params?: Record<string, unknown>) => apiClient.get('/biaya-retribusi', { params }),
   candidates: (params?: Record<string, unknown>) => apiClient.get('/biaya-retribusi/candidates', { params }),
   get: (id: number) => apiClient.get(`/biaya-retribusi/${id}`),
-  pdf: (id: number) => apiClient.get(`/biaya-retribusi/${id}/pdf`, { responseType: 'blob' }),
   create: (data: Record<string, unknown> | FormData) => {
     const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
     return apiClient.post('/biaya-retribusi', data, config);
@@ -581,11 +524,6 @@ export const biayaRetribusi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-};
-
-export const biayaThlPdfSettings = {
-  get: (kodeDepo?: string) => apiClient.get('/settings/biaya-thl-pdf', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
-  save: (data: { kode_depo: string; approval_sections: unknown[] }) => apiClient.post('/settings/biaya-thl-pdf', data),
 };
 
 export const approvalAssignments = {

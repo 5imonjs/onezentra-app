@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\EmailNotificationLog;
 use App\Models\EmailRecipient;
 use App\Models\EmailSetting;
 use Illuminate\Support\Facades\Config;
@@ -86,6 +87,19 @@ class EmailNotificationService
             $cc = $this->resolveRecipients($documentType, $trigger, 'CC');
 
             if (empty($to) && empty($cc)) {
+                Log::warning('Email notification skipped: no recipients configured.', [
+                    'document_type' => $documentType,
+                    'trigger' => $trigger,
+                    'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+                ]);
+                EmailNotificationLog::create([
+                    'document_type' => $documentType,
+                    'trigger' => $trigger,
+                    'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+                    'status' => EmailNotificationLog::STATUS_SKIPPED,
+                    'error' => 'Tidak ada penerima terkonfigurasi.',
+                ]);
+
                 return;
             }
 
@@ -112,6 +126,14 @@ class EmailNotificationService
                 'document_type' => $documentType,
                 'trigger' => $trigger,
                 'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+            ]);
+            EmailNotificationLog::create([
+                'document_type' => $documentType,
+                'trigger' => $trigger,
+                'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+                'recipients' => implode(', ', array_merge((array) ($to ?? []), (array) ($cc ?? []))) ?: null,
+                'status' => EmailNotificationLog::STATUS_FAILED,
+                'error' => $e->getMessage(),
             ]);
         }
     }

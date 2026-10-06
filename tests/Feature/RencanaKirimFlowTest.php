@@ -201,4 +201,41 @@ class RencanaKirimFlowTest extends TestCase
         // Kubikasi = 12 × 364 × 50 / 1.000.000 = 0.2184 m³
         $this->assertEqualsWithDelta(0.2184, (float) $data['total_kubikasi'], 0.0001);
     }
+
+    public function test_scoped_user_cannot_move_document_to_other_depot_via_update()
+    {
+        $role = Role::firstOrCreate(['slug' => '_rk_scoped'], ['name' => 'RK Scoped']);
+        $perm = Permission::firstOrCreate(['slug' => 'rencana_kirim.edit'], ['name' => 'Rencana Kirim Edit']);
+        $role->permissions()->syncWithoutDetaching([$perm->id]);
+
+        $user = User::create([
+            'email' => 'rk-scoped@example.com',
+            'password' => 'password',
+            'full_name' => 'RK Scoped',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
+        $role->users()->attach($user->id);
+
+        $rencanaKirim = RencanaKirim::create([
+            'po_transporter' => 'PO-RK-'.uniqid(),
+            'status' => 'DRAFT',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'created_by' => $user->id,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson("/api/v1/rencana-kirim/{$rencanaKirim->id}", [
+            'kode_depo' => 'LAIN',
+            'nama_depo' => 'Depo Lain',
+            'notes' => 'coba pindah',
+        ])->assertOk();
+
+        $this->assertSame('DPO', $rencanaKirim->fresh()->kode_depo);
+        $this->assertSame('coba pindah', $rencanaKirim->fresh()->notes);
+    }
 }

@@ -486,94 +486,99 @@ class SjValidationController extends Controller
             ]);
         }
 
-        $item = SjValidationItem::findOrFail($validated['sj_validation_item_id']);
-        if ($item->sj_validation_id !== $sjValidation->id) {
-            return response()->json(['message' => 'Item tidak sesuai validasi ini'], 422);
-        }
-
-        // Barcode bersifat opsional. Jika diisi dan dikenal, gunakan untuk
-        // mengunci produk sesuai line SJ (tanpa menolak bila tidak dikenal).
-        if (! empty($validated['barcode'])) {
-            $barcode = trim($validated['barcode']);
-            $npn = Npn::where(function ($q) use ($barcode) {
-                $q->where('BOSnetszProductId', $barcode)
-                    ->orWhere('SAPszProductId', $barcode)
-                    ->orWhere('szBarcode', $barcode)
-                    ->orWhere('szBarcodeSekunder', $barcode)
-                    ->orWhere('szBarcodeTersier', $barcode);
-            })->first();
-
-            if ($npn && (! $item->npn_id || $item->npn_id == $npn->id)) {
-                $item->npn_id = $npn->id;
-                $item->kode_barang = $npn->BOSnetszProductId;
-                $item->save();
+        // Seluruh tulis scan (item + batch + receiving + standarisasi) dalam
+        // satu transaksi dengan kunci baris: double-tap/operator ganda tidak
+        // boleh menggandakan batch atau menghilangkan hasil scan.
+        return DB::transaction(function () use ($request, $sjValidation, $validated) {
+            $item = SjValidationItem::whereKey($validated['sj_validation_item_id'])->lockForUpdate()->firstOrFail();
+            if ($item->sj_validation_id !== $sjValidation->id) {
+                return response()->json(['message' => 'Item tidak sesuai validasi ini'], 422);
             }
-        }
 
-        $status = (float) $validated['actual_qty'] === (float) $item->expected_qty
-            ? 'VALIDATED'
-            : 'MISMATCH';
+            // Barcode bersifat opsional. Jika diisi dan dikenal, gunakan untuk
+            // mengunci produk sesuai line SJ (tanpa menolak bila tidak dikenal).
+            if (! empty($validated['barcode'])) {
+                $barcode = trim($validated['barcode']);
+                $npn = Npn::where(function ($q) use ($barcode) {
+                    $q->where('BOSnetszProductId', $barcode)
+                        ->orWhere('SAPszProductId', $barcode)
+                        ->orWhere('szBarcode', $barcode)
+                        ->orWhere('szBarcodeSekunder', $barcode)
+                        ->orWhere('szBarcodeTersier', $barcode);
+                })->first();
 
-        $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('validation-photos', 'public');
-        }
+                if ($npn && (! $item->npn_id || $item->npn_id == $npn->id)) {
+                    $item->npn_id = $npn->id;
+                    $item->kode_barang = $npn->BOSnetszProductId;
+                    $item->save();
+                }
+            }
 
-        $item->update([
-            'barcode' => $validated['barcode'] ?? $item->barcode,
-            'actual_qty' => $validated['actual_qty'],
-            'expired_date' => $validated['expired_date'] ?? $item->expired_date,
-            'condition' => $validated['condition'] ?? $item->condition,
-            'notes' => $validated['notes'] ?? $item->notes,
-            'photo' => $photoPath ?? $item->photo,
-            'status' => $status,
-        ]);
+            $status = (float) $validated['actual_qty'] === (float) $item->expected_qty
+                ? 'VALIDATED'
+                : 'MISMATCH';
 
-        // Masing-masing produk yang divalidasi mendapat batch number sendiri (siap cetak).
-        $existingBatch = Batch::where('sj_validation_item_id', $item->id)->first();
-        if (! $existingBatch) {
-            Batch::create([
-                'batch_number' => Batch::generateNumber('BATCH-'),
-                'sj_validation_item_id' => $item->id,
-                'barcode_label' => Batch::generateLabel(),
-                'items_json' => [[
-                    'kode_barang' => $item->kode_barang,
-                    'nama_barang' => $item->nama_barang,
-                    'actual_qty' => (float) $item->actual_qty,
-                    'satuan' => $item->satuan,
-                    'barcode' => $item->barcode,
-                    'condition' => $item->condition,
-                    'expired_date' => $item->expired_date,
-                ]],
-                'status' => 'ACTIVE',
+            $photoPath = null;
+            if ($request->hasFile('photo')) {
+                $photoPath = $request->file('photo')->store('validation-photos', 'public');
+            }
+
+            $item->update([
+                'barcode' => $validated['barcode'] ?? $item->barcode,
+                'actual_qty' => $validated['actual_qty'],
+                'expired_date' => $validated['expired_date'] ?? $item->expired_date,
+                'condition' => $validated['condition'] ?? $item->condition,
+                'notes' => $validated['notes'] ?? $item->notes,
+                'photo' => $photoPath ?? $item->photo,
+                'status' => $status,
             ]);
-        }
 
-        $item->load(['npn', 'batch']);
-        $this->attachStandarUmur([$item]);
-        // Koreksi setelah `complete()` hanya sah kalau baris Receiving ikut
-        // diperbarui. `receiving_items` adalah salinan yang dibaca Opname Expired
-        // dan laporan Penerimaan; menyalin ulang di sini adalah satu-satunya cara
-        // supaya dua tabel tidak berbeda setelah supervisor memperbaiki angka.
-        $this->syncReceivingItem($item);
+            // Masing-masing produk yang divalidasi mendapat batch number sendiri (siap cetak).
+            $existingBatch = Batch::where('sj_validation_item_id', $item->id)->first();
+            if (! $existingBatch) {
+                Batch::create([
+                    'batch_number' => Batch::generateNumber('BATCH-'),
+                    'sj_validation_item_id' => $item->id,
+                    'barcode_label' => Batch::generateLabel(),
+                    'items_json' => [[
+                        'kode_barang' => $item->kode_barang,
+                        'nama_barang' => $item->nama_barang,
+                        'actual_qty' => (float) $item->actual_qty,
+                        'satuan' => $item->satuan,
+                        'barcode' => $item->barcode,
+                        'condition' => $item->condition,
+                        'expired_date' => $item->expired_date,
+                    ]],
+                    'status' => 'ACTIVE',
+                ]);
+            }
 
-        // Standarisasi tumpukan: jika frontend mengirim tier/tinggi (produk belum
-        // punya standarisasi tersimpan), catat agar tidak diminta berulang.
-        if (isset($validated['tier']) || isset($validated['tinggi_tumpukan'])) {
-            $this->upsertStandarisasiTumpukan($item, $request->user(), $validated);
-        }
+            $item->load(['npn', 'batch']);
+            $this->attachStandarUmur([$item]);
+            // Koreksi setelah `complete()` hanya sah kalau baris Receiving ikut
+            // diperbarui. `receiving_items` adalah salinan yang dibaca Opname Expired
+            // dan laporan Penerimaan; menyalin ulang di sini adalah satu-satunya cara
+            // supaya dua tabel tidak berbeda setelah supervisor memperbaiki angka.
+            $this->syncReceivingItem($item);
 
-        $this->standarisasiForItem($item);
+            // Standarisasi tumpukan: jika frontend mengirim tier/tinggi (produk belum
+            // punya standarisasi tersimpan), catat agar tidak diminta berulang.
+            if (isset($validated['tier']) || isset($validated['tinggi_tumpukan'])) {
+                $this->upsertStandarisasiTumpukan($item, $request->user(), $validated);
+            }
 
-        // Batch ikut dikembalikan di respons scan. Label batch ditempel fisik ke
-        // produk tepat setelah operator memvalidasi, jadi frontend (web maupun
-        // mobile) harus bisa mencetak tanpa fetch kedua — dan satu produk memang
-        // satu batch, jadi tidak ada ambiguitas label mana yang dicetak.
-        // (batch sudah di-load di atas bersama npn — jangan load ulang.)
-        return response()->json([
-            'message' => 'Item divalidasi',
-            'data' => $item,
-        ]);
+            $this->standarisasiForItem($item);
+
+            // Batch ikut dikembalikan di respons scan. Label batch ditempel fisik ke
+            // produk tepat setelah operator memvalidasi, jadi frontend (web maupun
+            // mobile) harus bisa mencetak tanpa fetch kedua — dan satu produk memang
+            // satu batch, jadi tidak ada ambiguitas label mana yang dicetak.
+            // (batch sudah di-load di atas bersama npn — jangan load ulang.)
+            return response()->json([
+                'message' => 'Item divalidasi',
+                'data' => $item,
+            ]);
+        });
     }
 
     /**
@@ -615,19 +620,22 @@ class SjValidationController extends Controller
 
             [$locked, $receiving] = $this->ensureReceiving($locked);
 
+            // Maju satu arah saja di DALAM transaksi yang sama: crash di
+            // antara commit receiving dan update RK meninggalkan kombinasi
+            // yatim (COMPLETED + PENDING + CHECKED_IN) yang tak bisa
+            // dilanjutkan dari UI.
+            $rk = $locked->rencanaKirim()->lockForUpdate()->first();
+            if ($rk && $rk->status === 'CHECKED_IN') {
+                $rk->update([
+                    'status' => 'VERIFIED',
+                    'verified_at' => now(),
+                ]);
+            }
+
             return [$locked, $receiving];
         });
 
         $rencanaKirim = $completedValidation->rencanaKirim;
-
-        // Maju satu arah saja: hanya dari CHECKED_IN ke VERIFIED.
-        // Jangan memundurkan rencana yang sudah IN_PROGRESS/COMPLETED.
-        if ($rencanaKirim->status === 'CHECKED_IN') {
-            $rencanaKirim->update([
-                'status' => 'VERIFIED',
-                'verified_at' => now(),
-            ]);
-        }
 
         $this->emailService->send(
             'sj_ba',

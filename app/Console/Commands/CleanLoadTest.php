@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ClusterPrincipal;
-use App\Models\NpN;
+use App\Models\Npn;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -27,8 +27,8 @@ class CleanLoadTest extends Command
 
         $cpTotal = ClusterPrincipal::count();
         $cpSynthetic = ClusterPrincipal::where('product_sku', 'like', 'SKU-%')->count();
-        $npnTotal = NpN::count();
-        $npnSynthetic = NpN::where('szNickName', 'like', 'PROD-%')->count();
+        $npnTotal = Npn::count();
+        $npnSynthetic = Npn::where('szNickName', 'like', 'PROD-%')->count();
 
         $this->components->info('Kandidat yang akan dihapus:');
         $this->line("  user loadtest*        : {$users->count()}");
@@ -61,7 +61,7 @@ class CleanLoadTest extends Command
 
         $deletedUsers = $users->isNotEmpty() ? User::whereIn('id', $users)->delete() : 0;
         $deletedCp = ClusterPrincipal::where('product_sku', 'like', 'SKU-%')->delete();
-        $deletedNpn = NpN::where('szNickName', 'like', 'PROD-%')->delete();
+        $deletedNpn = Npn::where('szNickName', 'like', 'PROD-%')->delete();
 
         $this->newLine();
         $this->components->info('Selesai.');

@@ -205,4 +205,28 @@ class AuthorizationInventoryTest extends TestCase
 
         $this->deleteJson("/api/v1/users/{$master->id}")->assertStatus(403);
     }
+
+    /**
+     * Non-admin tidak boleh mengubah level/status akun lain (anti-eskalasi),
+     * dan setiap perubahan akun mencatat pelakunya di updated_by.
+     */
+    public function test_non_admin_tidak_boleh_mengubah_level_atau_status(): void
+    {
+        $staff = $this->userWith('staff_logistic', ['users.view', 'users.edit']);
+        $victim = $this->userWith('victim_user', []);
+        Sanctum::actingAs($staff);
+
+        $this->putJson("/api/v1/users/{$victim->id}", ['level' => 'rlh'])
+            ->assertForbidden();
+        $this->putJson("/api/v1/users/{$victim->id}", ['status' => 'inactive'])
+            ->assertForbidden();
+        $this->assertSame('staff_logistic', $victim->fresh()->level);
+        $this->assertSame('active', $victim->fresh()->status);
+
+        // Ubah field biasa tetap boleh + tercatat pelakunya.
+        $this->putJson("/api/v1/users/{$victim->id}", ['full_name' => 'Nama Baru'])
+            ->assertOk();
+        $this->assertSame('Nama Baru', $victim->fresh()->full_name);
+        $this->assertSame($staff->id, (int) $victim->fresh()->updated_by);
+    }
 }

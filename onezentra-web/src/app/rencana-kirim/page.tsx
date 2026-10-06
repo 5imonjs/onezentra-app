@@ -471,6 +471,8 @@ export default function RencanaKirimPage() {
   const [createForm, setCreateForm] = useState<Partial<RencanaKirim>>({ ...emptyForm });
   const [createItems, setCreateItems] = useState<RencanaKirimItem[]>([{ ...emptyItem }]);
   const [typingItems, setTypingItems] = useState<Set<number>>(new Set());
+  // Anti race: respons basi (ketikan sudah berubah) dibuang.
+  const reqIdRef = useRef(0);
 
   const markTyping = (index: number, isTyping: boolean) => {
     setTypingItems(prev => {
@@ -510,18 +512,22 @@ export default function RencanaKirimPage() {
   const { hasPermission } = useAuthStore();
 
   const loadItems = useCallback(async (silent = false) => {
+    const reqId = ++reqIdRef.current;
     try {
       setLoading(true);
       const res = await rencanaKirim.list({ search, page, per_page: 20 });
+      if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
       setLastPage(res.data.last_page);
+      if (page > res.data.last_page) setPage(res.data.last_page);
     } catch (e) {
+      if (reqIdRef.current !== reqId) return;
       console.error(e);
       if (!silent) {
         notifyGlobal(getErrorMessage(e, 'Gagal memuat daftar rencana kirim.'), 'error');
       }
     } finally {
-      setLoading(false);
+      if (reqIdRef.current === reqId) setLoading(false);
     }
   }, [search, page]);
 
@@ -996,7 +1002,7 @@ export default function RencanaKirimPage() {
                     </div>
                   </div>
                   <div className="flex-1 sm:max-w-md">
-                    <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO Transporter/RKH/driver..." resultCount={items.length} resultLabel="rencana" />
+                    <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO Transporter/RKH/driver..." resultCount={items.length} totalCount={rkStats?.total} currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0} currentTo={(page - 1) * 20 + items.length} resultLabel="rencana" />
                   </div>
                   <div className="flex items-center gap-2">
                     {hasPermission('rencana_kirim.create') && (

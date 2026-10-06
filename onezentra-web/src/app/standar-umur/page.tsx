@@ -8,6 +8,7 @@ import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 
 interface StandarUmurItem {
   id: number;
@@ -206,6 +207,7 @@ export default function StandarUmurPage() {
       const data = res.data;
       setItems(data.data);
       setLastPage(data.last_page);
+      if (page > data.last_page) setPage(data.last_page);
       setTotalCount(data.total);
     } catch (e: unknown) {
       setError(getErrorMessage(e, 'Gagal memuat data standar umur.'));
@@ -215,11 +217,11 @@ export default function StandarUmurPage() {
   useEffect(() => { loadItems(); }, [loadItems]);
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === items.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(items.map(i => i.id));
-    }
+    const pageIds = items.map((i) => i.id);
+    setSelectedIds((prev) => {
+      const allOnPage = pageIds.length > 0 && pageIds.every((id) => prev.includes(id));
+      return allOnPage ? prev.filter((id) => !pageIds.includes(id)) : Array.from(new Set([...prev, ...pageIds]));
+    });
   };
 
   const toggleSelect = (id: number) => {
@@ -321,7 +323,7 @@ export default function StandarUmurPage() {
     setExporting(true);
     try {
       const res = await standarUmurProduk.export({ search, sort: sortKey, direction: sortDir });
-      downloadBlob(res.data, `standar_umur_produk_${new Date().toISOString().split('T')[0]}.xlsx`);
+      downloadBlob(res.data, `standar_umur_produk_${todayLocal()}.xlsx`);
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Export gagal'));
     } finally {
@@ -510,7 +512,7 @@ export default function StandarUmurPage() {
                     <th scope="col" className="excel-header w-10">
                       <input
                         type="checkbox"
-                        checked={items.length > 0 && selectedIds.length === items.length}
+                        checked={items.length > 0 && items.every((i) => selectedIds.includes(i.id))}
                         onChange={toggleSelectAll}
                         className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                       />

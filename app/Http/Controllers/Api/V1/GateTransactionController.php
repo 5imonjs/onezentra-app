@@ -14,6 +14,11 @@ class GateTransactionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'status' => 'nullable|string|in:CHECKED_IN,COMPLETED',
+            'gate_type' => 'nullable|string|in:INBOUND,OUTBOUND',
+        ]);
+
         $query = GateTransaction::with(['rencanaKirim']);
 
         if ($request->user()->isDepotScoped()) {
@@ -196,6 +201,12 @@ class GateTransactionController extends Controller
 
     public function update(Request $request, GateTransaction $gateTransaction): JsonResponse
     {
+        abort_unless(
+            $this->currentUser()->canAccessDepotRow($gateTransaction->rencanaKirim?->kode_depo, $gateTransaction->rencanaKirim?->nama_depo),
+            403,
+            'Transaksi gate tidak ditemukan di depo Anda.'
+        );
+
         // Gate transactions are typically created from scan process, so edit is limited
         $validated = $request->validate([
             'notes' => 'nullable|string|max:1000',
@@ -207,6 +218,23 @@ class GateTransactionController extends Controller
 
     public function destroy(GateTransaction $gateTransaction): JsonResponse
     {
+        abort_unless(
+            $this->currentUser()->canAccessDepotRow($gateTransaction->rencanaKirim?->kode_depo, $gateTransaction->rencanaKirim?->nama_depo),
+            403,
+            'Transaksi gate tidak ditemukan di depo Anda.'
+        );
+
+        // Menghapus jejak gate tidak boleh meninggalkan status yatim: hanya
+        // INBOUND yang rencananya masih CHECKED_IN yang bisa dibatalkan
+        // (rencana kembali SCHEDULED). OUTBOUND/alur yang sudah jalan = jejak
+        // audit, tidak bisa dihapus.
+        abort_unless(
+            $gateTransaction->gate_type === 'INBOUND' && $gateTransaction->rencanaKirim?->status === 'CHECKED_IN',
+            422,
+            'Transaksi gate ini tidak dapat dihapus pada status alur saat ini.'
+        );
+
+        $gateTransaction->rencanaKirim->update(['status' => 'SCHEDULED']);
         $gateTransaction->delete();
 
         return response()->json(['message' => 'Gate transaction deleted']);

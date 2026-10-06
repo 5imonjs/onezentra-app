@@ -18,6 +18,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | onezentra-web/src/app/reports/** | .ai/rules/reports.md |
 | onezentra-web/src/app/reports/opname-expired/** | .ai/rules/reports-opname-expired.md |
 | onezentra-web/src/app/reports/rencana-kirim/**, app/Exports/RencanaKirimReportExport.php | .ai/rules/reports-rencana-kirim.md |
+| app/Http/Controllers/Api/V1/*.php, routes/api.php, database/seeders/PermissionSeeder.php | .ai/rules/roles-flow.md |
 | routes/api.php | .ai/rules/routes.md |
 | database/seeders/**, database/seeders/PermissionSeeder.php | .ai/rules/seeders.md |
 | onezentra-web/src/** | .ai/rules/src.md |

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Mail\OpnameExpiredNotification;
 use App\Models\Batch;
+use App\Models\EmailRecipient;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredWave;
 use App\Models\Permission;
@@ -11,6 +13,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\OpnameExpiredService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -220,5 +223,34 @@ class OpnameExpiredSessionTest extends TestCase
 
         // Selisih: (10-10) + (9-6) = +3.
         $this->assertEquals(3, (float) $wave->fresh()->qty_koreksi_crt);
+    }
+
+    public function test_complete_session_sends_completed_email(): void
+    {
+        Mail::fake();
+        $session = $this->makeSession();
+
+        EmailRecipient::create([
+            'document_type' => 'opname_expired',
+            'trigger' => 'completed',
+            'recipient_type' => 'email',
+            'field' => 'TO',
+            'email' => 'selesai@example.com',
+            'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+        foreach ($session->items as $si) {
+            $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$si->id}", [
+                'qty_fisik_crt' => 5,
+                'condition' => 'FISIK_BAGUS',
+            ])->assertOk();
+        }
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/complete")->assertOk();
+
+        Mail::assertSent(OpnameExpiredNotification::class, function ($mail) {
+            return $mail->hasTo('selesai@example.com') && $mail->kind === 'completed';
+        });
     }
 }

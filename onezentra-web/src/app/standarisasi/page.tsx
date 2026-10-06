@@ -221,6 +221,7 @@ const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
       ]);
       setItems(listRes.data.data);
       setLastPage(listRes.data.last_page);
+      if (page > listRes.data.last_page) setPage(listRes.data.last_page);
       setTotal(listRes.data.total ?? listRes.data.data.length);
       if (statsRes.data?.data) setStats(statsRes.data.data);
     } catch (e) {
@@ -255,11 +256,11 @@ const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   }, []);
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === items.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(items.map(i => i.id));
-    }
+    const pageIds = items.map((i) => i.id);
+    setSelectedIds((prev) => {
+      const allOnPage = pageIds.length > 0 && pageIds.every((id) => prev.includes(id));
+      return allOnPage ? prev.filter((id) => !pageIds.includes(id)) : Array.from(new Set([...prev, ...pageIds]));
+    });
   };
 
   const toggleSelect = (id: number) => {
@@ -618,7 +619,7 @@ const confirmApprove = async () => {
                     {hasPermission('standarisasi.delete') && (
                       <input
                         type="checkbox"
-                        checked={items.length > 0 && selectedIds.length === items.length}
+                        checked={items.length > 0 && items.every((i) => selectedIds.includes(i.id))}
                         onChange={toggleSelectAll}
                         className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                       />

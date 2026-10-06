@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, opnameSessions, users, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
+import { formatDateId } from '@/lib/dates';
 import { useAuthStore } from '@/store/auth';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -65,8 +66,7 @@ const STATUS_META: Record<string, string> = {
   CANCELLED: 'bg-red-50 text-red-700',
 };
 
-const fmtDate = (v?: string | null) =>
-  v ? new Date(v).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+const fmtDate = formatDateId;
 
 const todayMonday = (): string => {
   const d = new Date();
@@ -406,6 +406,12 @@ function SessionDetailModal({ sessionId, detail, detailLoading, progress, canEdi
     if (f.notes) fd.append('notes', f.notes);
     if (f.photo) fd.append('photo', f.photo);
     await act(() => opnameSessions.verifyItem(sessionId, item.id, fd), 'Baris terverifikasi, label diterbitkan bila perlu.');
+    // Bersihkan form baris ini agar file/kondisi lama tak ikut terkirim ulang.
+    setForms((p) => {
+      const next = { ...p };
+      delete next[item.id];
+      return next;
+    });
   };
 
   const open = detail?.status === 'OPEN' || detail?.status === 'IN_PROGRESS';

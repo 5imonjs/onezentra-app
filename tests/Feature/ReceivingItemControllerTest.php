@@ -51,8 +51,8 @@ class ReceivingItemControllerTest extends TestCase
             'expired_date' => '2026-12-01',
             'tanggal_penerimaan' => '2026-09-01',
             'sumber_material' => 'SHA',
-            'kode_depo' => '0127',
-            'nama_depo' => 'Singkawang',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
             'condition' => 'GOOD',
         ]);
     }
@@ -71,10 +71,24 @@ class ReceivingItemControllerTest extends TestCase
 
         $fresh = $item->fresh();
         $this->assertEquals('8.00', (string) $fresh->actual_qty);
-        $this->assertEquals('8.00', (string) $fresh->expected_qty);
-        $this->assertEquals('0', (string) $fresh->selisih_qty);
+        // Jejak ekspektasi dipertahankan, selisih dihitung ulang (bukan dinolkan).
+        $this->assertEquals('10.00', (string) $fresh->expected_qty);
+        $this->assertEquals(-2, (float) $fresh->selisih_qty);
         $this->assertEquals('2026-12-15', $fresh->expired_date->toDateString());
         $this->assertSame('VALIDASI_SJ', $fresh->source);
+        // User depot-scoped tidak bisa memindahkan baris ke depo lain.
+        $this->assertSame('DPO', $fresh->kode_depo);
+    }
+
+    public function test_update_other_depot_row_is_forbidden(): void
+    {
+        $item = $this->makeItem();
+        $item->update(['kode_depo' => 'LAIN', 'nama_depo' => 'Depo Lain']);
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", ['qty_crt' => 1])
+            ->assertForbidden();
+        $this->deleteJson("/api/v1/receiving-items/{$item->id}")
+            ->assertForbidden();
     }
 
     public function test_update_recomputes_qty_pcs_from_conversion_factor(): void

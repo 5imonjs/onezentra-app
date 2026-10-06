@@ -827,4 +827,48 @@ class BiayaThlFlowTest extends TestCase
         $this->assertSame('RLH THL', $sections['Menyetujui']['people'][0]['name']);
         $this->assertSame('RFAH THL', $sections['RFAH*']['people'][0]['name']);
     }
+
+    public function test_non_draft_store_without_depot_is_rejected(): void
+    {
+        // User global tanpa depo: pengajuan non-draft tanpa depo akan yatim
+        // di antrean (tak cocok assignment maupun filter) — tolak di depan.
+        $role = Role::firstOrCreate(['slug' => 'biaya_thl_global'], ['name' => 'Biaya Global']);
+        foreach (['biaya_thl.view', 'biaya_thl.create', 'approval.submit'] as $slug) {
+            $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug]);
+            $role->permissions()->syncWithoutDetaching([$perm->id]);
+        }
+        $global = User::create([
+            'email' => 'biaya-global@test.com',
+            'password' => 'password',
+            'full_name' => 'Biaya Global',
+            'kode_depo' => '',
+            'nama_depo' => '',
+            'level' => 'admin_master',
+            'status' => 'active',
+        ]);
+        $role->users()->attach($global->id);
+
+        Sanctum::actingAs($global);
+
+        $this->postJson('/api/v1/biaya-thl', [
+            'tanggal_pengajuan' => '2026-09-18',
+            'details' => [[
+                'no_surat_jalan' => 'SJ-NODEPO',
+                'nama_thl' => 'Budi',
+                'driver_name' => 'Andi',
+                'nopol_kendaraan' => 'KB 1 X',
+                'type_kendaraan' => 'CDD',
+                'nominal_biaya' => 100000,
+                'kubikasi' => 1,
+                'droppoint' => 'Terminal A',
+                'posisi' => 'THL HELPER',
+                'jam_datang' => '2026-09-18T08:00',
+                'jam_pulang' => '2026-09-18T17:00',
+                'order' => 0,
+            ]],
+        ])->assertStatus(422)->assertJsonValidationErrors(['kode_depo']);
+
+        // Draft tetap boleh belum berdepo.
+        $this->postJson('/api/v1/biaya-thl', ['is_draft' => true])->assertCreated();
+    }
 }

@@ -14,6 +14,8 @@ class BatchController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $request->validate(['status' => 'nullable|string|in:ACTIVE,CANCELLED']);
+
         $query = Batch::with(['receiving.rencanaKirim']);
 
         if ($request->user()->isDepotScoped()) {

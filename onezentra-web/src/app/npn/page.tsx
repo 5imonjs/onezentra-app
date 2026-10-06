@@ -8,6 +8,7 @@ import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useAuthStore } from '@/store/auth';
+import { todayLocal } from '@/lib/dates';
 
 interface NpnItem {
   id: number;
@@ -104,18 +105,24 @@ export default function NpnPage() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Anti race: respons basi dibuang.
+  const reqIdRef = useRef(0);
   const { hasPermission } = useAuthStore();
 
   const loadItems = useCallback(async () => {
+    const reqId = ++reqIdRef.current;
     try {
       const params: Record<string, string | number> = { search, page, per_page: 20, sort: sortKey, direction: sortDir };
       if (statusFilter) params.szStatus = statusFilter;
       const res = await npn.list(params);
+      if (reqIdRef.current !== reqId) return;
       const data = res.data;
       setItems(data.data);
       setLastPage(data.last_page);
+      if (page > data.last_page) setPage(data.last_page);
       setTotalCount(data.total);
     } catch (e: unknown) {
+      if (reqIdRef.current !== reqId) return;
       setError(getErrorMessage(e, 'Gagal memuat data NPN.'));
     }
   }, [search, page, statusFilter, sortKey, sortDir]);
@@ -133,11 +140,11 @@ export default function NpnPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === items.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(items.map(i => i.id));
-    }
+    const pageIds = items.map((i) => i.id);
+    setSelectedIds((prev) => {
+      const allOnPage = pageIds.length > 0 && pageIds.every((id) => prev.includes(id));
+      return allOnPage ? prev.filter((id) => !pageIds.includes(id)) : Array.from(new Set([...prev, ...pageIds]));
+    });
   };
 
   const toggleSelect = (id: number) => {
@@ -255,7 +262,7 @@ export default function NpnPage() {
     setExporting(true);
     try {
       const res = await npn.export({ search, szStatus: statusFilter || undefined, sort: sortKey, direction: sortDir });
-      downloadBlob(res.data, `npn_products_${new Date().toISOString().split('T')[0]}.xlsx`);
+      downloadBlob(res.data, `npn_products_${todayLocal()}.xlsx`);
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Export gagal'));
     } finally {
@@ -397,7 +404,7 @@ export default function NpnPage() {
                     <th scope="col" className="w-10 px-5 py-3 text-left align-middle">
                       <input
                         type="checkbox"
-                        checked={items.length > 0 && selectedIds.length === items.length}
+                        checked={items.length > 0 && items.every((i) => selectedIds.includes(i.id))}
                         onChange={toggleSelectAll}
                         className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
                       />

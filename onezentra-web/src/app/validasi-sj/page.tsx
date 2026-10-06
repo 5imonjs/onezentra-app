@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import DashboardLayout from '@/app/dashboard/layout';
@@ -161,6 +161,9 @@ export default function ValidasiSjPage() {
   const [lastBatch, setLastBatch] = useState<BatchInfo | null>(null);
   /** Item yang barusan disimpan; menyertakan batch-nya untuk cetak label. */
   const [lastScanned, setLastScanned] = useState<ValidationItem | null>(null);
+  // Anti race: respons basi dibuang.
+  const listReqRef = useRef(0);
+  const detailReqRef = useRef(0);
 
   const calcUmurInMonths = (expiredDate: string) => {
     const today = new Date();
@@ -227,9 +230,11 @@ export default function ValidasiSjPage() {
   const [svStats, setSvStats] = useState<{ today: number; in_progress: number; completed: number; cancelled: number; total: number } | null>(null);
 
   const loadItems = useCallback(async () => {
+    const reqId = ++listReqRef.current;
     setLoading(true);
     try {
       const response = await sjValidations.list({ search: debouncedSearch, page, per_page: 20 });
+      if (listReqRef.current !== reqId) return;
       setItems(response.data.data);
       const pages = Number(response.data.last_page) || 1;
       setLastPage(pages);
@@ -240,9 +245,10 @@ export default function ValidasiSjPage() {
       // `lastPage > 1` ikut jadi false.
       if (page > pages) setPage(pages);
     } catch (error) {
+      if (listReqRef.current !== reqId) return;
       notifyGlobal(getErrorMessage(error, 'Gagal memuat validasi dokumen.'), 'error');
     } finally {
-      setLoading(false);
+      if (listReqRef.current === reqId) setLoading(false);
     }
   }, [debouncedSearch, page]);
 
@@ -292,15 +298,22 @@ export default function ValidasiSjPage() {
   }, []);
 
   const openDetail = async (validation: Validation) => {
+    const reqId = ++detailReqRef.current;
     setDetailLoading(true);
     setActive(validation as Validation);
+    // Label milik validasi sebelumnya tidak boleh terbawa: tombol cetak
+    // bisa menempelkan label salah bila modal dibuka untuk baris lain.
+    setLastBatch(null);
+    setLastScanned(null);
     try {
       const response = await sjValidations.get(validation.id);
+      if (detailReqRef.current !== reqId) return;
       setActive(response.data.data);
     } catch (error) {
+      if (detailReqRef.current !== reqId) return;
       notifyGlobal(getErrorMessage(error, 'Gagal memuat detail validasi.'), 'error');
     } finally {
-      setDetailLoading(false);
+      if (detailReqRef.current === reqId) setDetailLoading(false);
     }
   };
 
@@ -414,6 +427,10 @@ export default function ValidasiSjPage() {
       setSelected(null);
       setPhoto(null);
       setPhotoPreview('');
+      // Tabel + statistik belakang modal ikut disegarkan agar status baris
+      // tidak basi sampai refresh manual.
+      loadItems();
+      loadStats();
       notifyGlobal(isReEdit ? 'Perubahan item disimpan.' : 'Item berhasil divalidasi.', 'success');
     } catch (error) {
       notifyGlobal(getErrorMessage(error, 'Gagal menyimpan validasi item.'), 'error');

@@ -28,6 +28,9 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ReceivingController extends Controller
 {
+    /** Memo lookup NPN per request: store/scan memanggil per baris. */
+    private array $npnConversionCache = [];
+
     use AuthorizesDepotRow;
 
     public function __construct(private EmailNotificationService $emailService) {}
@@ -199,12 +202,16 @@ class ReceivingController extends Controller
         }
 
         if (isset($attributes['actual_qty']) && ! empty($attributes['kode_barang'])) {
-            $npn = Npn::query()
-                ->where(fn ($q) => $q
-                    ->where('BOSnetszProductId', $attributes['kode_barang'])
-                    ->orWhere('SAPszProductId', $attributes['kode_barang'])
-                    ->orWhere('szBarcode', $attributes['kode_barang']))
-                ->first();
+            $cacheKey = $attributes['kode_barang'];
+            if (! array_key_exists($cacheKey, $this->npnConversionCache)) {
+                $this->npnConversionCache[$cacheKey] = Npn::query()
+                    ->where(fn ($q) => $q
+                        ->where('BOSnetszProductId', $attributes['kode_barang'])
+                        ->orWhere('SAPszProductId', $attributes['kode_barang'])
+                        ->orWhere('szBarcode', $attributes['kode_barang']))
+                    ->first();
+            }
+            $npn = $this->npnConversionCache[$cacheKey];
 
             $conversion = $npn?->pcConversion();
 
@@ -397,13 +404,24 @@ class ReceivingController extends Controller
         );
 
         DB::transaction(function () use ($receiving) {
-            $receiving->update(['status' => 'CANCELLED']);
+            // Kunci + cek ulang di dalam transaksi: complete() yang commit
+            // bersamaan tidak boleh disalip cancel (begitu pula sebaliknya).
+            $locked = Receiving::lockForUpdate()->findOrFail($receiving->id);
+            abort_unless(
+                in_array($locked->status, ['PENDING', 'IN_PROGRESS'], true),
+                422,
+                "Receiving berstatus {$locked->status} tidak dapat dibatalkan."
+            );
 
-            if ($receiving->dock_id) {
-                Dock::where('id', $receiving->dock_id)->update(['status' => 'AVAILABLE']);
+            $locked->update(['status' => 'CANCELLED']);
+
+            if ($locked->dock_id) {
+                Dock::where('id', $locked->dock_id)->update(['status' => 'AVAILABLE']);
             }
 
-            $receiving->rencanaKirim->update(['status' => 'VERIFIED']);
+            if ($locked->rencanaKirim?->status === 'IN_PROGRESS') {
+                $locked->rencanaKirim->update(['status' => 'VERIFIED']);
+            }
         });
 
         return response()->json([
@@ -422,14 +440,25 @@ class ReceivingController extends Controller
         );
 
         DB::transaction(function () use ($receiving) {
-            if ($receiving->dock_id) {
-                Dock::where('id', $receiving->dock_id)->update(['status' => 'AVAILABLE']);
+            $locked = Receiving::lockForUpdate()->findOrFail($receiving->id);
+            abort_unless(
+                $locked->status !== 'COMPLETED',
+                422,
+                'Receiving yang sudah COMPLETED tidak dapat dihapus. Batalkan sebelum selesai bila memang salah input.'
+            );
+
+            if ($locked->dock_id) {
+                Dock::where('id', $locked->dock_id)->update(['status' => 'AVAILABLE']);
             }
 
-            $receiving->items()->delete();
-            $receiving->delete();
+            $locked->items()->delete();
+            $locked->delete();
 
-            $receiving->rencanaKirim->update(['status' => 'VERIFIED']);
+            // Mundur satu langkah saja, jangan timpa buta: hanya RK yang
+            // sudah IN_PROGRESS yang kembali VERIFIED.
+            if ($locked->rencanaKirim?->status === 'IN_PROGRESS') {
+                $locked->rencanaKirim->update(['status' => 'VERIFIED']);
+            }
         });
 
         return response()->json(['message' => 'Receiving deleted successfully']);

@@ -10,6 +10,7 @@ use App\Models\ReceivingItem;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class OpnameExpiredService
 {
@@ -17,89 +18,93 @@ class OpnameExpiredService
 
     public function generate(?Carbon $reference = null, ?User $user = null): array
     {
-        $reference ??= Carbon::today();
+        // Satu transaksi: dua admin yang menekan Generate bersamaan tidak
+        // boleh menghasilkan agregat campuran dari bacaan carried yang sama.
+        return DB::transaction(function () use ($reference, $user): array {
+            $reference ??= Carbon::today();
 
-        $now = Carbon::today();
-        $weekStart = $reference->copy()->startOfWeek(Carbon::MONDAY);
-        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+            $now = Carbon::today();
+            $weekStart = $reference->copy()->startOfWeek(Carbon::MONDAY);
+            $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
-        $aman = OpnameSetting::get('threshold_aman', 90);
-        $perhatian = OpnameSetting::get('threshold_perhatian', 30);
-        $kritis = OpnameSetting::get('threshold_kritis', 7);
+            $aman = OpnameSetting::get('threshold_aman', 90);
+            $perhatian = OpnameSetting::get('threshold_perhatian', 30);
+            $kritis = OpnameSetting::get('threshold_kritis', 7);
 
-        $batis = $this->carriedBatches($weekStart, $user);
+            $batis = $this->carriedBatches($weekStart, $user);
 
-        $aggregates = $this->receivingAggregates($weekStart, $user);
+            $aggregates = $this->receivingAggregates($weekStart, $user);
 
-        foreach ($aggregates as $key => $agg) {
-            $carried = $batis[$key] ?? null;
+            foreach ($aggregates as $key => $agg) {
+                $carried = $batis[$key] ?? null;
 
-            $depo = $agg['kode_depo'];
-            $kodeBarang = $agg['kode_barang'];
-            $expiredDate = $agg['expired_date'];
+                $depo = $agg['kode_depo'];
+                $kodeBarang = $agg['kode_barang'];
+                $expiredDate = $agg['expired_date'];
 
-            $prevQtyCrt = $carried ? $carried->effectiveCrt() : 0;
-            $prevQtyPcs = $carried ? $carried->effectivePcs() : 0;
-            $prevStatus = $carried ? $carried->status_ini : null;
-            $prevExpired = $carried ? $carried->expired_date_ini : null;
+                $prevQtyCrt = $carried ? $carried->effectiveCrt() : 0;
+                $prevQtyPcs = $carried ? $carried->effectivePcs() : 0;
+                $prevStatus = $carried ? $carried->status_ini : null;
+                $prevExpired = $carried ? $carried->expired_date_ini : null;
 
-            // Roll-forward penuh: qty minggu ini = stok minggu lalu (termasuk
-            // yang sudah EXPIRED — tidak boleh hilang dari monitoring sampai
-            // ditindak) + penerimaan baru.
-            $qtyCrt = $prevQtyCrt + $agg['qty_crt'];
-            $qtyPcs = $prevQtyPcs + $agg['qty_pcs'];
+                // Roll-forward penuh: qty minggu ini = stok minggu lalu (termasuk
+                // yang sudah EXPIRED — tidak boleh hilang dari monitoring sampai
+                // ditindak) + penerimaan baru.
+                $qtyCrt = $prevQtyCrt + $agg['qty_crt'];
+                $qtyPcs = $prevQtyPcs + $agg['qty_pcs'];
 
-            $sisaHari = $this->sisaHari(Carbon::parse($expiredDate), $now);
-            $status = $this->status($sisaHari, $aman, $perhatian);
+                $sisaHari = $this->sisaHari(Carbon::parse($expiredDate), $now);
+                $status = $this->status($sisaHari, $aman, $perhatian);
 
-            $values = [
-                'week_end' => $weekEnd->toDateString(),
-                'nama_depo' => $agg['nama_depo'],
-                'kode_barang' => $kodeBarang,
-                'nama_barang' => $agg['nama_barang'],
-                'sumber_material' => $agg['sumber_material'],
-                'tanggal_penerimaan' => $agg['tanggal_penerimaan'],
-                'expired_date_ini' => $expiredDate,
-                'expired_date_lalu' => $carried ? $prevExpired?->toDateString() : null,
-                'selisih_expired_date' => $carried
-                    ? Carbon::parse($expiredDate)->diffInDays($prevExpired, false)
-                    : null,
-                'sisa_hari' => $sisaHari,
-                'status_ini' => $status,
-                'status_lalu' => $prevStatus,
-                'perubahan' => $this->perubahan($carried, $prevQtyCrt, $qtyCrt, $prevStatus, $status),
-                'rekomendasi' => $this->rekomendasi($status, $sisaHari),
-                'qty_ini_crt' => $qtyCrt,
-                'qty_ini_pcs' => $qtyPcs,
-                'qty_lalu_crt' => $prevQtyCrt,
-                'qty_lalu_pcs' => $prevQtyPcs,
-                // Gabung jejak batch minggu ini + bawaan minggu lalu.
-                'batch_numbers' => array_values(array_unique(array_merge(
-                    $carried?->batch_numbers ?? [],
-                    $agg['batches'] ?? []
-                ))),
-            ];
-
-            OpnameExpiredWave::updateOrCreate(
-                [
-                    'week_start' => $weekStart->toDateString(),
-                    'kode_depo' => $depo,
+                $values = [
+                    'week_end' => $weekEnd->toDateString(),
+                    'nama_depo' => $agg['nama_depo'],
                     'kode_barang' => $kodeBarang,
+                    'nama_barang' => $agg['nama_barang'],
+                    'sumber_material' => $agg['sumber_material'],
+                    'tanggal_penerimaan' => $agg['tanggal_penerimaan'],
                     'expired_date_ini' => $expiredDate,
-                ],
-                $values
-            );
-        }
+                    'expired_date_lalu' => $carried ? $prevExpired?->toDateString() : null,
+                    'selisih_expired_date' => $carried
+                        ? Carbon::parse($expiredDate)->diffInDays($prevExpired, false)
+                        : null,
+                    'sisa_hari' => $sisaHari,
+                    'status_ini' => $status,
+                    'status_lalu' => $prevStatus,
+                    'perubahan' => $this->perubahan($carried, $prevQtyCrt, $qtyCrt, $prevStatus, $status),
+                    'rekomendasi' => $this->rekomendasi($status, $sisaHari),
+                    'qty_ini_crt' => $qtyCrt,
+                    'qty_ini_pcs' => $qtyPcs,
+                    'qty_lalu_crt' => $prevQtyCrt,
+                    'qty_lalu_pcs' => $prevQtyPcs,
+                    // Gabung jejak batch minggu ini + bawaan minggu lalu.
+                    'batch_numbers' => array_values(array_unique(array_merge(
+                        $carried?->batch_numbers ?? [],
+                        $agg['batches'] ?? []
+                    ))),
+                ];
 
-        // Daftarkan ulang batch lama yang masih valid (roll-forward) walaupun tak ada penerimaan baru.
-        $batchCount = $this->rollForwardCarried($batis, $aggregates, $weekStart, $weekEnd, $now, $aman, $perhatian, $user);
+                OpnameExpiredWave::updateOrCreate(
+                    [
+                        'week_start' => $weekStart->toDateString(),
+                        'kode_depo' => $depo,
+                        'kode_barang' => $kodeBarang,
+                        'expired_date_ini' => $expiredDate,
+                    ],
+                    $values
+                );
+            }
 
-        return [
-            'week_start' => $weekStart->toDateString(),
-            'week_end' => $weekEnd->toDateString(),
-            'batches' => count($aggregates) + $batchCount,
-            'generated_at' => $now->toDateTimeString(),
-        ];
+            // Daftarkan ulang batch lama yang masih valid (roll-forward) walaupun tak ada penerimaan baru.
+            $batchCount = $this->rollForwardCarried($batis, $aggregates, $weekStart, $weekEnd, $now, $aman, $perhatian, $user);
+
+            return [
+                'week_start' => $weekStart->toDateString(),
+                'week_end' => $weekEnd->toDateString(),
+                'batches' => count($aggregates) + $batchCount,
+                'generated_at' => $now->toDateTimeString(),
+            ];
+        });
     }
 
     private function carriedBatches(Carbon $weekStart, ?User $user): array
@@ -206,12 +211,10 @@ class OpnameExpiredService
         // per item. Jadi satu batch CANCELLED mengeluarkan semua item pada
         // receiving tersebut dari opname — conservative dan sesuai makna "seluruh
         // batch label ikut dibatalkan" saat pembatalan sesi.
-        $cancelledItemIds = Batch::query()
-            ->where('status', 'CANCELLED')
-            ->whereNotNull('receiving_id')
-            ->pluck('receiving_id')
-            ->map(fn ($rid) => ReceivingItem::where('receiving_id', $rid)->pluck('id'))
-            ->flatten();
+        $cancelledItemIds = ReceivingItem::whereIn(
+            'receiving_id',
+            Batch::query()->where('status', 'CANCELLED')->whereNotNull('receiving_id')->pluck('receiving_id')
+        )->pluck('id');
 
         return ReceivingItem::with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
             ->whereNotNull('expired_date')
@@ -378,65 +381,69 @@ class OpnameExpiredService
      */
     public function verifySessionItem(OpnameExpiredSessionItem $item, array $data, User $verifier): array
     {
-        $batch = $item->batch;
-        $issued = 0;
+        // Transaksi + kunci baris wave: dua petugas yang memverifikasi dua
+        // batch satu wave bersamaan tidak boleh saling menimpa koreksi.
+        return DB::transaction(function () use ($item, $data, $verifier): array {
+            $batch = $item->batch;
+            $issued = 0;
 
-        if (! $batch) {
-            $source = $this->waveSourceItems($item->wave)->first(
-                fn (ReceivingItem $row) => ! $row->batch && ! $row->verifiedBatch
-            );
+            if (! $batch) {
+                $source = $this->waveSourceItems($item->wave)->first(
+                    fn (ReceivingItem $row) => ! $row->batch && ! $row->verifiedBatch
+                );
+
+                if ($source) {
+                    $batch = Batch::issueForReceivingItem($source, [
+                        'items_json' => [
+                            'kode_barang' => $source->kode_barang,
+                            'nama_barang' => $source->nama_barang,
+                            'qty_crt' => $source->actual_qty,
+                            'qty_pcs' => $source->qty_pcs,
+                            'expired_date' => $source->expired_date?->toDateString(),
+                            'source' => $source->source,
+                            'origin' => 'session',
+                            'session_item_id' => $item->id,
+                        ],
+                    ]);
+                    $issued = 1;
+                }
+            }
+
+            $item->update(array_merge([
+                'qty_fisik_crt' => $data['qty_fisik_crt'],
+                'qty_fisik_pcs' => $data['qty_fisik_pcs'] ?? null,
+                'condition' => $data['condition'] ?? null,
+                'photo' => $data['photo'] ?? $item->photo,
+                'notes' => $data['notes'] ?? null,
+                'verified_at' => now(),
+                'verified_by' => $verifier->id,
+            ], $batch ? ['batch_id' => $batch->id] : []));
+
+            $wave = OpnameExpiredWave::whereKey($item->wave_id)->lockForUpdate()->firstOrFail();
+            $source = $batch ? $this->batchSourceItem($batch) : null;
 
             if ($source) {
-                $batch = Batch::issueForReceivingItem($source, [
-                    'items_json' => [
-                        'kode_barang' => $source->kode_barang,
-                        'nama_barang' => $source->nama_barang,
-                        'qty_crt' => $source->actual_qty,
-                        'qty_pcs' => $source->qty_pcs,
-                        'expired_date' => $source->expired_date?->toDateString(),
-                        'source' => $source->source,
-                        'origin' => 'session',
-                        'session_item_id' => $item->id,
-                    ],
+                $wave->update([
+                    'qty_koreksi_crt' => (float) $wave->qty_koreksi_crt + ((float) $data['qty_fisik_crt'] - (float) $source->actual_qty),
+                    'qty_koreksi_pcs' => (float) $wave->qty_koreksi_pcs + (((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) ($source->qty_pcs ?? 0)),
+                    'koreksi_by' => $verifier->id,
+                    'koreksi_at' => now(),
+                    'validated_by' => $verifier->id,
+                    'validated_at' => now(),
                 ]);
-                $issued = 1;
+            } else {
+                $wave->update([
+                    'qty_koreksi_crt' => (float) $data['qty_fisik_crt'] - (float) $wave->qty_ini_crt,
+                    'qty_koreksi_pcs' => ((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) $wave->qty_ini_pcs,
+                    'koreksi_by' => $verifier->id,
+                    'koreksi_at' => now(),
+                    'validated_by' => $verifier->id,
+                    'validated_at' => now(),
+                ]);
             }
-        }
 
-        $item->update(array_merge([
-            'qty_fisik_crt' => $data['qty_fisik_crt'],
-            'qty_fisik_pcs' => $data['qty_fisik_pcs'] ?? null,
-            'condition' => $data['condition'] ?? null,
-            'photo' => $data['photo'] ?? $item->photo,
-            'notes' => $data['notes'] ?? null,
-            'verified_at' => now(),
-            'verified_by' => $verifier->id,
-        ], $batch ? ['batch_id' => $batch->id] : []));
-
-        $wave = $item->wave->fresh();
-        $source = $batch ? $this->batchSourceItem($batch) : null;
-
-        if ($source) {
-            $wave->update([
-                'qty_koreksi_crt' => (float) $wave->qty_koreksi_crt + ((float) $data['qty_fisik_crt'] - (float) $source->actual_qty),
-                'qty_koreksi_pcs' => (float) $wave->qty_koreksi_pcs + (((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) ($source->qty_pcs ?? 0)),
-                'koreksi_by' => $verifier->id,
-                'koreksi_at' => now(),
-                'validated_by' => $verifier->id,
-                'validated_at' => now(),
-            ]);
-        } else {
-            $wave->update([
-                'qty_koreksi_crt' => (float) $data['qty_fisik_crt'] - (float) $wave->qty_ini_crt,
-                'qty_koreksi_pcs' => ((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) $wave->qty_ini_pcs,
-                'koreksi_by' => $verifier->id,
-                'koreksi_at' => now(),
-                'validated_by' => $verifier->id,
-                'validated_at' => now(),
-            ]);
-        }
-
-        return ['batches_issued' => $issued];
+            return ['batches_issued' => $issued];
+        });
     }
 
     private function sisaHari(Carbon $expiredDate, Carbon $now): int

@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Imports\ReceivingItemImport;
+use App\Mail\OpnameExpiredNotification;
 use App\Models\Batch;
 use App\Models\ClusterPrincipal;
+use App\Models\EmailRecipient;
 use App\Models\Npn;
 use App\Models\OpnameExpiredWave;
 use App\Models\Permission;
@@ -17,6 +19,7 @@ use App\Services\OpnameExpiredService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -726,5 +729,89 @@ class OpnameExpiredTest extends TestCase
 
         $this->assertSame(1, $res->json('data.total'));
         $this->assertSame(1, count($res->json('data.data')));
+    }
+
+    public function test_progress_reports_submitted_vs_pending_per_depot(): void
+    {
+        // Lihat dua depo: butuh user global (tanpa depot.view_all, depo
+        // LAIN tak terlihat karena scope).
+        $globalRole = Role::firstOrCreate(['slug' => 'opname_global'], ['name' => 'Opname Global']);
+        foreach (['opname.view', 'depot.view_all'] as $slug) {
+            $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug]);
+            $globalRole->permissions()->syncWithoutDetaching([$perm->id]);
+        }
+        $global = User::create([
+            'email' => 'opname-global@test.com',
+            'password' => 'password',
+            'full_name' => 'Opname Global',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
+        $globalRole->users()->attach($global->id);
+        Sanctum::actingAs($global);
+
+        // Dua depo: DPO tervalidasi penuh (terkirim), LAIN belum.
+        $this->receipt('B-PRG-01', 'Produk Prog', 4, '2027-02-01', '2026-09-09');
+        ReceivingItem::create([
+            'source' => 'IMPORT_MANUAL',
+            'kode_barang' => 'B-PRG-02',
+            'actual_qty' => 2,
+            'expected_qty' => 2,
+            'expired_date' => '2027-02-01',
+            'tanggal_penerimaan' => '2026-09-09',
+            'kode_depo' => 'LAIN',
+            'nama_depo' => 'Depo Lain',
+            'scanned_by' => $this->user->id,
+        ]);
+        app(OpnameExpiredService::class)->generate();
+
+        OpnameExpiredWave::where('week_start', '2026-09-07')
+            ->where('kode_depo', 'DPO')
+            ->update(['validated_by' => $this->user->id, 'validated_at' => now()]);
+
+        $res = $this->getJson('/api/v1/opname-expired/progress?week_start=2026-09-07')->assertOk();
+        $depots = collect($res->json('data.depots'))->keyBy('kode_depo');
+
+        $this->assertTrue((bool) $depots['DPO']['submitted']);
+        $this->assertFalse((bool) $depots['LAIN']['submitted']);
+        $this->assertSame(1, $res->json('data.submitted_count'));
+        $this->assertSame(1, $res->json('data.pending_count'));
+    }
+
+    public function test_remind_sends_email_to_pending_depots_only(): void
+    {
+        Mail::fake();
+        $this->receipt('B-RMD-01', 'Produk Remind', 4, '2027-02-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+
+        EmailRecipient::create([
+            'document_type' => 'opname_expired',
+            'trigger' => 'reminder',
+            'recipient_type' => 'email',
+            'field' => 'TO',
+            'email' => 'pengingat@example.com',
+            'is_active' => true,
+        ]);
+
+        $res = $this->postJson('/api/v1/opname-expired/remind', ['week_start' => '2026-09-07'])->assertOk();
+
+        $this->assertSame(['DPO'], $res->json('data.reminded'));
+        Mail::assertSent(OpnameExpiredNotification::class, function ($mail) {
+            return $mail->hasTo('pengingat@example.com') && $mail->kind === 'reminder';
+        });
+    }
+
+    public function test_remind_rejected_when_all_submitted(): void
+    {
+        Mail::fake();
+        $this->receipt('B-RMD2-01', 'Produk Remind 2', 4, '2027-02-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+        OpnameExpiredWave::where('week_start', '2026-09-07')
+            ->update(['validated_by' => $this->user->id, 'validated_at' => now()]);
+
+        $this->postJson('/api/v1/opname-expired/remind', ['week_start' => '2026-09-07'])->assertStatus(422);
+        Mail::assertNotSent(OpnameExpiredNotification::class);
     }
 }

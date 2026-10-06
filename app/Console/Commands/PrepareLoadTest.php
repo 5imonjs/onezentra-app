@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ClusterPrincipal;
-use App\Models\NpN;
+use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -69,7 +69,7 @@ class PrepareLoadTest extends Command
         $this->newLine();
         $this->components->info('Selesai.');
         $this->line('  cluster_principal : '.ClusterPrincipal::count().' baris');
-        $this->line('  npn               : '.NpN::count().' baris');
+        $this->line('  npn               : '.Npn::count().' baris');
         $this->line('  tokens            : '.count($tokens));
         $this->newLine();
         $this->line('<fg=cyan>Jalankan load test dengan:</>');
@@ -110,13 +110,13 @@ class PrepareLoadTest extends Command
 
     private function seedNpn(int $rows): void
     {
-        if (NpN::count() >= $rows) {
+        if (Npn::count() >= $rows) {
             return;
         }
 
         foreach (array_chunk(range(1, $rows), 500) as $chunk) {
             $now = now();
-            $model = new NpN;
+            $model = new Npn;
             $model->getConnection()->table($model->getTable())->insert(array_map(fn ($i) => [
                 'szNickName' => sprintf('PROD-%05d', $i),
                 'szNickNameNew' => 'Product Name '.$i,

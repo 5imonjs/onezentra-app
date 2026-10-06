@@ -18,6 +18,8 @@ class DockController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $request->validate(['status' => 'nullable|string|in:AVAILABLE,OCCUPIED,MAINTENANCE']);
+
         $query = Dock::query();
 
         if ($request->user()->isDepotScoped()) {

@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Mail\OpnameExpiredNotification;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\ReceivingItem;
+use App\Services\EmailNotificationService;
 use App\Services\OpnameExpiredService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -22,6 +25,8 @@ use Illuminate\Validation\ValidationException;
  */
 class OpnameExpiredSessionController extends Controller
 {
+    public function __construct(private EmailNotificationService $emailService) {}
+
     public function index(Request $request): JsonResponse
     {
         $query = OpnameExpiredSession::with(['assignee', 'creator', 'items.wave', 'items.batch'])
@@ -60,7 +65,7 @@ class OpnameExpiredSessionController extends Controller
             'kode_depo' => 'required|string|max:20',
             'nama_depo' => 'nullable|string|max:100',
             'assigned_to' => 'required|exists:users,id',
-            'wave_ids' => 'required|array|min:1|max:500',
+            'wave_ids' => 'required|array|min:1|max:500|distinct',
             'wave_ids.*' => 'integer|exists:opname_expired_waves,id',
             'notes' => 'nullable|string',
         ]);
@@ -89,46 +94,53 @@ class OpnameExpiredSessionController extends Controller
             );
         }
 
-        $session = OpnameExpiredSession::create([
-            'week_start' => $weekStart->toDateString(),
-            'week_end' => $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-            'kode_depo' => $validated['kode_depo'],
-            'nama_depo' => $validated['nama_depo'] ?? null,
-            'assigned_to' => $validated['assigned_to'],
-            'status' => OpnameExpiredSession::STATUS_OPEN,
-            'notes' => $validated['notes'] ?? null,
-            'created_by' => $user->id,
-        ]);
-
-        // Aturan: item sesi berbutir per batch (satu wave berisi N batch =
-        // N verifikasi). Baris warisan tanpa label tetap dibuat dengan
-        // batch null — labelnya terbit susulan saat verifikasi pertama.
+        // Pembuatan sesi + ekspansi item atomik: double-submit tidak boleh
+        // menggandakan sesi atas wave yang sama.
         $service = app(OpnameExpiredService::class);
-        $itemCount = 0;
-        foreach ($waves as $wave) {
-            $sources = $service->waveSourceItems($wave);
+        [$session, $itemCount] = DB::transaction(function () use ($validated, $weekStart, $user, $waves, $service): array {
+            $session = OpnameExpiredSession::create([
+                'week_start' => $weekStart->toDateString(),
+                'week_end' => $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+                'kode_depo' => $validated['kode_depo'],
+                'nama_depo' => $validated['nama_depo'] ?? null,
+                'assigned_to' => $validated['assigned_to'],
+                'status' => OpnameExpiredSession::STATUS_OPEN,
+                'notes' => $validated['notes'] ?? null,
+                'created_by' => $user->id,
+            ]);
 
-            if ($sources->isEmpty()) {
-                OpnameExpiredSessionItem::firstOrCreate([
-                    'session_id' => $session->id,
-                    'wave_id' => $wave->id,
-                    'batch_id' => null,
-                ]);
-                $itemCount++;
+            // Aturan: item sesi berbutir per batch (satu wave berisi N batch =
+            // N verifikasi). Baris warisan tanpa label tetap dibuat dengan
+            // batch null — labelnya terbit susulan saat verifikasi pertama.
+            $service = app(OpnameExpiredService::class);
+            $itemCount = 0;
+            foreach ($waves as $wave) {
+                $sources = $service->waveSourceItems($wave);
 
-                continue;
+                if ($sources->isEmpty()) {
+                    OpnameExpiredSessionItem::firstOrCreate([
+                        'session_id' => $session->id,
+                        'wave_id' => $wave->id,
+                        'batch_id' => null,
+                    ]);
+                    $itemCount++;
+
+                    continue;
+                }
+
+                foreach ($sources as $source) {
+                    $batch = $source->batch ?? $source->verifiedBatch;
+                    OpnameExpiredSessionItem::firstOrCreate([
+                        'session_id' => $session->id,
+                        'wave_id' => $wave->id,
+                        'batch_id' => $batch?->id,
+                    ]);
+                    $itemCount++;
+                }
             }
 
-            foreach ($sources as $source) {
-                $batch = $source->batch ?? $source->verifiedBatch;
-                OpnameExpiredSessionItem::firstOrCreate([
-                    'session_id' => $session->id,
-                    'wave_id' => $wave->id,
-                    'batch_id' => $batch?->id,
-                ]);
-                $itemCount++;
-            }
-        }
+            return [$session, $itemCount];
+        });
 
         return response()->json([
             'message' => "Sesi opname dibuat ({$itemCount} verifikasi).",
@@ -211,9 +223,24 @@ class OpnameExpiredSessionController extends Controller
             'completed_at' => now(),
         ]);
 
+        $fresh = $session->fresh()->load(['items.wave', 'items.batch']);
+
+        $this->emailService->send(
+            'opname_expired',
+            'completed',
+            $fresh,
+            new OpnameExpiredNotification('completed', substr((string) $fresh->week_start, 0, 10), [[
+                'kode_depo' => $fresh->kode_depo,
+                'nama_depo' => $fresh->nama_depo,
+                'total' => $fresh->items->count(),
+                'validated' => $fresh->items->count(),
+                'submitted' => true,
+            ]])
+        );
+
         return response()->json([
             'message' => 'Sesi selesai.',
-            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+            'data' => $fresh,
         ]);
     }
 

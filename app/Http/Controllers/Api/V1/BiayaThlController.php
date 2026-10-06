@@ -22,19 +22,26 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
 class BiayaThlController extends Controller
 {
     public function index(Request $request)
     {
+        $request->validate([
+            'status' => 'nullable|string|in:draft,pending,checked,rlh_approved,approved,rejected,revisi',
+        ]);
+
         $user = $request->user();
         $assignedDepots = ApprovalAssignment::query()
+            ->where('module', ApprovalAssignment::MODULE_THL)
             ->where('user_id', $user->id)
             ->whereIn('approval_level', ['BAC', 'RLH', 'RFAH'])
             ->where('is_active', true)
             ->pluck('kode_depo');
         $hasGlobalFinalAssignment = ApprovalAssignment::query()
+            ->where('module', ApprovalAssignment::MODULE_THL)
             ->where('user_id', $user->id)
             ->whereIn('approval_level', ['RLH', 'RFAH'])
             ->where('kode_depo', 'ADMIN')
@@ -116,6 +123,14 @@ class BiayaThlController extends Controller
         $validated['created_by'] = $user->id;
         $validated['status'] = 'draft';
         $validated = $user->depotAttributes($validated);
+        // Tanpa depo, pengajuan tak bisa masuk antrean approval mana pun
+        // (ensureApprover tak cocok, filter laporan tak cocok). Draft boleh
+        // belum lengkap; non-draft wajib berdepo.
+        if (! $request->boolean('is_draft') && blank($validated['kode_depo'] ?? null)) {
+            throw ValidationException::withMessages([
+                'kode_depo' => ['Pilih depo pengajuan.'],
+            ]);
+        }
         if ($validated['is_rfah_required']) {
             $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? null, ApprovalAssignment::MODULE_THL);
         }

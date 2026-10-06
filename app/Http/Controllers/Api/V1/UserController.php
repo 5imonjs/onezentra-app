@@ -99,6 +99,19 @@ class UserController extends Controller
 
         $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
+        // Hanya admin master boleh mengubah level/status akun lain.
+        // Tanpa ini, pemegang users.edit bisa menaikkan level akun kompromi
+        // lalu memakai permission level baru (eskalasi tanpa jejak).
+        $actor = $request->user();
+        if (! $actor->isAdminMaster()) {
+            foreach (['level', 'status'] as $guarded) {
+                if (array_key_exists($guarded, $validated) && $validated[$guarded] !== $user->getOriginal($guarded)) {
+                    abort(403, 'Hanya admin master yang boleh mengubah level/status akun.');
+                }
+                unset($validated[$guarded]);
+            }
+        }
+
         // Hanya admin master yang boleh mengubah user admin master.
         $this->authorize('update', $user);
 
@@ -122,6 +135,8 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+
+        $user->forceFill(['updated_by' => $request->user()->id])->saveQuietly();
 
         if (isset($validated['level'])) {
             $user->roles()->detach();
