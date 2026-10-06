@@ -7,9 +7,11 @@ use App\Http\Controllers\Controller;
 use App\Imports\ReceivingItemImport;
 use App\Models\Batch;
 use App\Models\Npn;
+use App\Models\OpnameExpiredSessionItem;
 use App\Models\ReceivingItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -451,7 +453,15 @@ class ReceivingItemController extends Controller
             'Data hasil validasi SJ tidak dapat dihapus dari sini.'
         );
 
-        $receivingItem->delete();
+        $batch = $receivingItem->batch ?? $receivingItem->verifiedBatch;
+        if ($batch && OpnameExpiredSessionItem::where('batch_id', $batch->id)->whereNotNull('verified_at')->exists()) {
+            abort(422, 'Baris ini tidak bisa dihapus: labelnya sudah terverifikasi sesi lapangan.');
+        }
+
+        DB::transaction(function () use ($receivingItem, $batch): void {
+            $batch?->delete();
+            $receivingItem->delete();
+        });
 
         return response()->json(['message' => 'Penerimaan manual dihapus.']);
     }
@@ -484,11 +494,30 @@ class ReceivingItemController extends Controller
             $query->where('kode_depo', $request->user()->kode_depo);
         }
 
-        $deleted = $query->delete();
+        // Aturan hapus ledger berlabel: label ikut terhapus bersama barisnya
+        // (tak ada label yatim), KECUALI batch yang sudah TERVERIFIKASI sesi
+        // lapangan — itu bukti kerja, penolakan 422 menyebut jumlahnya.
+        // Rujukan item sesi yang belum terverifikasi dinullkan otomatis
+        // (FK nullOnDelete); verifikasi susulan menerbitkan label baru.
+        $targetIds = $query->pluck('id');
+        $protected = OpnameExpiredSessionItem::whereHas('batch', fn ($q) => $q
+            ->whereIn('receiving_item_id', $targetIds))
+            ->whereNotNull('verified_at')
+            ->count();
+
+        abort_if($protected > 0, 422, "{$protected} baris tidak bisa dihapus: labelnya sudah terverifikasi sesi lapangan.");
+
+        $deletedBatches = 0;
+        $deleted = DB::transaction(function () use ($targetIds, &$deletedBatches): int {
+            $deletedBatches = Batch::whereIn('receiving_item_id', $targetIds)->delete();
+
+            return ReceivingItem::whereIn('id', $targetIds)->delete();
+        });
 
         return response()->json([
-            'message' => "Hapus massal selesai: {$deleted} baris dihapus.",
+            'message' => "Hapus massal selesai: {$deleted} baris + {$deletedBatches} label dihapus.",
             'deleted' => $deleted,
+            'batches_deleted' => $deletedBatches,
         ]);
     }
 

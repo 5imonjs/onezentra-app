@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
 import DashboardActivityChart from '@/components/DashboardActivityChart';
 import DashboardAlerts from '@/components/DashboardAlerts';
+import DashboardOpnameChart from '@/components/DashboardOpnameChart';
 import DashboardRecent from '@/components/DashboardRecent';
 import DashboardStatCards from '@/components/DashboardStatCards';
 import PendingActions from '@/components/PendingActions';
@@ -91,6 +92,8 @@ export default function DashboardPage() {
         <DashboardActivityChart kodeDepo={kodeDepo || undefined} />
         {hasPermission('rencana_kirim.view') && <RencanaKirimStatusChart kodeDepo={kodeDepo || undefined} />}
       </div>
+
+      {hasPermission('opname.view') && <DashboardOpnameChart />}
 
       <DashboardRecent kodeDepo={kodeDepo || undefined} />
     </div>

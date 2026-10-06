@@ -8,6 +8,8 @@ use App\Models\Batch;
 use App\Models\ClusterPrincipal;
 use App\Models\EmailRecipient;
 use App\Models\Npn;
+use App\Models\OpnameExpiredSession;
+use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\Permission;
 use App\Models\Receiving;
@@ -19,6 +21,7 @@ use App\Services\OpnameExpiredService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -622,6 +625,49 @@ class OpnameExpiredTest extends TestCase
         $this->assertDatabaseHas('receiving_items', ['id' => $sj->id]);
     }
 
+    public function test_bulk_destroy_removes_batches_but_refuses_verified_ones(): void
+    {
+        // Baris berlabel biasa: ikut terhapus bersama labelnya.
+        $plain = $this->receipt('B-BULK-B1', 'Biasa', 1, '2027-02-01', '2026-09-09');
+        Batch::issueForReceivingItem($plain);
+
+        $res = $this->deleteJson('/api/v1/receiving-items/bulk', ['ids' => [$plain->id]])->assertOk();
+
+        $this->assertSame(1, $res->json('deleted'));
+        $this->assertSame(1, $res->json('batches_deleted'));
+        $this->assertSame(0, Batch::where('receiving_item_id', $plain->id)->count());
+
+        // Baris yang labelnya sudah terverifikasi sesi: ditolak.
+        $guarded = $this->receipt('B-BULK-B2', 'Terjaga', 1, '2027-02-01', '2026-09-09');
+        $guardBatch = Batch::issueForReceivingItem($guarded);
+        OpnameExpiredSessionItem::create([
+            'session_id' => OpnameExpiredSession::create([
+                'week_start' => '2026-09-07',
+                'week_end' => '2026-09-13',
+                'kode_depo' => 'DPO',
+                'assigned_to' => $this->user->id,
+                'status' => 'IN_PROGRESS',
+                'created_by' => $this->user->id,
+            ])->id,
+            'wave_id' => OpnameExpiredWave::create([
+                'week_start' => '2026-09-07',
+                'week_end' => '2026-09-13',
+                'kode_depo' => 'DPO',
+                'kode_barang' => 'B-BULK-B2',
+                'expired_date_ini' => '2027-02-01',
+                'sisa_hari' => 100,
+                'status_ini' => 'AMAN',
+            ])->id,
+            'batch_id' => $guardBatch->id,
+            'qty_fisik_crt' => 1,
+            'verified_at' => now(),
+            'verified_by' => $this->user->id,
+        ]);
+
+        $this->deleteJson('/api/v1/receiving-items/bulk', ['ids' => [$guarded->id]])->assertStatus(422);
+        $this->assertDatabaseHas('receiving_items', ['id' => $guarded->id]);
+    }
+
     public function test_import_rows_anchor_to_import_week_regardless_of_file_date(): void
     {        // Aturan baku: baris IMPORT ditambatkan ke minggu IMPORT (scan/created),
         // bukan tanggal file. Baris bertanggal lama tapi diimport minggu ini
@@ -714,8 +760,7 @@ class OpnameExpiredTest extends TestCase
     }
 
     public function test_index_does_not_duplicate_wave_on_duplicate_master_rows(): void
-    {
-        // Data kotor: 1 BOS menunjuk 2 baris master berbeda — wave tetap
+    {        // Data kotor: 1 BOS menunjuk 2 baris master berbeda — wave tetap
         // 1 baris (dedup deterministik), bukan ganda.
         ClusterPrincipal::create(['product_sku' => 'DUP-1', 'principal_1' => 'AAA']);
         ClusterPrincipal::create(['product_sku' => 'DUP-2', 'principal_1' => 'BBB']);
@@ -813,5 +858,59 @@ class OpnameExpiredTest extends TestCase
 
         $this->postJson('/api/v1/opname-expired/remind', ['week_start' => '2026-09-07'])->assertStatus(422);
         Mail::assertNotSent(OpnameExpiredNotification::class);
+    }
+
+    public function test_progress_all_perm_shows_every_depot_to_scoped_user(): void
+    {
+        $this->receipt('B-PA-01', 'Produk PA', 4, '2027-02-01', '2026-09-09');
+        ReceivingItem::create([
+            'source' => 'IMPORT_MANUAL',
+            'kode_barang' => 'B-PA-02',
+            'actual_qty' => 2,
+            'expected_qty' => 2,
+            'expired_date' => '2027-02-01',
+            'tanggal_penerimaan' => '2026-09-09',
+            'kode_depo' => 'LAIN',
+            'nama_depo' => 'Depo Lain',
+            'scanned_by' => $this->user->id,
+        ]);
+        app(OpnameExpiredService::class)->generate();
+
+        // Tanpa progress_all: user depot-scoped (DPO) hanya melihat DPO.
+        $scoped = $this->getJson('/api/v1/opname-expired/progress?week_start=2026-09-07')->assertOk();
+        $this->assertSame(['DPO'], collect($scoped->json('data.depots'))->pluck('kode_depo')->all());
+
+        // Dengan progress_all: semua depo terlihat.
+        $perm = Permission::firstOrCreate(['slug' => 'opname.progress_all'], ['name' => 'progress_all']);
+        $this->user->roles()->first()->permissions()->syncWithoutDetaching([$perm->id]);
+        Cache::forget("user:{$this->user->id}:permissions");
+
+        $all = $this->getJson('/api/v1/opname-expired/progress?week_start=2026-09-07')->assertOk();
+        $this->assertSame(['DPO', 'LAIN'], collect($all->json('data.depots'))->pluck('kode_depo')->sort()->values()->all());
+    }
+
+    public function test_wave_records_source_mix_for_visual_marker(): void
+    {
+        // Baris SJ (sumber sistem) + baris import satu kunci = campuran.
+        $this->receipt('B-MIX-01', 'Produk Mix SJ', 4, '2027-02-01', '2026-09-09', null, 'VALIDASI_SJ');
+        $this->receipt('B-MIX-01', 'Produk Mix Import', 3, '2027-02-01', '2026-09-09', null, 'IMPORT_MANUAL');
+        $this->receipt('B-MIX-02', 'Produk Murni Import', 2, '2027-03-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $mixed = OpnameExpiredWave::where('kode_barang', 'B-MIX-01')->first();
+        $this->assertSame(['sj' => 1, 'import' => 1], $mixed->source_mix);
+
+        $pureImport = OpnameExpiredWave::where('kode_barang', 'B-MIX-02')->first();
+        $this->assertSame(['sj' => 0, 'import' => 1], $pureImport->source_mix);
+
+        $sjOnly = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=sj')->assertOk();
+        $this->assertSame([], collect($sjOnly->json('data.data'))->pluck('kode_barang')->all());
+
+        $impOnly = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=import')->assertOk();
+        $this->assertSame(['B-MIX-02'], collect($impOnly->json('data.data'))->pluck('kode_barang')->all());
+
+        $mixedOnly = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=mixed')->assertOk();
+        $this->assertSame(['B-MIX-01'], collect($mixedOnly->json('data.data'))->pluck('kode_barang')->all());
     }
 }

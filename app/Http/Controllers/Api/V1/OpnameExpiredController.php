@@ -93,6 +93,11 @@ class OpnameExpiredController extends Controller
             });
         }
 
+        // Filter sumber data: sj (murni sistem) / import (manual) / mixed.
+        // Baris wave lama tanpa source_mix ikut tampil di semua filter
+        // (Generate ulang untuk mengisi penandanya).
+        $this->applySourceFilter($query, $request->input('source'));
+
         // Sortir klik-header ala Excel. Allowlist kolom (bukan input mentah
         // ke orderBy — anti SQL injection); tanpa sort = urutan bawaan.
         $sorts = [
@@ -108,7 +113,8 @@ class OpnameExpiredController extends Controller
             'sisa' => 'opname_expired_waves.sisa_hari',
         ];
 
-        $sortBy = $sorts[$request->input('sort_by')] ?? null;
+        $sortKey = $request->input('sort_by');
+        $sortBy = is_string($sortKey) && isset($sorts[$sortKey]) ? $sorts[$sortKey] : null;
         $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         if ($sortBy) {
@@ -192,22 +198,26 @@ class OpnameExpiredController extends Controller
 
         $user = $request->user();
 
+        // Progres boleh dilihat semua depo oleh pemegang opname.progress_all
+        // (chart dashboard) — tanpa itu, depot-scoped hanya depo sendiri.
+        $scoped = $user->isDepotScoped() && ! $user->hasPermission('opname.progress_all');
+
         $waves = OpnameExpiredWave::query()
             ->where('week_start', $weekStart)
-            ->when($user->isDepotScoped(), fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->when($scoped, fn ($q) => $q->where('kode_depo', $user->kode_depo))
             ->get();
 
         $completedSessions = OpnameExpiredSession::query()
             ->where('week_start', $weekStart)
             ->where('status', OpnameExpiredSession::STATUS_COMPLETED)
-            ->when($user->isDepotScoped(), fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->when($scoped, fn ($q) => $q->where('kode_depo', $user->kode_depo))
             ->pluck('kode_depo')
             ->flip();
 
         $openSessions = OpnameExpiredSession::query()
             ->where('week_start', $weekStart)
             ->whereIn('status', [OpnameExpiredSession::STATUS_OPEN, OpnameExpiredSession::STATUS_IN_PROGRESS])
-            ->when($user->isDepotScoped(), fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->when($scoped, fn ($q) => $q->where('kode_depo', $user->kode_depo))
             ->pluck('kode_depo')
             ->flip();
 
@@ -236,9 +246,33 @@ class OpnameExpiredController extends Controller
     }
 
     /**
-     * Push pengingat email ke depo yang belum kirim (berdasar penerima
-     * terkonfigurasi untuk opname_expired/reminder di Penerima Email).
+     * Filter sumber data: sj (murni sistem) / import (manual) / mixed.
+     * Baris wave lama tanpa source_mix ikut tampil di semua filter
+     * (Generate ulang untuk mengisi penandanya).
      */
+    private function applySourceFilter($query, mixed $source): void
+    {
+        if (! in_array($source, ['sj', 'import', 'mixed'], true)) {
+            return;
+        }
+
+        $query->where(function ($q) use ($source): void {
+            $q->whereNull('opname_expired_waves.source_mix')
+                ->orWhere(function ($q) use ($source): void {
+                    if ($source === 'sj') {
+                        $q->where('opname_expired_waves.source_mix->sj', '>', 0)
+                            ->where('opname_expired_waves.source_mix->import', '=', 0);
+                    } elseif ($source === 'import') {
+                        $q->where('opname_expired_waves.source_mix->import', '>', 0)
+                            ->where('opname_expired_waves.source_mix->sj', '=', 0);
+                    } else {
+                        $q->where('opname_expired_waves.source_mix->sj', '>', 0)
+                            ->where('opname_expired_waves.source_mix->import', '>', 0);
+                    }
+                });
+        });
+    }
+
     public function remind(Request $request, EmailNotificationService $emailService): JsonResponse
     {
         $validated = $request->validate([
@@ -370,6 +404,8 @@ class OpnameExpiredController extends Controller
         } elseif ($request->statuses) {
             $query->whereIn('status_ini', collect(explode(',', $request->statuses))->map(fn ($s) => strtoupper(trim($s)))->filter()->values()->all());
         }
+
+        $this->applySourceFilter($query, $request->input('source'));
 
         $filename = 'opname_expired_'.($request->week_start ?? Carbon::today()->toDateString()).'.xlsx';
         ExportGuard::ensureWithinLimit($query);

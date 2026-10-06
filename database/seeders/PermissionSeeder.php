@@ -108,6 +108,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'Gate Edit', 'slug' => 'gate.edit', 'menu_group' => 'Gate Check', 'icon' => 'edit', 'route' => 'gate.edit', 'sort_order' => 91],
             ['name' => 'Gate Delete', 'slug' => 'gate.delete', 'menu_group' => 'Gate Check', 'icon' => 'trash', 'route' => 'gate.destroy', 'sort_order' => 92],
             ['name' => 'Opname Expired Delete', 'slug' => 'opname.delete', 'menu_group' => 'Opname', 'icon' => 'trash', 'route' => 'opname_expired.destroy', 'sort_order' => 471],
+            ['name' => 'Opname Progres Semua Depo', 'slug' => 'opname.progress_all', 'menu_group' => 'Opname', 'icon' => 'chart', 'route' => 'opname_expired.progress', 'sort_order' => 472],
         ];
 
         foreach ($permissions as $perm) {

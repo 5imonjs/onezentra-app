@@ -82,6 +82,11 @@ class OpnameExpiredService
                         $carried?->batch_numbers ?? [],
                         $agg['batches'] ?? []
                     ))),
+                    // Gabung komposisi sumber minggu ini + bawaan minggu lalu.
+                    'source_mix' => [
+                        'sj' => ($carried?->source_mix['sj'] ?? 0) + ($agg['mix']['sj'] ?? 0),
+                        'import' => ($carried?->source_mix['import'] ?? 0) + ($agg['mix']['import'] ?? 0),
+                    ],
                 ];
 
                 OpnameExpiredWave::updateOrCreate(
@@ -260,11 +265,19 @@ class OpnameExpiredService
                     'qty_crt' => 0,
                     'qty_pcs' => 0,
                     'batches' => [],
+                    'mix' => ['sj' => 0, 'import' => 0],
                 ];
             }
 
             $aggregates[$key]['qty_crt'] += (float) $item->actual_qty;
             $aggregates[$key]['qty_pcs'] += (float) ($item->qty_pcs ?? 0);
+
+            // Komposisi sumber untuk penanda visual (SJ murni / Import / Campuran).
+            if ($item->source === ReceivingItem::SOURCE_VALIDASI) {
+                $aggregates[$key]['mix']['sj']++;
+            } elseif ($item->source === ReceivingItem::SOURCE_IMPORT) {
+                $aggregates[$key]['mix']['import']++;
+            }
 
             // Jejak identitas: tiap baris ledger penyusun menyumbang nomor
             // batch-nya (aturan: tiap baris wajib satu batch).
@@ -327,6 +340,7 @@ class OpnameExpiredService
                     'qty_lalu_crt' => $carried->effectiveCrt(),
                     'qty_lalu_pcs' => $carried->effectivePcs(),
                     'batch_numbers' => $carried->batch_numbers ?? [],
+                    'source_mix' => $carried->source_mix ?? ['sj' => 0, 'import' => 0],
                 ]
             );
 

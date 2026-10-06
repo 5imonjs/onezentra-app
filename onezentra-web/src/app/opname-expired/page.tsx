@@ -6,6 +6,7 @@ import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import { formatDateId } from '@/lib/dates';
 import Modal from '@/components/Modal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import ManualBatchManager from '@/components/ManualBatchManager';
 import { useAuthStore } from '@/store/auth';
 
@@ -23,6 +24,8 @@ interface Wave {
   principal_2?: string | null;
   // Jejak batch penyusun baris agregat ini (diisi Generate).
   batch_numbers?: string[] | null;
+  // Komposisi sumber: {sj, import} — penanda SJ murni / Import / Campuran.
+  source_mix?: { sj: number; import: number } | null;
   sumber_material: string;
   tanggal_penerimaan: string | null;
   qty_ini_crt: number;
@@ -93,6 +96,28 @@ const STATUS_META: Record<string, { label: string; badge: string; dot: string; b
 
 const num = (v: unknown): number => Number(v ?? 0);
 
+// Penanda sumber baris: SJ murni (sistem) / Import (manual) / Campuran.
+function sourceBadge(mix?: { sj: number; import: number } | null) {
+  const sj = num(mix?.sj);
+  const imp = num(mix?.import);
+  if (sj > 0 && imp > 0) {
+    return (
+      <span title={`${sj} baris SJ + ${imp} baris import`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 whitespace-nowrap">Campuran</span>
+    );
+  }
+  if (imp > 0) {
+    return (
+      <span title={`${imp} baris import`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600 whitespace-nowrap">Import</span>
+    );
+  }
+  if (sj > 0) {
+    return (
+      <span title={`${sj} baris SJ`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 whitespace-nowrap">SJ</span>
+    );
+  }
+  return <span className="text-slate-300 text-xs">-</span>;
+}
+
 // Sortir klik-header ala Excel: klik = A-Z, klik lagi = Z-A.
 type SortKey = 'status' | 'produk' | 'depo' | 'principal_1' | 'principal_2' | 'crt' | 'pcs' | 'penerimaan' | 'expired' | 'sisa';
 
@@ -137,6 +162,8 @@ export default function OpnameExpiredPage() {
   const [weekStart, setWeekStart] = useState('');
   const [search, setSearch] = useState('');
   const [searchApply, setSearchApply] = useState('');
+  // Filter sumber data: '' semua, 'sj' murni sistem, 'import' manual, 'mixed' campuran.
+  const [sourceFilter, setSourceFilter] = useState('');
   const [page, setPage] = useState(1);
   const [tabKey, setTabKey] = useState<TabKey>('ACTION');
   const [thresholds, setThresholds] = useState<Record<string, number>>({});
@@ -182,12 +209,18 @@ export default function OpnameExpiredPage() {
         week_start: weekStart || undefined,
         search: searchApply || undefined,
         statuses: tabStatuses?.join(',') || undefined,
+        source: sourceFilter || undefined,
         sort_by: sort.key || undefined,
         sort_dir: sort.key ? sort.dir : undefined,
         per_page: ITEMS_PER_PAGE,
         page,
       }) as { data: ListResponse };
       setWaves(res.data.data.data);
+      // Buang seleksi basi (id yang tak lagi tampil).
+      setSelectedWaveIds((prev) => {
+        const visible = new Set(res.data.data.data.map((w: Wave) => w.id));
+        return new Set(Array.from(prev).filter((id) => visible.has(id)));
+      });
       setPagination(res.data.data);
       setWeeks(res.data.meta.weeks ?? []);
       setThresholds(res.data.meta.thresholds ?? {});
@@ -199,7 +232,7 @@ export default function OpnameExpiredPage() {
     } finally {
       setLoading(false);
     }
-  }, [weekStart, searchApply, tabStatuses, page, sort]);
+  }, [weekStart, searchApply, tabStatuses, page, sort, sourceFilter]);
 
   const handleSort = (key: SortKey) => {
     setSort((prev) => prev.key === key
@@ -321,7 +354,7 @@ export default function OpnameExpiredPage() {
 
   const handleExport = async () => {
     try {
-      const res = await opnameExpired.export({ week_start: weekStart || undefined, statuses: tabStatuses?.join(',') || undefined });
+      const res = await opnameExpired.export({ week_start: weekStart || undefined, statuses: tabStatuses?.join(',') || undefined, source: sourceFilter || undefined });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -344,6 +377,45 @@ export default function OpnameExpiredPage() {
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Hapus gagal'), 'error');
     }
+  };
+
+  // Hapus massal wave terpilih (berurutan agar pesan gagal jelas per baris).
+  const [selectedWaveIds, setSelectedWaveIds] = useState<Set<number>>(new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const toggleWaveSelect = (id: number) => {
+    setSelectedWaveIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const confirmBulkDeleteWaves = async () => {
+    const ids = waves.filter((w) => selectedWaveIds.has(w.id)).map((w) => w.id);
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      try {
+        await opnameExpired.delete(id);
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setBulkDeleting(false);
+    setShowBulkDelete(false);
+    setSelectedWaveIds(new Set());
+    notifyGlobal(
+      fail === 0 ? `${ok} wave dihapus.` : `${ok} wave dihapus, ${fail} gagal (kemungkinan depo lain).`,
+      fail === 0 ? 'success' : 'error'
+    );
+    load();
+    loadProgress(weekStart || undefined);
   };
 
   const openSettings = async () => {
@@ -541,6 +613,21 @@ export default function OpnameExpiredPage() {
                 aria-label="Cari kode atau nama barang"
               />
             </div>
+            <label className="flex items-center gap-2">
+              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-slate-500">Sumber</span>
+              <select
+                value={sourceFilter}
+                onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
+                aria-label="Filter sumber data"
+                title="SJ = murni penerimaan sistem, Import = input manual, Campuran = keduanya"
+                className="select-field-sm min-w-[150px]"
+              >
+                <option value="">Semua sumber</option>
+                <option value="sj">SJ (sistem)</option>
+                <option value="import">Import (manual)</option>
+                <option value="mixed">Campuran</option>
+              </select>
+            </label>
           </div>
 
           {/* Tabs */}
@@ -577,6 +664,17 @@ export default function OpnameExpiredPage() {
               buttonClassName="btn-primary"
               onChanged={() => { setPage(1); load(); loadPending(weekStart || undefined); loadProgress(weekStart || undefined); }}
             />
+            {hasPermission('opname.delete') && waves.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowBulkDelete(true)}
+                disabled={selectedWaveIds.size === 0 || bulkDeleting}
+                title="Hapus wave yang dicentang"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Hapus terpilih ({selectedWaveIds.size})
+              </button>
+            )}
             {(pending?.pending.total ?? 0) > 0 && (
               <button
                 type="button"
@@ -665,9 +763,24 @@ export default function OpnameExpiredPage() {
                   <caption className="sr-only">Daftar opname expired</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-300 bg-surface-raised">
+                      {hasPermission('opname.delete') && (
+                        <th scope="col" className="px-3 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={waves.length > 0 && waves.every((w) => selectedWaveIds.has(w.id))}
+                            onChange={() => setSelectedWaveIds((prev) => {
+                              const all = waves.every((w) => prev.has(w.id));
+                              return all ? new Set() : new Set(waves.map((w) => w.id));
+                            })}
+                            aria-label="Pilih semua wave yang tampil"
+                            className="w-4 h-4 accent-red-600 cursor-pointer"
+                          />
+                        </th>
+                      )}
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Status" sortKey="status" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Produk" sortKey="produk" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Depo" sortKey="depo" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Sumber</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Principal 1" sortKey="principal_1" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Principal 2" sortKey="principal_2" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="CRT/Ball" sortKey="crt" sort={sort} onSort={handleSort} align="right" /></th>
@@ -683,6 +796,17 @@ export default function OpnameExpiredPage() {
                       const meta = STATUS_META[w.status_ini] || STATUS_META.AMAN;
                       return (
                         <tr key={w.id} className="hover:bg-overlay-70 transition-colors">
+                          {hasPermission('opname.delete') && (
+                            <td className="px-3 py-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedWaveIds.has(w.id)}
+                                onChange={() => toggleWaveSelect(w.id)}
+                                aria-label={`Pilih wave ${w.kode_barang}`}
+                                className="w-4 h-4 accent-red-600 cursor-pointer"
+                              />
+                            </td>
+                          )}
                           <td className="px-5 py-3 whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               {badge(w.status_ini)}
@@ -696,6 +820,7 @@ export default function OpnameExpiredPage() {
                             <span className="block text-xs text-slate-500 line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
                           </td>
                           <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
+                          <td className="px-5 py-3 whitespace-nowrap">{sourceBadge(w.source_mix)}</td>
                           <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_1 || '-'}</td>
                           <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_2 || '-'}</td>
                           <td className="px-5 py-3 text-right whitespace-nowrap">
@@ -768,6 +893,7 @@ export default function OpnameExpiredPage() {
                         </span>
                         <span className="tabular-nums text-slate-700"><span className="text-slate-400">CRT/Ball:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt))}</span></span>
                         <span className="tabular-nums text-slate-700"><span className="text-slate-400">PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs))}</span></span>
+                        {sourceBadge(w.source_mix)}
                         <span className="tabular-nums text-slate-700"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
                         <span className="tabular-nums text-slate-700"><span className="text-slate-400">Principal 1:</span> <span className="font-semibold">{w.principal_1 || '-'}</span></span>
                         {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi CRT {num(w.qty_koreksi_crt)}</span>}
@@ -904,7 +1030,11 @@ export default function OpnameExpiredPage() {
 
                 {/* Batch penyusun: jejak identitas tiap baris ledger agregat ini */}
                 <div className="rounded-xl border border-gray-300 px-4 py-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Batch Penyusun ({(current.batch_numbers || []).length})</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    Batch Penyusun ({(current.batch_numbers || []).length}) · Sumber: {num(current.source_mix?.sj) > 0 && num(current.source_mix?.import) > 0
+                      ? `Campuran (${current.source_mix?.sj} SJ + ${current.source_mix?.import} import)`
+                      : num(current.source_mix?.import) > 0 ? `Import (${current.source_mix?.import} baris)` : num(current.source_mix?.sj) > 0 ? `SJ (${current.source_mix?.sj} baris)` : '-'}
+                  </p>
                   {(current.batch_numbers || []).length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {(current.batch_numbers || []).map((b) => (
@@ -1031,6 +1161,16 @@ export default function OpnameExpiredPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={showBulkDelete}
+        onClose={() => setShowBulkDelete(false)}
+        onConfirm={confirmBulkDeleteWaves}
+        title={`Hapus ${selectedWaveIds.size} Wave`}
+        message="Wave terpilih akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Generate ulang akan membuatnya kembali. Lanjutkan?"
+        confirmLabel="Ya, hapus"
+        variant="danger"
+      />
     </div>
   </DashboardLayout>
   );
