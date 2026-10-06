@@ -14,6 +14,7 @@ use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\OpnameExpiredService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Laravel\Sanctum\Sanctum;
@@ -416,6 +417,47 @@ class OpnameExpiredTest extends TestCase
         $this->assertSame(2, ReceivingItem::where('kode_barang', 'B-NAME-01')->count());
     }
 
+    public function test_import_issues_one_batch_per_row(): void
+    {
+        // Aturan baku: tiap baris ledger wajib tepat satu batch (IMP-).
+        $import = new ReceivingItemImport($this->user);
+        $import->collection(new Collection([[
+            'kode_barang' => 'B-BT-01',
+            'qty_crt_zak' => '3',
+            'tgl_expired_date' => '2027-05-01',
+            'tgl_penerimaan' => '2026-09-09',
+        ]]));
+
+        $item = ReceivingItem::where('kode_barang', 'B-BT-01')->first();
+        $this->assertNotNull($item->verifiedBatch);
+        $this->assertStringStartsWith('IMP-', $item->verifiedBatch->batch_number);
+
+        // Idempoten: penerbitan ulang mengembalikan batch yang sama.
+        $this->assertTrue(Batch::issueForReceivingItem($item)->is($item->verifiedBatch));
+        $this->assertSame(1, Batch::where('receiving_item_id', $item->id)->count());
+    }
+
+    public function test_every_batch_has_a_unique_barcode(): void
+    {
+        // Aturan FEFO/traceability: tiap batch wajib ber-barcode unik
+        // (dikunci unique constraint di database, bukan hanya di aplikasi).
+        $a = $this->receipt('B-BC-01', 'Barcode 1', 2, '2027-02-01', '2026-09-09');
+        $b = $this->receipt('B-BC-02', 'Barcode 2', 2, '2027-02-01', '2026-09-09');
+        $ba = Batch::issueForReceivingItem($a);
+        $bb = Batch::issueForReceivingItem($b);
+
+        $this->assertNotNull($ba->barcode_label);
+        $this->assertNotSame($ba->barcode_label, $bb->barcode_label);
+
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        Batch::create([
+            'batch_number' => Batch::generateNumber('BATCH-'),
+            'barcode_label' => $ba->barcode_label,
+            'status' => 'ACTIVE',
+        ]);
+    }
+
     public function test_index_returns_status_summary_and_multi_status_filter(): void
     {
         $this->receipt('B-SUM-01', 'Produk Aman', 10, '2027-01-01', '2026-09-09');
@@ -666,5 +708,23 @@ class OpnameExpiredTest extends TestCase
 
         // Kolom di luar allowlist diabaikan (tetap 200, urutan bawaan).
         $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&sort_by=kode_depo;DROP&sort_dir=desc')->assertOk();
+    }
+
+    public function test_index_does_not_duplicate_wave_on_duplicate_master_rows(): void
+    {
+        // Data kotor: 1 BOS menunjuk 2 baris master berbeda — wave tetap
+        // 1 baris (dedup deterministik), bukan ganda.
+        ClusterPrincipal::create(['product_sku' => 'DUP-1', 'principal_1' => 'AAA']);
+        ClusterPrincipal::create(['product_sku' => 'DUP-2', 'principal_1' => 'BBB']);
+        ClusterPrincipal::whereIn('product_sku', ['DUP-1', 'DUP-2'])
+            ->update(['bosnetsz_product_id' => 'B-DUP-01']);
+        $this->receipt('B-DUP-01', 'Produk Duplikat', 4, '2027-02-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $res = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')->assertOk();
+
+        $this->assertSame(1, $res->json('data.total'));
+        $this->assertSame(1, count($res->json('data.data')));
     }
 }

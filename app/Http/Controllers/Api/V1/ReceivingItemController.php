@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exports\ReceivingItemTemplate;
 use App\Http\Controllers\Controller;
 use App\Imports\ReceivingItemImport;
+use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\ReceivingItem;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +20,7 @@ class ReceivingItemController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = ReceivingItem::with(['receiving.rencanaKirim', 'batch'])
+        $query = ReceivingItem::with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
             ->orderByDesc('created_at');
 
         if ($request->user()->isDepotScoped()) {
@@ -145,10 +146,11 @@ class ReceivingItemController extends Controller
 
         // Item dimuat sekaligus untuk semua group di halaman ini (1 query,
         // tanpa N+1), lalu dikelompokkan di memori.
-        // `batch` di-eager-load supaya halaman Inbound bisa mencetak label ulang.
-        // Batch label lahir di tahap validasi SJ, tapi dicetak ulang justru paling
+        // `batch`/`verifiedBatch` di-eager-load supaya halaman Inbound bisa
+        // mencetak label ulang (SJ maupun sesi). Batch label lahir di tahap
+        // validasi SJ atau verifikasi sesi, tapi dicetak ulang justru paling
         // sering dibutuhkan saat barang masuk — label harus ditempel di rak.
-        $itemsQuery = ReceivingItem::query()->with(['receiving.rencanaKirim', 'batch'])
+        $itemsQuery = ReceivingItem::query()->with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
             ->where(function ($q) use ($pageCandidates) {
                 foreach ($pageCandidates as $b) {
                     $q->orWhere(function ($sub) use ($b) {
@@ -301,6 +303,9 @@ class ReceivingItemController extends Controller
         $attributes['nama_depo'] ??= $validated['nama_depo'] ?? null;
 
         $item = ReceivingItem::create($attributes);
+
+        // Aturan baku: tiap baris ledger wajib tepat satu batch.
+        Batch::issueForReceivingItem($item);
 
         return response()->json([
             'message' => 'Penerimaan manual ditambahkan.',

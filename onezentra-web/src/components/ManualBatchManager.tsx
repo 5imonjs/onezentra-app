@@ -12,9 +12,10 @@ interface ManualBatch {
   id: number;
   kode_barang: string;
   nama_barang: string | null;
-  // Batch label fisik (dari validasi SJ). Baris import tidak punya label
-  // sehingga null — ditampilkan '-' dan TIDAK difabrikasi.
+  // Batch label fisik (dari validasi SJ) atau hasil verifikasi sesi lapangan.
+  // Baris import yang belum terverifikasi = null → tampil '-'.
   batch?: { batch_number: string } | null;
+  verifiedBatch?: { batch_number: string } | null;
   actual_qty: number;
   qty_pcs: number | null;
   satuan: string | null;
@@ -77,6 +78,12 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
     try {
       const res = await opnameExpired.manualItems({ per_page: 100 });
       setItems(res.data.data);
+      // Seleksi basi (id yang tak lagi tampil) dibuang tiap reload agar
+      // hapus terpilih tidak membawa id hantu.
+      setSelectedIds((prev) => {
+        const visible = new Set(res.data.data.map((it: ManualBatch) => it.id));
+        return new Set(Array.from(prev).filter((id) => visible.has(id)));
+      });
     } catch (e) {
       // Jangan biarkan error menyamar sebagai "belum ada batch".
       setLoadError(getErrorMessage(e, 'Gagal memuat daftar batch manual.'));
@@ -625,7 +632,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                           </td>
                         )}
                         <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap"><span className="font-mono">{it.kode_barang}</span></td>
-                        <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><span className="font-mono">{it.batch?.batch_number ?? '-'}</span></td>
+                        <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><span className="font-mono">{it.batch?.batch_number ?? it.verifiedBatch?.batch_number ?? '-'}</span></td>
                         <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{it.nama_barang || '-'}</td>
                         <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-gray-900 whitespace-nowrap">{num(it.actual_qty)}</td>
                         <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-600 whitespace-nowrap">{it.qty_pcs != null ? num(it.qty_pcs) : '-'}</td>

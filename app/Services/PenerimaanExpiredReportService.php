@@ -87,9 +87,20 @@ class PenerimaanExpiredReportService
             ->addSelect(DB::raw('COALESCE(cp.principal_1, cp_nick.principal_1, sup.principal) as principal_1'))
             ->addSelect(DB::raw('COALESCE(cp.principal_2, cp_nick.principal_2) as principal_2'))
             ->leftJoin('npn', 'npn.BOSnetszProductId', '=', 'receiving_items.kode_barang')
-            // Kunci utama: BOSnet ID stabil — tahan terhadap perubahan
-            // nickname/SKU di file master berikutnya.
-            ->leftJoin('cluster_principal as cp', 'cp.bosnetsz_product_id', '=', 'receiving_items.kode_barang')
+            // Anti-duplikasi: bosnetsz_product_id tidak unik di master
+            // (1 BOS bisa menunjuk 2 baris) — tanpa dedup, baris laporan
+            // mengganda. Ambil deterministik baris pertama (MIN id).
+            ->leftJoinSub(
+                DB::table('cluster_principal')
+                    ->selectRaw('bosnetsz_product_id, MIN(id) as id')
+                    ->whereNotNull('bosnetsz_product_id')
+                    ->groupBy('bosnetsz_product_id'),
+                'cp_ids',
+                'cp_ids.bosnetsz_product_id',
+                '=',
+                'receiving_items.kode_barang'
+            )
+            ->leftJoin('cluster_principal as cp', 'cp.id', '=', 'cp_ids.id')
             // Transisi: baris CP yang belum di-backfill ID stabil masih
             // terjangkau lewat nickname lama maupun baru.
             ->leftJoin('cluster_principal as cp_nick', function ($join): void {

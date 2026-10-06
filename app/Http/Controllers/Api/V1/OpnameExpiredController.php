@@ -18,17 +18,27 @@ class OpnameExpiredController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // Principal 2 dari master cluster_principal (join yang sama dengan
-        // laporan penerimaan: BOSnet stabil dulu, nickname sebagai transisi,
-        // product_sku langsung sebagai jaring terakhir bagi SKU yang belum
-        // terdaftar di NPN). Semua LEFT: wave tetap muncul walau master
-        // belum lengkap.
+        // Principal 1 & 2 dari master cluster_principal: BOSnet stabil dulu,
+        // nickname lama/baru via NPN, product_sku langsung sebagai jaring
+        // terakhir. Semua LEFT: wave tetap muncul walau master belum lengkap.
+        //
+        // Anti-duplikasi: product_sku unik di master, TAPI bosnetsz_product_id
+        // tidak (data kotor: 1 BOS bisa menunjuk 2 baris dengan principal
+        // berbeda). Tanpa dedup, 1 baris wave mengganda di tabel + merusak
+        // hitungan paginasi. Ambil deterministik baris pertama (MIN id);
+        // konflik isi master WAJIB dibersihkan di data, bukan di join.
+        $cpDedup = DB::table('cluster_principal')
+            ->selectRaw('bosnetsz_product_id, MIN(id) as id')
+            ->whereNotNull('bosnetsz_product_id')
+            ->groupBy('bosnetsz_product_id');
+
         $query = OpnameExpiredWave::with('validator')
             ->select('opname_expired_waves.*')
             ->addSelect(DB::raw('COALESCE(cp.principal_1, cp_nick.principal_1, cp_sku.principal_1) as principal_1'))
             ->addSelect(DB::raw('COALESCE(cp.principal_2, cp_nick.principal_2, cp_sku.principal_2) as principal_2'))
             ->leftJoin('npn', 'npn.BOSnetszProductId', '=', 'opname_expired_waves.kode_barang')
-            ->leftJoin('cluster_principal as cp', 'cp.bosnetsz_product_id', '=', 'opname_expired_waves.kode_barang')
+            ->leftJoinSub($cpDedup, 'cp_ids', 'cp_ids.bosnetsz_product_id', '=', 'opname_expired_waves.kode_barang')
+            ->leftJoin('cluster_principal as cp', 'cp.id', '=', 'cp_ids.id')
             ->leftJoin('cluster_principal as cp_nick', function ($join): void {
                 // Nama lama DAN nama baru: gramatik boleh berubah, ID stabil tetap.
                 $join->on('cp_nick.product_sku', '=', 'npn.szNickName')

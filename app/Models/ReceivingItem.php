@@ -87,6 +87,15 @@ class ReceivingItem extends Model
         return $this->hasOne(Batch::class, 'sj_validation_item_id');
     }
 
+    /**
+     * Label hasil verifikasi sesi lapangan (aturan A2). Baris SJ memakai
+     * batch(); baris import yang terverifikasi memakai relasi ini.
+     */
+    public function verifiedBatch(): HasOne
+    {
+        return $this->hasOne(Batch::class, 'receiving_item_id');
+    }
+
     public function rencanaKirimItem(): BelongsTo
     {
         return $this->belongsTo(RencanaKirimItem::class);

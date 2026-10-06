@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\EmailSettingController;
 use App\Http\Controllers\Api\V1\GateTransactionController;
 use App\Http\Controllers\Api\V1\NpnController;
 use App\Http\Controllers\Api\V1\OpnameExpiredController;
+use App\Http\Controllers\Api\V1\OpnameExpiredSessionController;
 use App\Http\Controllers\Api\V1\PenerimaanController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ReceivingController;
@@ -287,6 +288,19 @@ Route::prefix('v1')->group(function () {
         Route::get('/{wave}', [OpnameExpiredController::class, 'show'])->middleware('permission:opname.view');
         Route::put('/{wave}', [OpnameExpiredController::class, 'update'])->middleware('permission:opname.edit');
         Route::delete('/{wave}', [OpnameExpiredController::class, 'destroy'])->middleware('permission:opname.delete');
+    });
+
+    // Sesi opname lapangan (aturan A2): label batch diterbitkan saat
+    // verifikasi fisik. POST dipakai untuk verify agar upload foto bisa
+    // multipart (PUT + FormData tidak andal di semua client).
+    Route::prefix('opname-sessions')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [OpnameExpiredSessionController::class, 'index'])->middleware('permission:opname.view');
+        Route::post('/', [OpnameExpiredSessionController::class, 'store'])->middleware('permission:opname.create');
+        Route::get('/{session}', [OpnameExpiredSessionController::class, 'show'])->middleware('permission:opname.view');
+        Route::post('/{session}/start', [OpnameExpiredSessionController::class, 'start'])->middleware('permission:opname.edit');
+        Route::post('/{session}/items/{item}', [OpnameExpiredSessionController::class, 'verifyItem'])->middleware('permission:opname.edit');
+        Route::post('/{session}/complete', [OpnameExpiredSessionController::class, 'complete'])->middleware('permission:opname.edit');
+        Route::post('/{session}/cancel', [OpnameExpiredSessionController::class, 'cancel'])->middleware('permission:opname.edit');
     });
 
     Route::prefix('batches')->middleware('auth:sanctum')->group(function () {

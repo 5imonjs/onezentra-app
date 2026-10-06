@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Models\Batch;
+use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\OpnameSetting;
 use App\Models\ReceivingItem;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class OpnameExpiredService
 {
@@ -71,6 +73,11 @@ class OpnameExpiredService
                 'qty_ini_pcs' => $qtyPcs,
                 'qty_lalu_crt' => $prevQtyCrt,
                 'qty_lalu_pcs' => $prevQtyPcs,
+                // Gabung jejak batch minggu ini + bawaan minggu lalu.
+                'batch_numbers' => array_values(array_unique(array_merge(
+                    $carried?->batch_numbers ?? [],
+                    $agg['batches'] ?? []
+                ))),
             ];
 
             OpnameExpiredWave::updateOrCreate(
@@ -206,7 +213,7 @@ class OpnameExpiredService
             ->map(fn ($rid) => ReceivingItem::where('receiving_id', $rid)->pluck('id'))
             ->flatten();
 
-        return ReceivingItem::with(['receiving.rencanaKirim'])
+        return ReceivingItem::with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
             ->whereNotNull('expired_date')
             ->whereNotNull('kode_barang')
             ->when(
@@ -249,11 +256,19 @@ class OpnameExpiredService
                     'tanggal_penerimaan' => $item->tanggal_penerimaan instanceof Carbon ? $item->tanggal_penerimaan->toDateString() : $item->tanggal_penerimaan,
                     'qty_crt' => 0,
                     'qty_pcs' => 0,
+                    'batches' => [],
                 ];
             }
 
             $aggregates[$key]['qty_crt'] += (float) $item->actual_qty;
             $aggregates[$key]['qty_pcs'] += (float) ($item->qty_pcs ?? 0);
+
+            // Jejak identitas: tiap baris ledger penyusun menyumbang nomor
+            // batch-nya (aturan: tiap baris wajib satu batch).
+            $batchNumber = $item->batch?->batch_number ?? $item->verifiedBatch?->batch_number;
+            if ($batchNumber && ! in_array($batchNumber, $aggregates[$key]['batches'], true)) {
+                $aggregates[$key]['batches'][] = $batchNumber;
+            }
         }
 
         return $aggregates;
@@ -308,6 +323,7 @@ class OpnameExpiredService
                     'qty_ini_pcs' => $carried->effectivePcs(),
                     'qty_lalu_crt' => $carried->effectiveCrt(),
                     'qty_lalu_pcs' => $carried->effectivePcs(),
+                    'batch_numbers' => $carried->batch_numbers ?? [],
                 ]
             );
 
@@ -315,6 +331,112 @@ class OpnameExpiredService
         }
 
         return $count;
+    }
+
+    /**
+     * Baris ledger penyusun satu wave (kunci barang|depo|expired + jangkar
+     * minggu wave, aturan eligible yang sama dengan generate).
+     *
+     * @return Collection<int, ReceivingItem>
+     */
+    public function waveSourceItems(OpnameExpiredWave $wave)
+    {
+        $weekStart = Carbon::parse($wave->week_start)->startOfWeek(Carbon::MONDAY);
+
+        return $this->eligibleItems($weekStart)->get()->filter(
+            fn (ReceivingItem $item) => $item->kode_barang === $wave->kode_barang
+                && ($item->getKodeDepoFallback() ?: self::DEPO_GENERAL) === ($wave->kode_depo ?: self::DEPO_GENERAL)
+                && $item->expired_date?->toDateString() === $wave->expired_date_ini?->toDateString()
+        )->values();
+    }
+
+    /**
+     * Baris ledger sumber satu Batch (aturan: tiap baris tepat satu batch).
+     */
+    public function batchSourceItem(Batch $batch): ?ReceivingItem
+    {
+        if ($batch->receiving_item_id) {
+            return ReceivingItem::find($batch->receiving_item_id);
+        }
+
+        if ($batch->sj_validation_item_id) {
+            return ReceivingItem::where('sj_validation_item_id', $batch->sj_validation_item_id)->first();
+        }
+
+        return null;
+    }
+
+    /**
+     * Verifikasi satu batch sesi oleh petugas lapangan: simpan hasil fisik
+     * → tulis koreksi + validasi ke wave. Koreksi dihitung sebagai SELISIH
+     * per batch (fisik − qty ledger batch ini) sehingga verifikasi
+     * multi-batch dalam satu wave saling menjumlah dengan benar.
+     * Baris warisan tanpa label diterbitkan susulan (satu-satunya titik
+     * penerbitan selain import/SJ).
+     *
+     * @return array{batches_issued: int}
+     */
+    public function verifySessionItem(OpnameExpiredSessionItem $item, array $data, User $verifier): array
+    {
+        $batch = $item->batch;
+        $issued = 0;
+
+        if (! $batch) {
+            $source = $this->waveSourceItems($item->wave)->first(
+                fn (ReceivingItem $row) => ! $row->batch && ! $row->verifiedBatch
+            );
+
+            if ($source) {
+                $batch = Batch::issueForReceivingItem($source, [
+                    'items_json' => [
+                        'kode_barang' => $source->kode_barang,
+                        'nama_barang' => $source->nama_barang,
+                        'qty_crt' => $source->actual_qty,
+                        'qty_pcs' => $source->qty_pcs,
+                        'expired_date' => $source->expired_date?->toDateString(),
+                        'source' => $source->source,
+                        'origin' => 'session',
+                        'session_item_id' => $item->id,
+                    ],
+                ]);
+                $issued = 1;
+            }
+        }
+
+        $item->update(array_merge([
+            'qty_fisik_crt' => $data['qty_fisik_crt'],
+            'qty_fisik_pcs' => $data['qty_fisik_pcs'] ?? null,
+            'condition' => $data['condition'] ?? null,
+            'photo' => $data['photo'] ?? $item->photo,
+            'notes' => $data['notes'] ?? null,
+            'verified_at' => now(),
+            'verified_by' => $verifier->id,
+        ], $batch ? ['batch_id' => $batch->id] : []));
+
+        $wave = $item->wave->fresh();
+        $source = $batch ? $this->batchSourceItem($batch) : null;
+
+        if ($source) {
+            $wave->update([
+                'qty_koreksi_crt' => (float) $wave->qty_koreksi_crt + ((float) $data['qty_fisik_crt'] - (float) $source->actual_qty),
+                'qty_koreksi_pcs' => (float) $wave->qty_koreksi_pcs + (((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) ($source->qty_pcs ?? 0)),
+                'koreksi_by' => $verifier->id,
+                'koreksi_at' => now(),
+                'validated_by' => $verifier->id,
+                'validated_at' => now(),
+            ]);
+        } else {
+            $wave->update([
+                'qty_koreksi_crt' => (float) $data['qty_fisik_crt'] - (float) $wave->qty_ini_crt,
+                'qty_koreksi_pcs' => ((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) $wave->qty_ini_pcs,
+                'koreksi_by' => $verifier->id,
+                'koreksi_at' => now(),
+                'validated_by' => $verifier->id,
+                'validated_at' => now(),
+            ]);
+        }
+
+        return ['batches_issued' => $issued];
     }
 
     private function sisaHari(Carbon $expiredDate, Carbon $now): int

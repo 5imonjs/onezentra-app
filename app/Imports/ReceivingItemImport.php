@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\ReceivingItem;
 use App\Models\User;
@@ -126,8 +127,12 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
             $handled[$batchKey] = true;
             $existing[$batchKey] = true;
 
-            ReceivingItem::create($attributes);
+            $item = ReceivingItem::create($attributes);
             $this->imported++;
+
+            // Aturan baku: tiap baris ledger wajib tepat satu batch.
+            // Kebal duplikat: batch diterbitkan hanya untuk baris baru.
+            Batch::issueForReceivingItem($item);
 
             // Baris import ditambatkan ke minggu IMPORT (aturan baku: tanggal
             // file tidak menentukan minggu monitoring), jadi seluruh hasil

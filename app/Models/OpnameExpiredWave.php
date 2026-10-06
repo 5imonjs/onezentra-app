@@ -13,7 +13,7 @@ class OpnameExpiredWave extends Model
         'sisa_hari', 'status_ini', 'status_lalu', 'perubahan', 'rekomendasi',
         'qty_ini_crt', 'qty_ini_pcs', 'qty_lalu_crt', 'qty_lalu_pcs',
         'qty_koreksi_crt', 'qty_koreksi_pcs', 'koreksi_by', 'koreksi_at',
-        'validated_by', 'validated_at',
+        'validated_by', 'validated_at', 'batch_numbers',
     ];
 
     protected function casts(): array
@@ -30,6 +30,7 @@ class OpnameExpiredWave extends Model
             'qty_koreksi_pcs' => 'decimal:2',
             'koreksi_at' => 'datetime',
             'validated_at' => 'datetime',
+            'batch_numbers' => 'array',
         ];
     }
 

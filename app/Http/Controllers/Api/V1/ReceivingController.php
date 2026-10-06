@@ -343,8 +343,11 @@ class ReceivingController extends Controller
             }
 
             $rencana = $lockedReceiving->rencanaKirim;
+            // Barcode cetak selalu UPPERCASE hasil sanitasi Code39
+            // (sanitizeCode39Value), sementara PO di database bisa lowercase —
+            // bandingkan case-insensitive supaya hasil scan selalu cocok.
             $scan = trim($validated['barcode']);
-            $match = $scan === $rencana->po_transporter;
+            $match = strtoupper($scan) === strtoupper(trim((string) $rencana->po_transporter));
             if (! $match) {
                 throw ValidationException::withMessages([
                     'barcode' => ['Barcode tidak cocok dengan No. PO Transporter rencana kirim ini.'],

@@ -17,6 +17,7 @@ const operasionalMenus = [
   { name: 'Check Out Point', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
   { name: 'Inbound (SJ)', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
   { name: 'Batch Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
+  { name: 'Sesi Opname', path: '/opname-sessions', icon: 'clipboard', permission: 'opname.view' },
 ];
 
 const masterDataMenus = [
