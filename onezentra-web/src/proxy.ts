@@ -92,7 +92,11 @@ export async function proxy(request: NextRequest) {
         headers: responseHeaders,
       });
       return nextResp;
-    } catch {
+    } catch (error) {
+      // Log akar masalah ke terminal dev agar 502 bisa didiagnosis
+      // (fetch hanya throw bila koneksi gagal — respons 4xx/5xx backend
+      // diteruskan apa adanya di atas, bukan 502).
+      console.error(`[proxy] ${request.method} ${pathname} -> ${targetUrl} gagal:`, error);
       return NextResponse.json(
         { message: 'Backend tidak dapat dihubungi.' },
         { status: 502 }

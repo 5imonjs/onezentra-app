@@ -306,6 +306,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [BatchController::class, 'index'])->middleware('permission:receiving.view');
         // Rute statis wajib sebelum {batch} — pola yang sama dengan gate-transactions.
         Route::get('/search/by-number', [BatchController::class, 'byNumber'])->middleware('permission:receiving.view');
+        // Tanda cetak label: cheker di validasi-sj maupun operator Inbound —
+        // keduanya punya izin ini (cheker: sj_validation.validate; Inbound: penerimaan.view).
+        Route::post('/{batch}/mark-printed', [BatchController::class, 'markPrinted'])
+            ->middleware('permission:sj_validation.validate|penerimaan.view');
         Route::get('/{batch}', [BatchController::class, 'show'])->middleware('permission:receiving.view');
     });
 

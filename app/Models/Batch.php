@@ -10,14 +10,28 @@ class Batch extends Model
 {
     protected $fillable = [
         'batch_number', 'receiving_id', 'sj_validation_item_id', 'receiving_item_id', 'barcode_label',
-        'items_json', 'status',
+        'items_json', 'status', 'printed_at',
     ];
 
     protected function casts(): array
     {
         return [
             'items_json' => 'array',
+            'printed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Tandai label fisik sudah dicetak (idempoten — timestamp percetakan
+     * pertama yang dipertahankan supaya audit tidak bergeser saat cetak ulang).
+     */
+    public function markPrinted(): void
+    {
+        if ($this->printed_at !== null) {
+            return;
+        }
+
+        $this->forceFill(['printed_at' => now()])->save();
     }
 
     /**

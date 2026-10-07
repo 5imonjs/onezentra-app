@@ -88,10 +88,15 @@ class GateTransactionController extends Controller
                 abort(422, "Gate OUTBOUND hanya dapat dilakukan untuk rencana yang telah COMPLETED melalui receiving/validasi (status saat ini: {$rencanaKirim->status}).");
             }
 
+            // GUARD: Cek existencia dengan lockForUpdate untuk mencegah race condition
+            // antara request concurrent yang sama sekali membuat duplicate gate transaction.
+            $existingGate = GateTransaction::where('rencana_kirim_id', $rencanaKirim->id)
+                ->where('gate_type', $validated['gate_type'])
+                ->lockForUpdate()
+                ->first();
+
             abort_unless(
-                ! GateTransaction::where('rencana_kirim_id', $rencanaKirim->id)
-                    ->where('gate_type', $validated['gate_type'])
-                    ->exists(),
+                ! $existingGate,
                 422,
                 "Gate {$validated['gate_type']} sudah tercatat untuk rencana ini."
             );

@@ -109,4 +109,61 @@ class BatchControllerTest extends TestCase
     {
         $this->getJson('/api/v1/batches/search/by-number?batch_number=NOPE')->assertNotFound();
     }
+
+    public function test_mark_printed_sets_printed_at(): void
+    {
+        $perm = Permission::firstOrCreate(['slug' => 'penerimaan.view'], ['name' => 'penerimaan.view', 'menu_group' => 'Test']);
+        Role::firstWhere('slug', 'batch_admin')->permissions()->syncWithoutDetaching([$perm->id]);
+
+        $batch = $this->makeBatch('PRINT-ME');
+
+        $this->postJson("/api/v1/batches/{$batch->id}/mark-printed")
+            ->assertOk()
+            ->assertJsonPath('data.printed_at', fn ($printedAt) => $printedAt !== null);
+
+        $this->assertNotNull($batch->refresh()->printed_at);
+    }
+
+    public function test_mark_printed_is_idempotent_keeps_first_timestamp(): void
+    {
+        $perm = Permission::firstOrCreate(['slug' => 'penerimaan.view'], ['name' => 'penerimaan.view', 'menu_group' => 'Test']);
+        Role::firstWhere('slug', 'batch_admin')->permissions()->syncWithoutDetaching([$perm->id]);
+
+        $batch = $this->makeBatch('PRINT-TWICE');
+        // startOfSecond: kolom datetime tidak menyimpan mikrodetik —
+        // tanpa ini perbandingan equalTo selalu beda walau nilai sama.
+        $original = now()->subDay()->startOfSecond();
+        $batch->forceFill(['printed_at' => $original])->save();
+
+        $this->postJson("/api/v1/batches/{$batch->id}/mark-printed")->assertOk();
+
+        $this->assertTrue($batch->refresh()->printed_at->equalTo($original));
+    }
+
+    public function test_mark_printed_cancelled_batch_returns_422(): void
+    {
+        $perm = Permission::firstOrCreate(['slug' => 'penerimaan.view'], ['name' => 'penerimaan.view', 'menu_group' => 'Test']);
+        Role::firstWhere('slug', 'batch_admin')->permissions()->syncWithoutDetaching([$perm->id]);
+
+        $batch = $this->makeBatch('PRINT-CANCELLED', 'CANCELLED');
+
+        $this->postJson("/api/v1/batches/{$batch->id}/mark-printed")->assertStatus(422);
+        $this->assertNull($batch->refresh()->printed_at);
+    }
+
+    public function test_mark_printed_without_permission_returns_403(): void
+    {
+        $batch = $this->makeBatch('PRINT-FORBIDDEN');
+
+        $this->postJson("/api/v1/batches/{$batch->id}/mark-printed")->assertForbidden();
+        $this->assertNull($batch->refresh()->printed_at);
+    }
+
+    private function makeBatch(string $number, string $status = 'ACTIVE'): Batch
+    {
+        $rk = RencanaKirim::create(['po_transporter' => "SJ-{$number}", 'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'status' => 'COMPLETED', 'created_by' => $this->user->id]);
+        $rcv = Receiving::create(['rencana_kirim_id' => $rk->id, 'status' => 'COMPLETED']);
+
+        return Batch::create(['batch_number' => $number, 'receiving_id' => $rcv->id, 'barcode_label' => "LBL-{$number}", 'status' => $status]);
+    }
 }

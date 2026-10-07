@@ -70,4 +70,28 @@ class BatchController extends Controller
 
         return response()->json(['data' => $batch->load('receiving.rencanaKirim')]);
     }
+
+    /**
+     * Tandai label batch sudah dicetak fisik. Sumber kebenaran badge
+     * "Label tercetak" (validasi-sj & Inbound) — dipanggil frontend setiap
+     * kali tombol Cetak/Unduh label ditekan, dari halaman mana pun.
+     * Idempoten dan menolak batch CANCELLED (label mati tidak dicetak ulang).
+     */
+    public function markPrinted(Request $request, Batch $batch): JsonResponse
+    {
+        $this->authorizeDepot($batch);
+
+        abort_unless(
+            $batch->status !== 'CANCELLED',
+            422,
+            'Label batch ini sudah dibatalkan dan tidak dapat ditandai tercetak.'
+        );
+
+        $batch->markPrinted();
+
+        return response()->json([
+            'message' => 'Label ditandai sudah dicetak',
+            'data' => $batch->refresh(),
+        ]);
+    }
 }

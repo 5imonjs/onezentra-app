@@ -10,6 +10,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ['localhost', '127.0.0.1', '192.168.1.68', '192.168.1.*'],
   turbopack: {
     root: path.resolve(__dirname),
   },
@@ -26,6 +27,18 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: securityHeaders,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: 'http://localhost:8000/api/v1/:path*',
+      },
+      {
+        source: '/sanctum/:path*',
+        destination: 'http://localhost:8000/sanctum/:path*',
       },
     ];
   },

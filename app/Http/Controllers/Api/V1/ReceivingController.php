@@ -90,7 +90,7 @@ class ReceivingController extends Controller
         }
 
         $receiving = DB::transaction(function () use ($request, $validated) {
-            $rencanaKirim = RencanaKirim::with('items')->forUserDepot($request->user())->findOrFail($validated['rencana_kirim_id']);
+            $rencanaKirim = RencanaKirim::with('items')->forUserDepot($request->user())->lockForUpdate()->findOrFail($validated['rencana_kirim_id']);
 
             abort_unless(
                 $rencanaKirim->status === 'VERIFIED',
@@ -98,10 +98,15 @@ class ReceivingController extends Controller
                 "Receiving hanya dapat dibuat dari rencana berstatus VERIFIED (saat ini: {$rencanaKirim->status})."
             );
 
+            // GUARD: Cek existence DENGAN lockForUpdate di dalam transaction untuk mencegah
+            // race condition: dua request concurrent bisa lewat cek -> exists() sebelum create.
+            $existingReceiving = Receiving::where('rencana_kirim_id', $rencanaKirim->id)
+                ->whereIn('status', ['PENDING', 'IN_PROGRESS'])
+                ->lockForUpdate()
+                ->first();
+
             abort_unless(
-                ! Receiving::where('rencana_kirim_id', $rencanaKirim->id)
-                    ->whereIn('status', ['PENDING', 'IN_PROGRESS'])
-                    ->exists(),
+                ! $existingReceiving,
                 422,
                 'Rencana ini sudah memiliki receiving yang berjalan.'
             );
@@ -164,6 +169,15 @@ class ReceivingController extends Controller
                 }
             }
 
+            // Total header dihitung ulang dari baris yang benar-benar
+            // tersalin: jalur penyalinan validasi memakai actual_qty (bisa
+            // beda dari expected), jadi nilai awal dari rencana kirim tidak
+            // boleh dipakai apa adanya — Quick Scan menampilkan angka ini
+            // sebagai "diterima / diharapkan".
+            $receiving->update([
+                'total_received_qty' => $receiving->items()->sum('actual_qty'),
+            ]);
+
             $rencanaKirim->update(['status' => 'IN_PROGRESS']);
 
             return $receiving;
@@ -183,6 +197,31 @@ class ReceivingController extends Controller
             $rk?->nama_depo,
             'Data receiving tidak ditemukan di depo Anda.'
         );
+    }
+
+    /**
+     * Hitung ulang `received_qty` tiap baris rencana kirim dari receiving
+     * yang masih berlaku (bukan CANCELLED dan belum terhapus).
+     *
+     * `received_qty` di-increment per scan; tanpa penyetelan ulang saat
+     * receiving dibatalkan/dihapus, angkanya membeku pada nilai scan yang
+     * sudah batal dan receiving berikutnya double count.
+     */
+    private function refreshReceivedQty(RencanaKirim $rencanaKirim): void
+    {
+        $totals = ReceivingItem::query()
+            ->join('receivings', 'receivings.id', '=', 'receiving_items.receiving_id')
+            ->where('receivings.rencana_kirim_id', $rencanaKirim->id)
+            ->where('receivings.status', '!=', 'CANCELLED')
+            ->groupBy('receiving_items.rencana_kirim_item_id')
+            ->selectRaw('receiving_items.rencana_kirim_item_id as item_id, SUM(receiving_items.actual_qty) as total')
+            ->pluck('total', 'item_id');
+
+        RencanaKirimItem::where('rencana_kirim_id', $rencanaKirim->id)
+            ->get()
+            ->each(function (RencanaKirimItem $item) use ($totals): void {
+                $item->update(['received_qty' => $totals[$item->id] ?? 0]);
+            });
     }
 
     /**
@@ -339,6 +378,12 @@ class ReceivingController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($receiving->id);
 
+            // VALIDASI: Semua item harus sudah di-scan (actual_qty terisi) dan memiliki condition
+            $unscannedItems = $lockedReceiving->items()->whereNull('actual_qty')->count();
+            $unconditionedItems = $lockedReceiving->items()->whereNull('condition')->count();
+            abort_unless($unscannedItems === 0, 422, 'Masih ada item yang belum di-scan (actual_qty kosong).');
+            abort_unless($unconditionedItems === 0, 422, 'Masih ada item tanpa kondisi (condition).');
+
             if ($lockedReceiving->status === 'COMPLETED') {
                 return 'completed';
             }
@@ -379,12 +424,19 @@ class ReceivingController extends Controller
         });
 
         $receiving->refresh()->load(['items', 'rencanaKirim']);
-        $this->emailService->send(
-            'receiving',
-            'completed',
-            $receiving->rencanaKirim,
-            new ReceivingCompleted($receiving)
-        );
+
+        // Notifikasi hanya saat transaksi ini benar-benar menyelesaikan
+        // receiving. Panggilan ulang (double-tap operator / retry jaringan)
+        // tetap dijawab sukses karena idempoten — tapi tidak boleh
+        // mengirim email "Receiving selesai" dua kali.
+        if ($batchNumber !== 'completed') {
+            $this->emailService->send(
+                'receiving',
+                'completed',
+                $receiving->rencanaKirim,
+                new ReceivingCompleted($receiving)
+            );
+        }
 
         return response()->json([
             'message' => $batchNumber === 'completed'
@@ -421,6 +473,15 @@ class ReceivingController extends Controller
 
             if ($locked->rencanaKirim?->status === 'IN_PROGRESS') {
                 $locked->rencanaKirim->update(['status' => 'VERIFIED']);
+            } elseif ($locked->rencanaKirim?->status === 'COMPLETED') {
+                $locked->rencanaKirim->update(['status' => 'VERIFIED']);
+            }
+
+            // Scan receiving ikut batal — received_qty dihitung ulang dari
+            // receiving yang masih berlaku, supaya tidak membeku pada nilai
+            // scan yang sudah dibatalkan.
+            if ($locked->rencanaKirim) {
+                $this->refreshReceivedQty($locked->rencanaKirim);
             }
         });
 
@@ -458,6 +519,14 @@ class ReceivingController extends Controller
             // sudah IN_PROGRESS yang kembali VERIFIED.
             if ($locked->rencanaKirim?->status === 'IN_PROGRESS') {
                 $locked->rencanaKirim->update(['status' => 'VERIFIED']);
+            } elseif ($locked->rencanaKirim?->status === 'COMPLETED') {
+                $locked->rencanaKirim->update(['status' => 'VERIFIED']);
+            }
+
+            // Baris receiving_items sudah terhapus — received_qty dihitung
+            // ulang supaya tidak menyisakan angka dari scan yang hilang.
+            if ($locked->rencanaKirim) {
+                $this->refreshReceivedQty($locked->rencanaKirim);
             }
         });
 

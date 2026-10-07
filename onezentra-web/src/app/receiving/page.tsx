@@ -9,7 +9,7 @@ import SearchInput from '@/components/SearchInput';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Modal from '@/components/Modal';
 import Toast from '@/components/Toast';
-import BarcodeScanner from '@/components/BarcodeScanner';
+import BarcodeScanner, { SCAN_FORMATS_1D } from '@/components/BarcodeScanner';
 import { useAuthStore } from '@/store/auth';
 import { todayLocal } from '@/lib/dates';
 
@@ -620,7 +620,7 @@ export default function ReceivingPage() {
           </div>
         </section>
 
-        <BarcodeScanner open={showScanner} onClose={() => setShowScanner(false)} onDetected={handleDetected} />
+        <BarcodeScanner open={showScanner} onClose={() => setShowScanner(false)} formats={SCAN_FORMATS_1D} onDetected={handleDetected} />
 
         <ConfirmDialog
           open={showFinishConfirm}

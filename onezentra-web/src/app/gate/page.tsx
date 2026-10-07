@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { gateTransactions, rencanaKirim, getErrorMessage } from '@/lib/api';
 import SearchInput from '@/components/SearchInput';
-import BarcodeScanner from '@/components/BarcodeScanner';
+import BarcodeScanner, { SCAN_FORMATS_1D } from '@/components/BarcodeScanner';
 import Modal from '@/components/Modal';
 import { useAuthStore } from '@/store/auth';
 
@@ -540,6 +540,7 @@ export default function GatePage() {
         <BarcodeScanner
           open={showScanner}
           onClose={() => setShowScanner(false)}
+          formats={SCAN_FORMATS_1D}
           onDetected={handleDetected}
         />
 

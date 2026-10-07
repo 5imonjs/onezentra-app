@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/dashboard/layout';
-import { receivingItems, npn, getErrorMessage } from '@/lib/api';
+import { receivingItems, npn, getErrorMessage, batches } from '@/lib/api';
 import ReceivingItemEditModal from '@/components/ReceivingItemEditModal';
 import SearchInput from '@/components/SearchInput';
 import { useAuthStore } from '@/store/auth';
@@ -52,10 +52,22 @@ function LabelActions({ item, po, depo }: { item: ReceivingItem; po: string; dep
 
   const labelName = batch.batch_number || item.kode_barang;
 
+  // Cetak dari Inbound juga dicatat server (lintas device): badge
+  // "Label tercetak" di validasi-sj membaca `batches.printed_at`.
+  const markPrinted = () => {
+    if (!batch.id) return;
+    void batches.markPrinted(batch.id).catch(() => {
+      // Gagal lapor server tidak menghalangi pencetakan label.
+    });
+  };
+
   return (
     <div className="flex items-center justify-end gap-1">
       <button
-        onClick={() => printBatchLabel(labelData)}
+        onClick={() => {
+          printBatchLabel(labelData);
+          markPrinted();
+        }}
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-chip-primary hover:text-accent-text"
         title={`Cetak label ${labelName}`}
         aria-label={`Cetak label ${labelName}`}
@@ -65,7 +77,10 @@ function LabelActions({ item, po, depo }: { item: ReceivingItem; po: string; dep
         </svg>
       </button>
       <button
-        onClick={() => downloadBatchLabel(labelData)}
+        onClick={() => {
+          downloadBatchLabel(labelData);
+          markPrinted();
+        }}
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-chip-primary hover:text-accent-text"
         title="Unduh PDF label"
         aria-label={`Unduh PDF label ${labelName}`}
@@ -112,11 +127,13 @@ interface ReceivingItem {
    * lewat `status`.
    */
   batch?: {
+    id?: number;
     batch_number: string | null;
     barcode_label: string | null;
     status?: string | null;
   } | null;
   verifiedBatch?: {
+    id?: number;
     batch_number: string | null;
     barcode_label: string | null;
     status?: string | null;
@@ -477,7 +494,7 @@ export default function PenerimaanPage() {
           ) : (
             <>
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[920px] border-collapse">
+                <table className="w-full min-w-230 border-collapse">
                   <caption className="sr-only">Daftar penerimaan barang</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-300 bg-surface-raised">
@@ -596,7 +613,7 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
          return (
            <tr key={item.id} className={`transition-colors hover:bg-chip-primary/30 ${itemIndex % 2 === 0 ? 'bg-surface-card' : 'bg-overlay-30'}`}>
              <td className="px-5 py-3 whitespace-nowrap"><span className="font-mono text-sm font-medium text-gray-800">{item.kode_barang}</span></td>
-             <td className="px-5 py-3 min-w-[240px] max-w-[340px]">
+             <td className="px-5 py-3 min-w-60 max-w-85">
                <span className="block line-clamp-2 wrap-break-word text-sm text-gray-700" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
              </td>
              <td className="px-5 py-3 text-right text-sm font-medium tabular-nums text-gray-800">{num(item.actual_qty)}</td>

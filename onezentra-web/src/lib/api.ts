@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import { PDFDocument } from 'pdf-lib';
 import { notifyPermissionDenied } from '@/store/globalToast';
 
 const CSRF_URL = '/sanctum/csrf-cookie';
@@ -79,7 +80,23 @@ export const apiClient = axios.create({
 /**
  * Status respons yang berarti sesi bermasalah (auth hilang / token tak valid).
  * 401 = sesi kadaluwarsa/dihentikan; 419 = CSRF mismatch.
+*/
+/**
+ * Dipanggil otomatis kalau file > 10MB (Next.js dev limit).
  */
+async function compressPdf(file: File, maxSize: number): Promise<File> {
+  const fileArrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(fileArrayBuffer, { ignoreEncryption: true });
+
+  // Gunakan object streams → pdf-lib akan mengompresi streams
+  const savedBytes = await pdfDoc.save({ useObjectStreams: true });
+  const arrayBuffer = new Uint8Array(savedBytes).buffer;
+  const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+  return new File([blob], file.name, { type: 'application/pdf' });
+}
+
+
+
 export function isSessionLossStatus(status?: number): boolean {
   return status === 401;
 }
@@ -433,6 +450,10 @@ export const emailRecipients = {
   options: () => apiClient.get('/email-recipients/options'),
 };
 
+export const batches = {
+  markPrinted: (id: number) => apiClient.post(`/batches/${id}/mark-printed`),
+};
+
 export const sjValidations = {
   list: (params?: Record<string, unknown>) => apiClient.get('/sj-validations', { params }),
   stats: () => apiClient.get('/sj-validations/stats'),
@@ -489,6 +510,19 @@ export const biayaThl = {
   reject: (id: number, reason: string) => apiClient.post(`/biaya-thl/${id}/reject`, { reason }),
   revise: (id: number, reason: string) => apiClient.post(`/biaya-thl/${id}/revise`, { reason }),
   import: (file: File) => {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (Next.js dev limit)
+    if (file.size > MAX_FILE_SIZE) {
+      return compressPdf(file, MAX_FILE_SIZE).then((compressed) => {
+        const formData = new FormData();
+        formData.append('file', compressed);
+        return apiClient.post('/biaya-thl/import', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }).catch((err: unknown) => {
+        throw err;
+      });
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     return apiClient.post('/biaya-thl/import', formData, {
@@ -519,6 +553,19 @@ export const biayaRetribusi = {
   reject: (id: number, reason: string) => apiClient.post(`/biaya-retribusi/${id}/reject`, { reason }),
   revise: (id: number, reason: string) => apiClient.post(`/biaya-retribusi/${id}/revise`, { reason }),
   import: (file: File) => {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (Next.js dev limit)
+    if (file.size > MAX_FILE_SIZE) {
+      return compressPdf(file, MAX_FILE_SIZE).then((compressed) => {
+        const formData = new FormData();
+        formData.append('file', compressed);
+        return apiClient.post('/biaya-retribusi/import', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }).catch((err: unknown) => {
+        throw err;
+      });
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     return apiClient.post('/biaya-retribusi/import', formData, {

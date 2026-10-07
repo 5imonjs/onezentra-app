@@ -13,6 +13,7 @@ use App\Mail\RencanaKirimCreated;
 use App\Models\Npn;
 use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
+use App\Models\SjValidation;
 use App\Models\StandarUmurProduk;
 use App\Services\EmailNotificationService;
 use Illuminate\Http\JsonResponse;
@@ -241,6 +242,22 @@ class RencanaKirimController extends Controller
             422,
             "Rencana kirim berstatus {$rencanaKirim->status} tidak dapat diedit."
         );
+        // Sesi validasi yang sedang berjalan memakai snapshot item sebagai
+        // acuan cheker. Edit (delete-all + insert ulang) di tengah jalan
+        // membuat acuan berubah diam-diam — batalkan sesi validasi dulu
+        // bila memang ada perubahan.
+        // HANYA blokir jika item yang diedit ada di dalam sesi validasi yang sedang berjalan.
+        abort_if(
+            SjValidation::where('rencana_kirim_id', $rencanaKirim->id)
+                ->where('status', 'IN_PROGRESS')
+                ->whereHas('items', function ($q) use ($request) {
+                    $q->whereIn('rencana_kirim_item_id', 
+                        collect($request->input('items.*.id', []))->filter()->values()
+                    );
+                })
+                ->exists(),
+            422,
+            'Rencana kirim sedang divalidasi sehingga tidak dapat diedit. Batalkan sesi validasi terlebih dahulu bila ada perubahan.');
         if ($request->filled('po_transporter')) {
             $request->merge(['po_transporter' => strtoupper(trim($request->input('po_transporter')))]);
         }
@@ -354,6 +371,8 @@ class RencanaKirimController extends Controller
         $this->authorizeDepot($rencanaKirim);
         $this->assertTransition($rencanaKirim, 'SCHEDULED');
 
+        $this->transitionRencanaKirim($rencanaKirim, 'SCHEDULED');
+
         $rencanaKirim->update([
             'status' => 'SCHEDULED',
             'scheduled_at' => now(),
@@ -375,12 +394,7 @@ class RencanaKirimController extends Controller
     public function verify(RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
-        $this->assertTransition($rencanaKirim, 'VERIFIED');
-
-        $rencanaKirim->update([
-            'status' => 'VERIFIED',
-            'verified_at' => now(),
-        ]);
+        $this->transitionRencanaKirim($rencanaKirim, 'VERIFIED');
 
         return response()->json([
             'message' => 'Rencana kirim berhasil diverifikasi',
@@ -431,9 +445,7 @@ class RencanaKirimController extends Controller
     public function cancel(RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
-        $this->assertTransition($rencanaKirim, 'CANCELLED');
-
-        $rencanaKirim->update(['status' => 'CANCELLED']);
+        $this->transitionRencanaKirim($rencanaKirim, 'CANCELLED');
 
         $this->emailService->send(
             'rencana_kirim',
@@ -454,7 +466,23 @@ class RencanaKirimController extends Controller
      *
      * @param  iterable<int, RencanaKirimItem>  $items
      */
-    private function totalKubikasi(iterable $items): float
+        /**
+     * Execute status transition using the TRANSITIONS matrix.
+     * Centralizes state machine logic so all transitions go through one source of truth.
+     */
+    private function transitionRencanaKirim(RencanaKirim $rencanaKirim, string $target): void
+    {
+        $this->assertTransition($rencanaKirim, $target);
+        $rencanaKirim->update(['status' => $target]);
+    }
+
+    private function normalizePoTransporter(string $value): string
+    {
+        return strtoupper(trim(preg_replace('/[^A-Za-z0-9]/', '', $value)));
+    }
+
+
+private function totalKubikasi(iterable $items): float
     {
         $sum = 0.0;
         foreach ($items as $item) {

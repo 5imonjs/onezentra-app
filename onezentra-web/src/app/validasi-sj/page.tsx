@@ -4,22 +4,28 @@ import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import DashboardLayout from '@/app/dashboard/layout';
-import { getErrorMessage, sjValidations } from '@/lib/api';
+import { getErrorMessage, sjValidations, batches } from '@/lib/api';
 import Modal from '@/components/Modal';
+import BarcodeScanner, { SCAN_FORMATS_1D } from '@/components/BarcodeScanner';
 import SearchInput from '@/components/SearchInput';
 import { notifyGlobal } from '@/store/globalToast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useAuthStore } from '@/store/auth';
 import { conditionRequiresPhoto, hasQty } from '@/lib/condition';
 import { downloadBatchLabel, printBatchLabel, type BatchLabelData } from '@/lib/batchLabel';
+import { clearPrintedLabels, isLabelPrinted, loadPrintedLabels, markLabelPrinted, unprintedCompleteItems } from '@/lib/labelPrint';
 import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
 import { fmtDate, fmtDateTime, batchCell, canEditItems, validationDuration } from '@/lib/validationTable';
 
 /** Batch label yang dibuat server saat satu produk divalidasi. */
 type BatchInfo = {
+  /** Id batch — kunci endpoint mark-printed (sumber kebenaran jejak cetak). */
+  id?: number;
   batch_number: string | null;
   barcode_label: string | null;
   status?: string | null;
+  /** Dicatat server saat label dicetak; badge membaca ini (lintas device). */
+  printed_at?: string | null;
 };
 
 type ValidationItem = {
@@ -104,7 +110,7 @@ function validatedCount(validation: Validation | null): number {
  * batch yang hilang. Nomor yang sudah dibatalkan tetap ditampilkan supaya
  * petugas bisa menemukan label fisik yang harus dibuang dari rak.
  */
-function BatchCell({ batch }: { batch?: BatchInfo | null }) {
+function BatchCell({ batch, printed }: { batch?: BatchInfo | null; printed?: boolean }) {
   const state = batchCell(batch);
 
   if (state.kind === 'none') {
@@ -113,7 +119,7 @@ function BatchCell({ batch }: { batch?: BatchInfo | null }) {
 
   if (state.kind === 'cancelled') {
     return (
-      <div className="min-w-[150px]">
+      <div className="min-w-37.5">
         <p className="font-mono text-xs font-bold text-slate-500 line-through">{state.number}</p>
         <span className="mt-0.5 inline-flex items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700">
           Dibatalkan
@@ -123,9 +129,19 @@ function BatchCell({ batch }: { batch?: BatchInfo | null }) {
   }
 
   return (
-    <div className="min-w-[150px]">
+    <div className="min-w-37.5">
       <p className="font-mono text-xs font-bold text-slate-800">{state.number}</p>
       {state.barcode && <p className="mt-0.5 font-mono text-[10px] text-slate-500">{state.barcode}</p>}
+      {printed ? (
+        <span className="mt-0.5 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>
+          Label tercetak
+        </span>
+      ) : (
+        <span className="mt-0.5 inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+          Label belum dicetak
+        </span>
+      )}
     </div>
   );
 }
@@ -149,6 +165,7 @@ export default function ValidasiSjPage() {
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
   const [lookup, setLookup] = useState<Validation['rencana_kirim'] | null>(null);
   const [active, setActive] = useState<Validation | null>(null);
   const [selected, setSelected] = useState<ValidationItem | null>(null);
@@ -161,6 +178,12 @@ export default function ValidasiSjPage() {
   const [lastBatch, setLastBatch] = useState<BatchInfo | null>(null);
   /** Item yang barusan disimpan; menyertakan batch-nya untuk cetak label. */
   const [lastScanned, setLastScanned] = useState<ValidationItem | null>(null);
+  /**
+   * Jejak barcode_label yang sudah dicetak pada sesi yang sedang dibuka.
+   * Dimuat ulang setiap modal detail dibuka (lihat openDetail) supaya sesi
+   * yang dibuka ulang setelah reload browser tetap ingat progres cetaknya.
+   */
+  const [printedLabels, setPrintedLabels] = useState<string[]>([]);
   // Anti race: respons basi dibuang.
   const listReqRef = useRef(0);
   const detailReqRef = useRef(0);
@@ -301,6 +324,7 @@ export default function ValidasiSjPage() {
     const reqId = ++detailReqRef.current;
     setDetailLoading(true);
     setActive(validation as Validation);
+    setPrintedLabels(loadPrintedLabels(validation.id));
     // Label milik validasi sebelumnya tidak boleh terbawa: tombol cetak
     // bisa menempelkan label salah bila modal dibuka untuk baris lain.
     setLastBatch(null);
@@ -317,11 +341,12 @@ export default function ValidasiSjPage() {
     }
   };
 
-  const findDocument = async () => {
-    if (!code.trim()) return;
+  const findDocument = async (raw?: string) => {
+    const value = (raw ?? code).trim();
+    if (!value) return;
     setBusy(true);
     try {
-      const response = await sjValidations.lookup(code.trim());
+      const response = await sjValidations.lookup(value);
       setLookup(response.data.data);
     } catch (error) {
       setLookup(null);
@@ -461,16 +486,62 @@ export default function ValidasiSjPage() {
     };
   };
 
+  /**
+   * Laporkan percetakan ke server (POST /batches/{id}/mark-printed) supaya
+   * badge "Label tercetak" bertahan lintas device/halaman — jejak localStorage
+   * tetap dipasang lebih dulu (optimis) supaya UI langsung berubah walau
+   * request gagal (offline); server adalah sumber kebenaran utama.
+   */
+  const markBatchPrinted = (batch?: { id?: number } | null) => {
+    if (!batch?.id) return;
+    void batches.markPrinted(batch.id).catch(() => {
+      // Gagal lapor server tidak menghalangi cetak; badge tetap benar
+      // di perangkat ini lewat localStorage.
+    });
+  };
+
+  /**
+   * Cetak label satu item dan tandai tercetak. Sumber datanya batch milik
+   * item itu sendiri (bukan panel "item terakhir") supaya operator bisa
+   * menyelesaikan item lama yang panelnya sudah tertimpa item baru.
+   */
+  const printItemLabel = (item: ValidationItem, viaDownload: boolean) => {
+    const barcode = item.batch?.barcode_label?.trim() ?? '';
+    if (!barcode || item.batch?.status === 'CANCELLED') return;
+    const label: BatchLabelData = {
+      batch_number: item.batch?.batch_number ?? null,
+      barcode_label: barcode,
+      kode_barang: item.kode_barang,
+      nama_barang: item.nama_barang,
+      actual_qty: item.actual_qty,
+      satuan: item.satuan,
+      expired_date: item.expired_date,
+      condition: item.condition,
+      po_transporter: active?.rencana_kirim?.po_transporter ?? null,
+    };
+    if (viaDownload) {
+      downloadBatchLabel(label);
+    } else {
+      printBatchLabel(label);
+    }
+    if (active) setPrintedLabels(markLabelPrinted(active.id, barcode));
+    markBatchPrinted(item.batch);
+  };
+
   const handlePrintLabel = () => {
     const label = buildLastLabel();
     if (!label) return;
     printBatchLabel(label);
+    if (active && label.barcode_label) setPrintedLabels(markLabelPrinted(active.id, label.barcode_label));
+    markBatchPrinted(lastBatch);
   };
 
   const handleDownloadLabel = () => {
     const label = buildLastLabel();
     if (!label) return;
     downloadBatchLabel(label);
+    if (active && label.barcode_label) setPrintedLabels(markLabelPrinted(active.id, label.barcode_label));
+    markBatchPrinted(lastBatch);
   };
 
   const completeValidation = async () => {
@@ -485,6 +556,7 @@ export default function ValidasiSjPage() {
         'success'
       );
       setActive(null);
+      if (active) clearPrintedLabels(active.id);
       loadItems();
       loadStats();
     } catch (error) {
@@ -520,6 +592,12 @@ export default function ValidasiSjPage() {
     item.status !== 'PENDING' && item.actual_qty != null && !!item.expired_date;
   const incompleteItems = active?.items?.filter((item) => !isItemComplete(item)) ?? [];
   const mismatchCount = active?.items?.filter((item) => item.status === 'MISMATCH').length ?? 0;
+  /**
+   * Hard gate cetak: item yang sudah lengkap tapi labelnya belum ditandai
+   * tercetak. Selesaikan Validasi terkunci selama daftar ini tidak kosong —
+   * label fisik wajib menempel sebelum dokumen boleh selesai.
+   */
+  const unprintedItems = unprintedCompleteItems(active?.items, printedLabels);
   const progress = active?.items?.length ? Math.round(((active.items.length - pendingCount) / active.items.length) * 100) : 0;
   const photoRequired = conditionRequiresPhoto(form.condition);
   const umurSelisih = sisaUmur.totalMonths - standarUmur;
@@ -620,7 +698,10 @@ export default function ValidasiSjPage() {
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                     <input id="validation-code" placeholder="Scan atau ketik PO..." className="input-field pl-9 bg-surface-raised text-sm py-2.5 focus:bg-surface-card" value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && findDocument()} aria-label="Kode validasi" />
                   </div>
-                  <button type="button" onClick={findDocument} disabled={busy || !code.trim()} className="btn-primary text-sm px-4 py-2.5 disabled:opacity-50 shrink-0">{busy ? '...' : 'Cari'}</button>
+                  <button type="button" onClick={() => findDocument()} disabled={busy || !code.trim()} className="btn-primary text-sm px-4 py-2.5 disabled:opacity-50 shrink-0">{busy ? '...' : 'Cari'}</button>
+                  <button type="button" onClick={() => setShowScanner(true)} aria-label="Buka scanner barcode" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-surface-card px-3 py-2.5 text-slate-700 transition-colors hover:bg-surface-raised shrink-0">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  </button>
                 </div>
                 {lookup && (
                   <div className="mt-4 space-y-3 rounded-xl border border-gray-100 bg-overlay-70 p-4 animate-fade-in">
@@ -641,6 +722,17 @@ export default function ValidasiSjPage() {
                 )}
               </div>
             </section>
+
+            <BarcodeScanner
+              open={showScanner}
+              onClose={() => setShowScanner(false)}
+              formats={SCAN_FORMATS_1D}
+              onDetected={(detected) => {
+                setShowScanner(false);
+                setCode(detected);
+                findDocument(detected);
+              }}
+            />
 
             {/* Progress Ring */}
             {svTotal > 0 && (
@@ -703,7 +795,7 @@ export default function ValidasiSjPage() {
 
               {/* Table - Desktop */}
               <div className="overflow-x-auto hidden md:block">
-                <table className="w-full min-w-[720px] border-collapse">
+                <table className="w-full min-w-180 border-collapse">
                   <caption className="sr-only">Daftar validasi dokumen</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-300 bg-surface-raised">
@@ -871,7 +963,7 @@ export default function ValidasiSjPage() {
         <div className="flex w-full flex-col gap-3">
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
             {active?.status === 'IN_PROGRESS' && (
-              <button type="button" onClick={completeValidation} disabled={busy || incompleteItems.length > 0 || !hasPermission('sj_validation.complete')} title={incompleteItems.length > 0 ? `Lengkapi ${incompleteItems.length} item terlebih dahulu (qty & expired)` : (!hasPermission('sj_validation.complete') ? 'Anda tidak memiliki izin menyelesaikan validasi' : (mismatchCount > 0 ? `Siap diselesaikan — ${mismatchCount} item selisih, email notifikasi akan dikirim` : undefined))} className="btn-primary inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" onClick={completeValidation} disabled={busy || incompleteItems.length > 0 || unprintedItems.length > 0 || !hasPermission('sj_validation.complete')} title={incompleteItems.length > 0 ? `Lengkapi ${incompleteItems.length} item terlebih dahulu (qty & expired)` : (unprintedItems.length > 0 ? `Cetak label ${unprintedItems.length} item terlebih dahulu (${unprintedItems.slice(0, 3).map((i) => i.kode_barang).join(', ')}${unprintedItems.length > 3 ? '…' : ''})` : (!hasPermission('sj_validation.complete') ? 'Anda tidak memiliki izin menyelesaikan validasi' : (mismatchCount > 0 ? `Siap diselesaikan — ${mismatchCount} item selisih, email notifikasi akan dikirim` : undefined)))} className="btn-primary inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>
                 Selesaikan Validasi
               </button>
@@ -884,6 +976,12 @@ export default function ValidasiSjPage() {
             <p className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium text-amber-700">
               <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
               {pendingCount > 0 ? `Validasi ${pendingCount} item terlebih dahulu` : `Lengkapi ${incompleteItems.length} item terlebih dahulu`}
+            </p>
+          )}
+          {active?.status === 'IN_PROGRESS' && incompleteItems.length === 0 && unprintedItems.length > 0 && (
+            <p className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium text-amber-700">
+              <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
+              {unprintedItems.length} label belum dicetak ({unprintedItems.slice(0, 3).map((i) => i.kode_barang).join(', ')}{unprintedItems.length > 3 ? ` +${unprintedItems.length - 3} lainnya` : ''}) — Selesaikan Validasi terkunci sampai semua label tercetak
             </p>
           )}
         </div>
@@ -911,7 +1009,7 @@ export default function ValidasiSjPage() {
             ) : (
               <>
             <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-ink-900 via-ink-900 to-ink-800 p-5 text-white shadow-xl shadow-black/20">
-              <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full border-[20px] border-primary-400/10" aria-hidden="true" />
+              <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full border-20 border-primary-400/10" aria-hidden="true" />
               <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-400/15 text-white shadow-lg ring-1 ring-white/10">
@@ -927,8 +1025,8 @@ export default function ValidasiSjPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:w-auto">
-                  <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-left sm:min-w-[100px]"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-fg-muted">Progres</p><p className="mt-0.5 text-xl font-black text-primary-300">{progress}%</p></div>
-                  <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-left sm:min-w-[100px]"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-fg-muted">Item</p><p className="mt-0.5 text-xl font-black text-emerald-300">{active.items?.length ?? 0}</p></div>
+                  <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-left sm:min-w-25"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-fg-muted">Progres</p><p className="mt-0.5 text-xl font-black text-primary-300">{progress}%</p></div>
+                  <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-left sm:min-w-25"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-fg-muted">Item</p><p className="mt-0.5 text-xl font-black text-emerald-300">{active.items?.length ?? 0}</p></div>
                 </div>
               </div>
               <div className="relative mt-5">
@@ -1021,7 +1119,7 @@ export default function ValidasiSjPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
-                          <BatchCell batch={item.batch} />
+                          <BatchCell batch={item.batch} printed={isLabelPrinted(item, printedLabels)} />
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
                         <td className="px-4 py-3 text-center">
@@ -1037,7 +1135,22 @@ export default function ValidasiSjPage() {
                         <td className="px-4 py-3 text-center"><span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${itemStatusStyle[item.status] || 'bg-gray-100 text-gray-600'} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full mr-1 ${item.status === 'PENDING' ? 'bg-amber-500' : item.status === 'VALIDATED' ? 'bg-emerald-500' : 'bg-red-500'}`} />{itemStatusLabel[item.status] || item.status}</span></td>
                         <td className="px-4 py-3 text-right">
                           {canEditItems(active, { canCorrectCompleted: active?.can_correct_completed }) && hasPermission('sj_validation.validate') ? (
-                            item.status === 'PENDING' ? (
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              {/* Cetak per baris: panel hijau di atas hanya menampilkan
+                                  item TERAKHIR, jadi tanpa tombol ini operator tidak
+                                  bisa menandai item lama yang panelnya sudah tertimpa. */}
+                              {item.status !== 'PENDING' && item.batch?.barcode_label && item.batch?.status !== 'CANCELLED' && (
+                                <button
+                                  type="button"
+                                  onClick={() => printItemLabel(item, false)}
+                                  title={`Cetak label ${item.batch.barcode_label}`}
+                                  className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isLabelPrinted(item, printedLabels) ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised'}`}
+                                >
+                                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
+                                  {isLabelPrinted(item, printedLabels) ? 'Cetak Ulang' : 'Cetak'}
+                                </button>
+                              )}
+                              {item.status === 'PENDING' ? (
                               <button type="button" onClick={() => openItem(item)} className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-chip-primary-border bg-chip-primary text-accent-text hover:bg-chip-primary'}`}>
                                 {item.standarisasi?.status && item.standarisasi.status !== 'approved' && <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
                                 Validasi
@@ -1047,7 +1160,8 @@ export default function ValidasiSjPage() {
                                 <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                                 Ubah
                               </button>
-                            )
+                            )}
+                            </div>
                           ) : (
                             /* Fallback kolom AKSI. Sengaja teks, bukan ikon
                                kunci: yang perlu diketahui operator adalah

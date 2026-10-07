@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\BiayaRetribusiExport;
+use App\Helpers\PdfCompressor;
 use App\Http\Controllers\Controller;
 use App\Imports\BiayaRetribusiImport;
 use App\Models\ApprovalAssignment;
@@ -776,10 +777,45 @@ class BiayaRetribusiController extends Controller
 
     public function import(Request $request)
     {
-        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,xlsx,xls,csv|max:10240',
+        ]);
+
         try {
+            $file = $request->file('file');
+            $originalName = $file->getClientOriginalName();
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            // Simpan file sementara ke storage/tmp
+            $tempPath = 'tmp/'.uniqid().'.'.$extension;
+            $file->move(storage_path('app/tmp'), $tempPath);
+            $sourcePath = storage_path('app/'.$tempPath);
+
+            if ($extension === 'pdf') {
+                // Kompres PDF dengan qpdf sebelum disimpan
+                $compressedPath = storage_path('app/tmp/'.uniqid().'_compressed.pdf');
+                PdfCompressor::compress($sourcePath, $compressedPath);
+                if (file_exists($compressedPath)) {
+                    $sourcePath = $compressedPath;
+                }
+
+                // Simpan ke disk publik, lalu return file_url
+                $finalPath = 'biaya_retribusi/import/'.uniqid().'.pdf';
+                Storage::disk('public')->put($finalPath, file_get_contents($sourcePath));
+
+                return response()->json([
+                    'message' => 'Import berhasil',
+                    'data' => [
+                        'file_url' => Storage::disk('public')->url($finalPath),
+                        'file_name' => $originalName,
+                        'file_size' => filesize($sourcePath),
+                    ],
+                ]);
+            }
+
+            // Import Excel/CSV
             $import = new BiayaRetribusiImport;
-            DB::transaction(fn () => Excel::import($import, $request->file('file')));
+            DB::transaction(fn () => Excel::import($import, $sourcePath));
 
             return response()->json([
                 'message' => 'Import berhasil',

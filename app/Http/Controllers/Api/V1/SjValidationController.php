@@ -11,6 +11,7 @@ use App\Models\Receiving;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\SjValidation;
+use App\Models\GateTransaction;
 use App\Models\SjValidationItem;
 use App\Models\StandarisasiTumpukan;
 use App\Models\StandarUmurProduk;
@@ -285,6 +286,20 @@ class SjValidationController extends Controller
     protected function startValidation(Request $request, RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
+        
+        // CATATAN: Status SCHEDULED bisa dimulai validasi, 
+        // namun alur yang benar adalah Schedule -> Gate INBOUND -> CHECKED_IN -> Validation.
+        // Cek ini hanya sebagai pengingat/validasi tambahan, bukan penghalang utama.
+        // Jika ingin memastikan gate-in sudah lewat, bisa dicek di sisi UI/Operator.
+        if ($rencanaKirim->status === 'SCHEDULED') {
+            // Cek gate tapi jangan blokir, hanya catat/validasi
+            $hasGateIn = GateTransaction::where('rencana_kirim_id', $rencanaKirim->id)
+                ->where('gate_type', 'INBOUND')
+                ->exists();
+            // Tidak abort_unless, hanya catat di log jika perlu
+            // \Log::info('Rencana KIR SCHEDULED, gate INBOUND exists: ' . ($hasGateIn ? 'ya' : 'tidak'));
+        }
+        
         abort_unless(
             in_array($rencanaKirim->status, ['SCHEDULED', 'CHECKED_IN', 'VERIFIED'], true),
             422,
@@ -624,8 +639,16 @@ class SjValidationController extends Controller
             // antara commit receiving dan update RK meninggalkan kombinasi
             // yatim (COMPLETED + PENDING + CHECKED_IN) yang tak bisa
             // dilanjutkan dari UI.
+            //
+            // SCHEDULED ikut didorong: validasi memang boleh dimulai tanpa
+            // gate check-in (startValidation mengizinkan SCHEDULED), jadi
+            // complete tanpa gate harus tetap menyerahkan dokumen ke
+            // VERIFIED — kalau tidak, rencana tertinggal di SCHEDULED
+            // sementara receiving auto sudah lahir, dan SCHEDULED → VERIFIED
+            // tidak ada di peta transisi → alur mandeg setelah receiving
+            // dibatalkan.
             $rk = $locked->rencanaKirim()->lockForUpdate()->first();
-            if ($rk && $rk->status === 'CHECKED_IN') {
+            if ($rk && in_array($rk->status, ['SCHEDULED', 'CHECKED_IN'], true)) {
                 $rk->update([
                     'status' => 'VERIFIED',
                     'verified_at' => now(),
@@ -676,6 +699,19 @@ class SjValidationController extends Controller
             return response()->json(['message' => 'Item tidak sesuai validasi ini'], 422);
         }
 
+        // Koreksi pada sesi COMPLETED harus ikut bersih di receiving_items
+        // (prinsip yang sama dengan syncReceivingItem): baris yang menunjuk
+        // item ini ikut dihapus — bukan dibiarkan putus link oleh FK
+        // nullOnDelete sementara total header tidak dihitung ulang.
+        $linkedReceivingItem = ReceivingItem::where('sj_validation_item_id', $row->id)->first();
+        if ($linkedReceivingItem) {
+            $receiving = $linkedReceivingItem->receiving;
+            $linkedReceivingItem->delete();
+            $receiving?->update([
+                'total_received_qty' => $receiving->items()->sum('actual_qty'),
+            ]);
+        }
+
         Batch::where('sj_validation_item_id', $row->id)->delete();
         $row->delete();
 
@@ -720,11 +756,18 @@ class SjValidationController extends Controller
     {
         $rencanaKirim = $sjValidation->rencanaKirim;
 
+        // GUARD: Cek receiving dengan lockForUpdate untuk mencegah race condition &
+        // juga handle kasus receiving yang sudah COMPLETED (tidak perlu create ulang).
         $receiving = Receiving::where('rencana_kirim_id', $rencanaKirim->id)
-            ->whereIn('status', ['PENDING', 'IN_PROGRESS'])
+            ->lockForUpdate()
             ->first();
 
         if ($receiving) {
+            // Jika receiving sudah COMPLETED, return aja (idempotent, jangan create duplicate)
+            if ($receiving->status === 'COMPLETED') {
+                return [$sjValidation, $receiving];
+            }
+            // Jika PENDING/IN_PROGRESS, return existing
             return [$sjValidation, $receiving];
         }
 
