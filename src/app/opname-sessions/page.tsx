@@ -8,7 +8,7 @@ import { formatDateId } from '@/lib/dates';
 import { useAuthStore } from '@/store/auth';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import BarcodeScanner from '@/components/BarcodeScanner';
+import BarcodeScanner, { SCAN_FORMATS_1D, SCAN_FORMATS_QR } from '@/components/BarcodeScanner';
 import { CONDITIONS } from '@/lib/condition';
 import { conditionRequiresPhoto } from '@/lib/condition';
 
@@ -613,6 +613,7 @@ function SessionDetailModal({ sessionId, detail, detailLoading, progress, canEdi
       <BarcodeScanner
         open={showScanner}
         onClose={() => setShowScanner(false)}
+        formats={[...SCAN_FORMATS_1D, ...SCAN_FORMATS_QR]}
         onDetected={(code) => {
           setShowScanner(false);
           const needle = code.trim().toLowerCase();
