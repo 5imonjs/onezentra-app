@@ -311,7 +311,7 @@ export default function ValidasiSjPage() {
   useEffect(() => {
     if (!showUmurPopup) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowUmurPopup(false); };
-    window.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, { passive: true });
     return () => window.removeEventListener('keydown', onKey);
   }, [showUmurPopup]);
 
