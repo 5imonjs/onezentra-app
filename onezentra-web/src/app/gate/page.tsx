@@ -183,18 +183,18 @@ export default function GatePage() {
     }
   };
 
-  const handleGateOut = async () => {
+  const handleGateIn = async () => {
     if (!foundRencanaKirim) return;
     setScanning(true);
     try {
       await gateTransactions.create({
         rencana_kirim_id: foundRencanaKirim.id as number,
-        gate_type: 'OUTBOUND',
+        gate_type: 'INBOUND',
         nopol: foundRencanaKirim.nopol as string,
         driver_name: foundRencanaKirim.driver_name as string,
         po_transporter: foundRencanaKirim.po_transporter as string,
       });
-      setScanResult({ success: true, message: 'Gate OUT berhasil dicatat. Status: Selesai' });
+      setScanResult({ success: true, message: 'Gate IN berhasil dicatat. Status: Selesai' });
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
@@ -206,7 +206,29 @@ export default function GatePage() {
     }
   };
 
-  const handleVerify = async () => {
+  // Aksi gate IN hanya — OUTBOUND tidak aktif dalam sistem receiving-only
+  // const handleGateOut = async () => {
+  //   if (!foundRencanaKirim) return;
+  //   setScanning(true);
+  //   try {
+  //     await gateTransactions.create({
+  //       rencana_kirim_id: foundRencanaKirim.id as number,
+  //       gate_type: 'OUTBOUND',
+  //       nopol: foundRencanaKirim.nopol as string,
+  //       driver_name: foundRencanaKirim.driver_name as string,
+  //       po_transporter: foundRencanaKirim.po_transporter as string,
+  //     });
+  //     setScanResult({ success: true, message: 'Gate OUT berhasil dicatat. Status: Selesai' });
+  //     setFoundRencanaKirim(null);
+  //     setScanNoDokumen('');
+  //     loadItems();
+  //     loadStats();
+  //   } catch (e) {
+  //     setScanResult({ success: false, message: getErrorMessage(e, 'Error') });
+  //   } finally {
+  //     setScanning(false);
+  //   }
+  // };
     if (!foundRencanaKirim) return;
     setScanning(true);
     try {
@@ -474,7 +496,7 @@ export default function GatePage() {
 
                 {/* Penjelasan untuk menghindari ambiguitas */}
                 <p className="text-xs text-slate-500 mt-2">
-                  <strong>Catatan:</strong> <span className="font-medium">Gate Type</span> = Tipe transaksi gerbang (INBOUND = masuk, OUTBOUND = keluar). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo). Kedua field ini berasal dari tabel berbeda namun both wajib untuk melengkapi status operasional.
+                  <strong>Catatan:</strong> <span className="font-medium">Gate Type</span> = Tipe transaksi gerbang (INBOUND = masuk). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo). Masukkan data melalui Gate INBOUND setelah rencana kirim status SCHEDULED.
                 </p>
 
               {/* Mobile cards */}

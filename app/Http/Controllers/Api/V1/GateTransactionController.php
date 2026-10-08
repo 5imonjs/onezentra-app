@@ -16,7 +16,7 @@ class GateTransactionController extends Controller
     {
         $request->validate([
             'status' => 'nullable|string|in:CHECKED_IN,COMPLETED',
-            'gate_type' => 'nullable|string|in:INBOUND,OUTBOUND',
+            'gate_type' => 'nullable|string|in:INBOUND',  // Hanya INBOUND digunakan, OUTBOUND tidak aktif
         ]);
 
         $query = GateTransaction::with(['rencanaKirim']);
@@ -65,7 +65,7 @@ class GateTransactionController extends Controller
     {
         $validated = $request->validate([
             'rencana_kirim_id' => 'required|exists:rencana_kirim,id',
-            'gate_type' => 'required|string|in:INBOUND,OUTBOUND',
+            'gate_type' => 'required|string|in:INBOUND',
             'nopol' => 'nullable|string|max:50',
             'driver_name' => 'nullable|string|max:100',
             'po_transporter' => 'nullable|string|max:50',
@@ -82,15 +82,6 @@ class GateTransactionController extends Controller
             // Jaga invariant state machine: gate tidak boleh melewati alur validasi/receiving.
             if ($validated['gate_type'] === 'INBOUND' && $rencanaKirim->status !== 'SCHEDULED') {
                 abort(422, "Gate INBOUND hanya dapat dilakukan untuk rencana dengan status SCHEDULED (status saat ini: {$rencanaKirim->status}).");
-            }
-
-            if ($validated['gate_type'] === 'OUTBOUND' && $rencanaKirim->status !== 'COMPLETED') {
-                abort(422, 
-                    "Gate OUTBOUND hanya dapat dibuat ketika Rencana Kirim status **COMPLETED**. 
-                    • Lakukan verifikasi terlebih dahulu: status CHECKED_IN → VERIFIED  
-                    • Lakukan receiving dan selesaikan hingga COMPLETED  
-                    • Baru kemudian dapat membuat Gate OUTBOUND untuk proses pengiriman"
-                );
             }
 
             // GUARD: Cek existencia dengan lockForUpdate untuk mencegah race condition
