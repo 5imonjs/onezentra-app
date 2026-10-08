@@ -111,6 +111,17 @@ class StandarisasiTumpukanController extends Controller
             'nama_depo' => 'nullable|string|max:150',
         ]);
 
+        // Cek duplikasi: hindari request standarisasi ganda dengan npn_id yang sama dan status pending
+        $existing = StandarisasiTumpukan::where('npn_id', $validated['npn_id'])
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => 'Standarisasi tumpukan already exists for this product. Please update the existing request or wait for approval.',
+            ], 422);
+        }
+
         $validated['requested_by'] = $request->user()->id;
         $validated['requested_by_email'] = $request->user()->email;
         $validated['status'] = 'pending';

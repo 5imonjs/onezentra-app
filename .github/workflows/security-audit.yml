@@ -1,0 +1,51 @@
+name: Security Audit
+
+on:
+  schedule:
+    # Jalankan minimal sekali per bulan (di hari ke-15 setiap bulan)
+    - cron: '0 3 15 * *'
+  workflow_dispatch:
+    # Jug bisa di-trigger manual dari Actions UI
+    inputs:
+      reason:
+        description: 'Alasan manual menjalankan audit'
+        required: false
+        default: 'Manual trigger'
+
+jobs:
+  run-security-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, pdo, sqlite, curl, dom, xml, tokenizer
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Generate application key
+        run: php artisan key:generate --no-interaction
+
+      - name: Run database migrations
+        run: php artisan migrate:fresh --force
+
+      - name: Run security audit tests
+        run: php vendor/bin/phpunit --filter=SecurityAuditTest
+        env:
+          # Pastikan DB dalam mode testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: :memory:
+
+      - name: Upload test results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-results
+          path: tests/Feature/SecurityAuditTest.php
+          retention-days: 30

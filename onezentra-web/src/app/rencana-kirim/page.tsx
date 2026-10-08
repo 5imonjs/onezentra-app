@@ -473,6 +473,9 @@ export default function RencanaKirimPage() {
   const [typingItems, setTypingItems] = useState<Set<number>>(new Set());
   // Anti race: respons basi (ketikan sudah berubah) dibuang.
   const reqIdRef = useRef(0);
+  // Filter state untuk dropdown
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [filterKodeDepo, setFilterKodeDepo] = useState<string | null>(null);
 
   const markTyping = (index: number, isTyping: boolean) => {
     setTypingItems(prev => {
@@ -515,7 +518,11 @@ export default function RencanaKirimPage() {
     const reqId = ++reqIdRef.current;
     try {
       setLoading(true);
-      const res = await rencanaKirim.list({ search, page, per_page: 20 });
+      // Build params filter — only include when filter has a value
+      const filterParams: Record<string, unknown> = { search, page, per_page: 20 };
+      if (filterStatus) filterParams.status = filterStatus;
+      if (filterKodeDepo) filterParams.kode_depo = filterKodeDepo;
+      const res = await rencanaKirim.list(filterParams);
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
       setLastPage(res.data.last_page);
@@ -529,7 +536,7 @@ export default function RencanaKirimPage() {
     } finally {
       if (reqIdRef.current === reqId) setLoading(false);
     }
-  }, [search, page]);
+  }, [search, page, filterStatus, filterKodeDepo]);
 
   useEffect(() => { loadItems(true); }, [loadItems]);
 
@@ -1003,6 +1010,40 @@ export default function RencanaKirimPage() {
                   </div>
                   <div className="flex-1 sm:max-w-md">
                     <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO Transporter/RKH/driver..." resultCount={items.length} totalCount={rkStats?.total} currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0} currentTo={(page - 1) * 20 + items.length} resultLabel="rencana" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <select
+                        value={filterStatus ?? 'Semua'}
+                        onChange={(e) => { setFilterStatus(e.target.value || null); setPage(1); }}
+                        className="appearance-none py-2 px-3 border border-slate-300 rounded-xl bg-surface-card text-gray-900 leading-tfocus focus:outline-none focus:ring-primary-500 focus:border-primary-500 shadow-sm min-w-[120px]"
+                      >
+                        <option value="">Semua</option>
+                        <option value="DRAFT">Draft</option>
+                        <option value="SCHEDULED">Dijadwalkan</option>
+                        <option value="CHECKED_IN">Check In</option>
+                        <option value="VERIFIED">Terverifikasi</option>
+                        <option value="IN_PROGRESS">Diproses</option>
+                        <option value="COMPLETED">Selesai</option>
+                        <option value="CANCELLED">Dibatalkan</option>
+                      </select>
+                      <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
+                    </div>
+                    <div className="relative ml-2">
+                      <select
+                        value={filterKodeDepo ?? ''}
+                        onChange={(e) => { setFilterKodeDepo(e.target.value || null); setPage(1); }}
+                        className="appearance-none py-2 px-3 border border-slate-300 rounded-xl bg-surface-card text-gray-900 leading-tfocus focus:outline-none focus:ring-primary-500 focus:border-primary-500 shadow-sm min-w-[160px] pr-10"
+                      >
+                        <option value="">Semua Depo</option>
+                        {depoList.map((d) => (
+                          <option key={d.kode_depo} value={d.kode_depo}>
+                            {d.nama_depo} ({d.kode_depo})
+                          </option>
+                        ))}
+                      </select>
+                      <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {hasPermission('rencana_kirim.create') && (

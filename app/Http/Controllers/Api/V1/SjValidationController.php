@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Mail\SelisihQtyNotification;
 use App\Mail\SjValidated;
 use App\Models\Batch;
+use App\Models\GateTransaction;
 use App\Models\Npn;
 use App\Models\Receiving;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\SjValidation;
-use App\Models\GateTransaction;
 use App\Models\SjValidationItem;
 use App\Models\StandarisasiTumpukan;
 use App\Models\StandarUmurProduk;
@@ -176,13 +176,33 @@ class SjValidationController extends Controller
     /**
      * Catat/update standarisasi tumpukan dari proses validasi. Dipanggil saat
      * cheker mengisi tier & tinggi karena produk belum punya standarisasi.
-     * Update record terbaru (updateOrCreate) agar data tetap segar;
-     * status dikunci pending agar menunggu approval admin distributor.
+     * Record existing ditemukan berdasarkan npn_id — jika sudah ada (terebus atau pending),
+     * hanya data tier/tinggi/total diperbarui; status tetap 'pending' hingga admin
+     * distributor approve. Hanya jika tidak ada record sama sekali baru dibuat.
+     *
+     * Mencegah duplikat: jika sudah ada record dengan status 'pending', lempar error
+     * agar konsisten dengan proteksi di StandarisasiTumpukanController@store.
      */
     protected function upsertStandarisasiTumpukan(SjValidationItem $item, User $user, array $data): void
     {
         $tier = (int) ($data['tier'] ?? 0);
         $tinggi = (int) ($data['tinggi_tumpukan'] ?? 0);
+
+        if (! $item->npn_id) {
+            return;
+        }
+
+        // Cek duplikasi: tolak jika sudah ada standarisasi pending untuk npn_id ini.
+        // Konsisten dengan proteksi di StandarisasiTumpukanController@store.
+        $existingPending = StandarisasiTumpukan::where('npn_id', $item->npn_id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existingPending) {
+            throw ValidationException::withMessages([
+                'standarisasi' => ['Standarisasi tumpukan already exists for this product. Please update the existing request or wait for approval.'],
+            ]);
+        }
 
         $payload = [
             'tier' => $tier,
@@ -190,26 +210,24 @@ class SjValidationController extends Controller
             'total_tier_tinggi' => $tier > 0 && $tinggi > 0 ? $tier * $tinggi : null,
             'requested_by' => $user->id,
             'requested_by_email' => $user->email,
-            'status' => 'pending',
         ];
 
-        if (! $item->npn_id) {
-            return;
-        }
-
-        $stack = StandarisasiTumpukan::query()
-            ->where('npn_id', $item->npn_id)
+        // Cari record standarisasi sudah ada untuk npn_id ini (berdasarkan urutan terbaru).
+        // Status yang bukan 'pending' (misal approved/rejected) boleh dibuat ulang.
+        $existing = StandarisasiTumpukan::where('npn_id', $item->npn_id)
             ->orderByDesc('id')
             ->first();
 
-        if ($stack) {
-            $stack->update($payload);
+        if ($existing) {
+            // Update data tier/tinggi/total hanya — status 'pending' tetep hingga admin approve.
+            $existing->update(array_merge($payload, ['status' => 'pending']));
 
             return;
         }
 
+        // Tidak ada record sama sekali → buat baru dengan status pending.
         StandarisasiTumpukan::create(array_merge(
-            ['npn_id' => $item->npn_id],
+            ['npn_id' => $item->npn_id, 'status' => 'pending'],
             $payload,
             $user->depotAttributes([])
         ));
@@ -286,8 +304,8 @@ class SjValidationController extends Controller
     protected function startValidation(Request $request, RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
-        
-        // CATATAN: Status SCHEDULED bisa dimulai validasi, 
+
+        // CATATAN: Status SCHEDULED bisa dimulai validasi,
         // namun alur yang benar adalah Schedule -> Gate INBOUND -> CHECKED_IN -> Validation.
         // Cek ini hanya sebagai pengingat/validasi tambahan, bukan penghalang utama.
         // Jika ingin memastikan gate-in sudah lewat, bisa dicek di sisi UI/Operator.
@@ -299,7 +317,7 @@ class SjValidationController extends Controller
             // Tidak abort_unless, hanya catat di log jika perlu
             // \Log::info('Rencana KIR SCHEDULED, gate INBOUND exists: ' . ($hasGateIn ? 'ya' : 'tidak'));
         }
-        
+
         abort_unless(
             in_array($rencanaKirim->status, ['SCHEDULED', 'CHECKED_IN', 'VERIFIED'], true),
             422,
@@ -767,6 +785,7 @@ class SjValidationController extends Controller
             if ($receiving->status === 'COMPLETED') {
                 return [$sjValidation, $receiving];
             }
+
             // Jika PENDING/IN_PROGRESS, return existing
             return [$sjValidation, $receiving];
         }
