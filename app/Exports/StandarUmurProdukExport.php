@@ -49,9 +49,10 @@ class StandarUmurProdukExport implements FromQuery, ShouldAutoSize, WithHeadings
         $query = StandarUmurProduk::query();
 
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('material', 'like', '%'.$this->search.'%')
-                    ->orWhere('material_description', 'like', '%'.$this->search.'%');
+            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('material LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('material_description LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 

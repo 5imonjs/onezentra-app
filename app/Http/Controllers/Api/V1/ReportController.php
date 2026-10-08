@@ -23,6 +23,15 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
+    /**
+     * Pola LIKE dengan wildcard user yang di-escape (\, %, _) + ESCAPE '\',
+     * pola yang sama dengan RoleController/UserController.
+     */
+    private static function likePattern(string $search): string
+    {
+        return '%'.addcslashes($search, '\\%_').'%';
+    }
+
     public function selisihQty(Request $request): JsonResponse
     {
         $request->validate([
@@ -468,15 +477,15 @@ class ReportController extends Controller
         }
 
         if ($request->search) {
-            $like = "%{$request->search}%";
+            $like = self::likePattern($request->search);
             $query->where(fn ($q) => $q
-                ->where('nama_thl', 'like', $like)
-                ->orWhere('no_surat_jalan', 'like', $like)
-                ->orWhere('nopol_kendaraan', 'like', $like)
-                ->orWhere('type_kendaraan', 'like', $like)
+                ->whereRaw('nama_thl LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('no_surat_jalan LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('nopol_kendaraan LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('type_kendaraan LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereHas('biayaThl', fn ($r) => $r
-                    ->where('nama_depo', 'like', $like)
-                    ->orWhere('kode_depo', 'like', $like)));
+                    ->whereRaw('nama_depo LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('kode_depo LIKE ? ESCAPE ?', [$like, '\\'])));
         }
 
         $query->orderByDesc('biaya_thl_details.id');
@@ -527,14 +536,14 @@ class ReportController extends Controller
         }
 
         if ($request->search) {
-            $like = "%{$request->search}%";
+            $like = self::likePattern($request->search);
             $query->where(fn ($q) => $q
-                ->where('no_surat_jalan', 'like', $like)
-                ->orWhere('nopol_kendaraan', 'like', $like)
-                ->orWhere('type_kendaraan', 'like', $like)
+                ->whereRaw('no_surat_jalan LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('nopol_kendaraan LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('type_kendaraan LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereHas('biayaRetribusi', fn ($r) => $r
-                    ->where('nama_depo', 'like', $like)
-                    ->orWhere('kode_depo', 'like', $like)));
+                    ->whereRaw('nama_depo LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('kode_depo LIKE ? ESCAPE ?', [$like, '\\'])));
         }
 
         $query->orderByDesc('biaya_retribusi_details.id');
@@ -606,15 +615,15 @@ class ReportController extends Controller
         }
 
         if ($request->search) {
-            $like = "%{$request->search}%";
+            $like = self::likePattern($request->search);
             $query->where(fn ($q) => $q
-                ->where('kode_barang', 'like', $like)
-                ->orWhere('nama_barang', 'like', $like)
-                ->orWhere('sumber_material', 'like', $like)
+                ->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('sumber_material LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r
-                    ->where('po_transporter', 'like', $like)
-                    ->orWhere('shipper_name', 'like', $like)
-                    ->orWhere('driver_name', 'like', $like)));
+                    ->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('shipper_name LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])));
         }
 
         $query->orderByDesc('tanggal_penerimaan')->orderByDesc('receiving_items.id');

@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Receiving;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -19,18 +20,33 @@ class ReceivingExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMa
 
     public ?string $status = null;
 
-    public function __construct(?string $search = null, ?string $status = null)
+    public ?User $user = null;
+
+    public ?string $kodeDepo = null;
+
+    public function __construct(?string $search = null, ?string $status = null, ?User $user = null, ?string $kodeDepo = null)
     {
         $this->search = $search;
         $this->status = $status;
+        $this->user = $user;
+        $this->kodeDepo = $kodeDepo;
     }
 
     public function query(): Builder|EloquentBuilder|Relation
     {
         $query = Receiving::with(['rencanaKirim', 'dock']);
 
+        // Export WAJIB ter-scope depo seperti index: user tanpa
+        // depot.view_all hanya mengekspor receiving depo sendiri.
+        if ($this->user && $this->user->isDepotScoped()) {
+            $query->whereHas('rencanaKirim', fn ($q) => $q->forUserDepot($this->user));
+        } elseif ($this->kodeDepo) {
+            $query->whereHas('rencanaKirim', fn ($q) => $q->where('kode_depo', $this->kodeDepo));
+        }
+
         if ($this->search) {
-            $query->whereHas('rencanaKirim', fn ($q) => $q->where('po_transporter', 'like', '%'.$this->search.'%'));
+            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $query->whereHas('rencanaKirim', fn ($q) => $q->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\']));
         }
         if ($this->status) {
             $query->where('status', $this->status);

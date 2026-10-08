@@ -21,12 +21,13 @@ class NpnController extends Controller
     {
         $query = Npn::query();
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('szNickName', 'like', '%'.$request->search.'%')
-                    ->orWhere('BOSnetszProductId', 'like', '%'.$request->search.'%')
-                    ->orWhere('SAPszProductId', 'like', '%'.$request->search.'%')
-                    ->orWhere('szShortDescription', 'like', '%'.$request->search.'%')
-                    ->orWhere('szBarcode', 'like', '%'.$request->search.'%');
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szShortDescription LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
         if ($request->filled('kode_depo')) {
@@ -59,6 +60,8 @@ class NpnController extends Controller
         ]);
 
         $validated['created_by'] = Auth::id();
+        // Kunci depo untuk user scoped agar tidak bisa menyuntik baris ke depo lain.
+        $validated = $this->currentUser()->depotAttributes($validated);
         $npn = Npn::create($validated);
 
         return response()->json(['message' => 'NPN created', 'data' => $npn], 201);
@@ -159,7 +162,14 @@ class NpnController extends Controller
             'ids.*' => 'exists:npn,id',
         ]);
 
-        $deleted = Npn::whereIn('id', $request->ids)->delete();
+        $user = $this->currentUser();
+        // Samakan dengan destroy(): hanya baris yang boleh diakses user yang dihapus.
+        $ids = Npn::whereIn('id', $request->ids)->get()
+            ->filter(fn ($npn) => $user->canAccessDepotRow($npn->kode_depo, $npn->nama_depo))
+            ->map(fn ($npn) => $npn->id)
+            ->all();
+
+        $deleted = empty($ids) ? 0 : Npn::whereIn('id', $ids)->delete();
 
         return response()->json(['message' => 'Selected NPN deleted', 'deleted' => $deleted]);
     }
@@ -192,7 +202,7 @@ class NpnController extends Controller
                 ])->toArray(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('NPN Import Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('NPN Import Error', ['error' => $e->getMessage()]);
 
             return response()->json([
                 'message' => 'Import gagal. Silakan periksa file dan coba lagi.',
@@ -227,19 +237,19 @@ class NpnController extends Controller
     {
         $request->validate(['q' => 'required|string|min:1']);
 
-        $term = '%'.$request->q.'%';
+        $like = '%'.addcslashes($request->q, '\\%_').'%';
         $query = Npn::select('id', 'BOSnetszProductId', 'SAPszProductId', 'SAPszUomId', 'SAPdecUom', 'decVolume', 'szNickName', 'szNickNameNew', 'szShortDescription', 'decUomConversion1', 'BOSnetdecUom')
             // Ikut mencari szShortDescription/SAP ID/barcode karena itulah teks yang
             // benar-benar tampil pada picker, bukan hanya nickname produk.
-            ->where(function ($q) use ($term) {
-                $q->where('szNickName', 'like', $term)
-                    ->orWhere('szNickNameNew', 'like', $term)
-                    ->orWhere('szShortDescription', 'like', $term)
-                    ->orWhere('BOSnetszProductId', 'like', $term)
-                    ->orWhere('SAPszProductId', 'like', $term)
-                    ->orWhere('szBarcode', 'like', $term)
-                    ->orWhere('szBarcodeSekunder', 'like', $term)
-                    ->orWhere('szBarcodeTersier', 'like', $term);
+            ->where(function ($q) use ($like) {
+                $q->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szNickNameNew LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szShortDescription LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szBarcodeSekunder LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szBarcodeTersier LIKE ? ESCAPE ?', [$like, '\\']);
             })
             ->where('szStatus', 'EXISTING')
             ->orderBy('szNickName')

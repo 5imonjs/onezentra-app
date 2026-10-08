@@ -5,6 +5,8 @@ import type { NextRequest } from 'next/server';
 // Str::slug(APP_NAME).'-session'). Bisa dioverride via env SESSION_COOKIE_NAME.
 const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'laravel-session';
 
+// WAJIB set BACKEND_URL di prod (contoh: BACKEND_URL=https://api.domain-anda.com).
+// Fallback http://localhost:8000 hanya untuk dev lokal.
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
 const PUBLIC_PATHS = ['/login'];
@@ -19,6 +21,33 @@ const SKIP_PATTERNS = [
   '\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|eot|css|js|map|txt|xml|webmanifest)$',
 ];
 
+/**
+ * Header yang diteruskan ke backend (whitelist). `host`, `connection`, dan
+ * `content-length` JANGAN diteruskan (sudah diatur ulang oleh fetch/undici).
+ * Referer/Origin dipertahankan agar Sanctum stateful (lihat general.md).
+ */
+const FORWARDED_HEADERS = [
+  'cookie',
+  'accept',
+  'content-type',
+  'x-xsrf-token',
+  'x-requested-with',
+  'referer',
+  'origin',
+  'authorization',
+] as const;
+
+export function buildForwardHeaders(source: Headers): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const name of FORWARDED_HEADERS) {
+    const value = source.get(name);
+    if (value === null) continue;
+    if (name === 'referer') out['Referer'] = value;
+    else if (name === 'origin') out['Origin'] = value;
+    else out[name] = value;
+  }
+  return out;
+}
 // axios memakai baseURL '/api/v1', sehingga request CSRF menjadi
 // '/api/v1/sanctum/csrf-cookie'. Rute Sanctum di backend hanya ada di
 // '/sanctum/csrf-cookie' — terjemahkan path-nya di sini.
@@ -75,7 +104,7 @@ export async function proxy(request: NextRequest) {
       // dan CSRF ditetapkan di domain frontend (localhost:3000).
       const fetchOptions: RequestInit & { duplex?: 'half' } = {
         method: request.method,
-        headers: Object.fromEntries(request.headers),
+        headers: buildForwardHeaders(request.headers),
         body: request.body,
         // `duplex` wajib untuk stream body di undici, tapi belum ada di
         // RequestInit DOM standar — karena itu tipe disempitkan di atas.

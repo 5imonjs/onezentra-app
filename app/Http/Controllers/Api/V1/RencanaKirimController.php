@@ -16,6 +16,7 @@ use App\Models\RencanaKirimItem;
 use App\Models\SjValidation;
 use App\Models\StandarUmurProduk;
 use App\Services\EmailNotificationService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,11 +93,12 @@ class RencanaKirimController extends Controller
         $query = RencanaKirim::with(['items.npn', 'creator'])->forUserDepot($request->user());
 
         if ($request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->where('po_transporter', 'like', "%{$request->search}%")
-                    ->orWhere('driver_name', 'like', "%{$request->search}%")
-                    ->orWhere('nopol', 'like', "%{$request->search}%")
-                    ->orWhere('destination_name', 'like', "%{$request->search}%");
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('nopol LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('destination_name LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 
@@ -137,7 +139,7 @@ class RencanaKirimController extends Controller
     public function store(Request $request): JsonResponse
     {
         // Normalisasi identifier PO (memudahkan deteksi duplikat antar engine DB).
-        $request->merge(['po_transporter' => strtoupper(trim((string) $request->input('po_transporter')))]);
+        $request->merge(['po_transporter' => self::normalizePoTransporter((string) $request->input('po_transporter'))]);
 
         $validated = $request->validate([
             'po_transporter' => [
@@ -194,21 +196,26 @@ class RencanaKirimController extends Controller
 
         // Header + items ditulis atomik: sebagian item tanpa header (atau sebaliknya)
         // akan merusak total_qty dan acuan validasi SJ.
-        $rencanaKirim = DB::transaction(function () use ($validated, $items) {
-            $rencanaKirim = RencanaKirim::create($validated);
+        try {
+            $rencanaKirim = DB::transaction(function () use ($validated, $items) {
+                $rencanaKirim = RencanaKirim::create($validated);
 
-            if (isset($items)) {
-                $totalQty = 0;
-                foreach ($items as $item) {
-                    $item['rencana_kirim_id'] = $rencanaKirim->id;
-                    RencanaKirimItem::create($item);
-                    $totalQty += $item['jumlah'];
+                if (isset($items)) {
+                    $totalQty = 0;
+                    foreach ($items as $item) {
+                        $item['rencana_kirim_id'] = $rencanaKirim->id;
+                        RencanaKirimItem::create($item);
+                        $totalQty += $item['jumlah'];
+                    }
+                    $rencanaKirim->update(['total_qty' => $totalQty]);
                 }
-                $rencanaKirim->update(['total_qty' => $totalQty]);
-            }
 
-            return $rencanaKirim;
-        });
+                return $rencanaKirim;
+            });
+        } catch (QueryException $e) {
+            abort_if($this->isDuplicateKey($e), 422, 'PO Transporter ini sudah dipakai pada rencana kirim lain di depo yang sama.');
+            throw $e;
+        }
 
         $rencanaKirim->load('items.npn');
         $this->attachStandarUmur($rencanaKirim->items);
@@ -242,24 +249,33 @@ class RencanaKirimController extends Controller
             422,
             "Rencana kirim berstatus {$rencanaKirim->status} tidak dapat diedit."
         );
+        // Pindah depo = ubah kepemilikan/audit dokumen: hanya admin_master.
+        // Cek unik PO di bawah memakai depo TUJUAN agar duplikat di depo
+        // tujuan tidak lolos via celah "cek ke depo asal".
+        $targetDepo = $rencanaKirim->kode_depo;
+        if ($request->filled('kode_depo') && $request->input('kode_depo') !== $rencanaKirim->kode_depo) {
+            // User scoped: depo di-strip diam-diam di bawah (kontrak lama:
+            // 200 + field lain tetap diterapkan). Yang ditolak tegas hanya
+            // pemegang depot.view_all non-admin.
+            abort_unless(
+                $request->user()->isDepotScoped() || $request->user()->isAdminMaster(),
+                403,
+                'Hanya admin master yang dapat memindahkan dokumen antar depo.'
+            );
+            $targetDepo = $request->user()->isAdminMaster() ? $request->input('kode_depo') : $targetDepo;
+        }
         // Sesi validasi yang sedang berjalan memakai snapshot item sebagai
-        // acuan cheker. Edit (delete-all + insert ulang) di tengah jalan
-        // membuat acuan berubah diam-diam — batalkan sesi validasi dulu
-        // bila memang ada perubahan.
-        // HANYA blokir jika item yang diedit ada di dalam sesi validasi yang sedang berjalan.
+        // acuan cheker. Edit APAPUN (termasuk header seperti driver_name)
+        // di tengah jalan membuat acuan berubah diam-diam — blokir seluruh
+        // update selama ada sesi IN_PROGRESS; batalkan sesi dulu bila perlu.
         abort_if(
             SjValidation::where('rencana_kirim_id', $rencanaKirim->id)
                 ->where('status', 'IN_PROGRESS')
-                ->whereHas('items', function ($q) use ($request) {
-                    $q->whereIn('rencana_kirim_item_id', 
-                        collect($request->input('items.*.id', []))->filter()->values()
-                    );
-                })
                 ->exists(),
             422,
             'Rencana kirim sedang divalidasi sehingga tidak dapat diedit. Batalkan sesi validasi terlebih dahulu bila ada perubahan.');
         if ($request->filled('po_transporter')) {
-            $request->merge(['po_transporter' => strtoupper(trim($request->input('po_transporter')))]);
+            $request->merge(['po_transporter' => self::normalizePoTransporter((string) $request->input('po_transporter'))]);
         }
 
         $validated = $request->validate([
@@ -267,7 +283,7 @@ class RencanaKirimController extends Controller
                 'sometimes', 'required', 'string', 'max:100',
                 Rule::unique('rencana_kirim', 'po_transporter')
                     ->where(fn ($query) => $query
-                        ->where('kode_depo', $rencanaKirim->kode_depo)
+                        ->where('kode_depo', $targetDepo)
                         ->whereRaw('LOWER(po_transporter) = LOWER(?)', [$request->input('po_transporter')]))
                     ->ignore($rencanaKirim->id),
             ],
@@ -318,26 +334,32 @@ class RencanaKirimController extends Controller
 
         // User depot-scoped tidak boleh memindahkan dokumen ke depo lain
         // lewat update: buang dari validated sehingga depo tersimpan utuh.
+        // (Pindah depo oleh non-admin sudah ditolak 403 di atas.)
         if ($request->user()->isDepotScoped()) {
             unset($validated['kode_depo'], $validated['nama_depo']);
         }
 
         // Header + items (delete-all lalu insert ulang) ditulis atomik: kegagalan di
         // tengah jalan tidak boleh meninggalkan item baru dengan total_qty lama.
-        DB::transaction(function () use ($rencanaKirim, $validated, $items) {
-            $rencanaKirim->update($validated);
+        try {
+            DB::transaction(function () use ($rencanaKirim, $validated, $items) {
+                $rencanaKirim->update($validated);
 
-            if (isset($items)) {
-                $rencanaKirim->items()->delete();
-                $totalQty = 0;
-                foreach ($items as $item) {
-                    $item['rencana_kirim_id'] = $rencanaKirim->id;
-                    RencanaKirimItem::create($item);
-                    $totalQty += $item['jumlah'];
+                if (isset($items)) {
+                    $rencanaKirim->items()->delete();
+                    $totalQty = 0;
+                    foreach ($items as $item) {
+                        $item['rencana_kirim_id'] = $rencanaKirim->id;
+                        RencanaKirimItem::create($item);
+                        $totalQty += $item['jumlah'];
+                    }
+                    $rencanaKirim->update(['total_qty' => $totalQty]);
                 }
-                $rencanaKirim->update(['total_qty' => $totalQty]);
-            }
-        });
+            });
+        } catch (QueryException $e) {
+            abort_if($this->isDuplicateKey($e), 422, 'PO Transporter ini sudah dipakai pada rencana kirim lain di depo yang sama.');
+            throw $e;
+        }
 
         $rencanaKirim->load('items.npn');
         $this->attachStandarUmur($rencanaKirim->items);
@@ -360,8 +382,17 @@ class RencanaKirimController extends Controller
             422,
             "Rencana kirim berstatus {$rencanaKirim->status} tidak dapat dihapus."
         );
-        $rencanaKirim->items()->delete();
-        $rencanaKirim->delete();
+
+        DB::transaction(function () use ($rencanaKirim): void {
+            $locked = RencanaKirim::whereKey($rencanaKirim->id)->lockForUpdate()->firstOrFail();
+            abort_unless(
+                in_array($locked->status, ['DRAFT', 'CANCELLED'], true),
+                422,
+                "Rencana kirim berstatus {$locked->status} tidak dapat dihapus."
+            );
+            $locked->items()->delete();
+            $locked->delete();
+        });
 
         return response()->json(['message' => 'Rencana kirim berhasil dihapus']);
     }
@@ -369,21 +400,24 @@ class RencanaKirimController extends Controller
     public function schedule(RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
-        $this->assertTransition($rencanaKirim, 'SCHEDULED');
 
-        $this->transitionRencanaKirim($rencanaKirim, 'SCHEDULED');
+        $rencanaKirim = DB::transaction(function () use ($rencanaKirim): RencanaKirim {
+            $locked = RencanaKirim::whereKey($rencanaKirim->id)->lockForUpdate()->firstOrFail();
+            $this->assertTransition($locked, 'SCHEDULED');
+            $locked->update([
+                'status' => 'SCHEDULED',
+                'scheduled_at' => now(),
+            ]);
 
-        $rencanaKirim->update([
-            'status' => 'SCHEDULED',
-            'scheduled_at' => now(),
-        ]);
+            $this->emailService->send(
+                'rencana_kirim',
+                'created',
+                $locked,
+                new RencanaKirimCreated($locked->fresh(['items', 'creator']))
+            );
 
-        $this->emailService->send(
-            'rencana_kirim',
-            'created',
-            $rencanaKirim,
-            new RencanaKirimCreated($rencanaKirim->fresh(['items', 'creator']))
-        );
+            return $locked;
+        });
 
         return response()->json([
             'message' => 'Rencana kirim berhasil dijadwalkan',
@@ -394,7 +428,13 @@ class RencanaKirimController extends Controller
     public function verify(RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
-        $this->transitionRencanaKirim($rencanaKirim, 'VERIFIED');
+
+        $rencanaKirim = DB::transaction(function () use ($rencanaKirim): RencanaKirim {
+            $locked = RencanaKirim::whereKey($rencanaKirim->id)->lockForUpdate()->firstOrFail();
+            $this->transitionRencanaKirim($locked, 'VERIFIED');
+
+            return $locked;
+        });
 
         return response()->json([
             'message' => 'Rencana kirim berhasil diverifikasi',
@@ -445,14 +485,20 @@ class RencanaKirimController extends Controller
     public function cancel(RencanaKirim $rencanaKirim): JsonResponse
     {
         $this->authorizeDepot($rencanaKirim);
-        $this->transitionRencanaKirim($rencanaKirim, 'CANCELLED');
 
-        $this->emailService->send(
-            'rencana_kirim',
-            'cancelled',
-            $rencanaKirim,
-            new RencanaKirimCancelled($rencanaKirim->fresh(['items', 'creator']))
-        );
+        $rencanaKirim = DB::transaction(function () use ($rencanaKirim): RencanaKirim {
+            $locked = RencanaKirim::whereKey($rencanaKirim->id)->lockForUpdate()->firstOrFail();
+            $this->transitionRencanaKirim($locked, 'CANCELLED');
+
+            $this->emailService->send(
+                'rencana_kirim',
+                'cancelled',
+                $locked,
+                new RencanaKirimCancelled($locked->fresh(['items', 'creator']))
+            );
+
+            return $locked;
+        });
 
         return response()->json([
             'message' => 'Rencana kirim berhasil dibatalkan',
@@ -466,7 +512,7 @@ class RencanaKirimController extends Controller
      *
      * @param  iterable<int, RencanaKirimItem>  $items
      */
-        /**
+    /**
      * Execute status transition using the TRANSITIONS matrix.
      * Centralizes state machine logic so all transitions go through one source of truth.
      */
@@ -476,13 +522,24 @@ class RencanaKirimController extends Controller
         $rencanaKirim->update(['status' => $target]);
     }
 
-    private function normalizePoTransporter(string $value): string
+    public static function normalizePoTransporter(string $value): string
     {
-        return strtoupper(trim(preg_replace('/[^A-Za-z0-9]/', '', $value)));
+        return strtoupper(trim($value));
     }
 
+    /**
+     * True bila exception adalah pelanggaran unique constraint (race
+     * check-then-insert lolos dua-duanya; backstop DB rk_depo_po_unique
+     * yang bicara). Portabel MySQL (1062) & SQLite (19).
+     */
+    private function isDuplicateKey(QueryException $e): bool
+    {
+        $code = (string) $e->getCode();
 
-private function totalKubikasi(iterable $items): float
+        return $code === '23000' || str_contains(strtolower($e->getMessage()), 'duplicate');
+    }
+
+    private function totalKubikasi(iterable $items): float
     {
         $sum = 0.0;
         foreach ($items as $item) {
@@ -605,10 +662,11 @@ private function totalKubikasi(iterable $items): float
                     'total_rows' => $import->totalRows,
                     'imported' => $import->imported,
                     'skipped' => $import->skipped,
+                    'errors' => $import->errors,
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('rencana_kirim import failed', ['exception' => $e]);
+            Log::error('rencana_kirim import failed', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
         }
@@ -631,7 +689,7 @@ private function totalKubikasi(iterable $items): float
             $import = new RencanaKirimItemImport;
             Excel::import($import, $request->file('file'));
         } catch (\Exception $e) {
-            Log::error('rencana_kirim import failed', ['exception' => $e]);
+            Log::error('rencana_kirim import failed', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
         }

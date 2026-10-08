@@ -54,12 +54,13 @@ class NpnExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping,
         }
 
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('szNickName', 'like', '%'.$this->search.'%')
-                    ->orWhere('BOSnetszProductId', 'like', '%'.$this->search.'%')
-                    ->orWhere('SAPszProductId', 'like', '%'.$this->search.'%')
-                    ->orWhere('szShortDescription', 'like', '%'.$this->search.'%')
-                    ->orWhere('szBarcode', 'like', '%'.$this->search.'%');
+            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szShortDescription LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 

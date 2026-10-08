@@ -13,7 +13,7 @@ class Npn extends Model
     protected $table = 'npn';
 
     protected $fillable = [
-        'kode_depo', 'nama_depo', 'created_by',
+        'kode_depo', 'nama_depo', 'created_by', 'validated_by',
         'BOSnetszProductId', 'SAPszProductId', 'szNickName', 'szNickNameNew',
         'szShortDescription', 'szLongDescription',
         'szCategory_1', 'szCat1Description',
@@ -40,6 +40,11 @@ class Npn extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function validatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'validated_by');
     }
 
     /**

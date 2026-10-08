@@ -36,15 +36,15 @@ class ReceivingItemController extends Controller
         }
 
         if ($request->search) {
-            $like = "%{$request->search}%";
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
             $query->where(fn ($q) => $q
-                ->where('kode_barang', 'like', $like)
-                ->orWhere('nama_barang', 'like', $like)
-                ->orWhere('sumber_material', 'like', $like)
+                ->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('sumber_material LIKE ? ESCAPE ?', [$like, '\\'])
                 // Kolom di induk: placeholder UI menjanjikan pencarian PO & driver.
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r
-                    ->where('po_transporter', 'like', $like)
-                    ->orWhere('driver_name', 'like', $like)));
+                    ->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])));
         }
 
         if ($request->kode_depo && ! $request->user()->isDepotScoped()) {
@@ -76,14 +76,14 @@ class ReceivingItemController extends Controller
         }
 
         if ($request->search) {
-            $like = "%{$request->search}%";
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
             $base->where(fn ($q) => $q
-                ->where('kode_barang', 'like', $like)
-                ->orWhere('nama_barang', 'like', $like)
-                ->orWhere('sumber_material', 'like', $like)
+                ->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('sumber_material LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r
-                    ->where('po_transporter', 'like', $like)
-                    ->orWhere('driver_name', 'like', $like)));
+                    ->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])));
         }
 
         if ($request->kode_depo && ! $request->user()->isDepotScoped()) {
@@ -185,14 +185,14 @@ class ReceivingItemController extends Controller
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($request->user())));
         }
         if ($request->search) {
-            $like = "%{$request->search}%";
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
             $itemsQuery->where(fn ($q) => $q
-                ->where('kode_barang', 'like', $like)
-                ->orWhere('nama_barang', 'like', $like)
-                ->orWhere('sumber_material', 'like', $like)
+                ->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('sumber_material LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r
-                    ->where('po_transporter', 'like', $like)
-                    ->orWhere('driver_name', 'like', $like)));
+                    ->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])));
         }
 
         // Urutan created_at DESC membuat item dalam tiap group otomatis
@@ -426,7 +426,7 @@ class ReceivingItemController extends Controller
                 ])->toArray(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Receiving Import Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('Receiving Import Error', ['error' => $e->getMessage()]);
 
             return response()->json([
                 'message' => 'Import gagal. Silakan periksa file dan coba lagi.',
@@ -527,7 +527,7 @@ class ReceivingItemController extends Controller
             'q' => 'required|string|min:2',
         ]);
 
-        $like = "%{$request->q}%";
+        $like = '%'.addcslashes($request->q, '\\%_').'%';
 
         $npnResults = Npn::select(
             'id',
@@ -538,10 +538,10 @@ class ReceivingItemController extends Controller
             'szNickNameNew',
             'szShortDescription',
         )
-            ->where('szNickName', 'like', $like)
-            ->orWhere('szNickNameNew', 'like', $like)
-            ->orWhere('szShortDescription', 'like', $like)
-            ->orWhere('SAPszProductId', 'like', $like)
+            ->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
+            ->orWhereRaw('szNickNameNew LIKE ? ESCAPE ?', [$like, '\\'])
+            ->orWhereRaw('szShortDescription LIKE ? ESCAPE ?', [$like, '\\'])
+            ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
             ->distinct()
             ->limit(20)
             ->get();

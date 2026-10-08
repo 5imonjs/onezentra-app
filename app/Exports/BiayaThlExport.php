@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -14,11 +15,19 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class BiayaThlExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
-    public function __construct(public EloquentBuilder|Relation $query) {}
+    public function __construct(public EloquentBuilder|Relation $query, public ?User $user = null) {}
 
     public function query(): Builder|EloquentBuilder|Relation
     {
-        return $this->query->with('details');
+        $query = $this->query->with('details');
+
+        // Sabuk ganda: controller sudah forUserDepot, tapi export yang
+        // dibangun dari query lain tetap terkunci ke depo user scoped.
+        if ($this->user && $this->user->isDepotScoped()) {
+            $query->forUserDepot($this->user);
+        }
+
+        return $query;
     }
 
     public function headings(): array

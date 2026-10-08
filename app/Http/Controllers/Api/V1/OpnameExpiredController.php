@@ -79,17 +79,17 @@ class OpnameExpiredController extends Controller
         }
 
         if ($request->search) {
-            $query->where(function ($q) use ($request) {
-                $like = "%{$request->search}%";
-                $q->where('opname_expired_waves.kode_barang', 'like', $like)
-                    ->orWhere('opname_expired_waves.nama_barang', 'like', $like)
-                    ->orWhere('opname_expired_waves.sumber_material', 'like', $like)
-                    ->orWhere('cp.principal_1', 'like', $like)
-                    ->orWhere('cp_nick.principal_1', 'like', $like)
-                    ->orWhere('cp_sku.principal_1', 'like', $like)
-                    ->orWhere('cp.principal_2', 'like', $like)
-                    ->orWhere('cp_nick.principal_2', 'like', $like)
-                    ->orWhere('cp_sku.principal_2', 'like', $like);
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('opname_expired_waves.kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('opname_expired_waves.nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('opname_expired_waves.sumber_material LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp.principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp_nick.principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp_sku.principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp.principal_2 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp_nick.principal_2 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp_sku.principal_2 LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 
@@ -436,11 +436,11 @@ class OpnameExpiredController extends Controller
         }
 
         if ($request->search) {
-            $like = "%{$request->search}%";
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
             $query->where(function ($q) use ($like) {
-                $q->where('kode_barang', 'like', $like)
-                    ->orWhere('nama_barang', 'like', $like)
-                    ->orWhere('sumber_material', 'like', $like);
+                $q->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('sumber_material LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 
@@ -472,11 +472,11 @@ class OpnameExpiredController extends Controller
         }
 
         if ($request->search) {
-            $like = "%{$request->search}%";
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
             $query->where(function ($q) use ($like) {
-                $q->where('kode_barang', 'like', $like)
-                    ->orWhere('nama_barang', 'like', $like)
-                    ->orWhere('sumber_material', 'like', $like);
+                $q->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('sumber_material LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 

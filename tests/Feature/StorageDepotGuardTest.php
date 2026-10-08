@@ -59,7 +59,8 @@ class StorageDepotGuardTest extends TestCase
         $this->get('/api/v1/storage/validation-photos/probe.jpg')->assertOk();
 
         Sanctum::actingAs($this->user('LAIN'));
-        $this->get('/api/v1/storage/validation-photos/probe.jpg')->assertForbidden();
+        // Seragam 404 (bukan 403) agar beda status tak jadi oracle enumerasi.
+        $this->get('/api/v1/storage/validation-photos/probe.jpg')->assertNotFound();
     }
 
     public function test_ownerless_path_is_not_found(): void

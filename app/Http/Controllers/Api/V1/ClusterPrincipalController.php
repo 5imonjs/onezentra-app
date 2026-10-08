@@ -68,16 +68,16 @@ class ClusterPrincipalController extends Controller
         $query = ClusterPrincipal::with('creator:id,full_name');
 
         if ($request->filled('search')) {
-            $term = '%'.$request->search.'%';
-            $query->where(function ($q) use ($term) {
-                $q->where('product_sku', 'like', $term)
-                    ->orWhere('principal_1', 'like', $term)
-                    ->orWhere('principal_2', 'like', $term)
-                    ->orWhere('lob', 'like', $term)
-                    ->orWhere('product_category', 'like', $term)
-                    ->orWhere('sub_product_category', 'like', $term)
-                    ->orWhere('product_group', 'like', $term)
-                    ->orWhere('product_class', 'like', $term);
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('product_sku LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('principal_2 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('lob LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('product_category LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('sub_product_category LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('product_group LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('product_class LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 

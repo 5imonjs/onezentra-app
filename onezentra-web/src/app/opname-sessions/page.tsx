@@ -271,7 +271,10 @@ function CreateSessionModal({ userDepo, canPickUser, onClose, onCreated }: {
     users.list({ per_page: 100 }).then((res) => {
       const items = (res.data?.data ?? []) as { id: number; full_name: string; email: string }[];
       setUserOptions(Array.isArray(items) ? items : []);
-    }).catch(() => undefined);
+    }).catch((e: unknown) => {
+      setUserOptions([]);
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat daftar petugas.'), 'error');
+    });
   }, [canPickUser]);
 
   const loadWaves = useCallback(async () => {

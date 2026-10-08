@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { gateTransactions, rencanaKirim, getErrorMessage } from '@/lib/api';
 import SearchInput from '@/components/SearchInput';
@@ -89,21 +89,32 @@ export default function GatePage() {
 
   const [stats, setStats] = useState<{ hariIni: number; terjadwal: number; selesai: number; total: number } | null>(null);
 
+  // Anti race: respons basi (filter sudah berubah) dibuang.
+  const reqIdRef = useRef(0);
+  // Cermin lastPage agar clamp bisa baca nilai terbaru tanpa jadi dep fetch.
+  const lastPageRef = useRef(1);
+
   const loadItems = useCallback(async () => {
     if (!hasPermission('gate.view')) return;
+    const reqId = ++reqIdRef.current;
+    // Clamp sebelum request — jangan setPage di dalam fetch (picu double fetch).
+    const requestPage = Math.min(Math.max(1, page), Math.max(1, lastPageRef.current));
     setLoading(true);
     try {
-      const res = await gateTransactions.list({ search: debouncedSearch, page, per_page: 20 });
+      const res = await gateTransactions.list({ search: debouncedSearch, page: requestPage, per_page: 20 });
+      if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
-      setLastPage(res.data.last_page ?? 1);
-      if (page > (res.data.last_page ?? 1)) setPage(res.data.last_page ?? 1);
+      const nextLast = res.data.last_page ?? 1;
+      setLastPage(nextLast);
+      lastPageRef.current = nextLast;
       setTotalRows(res.data.total ?? 0);
       setListError('');
     } catch (e) {
-      console.error(e);
+      if (reqIdRef.current !== reqId) return;
+      console.error('[Gate]', e);
       setListError(getErrorMessage(e, 'Gagal memuat riwayat gate.'));
     } finally {
-      setLoading(false);
+      if (reqIdRef.current === reqId) setLoading(false);
     }
   }, [debouncedSearch, page, hasPermission]);
 
@@ -129,10 +140,16 @@ export default function GatePage() {
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearch(search.trim());
-      setPage(1);
+      setPage((p) => (p === 1 ? p : 1));
     }, 400);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Koreksi halaman keluar-jarak setelah lastPage diketahui (di luar fetch
+  // agar tak memicu double fetch dari dalam callback fetch itu sendiri).
+  useEffect(() => {
+    if (page > lastPage) setPage(Math.max(1, lastPage));
+  }, [page, lastPage]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
@@ -183,18 +200,18 @@ export default function GatePage() {
     }
   };
 
-  const handleGateIn = async () => {
+  const handleGateOut = async () => {
     if (!foundRencanaKirim) return;
     setScanning(true);
     try {
       await gateTransactions.create({
         rencana_kirim_id: foundRencanaKirim.id as number,
-        gate_type: 'INBOUND',
+        gate_type: 'OUTBOUND',
         nopol: foundRencanaKirim.nopol as string,
         driver_name: foundRencanaKirim.driver_name as string,
         po_transporter: foundRencanaKirim.po_transporter as string,
       });
-      setScanResult({ success: true, message: 'Gate IN berhasil dicatat. Status: Selesai' });
+      setScanResult({ success: true, message: 'Gate OUT berhasil dicatat. Status: Selesai' });
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
@@ -206,29 +223,7 @@ export default function GatePage() {
     }
   };
 
-  // Aksi gate IN hanya — OUTBOUND tidak aktif dalam sistem receiving-only
-  // const handleGateOut = async () => {
-  //   if (!foundRencanaKirim) return;
-  //   setScanning(true);
-  //   try {
-  //     await gateTransactions.create({
-  //       rencana_kirim_id: foundRencanaKirim.id as number,
-  //       gate_type: 'OUTBOUND',
-  //       nopol: foundRencanaKirim.nopol as string,
-  //       driver_name: foundRencanaKirim.driver_name as string,
-  //       po_transporter: foundRencanaKirim.po_transporter as string,
-  //     });
-  //     setScanResult({ success: true, message: 'Gate OUT berhasil dicatat. Status: Selesai' });
-  //     setFoundRencanaKirim(null);
-  //     setScanNoDokumen('');
-  //     loadItems();
-  //     loadStats();
-  //   } catch (e) {
-  //     setScanResult({ success: false, message: getErrorMessage(e, 'Error') });
-  //   } finally {
-  //     setScanning(false);
-  //   }
-  // };
+  const handleVerify = async () => {
     if (!foundRencanaKirim) return;
     setScanning(true);
     try {
@@ -416,7 +411,12 @@ export default function GatePage() {
               </div>
 
               {listError && (
-                <div className="m-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{listError}</div>
+                <div role="alert" className="m-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+                  <span className="flex-1">{listError}</span>
+                  <button onClick={loadItems} className="rounded-lg border border-red-300 px-3 py-1 text-xs font-bold hover:bg-red-100">
+                    Coba lagi
+                  </button>
+                </div>
               )}
 
               {/* Table - Desktop */}
@@ -496,7 +496,7 @@ export default function GatePage() {
 
                 {/* Penjelasan untuk menghindari ambiguitas */}
                 <p className="text-xs text-slate-500 mt-2">
-                  <strong>Catatan:</strong> <span className="font-medium">Gate Type</span> = Tipe transaksi gerbang (INBOUND = masuk). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo). Masukkan data melalui Gate INBOUND setelah rencana kirim status SCHEDULED.
+                  <strong>Catatan:</strong> <span className="font-medium">Gate Type</span> = Tipe transaksi gerbang (INBOUND = masuk, OUTBOUND = keluar). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo). Kedua field ini berasal dari tabel berbeda namun both wajib untuk melengkapi status operasional.
                 </p>
 
               {/* Mobile cards */}

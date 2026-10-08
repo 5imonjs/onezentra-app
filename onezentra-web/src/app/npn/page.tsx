@@ -102,6 +102,7 @@ export default function NpnPage() {
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -172,7 +173,8 @@ export default function NpnPage() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTargetId) return;
+    if (!deleteTargetId || deleting) return;
+    setDeleting(true);
     try {
       await npn.delete(deleteTargetId);
       setShowDeleteConfirm(false);
@@ -180,6 +182,8 @@ export default function NpnPage() {
       loadItems();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Error'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -467,7 +471,7 @@ export default function NpnPage() {
                             </button>
                         )}
                         {hasPermission('npn.delete') && (
-                          <button onClick={() => handleDelete(item.id)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200" title="Hapus" aria-label="Hapus">
+                          <button onClick={() => handleDelete(item.id)} disabled={deleting} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed" title="Hapus" aria-label="Hapus">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                             </button>
                         )}
@@ -511,7 +515,7 @@ export default function NpnPage() {
                 <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
                   <button onClick={() => setViewItem(item)} className="min-h-9 px-2 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors" aria-label="Lihat Detail">Lihat</button>
                   {hasPermission('npn.edit') && <button onClick={() => handleEdit(item)} className="min-h-9 px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label="Edit">Edit</button>}
-                  {hasPermission('npn.delete') && <button onClick={() => handleDelete(item.id)} className="min-h-9 px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label="Hapus">Hapus</button>}
+                  {hasPermission('npn.delete') && <button onClick={() => handleDelete(item.id)} disabled={deleting} className="min-h-9 px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Hapus">Hapus</button>}
                 </div>
               </div>
             ))}
@@ -815,12 +819,13 @@ export default function NpnPage() {
       {/* Confirm Dialogs */}
       <ConfirmDialog
         open={showDeleteConfirm}
-        onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+        onClose={() => { if (deleting) return; setShowDeleteConfirm(false); setDeleteTargetId(null); }}
         onConfirm={confirmDelete}
         title="Hapus Item"
         message="Apakah Anda yakin ingin menghapus item ini? Tindakan ini tidak dapat dibatalkan."
         confirmLabel="Hapus"
         variant="danger"
+        loading={deleting}
       />
       <ConfirmDialog
         open={showBulkDeleteConfirm}

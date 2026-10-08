@@ -2,11 +2,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import BiayaRetribusiPage from './page';
 
-const { hasPermission, hasRole, rbList, getBiayaConfigFresh, notify } = vi.hoisted(() => ({
+const { hasPermission, hasRole, rbList, getBiayaConfigFresh, getBiayaConfigFreshWithStatus, notify } = vi.hoisted(() => ({
   hasPermission: vi.fn(() => true),
   hasRole: vi.fn(() => true),
   rbList: vi.fn(),
   getBiayaConfigFresh: vi.fn(),
+  getBiayaConfigFreshWithStatus: vi.fn(),
   notify: vi.fn(),
 }));
 
@@ -23,6 +24,7 @@ vi.mock('@/lib/api', () => ({
 
 vi.mock('@/lib/biaya', () => ({
   getBiayaConfigFresh,
+  getBiayaConfigFreshWithStatus,
   clearBiayaConfigCache: vi.fn(),
   BIAYA_CONFIG_FALLBACK: {
     rfah_name: 'Umi Marzuqoh',
@@ -95,6 +97,17 @@ describe('BiayaRetribusiPage — tombol Kirim di modal detail', () => {
       retribusi_rate_zak: 0,
       retribusi_rate_crt: 0,
     });
+    getBiayaConfigFreshWithStatus.mockResolvedValue({
+      config: {
+        rfah_name: 'Umi Marzuqoh',
+        thl_rfah_threshold: 750000,
+        retribusi_rfah_threshold: 1000000,
+        retribusi_calc_mode: 'borongan',
+        retribusi_rate_zak: 0,
+        retribusi_rate_crt: 0,
+      },
+      isFallback: false,
+    });
   });
 
   afterEach(() => {
@@ -144,6 +157,17 @@ describe('BiayaRetribusiPage — pipeline alur approval di daftar', () => {
       retribusi_calc_mode: 'borongan',
       retribusi_rate_zak: 0,
       retribusi_rate_crt: 0,
+    });
+    getBiayaConfigFreshWithStatus.mockResolvedValue({
+      config: {
+        rfah_name: 'Umi Marzuqoh',
+        thl_rfah_threshold: 750000,
+        retribusi_rfah_threshold: 1000000,
+        retribusi_calc_mode: 'borongan',
+        retribusi_rate_zak: 0,
+        retribusi_rate_crt: 0,
+      },
+      isFallback: false,
     });
   });
 

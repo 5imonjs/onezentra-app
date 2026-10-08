@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
@@ -23,11 +24,13 @@ class UserController extends Controller
         $query = User::with('roles')->forUserDepot($request->user());
         $baseQuery = clone $query;
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('full_name', 'like', '%'.$request->search.'%')
-                    ->orWhere('email', 'like', '%'.$request->search.'%')
-                    ->orWhere('kode_depo', 'like', '%'.$request->search.'%')
-                    ->orWhere('nama_depo', 'like', '%'.$request->search.'%');
+            // Escape wildcard LIKE (% _) agar input dianggap literal.
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('full_name LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('email LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('kode_depo LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('nama_depo LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
         if ($request->filled('level')) {
@@ -67,6 +70,7 @@ class UserController extends Controller
             // tidak bisa datang dari payload. Kolom legacy ini harus tetap terisi
             // karena masih dibaca kode lama di luar resolusi permission.
             $user->forceFill(['role_id' => $role->id])->save();
+            User::clearPermissionCache($user->id);
         }
 
         return response()->json([
@@ -116,6 +120,26 @@ class UserController extends Controller
         $this->authorize('update', $user);
 
         if (! empty($validated['password'])) {
+            $isSelf = $actor->id === $user->id;
+            if ($isSelf) {
+                // Ganti password sendiri wajib membuktikan kepemilikan akun
+                // lewat password lama — mencegah penyalahgunaan sesi tertinggal.
+                $request->validate(['current_password' => 'required|string']);
+                abort_unless(
+                    Hash::check((string) $request->input('current_password'), $actor->getAuthPassword()),
+                    422,
+                    'Password saat ini salah.'
+                );
+            } else {
+                // Reset password akun lain = tindakan sensitif: hanya admin
+                // master, dan selalu dicatat (jejak anti-eskalasi diam-diam).
+                abort_unless($actor->isAdminMaster(), 403, 'Hanya admin master yang boleh mereset password pengguna lain.');
+                Log::info('Password user direset admin.', [
+                    'actor_id' => $actor->id,
+                    'target_id' => $user->id,
+                    'target_email' => $user->email,
+                ]);
+            }
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
@@ -146,6 +170,7 @@ class UserController extends Controller
                 // forceFill: 'role_id' sengaja tidak fillable (lihat User::$fillable).
                 $user->forceFill(['role_id' => $role->id])->save();
             }
+            User::clearPermissionCache($user->id);
         }
 
         return response()->json([
@@ -170,6 +195,7 @@ class UserController extends Controller
         }
         $user->roles()->detach();
         $user->delete();
+        User::clearPermissionCache($user->id);
 
         return response()->json(['message' => 'User deleted successfully']);
     }

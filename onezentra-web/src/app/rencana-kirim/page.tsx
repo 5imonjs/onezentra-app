@@ -473,6 +473,8 @@ export default function RencanaKirimPage() {
   const [typingItems, setTypingItems] = useState<Set<number>>(new Set());
   // Anti race: respons basi (ketikan sudah berubah) dibuang.
   const reqIdRef = useRef(0);
+  // Cermin lastPage agar clamp bisa baca nilai terbaru tanpa jadi dep fetch.
+  const lastPageRef = useRef(1);
   // Filter state untuk dropdown
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterKodeDepo, setFilterKodeDepo] = useState<string | null>(null);
@@ -494,6 +496,7 @@ export default function RencanaKirimPage() {
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
   // Statistik global dari server (bukan hitungan halaman aktif).
   const [rkStats, setRkStats] = useState<RkStats | null>(null);
@@ -516,17 +519,20 @@ export default function RencanaKirimPage() {
 
   const loadItems = useCallback(async (silent = false) => {
     const reqId = ++reqIdRef.current;
+    // Clamp sebelum request — jangan setPage di dalam fetch (picu double fetch).
+    const requestPage = Math.min(Math.max(1, page), Math.max(1, lastPageRef.current));
     try {
       setLoading(true);
       // Build params filter — only include when filter has a value
-      const filterParams: Record<string, unknown> = { search, page, per_page: 20 };
+      const filterParams: Record<string, unknown> = { search, page: requestPage, per_page: 20 };
       if (filterStatus) filterParams.status = filterStatus;
       if (filterKodeDepo) filterParams.kode_depo = filterKodeDepo;
       const res = await rencanaKirim.list(filterParams);
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
-      setLastPage(res.data.last_page);
-      if (page > res.data.last_page) setPage(res.data.last_page);
+      const nextLast = res.data.last_page ?? 1;
+      setLastPage(nextLast);
+      lastPageRef.current = nextLast;
     } catch (e) {
       if (reqIdRef.current !== reqId) return;
       console.error(e);
@@ -539,6 +545,12 @@ export default function RencanaKirimPage() {
   }, [search, page, filterStatus, filterKodeDepo]);
 
   useEffect(() => { loadItems(true); }, [loadItems]);
+
+  // Koreksi halaman keluar-jarak setelah lastPage diketahui (di luar fetch
+  // agar tak memicu double fetch dari dalam callback fetch itu sendiri).
+  useEffect(() => {
+    if (page > lastPage) setPage(Math.max(1, lastPage));
+  }, [page, lastPage]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -702,16 +714,19 @@ export default function RencanaKirimPage() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTargetId) return;
+    if (!deleteTargetId || deleting) return;
+    setDeleting(true);
     try {
       await rencanaKirim.delete(deleteTargetId);
       loadItems();
       loadStats();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Error'));
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
     }
-    setShowDeleteConfirm(false);
-    setDeleteTargetId(null);
   };
 
   // Form dianggap "kotor" bila user pernah mengisi apa pun
@@ -1149,7 +1164,7 @@ export default function RencanaKirimPage() {
                             </button>
                           )}
                           {hasPermission('rencana_kirim.delete') && ['DRAFT', 'CANCELLED'].includes(item.status) && (
-                            <button onClick={() => handleDelete(item.id)} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
+                            <button onClick={() => handleDelete(item.id)} disabled={deleting} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed">
                               <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                             </button>
                           )}
@@ -1252,7 +1267,7 @@ export default function RencanaKirimPage() {
                         </button>
                       )}
                       {hasPermission('rencana_kirim.delete') && ['DRAFT', 'CANCELLED'].includes(item.status) && (
-                        <button onClick={() => handleDelete(item.id)} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
+                        <button onClick={() => handleDelete(item.id)} disabled={deleting} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed">
                           <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                         </button>
                       )}
@@ -1910,7 +1925,7 @@ export default function RencanaKirimPage() {
       </Modal>
 
       <ConfirmDialog open={confirmCloseOpen} onClose={() => setConfirmCloseOpen(false)} onConfirm={() => { setConfirmCloseOpen(false); resetCreateForm(); }} title="Buang perubahan?" message="Ada isian yang belum disimpan. Tutup form dan buang semua perubahan?" confirmLabel="Buang & Tutup" cancelLabel="Lanjut Mengisi" variant="warning" />
-      <ConfirmDialog open={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }} onConfirm={confirmDelete} title="Hapus Replenishment" message="Apakah Anda yakin ingin menghapus rencana kirim ini?" confirmLabel="Hapus" variant="danger" />
+      <ConfirmDialog open={showDeleteConfirm} onClose={() => { if (deleting) return; setShowDeleteConfirm(false); setDeleteTargetId(null); }} onConfirm={confirmDelete} title="Hapus Replenishment" message="Apakah Anda yakin ingin menghapus rencana kirim ini?" confirmLabel="Hapus" variant="danger" loading={deleting} />
     </DashboardLayout>
   );
 }

@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\StandarisasiTumpukan;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -19,19 +20,34 @@ class StandarisasiTumpukanExport implements FromQuery, ShouldAutoSize, WithHeadi
 
     public ?string $status = null;
 
-    public function __construct(?string $search = null, ?string $status = null)
+    public ?string $kodeDepo = null;
+
+    private ?User $user = null;
+
+    public function __construct(?string $search = null, ?string $status = null, ?User $user = null, ?string $kodeDepo = null)
     {
         $this->search = $search;
         $this->status = $status;
+        $this->user = $user;
+        $this->kodeDepo = $kodeDepo;
     }
 
     public function query(): Builder|EloquentBuilder|Relation
     {
         $query = StandarisasiTumpukan::with('npn');
 
+        // Scoping depo mengikuti pola OpnameExpiredController:export.
+        if ($this->user && $this->user->isDepotScoped()) {
+            $query->forUserDepot($this->user);
+        } elseif ($this->kodeDepo) {
+            $query->where('kode_depo', $this->kodeDepo);
+        }
+
         if ($this->search) {
-            $query->whereHas('npn', fn ($q) => $q->where('szNickName', 'like', '%'.$this->search.'%')
-                ->orWhere('BOSnetszProductId', 'like', '%'.$this->search.'%'));
+            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $query->whereHas('npn', fn ($q) => $q
+                ->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\']));
         }
         if ($this->status) {
             $query->where('status', $this->status);

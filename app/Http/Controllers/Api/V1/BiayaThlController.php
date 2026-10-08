@@ -391,10 +391,9 @@ class BiayaThlController extends Controller
     {
         $biayaThl = $photo->biayaThl;
         abort_if(! $biayaThl, 404);
-        $user = $request->user();
-        if ($user->isDepotScoped() && $biayaThl->kode_depo !== $user->kode_depo) {
-            abort(403, 'Anda tidak memiliki akses ke foto depo ini.');
-        }
+        // Samakan dengan show()/pdf(): bukan sekadar satu depo, hanya creator/
+        // approver yang berhak melihat lampiran bukti.
+        $this->authorizeViewer($biayaThl);
         /** @var FilesystemAdapter $disk */
         $disk = Storage::disk('public');
         abort_unless($photo->file_path && $disk->exists($photo->file_path), 404);
@@ -769,7 +768,7 @@ class BiayaThlController extends Controller
         $query->with('details.photos');
         ExportGuard::ensureWithinLimit($query);
 
-        return Excel::download(new BiayaThlExport($query), 'biaya_thl.xlsx');
+        return Excel::download(new BiayaThlExport($query, $request->user()), 'biaya_thl.xlsx');
     }
 
     private function authorizeCreator(BiayaThl $biayaThl): void

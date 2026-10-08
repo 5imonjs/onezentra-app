@@ -83,6 +83,21 @@ class UserImport implements ToCollection, WithHeadingRow
                     continue;
                 }
 
+                // Samakan guard dengan UserController::update: perubahan
+                // level/status akun hanya admin master. Aktor lain: field itu
+                // diabaikan (bukan ditolak barisnya) + dicatat sebagai audit.
+                $skipped = [];
+                if (! $this->actor->isAdminMaster()) {
+                    if ($data['level'] !== '' && $data['level'] !== $user->level) {
+                        $skipped[] = 'level';
+                        $data['level'] = '';
+                    }
+                    if ($data['status'] !== $user->status) {
+                        $skipped[] = 'status';
+                        $data['status'] = $user->status;
+                    }
+                }
+
                 $data = $this->actor->depotAttributes($data);
                 $user->update(array_filter([
                     'full_name' => $data['full_name'] ?: null,
@@ -91,7 +106,12 @@ class UserImport implements ToCollection, WithHeadingRow
                     'level' => $data['level'] ?: null,
                     'status' => $data['status'],
                 ], static fn ($value) => $value !== null));
+                $user->forceFill(['updated_by' => $this->actor->id])->saveQuietly();
                 $this->syncRole($user, $data['level']);
+                User::clearPermissionCache($user->id);
+                if ($skipped !== []) {
+                    $this->errors[] = ['row' => $rowNumber, 'errors' => 'Kolom diabaikan (hanya admin master yang boleh mengubah): '.implode(', ', $skipped)];
+                }
                 $this->updated++;
 
                 continue;
@@ -106,6 +126,7 @@ class UserImport implements ToCollection, WithHeadingRow
                 'full_name' => $data['full_name'] ?: 'User Baru',
                 'password' => Hash::make(Str::random(16)),
             ]);
+            $user->forceFill(['updated_by' => $this->actor->id])->saveQuietly();
             $this->syncRole($user, $level);
             $this->imported++;
         }

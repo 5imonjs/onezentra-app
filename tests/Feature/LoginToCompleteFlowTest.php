@@ -316,12 +316,12 @@ class LoginToCompleteFlowTest extends TestCase
         $this->assertDatabaseHas('batches', ['sj_validation_item_id' => $item1Id]);
         $this->assertDatabaseHas('batches', ['sj_validation_item_id' => $item2Id]);
 
-        // 6d. Gate OUTBOUND hanya boleh setelah COMPLETED -> sukses
+        // 6d. Gate OUTBOUND tidak aktif (sistem receiving-only) -> 422
         $this->postJson('/api/v1/gate-transactions', [
             'rencana_kirim_id' => $rkId,
             'gate_type' => 'OUTBOUND',
-        ])->assertCreated();
-        $this->assertDatabaseHas('gate_transactions', ['rencana_kirim_id' => $rkId, 'gate_type' => 'OUTBOUND']);
+        ])->assertStatus(422);
+        $this->assertDatabaseMissing('gate_transactions', ['rencana_kirim_id' => $rkId, 'gate_type' => 'OUTBOUND']);
 
         // ============================================================
         // 7. LOGOUT

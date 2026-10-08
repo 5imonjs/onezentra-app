@@ -125,7 +125,10 @@ export default function ClusterPrincipalPage() {
     clusterPrincipal
       .filters()
       .then((res) => setOptions({ lob: res.data.data.lob, principal: res.data.data.principal }))
-      .catch(() => setOptions({ lob: [], principal: [] }));
+      .catch((e: unknown) => {
+        setOptions({ lob: [], principal: [] });
+        notifyGlobal(getErrorMessage(e, 'Gagal memuat opsi filter.'), 'error');
+      });
   }, []);
 
   useEffect(() => { loadItems(); }, [loadItems]);

@@ -47,7 +47,11 @@ return [
             ),
             // Host polos DAN host:port. Sanctum hanya cocokkan "<entri>/*",
             // jadi "127.0.0.1" tidak menutupi "127.0.0.1:3000".
-            ['localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000', '127.0.0.1:8000', '::1'],
+            // Fallback dev/LAN ini HANYA di luar production: di produksi,
+            // origin liar seperti localhost tidak boleh dianggap stateful.
+            env('APP_ENV') === 'production'
+                ? []
+                : ['localhost', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000', '127.0.0.1:8000', '::1'],
             [preg_replace('#^https?://#', '', Sanctum::currentApplicationUrlWithPort())],
         )
     ))))),

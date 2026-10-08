@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Dock;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -17,10 +18,10 @@ class DockImport implements ToCollection, WithHeadingRow
 
     public int $totalRows = 0;
 
+    public function __construct(private readonly User $user) {}
+
     public function collection(Collection $rows): void
     {
-        $headers = ['name', 'code', 'capacity'];
-
         foreach ($rows as $index => $row) {
             $this->totalRows++;
             $rowNumber = $index + 2;
@@ -35,7 +36,22 @@ class DockImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            $existing = Dock::where('name', $name)->first();
+            // Lookup by-name: user depot-scoped hanya mencocokkan dock
+            // depo sendiri; admin view_all mencocokkan global.
+            $existing = Dock::where('name', $name)
+                ->when($this->user->isDepotScoped(), fn ($query) => $query->where('kode_depo', $this->user->kode_depo))
+                ->first();
+
+            // Tolak cross-depo: nama milik depo lain bukan untuk di-update,
+            // supaya import tidak memindahkan/menimpa dock depo lain.
+            if (! $existing && $this->user->isDepotScoped()) {
+                $foreign = Dock::where('name', $name)->first();
+                if ($foreign) {
+                    $this->errors[] = ['row' => $rowNumber, 'errors' => "Dock '{$name}' sudah dipakai di depo lain."];
+
+                    continue;
+                }
+            }
 
             if ($existing) {
                 $existing->update([
@@ -48,14 +64,12 @@ class DockImport implements ToCollection, WithHeadingRow
             }
 
             try {
-                Dock::create([
+                Dock::create($this->user->depotAttributes([
                     'name' => $name,
                     'code' => $code ?: null,
                     'capacity' => $capacity ? (int) $capacity : null,
                     'status' => 'AVAILABLE',
-                    'kode_depo' => auth()->user()?->kode_depo,
-                    'nama_depo' => auth()->user()?->nama_depo,
-                ]);
+                ]));
                 $this->imported++;
             } catch (\Exception $e) {
                 $this->errors[] = ['row' => $rowNumber, 'errors' => $e->getMessage()];

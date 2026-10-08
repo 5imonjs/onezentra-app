@@ -40,10 +40,11 @@ class GateTransactionController extends Controller
         }
 
         if ($request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->where('nopol', 'like', "%{$request->search}%")
-                    ->orWhere('po_transporter', 'like', "%{$request->search}%")
-                    ->orWhere('driver_name', 'like', "%{$request->search}%");
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('nopol LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 

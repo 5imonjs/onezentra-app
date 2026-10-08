@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import Image from 'next/image';
 import DashboardLayout from '@/app/dashboard/layout';
-import { biayaThl, getErrorMessage, API_ROOT } from '@/lib/api';
-import { AUTHENTICATED_FILE_REL } from '@/lib/storageFile';
+import { biayaThl, getErrorMessage } from '@/lib/api';
+import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
 import { pageWindow } from '@/lib/pagination';
 import { useAuthStore } from '@/store/auth';
 import { todayLocal } from '@/lib/dates';
@@ -12,7 +12,7 @@ import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import { getBiayaConfig, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
+import { getBiayaConfigWithStatus, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
 import { generateTHLPdf, previewTHLPdf } from '@/lib/biayaPdf';
 import ApprovalPipeline, { type ApprovalPipelineStep } from '@/components/ApprovalPipeline';
 
@@ -602,7 +602,7 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
 
 function DetailPhotoThumb({ photo }: { photo: PhotoItem }) {
   const storedUrl = isStoredPhoto(photo)
-    ? (photo.file_path.startsWith('http') ? photo.file_path : `${API_ROOT}/storage/${photo.file_path}`)
+    ? storageFileUrl(photo.file_path) ?? ''
     : '';
   // URL blob dibuat di effect-state (bukan memo+cleanup): cleanup StrictMode
   // double-invoke akan mencabut URL yang masih dipakai <img> bila pola memo
@@ -623,7 +623,7 @@ function DetailPhotoThumb({ photo }: { photo: PhotoItem }) {
 /** URL absolut foto yang tersimpan di storage (untuk pratinjau di modal detail). */
 const photoStoredUrl = (photo: PhotoItem): string => {
   if (!isStoredPhoto(photo)) return '';
-  return photo.file_path.startsWith('http') ? photo.file_path : `${API_ROOT}/storage/${photo.file_path}`;
+  return storageFileUrl(photo.file_path) ?? '';
 };
 
 export default function BiayaThlPage() {
@@ -725,23 +725,33 @@ export default function BiayaThlPage() {
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
   const [formStep, setFormStep] = useState(1);
   const [biayaConfig, setBiayaConfig] = useState<BiayaConfig>(BIAYA_CONFIG_FALLBACK);
+  /** true bila tarif yang dipakai adalah fallback (config gagal dimuat) — tampilkan banner. */
+  const [configFallback, setConfigFallback] = useState(false);
+  const [configRetry, setConfigRetry] = useState(0);
 
-  useEffect(() => { getBiayaConfig(user?.kode_depo, 'biaya_thl').then(setBiayaConfig).catch(() => {}); }, [user?.kode_depo]);
+  useEffect(() => { getBiayaConfigWithStatus(user?.kode_depo, 'biaya_thl').then((r) => { setBiayaConfig(r.config); setConfigFallback(r.isFallback); }).catch((e: unknown) => { console.error('[BiayaConfig]', e); }); }, [user?.kode_depo, configRetry]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [summary, setSummary] = useState<{ total: number; total_nominal: number; pending: number; checked: number; approved: number; rejected: number; revisi: number; my_drafts: number } | null>(null);
   const [perPage, setPerPage] = useState(50);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const reqIdRef = useRef(0);
+  // Cermin totalPages agar clamp bisa baca nilai terbaru tanpa jadi dep fetch.
+  const totalPagesRef = useRef(1);
 
   const fetchItems = useCallback(async () => {
     const reqId = ++reqIdRef.current;
+    // Clamp sebelum request — jangan setPage di dalam fetch (picu double fetch).
+    const requestPage = Math.min(Math.max(1, page), Math.max(1, totalPagesRef.current));
     try {
-      const res = await biayaThl.list({ search: debouncedSearch, status: statusFilter, page, per_page: perPage, sort: sortField, dir: sortDir, _t: Date.now() });
+      const res = await biayaThl.list({ search: debouncedSearch, status: statusFilter, page: requestPage, per_page: perPage, sort: sortField, dir: sortDir, _t: Date.now() });
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data || res.data);
-      setTotalPages(res.data.last_page || 1);
+      const nextLast = res.data.last_page || 1;
+      setTotalPages(nextLast);
+      totalPagesRef.current = nextLast;
       if (res.data.summary) setSummary(res.data.summary);
     } catch (e) {
       if (reqIdRef.current !== reqId) return;
@@ -752,6 +762,12 @@ export default function BiayaThlPage() {
   }, [debouncedSearch, statusFilter, page, perPage, sortField, sortDir]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  // Koreksi halaman keluar-jarak setelah totalPages diketahui (di luar fetch
+  // agar tak memicu double fetch dari dalam callback fetch itu sendiri).
+  useEffect(() => {
+    if (page > totalPages) setPage(Math.max(1, totalPages));
+  }, [page, totalPages]);
 
 
   const toggleCard = (idx: number) => {
@@ -764,7 +780,7 @@ export default function BiayaThlPage() {
   };
 
   useEffect(() => {
-    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 400);
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage((p) => (p === 1 ? p : 1)); }, 400);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -922,7 +938,8 @@ export default function BiayaThlPage() {
   };
 
   const confirmDelete = async () => {
-    if (deleteTargetId === null) return;
+    if (deleteTargetId === null || deleting) return;
+    setDeleting(true);
     try {
       await biayaThl.delete(deleteTargetId);
       notifyGlobal('Biaya THL berhasil dihapus', 'success');
@@ -933,6 +950,8 @@ export default function BiayaThlPage() {
       fetchItems();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal menghapus'), 'error');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -1513,6 +1532,13 @@ export default function BiayaThlPage() {
           </div>
         </header>
 
+        {configFallback && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-700" role="alert">
+            <span>Tarif fallback dipakai — config tarif gagal dimuat. Muat ulang untuk tarif terbaru.</span>
+            <button type="button" onClick={() => setConfigRetry((c) => c + 1)} className="font-semibold hover:underline whitespace-nowrap">Muat ulang</button>
+          </div>
+        )}
+
         <div className={`rounded-2xl border border-gray-100 bg-surface-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           <div className="px-2 py-1">
@@ -1666,7 +1692,7 @@ export default function BiayaThlPage() {
                           </button>
                           )}
                           {hasPermission('biaya_thl.delete') && isDeletable(item.status) && (
-                          <button onClick={() => handleDelete(item.id)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Hapus" aria-label="Hapus">
+                          <button onClick={() => handleDelete(item.id)} disabled={deleting} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Hapus" aria-label="Hapus">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                           </button>
                           )}
@@ -1753,7 +1779,7 @@ export default function BiayaThlPage() {
                    </button>
                    )}
                    {hasPermission('biaya_thl.delete') && isDeletable(item.status) && (
-                   <button onClick={() => handleDelete(item.id)} className="min-h-11 min-w-11 flex items-center justify-center text-red-400 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
+                   <button onClick={() => handleDelete(item.id)} disabled={deleting} className="min-h-11 min-w-11 flex items-center justify-center text-red-400 bg-red-50 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                    </button>
                    )}
@@ -2813,12 +2839,13 @@ export default function BiayaThlPage() {
         </Modal>
         <ConfirmDialog
           open={showDeleteConfirm}
-          onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+          onClose={() => { if (deleting) return; setShowDeleteConfirm(false); setDeleteTargetId(null); }}
           onConfirm={confirmDelete}
           title="Hapus Pengajuan"
           message="Apakah Anda yakin ingin menghapus pengajuan ini? Tindakan ini tidak dapat dibatalkan."
           confirmLabel="Hapus"
           variant="danger"
+          loading={deleting}
         />
         <ConfirmDialog
           open={showDiscardConfirm}

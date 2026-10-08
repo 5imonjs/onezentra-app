@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\BiayaThl;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -39,9 +40,9 @@ class BiayaThlFactory extends Factory
         return $this->state(fn () => [
             'status' => 'approved',
             'submitted_at' => now()->subHours(3),
-            'checked_by' => 1,
+            'checked_by' => User::factory(),
             'checked_at' => now()->subHours(2),
-            'approved_by' => 1,
+            'approved_by' => User::factory(),
             'approved_at' => now()->subHour(),
         ]);
     }
@@ -50,7 +51,7 @@ class BiayaThlFactory extends Factory
     {
         return $this->state(fn () => [
             'status' => 'rejected',
-            'rejected_by' => 1,
+            'rejected_by' => User::factory(),
             'rejected_at' => now()->subHour(),
             'rejection_reason' => 'Nominal tidak sesuai evidence.',
         ]);

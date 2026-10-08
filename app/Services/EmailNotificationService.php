@@ -114,8 +114,25 @@ class EmailNotificationService
             } else {
                 // afterResponse agar tidak tambah latency walau sync driver; testing mengirim sync agar assertSent berfungsi
                 if (function_exists('dispatch') && ! app()->environment('testing')) {
-                    dispatch(function () use ($mailable): void {
-                        Mail::send($mailable);
+                    // Closure afterResponse jalan DI LUAR try/catch di atas —
+                    // bungkus sendiri agar gagal SMTP tercatat FAILED + retry
+                    // manual terlihat di notification-logs, bukan hilang diam.
+                    $logContext = [
+                        'document_type' => $documentType,
+                        'trigger' => $trigger,
+                        'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+                        'recipients' => implode(', ', array_merge((array) ($to ?? []), (array) ($cc ?? []))) ?: null,
+                    ];
+                    dispatch(function () use ($mailable, $logContext): void {
+                        try {
+                            Mail::send($mailable);
+                        } catch (\Throwable $e) {
+                            Log::error('Email notification failed (afterResponse): '.$e->getMessage(), $logContext);
+                            EmailNotificationLog::create($logContext + [
+                                'status' => EmailNotificationLog::STATUS_FAILED,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
                     })->afterResponse();
                 } else {
                     Mail::send($mailable);

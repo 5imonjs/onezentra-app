@@ -18,6 +18,7 @@ use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
 use Dompdf\Dompdf;
+use Illuminate\Database\QueryException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -167,14 +168,13 @@ class BiayaRetribusiController extends Controller
             'documents.*.document_type' => 'required|string|max:50|in:BA,SJ,invoice,manifest,lainnya',
             'documents.*.file_path' => 'nullable|string|max:255',
             'documents.*.file_name' => 'nullable|string|max:255',
-            'documents.*.mime_type' => 'nullable|string|max:100',
+            'documents.*.mime_type' => 'nullable|string|max:100|in:image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain',
             'documents.*.file_size' => 'nullable|integer',
             'files' => 'nullable|array|max:20',
             'files.*' => 'mimes:pdf,jpg,jpeg,png,webp|max:20480',
         ]);
 
         $this->validateThlReferences($request, $validated['details']);
-        $this->validateReceivingReferences($request, $validated['details']);
         $validated = $this->inheritReceivingDepot($validated);
 
         /** @var User $user */
@@ -192,43 +192,66 @@ class BiayaRetribusiController extends Controller
             $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? null, ApprovalAssignment::MODULE_RETRIBUSI);
         }
 
-        $biayaRetribusi = DB::transaction(function () use ($validated) {
-            $biayaRetribusi = BiayaRetribusi::create($validated);
+        try {
+            $biayaRetribusi = DB::transaction(function () use ($request, $validated) {
+                // Kunci baris receiving DULU, baru validasi klaim: dua pengajuan
+                // bersamaan atas receiving yang sama terserialisasi di lock ini,
+                // bukan lolos cek lalu insert ganda.
+                $receivingIds = collect($validated['details'])
+                    ->pluck('receiving_id')->filter()->unique()->values();
+                if ($receivingIds->isNotEmpty()) {
+                    Receiving::whereIn('id', $receivingIds)->lockForUpdate()->get();
+                }
+                $this->validateReceivingReferences($request, $validated['details']);
 
-            foreach ($validated['details'] as $index => $detail) {
-                $biayaRetribusi->details()->create(array_merge($detail, [
-                    'order' => $index,
-                    'nominal_biaya' => $detail['nominal_biaya'],
-                ]));
-            }
+                $biayaRetribusi = BiayaRetribusi::create($validated);
 
-            foreach ($validated['files'] ?? [] as $index => $file) {
-                $path = $file->store("biaya_retribusi/{$biayaRetribusi->id}", 'public');
-                $biayaRetribusi->documents()->create([
-                    'document_type' => 'lainnya',
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'mime_type' => $file->getMimeType(),
-                    'file_size' => $file->getSize(),
-                    'order' => $index,
+                foreach ($validated['details'] as $index => $detail) {
+                    $biayaRetribusi->details()->create(array_merge($detail, [
+                        'order' => $index,
+                        'nominal_biaya' => $detail['nominal_biaya'],
+                    ]));
+                }
+
+                foreach ($validated['files'] ?? [] as $index => $file) {
+                    $path = $file->store("biaya_retribusi/{$biayaRetribusi->id}", 'public');
+                    $biayaRetribusi->documents()->create([
+                        'document_type' => 'lainnya',
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'file_size' => $file->getSize(),
+                        'order' => $index,
+                    ]);
+                }
+
+                foreach ($validated['documents'] ?? [] as $index => $doc) {
+                    $biayaRetribusi->documents()->create([
+                        'document_type' => $doc['document_type'],
+                        'file_path' => $doc['file_path'] ?? '',
+                        'file_name' => $doc['file_name'] ?? '',
+                        'mime_type' => $doc['mime_type'] ?? '',
+                        'file_size' => $doc['file_size'] ?? 0,
+                        'order' => $index,
+                    ]);
+                }
+
+                return $biayaRetribusi;
+            });
+
+            return response()->json(['message' => 'Biaya Retribusi created', 'data' => $biayaRetribusi->load('details', 'documents')], 201);
+        } catch (QueryException $e) {
+            // Unique index brd_receiving_id_unique: transaksi pesaing commit
+            // duluan — jawab 422 agar frontend menampilkan "sudah diklaim",
+            // bukan 500.
+            if (($e->errorInfo[0] ?? $e->getCode()) === '23000') {
+                throw ValidationException::withMessages([
+                    'details' => ['Receiving ini sudah diklaim pada pengajuan lain. Muat ulang daftar kandidat.'],
                 ]);
             }
 
-            foreach ($validated['documents'] ?? [] as $index => $doc) {
-                $biayaRetribusi->documents()->create([
-                    'document_type' => $doc['document_type'],
-                    'file_path' => $doc['file_path'] ?? '',
-                    'file_name' => $doc['file_name'] ?? '',
-                    'mime_type' => $doc['mime_type'] ?? '',
-                    'file_size' => $doc['file_size'] ?? 0,
-                    'order' => $index,
-                ]);
-            }
-
-            return $biayaRetribusi;
-        });
-
-        return response()->json(['message' => 'Biaya Retribusi created', 'data' => $biayaRetribusi->load('details', 'documents')], 201);
+            throw $e;
+        }
     }
 
     public function show(BiayaRetribusi $biayaRetribusi)
@@ -293,7 +316,7 @@ class BiayaRetribusiController extends Controller
             'documents.*.document_type' => 'string|max:50|in:BA,SJ,invoice,manifest,lainnya',
             'documents.*.file_path' => 'nullable|string|max:255',
             'documents.*.file_name' => 'nullable|string|max:255',
-            'documents.*.mime_type' => 'nullable|string|max:100',
+            'documents.*.mime_type' => 'nullable|string|max:100|in:image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain',
             'documents.*.file_size' => 'nullable|integer',
             'documents_remove' => 'nullable|array',
             'files' => 'nullable|array|max:20',
@@ -301,7 +324,6 @@ class BiayaRetribusiController extends Controller
         ]);
 
         $this->validateThlReferences($request, $validated['details']);
-        $this->validateReceivingReferences($request, $validated['details'], $biayaRetribusi->id);
         // Samakan dengan store: ganti set receiving ikut memindahkan depo +
         // tarif (tanpa ini nominal dihitung dengan tarif depo lama).
         $validated = $this->inheritReceivingDepot($validated);
@@ -316,37 +338,54 @@ class BiayaRetribusiController extends Controller
             $validated['rfah_name'] = null;
         }
 
-        DB::transaction(function () use ($validated, $biayaRetribusi): void {
-            $biayaRetribusi->update($validated);
-            $biayaRetribusi->details()->delete();
-
-            foreach ($validated['details'] as $index => $detail) {
-                $biayaRetribusi->details()->create(array_merge($detail, [
-                    'order' => $index,
-                    'nominal_biaya' => $detail['nominal_biaya'],
-                ]));
-            }
-
-            foreach ($validated['documents_remove'] ?? [] as $docId) {
-                $doc = $biayaRetribusi->documents()->find($docId);
-                if ($doc) {
-                    Storage::disk('public')->delete($doc->file_path);
-                    $doc->delete();
+        try {
+            DB::transaction(function () use ($request, $validated, $biayaRetribusi): void {
+                $receivingIds = collect($validated['details'])
+                    ->pluck('receiving_id')->filter()->unique()->values();
+                if ($receivingIds->isNotEmpty()) {
+                    Receiving::whereIn('id', $receivingIds)->lockForUpdate()->get();
                 }
-            }
+                $this->validateReceivingReferences($request, $validated['details'], $biayaRetribusi->id);
 
-            foreach ($validated['files'] ?? [] as $index => $file) {
-                $path = $file->store("biaya_retribusi/{$biayaRetribusi->id}", 'public');
-                $biayaRetribusi->documents()->create([
-                    'document_type' => 'lainnya',
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'mime_type' => $file->getMimeType(),
-                    'file_size' => $file->getSize(),
-                    'order' => $index,
+                $biayaRetribusi->update($validated);
+                $biayaRetribusi->details()->delete();
+
+                foreach ($validated['details'] as $index => $detail) {
+                    $biayaRetribusi->details()->create(array_merge($detail, [
+                        'order' => $index,
+                        'nominal_biaya' => $detail['nominal_biaya'],
+                    ]));
+                }
+
+                foreach ($validated['documents_remove'] ?? [] as $docId) {
+                    $doc = $biayaRetribusi->documents()->find($docId);
+                    if ($doc) {
+                        Storage::disk('public')->delete($doc->file_path);
+                        $doc->delete();
+                    }
+                }
+
+                foreach ($validated['files'] ?? [] as $index => $file) {
+                    $path = $file->store("biaya_retribusi/{$biayaRetribusi->id}", 'public');
+                    $biayaRetribusi->documents()->create([
+                        'document_type' => 'lainnya',
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'file_size' => $file->getSize(),
+                        'order' => $index,
+                    ]);
+                }
+            });
+        } catch (QueryException $e) {
+            if (($e->errorInfo[0] ?? $e->getCode()) === '23000') {
+                throw ValidationException::withMessages([
+                    'details' => ['Receiving ini sudah diklaim pada pengajuan lain. Muat ulang daftar kandidat.'],
                 ]);
             }
-        });
+
+            throw $e;
+        }
 
         return response()->json(['message' => 'Biaya Retribusi updated', 'data' => $biayaRetribusi->load('details', 'documents')]);
     }
@@ -409,6 +448,21 @@ class BiayaRetribusiController extends Controller
     }
 
     /**
+     * MIME yang boleh disajikan inline. Di luar daftar ini respons dipaksa
+     * `application/octet-stream` + attachment agar konten tak tebak (mis.
+     * text/html atau SVG berisi script) tidak dieksekusi browser sebagai
+     * halaman aktif (XSS via upload dokumen).
+     */
+    private const INLINE_MIME_ALLOWLIST = [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'image/gif',
+        'application/pdf',
+        'text/plain',
+    ];
+
+    /**
      * Sajikan file lampiran lewat API (ber-CORS + berizin) karena file
      * statis public/storage tidak mengirim header CORS ke frontend.
      */
@@ -416,19 +470,24 @@ class BiayaRetribusiController extends Controller
     {
         $biayaRetribusi = $document->biayaRetribusi;
         abort_if(! $biayaRetribusi, 404);
-        $user = $request->user();
-        if ($user->isDepotScoped() && $biayaRetribusi->kode_depo !== $user->kode_depo) {
-            abort(403, 'Anda tidak memiliki akses ke dokumen depo ini.');
-        }
+        // Samakan dengan show()/pdf(): hanya creator/approver yang berhak
+        // melihat lampiran dokumen.
+        $this->authorizeViewer($biayaRetribusi);
         /** @var FilesystemAdapter $disk */
         $disk = Storage::disk('public');
         abort_unless($document->file_path && $disk->exists($document->file_path), 404);
         $safeName = str_replace(['"', "\n", "\r"], '', $document->file_name ?: basename($document->file_path));
 
+        if (! in_array($document->mime_type, self::INLINE_MIME_ALLOWLIST, true)) {
+            return $disk->download($document->file_path, $safeName, [
+                'Content-Type' => 'application/octet-stream',
+            ]);
+        }
+
         return $disk->response(
             $document->file_path,
             $safeName,
-            ['Content-Type' => $document->mime_type ?: 'application/octet-stream']
+            ['Content-Type' => $document->mime_type]
         );
     }
 
@@ -728,7 +787,7 @@ class BiayaRetribusiController extends Controller
         $query->with('details');
         ExportGuard::ensureWithinLimit($query);
 
-        return Excel::download(new BiayaRetribusiExport($query), 'biaya_retribusi.xlsx');
+        return Excel::download(new BiayaRetribusiExport($query, $request->user()), 'biaya_retribusi.xlsx');
     }
 
     /**
@@ -781,19 +840,31 @@ class BiayaRetribusiController extends Controller
             'file' => 'required|file|mimes:pdf,xlsx,xls,csv|max:10240',
         ]);
 
+        $tempFiles = [];
+        $trackTemp = function (string $path) use (&$tempFiles): string {
+            $tempFiles[] = $path;
+
+            return $path;
+        };
+
         try {
             $file = $request->file('file');
             $originalName = $file->getClientOriginalName();
             $extension = strtolower($file->getClientOriginalExtension());
 
-            // Simpan file sementara ke storage/tmp
-            $tempPath = 'tmp/'.uniqid().'.'.$extension;
-            $file->move(storage_path('app/tmp'), $tempPath);
-            $sourcePath = storage_path('app/'.$tempPath);
+            // Simpan file sementara ke storage/app/tmp dengan nama file saja:
+            // move($dir, $name) memakai $name sebagai nama file, jadi prefix
+            // 'tmp/' di nama hanya membuat subfolder ganda tmp/tmp/.
+            if (! is_dir(storage_path('app/tmp'))) {
+                mkdir(storage_path('app/tmp'), 0755, true);
+            }
+            $fileName = uniqid().'.'.$extension;
+            $file->move(storage_path('app/tmp'), $fileName);
+            $sourcePath = $trackTemp(storage_path('app/tmp/'.$fileName));
 
             if ($extension === 'pdf') {
                 // Kompres PDF dengan qpdf sebelum disimpan
-                $compressedPath = storage_path('app/tmp/'.uniqid().'_compressed.pdf');
+                $compressedPath = $trackTemp(storage_path('app/tmp/'.uniqid().'_compressed.pdf'));
                 PdfCompressor::compress($sourcePath, $compressedPath);
                 if (file_exists($compressedPath)) {
                     $sourcePath = $compressedPath;
@@ -825,6 +896,14 @@ class BiayaRetribusiController extends Controller
             Log::error('Biaya Retribusi Import Error', ['error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
+        } finally {
+            // Bersihkan file temp baik sukses maupun gagal — tanpa ini
+            // storage/app/tmp menumpuk setiap import.
+            foreach ($tempFiles as $tempFile) {
+                if (is_file($tempFile)) {
+                    @unlink($tempFile);
+                }
+            }
         }
     }
 }

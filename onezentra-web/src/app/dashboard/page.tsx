@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
 import DashboardActivityChart from '@/components/DashboardActivityChart';
 import DashboardAlerts from '@/components/DashboardAlerts';
@@ -9,7 +9,7 @@ import DashboardRecent from '@/components/DashboardRecent';
 import DashboardStatCards from '@/components/DashboardStatCards';
 import PendingActions from '@/components/PendingActions';
 import RencanaKirimStatusChart from '@/components/RencanaKirimStatusChart';
-import { depo } from '@/lib/api';
+import { depo, getErrorMessage } from '@/lib/api';
 
 function greetingFor(hour: number): string {
   if (hour >= 4 && hour < 11) return 'Selamat pagi';
@@ -29,18 +29,24 @@ export default function DashboardPage() {
   const [greeting] = useState(() => greetingFor(new Date().getHours()));
   const [depos, setDepos] = useState<DepoOption[]>([]);
   const [kodeDepo, setKodeDepo] = useState('');
+  const [depotError, setDepotError] = useState('');
 
   const canFilterDepot = hasPermission('depot.view_all');
 
-  useEffect(() => {
+  const loadDepos = useCallback(async () => {
     if (!canFilterDepot) return;
-    depo.list()
-      .then((res) => {
-        const rows = res.data?.data;
-        if (Array.isArray(rows)) setDepos(rows);
-      })
-      .catch(() => {});
+    try {
+      const res = await depo.list();
+      const rows = res.data?.data;
+      if (Array.isArray(rows)) setDepos(rows);
+      setDepotError('');
+    } catch (e) {
+      console.error('[Dashboard depo]', e);
+      setDepotError(getErrorMessage(e, 'Gagal memuat daftar depo.'));
+    }
   }, [canFilterDepot]);
+
+  useEffect(() => { loadDepos(); }, [loadDepos]);
 
   if (!hasPermission('dashboard.view')) {
     return null;
@@ -81,8 +87,16 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <PendingActions kodeDepo={kodeDepo || undefined} />
+      {depotError && (
+        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+          <span className="flex-1">{depotError}</span>
+          <button onClick={loadDepos} className="rounded-lg border border-red-300 px-3 py-1 text-xs font-bold hover:bg-red-100">
+            Coba lagi
+          </button>
+        </div>
+      )}
 
+      <PendingActions kodeDepo={kodeDepo || undefined} />
       <DashboardAlerts kodeDepo={kodeDepo || undefined} />
 
       <DashboardStatCards kodeDepo={kodeDepo || undefined} />

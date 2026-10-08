@@ -111,7 +111,7 @@ class DockController extends Controller
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
         try {
-            $import = new DockImport;
+            $import = new DockImport($request->user());
             DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
             return response()->json([
@@ -130,6 +130,8 @@ class DockController extends Controller
         $export = new DockExport(
             search: $request->input('search'),
             status: $request->input('status'),
+            user: $request->user(),
+            kodeDepo: $request->input('kode_depo'),
         );
         ExportGuard::ensureWithinLimit($export->query());
 

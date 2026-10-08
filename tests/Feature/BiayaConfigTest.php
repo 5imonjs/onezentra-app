@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -11,17 +13,32 @@ class BiayaConfigTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeUser(): User
+    private function makeUser(array $perms = ['biaya_thl.view']): User
     {
-        return User::create([
-            'email' => 'biaya-config@test.com', 'password' => 'password', 'full_name' => 'Biaya Config User',
+        $user = User::create([
+            'email' => 'biaya-config-'.uniqid().'@test.com', 'password' => 'password', 'full_name' => 'Biaya Config User',
             'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'level' => 'staff_logistic', 'status' => 'active',
         ]);
+        $role = Role::firstOrCreate(['slug' => 'biaya_config_role'], ['name' => 'Biaya Config']);
+        foreach ($perms as $slug) {
+            $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug]);
+            $role->permissions()->syncWithoutDetaching([$perm->id]);
+        }
+        $role->users()->syncWithoutDetaching([$user->id]);
+
+        return $user->fresh();
     }
 
     public function test_show_requires_authentication(): void
     {
         $this->getJson('/api/v1/biaya-config')->assertUnauthorized();
+    }
+
+    public function test_show_requires_biaya_permission(): void
+    {
+        Sanctum::actingAs($this->makeUser([]));
+
+        $this->getJson('/api/v1/biaya-config')->assertForbidden();
     }
 
     public function test_show_returns_runtime_thresholds_and_calc_defaults(): void

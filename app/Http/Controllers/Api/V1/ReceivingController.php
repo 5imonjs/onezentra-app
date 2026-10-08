@@ -54,9 +54,10 @@ class ReceivingController extends Controller
         }
 
         if ($request->search) {
-            $query->whereHas('rencanaKirim', function ($q) use ($request) {
-                $q->where('po_transporter', 'like', "%{$request->search}%")
-                    ->orWhere('driver_name', 'like', "%{$request->search}%");
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->whereHas('rencanaKirim', function ($q) use ($like) {
+                $q->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 
@@ -279,10 +280,23 @@ class ReceivingController extends Controller
             422,
             "Receiving hanya dapat dimulai dari status PENDING (saat ini: {$receiving->status})."
         );
-        $receiving->update([
-            'status' => 'IN_PROGRESS',
-            'actual_start_time' => now(),
-        ]);
+
+        $receiving = DB::transaction(function () use ($receiving): Receiving {
+            // Kunci + cek ulang di dalam transaksi: complete/cancel bersamaan
+            // tidak boleh menyalip start (pola yang sama dengan cancel/destroy).
+            $locked = Receiving::whereKey($receiving->id)->lockForUpdate()->firstOrFail();
+            abort_unless(
+                $locked->status === 'PENDING',
+                422,
+                "Receiving hanya dapat dimulai dari status PENDING (saat ini: {$locked->status})."
+            );
+            $locked->update([
+                'status' => 'IN_PROGRESS',
+                'actual_start_time' => now(),
+            ]);
+
+            return $locked;
+        });
 
         return response()->json([
             'message' => 'Receiving started',
@@ -385,7 +399,7 @@ class ReceivingController extends Controller
             abort_unless($unconditionedItems === 0, 422, 'Masih ada item tanpa kondisi (condition).');
 
             if ($lockedReceiving->status === 'COMPLETED') {
-                return 'completed';
+                return 'already_completed';
             }
 
             if ($lockedReceiving->status === 'CANCELLED') {
@@ -429,7 +443,7 @@ class ReceivingController extends Controller
         // receiving. Panggilan ulang (double-tap operator / retry jaringan)
         // tetap dijawab sukses karena idempoten — tapi tidak boleh
         // mengirim email "Receiving selesai" dua kali.
-        if ($batchNumber !== 'completed') {
+        if ($batchNumber === 'completed') {
             $this->emailService->send(
                 'receiving',
                 'completed',
@@ -440,10 +454,35 @@ class ReceivingController extends Controller
 
         return response()->json([
             'message' => $batchNumber === 'completed'
-                ? 'Receiving already completed.'
-                : 'Receiving completed.',
+                ? 'Receiving completed.'
+                : 'Receiving already completed.',
             'data' => $receiving->load('rencanaKirim'),
         ]);
+    }
+
+    /**
+     * Mundurkan RK ke VERIFIED hanya bila receiving yang dibatalkan/dihapus
+     * adalah receiving aktif: status RK saat ini IN_PROGRESS/PENDING dan
+     * tidak ada receiving COMPLETED lain untuk RK itu. Bila RK sudah
+     * COMPLETED (ada receiving COMPLETED lain), biarkan tetap COMPLETED.
+     */
+    private function revertRencanaKirimToVerified(int $rencanaKirimId, int $exceptReceivingId): void
+    {
+        $rk = RencanaKirim::whereKey($rencanaKirimId)->lockForUpdate()->first();
+        if (! $rk) {
+            return;
+        }
+        if (! in_array($rk->status, ['IN_PROGRESS', 'PENDING'], true)) {
+            return;
+        }
+        $hasOtherCompleted = Receiving::where('rencana_kirim_id', $rk->id)
+            ->where('id', '!=', $exceptReceivingId)
+            ->where('status', 'COMPLETED')
+            ->exists();
+        if ($hasOtherCompleted) {
+            return;
+        }
+        $rk->update(['status' => 'VERIFIED']);
     }
 
     public function cancelReceiving(Receiving $receiving): JsonResponse
@@ -471,11 +510,7 @@ class ReceivingController extends Controller
                 Dock::where('id', $locked->dock_id)->update(['status' => 'AVAILABLE']);
             }
 
-            if ($locked->rencanaKirim?->status === 'IN_PROGRESS') {
-                $locked->rencanaKirim->update(['status' => 'VERIFIED']);
-            } elseif ($locked->rencanaKirim?->status === 'COMPLETED') {
-                $locked->rencanaKirim->update(['status' => 'VERIFIED']);
-            }
+            $this->revertRencanaKirimToVerified($locked->rencana_kirim_id, $locked->id);
 
             // Scan receiving ikut batal — received_qty dihitung ulang dari
             // receiving yang masih berlaku, supaya tidak membeku pada nilai
@@ -516,12 +551,9 @@ class ReceivingController extends Controller
             $locked->delete();
 
             // Mundur satu langkah saja, jangan timpa buta: hanya RK yang
-            // sudah IN_PROGRESS yang kembali VERIFIED.
-            if ($locked->rencanaKirim?->status === 'IN_PROGRESS') {
-                $locked->rencanaKirim->update(['status' => 'VERIFIED']);
-            } elseif ($locked->rencanaKirim?->status === 'COMPLETED') {
-                $locked->rencanaKirim->update(['status' => 'VERIFIED']);
-            }
+            // masih IN_PROGRESS/PENDING dan tanpa receiving COMPLETED lain
+            // yang kembali VERIFIED; RK COMPLETED dibiarkan tetap COMPLETED.
+            $this->revertRencanaKirimToVerified($locked->rencana_kirim_id, $locked->id);
 
             // Baris receiving_items sudah terhapus — received_qty dihitung
             // ulang supaya tidak menyisakan angka dari scan yang hilang.
@@ -571,6 +603,8 @@ class ReceivingController extends Controller
         $export = new ReceivingExport(
             search: $request->input('search'),
             status: $request->input('status'),
+            user: $request->user(),
+            kodeDepo: $request->input('kode_depo'),
         );
         ExportGuard::ensureWithinLimit($export->query());
 

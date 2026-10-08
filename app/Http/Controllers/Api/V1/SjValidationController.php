@@ -18,6 +18,7 @@ use App\Models\StandarUmurProduk;
 use App\Models\User;
 use App\Services\EmailNotificationService;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -38,8 +39,9 @@ class SjValidationController extends Controller
             ->when($request->date_from, fn ($q) => $q->whereDate('created_at', '>=', $request->date_from))
             ->when($request->date_to, fn ($q) => $q->whereDate('created_at', '<=', $request->date_to))
             ->when($request->search, function ($q) use ($request) {
-                $q->where(function ($qq) use ($request) {
-                    $qq->whereHas('rencanaKirim', fn ($s) => $s->where('po_transporter', 'like', "%{$request->search}%"));
+                $like = '%'.addcslashes($request->search, '\\%_').'%';
+                $q->where(function ($qq) use ($like) {
+                    $qq->whereHas('rencanaKirim', fn ($s) => $s->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\']));
                 });
             })
             ->orderBy('created_at', 'desc');
@@ -567,23 +569,32 @@ class SjValidationController extends Controller
             ]);
 
             // Masing-masing produk yang divalidasi mendapat batch number sendiri (siap cetak).
+            // Guard anti-ganda: baris item sudah di-lockForUpdate di atas sehingga
+            // dua scan bersamaan terserialisasi; tangkapan duplikat di sini
+            // menutup celah sisa (retry jaringan / double-tap lolos validasi).
             $existingBatch = Batch::where('sj_validation_item_id', $item->id)->first();
             if (! $existingBatch) {
-                Batch::create([
-                    'batch_number' => Batch::generateNumber('BATCH-'),
-                    'sj_validation_item_id' => $item->id,
-                    'barcode_label' => Batch::generateLabel(),
-                    'items_json' => [[
-                        'kode_barang' => $item->kode_barang,
-                        'nama_barang' => $item->nama_barang,
-                        'actual_qty' => (float) $item->actual_qty,
-                        'satuan' => $item->satuan,
-                        'barcode' => $item->barcode,
-                        'condition' => $item->condition,
-                        'expired_date' => $item->expired_date,
-                    ]],
-                    'status' => 'ACTIVE',
-                ]);
+                try {
+                    Batch::createWithRetry([
+                        'sj_validation_item_id' => $item->id,
+                        'items_json' => [[
+                            'kode_barang' => $item->kode_barang,
+                            'nama_barang' => $item->nama_barang,
+                            'actual_qty' => (float) $item->actual_qty,
+                            'satuan' => $item->satuan,
+                            'barcode' => $item->barcode,
+                            'condition' => $item->condition,
+                            'expired_date' => $item->expired_date,
+                        ]],
+                        'status' => 'ACTIVE',
+                    ]);
+                } catch (QueryException $e) {
+                    // Baris batch sudah dibuat transaksi pesaing — pakai yang ada.
+                    if (! in_array($e->getCode(), ['23000', '23505'], true)
+                        && $e->errorInfo[0] !== '23000') {
+                        throw $e;
+                    }
+                }
             }
 
             $item->load(['npn', 'batch']);
@@ -717,21 +728,25 @@ class SjValidationController extends Controller
             return response()->json(['message' => 'Item tidak sesuai validasi ini'], 422);
         }
 
-        // Koreksi pada sesi COMPLETED harus ikut bersih di receiving_items
-        // (prinsip yang sama dengan syncReceivingItem): baris yang menunjuk
-        // item ini ikut dihapus — bukan dibiarkan putus link oleh FK
-        // nullOnDelete sementara total header tidak dihitung ulang.
-        $linkedReceivingItem = ReceivingItem::where('sj_validation_item_id', $row->id)->first();
-        if ($linkedReceivingItem) {
-            $receiving = $linkedReceivingItem->receiving;
-            $linkedReceivingItem->delete();
-            $receiving?->update([
-                'total_received_qty' => $receiving->items()->sum('actual_qty'),
-            ]);
-        }
+        DB::transaction(function () use ($row): void {
+            $locked = SjValidationItem::whereKey($row->id)->lockForUpdate()->firstOrFail();
 
-        Batch::where('sj_validation_item_id', $row->id)->delete();
-        $row->delete();
+            // Koreksi pada sesi COMPLETED harus ikut bersih di receiving_items
+            // (prinsip yang sama dengan syncReceivingItem): baris yang menunjuk
+            // item ini ikut dihapus — bukan dibiarkan putus link oleh FK
+            // nullOnDelete sementara total header tidak dihitung ulang.
+            $linkedReceivingItem = ReceivingItem::where('sj_validation_item_id', $locked->id)->first();
+            if ($linkedReceivingItem) {
+                $receiving = $linkedReceivingItem->receiving;
+                $linkedReceivingItem->delete();
+                $receiving?->update([
+                    'total_received_qty' => $receiving->items()->sum('actual_qty'),
+                ]);
+            }
+
+            Batch::where('sj_validation_item_id', $locked->id)->delete();
+            $locked->delete();
+        });
 
         $sjValidation->unsetRelation('items');
 
@@ -741,25 +756,34 @@ class SjValidationController extends Controller
     public function cancel(Request $request, SjValidation $sjValidation): JsonResponse
     {
         $this->authorizeDepot($sjValidation);
-        abort_unless(
-            $sjValidation->status === 'IN_PROGRESS',
-            422,
-            "Validasi berstatus {$sjValidation->status} tidak dapat dibatalkan."
-        );
 
         DB::transaction(function () use ($sjValidation) {
+            // Kunci + cek ulang di dalam transaksi: dua operator yang menekan
+            // Batal bersamaan (atau complete vs cancel) tidak boleh lolos
+            // guard status di luar transaksi.
+            $locked = SjValidation::query()
+                ->whereKey($sjValidation->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            abort_unless(
+                $locked->status === 'IN_PROGRESS',
+                422,
+                "Validasi berstatus {$locked->status} tidak dapat dibatalkan."
+            );
+
             // `completed_at` sengaja TIDAK diisi di sini: dokumen yang dibatalkan
             // tidak pernah "selesai", dan mengisinya akan membuat UI menampilkan
             // waktu selesai untuk dokumen yang tidak pernah diselesaikan.
             // Durasi tetap dicatat karena pekerjaan memang berakhir di sini.
             $cancelledAt = now();
-            $sjValidation->update([
+            $locked->update([
                 'status' => 'CANCELLED',
-                'duration_seconds' => $this->elapsedSeconds($sjValidation, $cancelledAt),
+                'duration_seconds' => $this->elapsedSeconds($locked, $cancelledAt),
             ]);
             Batch::whereIn(
                 'sj_validation_item_id',
-                $sjValidation->items()->pluck('id')
+                $locked->items()->pluck('id')
             )->update(['status' => 'CANCELLED']);
         });
 

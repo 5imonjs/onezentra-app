@@ -113,7 +113,6 @@ class UserSeeder extends Seeder
                     'full_name' => $data['full_name'],
                     'password' => Hash::make('password'),
                     'level' => $data['level'],
-                    'role_id' => $role?->id,
                     'status' => 'active',
                 ]
             );

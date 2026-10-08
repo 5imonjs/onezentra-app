@@ -281,11 +281,20 @@ class FullFlowTest extends TestCase
      */
     public function test_npn_import_does_not_overwrite_created_by_on_update(): void
     {
-        // Buat NPN existing dengan created_by berbeda
+        // Buat NPN existing dengan created_by milik user lain yang valid
+        $otherUser = User::create([
+            'email' => 'other-npn@test.com',
+            'password' => 'password',
+            'full_name' => 'Other NPN Owner',
+            'kode_depo' => 'OLD',
+            'nama_depo' => 'Old Depo',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
         $npn = Npn::create([
             'BOSnetszProductId' => 'B-UPD-01',
             'szNickName' => 'Produk Update',
-            'created_by' => 999,
+            'created_by' => $otherUser->id,
             'kode_depo' => 'OLD',
             'nama_depo' => 'Old Depo',
         ]);
@@ -302,7 +311,7 @@ class FullFlowTest extends TestCase
         // created_by TIDAK boleh berubah
         $this->assertDatabaseHas('npn', [
             'id' => $npn->id,
-            'created_by' => 999,
+            'created_by' => $otherUser->id,
             'szNickName' => 'Produk Update New',
         ]);
 

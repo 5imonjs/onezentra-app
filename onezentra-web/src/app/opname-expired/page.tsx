@@ -133,10 +133,11 @@ function badge(status?: string | null) {
 
 // Baris tabel di-memo: parent me-render ulang tiap ketikan/filter harus
 // TIDAK me-render ulang 50 baris yang datanya tidak berubah.
-const WaveRow = memo(function WaveRow({ w, selected, canDelete, maxHari, onOpen, onDelete, onToggle }: {
+const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHari, onOpen, onDelete, onToggle }: {
   w: Wave;
   selected: boolean;
   canDelete: boolean;
+  deleting: boolean;
   maxHari: number;
   onOpen: (w: Wave) => void;
   onDelete: (id: number) => void;
@@ -205,7 +206,8 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, maxHari, onOpen,
         {canDelete && (
           <button
             onClick={() => onDelete(w.id)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+            disabled={deleting}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             Hapus
@@ -291,7 +293,9 @@ export default function OpnameExpiredPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [pending, setPending] = useState<PendingSummary | null>(null);
+  const [pendingError, setPendingError] = useState(false);
   const [depoProgress, setDepoProgress] = useState<{ kode_depo: string; nama_depo: string | null; total: number; validated: number; has_session: boolean; submitted: boolean }[] | null>(null);
+  const [progressError, setProgressError] = useState(false);
   const [reminding, setReminding] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: 'asc' | 'desc' }>({ key: null, dir: 'asc' });
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -367,8 +371,10 @@ export default function OpnameExpiredPage() {
     try {
       const res = await opnameExpired.pending({ week_start: week || undefined }) as { data: { data: PendingSummary } };
       setPending(res.data.data);
+      setPendingError(false);
     } catch {
       setPending(null);
+      setPendingError(true);
     }
   }, []);
 
@@ -381,8 +387,10 @@ export default function OpnameExpiredPage() {
         data: { data: { depots: { kode_depo: string; nama_depo: string | null; total: number; validated: number; has_session: boolean; submitted: boolean }[] } };
       };
       setDepoProgress(res.data.data.depots);
+      setProgressError(false);
     } catch {
       setDepoProgress(null);
+      setProgressError(true);
     }
   }, []);
 
@@ -485,21 +493,35 @@ export default function OpnameExpiredPage() {
     }
   };
 
-  const handleDelete = useCallback(async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus wave ini?')) return;
+  const handleDelete = useCallback((id: number) => {
+    setDeleteTargetId(id);
+    setShowSingleDelete(true);
+  }, []);
+
+  const confirmSingleDelete = async () => {
+    if (deleteTargetId === null || singleDeleting) return;
+    setSingleDeleting(true);
     try {
-      await opnameExpired.delete(id);
+      await opnameExpired.delete(deleteTargetId);
       notifyGlobal('Wave berhasil dihapus', 'success');
       load();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Hapus gagal'), 'error');
+    } finally {
+      setSingleDeleting(false);
+      setShowSingleDelete(false);
+      setDeleteTargetId(null);
     }
-  }, [load]);
+  };
 
   // Hapus massal wave terpilih (berurutan agar pesan gagal jelas per baris).
   const [selectedWaveIds, setSelectedWaveIds] = useState<Set<number>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  // Hapus satu wave lewat ConfirmDialog (pengganti native confirm) + guard dobel-klik.
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [showSingleDelete, setShowSingleDelete] = useState(false);
+  const [singleDeleting, setSingleDeleting] = useState(false);
 
   const toggleWaveSelect = useCallback((id: number) => {
     setSelectedWaveIds((prev) => {
@@ -651,6 +673,12 @@ export default function OpnameExpiredPage() {
         </div>
 
         {/* Progres kirim per depo: pantau siapa sudah / belum kirim */}
+        {progressError && (depoProgress === null || depoProgress.length === 0) && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-700" role="alert">
+            <span>Progres depo gagal dimuat.</span>
+            <button type="button" onClick={() => loadProgress(weekStart || undefined)} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+          </div>
+        )}
         {depoProgress !== null && depoProgress.length > 0 && (
           <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -785,6 +813,16 @@ export default function OpnameExpiredPage() {
                 {pending?.pending.total} baris belum di-generate
               </button>
             )}
+            {pendingError && (pending?.pending.total ?? 0) === 0 && (
+              <button
+                type="button"
+                onClick={() => loadPending(weekStart || undefined)}
+                title="Cek ulang baris yang siap di-generate"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold bg-amber-50 text-amber-700 border border-dashed border-amber-300 hover:bg-amber-100 transition-colors"
+              >
+                Cek baris gagal — coba lagi
+              </button>
+            )}
             {hasPermission('opname.create') && (
               <button onClick={handleGenerate} disabled={generating} className="btn-primary disabled:opacity-50">
                 <span className="flex items-center gap-2">
@@ -897,6 +935,7 @@ export default function OpnameExpiredPage() {
                         w={w}
                         selected={selectedWaveIds.has(w.id)}
                         canDelete={canDeleteWaves}
+                        deleting={singleDeleting}
                         maxHari={num(thresholds.threshold_aman) || 90}
                         onOpen={openItem}
                         onDelete={handleDelete}
@@ -961,7 +1000,8 @@ export default function OpnameExpiredPage() {
                         {hasPermission('opname.delete') && (
                           <button
                             onClick={() => handleDelete(w.id)}
-                            className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
+                            disabled={singleDeleting}
+                            className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                             Hapus
@@ -1207,6 +1247,17 @@ export default function OpnameExpiredPage() {
         message="Wave terpilih akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Generate ulang akan membuatnya kembali. Lanjutkan?"
         confirmLabel="Ya, hapus"
         variant="danger"
+      />
+
+      <ConfirmDialog
+        open={showSingleDelete}
+        onClose={() => { if (singleDeleting) return; setShowSingleDelete(false); setDeleteTargetId(null); }}
+        onConfirm={confirmSingleDelete}
+        title="Hapus Wave"
+        message="Wave ini akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Generate ulang akan membuatnya kembali. Lanjutkan?"
+        confirmLabel="Ya, hapus"
+        variant="danger"
+        loading={singleDeleting}
       />
     </div>
   </DashboardLayout>

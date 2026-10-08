@@ -42,6 +42,11 @@ class BiayaApprovalService
         if (blank($biaya->tanggal_pengajuan)) {
             $errors['tanggal_pengajuan'] = ['Tanggal pengajuan wajib diisi sebelum dikirim.'];
         }
+        // Tanpa depo, pengajuan tak cocok ke ApprovalAssignment mana pun
+        // dan tak terlihat di filter depo mana pun — tolak sejak submit.
+        if (blank($biaya->kode_depo)) {
+            $errors['kode_depo'] = ['Depo wajib diisi sebelum dikirim.'];
+        }
 
         $details = $biaya->details()->get();
         if ($details->isEmpty()) {
@@ -120,6 +125,11 @@ class BiayaApprovalService
         $errors = [];
         if (blank($biaya->tanggal_pengajuan)) {
             $errors['tanggal_pengajuan'] = ['Tanggal pengajuan wajib diisi sebelum dikirim.'];
+        }
+        // Tanpa depo, pengajuan tak cocok ke ApprovalAssignment mana pun
+        // dan tak terlihat di filter depo mana pun — tolak sejak submit.
+        if (blank($biaya->kode_depo)) {
+            $errors['kode_depo'] = ['Depo wajib diisi sebelum dikirim.'];
         }
 
         $details = $biaya->details()->get();

@@ -25,21 +25,52 @@ class BiayaRetribusiImport implements ToCollection, WithHeadingRow
 
             $noSuratJalan = trim((string) ($row['no_surat_jalan'] ?? ''));
             $nopol = trim((string) ($row['nopol_kendaraan'] ?? ''));
+            $typeKendaraan = trim((string) ($row['type_kendaraan'] ?? ''));
+            $nominal = $row['nominal_biaya'] ?? null;
 
+            // Kolom wajib: tanpa ini baris tidak bisa menjadi detail valid.
             if (! $noSuratJalan) {
                 $this->errors[] = ['row' => $rowNumber, 'errors' => 'No. Surat Jalan wajib diisi'];
 
                 continue;
             }
 
+            if (! $nopol) {
+                $this->errors[] = ['row' => $rowNumber, 'errors' => 'Nopol Kendaraan wajib diisi'];
+
+                continue;
+            }
+
+            if ($nominal === null || $nominal === '' || ! is_numeric($nominal) || (float) $nominal < 0) {
+                $this->errors[] = ['row' => $rowNumber, 'errors' => 'Nominal Biaya wajib diisi (angka >= 0)'];
+
+                continue;
+            }
+
+            $kodeDepo = auth()->user()?->kode_depo;
+            if (blank($kodeDepo)) {
+                $this->errors[] = ['row' => $rowNumber, 'errors' => 'Kode depo tidak ditemukan — header tanpa kode_depo tidak dibuat'];
+
+                continue;
+            }
+
             try {
-                BiayaRetribusi::create([
-                    'no_surat_jalan' => $noSuratJalan,
-                    'nopol_kendaraan' => $nopol,
+                // Header selalu dibuat bersama minimal 1 detail valid —
+                // header tanpa detail hanya menjadi baris yatim Rp0.
+                $header = BiayaRetribusi::create([
                     'tanggal_pengajuan' => now(),
-                    'kode_depo' => auth()->user()?->kode_depo,
+                    'kode_depo' => $kodeDepo,
                     'nama_depo' => auth()->user()?->nama_depo,
+                    'nominal_biaya' => (float) $nominal,
+                    'created_by' => auth()->id(),
                     'status' => 'draft',
+                ]);
+                $header->details()->create([
+                    'no_surat_jalan' => $noSuratJalan,
+                    'nopol_kendaraan' => strtoupper($nopol),
+                    'type_kendaraan' => $typeKendaraan ? strtoupper($typeKendaraan) : null,
+                    'nominal_biaya' => (float) $nominal,
+                    'order' => 0,
                 ]);
                 $this->imported++;
             } catch (\Exception $e) {

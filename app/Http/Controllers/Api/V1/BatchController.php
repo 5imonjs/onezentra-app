@@ -26,7 +26,8 @@ class BatchController extends Controller
         }
 
         if ($request->search) {
-            $query->where('batch_number', 'like', "%{$request->search}%");
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->whereRaw('batch_number LIKE ? ESCAPE ?', [$like, '\\']);
         }
 
         if ($request->status) {

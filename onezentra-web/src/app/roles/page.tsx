@@ -170,6 +170,7 @@ function RolesTab() {
   const [form, setForm] = useState({ name: '', slug: '', description: '' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
 
@@ -190,6 +191,7 @@ function RolesTab() {
   const [allPermissions, setAllPermissions] = useState<GroupedPermissionItems>({});
   const [assignedIds, setAssignedIds] = useState<number[]>([]);
   const [permLoading, setPermLoading] = useState(false);
+  const [permLoadError, setPermLoadError] = useState<string | null>(null);
   const [permSaving, setPermSaving] = useState(false);
   const [showPermSaveConfirm, setShowPermSaveConfirm] = useState(false);
   const [hasPermChanges, setHasPermChanges] = useState(false);
@@ -289,13 +291,15 @@ function RolesTab() {
   };
 
   const confirmDelete = async () => {
-    if (deleteTargetId === null) return;
+    if (deleteTargetId === null || deleting) return;
+    setDeleting(true);
     try {
       await roles.delete(deleteTargetId);
       loadRoles();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Error'));
     } finally {
+      setDeleting(false);
       setShowDeleteConfirm(false);
       setDeleteTargetId(null);
     }
@@ -331,6 +335,7 @@ function RolesTab() {
     setPermRole(role);
     setShowPermModal(true);
     setPermLoading(true);
+    setPermLoadError(null);
     setHasPermChanges(false);
     setPermSearch('');
     setCollapsedGroups(new Set());
@@ -345,7 +350,9 @@ function RolesTab() {
       setAllPermissions(grouped);
       setAssignedIds(res.data.assignedIds || []);
     } catch (e) {
-      console.error(e);
+      const message = getErrorMessage(e, 'Gagal memuat permission role.');
+      setPermLoadError(message);
+      notifyGlobal(message);
     } finally {
       setPermLoading(false);
     }
@@ -601,8 +608,9 @@ function RolesTab() {
               {hasPermission('roles.delete') && (
               <button
                 onClick={() => handleDelete(role.id)}
+                disabled={deleting}
                 aria-label="Hapus role"
-                className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -694,7 +702,7 @@ function RolesTab() {
             {hasPermission('roles.edit') && (
               <button
                 onClick={() => setShowPermSaveConfirm(true)}
-                disabled={!hasPermChanges || permSaving}
+                disabled={!hasPermChanges || permSaving || permLoading || permLoadError !== null}
                 className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {permSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -707,6 +715,17 @@ function RolesTab() {
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-8 h-8 border-4 border-chip-primary-border border-t-primary-600 rounded-full animate-spin mb-4"></div>
             <p className="text-sm text-gray-500">Memuat permission...</p>
+          </div>
+        ) : permLoadError ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+            <span>{permLoadError}</span>
+            <button
+              type="button"
+              onClick={() => { if (permRole) handleOpenPermissions(permRole); }}
+              className="font-semibold hover:underline whitespace-nowrap"
+            >
+              Coba lagi
+            </button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -833,12 +852,13 @@ function RolesTab() {
       {/* Delete Confirm */}
       <ConfirmDialog
         open={showDeleteConfirm}
-        onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+        onClose={() => { if (deleting) return; setShowDeleteConfirm(false); setDeleteTargetId(null); }}
         onConfirm={confirmDelete}
         title="Hapus Role"
         message="Yakin ingin menghapus role ini? Tindakan ini tidak dapat dibatalkan."
         confirmLabel="Hapus"
         variant="danger"
+        loading={deleting}
       />
 
       {/* Submit Confirm */}
@@ -917,6 +937,7 @@ function PermissionsTab() {
   const [form, setForm] = useState({ name: '', slug: '', description: '', menu_group: '', icon: '', route: '' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -968,13 +989,15 @@ function PermissionsTab() {
   };
 
   const confirmDelete = async () => {
-    if (deleteTargetId === null) return;
+    if (deleteTargetId === null || deleting) return;
+    setDeleting(true);
     try {
       await permissions.delete(deleteTargetId);
       loadPermissions();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Error'));
     } finally {
+      setDeleting(false);
       setShowDeleteConfirm(false);
       setDeleteTargetId(null);
     }
@@ -1303,12 +1326,13 @@ function PermissionsTab() {
       {/* Delete Confirm */}
       <ConfirmDialog
         open={showDeleteConfirm}
-        onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+        onClose={() => { if (deleting) return; setShowDeleteConfirm(false); setDeleteTargetId(null); }}
         onConfirm={confirmDelete}
         title="Hapus Permission"
         message="Yakin ingin menghapus permission ini? Tindakan ini tidak dapat dibatalkan."
         confirmLabel="Hapus"
         variant="danger"
+        loading={deleting}
       />
 
       {/* Submit Confirm */}

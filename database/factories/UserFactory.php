@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +17,7 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'kode_depo' => fake()->unique()->randomLetter(10),
+            'kode_depo' => fake()->unique()->bothify('DPO-####'),
             'nama_depo' => fake()->company(),
             'full_name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
@@ -24,5 +25,16 @@ class UserFactory extends Factory
             'level' => 'admin_master',
             'status' => 'active',
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $role = Role::firstOrCreate(
+                ['slug' => 'factory_role'],
+                ['name' => 'Factory Role', 'is_active' => true]
+            );
+            $user->roles()->syncWithoutDetaching([$role->id]);
+        });
     }
 }

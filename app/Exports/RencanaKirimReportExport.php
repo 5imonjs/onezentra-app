@@ -59,12 +59,12 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
         }
 
         if ($search) {
-            $like = "%{$search}%";
+            $like = '%'.addcslashes($search, '\\%_').'%';
             $query->where(fn ($q) => $q
-                ->where('po_transporter', 'like', $like)
-                ->orWhere('driver_name', 'like', $like)
-                ->orWhere('nopol', 'like', $like)
-                ->orWhere('destination_name', 'like', $like));
+                ->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('nopol LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('destination_name LIKE ? ESCAPE ?', [$like, '\\']));
         }
 
         return $query;

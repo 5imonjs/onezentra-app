@@ -8,6 +8,7 @@ use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\ReceivingItem;
+use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Services\OpnameExpiredService;
 use Illuminate\Http\JsonResponse;
@@ -78,6 +79,15 @@ class OpnameExpiredSessionController extends Controller
         if ($user->isDepotScoped() && $validated['kode_depo'] !== $user->kode_depo) {
             abort(403, 'Anda hanya bisa membuat sesi untuk depo sendiri.');
         }
+
+        // Assignee wajib satu depo dengan sesi: sesi lintas-depo membuat
+        // baris tak terlihat siapa pun (?mine= lolos, open 403).
+        $assignee = User::findOrFail($validated['assigned_to']);
+        abort_unless(
+            $assignee->kode_depo === $validated['kode_depo'],
+            422,
+            'Petugas yang ditugaskan harus dari depo yang sama dengan sesi.'
+        );
 
         $waves = OpnameExpiredWave::whereIn('id', $validated['wave_ids'])->get();
         if ($waves->isEmpty()) {
@@ -195,12 +205,17 @@ class OpnameExpiredSessionController extends Controller
     {
         $this->authorizeSession($request, $session);
 
-        abort_unless($session->status === OpnameExpiredSession::STATUS_OPEN, 422, 'Sesi sudah dimulai atau selesai.');
+        $session = DB::transaction(function () use ($session) {
+            $locked = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->status === OpnameExpiredSession::STATUS_OPEN, 422, 'Sesi sudah dimulai atau selesai.');
 
-        $session->update([
-            'status' => OpnameExpiredSession::STATUS_IN_PROGRESS,
-            'started_at' => now(),
-        ]);
+            $locked->update([
+                'status' => OpnameExpiredSession::STATUS_IN_PROGRESS,
+                'started_at' => now(),
+            ]);
+
+            return $locked;
+        });
 
         return response()->json([
             'message' => 'Sesi dimulai.',
@@ -252,15 +267,22 @@ class OpnameExpiredSessionController extends Controller
     {
         $this->authorizeSession($request, $session);
 
-        abort_unless($session->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
+        // Kunci dulu, cek kemudian: interleaving complete↔cancel/verify
+        // terserialisasi; last-write-wins pasca-kunci tidak mungkin.
+        $session = DB::transaction(function () use ($session) {
+            $locked = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
 
-        $unverified = $session->items()->whereNull('verified_at')->count();
-        abort_unless($unverified === 0, 422, "Masih ada {$unverified} baris belum diverifikasi.");
+            $unverified = $locked->items()->whereNull('verified_at')->count();
+            abort_unless($unverified === 0, 422, "Masih ada {$unverified} baris belum diverifikasi.");
 
-        $session->update([
-            'status' => OpnameExpiredSession::STATUS_COMPLETED,
-            'completed_at' => now(),
-        ]);
+            $locked->update([
+                'status' => OpnameExpiredSession::STATUS_COMPLETED,
+                'completed_at' => now(),
+            ]);
+
+            return $locked;
+        });
 
         $fresh = $session->fresh()->load(['items.wave', 'items.batch']);
 
@@ -287,15 +309,20 @@ class OpnameExpiredSessionController extends Controller
     {
         $this->authorizeSession($request, $session);
 
-        abort_unless($session->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
-
         $validated = $request->validate(['notes' => 'nullable|string']);
 
-        $session->update([
-            'status' => OpnameExpiredSession::STATUS_CANCELLED,
-            'notes' => $validated['notes'] ?? $session->notes,
-            'completed_at' => now(),
-        ]);
+        $session = DB::transaction(function () use ($session, $validated) {
+            $locked = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
+
+            $locked->update([
+                'status' => OpnameExpiredSession::STATUS_CANCELLED,
+                'notes' => $validated['notes'] ?? $locked->notes,
+                'completed_at' => now(),
+            ]);
+
+            return $locked;
+        });
 
         return response()->json([
             'message' => 'Sesi dibatalkan.',

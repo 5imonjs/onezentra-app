@@ -137,7 +137,7 @@ class DepotScopeConsistencyTest extends TestCase
             'po_transporter' => 'PO-A-001',
             'kode_depo' => 'AA',
             'nama_depo' => 'Depo AA',
-            'status' => 'SCHEDULED',
+            'status' => 'VERIFIED',
         ]);
 
         $import = new ReceivingImport($userA);
@@ -151,6 +151,7 @@ class DepotScopeConsistencyTest extends TestCase
         $receiving = Receiving::firstOrFail();
         $this->assertSame($rencana->id, $receiving->rencana_kirim_id);
         $this->assertSame('PENDING', $receiving->status);
+        $this->assertSame('IN_PROGRESS', $rencana->fresh()->status);
     }
 
     /**
@@ -206,7 +207,7 @@ class DepotScopeConsistencyTest extends TestCase
             'po_transporter' => 'PO-A-MIX',
             'kode_depo' => 'AA',
             'nama_depo' => 'Depo AA',
-            'status' => 'SCHEDULED',
+            'status' => 'VERIFIED',
         ]);
         RencanaKirim::create([
             'po_transporter' => 'PO-B-MIX',
@@ -269,7 +270,7 @@ class DepotScopeConsistencyTest extends TestCase
             'po_transporter' => 'PO-B-002',
             'kode_depo' => 'BB',
             'nama_depo' => 'Depo BB',
-            'status' => 'SCHEDULED',
+            'status' => 'VERIFIED',
         ]);
 
         $import = new ReceivingImport($admin);
@@ -327,5 +328,69 @@ class DepotScopeConsistencyTest extends TestCase
         ]);
 
         $this->postJson("/api/v1/receivings/{$receivingB->id}/complete")->assertStatus(403);
+    }
+
+    /**
+     * Samakan guard dengan ReceivingController@store: import menolak RK yang
+     * belum VERIFIED — seluruh file di-rollback.
+     */
+    public function test_import_menolak_rk_belum_verified(): void
+    {
+        $userA = $this->depotUser('AA');
+
+        RencanaKirim::create([
+            'po_transporter' => 'PO-A-DRAFT',
+            'kode_depo' => 'AA',
+            'nama_depo' => 'Depo AA',
+            'status' => 'DRAFT',
+        ]);
+
+        $import = new ReceivingImport($userA);
+
+        try {
+            $import->collection(collect([
+                ['po_transporter' => 'PO-A-DRAFT', 'driver_name' => 'Driver A'],
+            ]));
+            $this->fail('Import seharusnya melempar exception.');
+        } catch (ReceivingImportFailed $e) {
+            $this->assertCount(1, $e->rowErrors);
+            $this->assertStringContainsString('VERIFIED', $e->rowErrors[0]['errors']);
+        }
+
+        $this->assertDatabaseCount('receivings', 0);
+    }
+
+    /**
+     * Satu RK hanya punya satu receiving berjalan: import kedua untuk RK yang
+     * sama ditolak seperti guard duplikat di store().
+     */
+    public function test_import_menolak_duplikat_receiving_berjalan(): void
+    {
+        $userA = $this->depotUser('AA');
+
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-A-DUP',
+            'kode_depo' => 'AA',
+            'nama_depo' => 'Depo AA',
+            'status' => 'VERIFIED',
+        ]);
+        Receiving::create([
+            'rencana_kirim_id' => $rencana->id,
+            'status' => 'PENDING',
+        ]);
+
+        $import = new ReceivingImport($userA);
+
+        try {
+            $import->collection(collect([
+                ['po_transporter' => 'PO-A-DUP', 'driver_name' => 'Driver A'],
+            ]));
+            $this->fail('Import seharusnya melempar exception.');
+        } catch (ReceivingImportFailed $e) {
+            $this->assertCount(1, $e->rowErrors);
+            $this->assertStringContainsString('sudah memiliki receiving', $e->rowErrors[0]['errors']);
+        }
+
+        $this->assertDatabaseCount('receivings', 1);
     }
 }

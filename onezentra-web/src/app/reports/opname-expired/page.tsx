@@ -113,6 +113,7 @@ export default function OpnameExpiredReportPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
+  const [depotError, setDepotError] = useState('');
   const reqIdRef = useRef(0);
 
   const selectedDepo = useMemo(
@@ -164,9 +165,20 @@ export default function OpnameExpiredReportPage() {
     }
   }, [weekStart, kodeDepo, statusFilter, page, hasPermission]);
 
-  useEffect(() => {
-    depo.list().then((res) => setDepots(res.data?.data ?? [])).catch(() => {});
+  const loadDepots = useCallback(async () => {
+    try {
+      const res = await depo.list();
+      setDepots(res.data?.data ?? []);
+      setDepotError('');
+    } catch (e) {
+      console.error('[Depo]', e);
+      setDepotError(getErrorMessage(e, 'Gagal memuat daftar depo.'));
+    }
   }, []);
+
+  useEffect(() => {
+    loadDepots();
+  }, [loadDepots]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -335,10 +347,22 @@ export default function OpnameExpiredReportPage() {
           </div>
         </div>
 
+        {depotError && !error && (
+          <div role="alert" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2">
+            <span className="flex-1">{depotError}</span>
+            <button onClick={loadDepots} className="rounded-lg border border-red-300 px-3 py-1 text-xs font-bold hover:bg-red-100">
+              Coba lagi
+            </button>
+          </div>
+        )}
+
         {error && (
           <div role="alert" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2">
             <svg className="w-5 h-5 text-red-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
             <span className="flex-1">{error}</span>
+            <button onClick={load} disabled={loading} className="rounded-lg border border-red-300 px-3 py-1 text-xs font-bold hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed">
+              Coba lagi
+            </button>
             <button onClick={() => setError('')} aria-label="Tutup pesan error" className="text-red-500 hover:text-red-700">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>

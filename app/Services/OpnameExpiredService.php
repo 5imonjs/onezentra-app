@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Batch;
+use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\OpnameSetting;
@@ -398,6 +399,14 @@ class OpnameExpiredService
         // Transaksi + kunci baris wave: dua petugas yang memverifikasi dua
         // batch satu wave bersamaan tidak boleh saling menimpa koreksi.
         return DB::transaction(function () use ($item, $data, $verifier): array {
+            // Kunci baris item sesi: verifikasi ganda atas item yang sama
+            // (double-tap / dua petugas) terserialisasi di sini.
+            $item = OpnameExpiredSessionItem::whereKey($item->id)->lockForUpdate()->firstOrFail();
+            // Kunci + cek ulang sesi: verifikasi yang tiba setelah complete/
+            // cancel (race) wajib ditolak agar audit sesi tidak berubah
+            // pasca-penutupan.
+            $lockedSession = OpnameExpiredSession::whereKey($item->session_id)->lockForUpdate()->firstOrFail();
+            abort_unless($lockedSession->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
             $batch = $item->batch;
             $issued = 0;
 
@@ -438,9 +447,12 @@ class OpnameExpiredService
             $source = $batch ? $this->batchSourceItem($batch) : null;
 
             if ($source) {
+                // Increment atomik: koreksi multi-batch dalam satu wave saling
+                // menjumlah — read-tambah-tulis akan menghilangkan koreksi
+                // transaksi pesaing yang commit di antara baca dan tulis.
+                $wave->increment('qty_koreksi_crt', (float) $data['qty_fisik_crt'] - (float) $source->actual_qty);
+                $wave->increment('qty_koreksi_pcs', ((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) ($source->qty_pcs ?? 0));
                 $wave->update([
-                    'qty_koreksi_crt' => (float) $wave->qty_koreksi_crt + ((float) $data['qty_fisik_crt'] - (float) $source->actual_qty),
-                    'qty_koreksi_pcs' => (float) $wave->qty_koreksi_pcs + (((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) ($source->qty_pcs ?? 0)),
                     'koreksi_by' => $verifier->id,
                     'koreksi_at' => now(),
                     'validated_by' => $verifier->id,
@@ -463,7 +475,9 @@ class OpnameExpiredService
 
     private function sisaHari(Carbon $expiredDate, Carbon $now): int
     {
-        return (int) $now->startOfDay()->diffInDays($expiredDate->startOfDay());
+        // copy() agar $now / $expiredDate milik pemanggil tidak termutasi ke
+        // tengah malam — generate() memakai $now untuk generated_at sesudahnya.
+        return (int) $now->copy()->startOfDay()->diffInDays($expiredDate->copy()->startOfDay(), false);
     }
 
     private function status(int $sisaHari, int $aman, int $perhatian): string

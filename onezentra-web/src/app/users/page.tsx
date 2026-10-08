@@ -80,6 +80,7 @@ export default function UsersPage() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [saveMode, setSaveMode] = useState<'create' | 'edit'>('create');
 
@@ -172,13 +173,15 @@ export default function UsersPage() {
   };
 
   const doDelete = async () => {
-    if (deleteTargetId === null) return;
+    if (deleteTargetId === null || deleting) return;
+    setDeleting(true);
     try {
       await users.delete(deleteTargetId);
       loadItems();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal hapus user'));
     } finally {
+      setDeleting(false);
       setShowDeleteConfirm(false);
       setDeleteTargetId(null);
     }
@@ -242,7 +245,7 @@ export default function UsersPage() {
           </button>
         )}
         {hasPermission('users.delete') && (
-          <button onClick={() => handleDelete(item.id)} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100">
+          <button onClick={() => handleDelete(item.id)} disabled={deleting} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed">
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             Hapus
           </button>
@@ -456,7 +459,7 @@ export default function UsersPage() {
                         </button>
                         )}
                         {hasPermission('users.delete') && (
-                        <button onClick={() => handleDelete(item.id)} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Hapus" aria-label="Hapus">
+                        <button onClick={() => handleDelete(item.id)} disabled={deleting} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed" title="Hapus" aria-label="Hapus">
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                         </button>
                         )}
@@ -574,7 +577,7 @@ export default function UsersPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Password *</label>
-              <input type="password" value={createForm.password} onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 6 karakter" />
+              <input type="password" value={createForm.password} onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Konfirmasi Password *</label>
@@ -681,7 +684,7 @@ export default function UsersPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Password (kosongkan jika tidak diubah)</label>
-              <input type="password" value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 6 karakter" />
+              <input type="password" value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Konfirmasi Password</label>
@@ -719,12 +722,13 @@ export default function UsersPage() {
       {/* Confirm Dialogs */}
       <ConfirmDialog
         open={showDeleteConfirm}
-        onClose={() => { setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+        onClose={() => { if (deleting) return; setShowDeleteConfirm(false); setDeleteTargetId(null); }}
         onConfirm={doDelete}
         title="Hapus User"
         message="Apakah Anda yakin ingin menghapus user ini? Tindakan ini tidak dapat dibatalkan."
         confirmLabel="Hapus"
         variant="danger"
+        loading={deleting}
       />
       <ConfirmDialog
         open={showSaveConfirm}

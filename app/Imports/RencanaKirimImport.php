@@ -2,12 +2,15 @@
 
 namespace App\Imports;
 
+use App\Http\Controllers\Api\V1\RencanaKirimController;
 use App\Models\Npn;
 use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\User;
 use DateTimeInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
@@ -18,6 +21,9 @@ class RencanaKirimImport implements ToCollection, WithHeadingRow
     public int $imported = 0;
 
     public int $skipped = 0;
+
+    /** @var array<int, array{row: int, errors: string}> */
+    public array $errors = [];
 
     private array $headingMap = [
         'no_po_transporter' => 'po_transporter',
@@ -112,36 +118,94 @@ class RencanaKirimImport implements ToCollection, WithHeadingRow
     private function persistGroup(array $header, array $items): void
     {
         $resolved = $this->resolveItemsFromNpn($items);
-        $validItems = array_values(array_filter($resolved, fn (array $item): bool => ! blank($item['kode_barang'] ?? null)));
+        $validItems = [];
+        foreach ($resolved as $item) {
+            if (blank($item['kode_barang'] ?? null)) {
+                $this->skipped++;
 
-        if ($validItems === []) {
-            $this->skipped += count($items);
+                continue;
+            }
+            // Tolak qty nol/negatif per baris (catat, skip) — qty invalid tidak
+            // boleh melahirkan item rencana kirim fiktif.
+            if (! isset($item['jumlah']) || (float) $item['jumlah'] <= 0) {
+                $this->errors[] = [
+                    'po_transporter' => $header['po_transporter'] ?? null,
+                    'errors' => 'Qty harus > 0 untuk barang '.($item['kode_barang'] ?? $item['nama_barang'] ?? '-'),
+                ];
+                $this->skipped++;
 
-            return;
+                continue;
+            }
+            $validItems[] = $item;
         }
 
-        $this->skipped += count($items) - count($validItems);
+        if ($validItems === []) {
+            return;
+        }
 
         $header['status'] = 'DRAFT';
         $header['created_by'] = $this->user->id;
 
+        // Selaraskan store(): depotAttributes selalu dipanggil — untuk user
+        // depot-scoped ia mengunci ke depo user, untuk admin view_all ia
+        // mengisi default bila kosong. Syarat blank di sini sempat
+        // memungkinkan baris scoped lolos tanpa depo bila header terisi manual.
+        $header = $this->user->depotAttributes($header);
+
+        // Baris tanpa depo = tak terlihat user scoped mana pun dan lolos
+        // guard duplikat (where kode_depo = NULL tak pernah cocok). Tolak.
         if (blank($header['kode_depo'] ?? null)) {
-            $header = $this->user->depotAttributes($header);
+            $this->errors[] = [
+                'po_transporter' => $header['po_transporter'] ?? null,
+                'errors' => 'Kode depo wajib diisi (admin global tanpa depo default tidak bisa import).',
+            ];
+            $this->skipped += count($validItems);
+
+            return;
         }
 
-        $rencanaKirim = RencanaKirim::create(array_filter($header, fn ($v) => ! is_null($v)));
+        $poTransporter = RencanaKirimController::normalizePoTransporter((string) ($header['po_transporter'] ?? ''));
+        $header['po_transporter'] = $poTransporter;
 
-        $totalQty = 0;
-        foreach ($validItems as $index => $item) {
-            $item['rencana_kirim_id'] = $rencanaKirim->id;
-            $item['item_number'] = $index + 1;
-            RencanaKirimItem::create(array_filter($item, fn ($v) => ! is_null($v)));
-            $totalQty += (float) $item['jumlah'];
+        // Tolak duplikat PO sedepo sebelum create (sejajar validasi unique di store()).
+        $duplicate = RencanaKirim::query()
+            ->where('kode_depo', $header['kode_depo'] ?? null)
+            ->whereRaw('LOWER(po_transporter) = LOWER(?)', [$poTransporter])
+            ->exists();
+        if ($duplicate) {
+            $this->errors[] = [
+                'po_transporter' => $poTransporter,
+                'errors' => 'PO Transporter ini sudah dipakai pada rencana kirim lain di depo yang sama.',
+            ];
+            $this->skipped += count($validItems);
+
+            return;
         }
 
-        $rencanaKirim->update(['total_qty' => $totalQty]);
+        try {
+            DB::transaction(function () use ($header, $validItems): void {
+                $rencanaKirim = RencanaKirim::create(array_filter($header, fn ($v) => ! is_null($v)));
 
-        $this->imported++;
+                $totalQty = 0;
+                foreach ($validItems as $index => $item) {
+                    $item['rencana_kirim_id'] = $rencanaKirim->id;
+                    $item['item_number'] = $index + 1;
+                    RencanaKirimItem::create(array_filter($item, fn ($v) => ! is_null($v)));
+                    $totalQty += (float) $item['jumlah'];
+                }
+
+                $rencanaKirim->update(['total_qty' => $totalQty]);
+
+                $this->imported++;
+            });
+        } catch (QueryException $e) {
+            // Race duplikat PO: backstop unique rk_depo_po_unique bicara.
+            $this->errors[] = [
+                'po_transporter' => $poTransporter,
+                'errors' => 'PO Transporter ini sudah dipakai pada rencana kirim lain di depo yang sama.',
+            ];
+            $this->skipped += count($validItems);
+        }
     }
 
     private function parseRow(Collection|array $row): array

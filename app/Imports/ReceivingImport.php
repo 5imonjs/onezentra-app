@@ -3,7 +3,9 @@
 namespace App\Imports;
 
 use App\Models\Receiving;
+use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
+use App\Models\SjValidation;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -54,7 +56,6 @@ class ReceivingImport implements ToCollection, WithHeadingRow
             $rowNumber = $index + 2;
 
             $poTransporter = trim((string) ($row['po_transporter'] ?? ''));
-            $driverName = trim((string) ($row['driver_name'] ?? ''));
 
             if (! $poTransporter) {
                 $rowErrors[] = ['row' => $rowNumber, 'errors' => 'PO Transporter wajib diisi'];
@@ -81,14 +82,86 @@ class ReceivingImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            Receiving::create([
+            // Samakan guard dengan ReceivingController@store: receiving hanya
+            // dari rencana VERIFIED, dan satu RK hanya punya satu receiving berjalan.
+            if ($rencanaKirim->status !== 'VERIFIED') {
+                $rowErrors[] = ['row' => $rowNumber, 'errors' => "PO Transporter '{$poTransporter}' belum VERIFIED (saat ini: {$rencanaKirim->status})."];
+
+                continue;
+            }
+
+            $alreadyRunning = Receiving::where('rencana_kirim_id', $rencanaKirim->id)
+                ->whereIn('status', ['PENDING', 'IN_PROGRESS'])
+                ->exists();
+
+            if ($alreadyRunning) {
+                $rowErrors[] = ['row' => $rowNumber, 'errors' => "PO Transporter '{$poTransporter}' sudah memiliki receiving yang berjalan."];
+
+                continue;
+            }
+
+            $receiving = Receiving::create([
                 'rencana_kirim_id' => $rencanaKirim->id,
-                'po_transporter' => $poTransporter,
-                'driver_name' => $driverName,
+                'total_expected_qty' => $rencanaKirim->items()->sum('jumlah'),
+                'total_received_qty' => 0,
                 'status' => 'PENDING',
-                // CATATAN: `kode_depo` sengaja tidak di-set. Kolom itu tidak ada
-                // di tabel `receivings`; depo baris diturunkan dari relasi rencana.
+                'checked_by' => $this->user->id,
             ]);
+
+            // Salin item seperti store(): dari validasi SJ COMPLETED bila ada,
+            // fallback dari rencana_kirim_items — actual dipakai sebagai received.
+            $latestValidation = SjValidation::where('rencana_kirim_id', $rencanaKirim->id)
+                ->where('status', 'COMPLETED')
+                ->with('items')
+                ->latest()
+                ->first();
+
+            if ($latestValidation && $latestValidation->items->count() > 0) {
+                foreach ($latestValidation->items as $svItem) {
+                    ReceivingItem::create([
+                        'receiving_id' => $receiving->id,
+                        'sj_validation_item_id' => $svItem->id,
+                        'rencana_kirim_item_id' => $svItem->rencana_kirim_item_id,
+                        'kode_barang' => $svItem->kode_barang,
+                        'nama_barang' => $svItem->nama_barang,
+                        'expected_qty' => $svItem->expected_qty,
+                        'actual_qty' => $svItem->actual_qty,
+                        'satuan' => $svItem->satuan,
+                        'condition' => ReceivingItem::normalizeCondition($svItem->condition) ?? ReceivingItem::CONDITIONS[0],
+                        'expired_date' => $svItem->expired_date,
+                        'barcode' => $svItem->barcode,
+                        'source' => ReceivingItem::SOURCE_VALIDASI,
+                        'sumber_material' => $rencanaKirim->shipper_name,
+                        'kode_depo' => $rencanaKirim->kode_depo,
+                        'nama_depo' => $rencanaKirim->nama_depo,
+                        'tanggal_penerimaan' => now()->toDateString(),
+                    ]);
+                }
+            } else {
+                foreach ($rencanaKirim->items as $ri) {
+                    ReceivingItem::create([
+                        'receiving_id' => $receiving->id,
+                        'rencana_kirim_item_id' => $ri->id,
+                        'kode_barang' => $ri->kode_barang,
+                        'nama_barang' => $ri->nama_barang,
+                        'expected_qty' => $ri->jumlah,
+                        'actual_qty' => $ri->jumlah,
+                        'satuan' => $ri->satuan,
+                        'condition' => ReceivingItem::CONDITIONS[0],
+                        'source' => ReceivingItem::SOURCE_VALIDASI,
+                        'sumber_material' => $rencanaKirim->shipper_name,
+                        'kode_depo' => $rencanaKirim->kode_depo,
+                        'nama_depo' => $rencanaKirim->nama_depo,
+                        'tanggal_penerimaan' => now()->toDateString(),
+                    ]);
+                }
+            }
+
+            $receiving->update([
+                'total_received_qty' => $receiving->items()->sum('actual_qty'),
+            ]);
+
+            $rencanaKirim->update(['status' => 'IN_PROGRESS']);
             $this->imported++;
         }
 

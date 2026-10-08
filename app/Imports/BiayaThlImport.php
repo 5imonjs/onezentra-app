@@ -32,14 +32,31 @@ class BiayaThlImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
+            $kodeDepo = auth()->user()?->kode_depo;
+            if (blank($kodeDepo)) {
+                $this->errors[] = ['row' => $rowNumber, 'errors' => 'Kode depo tidak ditemukan — header tanpa kode_depo tidak dibuat'];
+
+                continue;
+            }
+
             try {
-                BiayaThl::create([
+                // Header selalu dibuat bersama minimal 1 detail valid —
+                // header tanpa detail hanya menjadi baris mati yang tak bisa
+                // disubmit (assertSubmittable menolak details kosong).
+                // created_by dicatat agar audit konsisten dengan store().
+                $user = auth()->user();
+                $header = BiayaThl::create([
+                    'no_surat_jalan' => $noSuratJalan,
+                    'tanggal_pengajuan' => now(),
+                    'kode_depo' => $kodeDepo,
+                    'nama_depo' => $user?->nama_depo,
+                    'created_by' => $user?->id,
+                    'status' => 'draft',
+                ]);
+                $header->details()->create([
                     'no_surat_jalan' => $noSuratJalan,
                     'nama_thl' => $namaThl,
-                    'tanggal_pengajuan' => now(),
-                    'kode_depo' => auth()->user()?->kode_depo,
-                    'nama_depo' => auth()->user()?->nama_depo,
-                    'status' => 'draft',
+                    'order' => 0,
                 ]);
                 $this->imported++;
             } catch (\Exception $e) {

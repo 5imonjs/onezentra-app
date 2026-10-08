@@ -43,13 +43,29 @@ class StandarisasiTumpukanImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
+            $tierInt = (int) $tier;
+            $tinggiInt = (int) $tinggi;
+            if ($tierInt < 1 || $tierInt > 100 || $tinggiInt < 1 || $tinggiInt > 100) {
+                $this->errors[] = ['row' => $rowNumber, 'errors' => 'Tier dan tinggi tumpukan wajib di antara 1–100'];
+
+                continue;
+            }
+
             $existing = StandarisasiTumpukan::where('npn_id', $npnId)->first();
 
             if ($existing) {
-                $existing->update([
-                    'tier' => (int) $tier,
-                    'tinggi_tumpukan' => (int) $tinggi,
-                ]);
+                // Hormati status: baris approved yang diimport ulang dibuka
+                // kembali sebagai pending (butuh approve ulang) + total dihitung
+                // ulang — tanpa ini total_tier_tinggi basi mengikuti angka lama.
+                $payload = [
+                    'tier' => $tierInt,
+                    'tinggi_tumpukan' => $tinggiInt,
+                    'total_tier_tinggi' => $tierInt * $tinggiInt,
+                ];
+                if ($existing->status === 'approved') {
+                    $payload['status'] = 'pending';
+                }
+                $existing->update($payload);
                 $this->updated++;
 
                 continue;
@@ -58,8 +74,10 @@ class StandarisasiTumpukanImport implements ToCollection, WithHeadingRow
             try {
                 StandarisasiTumpukan::create([
                     'npn_id' => $npnId,
-                    'tier' => (int) $tier,
-                    'tinggi_tumpukan' => (int) $tinggi,
+                    'tier' => $tierInt,
+                    'tinggi_tumpukan' => $tinggiInt,
+                    'total_tier_tinggi' => $tierInt * $tinggiInt,
+                    'status' => 'pending',
                     'kode_depo' => auth()->user()?->kode_depo,
                 ]);
                 $this->imported++;

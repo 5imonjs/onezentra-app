@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 
 class Batch extends Model
@@ -47,9 +48,7 @@ class Batch extends Model
             return $existing;
         }
 
-        return static::create(array_merge([
-            'batch_number' => static::generateNumber('IMP-'),
-            'barcode_label' => static::generateLabel(),
+        return static::createWithRetry(array_merge([
             'receiving_item_id' => $item->id,
             'items_json' => [
                 'kode_barang' => $item->kode_barang,
@@ -61,7 +60,7 @@ class Batch extends Model
                 'origin' => 'import',
             ],
             'status' => 'ACTIVE',
-        ], $extra));
+        ], $extra), 5, 'IMP-');
     }
 
     /**
@@ -83,6 +82,42 @@ class Batch extends Model
         } while (static::where('barcode_label', $label)->exists());
 
         return $label;
+    }
+
+    /**
+     * Buat batch dengan retry saat tabrakan unique (batch_number /
+     * barcode_label) akibat race check-then-insert antar transaksi.
+     * Tanpa retry, tabrakan menjawab 500; dengan retry, nomor/label
+     * digenerate ulang hingga maxPercobaan kali.
+     */
+    public static function createWithRetry(array $attributes, int $maxAttempts = 5, string $prefix = 'BATCH-'): static
+    {
+        $attempt = 0;
+
+        do {
+            $attempt++;
+
+            try {
+                return static::create(array_merge([
+                    'batch_number' => static::generateNumber($prefix),
+                    'barcode_label' => static::generateLabel(),
+                ], $attributes));
+            } catch (QueryException $e) {
+                $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+
+                if ($sqlState !== '23000' && (string) $e->getCode() !== '23000'
+                    && (string) $e->getCode() !== '23505') {
+                    throw $e;
+                }
+
+                if ($attempt >= $maxAttempts) {
+                    throw $e;
+                }
+            }
+        } while ($attempt < $maxAttempts);
+
+        // Tidak terjangkau — loop selalu return atau throw.
+        throw new \RuntimeException('Gagal membuat batch setelah '.$maxAttempts.' percobaan.');
     }
 
     public function receiving(): BelongsTo

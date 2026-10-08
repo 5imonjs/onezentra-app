@@ -184,7 +184,10 @@ class AuthController extends Controller
         $validated = $request->validate([
             'full_name' => 'sometimes|string|max:100',
             'email' => 'sometimes|email|unique:users,email,'.$user->id,
-            'current_password' => 'required_with:password|current_password',
+            // Ganti email MAUPUN password wajib membuktikan kepemilikan akun:
+            // tanpa ini sesi tertinggal bisa membajak akun lewat ganti email
+            // (lalu reset password) tanpa tahu password lama.
+            'current_password' => 'required_with:password,email|current_password',
             'password' => 'sometimes|string|min:8|confirmed',
         ]);
 

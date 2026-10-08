@@ -45,9 +45,13 @@ return [
     | should be encrypted before it's stored. All encryption is performed
     | automatically by Laravel and you may use the session like normal.
     |
+    | Default true: isi sesi (termasuk cookie sesi stateful Sanctum) terenkripsi
+    | at-rest. Transparan bagi dev (tidak merusak http/LAN), tidak seperti
+    | 'secure' yang wajib tetap env-driven (true hanya bila HTTPS).
+    |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    'encrypt' => env('SESSION_ENCRYPT', true),
 
     /*
     |--------------------------------------------------------------------------

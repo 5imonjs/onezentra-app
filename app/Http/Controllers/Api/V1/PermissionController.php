@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class PermissionController extends Controller
@@ -12,8 +13,11 @@ class PermissionController extends Controller
     {
         $query = Permission::query();
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%'.$request->search.'%')
-                ->orWhere('slug', 'like', '%'.$request->search.'%');
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('name LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('slug LIKE ? ESCAPE ?', [$like, '\\']);
+            });
         }
         if ($request->filled('menu_group')) {
             $query->where('menu_group', $request->menu_group);
@@ -67,7 +71,15 @@ class PermissionController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        // Slug permission adalah acuan gate CheckPermission di routes — rename
+        // diam-diam memutus/mengalihkan gate. Immutable bagi non-admin_master.
+        if (array_key_exists('slug', $validated) && $validated['slug'] !== $permission->slug) {
+            abort_unless($request->user()?->level === 'admin_master', 403, 'Hanya admin master yang boleh mengubah slug permission.');
+        }
+
         $permission->update($validated);
+
+        $this->clearAffectedUserCache($permission);
 
         return response()->json(['message' => 'Permission updated', 'data' => $permission]);
     }
@@ -77,8 +89,21 @@ class PermissionController extends Controller
         if ($permission->roles()->exists()) {
             return response()->json(['message' => 'Cannot delete permission assigned to roles'], 422);
         }
+        $this->clearAffectedUserCache($permission);
         $permission->delete();
 
         return response()->json(['message' => 'Permission deleted']);
+    }
+
+    /**
+     * Invalidate permission cache semua user yang terdampak permission ini
+     * (user dengan role yang memegang permission tersebut).
+     * Satu query pluck id lalu clear per user — tanpa N+1 model.
+     */
+    private function clearAffectedUserCache(Permission $permission): void
+    {
+        User::whereHas('roles.permissions', fn ($q) => $q->where('permissions.id', $permission->id))
+            ->pluck('users.id')
+            ->each(fn (int $userId) => User::clearPermissionCache($userId));
     }
 }

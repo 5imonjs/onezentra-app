@@ -95,10 +95,13 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  /** Jumlah modul yang gagal dimuat — tampilkan indikator parsial, bukan hilang diam-diam. */
+  const [failedCount, setFailedCount] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setFailedCount(0);
 
     const jobs: GroupJob[] = [];
 
@@ -200,8 +203,12 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
     }
 
     try {
-      const results = await Promise.all(jobs.map((job) => job().catch(() => null)));
-      setGroups(results.filter((group): group is Group => group !== null));
+      const results = await Promise.all(jobs.map((job) => job().then(
+        (group) => ({ group, failed: false }),
+        () => ({ group: null as Group | null, failed: true }),
+      )));
+      setFailedCount(results.filter((r) => r.failed).length);
+      setGroups(results.map((r) => r.group).filter((group): group is Group => group !== null));
     } catch (exception) {
       setError(getErrorMessage(exception, 'Gagal memuat daftar tugas.'));
     } finally {
@@ -236,13 +243,31 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
     );
   }
 
-  // Semua tugas beres: section tidak perlu tampil — dashboard tetap bersih.
-  if (groups.length === 0) {
+  // Semua tugas beres dan tak ada modul yang gagal: section tidak perlu tampil.
+  if (groups.length === 0 && failedCount === 0) {
     return null;
+  }
+
+  // Seluruh modul gagal: tampilkan banner + retry, bukan section kosong yang hilang diam-diam.
+  if (groups.length === 0) {
+    return (
+      <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700" role="alert">
+          <span>Data tugas gagal dimuat.</span>
+          <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+        </div>
+      </section>
+    );
   }
 
   return (
     <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Item yang memerlukan tindakan Anda">
+      {failedCount > 0 && (
+        <div className="mx-5 mt-5 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700" role="alert">
+          <span>Sebagian data gagal dimuat — daftar mungkin belum lengkap.</span>
+          <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+        </div>
+      )}
       <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Perlu Tindakan</h2>

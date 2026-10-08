@@ -41,14 +41,14 @@ class ClusterPrincipalExport implements FromQuery, ShouldAutoSize, WithHeadings,
         }
 
         if ($this->search) {
-            $term = '%'.$this->search.'%';
-            $query->where(function ($q) use ($term) {
-                $q->where('product_sku', 'like', $term)
-                    ->orWhere('principal_1', 'like', $term)
-                    ->orWhere('principal_2', 'like', $term)
-                    ->orWhere('lob', 'like', $term)
-                    ->orWhere('product_category', 'like', $term)
-                    ->orWhere('product_group', 'like', $term);
+            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('product_sku LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('principal_2 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('lob LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('product_category LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('product_group LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 

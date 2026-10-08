@@ -44,12 +44,11 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * Grant forward-only: rollback tidak mencabut agar tak hapus grant manual
+     * yang diberikan admin lewat UI setelah migrasi ini berjalan.
      */
     public function down(): void
     {
-        $permissionIds = DB::table('permissions')->where('slug', 'opname.progress_all')->pluck('id');
-        DB::table('role_permission')->whereIn('permission_id', $permissionIds)->delete();
-        DB::table('permissions')->where('slug', 'opname.progress_all')->delete();
+        // no-op: grant forward-only, rollback tidak mencabut.
     }
 };

@@ -246,8 +246,8 @@ class SystemEndToEndTest extends TestCase
         $this->assertDatabaseHas('receivings', ['id' => $receiving->id, 'status' => 'COMPLETED']);
         $this->assertDatabaseHas('rencana_kirim', ['id' => $rk->id, 'status' => 'COMPLETED']);
 
-        // OUTBOUND hanya setelah COMPLETED
-        $this->postJson('/api/v1/gate-transactions', ['rencana_kirim_id' => $rk->id, 'gate_type' => 'OUTBOUND'])->assertCreated();
+        // OUTBOUND tidak aktif (sistem receiving-only) -> 422
+        $this->postJson('/api/v1/gate-transactions', ['rencana_kirim_id' => $rk->id, 'gate_type' => 'OUTBOUND'])->assertStatus(422);
 
         // index search
         $this->getJson('/api/v1/receivings?search=SJ-RCV-001')->assertOk();

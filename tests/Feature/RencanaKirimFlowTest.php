@@ -238,4 +238,40 @@ class RencanaKirimFlowTest extends TestCase
         $this->assertSame('DPO', $rencanaKirim->fresh()->kode_depo);
         $this->assertSame('coba pindah', $rencanaKirim->fresh()->notes);
     }
+
+    public function test_view_all_non_admin_cannot_move_document_to_other_depot()
+    {
+        $role = Role::firstOrCreate(['slug' => '_rk_viewall'], ['name' => 'RK ViewAll']);
+        $perm = Permission::firstOrCreate(['slug' => 'rencana_kirim.edit'], ['name' => 'Rencana Kirim Edit']);
+        $permAll = Permission::firstOrCreate(['slug' => 'depot.view_all'], ['name' => 'Depot View All']);
+        $role->permissions()->syncWithoutDetaching([$perm->id, $permAll->id]);
+
+        $user = User::create([
+            'email' => 'rk-viewall@example.com',
+            'password' => 'password',
+            'full_name' => 'RK ViewAll',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
+        $role->users()->attach($user->id);
+
+        $rencanaKirim = RencanaKirim::create([
+            'po_transporter' => 'PO-RK-'.uniqid(),
+            'status' => 'DRAFT',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'created_by' => $user->id,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->putJson("/api/v1/rencana-kirim/{$rencanaKirim->id}", [
+            'kode_depo' => 'LAIN',
+            'nama_depo' => 'Depo Lain',
+        ])->assertForbidden();
+
+        $this->assertSame('DPO', $rencanaKirim->fresh()->kode_depo);
+    }
 }

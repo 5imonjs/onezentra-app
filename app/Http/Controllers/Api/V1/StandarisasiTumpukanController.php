@@ -283,16 +283,16 @@ class StandarisasiTumpukanController extends Controller
         $query = StandarisasiTumpukan::query()->forUserDepot($request->user());
 
         if ($withSearch && $request->filled('search')) {
-            $term = '%'.$request->search.'%';
-            $query->where(function ($q) use ($term) {
-                $q->whereHas('npn', function ($npn) use ($term) {
+            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereHas('npn', function ($npn) use ($like) {
                     foreach (self::NPN_SEARCH_COLUMNS as $index => $column) {
                         $index === 0
-                            ? $npn->where($column, 'like', $term)
-                            : $npn->orWhere($column, 'like', $term);
+                            ? $npn->whereRaw("{$column} LIKE ? ESCAPE ?", [$like, '\\'])
+                            : $npn->orWhereRaw("{$column} LIKE ? ESCAPE ?", [$like, '\\']);
                     }
-                })->orWhere('kode_depo', 'like', $term)
-                    ->orWhere('nama_depo', 'like', $term);
+                })->orWhereRaw('kode_depo LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('nama_depo LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 
@@ -372,6 +372,8 @@ class StandarisasiTumpukanController extends Controller
         $export = new StandarisasiTumpukanExport(
             search: $request->input('search'),
             status: $request->input('status'),
+            user: $request->user(),
+            kodeDepo: $request->input('kode_depo'),
         );
         ExportGuard::ensureWithinLimit($export->query());
 

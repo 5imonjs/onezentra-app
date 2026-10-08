@@ -26,10 +26,11 @@ class StorageController extends Controller
 
         $owner = $this->resolveOwner($path);
         abort_unless($owner !== null, 404);
+        // Seragam 404 untuk lintas-depo: beda 403 vs 404 menjadi oracle
+        // enumerasi path valid milik depo lain.
         abort_unless(
             $request->user()->canAccessDepotRow($owner['kode_depo'], $owner['nama_depo']),
-            403,
-            'Anda tidak memiliki akses ke file ini.'
+            404
         );
 
         return response()->file(Storage::disk('public')->path($path));

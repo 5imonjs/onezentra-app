@@ -13,6 +13,9 @@ type RowError = { row?: number; errors?: string };
 
 type ApiErrorResponse = {
   message?: string;
+  /** Alias envelope ringkas yang dipakai sebagian endpoint: `msg` / `error`. */
+  msg?: string;
+  error?: string;
   /**
    * Dua bentuk yang keduanya muncul dari backend:
    *  - validasi Laravel: `{ field: ['pesan', ...] }`
@@ -41,10 +44,15 @@ function formatRowErrors(rows: RowError[]): string[] {
 
 export function getErrorMessage(e: unknown, fallback = 'Terjadi kesalahan'): string {
   const err = e as AxiosError<ApiErrorResponse>;
-  if (err.response?.status === 403) return err.response?.data?.message || 'Anda tidak memiliki izin untuk melakukan aksi ini.';
+  const data = err.response?.data;
+  // Alias envelope ringkas: sebagian endpoint memakai `msg` / `error` string.
+  const alias = typeof data?.msg === 'string' && data.msg ? data.msg
+    : typeof data?.error === 'string' && data.error ? data.error
+    : undefined;
+  if (err.response?.status === 403) return data?.message ?? alias ?? 'Anda tidak memiliki izin untuk melakukan aksi ini.';
 
-  const errors = err.response?.data?.errors;
-  const summary = err.response?.data?.message;
+  const errors = data?.errors;
+  const summary = data?.message ?? alias;
 
   if (errors) {
     if (Array.isArray(errors)) {
@@ -56,9 +64,12 @@ export function getErrorMessage(e: unknown, fallback = 'Terjadi kesalahan'): str
         return summary ? `${summary}\n${details.join('\n')}` : details.join('\n');
       }
     } else {
-      const details = Object.values(errors)
-        .flatMap((messages) => Array.isArray(messages) ? messages : [messages])
-        .filter(Boolean)
+      // Gabung nama field: "email: Email tidak valid" agar user tahu kolom mana.
+      const details = Object.entries(errors)
+        .flatMap(([field, messages]) => {
+          const list = (Array.isArray(messages) ? messages : [messages]).filter(Boolean);
+          return list.map((m) => `${field}: ${m}`);
+        })
         .join(' ');
       if (details) return details;
     }
@@ -92,7 +103,14 @@ async function compressPdf(file: File, maxSize: number): Promise<File> {
   const savedBytes = await pdfDoc.save({ useObjectStreams: true });
   const arrayBuffer = new Uint8Array(savedBytes).buffer;
   const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
-  return new File([blob], file.name, { type: 'application/pdf' });
+  const compressed = new File([blob], file.name, { type: 'application/pdf' });
+  // Jangan upload sia-sia bila hasil kompresi masih di atas batas.
+  if (compressed.size > maxSize) {
+    const limitMb = (maxSize / (1024 * 1024)).toFixed(0);
+    const actualMb = (compressed.size / (1024 * 1024)).toFixed(1);
+    throw new Error(`PDF masih > ${limitMb} MB setelah kompresi (${actualMb} MB). Perkecil file sebelum upload.`);
+  }
+  return compressed;
 }
 
 

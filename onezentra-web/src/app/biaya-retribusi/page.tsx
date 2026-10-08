@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { biayaRetribusi, retribusiRates, getErrorMessage, API_ROOT } from '@/lib/api';
-import { AUTHENTICATED_FILE_REL } from '@/lib/storageFile';
+import { biayaRetribusi, retribusiRates, getErrorMessage } from '@/lib/api';
+import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
 import { pageWindow } from '@/lib/pagination';
 import { useAuthStore } from '@/store/auth';
 import { todayLocal } from '@/lib/dates';
@@ -11,7 +11,7 @@ import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import { generateRetribusiPdf, previewRetribusiPdf, type ApprovalSection } from '@/lib/biayaPdf';
-import { getBiayaConfigFresh, clearBiayaConfigCache, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
+import { getBiayaConfigFresh, getBiayaConfigFreshWithStatus, clearBiayaConfigCache, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
 import ApprovalPipeline, { type ApprovalPipelineStep } from '@/components/ApprovalPipeline';
 
 interface ReceivingCandidate {
@@ -413,6 +413,9 @@ export default function BiayaRetribusiPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [biayaConfig, setBiayaConfig] = useState<BiayaConfig>(BIAYA_CONFIG_FALLBACK);
+  /** true bila tarif yang dipakai adalah fallback (config gagal dimuat) — tampilkan banner. */
+  const [configFallback, setConfigFallback] = useState(false);
+  const [configRetry, setConfigRetry] = useState(0);
 
   const [items, setItems] = useState<BiayaRetribusiItem[]>([]);
   const [decision, setDecision] = useState<{ action: 'approve' | 'reject' | 'revise'; item: BiayaRetribusiItem } | null>(null);
@@ -493,22 +496,30 @@ export default function BiayaRetribusiPage() {
   const [manualDetails, setManualDetails] = useState<ManualDetailRow[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Id baris yang sedang dihapus — cegah double-click hapus. */
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [candidateNominals, setCandidateNominals] = useState<Record<number, number>>({});
   // Anti race: respons basi (filter sudah berubah) dibuang.
   const reqIdRef = useRef(0);
+  // Cermin totalPages agar clamp bisa baca nilai terbaru tanpa jadi dep fetch.
+  const totalPagesRef = useRef(1);
 
   const fetchItems = useCallback(async () => {
     const reqId = ++reqIdRef.current;
+    // Clamp sebelum request — jangan setPage di dalam fetch (picu double fetch).
+    const requestPage = Math.min(Math.max(1, page), Math.max(1, totalPagesRef.current));
     try {
-      const res = await biayaRetribusi.list({ search: debouncedSearch, status: statusFilter, page, per_page: perPage, sort: sortField, dir: sortDir });
+      const res = await biayaRetribusi.list({ search: debouncedSearch, status: statusFilter, page: requestPage, per_page: perPage, sort: sortField, dir: sortDir });
       if (reqIdRef.current !== reqId) return;
       const rawItems = res.data.data || res.data;
       setItems(Array.isArray(rawItems) ? rawItems.map(normalizeBiayaRetribusiItem) : []);
-      setTotalPages(res.data.last_page || 1);
-      if (page > (res.data.last_page || 1)) setPage(res.data.last_page || 1);
+      const nextLast = res.data.last_page || 1;
+      setTotalPages(nextLast);
+      totalPagesRef.current = nextLast;
       if (res.data.summary) setSummary(res.data.summary);
-    } catch {
+    } catch (e) {
       if (reqIdRef.current !== reqId) return;
+      console.error('[BiayaRetribusi]', e);
       notifyGlobal('Gagal memuat data', 'error');
     } finally {
       if (reqIdRef.current === reqId) setLoading(false);
@@ -517,8 +528,14 @@ export default function BiayaRetribusiPage() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
+  // Koreksi halaman keluar-jarak setelah totalPages diketahui (di luar fetch
+  // agar tak memicu double fetch dari dalam callback fetch itu sendiri).
   useEffect(() => {
-    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 400);
+    if (page > totalPages) setPage(Math.max(1, totalPages));
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage((p) => (p === 1 ? p : 1)); }, 400);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -811,13 +828,17 @@ export default function BiayaRetribusiPage() {
 
   /** Hapus hanya untuk draft/ditolak/revisi — yang sudah masuk antrean tak boleh hilang. */
   const handleDelete = async (id: number) => {
+    if (deletingId !== null) return;
     if (!confirm('Yakin ingin menghapus?')) return;
+    setDeletingId(id);
     try {
       await biayaRetribusi.delete(id);
       notifyGlobal('Biaya Retribusi berhasil dihapus', 'success');
       fetchItems();
     } catch (e: unknown) {
       notifyGlobal(getErrorMessage(e, 'Gagal menghapus'), 'error');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -826,7 +847,7 @@ export default function BiayaRetribusiPage() {
   const docUrl = (doc: { id?: number; file_path?: string }): string | null => {
     if (doc.id != null) return biayaRetribusi.documentUrl(doc.id);
     if (!doc.file_path) return null;
-    return doc.file_path.startsWith('http') ? doc.file_path : `${API_ROOT}/storage/${doc.file_path}`;
+    return storageFileUrl(doc.file_path);
   };
 
   const loadLatestPdfItem = async (item: BiayaRetribusiItem): Promise<BiayaRetribusiItem> => {
@@ -990,7 +1011,7 @@ export default function BiayaRetribusiPage() {
   // Refetch tarif saat modal dibuka (openCreateModal/Edit mereset biayaConfig ke
   // FALLBACK), bukan hanya saat effectiveDepo berubah — agar tarif koli yang
   // sudah disimpan tetap muncul tanpa harus input ulang tiap pengajuan.
-  useEffect(() => { getBiayaConfigFresh(effectiveDepo, 'biaya_retribusi').then(setBiayaConfig).catch(() => {}); }, [effectiveDepo, openModal]);
+  useEffect(() => { getBiayaConfigFreshWithStatus(effectiveDepo, 'biaya_retribusi').then((r) => { setBiayaConfig(r.config); setConfigFallback(r.isFallback); }).catch((e: unknown) => { console.error('[BiayaConfig]', e); }); }, [effectiveDepo, openModal, configRetry]);
   useEffect(() => {
     setRateDraft({
       mode: biayaConfig.retribusi_calc_mode === 'koli' ? 'koli' : 'borongan',
@@ -1022,6 +1043,7 @@ export default function BiayaRetribusiPage() {
       clearBiayaConfigCache(effectiveKode, 'biaya_retribusi');
       const fresh = await getBiayaConfigFresh(effectiveKode, 'biaya_retribusi');
       setBiayaConfig(fresh);
+      setConfigFallback(false);
       notifyGlobal(`Tarif ${effectiveNama || effectiveKode} disimpan`, 'success');
     } catch (e: unknown) {
       notifyGlobal(getErrorMessage(e, 'Gagal menyimpan tarif'), 'error');
@@ -1274,6 +1296,13 @@ export default function BiayaRetribusiPage() {
           </div>
         </header>
 
+        {configFallback && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-700" role="alert">
+            <span>Tarif fallback dipakai — config tarif gagal dimuat. Muat ulang untuk tarif terbaru.</span>
+            <button type="button" onClick={() => setConfigRetry((c) => c + 1)} className="font-semibold hover:underline whitespace-nowrap">Muat ulang</button>
+          </div>
+        )}
+
         <div className={`rounded-2xl border border-gray-100 bg-surface-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <div className="px-2 py-1">
@@ -1430,7 +1459,7 @@ export default function BiayaRetribusiPage() {
                           </button>
                           )}
                           {hasPermission('biaya_retribusi.delete') && isDeletable(item.status) && (
-                          <button onClick={() => handleDelete(item.id)} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Hapus" aria-label="Hapus">
+                          <button onClick={() => handleDelete(item.id)} disabled={deletingId !== null} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Hapus" aria-label="Hapus">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                           </button>
                           )}
@@ -1514,7 +1543,7 @@ export default function BiayaRetribusiPage() {
                    </button>
                    )}
                    {hasPermission('biaya_retribusi.delete') && isDeletable(item.status) && (
-                   <button onClick={() => handleDelete(item.id)} className="min-h-11 min-w-11 flex items-center justify-center text-red-400 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
+                   <button onClick={() => handleDelete(item.id)} disabled={deletingId !== null} className="min-h-11 min-w-11 flex items-center justify-center text-red-400 bg-red-50 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                    </button>
                    )}
@@ -2438,7 +2467,7 @@ export default function BiayaRetribusiPage() {
                             <a href={url} target="_blank" rel={AUTHENTICATED_FILE_REL} title="Lihat" aria-label={`Lihat ${doc.file_name}`} className="min-h-9 min-w-9 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all inline-flex items-center justify-center">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             </a>
-                            <a href={url} download={doc.file_name} title="Unduh" aria-label={`Unduh ${doc.file_name}`} className="min-h-9 min-w-9 p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all inline-flex items-center justify-center">
+                            <a href={url} download={doc.file_name} rel={AUTHENTICATED_FILE_REL} title="Unduh" aria-label={`Unduh ${doc.file_name}`} className="min-h-9 min-w-9 p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all inline-flex items-center justify-center">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </a>
                           </div>
