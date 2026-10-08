@@ -12,9 +12,9 @@ const menuItems = [
 
 const operasionalMenus = [
   { name: 'Replenishment', path: '/rencana-kirim', icon: 'truck', permission: 'rencana_kirim.view' },
-  { name: 'Transaksi Gerbang', path: '/gate', icon: 'gate', permission: 'gate.view' },
+  { name: 'Check In Point', path: '/gate', icon: 'gate', permission: 'gate.view' },
   { name: 'Validasi Dokumen', path: '/validasi-sj', icon: 'check', permission: 'sj_validation.view' },
-  { name: 'Proses Receiving', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
+  { name: 'Check Out Point', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
   { name: 'Inbound (SJ)', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
   { name: 'Batch Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
   { name: 'Sesi Opname', path: '/opname-sessions', icon: 'clipboard', permission: 'opname.view' },
