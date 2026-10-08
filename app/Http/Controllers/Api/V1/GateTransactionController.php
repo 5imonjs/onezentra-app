@@ -85,7 +85,12 @@ class GateTransactionController extends Controller
             }
 
             if ($validated['gate_type'] === 'OUTBOUND' && $rencanaKirim->status !== 'COMPLETED') {
-                abort(422, "Gate OUTBOUND hanya dapat dilakukan untuk rencana yang telah COMPLETED melalui receiving/validasi (status saat ini: {$rencanaKirim->status}).");
+                abort(422, 
+                    "Gate OUTBOUND hanya dapat dibuat ketika Rencana Kirim status **COMPLETED**. 
+                    • Lakukan verifikasi terlebih dahulu: status CHECKED_IN → VERIFIED  
+                    • Lakukan receiving dan selesaikan hingga COMPLETED  
+                    • Baru kemudian dapat membuat Gate OUTBOUND untuk proses pengiriman"
+                );
             }
 
             // GUARD: Cek existencia dengan lockForUpdate untuk mencegah race condition
