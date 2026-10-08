@@ -408,7 +408,7 @@ export default function GatePage() {
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nopol</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">RK Status</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Scan Time</th>
                     </tr>
                   </thead>
@@ -471,6 +471,11 @@ export default function GatePage() {
                   </tbody>
                 </table>
               </div>
+
+                {/* Penjelasan untuk menghindari ambiguitas */}
+                <p className="text-xs text-slate-500 mt-2">
+                  <strong>Catatan:</strong> <span className="font-medium">Gate Type</span> = Tipe transaksi gerbang (INBOUND = masuk, OUTBOUND = keluar). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo). Kedua field ini berasal dari tabel berbeda namun both wajib untuk melengkapi status operasional.
+                </p>
 
               {/* Mobile cards */}
               <div className="divide-y divide-gray-100 lg:hidden">
