@@ -2,11 +2,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import BiayaThlPage from './page';
 
-const { hasPermission, thlList, thlGet, getBiayaConfig, notify } = vi.hoisted(() => ({
+const { hasPermission, thlList, thlGet, getBiayaConfig, getBiayaConfigWithStatus, notify } = vi.hoisted(() => ({
   hasPermission: vi.fn(() => true),
   thlList: vi.fn(),
   thlGet: vi.fn(),
   getBiayaConfig: vi.fn(),
+  getBiayaConfigWithStatus: vi.fn(),
   notify: vi.fn(),
 }));
 
@@ -34,6 +35,7 @@ vi.mock('@/lib/api', () => ({
 
 vi.mock('@/lib/biaya', () => ({
   getBiayaConfig,
+  getBiayaConfigWithStatus,
   BIAYA_CONFIG_FALLBACK: {
     rfah_name: 'Umi Marzuqoh',
     thl_rfah_threshold: 750000,
@@ -113,6 +115,17 @@ describe('BiayaThlPage — pola input langsung di step Data Pekerja', () => {
       retribusi_calc_mode: 'borongan',
       retribusi_rate_zak: 0,
       retribusi_rate_crt: 0,
+    });
+    getBiayaConfigWithStatus.mockResolvedValue({
+      config: {
+        rfah_name: 'Umi Marzuqoh',
+        thl_rfah_threshold: 750000,
+        retribusi_rfah_threshold: 1000000,
+        retribusi_calc_mode: 'borongan',
+        retribusi_rate_zak: 0,
+        retribusi_rate_crt: 0,
+      },
+      isFallback: false,
     });
   });
 
@@ -194,6 +207,17 @@ describe('BiayaThlPage — pipeline alur approval di daftar', () => {
       retribusi_calc_mode: 'borongan',
       retribusi_rate_zak: 0,
       retribusi_rate_crt: 0,
+    });
+    getBiayaConfigWithStatus.mockResolvedValue({
+      config: {
+        rfah_name: 'Umi Marzuqoh',
+        thl_rfah_threshold: 750000,
+        retribusi_rfah_threshold: 1000000,
+        retribusi_calc_mode: 'borongan',
+        retribusi_rate_zak: 0,
+        retribusi_rate_crt: 0,
+      },
+      isFallback: false,
     });
   });
 

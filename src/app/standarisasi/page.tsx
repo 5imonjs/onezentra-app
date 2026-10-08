@@ -212,16 +212,22 @@ const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
 
+  // Cermin lastPage agar clamp bisa baca nilai terbaru tanpa jadi dep fetch.
+  const lastPageRef = useRef(1);
+
   const loadItems = useCallback(async () => {
+    // Clamp sebelum request — jangan setPage di dalam fetch (picu double fetch).
+    const requestPage = Math.min(Math.max(1, page), Math.max(1, lastPageRef.current));
     setLoading(true);
     try {
       const [listRes, statsRes] = await Promise.all([
-        standarisasiTumpukan.list({ search, status: statusFilter, page, per_page: 20 }),
+        standarisasiTumpukan.list({ search, status: statusFilter, page: requestPage, per_page: 20 }),
         standarisasiTumpukan.stats({ search }),
       ]);
       setItems(listRes.data.data);
-      setLastPage(listRes.data.last_page);
-      if (page > listRes.data.last_page) setPage(listRes.data.last_page);
+      const nextLast = listRes.data.last_page ?? 1;
+      setLastPage(nextLast);
+      lastPageRef.current = nextLast;
       setTotal(listRes.data.total ?? listRes.data.data.length);
       if (statsRes.data?.data) setStats(statsRes.data.data);
     } catch (e) {
@@ -232,6 +238,12 @@ const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   }, [search, statusFilter, page]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+
+  // Koreksi halaman keluar-jarak setelah lastPage diketahui (di luar fetch
+  // agar tak memicu double fetch dari dalam callback fetch itu sendiri).
+  useEffect(() => {
+    if (page > lastPage) setPage(Math.max(1, lastPage));
+  }, [page, lastPage]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

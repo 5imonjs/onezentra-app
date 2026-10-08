@@ -225,6 +225,9 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
   const visible = useMemo(() => STAT_SOURCES.filter((s) => hasPermission(s.permission)), [hasPermission]);
   const operasional = useMemo(() => visible.filter((s) => s.group === 'operasional'), [visible]);
   const master = useMemo(() => visible.filter((s) => s.group === 'master'), [visible]);
+  // Gagal total = ringkasan mati DAN seluruh fallback per-modul gagal.
+  // Kartu tetap '–' per modul, tapi banner menjelaskan + tombol retry.
+  const allFailed = !loading && visible.length > 0 && visible.every((s) => failed[s.key]);
 
   if (visible.length === 0) {
     return null;
@@ -236,6 +239,14 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
 
   return (
     <div className="space-y-3">
+      {allFailed && (
+        <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <span className="flex-1 text-sm text-red-700">Gagal memuat ringkasan dashboard.</span>
+          <button onClick={() => loadFallback(kodeDepo)} className="rounded-lg border border-red-300 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-100">
+            Coba lagi
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {loading ? operasional.map((s) => <SkeletonCard key={s.key} />) : operasional.map(renderCard)}
       </div>

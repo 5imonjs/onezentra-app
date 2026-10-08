@@ -153,7 +153,10 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
         setShowDropdown(res.data.data.length > 0);
         setActiveIndex(res.data.data.length > 0 ? 0 : -1);
       } catch (e) {
-        console.error(e);
+        // Error pencarian wajib bersuara: tanpa ini user mengira barang tidak ada.
+        notifyGlobal(getErrorMessage(e, 'Gagal mencari produk'));
+        setSearchResults([]);
+        setShowDropdown(false);
       } finally {
         setSearching(false);
       }

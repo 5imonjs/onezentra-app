@@ -81,6 +81,7 @@ export default function BiayaRetribusiReportPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
+  const [depotError, setDepotError] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [kodeDepo, setKodeDepo] = useState('');
@@ -145,9 +146,20 @@ export default function BiayaRetribusiReportPage() {
     }
   }, [dateFrom, dateTo, kodeDepo, status, searchApply, page, hasPermission]);
 
-  useEffect(() => {
-    depo.list().then((res) => setDepots(res.data?.data ?? [])).catch(() => {});
+  const loadDepots = useCallback(async () => {
+    try {
+      const res = await depo.list();
+      setDepots(res.data?.data ?? []);
+      setDepotError('');
+    } catch (e) {
+      console.error('[Depo]', e);
+      setDepotError(getErrorMessage(e, 'Gagal memuat daftar depo.'));
+    }
   }, []);
+
+  useEffect(() => {
+    loadDepots();
+  }, [loadDepots]);
 
   useEffect(() => {
     fetchData();
@@ -211,7 +223,7 @@ export default function BiayaRetribusiReportPage() {
   };
 
   useEffect(() => {
-    const t = setTimeout(() => { setSearchApply(search.trim()); setPage(1); }, 400);
+    const t = setTimeout(() => { setSearchApply(search.trim()); setPage((p) => (p === 1 ? p : 1)); }, 400);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -269,6 +281,15 @@ export default function BiayaRetribusiReportPage() {
             </span>
           </div>
         </div>
+
+        {depotError && !error && (
+          <div role="alert" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2">
+            <span className="flex-1">{depotError}</span>
+            <button onClick={loadDepots} className="rounded-lg border border-red-300 px-3 py-1 text-xs font-bold hover:bg-red-100">
+              Coba lagi
+            </button>
+          </div>
+        )}
 
         {error && (
           <div role="alert" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2">

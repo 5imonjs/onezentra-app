@@ -48,14 +48,22 @@ interface NotificationLog {
 function NotificationLogPanel() {
   const [logs, setLogs] = useState<NotificationLog[]>([]);
   const [filter, setFilter] = useState('');
+  const [logsError, setLogsError] = useState<string | null>(null);
+  const [logsTick, setLogsTick] = useState(0);
 
   useEffect(() => {
     emailSettings.notificationLogs(filter ? { status: filter } : undefined)
-      .then((res) => setLogs(res.data?.data?.data ?? res.data?.data ?? []))
-      .catch(() => setLogs([]));
-  }, [filter]);
+      .then((res) => {
+        setLogs(res.data?.data?.data ?? res.data?.data ?? []);
+        setLogsError(null);
+      })
+      .catch((e: unknown) => {
+        setLogs([]);
+        setLogsError(getErrorMessage(e, 'Gagal memuat log notifikasi.'));
+      });
+  }, [filter, logsTick]);
 
-  if (logs.length === 0 && !filter) return null;
+  if (logs.length === 0 && !filter && !logsError) return null;
 
   return (
     <div className="bg-surface-card rounded-2xl shadow-sm border border-amber-200 p-6">
@@ -67,7 +75,14 @@ function NotificationLogPanel() {
           <option value="skipped">Terlewat</option>
         </select>
       </div>
-      {logs.length === 0 ? (
+      {logsError ? (
+        <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+          <span className="flex-1 text-xs text-red-700">{logsError}</span>
+          <button onClick={() => setLogsTick((t) => t + 1)} className="rounded-lg border border-red-300 px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-100">
+            Coba lagi
+          </button>
+        </div>
+      ) : logs.length === 0 ? (
         <p className="text-xs text-gray-500">Tidak ada catatan pada filter ini.</p>
       ) : (
         <ul className="space-y-2 max-h-64 overflow-auto">
@@ -104,7 +119,9 @@ export default function EmailSettingsPage() {
         host: (data.host as string) ?? '',
         port: (data.port as number) ?? emptyForm.port,
         username: (data.username as string) ?? '',
-        password: (data.password as string) ?? '',
+        // JANGAN prefill password asli ke state/DOM — backend hanya mengirim
+        // penanda, field selalu dikosongkan.
+        password: '',
         encryption: (data.encryption as string) ?? emptyForm.encryption,
         from_address: (data.from_address as string) ?? '',
         from_name: (data.from_name as string) ?? '',
@@ -123,7 +140,13 @@ export default function EmailSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await emailSettings.update(form as unknown as Record<string, unknown>);
+      // Hanya kirim password bila non-kosong (tidak diubah → tidak dikirim).
+      const payload = { ...(form as unknown as Record<string, unknown>) };
+      if (typeof payload.password !== 'string' || payload.password === '') {
+        delete payload.password;
+      }
+      await emailSettings.update(payload);
+      setForm((prev) => ({ ...prev, password: '' }));
       setToast({ message: 'Setting email berhasil disimpan', type: 'success' });
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal menyimpan'), type: 'error' });
@@ -133,10 +156,11 @@ export default function EmailSettingsPage() {
   };
 
   const handleTest = async () => {
-    if (!testEmail) return;
+    const email = testEmail.trim();
+    if (!email) return;
     setSendingTest(true);
     try {
-      const res = await emailSettings.test(testEmail);
+      const res = await emailSettings.test(email);
       setToast({ message: res.data.message, type: 'success' });
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal mengirim email test'), type: 'error' });
@@ -208,7 +232,7 @@ export default function EmailSettingsPage() {
                     </div>
                     <div>
                       <label htmlFor="password" className="block text-xs font-medium text-gray-500 mb-1">Password</label>
-                      <input id="password" type="password" value={form.password} onChange={(e) => input('password', e.target.value)} placeholder="••••••••" className="input-field text-sm py-2" />
+                      <input id="password" type="password" value={form.password} onChange={(e) => input('password', e.target.value)} placeholder="•••••••• — kosongkan bila tidak diubah" autoComplete="new-password" className="input-field text-sm py-2" />
                     </div>
                   </div>
 
