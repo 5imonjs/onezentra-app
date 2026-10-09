@@ -137,6 +137,22 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
     expect(screen.getByRole('button', { name: /Selesaikan \(sisa 1\)/ })).toBeDisabled();
   });
 
+  it('daftar batch tampil sebagai tabel: 6 kolom, status terverifikasi/belum per baris', () => {
+    renderModal([item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50' }), item(2)]);
+
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
+      'Kode Barang',
+      'Batch',
+      'Produk',
+      'Status',
+      'Hasil',
+      'Aksi',
+    ]);
+    expect(screen.getAllByText(/Terverifikasi/)).toHaveLength(1);
+    expect(screen.getAllByText('Belum')).toHaveLength(1);
+  });
+
   it('sesi OPEN belum bisa dihitung: form/scan disembunyikan, ada tombol Mulai + panduan langkah', () => {
     render(
       <SessionDetailModal
