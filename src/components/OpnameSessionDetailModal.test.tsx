@@ -55,9 +55,9 @@ const detail = (items: SessionDetailItem[]): SessionDetail => ({
   kode_depo: '0126',
   nama_depo: 'Depo Pontianak',
   assigned_to: 7,
-  status: 'OPEN',
+  status: 'IN_PROGRESS',
   notes: null,
-  started_at: null,
+  started_at: '2026-10-09T02:00:00Z',
   completed_at: null,
   assignee: { id: 7, full_name: 'Budi Petugas', email: 'budi@test.com' },
   items,
@@ -135,5 +135,29 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
 
     expect(screen.getByText(/1\/2 terverifikasi · sisa 1/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Selesaikan \(sisa 1\)/ })).toBeDisabled();
+  });
+
+  it('sesi OPEN belum bisa dihitung: form/scan disembunyikan, ada tombol Mulai + panduan langkah', () => {
+    render(
+      <SessionDetailModal
+        sessionId={1}
+        detail={{ ...detail([item(1)]), status: 'OPEN' }}
+        detailLoading={false}
+        progress={{ done: 0, total: 1 }}
+        canEdit
+        canAdd={false}
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+      />
+    );
+
+    // Tombol "Mulai Sesi" jadi langkah wajib pertama.
+    expect(screen.getByRole('button', { name: 'Mulai Sesi' })).toBeInTheDocument();
+    // Belum ada CTA scan/manual dan tidak ada form hitung.
+    expect(screen.queryByRole('button', { name: 'Scan label' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Fisik CRT *')).not.toBeInTheDocument();
+    // Panduan status + stepper alur (langkah berjalan = Mulai).
+    expect(screen.getByText(/klik "Mulai Sesi" dulu/)).toBeInTheDocument();
+    expect(screen.getByText('Hitung fisik')).toBeInTheDocument();
   });
 });
