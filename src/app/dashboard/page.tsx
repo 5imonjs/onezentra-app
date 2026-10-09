@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [depotError, setDepotError] = useState('');
 
   const canFilterDepot = hasPermission('depot.view_all');
+  const canSeeRencanaKirimChart = hasPermission('rencana_kirim.view');
 
   const loadDepos = useCallback(async () => {
     if (!canFilterDepot) return;
@@ -101,10 +102,11 @@ export default function DashboardPage() {
 
       <DashboardStatCards kodeDepo={kodeDepo || undefined} />
 
-      {/* Charts — bento */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      {/* Charts — bento. Saat chart rencana kirim tidak tampil (tanpa izin),
+          chart aktivitas melebar penuh alih-alih menyisakan separuh kosong. */}
+      <div className={`grid grid-cols-1 gap-5 ${canSeeRencanaKirimChart ? 'xl:grid-cols-2' : ''}`}>
         <DashboardActivityChart kodeDepo={kodeDepo || undefined} />
-        {hasPermission('rencana_kirim.view') && <RencanaKirimStatusChart kodeDepo={kodeDepo || undefined} />}
+        {canSeeRencanaKirimChart && <RencanaKirimStatusChart kodeDepo={kodeDepo || undefined} />}
       </div>
 
       {hasPermission('opname.view') && <DashboardOpnameChart />}

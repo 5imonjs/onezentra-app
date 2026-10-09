@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
 import { rencanaKirim, gateTransactions, receivingItems, receivings, sjValidations, npn, standarUmurProduk, standarisasiTumpukan } from '@/lib/api';
 import { useDashboardSummary } from '@/lib/dashboardSummary';
+import DashboardCardGrid from '@/components/DashboardCardGrid';
 
 interface StatSource {
   key: string;
@@ -247,15 +248,15 @@ export default function DashboardStatCards({ kodeDepo }: { kodeDepo?: string }) 
           </button>
         </div>
       )}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+      <DashboardCardGrid>
         {loading ? operasional.map((s) => <SkeletonCard key={s.key} />) : operasional.map(renderCard)}
-      </div>
+      </DashboardCardGrid>
       {master.length > 0 && (
         <div>
           <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Data Master</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+          <DashboardCardGrid>
             {loading ? master.map((s) => <SkeletonCard key={s.key} />) : master.map(renderCard)}
-          </div>
+          </DashboardCardGrid>
         </div>
       )}
     </div>
