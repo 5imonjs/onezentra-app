@@ -104,6 +104,61 @@ class OpnameExpiredSessionTest extends TestCase
         return OpnameExpiredSession::find($res->json('data.id'));
     }
 
+    public function test_officers_endpoint_lists_active_users_of_requested_depot(): void
+    {
+        User::create([
+            'email' => 'opname-inactive@test.com',
+            'password' => 'password',
+            'full_name' => 'Petugas Nonaktif',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'staff_logistic',
+            'status' => 'inactive',
+        ]);
+        $other = User::create([
+            'email' => 'opname-other@test.com',
+            'password' => 'password',
+            'full_name' => 'Petugas Depo Lain',
+            'kode_depo' => 'LNY',
+            'nama_depo' => 'Depo Lain',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
+
+        Sanctum::actingAs($this->supervisor);
+        $res = $this->getJson('/api/v1/opname-sessions/officers?kode_depo=DPO')->assertOk();
+
+        $ids = collect($res->json('data'))->pluck('id')->all();
+        $this->assertContains($this->field->id, $ids);
+        $this->assertNotContains($other->id, $ids);
+        $this->assertCount(2, $ids);
+        $this->assertSame(['id', 'full_name', 'email', 'level'], array_keys($res->json('data.0')));
+    }
+
+    public function test_officers_endpoint_rejects_depot_outside_user_scope(): void
+    {
+        Sanctum::actingAs($this->supervisor);
+
+        $this->getJson('/api/v1/opname-sessions/officers?kode_depo=LNY')->assertForbidden();
+    }
+
+    public function test_officers_endpoint_requires_opname_create_permission(): void
+    {
+        $viewer = User::create([
+            'email' => 'opname-viewer@test.com',
+            'password' => 'password',
+            'full_name' => 'Hanya Lihat',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
+
+        Sanctum::actingAs($viewer);
+
+        $this->getJson('/api/v1/opname-sessions/officers?kode_depo=DPO')->assertForbidden();
+    }
+
     public function test_full_session_lifecycle_issues_batches_and_writes_wave(): void
     {
         $session = $this->makeSession();

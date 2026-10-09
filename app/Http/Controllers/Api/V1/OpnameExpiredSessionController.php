@@ -59,6 +59,34 @@ class OpnameExpiredSessionController extends Controller
         return response()->json(['data' => $sessions]);
     }
 
+    /**
+     * Kandidat petugas untuk modal "Buat Sesi" — dipanggil per depo agar
+     * supervisor tidak mengetik ID manual. Dibatasi ke akun aktif di depo
+     * yang diminta dan dicek akses deponya; endpoint terpisah dari /users
+     * (yang butuh users.view) supaya pemegang opname.create bisa menugaskan
+     * tanpa diberi akses kelola user.
+     */
+    public function officers(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'kode_depo' => 'required|string|max:20',
+        ]);
+
+        abort_unless(
+            $request->user()->canAccessDepotRow($validated['kode_depo']),
+            403,
+            'Anda tidak memiliki akses ke depo ini.'
+        );
+
+        $officers = User::query()
+            ->where('kode_depo', $validated['kode_depo'])
+            ->where('status', 'active')
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'email', 'level']);
+
+        return response()->json(['data' => $officers]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

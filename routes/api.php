@@ -296,6 +296,8 @@ Route::prefix('v1')->group(function () {
     // multipart (PUT + FormData tidak andal di semua client).
     Route::prefix('opname-sessions')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
         Route::get('/', [OpnameExpiredSessionController::class, 'index'])->middleware('permission:opname.view');
+        // Didaftarkan sebelum /{session} agar tidak tertangkap route model binding.
+        Route::get('/officers', [OpnameExpiredSessionController::class, 'officers'])->middleware('permission:opname.create');
         Route::post('/', [OpnameExpiredSessionController::class, 'store'])->middleware('permission:opname.create');
         Route::get('/{session}', [OpnameExpiredSessionController::class, 'show'])->middleware('permission:opname.view');
         Route::post('/{session}/start', [OpnameExpiredSessionController::class, 'start'])->middleware('permission:opname.edit');
