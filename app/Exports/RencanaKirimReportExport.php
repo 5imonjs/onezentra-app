@@ -54,7 +54,7 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
             $query->where('status', $status);
         }
 
-        if ($kodeDepo) {
+        if ($kodeDepo && ! ($user && $user->isDepotScoped())) {
             $query->where('kode_depo', $kodeDepo);
         }
 

@@ -93,6 +93,9 @@ class GateDepotGuardTest extends TestCase
             'nama_depo' => 'Depo DPO',
             'created_by' => $user->id,
         ]);
+        // Sistem receiving-only: baris legacy bertipe selain INBOUND (dibuat
+        // langsung via model, validasi API `in:INBOUND` menolaknya) tetap
+        // tidak bisa dihapus -> 422, status rencana tidak berubah.
         $out = GateTransaction::create([
             'rencana_kirim_id' => $rencana2->id,
             'gate_type' => 'OUTBOUND',

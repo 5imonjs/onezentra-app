@@ -80,4 +80,36 @@ class RetribusiRateControllerTest extends TestCase
         $this->deleteJson('/api/v1/retribusi-rates/DPO')->assertOk();
         $this->assertDatabaseMissing('retribusi_rates', ['kode_depo' => 'DPO']);
     }
+
+    public function test_index_only_returns_own_depot_for_scoped_user(): void
+    {
+        Sanctum::actingAs($this->userWith(['retribusi_rates.manage']));
+        RetribusiRate::create(['kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'mode' => 'koli', 'rate_zak' => 1, 'rate_crt' => 1]);
+        RetribusiRate::create(['kode_depo' => 'OTHER', 'nama_depo' => 'Depo Lain', 'mode' => 'koli', 'rate_zak' => 2, 'rate_crt' => 2]);
+
+        $this->getJson('/api/v1/retribusi-rates')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.kode_depo', 'DPO');
+    }
+
+    public function test_upsert_rejects_foreign_depot_for_scoped_user(): void
+    {
+        Sanctum::actingAs($this->userWith(['retribusi_rates.manage']));
+
+        $this->postJson('/api/v1/retribusi-rates', [
+            'kode_depo' => 'OTHER', 'mode' => 'koli', 'rate_zak' => 1, 'rate_crt' => 1,
+        ])->assertForbidden();
+
+        $this->assertDatabaseMissing('retribusi_rates', ['kode_depo' => 'OTHER']);
+    }
+
+    public function test_destroy_rejects_foreign_depot_for_scoped_user(): void
+    {
+        Sanctum::actingAs($this->userWith(['retribusi_rates.manage']));
+        RetribusiRate::create(['kode_depo' => 'OTHER', 'nama_depo' => 'Depo Lain', 'mode' => 'koli', 'rate_zak' => 1, 'rate_crt' => 1]);
+
+        $this->deleteJson('/api/v1/retribusi-rates/OTHER')->assertForbidden();
+        $this->assertDatabaseHas('retribusi_rates', ['kode_depo' => 'OTHER']);
+    }
 }

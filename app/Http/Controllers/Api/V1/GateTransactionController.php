@@ -16,7 +16,7 @@ class GateTransactionController extends Controller
     {
         $request->validate([
             'status' => 'nullable|string|in:CHECKED_IN,COMPLETED',
-            'gate_type' => 'nullable|string|in:INBOUND',  // Hanya INBOUND digunakan, OUTBOUND tidak aktif
+            'gate_type' => 'nullable|string|in:INBOUND',
         ]);
 
         $query = GateTransaction::with(['rencanaKirim']);
@@ -33,9 +33,10 @@ class GateTransactionController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter depo untuk dashboard (user global); user depot-scoped sudah
-        // terkunci forUserDepot di atas sehingga filter ini hanya mempersempit.
-        if ($request->filled('kode_depo')) {
+        // Filter depo untuk master (user global); user depot-scoped sudah
+        // terkunci forUserDepot di atas sehingga filter asing diabaikan
+        // (konsisten dengan semua laporan) — tetap depo sendiri.
+        if ($request->filled('kode_depo') && ! $request->user()->isDepotScoped()) {
             $query->whereHas('rencanaKirim', fn ($q) => $q->where('kode_depo', $request->input('kode_depo')));
         }
 
@@ -80,8 +81,10 @@ class GateTransactionController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($validated['rencana_kirim_id']);
 
-            // Jaga invariant state machine: gate tidak boleh melewati alur validasi/receiving.
-            if ($validated['gate_type'] === 'INBOUND' && $rencanaKirim->status !== 'SCHEDULED') {
+            // Sistem receiving-only: gate_type selalu INBOUND (dijamin validasi
+            // `in:INBOUND` di atas). Jaga invariant state machine: gate tidak
+            // boleh melewati alur validasi/receiving.
+            if ($rencanaKirim->status !== 'SCHEDULED') {
                 abort(422, "Gate INBOUND hanya dapat dilakukan untuk rencana dengan status SCHEDULED (status saat ini: {$rencanaKirim->status}).");
             }
 
@@ -95,7 +98,7 @@ class GateTransactionController extends Controller
             abort_unless(
                 ! $existingGate,
                 422,
-                "Gate {$validated['gate_type']} sudah tercatat untuk rencana ini."
+                'Gate INBOUND sudah tercatat untuk rencana ini.'
             );
 
             $transaction = GateTransaction::create([
@@ -105,19 +108,10 @@ class GateTransactionController extends Controller
                 'status' => 'COMPLETED',
             ]);
 
-            if ($validated['gate_type'] === 'INBOUND') {
-                $rencanaKirim->update([
-                    'status' => 'CHECKED_IN',
-                    'checked_in_at' => now(),
-                ]);
-            } else {
-                // OUTBOUND: pertahankan completed_at yang sudah di-set oleh receiving
-                // (jika belum ada, tandai sebagai selesai di sini).
-                $rencanaKirim->update([
-                    'status' => 'COMPLETED',
-                    'completed_at' => $rencanaKirim->completed_at ?? now(),
-                ]);
-            }
+            $rencanaKirim->update([
+                'status' => 'CHECKED_IN',
+                'checked_in_at' => now(),
+            ]);
 
             return $transaction;
         });
@@ -174,6 +168,7 @@ class GateTransactionController extends Controller
 
     public function stats(Request $request): JsonResponse
     {
+        $request->validate(['kode_depo' => 'nullable|string|max:20']);
         $user = $request->user();
 
         $gateQuery = GateTransaction::query();
@@ -182,6 +177,10 @@ class GateTransactionController extends Controller
         if ($user->isDepotScoped()) {
             $gateQuery->whereHas('rencanaKirim', fn ($q) => $q->forUserDepot($user));
             $rkQuery->forUserDepot($user);
+        } elseif ($request->filled('kode_depo')) {
+            // Master: kartu statistik mengikuti filter depo yang dipilih.
+            $gateQuery->whereHas('rencanaKirim', fn ($q) => $q->where('kode_depo', $request->input('kode_depo')));
+            $rkQuery->where('kode_depo', $request->input('kode_depo'));
         }
 
         $today = now()->toDateString();
@@ -228,7 +227,7 @@ class GateTransactionController extends Controller
 
         // Menghapus jejak gate tidak boleh meninggalkan status yatim: hanya
         // INBOUND yang rencananya masih CHECKED_IN yang bisa dibatalkan
-        // (rencana kembali SCHEDULED). OUTBOUND/alur yang sudah jalan = jejak
+        // (rencana kembali SCHEDULED). Alur yang sudah jalan = jejak
         // audit, tidak bisa dihapus.
         abort_unless(
             $gateTransaction->gate_type === 'INBOUND' && $gateTransaction->rencanaKirim?->status === 'CHECKED_IN',

@@ -16,6 +16,7 @@ class PermissionSeeder extends Seeder
         $permissions = [
             ['name' => 'Dashboard View', 'slug' => 'dashboard.view', 'menu_group' => 'Umum', 'icon' => 'dashboard', 'route' => 'dashboard', 'sort_order' => 10],
             ['name' => 'Akses Semua Depo', 'slug' => 'depot.view_all', 'menu_group' => 'Umum', 'icon' => 'globe', 'route' => null, 'sort_order' => 20],
+            ['name' => 'Pindah Depo Dokumen', 'slug' => 'depot.move', 'menu_group' => 'Umum', 'icon' => 'arrows-right-left', 'route' => null, 'sort_order' => 21],
             ['name' => 'Rencana Kirim View', 'slug' => 'rencana_kirim.view', 'menu_group' => 'Rencana Kirim', 'icon' => 'truck', 'route' => 'rencana_kirim.index', 'sort_order' => 30],
             ['name' => 'Rencana Kirim Create', 'slug' => 'rencana_kirim.create', 'menu_group' => 'Rencana Kirim', 'icon' => 'plus', 'route' => 'rencana_kirim.create', 'sort_order' => 40],
             ['name' => 'Rencana Kirim Edit', 'slug' => 'rencana_kirim.edit', 'menu_group' => 'Rencana Kirim', 'icon' => 'edit', 'route' => 'rencana_kirim.edit', 'sort_order' => 50],

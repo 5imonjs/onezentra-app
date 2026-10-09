@@ -34,7 +34,7 @@ class SjValidationController extends Controller
     {
         $query = SjValidation::with(['rencanaKirim:id,po_transporter,driver_name,nopol,destination_name,kode_depo,nama_depo', 'validator:id,full_name'])
             ->when($request->user()->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->forUserDepot($request->user())))
-            ->when($request->filled('kode_depo'), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->where('kode_depo', $request->input('kode_depo'))))
+            ->when($request->filled('kode_depo') && ! $request->user()->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->where('kode_depo', $request->input('kode_depo'))))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->date_from, fn ($q) => $q->whereDate('created_at', '>=', $request->date_from))
             ->when($request->date_to, fn ($q) => $q->whereDate('created_at', '<=', $request->date_to))
@@ -58,8 +58,14 @@ class SjValidationController extends Controller
      */
     public function stats(Request $request): JsonResponse
     {
+        $request->validate(['kode_depo' => 'nullable|string|max:20']);
+        $user = $request->user();
+
         $base = SjValidation::query()
-            ->when($request->user()->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->forUserDepot($request->user())));
+            // User scoped terkunci ke depo sendiri; `kode_depo` asing diabaikan.
+            ->when($user->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->forUserDepot($user)))
+            // Master: chip statistik mengikuti filter depo yang dipilih.
+            ->when($request->filled('kode_depo') && ! $user->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->where('kode_depo', $request->input('kode_depo'))));
 
         $statusCounts = (clone $base)->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')

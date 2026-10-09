@@ -76,4 +76,27 @@ class BiayaThlPdfSettingTest extends TestCase
         ])->assertOk();
         $this->assertSame(1, BiayaThlPdfSetting::where('kode_depo', 'DPO')->count());
     }
+
+    public function test_upsert_rejects_foreign_depot_for_scoped_user(): void
+    {
+        Sanctum::actingAs($this->userWith(['biaya_thl.view', 'biaya_thl.edit']));
+
+        $this->postJson('/api/v1/settings/biaya-thl-pdf', [
+            'kode_depo' => 'OTHER',
+            'approval_sections' => $this->sections(),
+        ])->assertForbidden();
+
+        $this->assertDatabaseMissing('biaya_thl_pdf_settings', ['kode_depo' => 'OTHER']);
+    }
+
+    public function test_index_ignores_foreign_depot_for_scoped_user(): void
+    {
+        BiayaThlPdfSetting::create(['kode_depo' => 'OTHER', 'approval_sections' => $this->sections()]);
+        Sanctum::actingAs($this->userWith(['biaya_thl.view', 'biaya_thl.edit']));
+
+        // Meminta depo asing diabaikan; depo sendiri belum punya setting.
+        $this->getJson('/api/v1/settings/biaya-thl-pdf?kode_depo=OTHER')
+            ->assertOk()
+            ->assertJsonPath('data', null);
+    }
 }

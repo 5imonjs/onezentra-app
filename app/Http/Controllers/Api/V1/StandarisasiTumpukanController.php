@@ -353,7 +353,7 @@ class StandarisasiTumpukanController extends Controller
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
         try {
-            $import = new StandarisasiTumpukanImport;
+            $import = new StandarisasiTumpukanImport($request->user());
             DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
             return response()->json([

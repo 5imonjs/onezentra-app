@@ -615,4 +615,52 @@ class SjValidationFlowTest extends TestCase
         // Item sudah tervalidasi tapi tanpa complete permission → ditolak.
         $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertStatus(403);
     }
+
+    public function test_index_filters_by_depo_for_master(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'depot.view_all']));
+
+        foreach (['DPO-A' => 'Depo A', 'DPO-B' => 'Depo B'] as $kode => $nama) {
+            $rk = RencanaKirim::create([
+                'po_transporter' => 'PO-SJ-'.uniqid(),
+                'rkh_date' => now()->toDateString(),
+                'status' => 'SCHEDULED',
+                'kode_depo' => $kode,
+                'nama_depo' => $nama,
+                'created_by' => $user->id,
+            ]);
+            SjValidation::create([
+                'rencana_kirim_id' => $rk->id,
+                'validated_by' => $user->id,
+                'scan_code' => $rk->po_transporter,
+                'status' => 'IN_PROGRESS',
+                'started_at' => now(),
+            ]);
+        }
+
+        $this->getJson('/api/v1/sj-validations')->assertOk()->assertJsonPath('total', 2);
+        $this->getJson('/api/v1/sj-validations?kode_depo=DPO-A')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.rencana_kirim.kode_depo', 'DPO-A');
+    }
+
+    public function test_index_ignores_foreign_depo_filter_for_scoped_user(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view']));
+
+        $rk = $this->scheduledRencana($user);
+        SjValidation::create([
+            'rencana_kirim_id' => $rk->id,
+            'validated_by' => $user->id,
+            'scan_code' => $rk->po_transporter,
+            'status' => 'IN_PROGRESS',
+            'started_at' => now(),
+        ]);
+
+        // Filter ke depo lain diabaikan — tetap depo sendiri.
+        $this->getJson('/api/v1/sj-validations?kode_depo=DPO-B')
+            ->assertOk()
+            ->assertJsonPath('total', 1);
+    }
 }

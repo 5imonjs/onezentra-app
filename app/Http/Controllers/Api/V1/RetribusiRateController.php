@@ -9,11 +9,18 @@ use Illuminate\Http\Request;
 
 class RetribusiRateController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json([
-            'data' => RetribusiRate::query()->orderBy('kode_depo')->get(),
-        ]);
+        $user = $request->user();
+
+        $query = RetribusiRate::query()->orderBy('kode_depo');
+
+        // Tarif bersifat per-depo; user ber-scope hanya melihat depo sendiri.
+        if ($user->isDepotScoped()) {
+            $query->where('kode_depo', $user->kode_depo);
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     public function upsert(Request $request): JsonResponse
@@ -26,6 +33,12 @@ class RetribusiRateController extends Controller
             'rate_crt' => 'nullable|numeric|min:0',
             'is_active' => 'nullable|boolean',
         ]);
+
+        abort_unless(
+            $request->user()->canAccessDepotRow($validated['kode_depo']),
+            403,
+            'Anda tidak memiliki akses ke depo ini.'
+        );
 
         $rate = RetribusiRate::updateOrCreate(
             ['kode_depo' => $validated['kode_depo']],
@@ -41,8 +54,14 @@ class RetribusiRateController extends Controller
         return response()->json(['message' => 'Tarif retribusi disimpan.', 'data' => $rate]);
     }
 
-    public function destroy(string $kodeDepo): JsonResponse
+    public function destroy(Request $request, string $kodeDepo): JsonResponse
     {
+        abort_unless(
+            $request->user()->canAccessDepotRow($kodeDepo),
+            403,
+            'Anda tidak memiliki akses ke depo ini.'
+        );
+
         RetribusiRate::where('kode_depo', $kodeDepo)->delete();
 
         return response()->json(['message' => 'Tarif retribusi dihapus, kembali ke bawaan config.']);

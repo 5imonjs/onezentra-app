@@ -18,8 +18,9 @@ class BiayaConfigController extends Controller
     public function show(Request $request): JsonResponse
     {
         $kodeDepo = trim((string) $request->input('kode_depo', ''));
-        if ($kodeDepo === '' && $request->user()->isDepotScoped()) {
-            $kodeDepo = $request->user()->kode_depo;
+        if ($request->user()->isDepotScoped()) {
+            // User ber-scope: depo selalu miliknya, walau kode_depo asing dikirim.
+            $kodeDepo = (string) $request->user()->kode_depo;
         }
         $module = $request->input('module') === ApprovalAssignment::MODULE_RETRIBUSI
             ? ApprovalAssignment::MODULE_RETRIBUSI

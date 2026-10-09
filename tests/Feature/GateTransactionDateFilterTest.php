@@ -73,7 +73,7 @@ class GateTransactionDateFilterTest extends TestCase
         ]);
         $tomorrow = GateTransaction::create([
             'rencana_kirim_id' => $rk->id,
-            'gate_type' => 'OUTBOUND',
+            'gate_type' => 'INBOUND',
             'scan_time' => now()->addDay(),
             'status' => 'COMPLETED',
         ]);

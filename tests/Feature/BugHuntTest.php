@@ -90,7 +90,7 @@ class BugHuntTest extends TestCase
         $this->postJson("/api/v1/rencana-kirim/{$rk->id}/schedule")->assertOk();
         // schedule lagi (sudah SCHEDULED) -> 422
         $this->postJson("/api/v1/rencana-kirim/{$rk->id}/schedule")->assertStatus(422);
-        // OUTBOUND sebelum COMPLETED -> 422
+        // Sistem receiving-only: gate_type OUTBOUND tidak dikenal validasi `in:INBOUND` -> 422
         $this->postJson('/api/v1/gate-transactions', ['rencana_kirim_id' => $rk->id, 'gate_type' => 'OUTBOUND'])->assertStatus(422);
         // Mass-assign status via PUT harus diabaikan (tidak bisa ubah status via PUT)
         $this->putJson("/api/v1/rencana-kirim/{$rk->id}", ['status' => 'COMPLETED'])->assertOk();

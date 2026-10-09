@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Npn;
 use App\Models\StandarisasiTumpukan;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -17,6 +18,13 @@ class StandarisasiTumpukanImport implements ToCollection, WithHeadingRow
     public array $errors = [];
 
     public int $totalRows = 0;
+
+    /**
+     * User yang menjalankan import. Dipakai untuk men-scope baris yang boleh
+     * diperbarui: user ber-scope depo hanya boleh menyentuh baris depo-nya
+     * sendiri (sejajar `StandarisasiTumpukanController::canManageRow`).
+     */
+    public function __construct(private ?User $user = null) {}
 
     public function collection(Collection $rows): void
     {
@@ -51,7 +59,13 @@ class StandarisasiTumpukanImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            $existing = StandarisasiTumpukan::where('npn_id', $npnId)->first();
+            $existing = StandarisasiTumpukan::query()
+                ->where('npn_id', $npnId)
+                ->when(
+                    $this->user?->isDepotScoped(),
+                    fn ($q) => $q->where('kode_depo', $this->user->kode_depo)
+                )
+                ->first();
 
             if ($existing) {
                 // Hormati status: baris approved yang diimport ulang dibuka
@@ -78,7 +92,7 @@ class StandarisasiTumpukanImport implements ToCollection, WithHeadingRow
                     'tinggi_tumpukan' => $tinggiInt,
                     'total_tier_tinggi' => $tierInt * $tinggiInt,
                     'status' => 'pending',
-                    'kode_depo' => auth()->user()?->kode_depo,
+                    'kode_depo' => $this->user?->kode_depo,
                 ]);
                 $this->imported++;
             } catch (\Exception $e) {

@@ -11,7 +11,14 @@ class BiayaThlPdfSettingController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
         $kodeDepo = $request->query('kode_depo');
+
+        // User ber-scope depo tidak boleh mengintip setting depo lain;
+        // permintaan `kode_depo` asing diabaikan, bukan dihormati.
+        if ($user->isDepotScoped()) {
+            $kodeDepo = $user->kode_depo;
+        }
 
         if ($kodeDepo) {
             $setting = BiayaThlPdfSetting::where('kode_depo', $kodeDepo)->first();
@@ -34,6 +41,12 @@ class BiayaThlPdfSettingController extends Controller
             'approval_sections.*.people.*.name' => 'required|string|max:150',
             'approval_sections.*.people.*.role' => 'required|string|max:50',
         ]);
+
+        abort_unless(
+            $request->user()->canAccessDepotRow($validated['kode_depo']),
+            403,
+            'Anda tidak memiliki akses ke depo ini.'
+        );
 
         $setting = BiayaThlPdfSetting::updateOrCreate(
             ['kode_depo' => $validated['kode_depo']],

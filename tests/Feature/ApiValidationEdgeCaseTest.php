@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\RencanaKirim;
-use App\Models\Dock;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -11,7 +10,7 @@ use Tests\TestCase;
 
 /**
  * Unit test untuk memvalidasi edge-case payload API dan policy role.
- * 
+ *
  * Catatan:
  * - Semua test menggunakan autentikasi via Sanctum.
  * - Role staff_logistic tidak memiliki permission mutasi, sehingga endpoint
@@ -69,7 +68,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     // ---------------------------------------------------------------
 
     /** @test */
-    public function testReceivingStoreMissingRequiredRencanaKirimIdReturns403(): void
+    public function test_receiving_store_missing_required_rencana_kirim_id_returns403(): void
     {
         Sanctum::actingAs($this->staffUser);
 
@@ -78,7 +77,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testReceivingStoreInvalidRencanaKirimIdReturns403(): void
+    public function test_receiving_store_invalid_rencana_kirim_id_returns403(): void
     {
         Sanctum::actingAs($this->staffUser);
 
@@ -89,7 +88,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testReceivingStoreInvalidDockIdReturns403(): void
+    public function test_receiving_store_invalid_dock_id_returns403(): void
     {
         Sanctum::actingAs($this->staffUser);
 
@@ -101,7 +100,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testReceivingStoreNotesExceedsMaxLengthReturns403(): void
+    public function test_receiving_store_notes_exceeds_max_length_returns403(): void
     {
         Sanctum::actingAs($this->staffUser);
 
@@ -115,7 +114,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testReceivingStoreNotesAsIntegerReturns403(): void
+    public function test_receiving_store_notes_as_integer_returns403(): void
     {
         Sanctum::actingAs($this->staffUser);
 
@@ -133,7 +132,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     // ---------------------------------------------------------------
 
     /** @test */
-    public function testUserStoreMissingEmailReturns403ForStaff(): void
+    public function test_user_store_missing_email_returns403_for_staff(): void
     {
         Sanctum::actingAs($this->staffUser);
 
@@ -148,7 +147,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testUserStoreMissingEmailReturns403ForAdmin(): void
+    public function test_user_store_missing_email_returns403_for_admin(): void
     {
         Sanctum::actingAs($this->adminUser);
 
@@ -163,7 +162,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testUserStoreInvalidEmailFormatReturns403ForStaff(): void
+    public function test_user_store_invalid_email_format_returns403_for_staff(): void
     {
         Sanctum::actingAs($this->staffUser);
 
@@ -179,7 +178,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testUserStoreInvalidEmailFormatReturns403ForAdmin(): void
+    public function test_user_store_invalid_email_format_returns403_for_admin(): void
     {
         Sanctum::actingAs($this->adminUser);
 
@@ -195,7 +194,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testUserStorePasswordTooShortReturns403ForStaff(): void
+    public function test_user_store_password_too_short_returns403_for_staff(): void
     {
         Sanctum::actingAs($this->staffUser);
 
@@ -211,7 +210,7 @@ class ApiValidationEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testUserStorePasswordTooShortReturns403ForAdmin(): void
+    public function test_user_store_password_too_short_returns403_for_admin(): void
     {
         Sanctum::actingAs($this->adminUser);
 

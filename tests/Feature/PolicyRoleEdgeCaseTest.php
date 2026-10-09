@@ -41,7 +41,7 @@ class PolicyRoleEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testNonAdminCannotPromoteAnotherUserToAdminMaster(): void
+    public function test_non_admin_cannot_promote_another_user_to_admin_master(): void
     {
         Sanctum::actingAs(
             $this->createUserWithRole('staff_logistic')
@@ -60,7 +60,7 @@ class PolicyRoleEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testRoleWithNoPermissionsCannotAccessMutatingEndpoints(): void
+    public function test_role_with_no_permissions_cannot_access_mutating_endpoints(): void
     {
         $user = $this->createUserWithRole('staff_logistic');
 
@@ -75,7 +75,7 @@ class PolicyRoleEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testAssigningPermissionToNonExistentRoleReturns403(): void
+    public function test_assigning_permission_to_non_existent_role_returns403(): void
     {
         // Gunakan admin_user yang sudah dibuat di setUp untuk mengotentikasi request
         Sanctum::actingAs($this->adminUser);
@@ -91,7 +91,7 @@ class PolicyRoleEdgeCaseTest extends TestCase
     }
 
     /** @test */
-    public function testUserCannotAssignRoleHigherThanTheirOwnViaPayload(): void
+    public function test_user_cannot_assign_role_higher_than_their_own_via_payload(): void
     {
         $staffUser = $this->createUserWithRole('staff_logistic');
 
@@ -128,6 +128,7 @@ class PolicyRoleEdgeCaseTest extends TestCase
             'status' => 'active',
         ]);
         $role->users()->attach($user->id);
+
         return $user->fresh();
     }
 }

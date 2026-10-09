@@ -274,4 +274,43 @@ class RencanaKirimFlowTest extends TestCase
 
         $this->assertSame('DPO', $rencanaKirim->fresh()->kode_depo);
     }
+
+    public function test_non_admin_with_depot_move_permission_can_move_document()
+    {
+        $role = Role::firstOrCreate(['slug' => '_rk_mover'], ['name' => 'RK Mover']);
+        foreach (['rencana_kirim.edit', 'depot.view_all', 'depot.move'] as $slug) {
+            $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug]);
+            $role->permissions()->syncWithoutDetaching([$perm->id]);
+        }
+
+        $user = User::create([
+            'email' => 'rk-mover@example.com',
+            'password' => 'password',
+            'full_name' => 'RK Mover',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
+        $role->users()->attach($user->id);
+
+        $rencanaKirim = RencanaKirim::create([
+            'po_transporter' => 'PO-RK-'.uniqid(),
+            'status' => 'DRAFT',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'created_by' => $user->id,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        // Level bukan admin_master, tapi izin depot.move diberikan per role.
+        $this->assertNotSame('admin_master', $user->level);
+        $this->putJson("/api/v1/rencana-kirim/{$rencanaKirim->id}", [
+            'kode_depo' => 'LAIN',
+            'nama_depo' => 'Depo Lain',
+        ])->assertOk();
+
+        $this->assertSame('LAIN', $rencanaKirim->fresh()->kode_depo);
+    }
 }

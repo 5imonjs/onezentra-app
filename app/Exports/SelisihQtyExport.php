@@ -41,7 +41,7 @@ class SelisihQtyExport implements FromQuery, ShouldAutoSize, WithHeadings, WithM
             $query->whereHas('receiving', fn ($q) => $q->whereDate('created_at', '<=', $this->dateTo));
         }
 
-        if ($this->kodeDepo) {
+        if ($this->kodeDepo && ! ($this->user && $this->user->isDepotScoped())) {
             $query->whereHas('receiving.rencanaKirim', fn ($q) => $q->where('kode_depo', $this->kodeDepo));
         }
 

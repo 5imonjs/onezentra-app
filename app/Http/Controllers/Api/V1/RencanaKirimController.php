@@ -249,20 +249,21 @@ class RencanaKirimController extends Controller
             422,
             "Rencana kirim berstatus {$rencanaKirim->status} tidak dapat diedit."
         );
-        // Pindah depo = ubah kepemilikan/audit dokumen: hanya admin_master.
-        // Cek unik PO di bawah memakai depo TUJUAN agar duplikat di depo
-        // tujuan tidak lolos via celah "cek ke depo asal".
+        // Pindah depo = ubah kepemilikan/audit dokumen: butuh permission
+        // `depot.move` (diatur per role di Roles & Permissions, bukan
+        // hardcode level). Cek unik PO di bawah memakai depo TUJUAN agar
+        // duplikat di depo tujuan tidak lolos via celah "cek ke depo asal".
         $targetDepo = $rencanaKirim->kode_depo;
         if ($request->filled('kode_depo') && $request->input('kode_depo') !== $rencanaKirim->kode_depo) {
             // User scoped: depo di-strip diam-diam di bawah (kontrak lama:
             // 200 + field lain tetap diterapkan). Yang ditolak tegas hanya
-            // pemegang depot.view_all non-admin.
+            // pemegang depot.view_all tanpa depot.move.
             abort_unless(
-                $request->user()->isDepotScoped() || $request->user()->isAdminMaster(),
+                $request->user()->isDepotScoped() || $request->user()->hasPermission('depot.move'),
                 403,
-                'Hanya admin master yang dapat memindahkan dokumen antar depo.'
+                'Role Anda tidak memiliki izin Pindah Depo Dokumen (depot.move).'
             );
-            $targetDepo = $request->user()->isAdminMaster() ? $request->input('kode_depo') : $targetDepo;
+            $targetDepo = $request->user()->hasPermission('depot.move') ? $request->input('kode_depo') : $targetDepo;
         }
         // Sesi validasi yang sedang berjalan memakai snapshot item sebagai
         // acuan cheker. Edit APAPUN (termasuk header seperti driver_name)

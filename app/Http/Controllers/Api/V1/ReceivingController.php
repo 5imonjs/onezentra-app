@@ -47,9 +47,10 @@ class ReceivingController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter depo untuk dashboard (user global); user depot-scoped sudah
-        // terkunci forUserDepot di atas sehingga filter ini hanya mempersempit.
-        if ($request->filled('kode_depo')) {
+        // Filter depo untuk master (user global); user depot-scoped sudah
+        // terkunci forUserDepot di atas sehingga filter asing diabaikan
+        // (konsisten dengan semua laporan) — tetap depo sendiri.
+        if ($request->filled('kode_depo') && ! $request->user()->isDepotScoped()) {
             $query->whereHas('rencanaKirim', fn ($q) => $q->where('kode_depo', $request->input('kode_depo')));
         }
 
