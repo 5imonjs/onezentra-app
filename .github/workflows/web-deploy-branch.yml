@@ -1,0 +1,41 @@
+name: Sync web deploy branch
+
+# Menyalin isi onezentra-web/ ke branch "web" dengan app Next.js di ROOT repo.
+# Tujuan: Hostinger Web App (Node.js) bisa build tanpa bergantung pada kolom
+# "Root directory" — auto-detect-nya otomatis benar karena package.json ada di root.
+#
+# Setelah branch ini ada, di Hostinger: Deployment settings -> Branch = "web".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'onezentra-web/**'
+      - '.github/workflows/web-deploy-branch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: web-deploy-branch
+  cancel-in-progress: true
+
+jobs:
+  split:
+    name: Publish onezentra-web to branch "web"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Split subtree and push to "web"
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git subtree split --prefix=onezentra-web -b web
+          git push --force origin web
