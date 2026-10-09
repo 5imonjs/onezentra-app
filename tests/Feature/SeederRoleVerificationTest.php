@@ -175,6 +175,29 @@ class SeederRoleVerificationTest extends TestCase
         );
     }
 
+    public function test_blc_scoped_global_diganti_permission_standarisasi_lintas_depo(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        // `depot.view_all` = saklar lintas-depo GLOBAL. Revisi 2026-10-09:
+        // BLC tidak lagi memegangnya supaya tidak melihat semua depo di semua
+        // modul + filter depo dashboard. Yang tersisa hanya role yang memang
+        // lintas-depo secara menyeluruh.
+        $globalViewAll = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'depot.view_all'))
+            ->pluck('slug')->sort()->values()->all();
+        $this->assertSame(['admin_master', 'admin_planner', 'staff_logistic'], $globalViewAll);
+        $this->assertFalse(
+            Role::where('slug', 'blc')->first()->permissions()->where('slug', 'depot.view_all')->exists(),
+            'blc tidak boleh memegang depot.view_all (saklar global)'
+        );
+
+        // Gantinya: permission sempit khusus modul standarisasi.
+        $standarisasiViewAll = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'standarisasi.view_all'))
+            ->pluck('slug')->sort()->values()->all();
+        $this->assertSame(['admin_master', 'blc'], $standarisasiViewAll);
+    }
+
     public function test_opname_progress_all_mengikuti_opname_view(): void
     {
         $this->seedRoles();

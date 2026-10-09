@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Npn;
 use App\Models\Permission;
+use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\StandarisasiTumpukan;
 use App\Models\User;
@@ -12,14 +13,14 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Mengunci keputusan: akses lintas depo ditentukan PERMISSION
- * (`depot.view_all`), bukan hardcode slug role.
+ * Mengunci keputusan: akses lintas depo standarisasi ditentukan PERMISSION
+ * (`standarisasi.view_all`), bukan hardcode slug role.
  *
- * Sebelumnya `canManageRow()` menulis literal `['blc', 'staff_logistic']`,
- * sehingga ada user yang secara formal tidak punya `depot.view_all` tetap
- * bisa menyentuh baris depo lain. Permission jadi bukan lagi sumber
- * kebenaran, dan selisihnya tidak terlihat dari mana pun selain membaca
- * source controller.
+ * Riwayat:
+ *  - dulu `canManageRow()` menulis literal `['blc', 'staff_logistic']`;
+ *  - lalu diganti `depot.view_all` (saklar GLOBAL, lintas semua modul);
+ *  - revisi 2026-10-09: BLC cukup `standarisasi.view_all` (khusus modul ini)
+ *    supaya tidak ikut melihat semua depo di modul lain maupun dashboard.
  *
  * Test di bawah sengaja menguji lewat endpoint nyata, bukan memanggil
  * `canManageRow()` langsung — supaya yang terukur adalah perilaku yang
@@ -75,15 +76,15 @@ class StandarisasiDepotScopeTest extends TestCase
     }
 
     /**
-     * Sisi utama: `blc` sekarang MELEWATI scoping depo karena diberi
-     * `depot.view_all` di PermissionSeeder.
+     * Sisi utama: `blc` MELEWATI scoping depo karena diberi
+     * `standarisasi.view_all` (permission khusus modul) di PermissionSeeder.
      *
-     *-menu ini berubah dari hardcode ke permission. Kalau permission-nya
+     * Modul ini berubah dari hardcode ke permission. Kalau permission-nya
      * dicabut dari seeder, test ini harus gagal — itu gunanya.
      */
-    public function test_blc_dengan_view_all_bisa_menolak_baris_depo_lain(): void
+    public function test_blc_dengan_standarisasi_view_all_bisa_mengubah_baris_depo_lain(): void
     {
-        $user = $this->userWithRole('blc', ['standarisasi.edit', 'depot.view_all'], 'DPT-A');
+        $user = $this->userWithRole('blc', ['standarisasi.edit', 'standarisasi.view_all'], 'DPT-A');
         $row = $this->row('DPT-B');
 
         Sanctum::actingAs($user);
@@ -95,12 +96,12 @@ class StandarisasiDepotScopeTest extends TestCase
     }
 
     /**
-     * `blc` TANPA `depot.view_all` harus ter-scope seperti user biasa.
+     * `blc` TANPA `standarisasi.view_all` harus ter-scope seperti user biasa.
      *
      * Inilah yang membedakan keputusan ini dari hardcode lama: sebelumnya
      * slug `blc` selalu bisa menembus, apa pun permission-nya.
      */
-    public function test_blc_tanpa_view_all_ditolak_untuk_depo_lain(): void
+    public function test_blc_tanpa_standarisasi_view_all_ditolak_untuk_depo_lain(): void
     {
         $user = $this->userWithRole('blc', ['standarisasi.edit'], 'DPT-A');
         $row = $this->row('DPT-B');
@@ -111,6 +112,49 @@ class StandarisasiDepotScopeTest extends TestCase
             ->assertStatus(403);
 
         $this->assertDatabaseHas('standarisasi_tumpukan', ['id' => $row->id, 'tier' => 1]);
+    }
+
+    /**
+     * Daftar standarisasi ikut melebar lintas depo dengan permission ini,
+     * bukan hanya aksi per baris — kalau hanya `canManageRow` yang diubah,
+     * user tetap tidak menemukan barisnya untuk dikerjakan.
+     */
+    public function test_standarisasi_view_all_membuka_daftar_lintas_depo(): void
+    {
+        $user = $this->userWithRole('blc', ['standarisasi.view', 'standarisasi.view_all'], 'DPT-A');
+        $this->row('DPT-A');
+        $this->row('DPT-B');
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/standarisasi-tumpukan')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+    }
+
+    /**
+     * Permission ini SENGAJA sempit: ia tidak boleh membuka modul lain.
+     * User dengan `standarisasi.view_all` tetap tidak melihat rencana kirim
+     * depo lain (tidak ada bypass global seperti `depot.view_all`).
+     */
+    public function test_standarisasi_view_all_tidak_membuka_modul_lain(): void
+    {
+        $user = $this->userWithRole('blc', ['rencana_kirim.view', 'standarisasi.view_all'], 'DPT-A');
+        $mine = RencanaKirim::create([
+            'po_transporter' => 'SJ-MINE', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo DPT-A',
+            'status' => 'DRAFT', 'created_by' => $user->id,
+        ]);
+        RencanaKirim::create([
+            'po_transporter' => 'SJ-THEIRS', 'kode_depo' => 'DPT-B', 'nama_depo' => 'Depo DPT-B',
+            'status' => 'DRAFT', 'created_by' => $user->id,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/rencana-kirim')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $mine->id);
     }
 
     /**

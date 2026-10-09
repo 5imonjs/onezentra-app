@@ -98,6 +98,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'Standarisasi Tumpukan Import', 'slug' => 'standarisasi.import', 'menu_group' => 'Standarisasi Tumpukan', 'icon' => 'upload', 'route' => 'standarisasi.import', 'sort_order' => 325],
             ['name' => 'Standarisasi Tumpukan Export', 'slug' => 'standarisasi.export', 'menu_group' => 'Standarisasi Tumpukan', 'icon' => 'download', 'route' => 'standarisasi.export', 'sort_order' => 330],
             ['name' => 'Standarisasi Tumpukan Template', 'slug' => 'standarisasi.template', 'menu_group' => 'Standarisasi Tumpukan', 'icon' => 'file-template', 'route' => 'standarisasi.template', 'sort_order' => 335],
+            ['name' => 'Standarisasi Lintas Depo', 'slug' => 'standarisasi.view_all', 'menu_group' => 'Standarisasi Tumpukan', 'icon' => 'globe', 'route' => null, 'sort_order' => 340],
             ['name' => 'Biaya THL Import', 'slug' => 'biaya_thl.import', 'menu_group' => 'Biaya THL', 'icon' => 'upload', 'route' => 'biaya_thl.import', 'sort_order' => 479],
             ['name' => 'Biaya Retribusi Import', 'slug' => 'biaya_retribusi.import', 'menu_group' => 'Biaya Retribusi', 'icon' => 'upload', 'route' => 'biaya_retribusi.import', 'sort_order' => 484],
             ['name' => 'Biaya THL Export', 'slug' => 'biaya_thl.export', 'menu_group' => 'Biaya THL', 'icon' => 'download', 'route' => 'biaya_thl.export', 'sort_order' => 486],
@@ -176,11 +177,15 @@ class PermissionSeeder extends Seeder
                 'opname.create', 'opname.edit', 'rencana_kirim.view', 'retribusi_rates.manage',
                 // BLC menyetujui standarisasi lintas depo. Akses ini dulu
                 // datang dari daftar slug hardcode di controller
-                // (StandarisasiTumpukanController::canManageRow), sehingga
-                // tidak terdata di sini dan tidak bisa diaudit. Sekarang
-                // dicatat sebagai permission supaya menjadi sumber kebenaran
-                // tunggal, sama seperti modul lain.
-                'depot.view_all',
+                // (StandarisasiTumpukanController::canManageRow), lalu
+                // digeneralisasi menjadi `depot.view_all` — terlalu luas:
+                // BLC ikut melihat SEMUA depo di semua modul + filter depo
+                // di dashboard.
+                //
+                // Revisi keputusan akses 2026-10-09: BLC kembali ter-scope
+                // seperti user biasa di semua modul, kecuali standarisasi
+                // lewat permission sempit `standarisasi.view_all`.
+                'standarisasi.view_all',
             ],
             'bac' => [
                 'dashboard.view', 'penerimaan.view', 'npn.view',

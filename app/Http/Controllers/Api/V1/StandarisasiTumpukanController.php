@@ -280,7 +280,10 @@ class StandarisasiTumpukanController extends Controller
 
     private function filteredQuery(Request $request, bool $withSearch = true)
     {
-        $query = StandarisasiTumpukan::query()->forUserDepot($request->user());
+        $query = StandarisasiTumpukan::query();
+        if (! $request->user()->hasPermission('standarisasi.view_all')) {
+            $query->forUserDepot($request->user());
+        }
 
         if ($withSearch && $request->filled('search')) {
             $like = '%'.addcslashes($request->search, '\\%_').'%';
@@ -309,12 +312,14 @@ class StandarisasiTumpukanController extends Controller
 
     /**
      * Siapa yang boleh melewati scoping depo ditentukan oleh permission
-     * `depot.view_all`, bukan daftar slug di sini.
+     * `standarisasi.view_all` (lintas depo khusus modul ini) atau
+     * `depot.view_all` (lintas depo global, lewat canAccessDepotRow) —
+     * bukan daftar slug di sini.
      *
      * Daftar lama `['blc', 'staff_logistic']` ditulis langsung di source,
-     * sehingga user yang secara formal TIDAK punya `depot.view_all` tetap
-     * bisa menyentuh baris depo lain — permission bukan lagi sumber
-     * kebenaran dan selisihnya tidak terlihat dari mana pun kecuali membaca
+     * sehingga user yang secara formal TIDAK punya bypass tetap bisa
+     * menyentuh baris depo lain — permission bukan lagi sumber kebenaran
+     * dan selisihnya tidak terlihat dari mana pun kecuali membaca
      * controller ini. Peran yang benar-benar lintas depo sekarang
      * ditentukan di PermissionSeeder, sama seperti modul lain.
      *
@@ -323,7 +328,7 @@ class StandarisasiTumpukanController extends Controller
      */
     private function canManageRow(User $user, StandarisasiTumpukan $row): bool
     {
-        if ($user->isAdminMaster()) {
+        if ($user->isAdminMaster() || $user->hasPermission('standarisasi.view_all')) {
             return true;
         }
 

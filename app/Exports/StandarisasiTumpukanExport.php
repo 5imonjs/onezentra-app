@@ -37,7 +37,10 @@ class StandarisasiTumpukanExport implements FromQuery, ShouldAutoSize, WithHeadi
         $query = StandarisasiTumpukan::with('npn');
 
         // Scoping depo mengikuti pola OpnameExpiredController:export.
-        if ($this->user && $this->user->isDepotScoped()) {
+        // `standarisasi.view_all` melewati scoping hanya di modul ini (BLC
+        // menyetujui standarisasi lintas depo) tanpa memberi akses lintas
+        // depo global seperti `depot.view_all`.
+        if ($this->user && $this->user->isDepotScoped() && ! $this->user->hasPermission('standarisasi.view_all')) {
             $query->forUserDepot($this->user);
         } elseif ($this->kodeDepo) {
             $query->where('kode_depo', $this->kodeDepo);
