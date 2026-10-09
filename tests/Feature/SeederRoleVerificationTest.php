@@ -123,7 +123,19 @@ class SeederRoleVerificationTest extends TestCase
         $cheker = Role::where('slug', 'cheker')->first()->permissions()->pluck('slug')->sort()->values()->all();
         $operator = Role::where('slug', 'operator')->first()->permissions()->pluck('slug')->sort()->values()->all();
         $this->assertNotEmpty($operator, 'Role operator tidak boleh nol permission (lockout)');
-        $this->assertSame($cheker, $operator);
+
+        // operator = cheker KECUALI aksi sensitif (keputusan akses 2026-10-09):
+        // operator operasional depo, bukan checker.
+        $operatorExcluded = [
+            'approval.submit', 'retribusi_rates.manage', 'sj_validation.edit_completed',
+            'opname.edit', 'penerimaan.delete',
+        ];
+        $expectedOperator = array_values(array_diff($cheker, $operatorExcluded));
+        sort($expectedOperator);
+        $this->assertSame($expectedOperator, $operator);
+        foreach ($operatorExcluded as $slug) {
+            $this->assertNotContains($slug, $operator, "operator tidak boleh memegang {$slug}");
+        }
     }
 
     public function test_keputusan_akses_2026_10_09_tertanam_di_seeder(): void

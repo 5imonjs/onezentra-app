@@ -310,6 +310,21 @@ class PermissionSeeder extends Seeder
             }
         }
 
+        // Keputusan akses 2026-10-09: operator (mirror cheker) TIDAK ikut aksi
+        // sensitif cheker — operator = operasional depo, bukan checker. Sisanya
+        // tetap mirror penuh.
+        $operator = Role::where('slug', 'operator')->first();
+        if ($operator) {
+            $operatorExcludedIds = Permission::whereIn('slug', [
+                'approval.submit',
+                'retribusi_rates.manage',
+                'sj_validation.edit_completed',
+                'opname.edit',
+                'penerimaan.delete',
+            ])->pluck('id')->all();
+            $operator->permissions()->detach($operatorExcludedIds);
+        }
+
         $this->command->info('Permissions seeded successfully.');
     }
 }

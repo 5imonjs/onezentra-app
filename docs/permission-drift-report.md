@@ -4,114 +4,56 @@ Dibuat: 2026-10-09 · Sumber: `database/seeders/PermissionSeeder.php` (target) v
 
 ## Status penerapan
 
-**Re-seed sudah dijalankan** di DB dev `onezentra_warehouse` pada 2026-10-09 setelah backup.
+**Re-seed sudah dijalankan** di DB dev `onezentra_warehouse` pada 2026-10-09.
 
-- Backup: `storage/backups/role_permission_20261009_093409.sql` (458 baris, DROP+CREATE+INSERT).
-- Hasil: `roles=12`, `permissions=96`, `role_permission=451`; verifikasi ulang **drift revoke=0 / add=0**.
-- Count per role: `admin_master` 96, `admin_distirbusi` 59, `blc` 49, `admin_planner` 44, `cheker` 39, `operator` 39, `staff_logistic` 39, `bac` 25, `sac` 25, `rlh` 15, `rfah` 15, `rh` 6.
-- Grant keputusan akses terpasang; `approval.view` tetap hanya `admin_master`.
+- Hasil akhir: `roles=12`, `permissions=96`, `role_permission=446`; verifikasi ulang **drift revoke=0 / add=0**.
+- Backup (dump `role_permission`, DROP+CREATE+INSERT):
+  - `storage/backups/role_permission_20261009_093409.sql` — 458 baris (kondisi drift, sebelum re-seed #1)
+  - `storage/backups/role_permission_20261009_093801.sql` — 451 baris (sebelum pemutusan mirror `operator`)
+- Kedua file ada di `.gitignore` (artefak lokal).
 
-Bagian di bawah adalah **snapshot drift sebelum re-seed** (jejak audit).
+### Riwayat
 
-## Ringkasan (sebelum re-seed)
+1. Seeder diselaraskan (`opname.progress_all` mengikuti `opname.view`) + keputusan akses 5 role → target 451.
+2. Re-seed #1 → `role_permission=451`.
+3. Keputusan **putus mirror**: `operator` tidak mewarisi 5 aksi sensitif `cheker` → target 446.
+4. Re-seed #2 → `role_permission=446`, `operator=34`.
 
-| Metrik | DB dev (live) | Target seeder | Delta |
-|---|---:|---:|---:|
-| roles | 12 | 12 | 0 |
-| permissions | 96 | 96 | 0 |
-| role_permission | 458 | 451 | **+7 net** |
+### Count per role (final)
 
-Angka net +7 menyesatkan: selisihnya adalah **60 grant yang akan DICABUT** dikurangi **53 grant yang akan DITAMBAH** oleh `sync()` saat `PermissionSeeder` dijalankan ulang (diregenerasi 2026-10-09 setelah keputusan akses per role). Re-seed **bukan** sekadar mencabut 7 baris — ia mengganti set tiap role secara persis dan mengubah akses 6 dari 12 role.
+| Role | Permission |
+|---|---:|
+| `admin_master` | 96 |
+| `admin_distirbusi` | 59 |
+| `blc` | 49 |
+| `admin_planner` | 44 |
+| `cheker` | 39 |
+| `staff_logistic` | 39 |
+| `operator` | 34 |
+| `bac` | 25 |
+| `sac` | 25 |
+| `rlh` | 15 |
+| `rfah` | 15 |
+| `rh` | 6 |
 
-> Rencana di bawah **sudah disetujui dan diterapkan**; disimpan sebagai jejak audit.
+## Keputusan akses yang tertanam di seeder (2026-10-09)
 
-## Keputusan akses yang sudah tertanam (2026-10-09)
-
-Agar grant live yang memang disengaja tidak dicabut `sync()`, grant berikut **sudah dipindahkan ke `rolePermMap`** dan dikunci oleh `SeederRoleVerificationTest::test_keputusan_akses_2026_10_09_tertanam_di_seeder`:
+Dikunci oleh `SeederRoleVerificationTest::test_keputusan_akses_2026_10_09_tertanam_di_seeder` dan `test_sac_and_operator_mirror_bac_and_cheker_permissions`.
 
 | Role | Grant dipertahankan |
 |---|---|
-| `staff_logistic` | `depot.view_all` (role ini memang lintas-depo) |
+| `staff_logistic` | `depot.view_all` (role lintas-depo) |
 | `cheker` | `approval.submit`, `retribusi_rates.manage`, `sj_validation.edit_completed`, `opname.edit`, `penerimaan.delete` |
 | `blc` | `sj_validation.create/edit/validate/complete`, `standarisasi.create/delete/export/template`, `cluster_principal.create/delete/edit`, `biaya_retribusi.delete/import`, `biaya_thl.delete/import`, `opname.create/edit`, `rencana_kirim.view`, `retribusi_rates.manage` |
 | `admin_planner` | `gate.view`, `receiving.view`, `sj_validation.view` |
 | `bac` | (tidak ada — seeder menang penuh) |
+| `operator` | **tidak** mewarisi 5 aksi sensitif `cheker` (mirror diputus); sisanya tetap mirror `cheker` |
 
-Selain itu, `opname.progress_all` kini **diturunkan otomatis dari `opname.view`** di seeder (lihat §Catatan khusus), dan `approval.view` tetap **admin_master-only** (tidak dipertahankan meski ada di DB bac/blc).
+## Catatan khusus
 
-## Rekomendasi: jangan "perbaiki" dengan re-seed buta
-
-Sisa drift di bawah adalah grant manual yang **tidak** disetujui untuk dipertahankan. Sebelum re-seed: backup tabel `role_permission`, lalu jadwalkan. Grant yang ternyata masih dibutuhkan cukup dimasukkan ke seeder (jangan lewat UI) agar ter-audit.
-
-## Rincian per role
-
-### admin_master — live 96 / target 96
-Tidak ada selisih.
-
-### admin_distirbusi — live 59 / target 59
-Tidak ada selisih.
-
-### rfah — live 15 / target 15
-Tidak ada selisih.
-
-### rlh — live 15 / target 15
-Tidak ada selisih.
-
-### rh — live 6 / target 6
-Tidak ada selisih.
-
-### sac — live 25 / target 25
-Tidak ada selisih (mirror `bac`; `bac` tidak berubah).
-
-### operator — live 34 / target 39
-**Akan ditambah (5):**
-`approval.submit`, `opname.edit`, `penerimaan.delete`, `retribusi_rates.manage`, `sj_validation.edit_completed`
-
-> Ini **efek samping mirror**: `operator` menyalin `cheker`, dan 5 grant di atas baru saja dipertahankan untuk `cheker`. Sesuai desain mirror (`operator` ≡ `cheker`), `operator` ikut mendapatkannya. Tidak ada extra yang dicabut.
-
-### staff_logistic — live 62 / target 39
-**Akan dicabut (26):**
-`approval.manage`, `biaya_thl.full_control`, `cluster_principal.create`, `cluster_principal.delete`, `cluster_principal.edit`, `emails.view`, `gate.create`, `gate.view`, `npn.create`, `npn.delete`, `npn.edit`, `penerimaan.delete`, `receiving.view`, `rencana_kirim.create`, `rencana_kirim.delete`, `rencana_kirim.edit`, `rencana_kirim.import`, `retribusi_rates.manage`, `sj_validation.edit_completed`, `sj_validation.view`, `standar_umur.create`, `standar_umur.delete`, `standar_umur.edit`, `standarisasi.approve`, `standarisasi.create`, `standarisasi.delete`
-
-**Akan ditambah (3):**
-`receiving.export`, `receiving.import`, `receiving.template`
-
-> `depot.view_all` **tidak** lagi dicabut — sudah dipindahkan ke seeder (keputusan lintas-depo).
-
-### blc — live 57 / target 49
-**Akan dicabut (9):**
-`approval.view`, `gate.create`, `gate.view`, `penerimaan.create`, `receiving.create`, `receiving.export`, `receiving.import`, `receiving.template`, `receiving.view`
-
-**Akan ditambah (1):**
-`depot.view_all`
-
-> `approval.view` tetap dicabut (admin_master-only). `gate.create/view`, `receiving.*`, `penerimaan.create` tidak dipertahankan.
-
-### cheker — live 52 / target 39
-**Akan dicabut (19):**
-`biaya_retribusi.create`, `biaya_retribusi.delete`, `biaya_retribusi.edit`, `biaya_retribusi.export`, `biaya_retribusi.import`, `biaya_retribusi.view`, `biaya_thl.create`, `biaya_thl.delete`, `biaya_thl.edit`, `biaya_thl.import`, `receiving.export`, `receiving.import`, `receiving.template`, `standarisasi.create`, `standarisasi.delete`, `standarisasi.edit`, `standarisasi.export`, `standarisasi.import`, `standarisasi.template`
-
-**Akan ditambah (6):**
-`penerimaan.edit`, `rencana_kirim.edit`, `reports.biaya_retribusi`, `reports.biaya_thl`, `reports.view`, `sj_validation.cancel`
-
-### admin_planner — live 15 / target 44
-**Akan dicabut:** tidak ada.
-
-**Akan ditambah (29):**
-`biaya_retribusi.create`, `biaya_retribusi.edit`, `biaya_retribusi.export`, `biaya_retribusi.view`, `biaya_thl.create`, `biaya_thl.edit`, `biaya_thl.export`, `biaya_thl.import`, `biaya_thl.view`, `gate.delete`, `gate.edit`, `opname.create`, `opname.delete`, `opname.progress_all`, `opname.view`, `receiving.export`, `receiving.import`, `receiving.template`, `reports.biaya_retribusi`, `reports.biaya_thl`, `reports.view`, `roles.export`, `roles.import`, `roles.template`, `standarisasi.export`, `standarisasi.import`, `standarisasi.template`, `users.import`, `users.view`
-
-> Literal matching live sudah nol, `gate.view/receiving.view/sj_validation.view` dipertahankan. 5 grant sensitif (`users.view/import`, `roles.export/import/template`) ikut karena seeder memang menetapkannya.
-
-### bac — live 22 / target 25
-**Akan dicabut (6):**
-`approval.view`, `gate.view`, `receiving.view`, `rencana_kirim.view`, `sj_validation.view`, `standarisasi.export`
-
-**Akan ditambah (9):**
-`approval.revise`, `biaya_retribusi.create`, `biaya_retribusi.edit`, `biaya_thl.create`, `biaya_thl.edit`, `gate.delete`, `gate.edit`, `opname.delete`, `standarisasi.import`
-
-## Catatan khusus: `opname.progress_all`
-
-Status: **selesai — tidak lagi menjadi drift.** `PermissionSeeder` menambahkan `opname.progress_all` untuk setiap role yang punya `opname.view` (blok "Progres opname mengikuti opname.view" di seeder), sama seperti pola `biaya_*.export`. Migration `2026_10_06_051424_grant_opname_progress_all_to_opname_viewers` tetap berlaku untuk grant manual setelahnya; role yang ditambahkan ke `rolePermMap` dengan `opname.view` otomatis ikut, dan role mirror `operator`/`sac` mewarisinya dari `cheker`/`bac`.
+- **`opname.progress_all`** diturunkan otomatis dari `opname.view` di seeder (pola sama seperti `biaya_*.export`) agar `sync()` tidak mencabut grant migration `2026_10_06_051424_grant_opname_progress_all_to_opname_viewers`. Role mirror `operator`/`sac` mewarisinya dari `cheker`/`bac`.
+- **`approval.view`** tetap **hanya `admin_master`** (menu Pengaturan Approval). Tidak dipertahankan untuk blc/bac meski ada di DB.
+- **Mirror `operator`**: sebelumnya `operator ≡ cheker`. Kini `operator = cheker − {approval.submit, retribusi_rates.manage, sj_validation.edit_completed, opname.edit, penerimaan.delete}`.
 
 ## Cara menghasilkan ulang laporan ini
 
