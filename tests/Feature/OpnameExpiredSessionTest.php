@@ -366,6 +366,32 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertNull($item->fresh()->verified_at);
     }
 
+    public function test_verify_requires_session_started_first(): void
+    {
+        $session = $this->makeSession();
+        $this->assertSame('OPEN', $session->status);
+
+        // Alur baku: "Mulai Sesi" wajib dulu — input lapangan saat OPEN
+        // ditolak, supaya langkah OPEN → IN_PROGRESS tidak bisa dilewati.
+        Sanctum::actingAs($this->field);
+        $item = $session->items()->first();
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
+            'qty_fisik_crt' => 5,
+            'identified_via' => 'scan',
+        ])->assertStatus(422);
+
+        $this->assertNull($item->fresh()->verified_at);
+        $this->assertSame('OPEN', $session->fresh()->status);
+
+        // Setelah mulai → verifikasi boleh.
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
+            'qty_fisik_crt' => 5,
+            'identified_via' => 'scan',
+        ])->assertOk();
+        $this->assertNotNull($item->fresh()->verified_at);
+    }
+
     public function test_show_includes_per_batch_expected_qty(): void
     {
         $r1 = $this->receipt('B-EXP-01', 10, '2027-02-01');

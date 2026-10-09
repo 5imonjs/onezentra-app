@@ -63,6 +63,53 @@ const STATUS_META: Record<string, string> = {
 
 const fmtDate = formatDateId;
 
+// Alur baku sesi dalam 4 langkah (dihilangkan untuk CANCELLED):
+// Buat & tugaskan → Mulai → Hitung fisik → Selesai (& label terbit).
+// Titik alur saat ini: OPEN → 2, IN_PROGRESS → 3, COMPLETED → 4.
+const FLOW_STEPS = [
+  { key: 'create', label: 'Buat & tugaskan' },
+  { key: 'start', label: 'Mulai' },
+  { key: 'count', label: 'Hitung fisik' },
+  { key: 'finish', label: 'Selesai & label' },
+] as const;
+
+function FlowStepper({ status }: { status: string }) {
+  const current = status === 'COMPLETED' ? 4 : status === 'IN_PROGRESS' ? 3 : 2;
+  return (
+    <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      {FLOW_STEPS.map((s, i) => {
+        const idx = i + 1;
+        const state = idx < current ? 'done' : idx === current ? 'current' : 'next';
+        return (
+          <li key={s.key} className="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className={[
+                'inline-flex w-5 h-5 items-center justify-center rounded-full text-[10px] font-bold leading-none',
+                state === 'done' ? 'bg-emerald-100 text-emerald-700' : state === 'current' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-400',
+              ].join(' ')}
+            >
+              {state === 'done' ? '✓' : idx}
+            </span>
+            <span className={state === 'current' ? 'font-bold text-slate-800' : state === 'done' ? 'text-slate-600' : 'text-slate-400'}>
+              {s.label}
+            </span>
+            {idx < FLOW_STEPS.length && <span className="text-slate-300" aria-hidden="true">→</span>}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// Panduan langkah berikutnya per status — menghilangkan tebakan user.
+const STATUS_HINTS: Record<string, string> = {
+  OPEN: 'Belum dimulai — klik "Mulai Sesi" dulu; setelah itu petugas bisa scan label & verifikasi tiap baris.',
+  IN_PROGRESS: 'Scan label tiap batch → isi qty fisik → verifikasi. "Selesaikan" aktif setelah semua baris terverifikasi.',
+  COMPLETED: 'Sesi selesai: selisih tiap batch tercatat di wave, label diterbitkan, dan e-mail konfirmasi terkirim.',
+  CANCELLED: 'Sesi dibatalkan — tidak ada hasil yang ditulis ke wave.',
+};
+
 export function SessionDetailModal({ sessionId, detail, detailLoading, progress, canEdit, canAdd, onClose, onChanged }: {
   sessionId: number;
   detail: SessionDetail | null;
@@ -162,6 +209,9 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
   };
 
   const open = detail?.status === 'OPEN' || detail?.status === 'IN_PROGRESS';
+  // Form hitung & scan hanya saat sesi BERJALAN — "Mulai Sesi" wajib dulu
+  // (backend 422 bila belum; alur baku OPEN → IN_PROGRESS → COMPLETED).
+  const canCount = detail?.status === 'IN_PROGRESS';
   const remaining = progress.total - progress.done;
 
   const q = batchQuery.trim().toLowerCase();
@@ -233,7 +283,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
               {canAdd && open && (
                 <button onClick={() => setShowAddWaves(true)} disabled={busy} title="Tambah wave minggu+depo ini yang belum masuk sesi" className="btn-secondary text-sm disabled:opacity-50">+ Tambah wave</button>
               )}
-              {open && remaining > 0 && (
+              {canCount && remaining > 0 && (
                 <label
                   className="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer ml-auto"
                   title="Hitung buta: angka acuan disembunyikan agar petugas menghitung sungguhan. Centang untuk menampilkannya di baris yang sedang dihitung (pola Show Expected Quantity)."
@@ -243,6 +293,14 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                 </label>
               )}
             </div>
+
+            {detail.status !== 'CANCELLED' && <FlowStepper status={detail.status} />}
+
+            {STATUS_HINTS[detail.status] && (
+              <p className="text-xs text-slate-600 bg-surface-raised/70 border border-gray-200 rounded-lg px-3 py-2">
+                {STATUS_HINTS[detail.status]}
+              </p>
+            )}
 
             {progress.total > 0 && (
               <div className="flex items-center gap-3">
@@ -322,7 +380,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                       </div>
                     )}
 
-                    {!isVerified && canEdit && open && (
+                    {!isVerified && canEdit && canCount && (
                       via
                         ? (formOpen
                             ? (

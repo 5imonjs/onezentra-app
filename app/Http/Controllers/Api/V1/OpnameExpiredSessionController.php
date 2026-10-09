@@ -256,7 +256,15 @@ class OpnameExpiredSessionController extends Controller
         $this->authorizeSession($request, $session);
 
         abort_unless($item->session_id === $session->id, 404);
-        abort_unless($session->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
+        // Alur baku: sesi harus dimulai dulu (Mulai Sesi) sebelum input
+        // lapangan. OPEN = belum dikerjakan; verifikasi saat OPEN membikin
+        // langkah "Mulai Sesi" jadi kosmetik dan status sesi tak akurat
+        // (bisa loncat OPEN → COMPLETED tanpa pernah IN_PROGRESS).
+        abort_unless(
+            $session->status === OpnameExpiredSession::STATUS_IN_PROGRESS,
+            422,
+            'Verifikasi hanya bisa saat sesi berjalan — klik "Mulai Sesi" dulu.'
+        );
 
         $validated = $request->validate([
             'qty_fisik_crt' => 'required|numeric|min:0',
