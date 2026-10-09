@@ -240,3 +240,17 @@ bounce user yang sudah login terjadi di proxy sebelum halaman dirender.
 Guard: `proxy.test.ts` (tamu `/login` → nol request; sesi valid → `/dashboard`;
 401 → 200; fetch gagal → 200) dan `login/page.test.tsx` (`loadUser` tidak dipanggil).
 
+
+## Web wajib Next.js murni — jangan tambah framework JS lain
+
+`onezentra-web` ADALAH satu-satunya frontend web sistem dan harus tetap
+Next.js murni (App Router, `src/app/**`, tanpa `src/pages/` legacy). Jangan
+menambah Vue/Svelte/Angular/jQuery/React-Router/Vite-React/CDN-script —
+semua import hanya `next/*`, `react`, dan library pendukung (zustand, axios,
+jspdf/pdf-lib, @zxing, qrcode, next-themes). Tidak boleh ada `createRoot`/
+render entry alternatif; runtime hanyalah `next dev/build/start`.
+Tailwind, Vitest, Playwright, Testing-Library = tooling, bukan framework.
+Stack lain BUKAN Next dan sengaja terpisah: API = Laravel (PHP), mobile =
+Flutter (`onezentra_mobile/`). Vite di `package.json` root + `resources/js`
+kosong = scaffolding Laravel dormant, tidak membangun UI apa pun; jangan
+dipakai untuk UI baru. Audit 2026-10-09: bersih (100% Next di web).
