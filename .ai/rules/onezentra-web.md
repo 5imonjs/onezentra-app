@@ -251,6 +251,7 @@ jspdf/pdf-lib, @zxing, qrcode, next-themes). Tidak boleh ada `createRoot`/
 render entry alternatif; runtime hanyalah `next dev/build/start`.
 Tailwind, Vitest, Playwright, Testing-Library = tooling, bukan framework.
 Stack lain BUKAN Next dan sengaja terpisah: API = Laravel (PHP), mobile =
-Flutter (`onezentra_mobile/`). Vite di `package.json` root + `resources/js`
-kosong = scaffolding Laravel dormant, tidak membangun UI apa pun; jangan
-dipakai untuk UI baru. Audit 2026-10-09: bersih (100% Next di web).
+Flutter (`onezentra_mobile/`). Scaffolding Vite Laravel di root (script
+`dev`/`dev:all`, `resources/js`+`resources/css` kosong) DIHAPUS 2026-10-09;
+root `package.json` kini hanya mendelegasikan ke `onezentra-web/`
+(`web:dev`/`web:build`/`web:start`). Audit 2026-10-09: bersih (100% Next di web).

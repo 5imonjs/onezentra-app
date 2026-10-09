@@ -139,9 +139,10 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
 - When creating tests, make use of `php artisan make:test [options] {name}` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
 
-## Vite Error
+## Frontend Build
 
-- If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
+- Web frontend lives in `onezentra-web/` (Next.js). Run `cd onezentra-web && npm run dev` (or `npm run web:dev` from the repo root) for the dev server; `npm run web:build` from the root builds it.
+- The old Laravel Vite scaffold (root `package.json` `dev`/`dev:all`, `resources/js`, `resources/css`) was removed on 2026-10-09 — no Blade view uses `@vite`, so `ViteException` cannot be triggered by this app.
 
 === pint/core rules ===
 
