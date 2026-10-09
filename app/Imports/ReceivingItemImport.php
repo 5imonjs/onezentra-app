@@ -37,7 +37,15 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
         // barang + depo final + expired. Baris yang kuncinya sudah ada
         // dilewati sebagai duplikat — import ulang file yang sama tidak
         // boleh menggandakan stok (roll-forward sudah membawa qty lama).
-        $existing = ReceivingItem::where('source', ReceivingItem::SOURCE_IMPORT)
+        // Hanya pindai depo efektif user: baris yang dibuat di bawah akan
+        // memakai depo user (depotAttributes) bila user punya kode_depo,
+        // sehingga ledger depo lain tak perlu dimuat (dulu seluruh tabel).
+        $existingQuery = ReceivingItem::where('source', ReceivingItem::SOURCE_IMPORT);
+        if (! blank($this->user->kode_depo)) {
+            $existingQuery->where('kode_depo', $this->user->kode_depo);
+        }
+
+        $existing = $existingQuery
             ->get(['kode_barang', 'kode_depo', 'expired_date'])
             ->map(fn ($r) => implode('|', [
                 $r->kode_barang,

@@ -48,13 +48,15 @@ class ReportController extends Controller
             $query->whereHas('receiving.rencanaKirim', fn ($q) => $q->forUserDepot($request->user()));
         }
 
+        // Bandingkan datetime mentah (bukan whereDate) supaya index
+        // idx_receivings_created_at tetap terpakai.
         if ($request->date_from) {
-            $query->whereHas('receiving', fn ($q) => $q->whereDate('created_at', '>=', $request->date_from));
+            $query->whereHas('receiving', fn ($q) => $q->where('created_at', '>=', $request->date_from.' 00:00:00'));
         }
         if ($request->date_to) {
-            $query->whereHas('receiving', fn ($q) => $q->whereDate('created_at', '<=', $request->date_to));
+            $query->whereHas('receiving', fn ($q) => $q->where('created_at', '<=', $request->date_to.' 23:59:59'));
         }
-        if ($request->kode_depo) {
+        if ($request->kode_depo && ! $request->user()->isDepotScoped()) {
             $query->whereHas('receiving.rencanaKirim', fn ($q) => $q->where('kode_depo', $request->kode_depo));
         }
 
@@ -595,15 +597,15 @@ class ReportController extends Controller
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($request->user())));
         }
 
-        if ($request->tanggal_from || $request->tanggal_to) {
-            $query->where(function ($q) use ($request) {
-                if ($request->tanggal_from) {
-                    $q->whereRaw('COALESCE(tanggal_penerimaan, DATE(scan_time), DATE(created_at)) >= ?', [$request->tanggal_from]);
-                }
-                if ($request->tanggal_to) {
-                    $q->whereRaw('COALESCE(tanggal_penerimaan, DATE(scan_time), DATE(created_at)) <= ?', [$request->tanggal_to]);
-                }
-            });
+        // Filter pada kolom mentah `tanggal_penerimaan` (ada index
+        // idx_ri_tanggal_penerimaan). Memakai COALESCE(...) di whereRaw
+        // mematikan index dan memaksa full scan; kolom ini selalu diisi
+        // sejak baris dibuat (withOpnameDefaults / store / complete).
+        if ($request->tanggal_from) {
+            $query->where('tanggal_penerimaan', '>=', $request->tanggal_from);
+        }
+        if ($request->tanggal_to) {
+            $query->where('tanggal_penerimaan', '<=', $request->tanggal_to);
         }
 
         if ($request->kode_depo && ! $request->user()->isDepotScoped()) {

@@ -20,6 +20,12 @@ use Maatwebsite\Excel\Validators\ValidationException as ExcelValidationException
 
 class ReceivingItemController extends Controller
 {
+    /**
+     * Batas baris yang dipindai untuk menghitung kandidat group pada
+     * `groups()`. Mencegah pemuatan seluruh ledger ke memori pada tabel besar.
+     */
+    private const GROUPS_SCAN_LIMIT = 50000;
+
     public function index(Request $request): JsonResponse
     {
         $query = ReceivingItem::with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
@@ -99,9 +105,15 @@ class ReceivingItemController extends Controller
             ? null
             : ($value instanceof \DateTimeInterface ? $value->format('Y-m-d') : substr((string) $value, 0, 10));
 
+        // Kandidat group dihitung di PHP dari baris yang dipindai. Batasi
+        // pemindaian agar tabel besar tidak memuat seluruh ledger ke memori
+        // (dulu `->get()` tanpa batas). 50k baris ringan sudah jauh melebihi
+        // kebutuhan halaman operasional; bila tercapai, group terdalam tak
+        // lagi tercantum — trade-off sadar demi mencegah OOM.
         $rows = (clone $base)
             ->select('id', 'receiving_id', 'kode_depo', 'tanggal_penerimaan', 'created_at')
             ->orderByDesc('created_at')
+            ->limit(self::GROUPS_SCAN_LIMIT)
             ->get();
 
         $perPage = $this->perPage($request);

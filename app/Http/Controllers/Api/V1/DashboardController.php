@@ -107,9 +107,14 @@ class DashboardController extends Controller
             if (! $can($perm)) {
                 continue;
             }
-            $query = $this->moduleQuery($key, $depot, $user);
-            $totals[$key] = (clone $query)->count();
-            $new7d[$key] = (clone $query)->where('created_at', '>=', $week)->count();
+            // Satu query agregat untuk total + tren 7 hari, bukan dua count
+            // terpisah (memangkas jumlah query dashboard per request).
+            $aggregate = (clone $this->moduleQuery($key, $depot, $user))
+                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_7d', [$week])
+                ->toBase()
+                ->first();
+            $totals[$key] = (int) ($aggregate->total ?? 0);
+            $new7d[$key] = (int) ($aggregate->new_7d ?? 0);
         }
 
         $alerts = [
@@ -182,15 +187,19 @@ class DashboardController extends Controller
             $recent = $this->recentActivity($user, $depot, $can);
         }
 
-        $activityNow = UserActivityLog::query()
-            ->where('occurred_at', '>=', $week)
-            ->whereHas('user', fn ($query) => $query->forUserDepot($user))
-            ->count();
-        $activityPrev = UserActivityLog::query()
+        // Dua window tren dalam satu query: 0-7 hari vs 7-14 hari lalu.
+        $activity = UserActivityLog::query()
             ->where('occurred_at', '>=', $week->copy()->subDays(7))
-            ->where('occurred_at', '<', $week)
             ->whereHas('user', fn ($query) => $query->forUserDepot($user))
-            ->count();
+            ->selectRaw(
+                'SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) as current_7d, '
+                .'SUM(CASE WHEN occurred_at < ? THEN 1 ELSE 0 END) as prev_7d',
+                [$week, $week]
+            )
+            ->toBase()
+            ->first();
+        $activityNow = (int) ($activity->current_7d ?? 0);
+        $activityPrev = (int) ($activity->prev_7d ?? 0);
 
         return response()->json([
             'data' => [
