@@ -6,7 +6,8 @@ Dibuat: 2026-10-09 · Sumber: `database/seeders/PermissionSeeder.php` (target) v
 
 **Re-seed sudah dijalankan** di DB dev `onezentra_warehouse` pada 2026-10-09.
 
-- Hasil akhir: `roles=12`, `permissions=97`, `role_permission=447`; verifikasi ulang **drift revoke=0 / add=0**.
+- Hasil akhir (saat laporan dibuat): `roles=12`, `permissions=97`, `role_permission=447`; verifikasi ulang **drift revoke=0 / add=0**.
+- **Update 2026-10-09**: level/role `ga` (viewer luas, view-only) & `bh` (mirror `admin_planner`) ditambahkan lewat migration `2026_10_09_061200_add_ga_bh_roles` (tidak re-seed). Target baru: `roles=14`, `permission=97`, `role_permission=511` (grant `ga`=20 + `bh`=44).
 - Backup (dump `role_permission`, DROP+CREATE+INSERT):
   - `storage/backups/role_permission_20261009_093409.sql` — 458 baris (kondisi drift, sebelum re-seed #1)
   - `storage/backups/role_permission_20261009_093801.sql` — 451 baris (sebelum pemutusan mirror `operator`)
@@ -38,6 +39,8 @@ Dibuat: 2026-10-09 · Sumber: `database/seeders/PermissionSeeder.php` (target) v
 | `rlh` | 15 |
 | `rfah` | 15 |
 | `rh` | 6 |
+| `ga` | 20 (baru 2026-10-09) |
+| `bh` | 44 (baru 2026-10-09, mirror admin_planner) |
 
 ## Keputusan akses yang tertanam di seeder (2026-10-09)
 
@@ -51,13 +54,15 @@ Dikunci oleh `SeederRoleVerificationTest::test_keputusan_akses_2026_10_09_tertan
 | `blc` | `standarisasi.view_all` (lintas depo **khusus modul standarisasi**); tetap memegang `sj_validation.create/edit/validate/complete`, `standarisasi.create/delete/export/template`, `cluster_principal.create/delete/edit`, `biaya_retribusi.delete/import`, `biaya_thl.delete/import`, `opname.create/edit`, `rencana_kirim.view`, `retribusi_rates.manage`. **Tidak** lagi `depot.view_all`. |
 | `bac` | (tidak ada — seeder menang penuh) |
 | `operator` | **tidak** mewarisi 5 aksi sensitif `cheker` (mirror diputus); sisanya tetap mirror `cheker` |
+| `ga` (baru 2026-10-09) | Viewer luas: semua modul **view-only** lintas depo (`depot.view_all`). Tanpa aksi tulis apa pun. Dikunci `test_ga_viewer_luas_dan_bh_mirror_admin_planner`. |
+| `bh` (baru 2026-10-09) | Mirror penuh `admin_planner` (termasuk `depot.view_all`). Dikunci test yang sama. |
 
 ## Catatan khusus
 
 - **`opname.progress_all`** diturunkan otomatis dari `opname.view` di seeder (pola sama seperti `biaya_*.export`) agar `sync()` tidak mencabut grant migration `2026_10_06_051424_grant_opname_progress_all_to_opname_viewers`. Role mirror `operator`/`sac` mewarisinya dari `cheker`/`bac`.
 - **`approval.view`** tetap **hanya `admin_master`** (menu Pengaturan Approval). Tidak dipertahankan untuk blc/bac meski ada di DB.
 - **Mirror `operator`**: sebelumnya `operator ≡ cheker`. Kini `operator = cheker − {approval.submit, retribusi_rates.manage, sj_validation.edit_completed, opname.edit, penerimaan.delete}`.
-- **`depot.view_all` BLC dicabut (revisi 2026-10-09)**: `depot.view_all` adalah saklar scoping **global** (`User::isDepotScoped()`), sehingga BLC ikut melihat semua depo di semua modul + filter depo dashboard. Diganti `standarisasi.view_all` yang hanya melewati scoping di modul standarisasi (lihat `StandarisasiTumpukanController::canManageRow`, `filteredQuery`, dan `StandarisasiTumpukanExport`). Pemegang `depot.view_all` final: `admin_master`, `admin_planner`, `staff_logistic`.
+- **`depot.view_all` BLC dicabut (revisi 2026-10-09)**: `depot.view_all` adalah saklar scoping **global** (`User::isDepotScoped()`), sehingga BLC ikut melihat semua depo di semua modul + filter depo dashboard. Diganti `standarisasi.view_all` yang hanya melewati scoping di modul standarisasi (lihat `StandarisasiTumpukanController::canManageRow`, `filteredQuery`, dan `StandarisasiTumpukanExport`). Pemegang `depot.view_all` final: `admin_master`, `admin_planner`, `bh`, `ga`, `staff_logistic`.
 
 ## Cara menghasilkan ulang laporan ini
 
