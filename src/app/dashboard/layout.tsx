@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import GlobalToast from '@/components/GlobalToast';
@@ -63,6 +63,9 @@ export default function DashboardLayout({
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeMobileNav = useCallback(() => setMobileOpen(false), []);
+  // Konten digulir di dalam <main>, bukan window. Karena itu Next tidak bisa
+  // mengatur ulang posisi scroll saat pindah halaman — kita lakukan manual.
+  const mainRef = useRef<HTMLElement | null>(null);
   const [splash, setSplash] = useState<{ visible: boolean; leaving: boolean; immersive: boolean }>({ visible: false, leaving: false, immersive: false });
 
   const loadUserFn = useCallback(() => loadUser(), [loadUser]);
@@ -109,6 +112,14 @@ export default function DashboardLayout({
     setMobileOpen(false);
   }, [pathname]);
 
+  // Pindah halaman selalu mulai dari atas konten (window tidak lagi scroll).
+  useEffect(() => {
+    const el = mainRef.current;
+    if (el && typeof el.scrollTo === 'function') {
+      el.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [pathname]);
+
   useEffect(() => {
     if (!mobileOpen) return;
     const prev = document.body.style.overflow;
@@ -127,12 +138,12 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="flex h-dvh flex-col overflow-hidden bg-gray-100">
       <a href="#main-content" className="skip-link">Langsung ke konten utama</a>
       <GlobalToast />
 
       {/* Topbar mobile: satu-satunya pemicu drawer di layar kecil. */}
-      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur-md lg:hidden">
+      <header className="z-20 shrink-0 border-b border-slate-200/80 bg-white/85 backdrop-blur-md lg:hidden">
         <div className="flex h-14 items-center gap-2 px-3">
           <button
             type="button"
@@ -175,8 +186,9 @@ export default function DashboardLayout({
 
       <main
         id="main-content"
+        ref={mainRef}
         tabIndex={-1}
-        className={`min-h-screen transition-all duration-300 ease-in-out ${
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain transition-all duration-300 ease-in-out ${
           !sidebarCollapsed || sidebarHovered ? 'lg:ml-[260px]' : 'lg:ml-[72px]'
         }`}
       >
