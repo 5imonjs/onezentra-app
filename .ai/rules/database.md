@@ -13,3 +13,6 @@ System data (roles/permissions/users/email_recipients) has been wiped externally
 
 ## Kolom condition = varchar(32), default FISIK_BAGUS
 `receiving_items.condition` dan `sj_validation_items.condition` diperlebar ke varchar(32) (default `FISIK_BAGUS`) via migration widen_condition_columns — `EXPIRED_TIDAK_STANDAR` = 21 karakter tidak muat varchar(20). Jangan mengecilkan kembali ke 20; besar ini diperlukan untuk vocab condition kanonik FISIK_*.
+
+## users.level adalah ENUM MySQL — menambah level baru WAJIB memperlebar enum
+`users.level` adalah kolom `enum('admin_master',...,'operator')` (bukan varchar bebas). Menambah level baru (mis. `ga`/`bh`) hanya dengan LEVEL_SLUGS + RoleSeeder + seeder role lain akan gagal saat insert user: `SQLSTATE[01000] Data truncated for column 'level'`. Izinnya ditambah via `Schema::table('users', ...$table->enum('level', [...])->default('admin_master')->change())` (pola `add_ga_bh_level_to_users_table`). Daftar nilai enum up()/down() HARUS merupakan nilai sebelum/sesudah perubahan. Di SQLite test tidak terpengaruh (SQLite tidak menegakkan ENUM), jadi bukti kebenaran hanya dari MySQL live.
