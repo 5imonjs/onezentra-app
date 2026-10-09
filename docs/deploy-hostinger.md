@@ -490,6 +490,7 @@ Checklist manual:
 | Gambar API tidak muncul | `BACKEND_URL` belum diset saat build | Set env lalu build/rebuild web di Hostinger |
 | Perubahan `.env` backend tak berefek | `config:cache` menyimpan nilai lama | `php artisan config:clear && php artisan config:cache` |
 | Web build gagal `sh: next: command not found` | Deploy masih dari branch `main` (root = Laravel) atau Root Directory salah | Deploy dari branch **`web`** dengan Root directory kosong/`/`, build `npm run build` |
+| Build gagal `Failed to load next.config.ts` + `GLIBC_2.29 not found` | Server build Hostinger glibc lama → SWC native gagal (fallback WASM) → kompilasi config `.ts` rusak | Pastikan config bernama **`next.config.mjs`** (bukan `.ts`); rebuild |
 | `composer install` gagal di SSH | Ekstensi PHP kurang / versi PHP CLI beda | Aktifkan ekstensi di hPanel; pakai binary `php8.3` |
 | Kolom "Kode Batch" banyak `-` | Baris warisan pra-migrasi | Jalankan migrasi backfill; jangan paksa manual |
 
