@@ -133,6 +133,10 @@ class PermissionSeeder extends Seeder
                 'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete',
                 'gate.edit', 'gate.delete',
                 'receiving.import', 'receiving.export', 'receiving.template',
+                // Keputusan akses 2026-10-09: staff_logistic memang lintas-depo.
+                // Grant ini sebelumnya hanya ada di DB (menutupi bug cross-depo
+                // H1-H3) dan kini dicatat di seeder agar ter-audit.
+                'depot.view_all',
             ],
             'rlh' => [
                 'dashboard.view', 'penerimaan.view', 'npn.view',
@@ -162,6 +166,14 @@ class PermissionSeeder extends Seeder
                 'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.delete',
                 'approval.submit',
                 'gate.edit', 'gate.delete',
+                // Keputusan akses 2026-10-09: grant live yang dipertahankan.
+                // approval.view TIDAK diikutkan — seeder & test menetapkan menu
+                // Pengaturan Approval hanya untuk admin_master).
+                'sj_validation.create', 'sj_validation.edit', 'sj_validation.validate', 'sj_validation.complete',
+                'standarisasi.create', 'standarisasi.delete', 'standarisasi.export', 'standarisasi.template',
+                'cluster_principal.create', 'cluster_principal.delete', 'cluster_principal.edit',
+                'biaya_retribusi.delete', 'biaya_retribusi.import', 'biaya_thl.delete', 'biaya_thl.import',
+                'opname.create', 'opname.edit', 'rencana_kirim.view', 'retribusi_rates.manage',
                 // BLC menyetujui standarisasi lintas depo. Akses ini dulu
                 // datang dari daftar slug hardcode di controller
                 // (StandarisasiTumpukanController::canManageRow), sehingga
@@ -205,6 +217,9 @@ class PermissionSeeder extends Seeder
                 'dashboard.view', 'npn.view', 'standar_umur.view',
                 'standarisasi.view', 'standarisasi.import', 'standarisasi.export', 'standarisasi.template',
                 'penerimaan.view', 'rencana_kirim.view',
+                // Keputusan akses 2026-10-09: planner tetap bisa melihat gate,
+                // receiving, dan validasi SJ (grant live yang dipertahankan).
+                'gate.view', 'receiving.view', 'sj_validation.view',
                 'rencana_kirim.create', 'rencana_kirim.edit', 'rencana_kirim.delete',
                 'rencana_kirim.import',
                 'users.view', 'users.import', 'roles.import', 'roles.export', 'roles.template',
@@ -226,6 +241,9 @@ class PermissionSeeder extends Seeder
                 'receiving.view', 'receiving.create', 'receiving.edit', 'receiving.delete',
                 'biaya_thl.view',
                 'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.delete',
+                // Keputusan akses 2026-10-09: cheker tetap memegang aksi
+                // sensitif ini (grant live yang dipertahankan).
+                'approval.submit', 'retribusi_rates.manage', 'sj_validation.edit_completed', 'opname.edit', 'penerimaan.delete',
             ],
         ];
 

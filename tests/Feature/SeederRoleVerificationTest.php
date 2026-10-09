@@ -126,6 +126,43 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertSame($cheker, $operator);
     }
 
+    public function test_keputusan_akses_2026_10_09_tertanam_di_seeder(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        // Grant live yang disengaja (keputusan akses 2026-10-09) harus tetap
+        // ada di seeder supaya `sync()` berikutnya tidak mencabutnya diam-diam.
+        $kept = [
+            'staff_logistic' => ['depot.view_all'],
+            'cheker' => [
+                'approval.submit', 'retribusi_rates.manage', 'sj_validation.edit_completed',
+                'opname.edit', 'penerimaan.delete',
+            ],
+            'blc' => [
+                'sj_validation.create', 'sj_validation.edit', 'sj_validation.validate', 'sj_validation.complete',
+                'standarisasi.create', 'standarisasi.delete', 'standarisasi.export', 'standarisasi.template',
+                'cluster_principal.create', 'cluster_principal.delete', 'cluster_principal.edit',
+                'biaya_retribusi.delete', 'biaya_retribusi.import', 'biaya_thl.delete', 'biaya_thl.import',
+                'opname.create', 'opname.edit', 'rencana_kirim.view', 'retribusi_rates.manage',
+            ],
+            'admin_planner' => ['gate.view', 'receiving.view', 'sj_validation.view'],
+        ];
+
+        foreach ($kept as $roleSlug => $slugs) {
+            $held = Role::where('slug', $roleSlug)->first()->permissions()->pluck('slug')->all();
+            foreach ($slugs as $slug) {
+                $this->assertContains($slug, $held, "Role {$roleSlug} harus memegang {$slug}");
+            }
+        }
+
+        // approval.view sengaja TIDAK dipertahankan — tetap admin_master-only.
+        $this->assertTrue(
+            Role::where('slug', 'blc')->first()->permissions()->where('slug', 'approval.view')->doesntExist(),
+            'blc tidak boleh memegang approval.view'
+        );
+    }
+
     public function test_opname_progress_all_mengikuti_opname_view(): void
     {
         $this->seedRoles();

@@ -8,15 +8,29 @@ Dibuat: 2026-10-09 · Sumber: `database/seeders/PermissionSeeder.php` (target) v
 |---|---:|---:|---:|
 | roles | 12 | 12 | 0 |
 | permissions | 96 | 96 | 0 |
-| role_permission | 458 | 418 | **+40 net** |
+| role_permission | 458 | 451 | **+7 net** |
 
-Angka net +40 menyesatkan: selisihnya adalah **88 grant yang akan DICABUT** dikurangi **48 grant yang akan DITAMBAH** oleh `sync()` saat `PermissionSeeder` dijalankan ulang (diregenerasi 2026-10-09 setelah `opname.progress_all` mengikuti `opname.view` di seeder). Jadi re-seed **bukan** sekadar mencabut 40 baris — ia mengganti set permission tiap role secara persis dan mengubah akses 5 dari 12 role.
+Angka net +7 menyesatkan: selisihnya adalah **60 grant yang akan DICABUT** dikurangi **53 grant yang akan DITAMBAH** oleh `sync()` saat `PermissionSeeder` dijalankan ulang (diregenerasi 2026-10-09 setelah keputusan akses per role). Re-seed **bukan** sekadar mencabut 7 baris — ia mengganti set tiap role secara persis dan mengubah akses 6 dari 12 role.
 
-> **Jangan jalankan `php artisan db:seed --class=PermissionSeeder --force`** sampai baris di bawah ini disetujui satu per satu.
+> **Jangan jalankan `php artisan db:seed --class=PermissionSeeder --force`** tanpa menyetujui baris di bawah ini lebih dulu.
+
+## Keputusan akses yang sudah tertanam (2026-10-09)
+
+Agar grant live yang memang disengaja tidak dicabut `sync()`, grant berikut **sudah dipindahkan ke `rolePermMap`** dan dikunci oleh `SeederRoleVerificationTest::test_keputusan_akses_2026_10_09_tertanam_di_seeder`:
+
+| Role | Grant dipertahankan |
+|---|---|
+| `staff_logistic` | `depot.view_all` (role ini memang lintas-depo) |
+| `cheker` | `approval.submit`, `retribusi_rates.manage`, `sj_validation.edit_completed`, `opname.edit`, `penerimaan.delete` |
+| `blc` | `sj_validation.create/edit/validate/complete`, `standarisasi.create/delete/export/template`, `cluster_principal.create/delete/edit`, `biaya_retribusi.delete/import`, `biaya_thl.delete/import`, `opname.create/edit`, `rencana_kirim.view`, `retribusi_rates.manage` |
+| `admin_planner` | `gate.view`, `receiving.view`, `sj_validation.view` |
+| `bac` | (tidak ada — seeder menang penuh) |
+
+Selain itu, `opname.progress_all` kini **diturunkan otomatis dari `opname.view`** di seeder (lihat §Catatan khusus), dan `approval.view` tetap **admin_master-only** (tidak dipertahankan meski ada di DB bac/blc).
 
 ## Rekomendasi: jangan "perbaiki" dengan re-seed buta
 
-Drift muncul dari grant manual lewat UI Roles & Permissions setelah seed terakhir. Sebagian memang sengaja, sebagian lain perlu ditinjau. Kontradiksi `opname.progress_all` (migration vs seeder) **sudah diperbaiki**: `PermissionSeeder` kini menurunkannya otomatis dari `opname.view`, sehingga `sync()` tidak lagi mencabutnya. Doc `.ai/rules/database.md` & `.ai/rules/seeders.md` sudah diperbarui ke angka target 96/418 plus catatan drift.
+Sisa drift di bawah adalah grant manual yang **tidak** disetujui untuk dipertahankan. Sebelum re-seed: backup tabel `role_permission`, lalu jadwalkan. Grant yang ternyata masih dibutuhkan cukup dimasukkan ke seeder (jangan lewat UI) agar ter-audit.
 
 ## Rincian per role
 
@@ -24,52 +38,58 @@ Drift muncul dari grant manual lewat UI Roles & Permissions setelah seed terakhi
 Tidak ada selisih.
 
 ### admin_distirbusi — live 59 / target 59
-Tidak ada selisih (`opname.progress_all` kini mengikuti `opname.view` di seeder).
-
-### operator — live 34 / target 34
-Tidak ada selisih (mirror `cheker`, ikut membawa `opname.progress_all`).
+Tidak ada selisih.
 
 ### rfah — live 15 / target 15
-Tidak ada selisih (`opname.progress_all` kini mengikuti `opname.view`).
+Tidak ada selisih.
 
 ### rlh — live 15 / target 15
-Tidak ada selisih (`opname.progress_all` kini mengikuti `opname.view`).
+Tidak ada selisih.
 
 ### rh — live 6 / target 6
-Tidak ada selisih (`opname.progress_all` kini mengikuti `opname.view`).
+Tidak ada selisih.
 
 ### sac — live 25 / target 25
-Tidak ada selisih (mirror `bac`, ikut membawa `opname.progress_all`).
+Tidak ada selisih (mirror `bac`; `bac` tidak berubah).
 
-### staff_logistic — live 62 / target 38
-**Akan dicabut (27):**
-`approval.manage`, `biaya_thl.full_control`, `cluster_principal.create`, `cluster_principal.delete`, `cluster_principal.edit`, `depot.view_all`, `emails.view`, `gate.create`, `gate.view`, `npn.create`, `npn.delete`, `npn.edit`, `penerimaan.delete`, `receiving.view`, `rencana_kirim.create`, `rencana_kirim.delete`, `rencana_kirim.edit`, `rencana_kirim.import`, `retribusi_rates.manage`, `sj_validation.edit_completed`, `sj_validation.view`, `standar_umur.create`, `standar_umur.delete`, `standar_umur.edit`, `standarisasi.approve`, `standarisasi.create`, `standarisasi.delete`
+### operator — live 34 / target 39
+**Akan ditambah (5):**
+`approval.submit`, `opname.edit`, `penerimaan.delete`, `retribusi_rates.manage`, `sj_validation.edit_completed`
+
+> Ini **efek samping mirror**: `operator` menyalin `cheker`, dan 5 grant di atas baru saja dipertahankan untuk `cheker`. Sesuai desain mirror (`operator` ≡ `cheker`), `operator` ikut mendapatkannya. Tidak ada extra yang dicabut.
+
+### staff_logistic — live 62 / target 39
+**Akan dicabut (26):**
+`approval.manage`, `biaya_thl.full_control`, `cluster_principal.create`, `cluster_principal.delete`, `cluster_principal.edit`, `emails.view`, `gate.create`, `gate.view`, `npn.create`, `npn.delete`, `npn.edit`, `penerimaan.delete`, `receiving.view`, `rencana_kirim.create`, `rencana_kirim.delete`, `rencana_kirim.edit`, `rencana_kirim.import`, `retribusi_rates.manage`, `sj_validation.edit_completed`, `sj_validation.view`, `standar_umur.create`, `standar_umur.delete`, `standar_umur.edit`, `standarisasi.approve`, `standarisasi.create`, `standarisasi.delete`
 
 **Akan ditambah (3):**
 `receiving.export`, `receiving.import`, `receiving.template`
 
-> Catatan: `depot.view_all` untuk `staff_logistic` adalah yang membuat role ini lintas-depo di DB dev meski seeder berniat ter-scope. Ini juga yang menutupi bug cross-depot H1–H3 sebelum diperbaiki.
+> `depot.view_all` **tidak** lagi dicabut — sudah dipindahkan ke seeder (keputusan lintas-depo).
 
-### blc — live 57 / target 30
-**Akan dicabut (28):**
-`approval.view`, `biaya_retribusi.delete`, `biaya_retribusi.import`, `biaya_thl.delete`, `biaya_thl.import`, `cluster_principal.create`, `cluster_principal.delete`, `cluster_principal.edit`, `gate.create`, `gate.view`, `opname.create`, `opname.edit`, `penerimaan.create`, `receiving.create`, `receiving.export`, `receiving.import`, `receiving.template`, `receiving.view`, `rencana_kirim.view`, `retribusi_rates.manage`, `sj_validation.complete`, `sj_validation.create`, `sj_validation.edit`, `sj_validation.validate`, `standarisasi.create`, `standarisasi.delete`, `standarisasi.export`, `standarisasi.template`
+### blc — live 57 / target 49
+**Akan dicabut (9):**
+`approval.view`, `gate.create`, `gate.view`, `penerimaan.create`, `receiving.create`, `receiving.export`, `receiving.import`, `receiving.template`, `receiving.view`
 
 **Akan ditambah (1):**
 `depot.view_all`
 
-### cheker — live 52 / target 34
-**Akan dicabut (24):**
-`approval.submit`, `biaya_retribusi.create`, `biaya_retribusi.delete`, `biaya_retribusi.edit`, `biaya_retribusi.export`, `biaya_retribusi.import`, `biaya_retribusi.view`, `biaya_thl.create`, `biaya_thl.delete`, `biaya_thl.edit`, `biaya_thl.import`, `opname.edit`, `penerimaan.delete`, `receiving.export`, `receiving.import`, `receiving.template`, `retribusi_rates.manage`, `sj_validation.edit_completed`, `standarisasi.create`, `standarisasi.delete`, `standarisasi.edit`, `standarisasi.export`, `standarisasi.import`, `standarisasi.template`
+> `approval.view` tetap dicabut (admin_master-only). `gate.create/view`, `receiving.*`, `penerimaan.create` tidak dipertahankan.
+
+### cheker — live 52 / target 39
+**Akan dicabut (19):**
+`biaya_retribusi.create`, `biaya_retribusi.delete`, `biaya_retribusi.edit`, `biaya_retribusi.export`, `biaya_retribusi.import`, `biaya_retribusi.view`, `biaya_thl.create`, `biaya_thl.delete`, `biaya_thl.edit`, `biaya_thl.import`, `receiving.export`, `receiving.import`, `receiving.template`, `standarisasi.create`, `standarisasi.delete`, `standarisasi.edit`, `standarisasi.export`, `standarisasi.import`, `standarisasi.template`
 
 **Akan ditambah (6):**
 `penerimaan.edit`, `rencana_kirim.edit`, `reports.biaya_retribusi`, `reports.biaya_thl`, `reports.view`, `sj_validation.cancel`
 
-### admin_planner — live 15 / target 41
-**Akan dicabut (3):**
-`gate.view`, `receiving.view`, `sj_validation.view`
+### admin_planner — live 15 / target 44
+**Akan dicabut:** tidak ada.
 
 **Akan ditambah (29):**
 `biaya_retribusi.create`, `biaya_retribusi.edit`, `biaya_retribusi.export`, `biaya_retribusi.view`, `biaya_thl.create`, `biaya_thl.edit`, `biaya_thl.export`, `biaya_thl.import`, `biaya_thl.view`, `gate.delete`, `gate.edit`, `opname.create`, `opname.delete`, `opname.progress_all`, `opname.view`, `receiving.export`, `receiving.import`, `receiving.template`, `reports.biaya_retribusi`, `reports.biaya_thl`, `reports.view`, `roles.export`, `roles.import`, `roles.template`, `standarisasi.export`, `standarisasi.import`, `standarisasi.template`, `users.import`, `users.view`
+
+> Literal matching live sudah nol, `gate.view/receiving.view/sj_validation.view` dipertahankan. 5 grant sensitif (`users.view/import`, `roles.export/import/template`) ikut karena seeder memang menetapkannya.
 
 ### bac — live 22 / target 25
 **Akan dicabut (6):**
@@ -80,9 +100,7 @@ Tidak ada selisih (mirror `bac`, ikut membawa `opname.progress_all`).
 
 ## Catatan khusus: `opname.progress_all`
 
-Status: **selesai — tidak lagi menjadi drift.** `PermissionSeeder` kini menambahkan `opname.progress_all` untuk setiap role yang punya `opname.view` (blok "Progres opname mengikuti opname.view" di seeder), persis pola `biaya_*.export`. Migration `2026_10_06_051424_grant_opname_progress_all_to_opname_viewers` tetap berlaku untuk grant manual setelahnya; role yang ditambahkan ke `rolePermMap` dengan `opname.view` otomatis ikut, dan role mirror `operator`/`sac` mewarisinya dari `cheker`/`bac`.
-
-Dengan aturan ini, re-seed tidak lagi mencabut `opname.progress_all` dari 10 role. Efek samping: `admin_planner` (punya `opname.view` di seeder tetapi belum memiliki `opname.progress_all` di DB dev) akan mendapatkannya saat re-seed — sekaligus masuk daftar "akan ditambah".
+Status: **selesai — tidak lagi menjadi drift.** `PermissionSeeder` menambahkan `opname.progress_all` untuk setiap role yang punya `opname.view` (blok "Progres opname mengikuti opname.view" di seeder), sama seperti pola `biaya_*.export`. Migration `2026_10_06_051424_grant_opname_progress_all_to_opname_viewers` tetap berlaku untuk grant manual setelahnya; role yang ditambahkan ke `rolePermMap` dengan `opname.view` otomatis ikut, dan role mirror `operator`/`sac` mewarisinya dari `cheker`/`bac`.
 
 ## Cara menghasilkan ulang laporan ini
 
