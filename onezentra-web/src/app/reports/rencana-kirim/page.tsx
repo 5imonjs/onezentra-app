@@ -167,6 +167,11 @@ export default function RencanaKirimReportPage() {
     try {
       const res = await depo.list();
       setDepots(res.data?.data ?? []);
+      // User scoped hanya punya 1 opsi depo: kunci langsung agar
+      // 'Semua Depo' tidak menyesatkan (backend tetap mengembalikan
+      // depo sendiri untuknya). Master (banyak opsi) tidak tersentuh.
+      const list = res.data?.data ?? [];
+      if (list.length === 1) setKodeDepo(list[0].kode_depo);
       setDepotError('');
     } catch (e) {
       console.error('[Depo]', e);

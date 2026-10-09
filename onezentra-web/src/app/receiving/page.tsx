@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { receivings, getErrorMessage } from '@/lib/api';
+import { receivings, depo, getErrorMessage } from '@/lib/api';
 import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
@@ -119,6 +119,8 @@ export default function ReceivingPage() {
   const [statusTotals, setStatusTotals] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [kodeDepo, setKodeDepo] = useState('');
+  const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [lastPage, setLastPage] = useState(1);
   const [viewItem, setViewItem] = useState<Receiving | null>(null);
   const [scanNoDokumen, setScanNoDokumen] = useState('');
@@ -130,19 +132,27 @@ export default function ReceivingPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [notifiedRecipients, setNotifiedRecipients] = useState<{ to: string[]; cc: string[] } | null>(null);
 
+  // Anti race: respons basi (filter/search sudah berubah) dibuang agar tidak
+  // menimpa hasil permintaan terbaru.
+  const reqIdRef = useRef(0);
+
   const loadItems = useCallback(async () => {
+    const reqId = ++reqIdRef.current;
     setLoading(true);
     try {
-      const res = await receivings.list({ search, page, per_page: 20 });
+      const params = { search, page, per_page: 20, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) };
+      const res = await receivings.list(params);
+      if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
       setLastPage(res.data.last_page);
       // Total per status diambil terpisah agar statistik header akurat
       // (tidak terbatas pada 20 baris halaman aktif).
       const [pending, inProgress, completed] = await Promise.all([
-        receivings.list({ search, status: 'PENDING', per_page: 1 }),
-        receivings.list({ search, status: 'IN_PROGRESS', per_page: 1 }),
-        receivings.list({ search, status: 'COMPLETED', per_page: 1 }),
+        receivings.list({ search, status: 'PENDING', per_page: 1, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }),
+        receivings.list({ search, status: 'IN_PROGRESS', per_page: 1, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }),
+        receivings.list({ search, status: 'COMPLETED', per_page: 1, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }),
       ]);
+      if (reqIdRef.current !== reqId) return;
       setStatusTotals({
         total: res.data.total ?? res.data.data?.length ?? 0,
         pending: pending.data.total ?? 0,
@@ -150,13 +160,27 @@ export default function ReceivingPage() {
         completed: completed.data.total ?? 0,
       });
     } catch (e) {
+      if (reqIdRef.current !== reqId) return;
       setToast({ message: getErrorMessage(e, 'Gagal memuat daftar receiving.'), type: 'error' });
     } finally {
-      setLoading(false);
+      if (reqIdRef.current === reqId) setLoading(false);
     }
-  }, [search, page]);
+  }, [search, page, kodeDepo]);
+
+  const loadDepots = useCallback(async () => {
+    try {
+      const res = await depo.list();
+      const list = res.data?.data ?? [];
+      setDepots(list);
+      // User scoped hanya punya 1 opsi depo: kunci langsung.
+      if (list.length === 1) setKodeDepo(list[0].kode_depo);
+    } catch (e) {
+      console.error('[Depo]', e);
+    }
+  }, []);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+  useEffect(() => { loadDepots(); }, [loadDepots]);
 
   const handleImport = async () => {
     if (!importFile) {
@@ -179,7 +203,7 @@ export default function ReceivingPage() {
 
   const handleExport = async () => {
     try {
-      const res = await receivings.export();
+      const res = await receivings.export({ ...(kodeDepo ? { kode_depo: kodeDepo } : {}) });
       const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -456,11 +480,27 @@ export default function ReceivingPage() {
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Daftar Check Out Point</h2>
+              <h2 className="text-sm font-bold text-slate-900">Daftar Receiving</h2>
               <p className="mt-0.5 text-xs text-slate-400">{statusTotals.total} entri ditemukan</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO transporter..." resultCount={statusTotals.total} resultLabel="receiving" />
+              {depots.length > 1 && (
+                <div className="shrink-0">
+                  <label htmlFor="receiving-depo" className="sr-only">Filter depo</label>
+                  <select
+                    id="receiving-depo"
+                    value={kodeDepo}
+                    onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
+                    className="appearance-none py-2 px-3 border border-slate-300 rounded-xl bg-surface-card text-gray-900 text-sm shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
+                  >
+                    <option value="">Semua Depo</option>
+                    {depots.map((d) => (
+                      <option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {hasPermission('receiving.import') && (
                 <button onClick={() => setShowImportModal(true)} className="btn-secondary shrink-0">
                   <span className="flex items-center gap-2">
@@ -488,9 +528,9 @@ export default function ReceivingPage() {
             </div>
           </div>
 
-          {/* Table - Desktop */}
+          {/* Table - Desktop (badan tabel scroll, header sticky) */}
           <div className="hidden md:block">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto max-h-[560px]">
               <table className="w-full min-w-[720px] border-collapse">
                 <caption className="sr-only">Daftar receiving</caption>
                 <thead className="sticky top-0 z-10">
@@ -568,7 +608,7 @@ export default function ReceivingPage() {
           </div>
 
           {/* Cards - Mobile */}
-          <div className="space-y-3 p-4 md:hidden">
+          <div className="space-y-3 p-4 md:hidden max-h-[560px] overflow-y-auto">
             {loading ? (
               <div className="animate-pulse space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (

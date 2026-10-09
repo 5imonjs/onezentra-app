@@ -530,7 +530,7 @@ export default function OpnameExpiredPage() {
       else next.add(id);
       return next;
     });
-  }, []);
+  }, [setSelectedWaveIds]);
 
   const confirmBulkDeleteWaves = async () => {
     const ids = waves.filter((w) => selectedWaveIds.has(w.id)).map((w) => w.id);
