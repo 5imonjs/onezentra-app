@@ -397,6 +397,31 @@ BACKEND_URL=https://api.onezentra.sbs
 Setelah build hijau, pasang domain `onezentra.sbs` ke Web App ini + aktifkan
 **SSL**.
 
+#### B1. Memasang domain `onezentra.sbs` (mengganti `*.hostingersite.com`)
+
+Setiap Web App Hostinger otomatis dapat subdomain sementara
+`https://<nama>-<id>.hostingersite.com` untuk pratinjau. Itu **bukan** domain
+utama — domain asli harus ditempelkan ke app yang sama dan DNS-nya diarahkan:
+
+1. hPanel → **Websites** → pilih **Web App (Node.js)** yang tadi → tab
+   **Domains** → **Add domain** / **Connect domain**.
+2. Tambahkan `onezentra.sbs` **dan** `www.onezentra.sbs`.
+3. Arahkan DNS:
+   - Bila domain didaftarkan di Hostinger dan **nameserver** sudah Hostinger
+     (`ns1.dns-parking.com`, `ns2.dns-parking.com`), koneksi otomatis.
+   - Bila DNS di tempat lain, buat **A record** `@` → IP server Hostinger
+     (lihat di hPanel) dan **CNAME** `www` → `onezentra.sbs`.
+4. Jadikan `onezentra.sbs` sebagai **domain utama** app, lalu aktifkan **SSL
+   (Let's Encrypt)** untuk kedua host.
+5. Tunggu propagasi DNS (beberapa menit–24 jam). Cek:
+   `curl -I https://onezentra.sbs` harus `200`/`3xx`, bukan halaman
+   `hostingersite.com`.
+
+> **Kalau `onezentra.sbs` sudah terlanjur dibuat sebagai website terpisah** di
+> panel, hapus/lepaskan dulu dari website itu — satu domain hanya boleh menempel
+> ke satu tempat. Untuk backend, gunakan subdomain `api.onezentra.sbs`
+> (Bagian A), bukan domain utama.
+
 > **Cara update:** tetap push ke `main`. Bila ada perubahan di `onezentra-web/`,
 > workflow men-sync ulang branch `web` secara otomatis, lalu Hostinger build
 > ulang. Bila Action gagal push, aktifkan
