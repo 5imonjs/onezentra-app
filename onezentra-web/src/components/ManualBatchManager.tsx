@@ -46,6 +46,9 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   const { hasPermission, user } = useAuthStore();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<ManualBatch[]>([]);
+  // Total sebenarnya dari paginator (bisa > items.length karena per_page=100);
+  // dipakai di judul daftar agar angka tidak terlihat seperti batas kapasitas.
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -78,11 +81,13 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
     setLoadError('');
     try {
       const res = await opnameExpired.manualItems({ per_page: 100 });
-      setItems(res.data.data);
+      const payload = res.data as { data: ManualBatch[]; total?: number };
+      setItems(payload.data);
+      setTotalCount(Number(payload.total ?? payload.data.length));
       // Seleksi basi (id yang tak lagi tampil) dibuang tiap reload agar
       // hapus terpilih tidak membawa id hantu.
       setSelectedIds((prev) => {
-        const visible = new Set(res.data.data.map((it: ManualBatch) => it.id));
+        const visible = new Set(payload.data.map((it) => it.id));
         return new Set(Array.from(prev).filter((id) => visible.has(id)));
       });
     } catch (e) {
@@ -433,10 +438,6 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="kode-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Kode Barang *</label>
-                  <input id="kode-barang" value={form.kode_barang || ''} readOnly className="input-field bg-surface-raised cursor-not-allowed" placeholder="Otomatis dari nama barang" required />
-                </div>
-                <div>
                   <label htmlFor="nama-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Nama Barang *</label>
                   {form.nama_barang && form.kode_barang ? (
                     <div className="flex items-center gap-1">
@@ -524,6 +525,11 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                   )}
                 </div>
                 <div>
+                  {/* Diturunkan otomatis dari pilihan Nama Barang — bukan field yang diketik. */}
+                  <label htmlFor="kode-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Kode Barang (otomatis)</label>
+                  <input id="kode-barang" value={form.kode_barang || ''} readOnly className="input-field bg-surface-raised cursor-not-allowed" placeholder="Terisi dari nama barang" required />
+                </div>
+                <div>
                   <label htmlFor="qty-crt" className="block text-sm font-medium text-gray-700 mb-1.5">Qty CRT/ZAK *</label>
                   <input id="qty-crt" type="number" step="1" min="1" value={form.qty_crt || ''} onChange={(e) => setForm((p) => ({ ...p, qty_crt: e.target.value }))} className="input-field" required />
                 </div>
@@ -532,8 +538,9 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                   <input id="qty-pcs" type="number" step="1" min="0" value={form.qty_pcs || ''} onChange={(e) => setForm((p) => ({ ...p, qty_pcs: e.target.value }))} className="input-field" />
                 </div>
                 <div>
-                  <label htmlFor="satuan" className="block text-sm font-medium text-gray-700 mb-1.5">Satuan</label>
-                  <input id="satuan" value={form.satuan || ''} readOnly placeholder="Otomatis dari nama barang" className="input-field bg-surface-raised cursor-not-allowed" />
+                  {/* Turunan dari pilihan produk (SAPszUomId), default CRT — tidak diketik manual. */}
+                  <label htmlFor="satuan" className="block text-sm font-medium text-gray-700 mb-1.5">Satuan (otomatis)</label>
+                  <input id="satuan" value={form.satuan || ''} readOnly placeholder="Terisi dari nama barang" className="input-field bg-surface-raised cursor-not-allowed" />
                 </div>
                 <div>
                   <label htmlFor="expired-date" className="block text-sm font-medium text-gray-700 mb-1.5">Expired Date *</label>
@@ -542,6 +549,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <div>
                   <label htmlFor="tanggal-penerimaan" className="block text-sm font-medium text-gray-700 mb-1.5">Tanggal Penerimaan</label>
                   <input id="tanggal-penerimaan" type="date" value={form.tanggal_penerimaan || ''} onChange={(e) => setForm((p) => ({ ...p, tanggal_penerimaan: e.target.value }))} className="input-field" />
+                  <p className="text-[11px] text-slate-400 mt-1">Info historis saja — tidak menentukan minggu analisa opname (batch dipantau sesuai minggu import, bukan tanggal ini).</p>
                 </div>
                 <div>
                   <label htmlFor="sumber-material" className="block text-sm font-medium text-gray-700 mb-1.5">Sumber Material</label>
@@ -568,7 +576,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
 
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Batch Manual Tersimpan {loading ? '(memuat...)' : `(${items.length})`}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">Batch Manual Tersimpan {loading ? '(memuat...)' : `(${totalCount})`}</p>
               <div className="flex items-center gap-2">
                 {items.length > 0 && hasPermission('penerimaan.delete') && (
                   <>
@@ -592,8 +600,11 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                   </>
                 )}
               </div>
-              {items.length >= 100 && (
-                <p className="text-[11px] text-amber-600 w-full">Menampilkan maksimal 100 batch terbaru &mdash; &ldquo;Hapus semua&rdquo; mencakup seluruh data, bukan hanya yang tampil</p>
+              {totalCount > items.length && (
+                <p className="text-[11px] text-amber-600 w-full">Menampilkan 100 batch terbaru dari {totalCount} &mdash; &ldquo;Hapus semua&rdquo; mencakup seluruh data, bukan hanya yang tampil</p>
+              )}
+              {items.some((it) => !it.batch?.batch_number && !it.verifiedBatch?.batch_number) && (
+                <p className="text-[11px] text-slate-500 w-full">Kode Batch &ldquo;&ndash;&rdquo; = label fisik belum diterbitkan (baris import/baseline lama); label terbit saat verifikasi sesi lapangan pertama.</p>
               )}
             </div>
             {loadError ? (
@@ -602,10 +613,10 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
               </div>
             ) : items.length > 0 ? (
-              <div className="overflow-x-auto border border-gray-300 rounded-xl">
+              <div className="max-h-[560px] overflow-x-auto overflow-y-auto border border-gray-300 rounded-xl">
                 <table className="w-full min-w-[820px]">
                   <caption className="sr-only">Daftar batch manual tersimpan</caption>
-                  <thead>
+                  <thead className="sticky top-0 z-10">
                     <tr className="bg-surface-raised border-b border-gray-300">
                       {hasPermission('penerimaan.delete') && (
                         <th scope="col" className="px-3 py-3 w-10">
@@ -621,10 +632,10 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Barang</th>
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Batch</th>
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nama</th>
-                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Qty CRT</th>
+                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Qty CRT/ZAK</th>
                       <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">PCS</th>
                       <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Expired</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Sumber</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Sumber Material</th>
                       <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Aksi</th>
                     </tr>
                   </thead>
