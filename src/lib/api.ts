@@ -329,6 +329,7 @@ export const receivingItems = {
 
 export const opnameSessions = {
   list: (params?: Record<string, unknown>) => apiClient.get('/opname-sessions', { params }),
+  officers: (kodeDepo: string) => apiClient.get('/opname-sessions/officers', { params: { kode_depo: kodeDepo } }),
   create: (data: Record<string, unknown>) => apiClient.post('/opname-sessions', data),
   get: (id: number) => apiClient.get(`/opname-sessions/${id}`),
   start: (id: number) => apiClient.post(`/opname-sessions/${id}/start`),
