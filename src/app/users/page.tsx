@@ -36,6 +36,8 @@ const levels = [
   { value: 'admin_planner', label: 'Admin Planner' },
   { value: 'cheker', label: 'Cheker' },
   { value: 'sac', label: 'SAC' },
+  { value: 'ga', label: 'GA' },
+  { value: 'bh', label: 'BH' },
 ];
 
 const emptyForm = {
@@ -200,6 +202,8 @@ export default function UsersPage() {
       admin_planner: 'bg-teal-100 text-teal-700',
       cheker: 'bg-orange-100 text-orange-700',
       sac: 'bg-lime-100 text-lime-700',
+      ga: 'bg-violet-100 text-violet-700',
+      bh: 'bg-indigo-100 text-indigo-700',
     };
     return colors[level] || 'bg-gray-100 text-gray-700';
   };
