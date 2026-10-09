@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { dashboard, getErrorMessage } from '@/lib/api';
 import { useDashboardSummary } from '@/lib/dashboardSummary';
+import { useAuthStore } from '@/store/auth';
 
 type UsageDay = { date: string; requests: number; active_users: number };
 type TopUser = { id: number; name: string; level: string; requests: number };
@@ -20,6 +21,7 @@ function formatDate(value: string): string {
 }
 
 export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string }) {
+  const { hasPermission } = useAuthStore();
   const [periodDays, setPeriodDays] = useState<number>(30);
   const [usage, setUsage] = useState<UsagePayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,8 +48,18 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
   }, []);
 
   useEffect(() => {
+    if (!hasPermission('users.view')) {
+      return;
+    }
     load(periodDays, kodeDepo);
-  }, [load, periodDays, kodeDepo]);
+  }, [load, periodDays, kodeDepo, hasPermission]);
+
+  // Metrik internal (request API per user) hanya relevan untuk pengelola
+  // sistem. Peran operasional tidak dirender chart ini agar dashboard fokus
+  // ke pekerjaan gudang.
+  if (!hasPermission('users.view')) {
+    return null;
+  }
 
   const daily = Array.isArray(usage?.daily) ? usage.daily : [];
   const topUsers = Array.isArray(usage?.top_users) ? usage.top_users : [];

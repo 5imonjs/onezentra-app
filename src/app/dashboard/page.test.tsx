@@ -19,6 +19,7 @@ vi.mock('@/lib/api', () => ({
 vi.mock('@/components/DashboardActivityChart', () => ({ default: () => <div data-testid="activity-chart" /> }));
 vi.mock('@/components/RencanaKirimStatusChart', () => ({ default: () => <div data-testid="rencana-chart" /> }));
 vi.mock('@/components/DashboardAlerts', () => ({ default: () => null }));
+vi.mock('@/components/DashboardBiayaQueue', () => ({ default: () => null }));
 vi.mock('@/components/DashboardOpnameChart', () => ({ default: () => null }));
 vi.mock('@/components/DashboardRecent', () => ({ default: () => null }));
 vi.mock('@/components/DashboardStatCards', () => ({ default: () => null }));
@@ -51,5 +52,15 @@ describe('DashboardPage — tata letak chart', () => {
     const wrapper = screen.getByTestId('activity-chart').parentElement as HTMLElement;
     expect(wrapper.className).toContain('xl:grid-cols-2');
     expect(screen.getByTestId('rencana-chart')).toBeInTheDocument();
+  });
+
+  it('tanpa izin users.view, chart sistem tidak dirender walau chart rencana kirim tampil', () => {
+    hasPermission.mockImplementation((perm: string) => perm !== 'users.view' && perm !== 'depot.view_all');
+
+    render(<DashboardPage />);
+
+    expect(screen.queryByTestId('activity-chart')).not.toBeInTheDocument();
+    const rencana = screen.getByTestId('rencana-chart');
+    expect(rencana.parentElement?.className).not.toContain('xl:grid-cols-2');
   });
 });

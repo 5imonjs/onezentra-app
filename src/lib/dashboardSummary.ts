@@ -11,13 +11,29 @@ export interface SummaryRecentItem {
   at: string | null;
 }
 
+export interface SummaryOpnameAtRisk {
+  week_start: string;
+  kritis_rows: number;
+  expired_rows: number;
+  pcs: number;
+  crt: number;
+}
+
 export interface SummaryData {
   depot: string | null;
   totals: Record<string, number>;
   new_7d: Record<string, number>;
   alerts: { expired_kritis: number; expired_total: number; standarisasi_pending: number };
+  opname_at_risk: SummaryOpnameAtRisk | null;
   quality: { npn_no_volume: number; npn_no_umur: number };
-  sla: { avg_gate_to_receiving_hours: number | null; sj_open_count: number; sj_oldest_days: number | null };
+  sla: {
+    avg_gate_to_receiving_hours: number | null;
+    sj_open_count: number;
+    sj_oldest_days: number | null;
+    rk_checked_in_count: number;
+    rk_checked_in_oldest_days: number | null;
+  };
+  inbound_selisih: { items: number; kurang: number; lebih: number };
   recent: SummaryRecentItem[];
   activity_trend: { current_7d: number; prev_7d: number };
 }
@@ -29,8 +45,16 @@ const EMPTY: SummaryData = {
   totals: {},
   new_7d: {},
   alerts: { expired_kritis: 0, expired_total: 0, standarisasi_pending: 0 },
+  opname_at_risk: null,
   quality: { npn_no_volume: 0, npn_no_umur: 0 },
-  sla: { avg_gate_to_receiving_hours: null, sj_open_count: 0, sj_oldest_days: null },
+  sla: {
+    avg_gate_to_receiving_hours: null,
+    sj_open_count: 0,
+    sj_oldest_days: null,
+    rk_checked_in_count: 0,
+    rk_checked_in_oldest_days: null,
+  },
+  inbound_selisih: { items: 0, kurang: 0, lebih: 0 },
   recent: [],
   activity_trend: { current_7d: 0, prev_7d: 0 },
 };

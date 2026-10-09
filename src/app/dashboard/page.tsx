@@ -1,14 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
 import DashboardActivityChart from '@/components/DashboardActivityChart';
 import DashboardAlerts from '@/components/DashboardAlerts';
+import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
 import DashboardOpnameChart from '@/components/DashboardOpnameChart';
 import DashboardRecent from '@/components/DashboardRecent';
 import DashboardStatCards from '@/components/DashboardStatCards';
 import PendingActions from '@/components/PendingActions';
 import RencanaKirimStatusChart from '@/components/RencanaKirimStatusChart';
+import { visibleDashboardBlocks, type DashboardBlockKey } from './dashboardBlocks';
 import { depo, getErrorMessage } from '@/lib/api';
 
 function greetingFor(hour: number): string {
@@ -49,9 +51,43 @@ export default function DashboardPage() {
 
   useEffect(() => { loadDepos(); }, [loadDepos]);
 
+  const blocks = useMemo(
+    () => visibleDashboardBlocks(user?.level, hasPermission),
+    [user?.level, hasPermission],
+  );
+
+  const canSeeActivityChart = hasPermission('users.view');
+  const bothCharts = canSeeActivityChart && canSeeRencanaKirimChart;
+
   if (!hasPermission('dashboard.view')) {
     return null;
   }
+
+  const renderBlock = (key: DashboardBlockKey) => {
+    switch (key) {
+      case 'biayaQueue':
+        return <DashboardBiayaQueue key={key} kodeDepo={kodeDepo || undefined} />;
+      case 'pending':
+        return <PendingActions key={key} kodeDepo={kodeDepo || undefined} />;
+      case 'alerts':
+        return <DashboardAlerts key={key} kodeDepo={kodeDepo || undefined} />;
+      case 'statCards':
+        return <DashboardStatCards key={key} kodeDepo={kodeDepo || undefined} />;
+      case 'charts':
+        return (
+          <div key={key} className={`grid grid-cols-1 gap-5 ${bothCharts ? 'xl:grid-cols-2' : ''}`}>
+            {canSeeActivityChart && <DashboardActivityChart kodeDepo={kodeDepo || undefined} />}
+            {canSeeRencanaKirimChart && <RencanaKirimStatusChart kodeDepo={kodeDepo || undefined} />}
+          </div>
+        );
+      case 'opname':
+        return <DashboardOpnameChart key={key} />;
+      case 'recent':
+        return <DashboardRecent key={key} kodeDepo={kodeDepo || undefined} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -97,21 +133,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <PendingActions kodeDepo={kodeDepo || undefined} />
-      <DashboardAlerts kodeDepo={kodeDepo || undefined} />
-
-      <DashboardStatCards kodeDepo={kodeDepo || undefined} />
-
-      {/* Charts — bento. Saat chart rencana kirim tidak tampil (tanpa izin),
-          chart aktivitas melebar penuh alih-alih menyisakan separuh kosong. */}
-      <div className={`grid grid-cols-1 gap-5 ${canSeeRencanaKirimChart ? 'xl:grid-cols-2' : ''}`}>
-        <DashboardActivityChart kodeDepo={kodeDepo || undefined} />
-        {canSeeRencanaKirimChart && <RencanaKirimStatusChart kodeDepo={kodeDepo || undefined} />}
-      </div>
-
-      {hasPermission('opname.view') && <DashboardOpnameChart />}
-
-      <DashboardRecent kodeDepo={kodeDepo || undefined} />
+      {blocks.map(renderBlock)}
     </div>
   );
 }

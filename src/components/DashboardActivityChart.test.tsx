@@ -2,9 +2,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardActivityChart from './DashboardActivityChart';
 
-const { activity, useSummary } = vi.hoisted(() => ({
+const { activity, useSummary, hasPermission } = vi.hoisted(() => ({
   activity: vi.fn(),
   useSummary: vi.fn(),
+  hasPermission: vi.fn<(perm: string) => boolean>(() => true),
 }));
 
 vi.mock('@/lib/api', () => ({
@@ -15,6 +16,10 @@ vi.mock('@/lib/api', () => ({
 vi.mock('@/lib/dashboardSummary', () => ({
   useDashboardSummary: useSummary,
   formatRelativeTime: vi.fn(() => ''),
+}));
+
+vi.mock('@/store/auth', () => ({
+  useAuthStore: () => ({ hasPermission }),
 }));
 
 const usagePayload = () => ({
@@ -39,6 +44,7 @@ const summary = (trend: { current_7d: number; prev_7d: number }) => ({
 describe('DashboardActivityChart', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    hasPermission.mockReturnValue(true);
     activity.mockResolvedValue({ data: { data: usagePayload() } });
     useSummary.mockReturnValue({
       summary: summary({ current_7d: 0, prev_7d: 0 }),
@@ -85,5 +91,14 @@ describe('DashboardActivityChart', () => {
     render(<DashboardActivityChart />);
 
     expect(await screen.findByText('Baru minggu ini')).toBeInTheDocument();
+  });
+
+  it('tidak dirender dan tidak memuat data untuk peran tanpa users.view', () => {
+    hasPermission.mockReturnValue(false);
+
+    const { container } = render(<DashboardActivityChart kodeDepo="DPO" />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(activity).not.toHaveBeenCalled();
   });
 });
