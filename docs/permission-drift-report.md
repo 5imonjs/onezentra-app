@@ -10,7 +10,7 @@ Dibuat: 2026-10-09 · Sumber: `database/seeders/PermissionSeeder.php` (target) v
 | permissions | 96 | 96 | 0 |
 | role_permission | 458 | 407 | **+51 net** |
 
-Angka net +51 menyesatkan: selisihnya adalah **97 grant yang akan DICABUT** dikurangi **46 grant yang akan DITAMBAH** oleh `sync()` saat `PermissionSeeder` dijalankan ulang. Jadi re-seed **bukan** sekadar mencabut 51 baris — ia mengganti set permission tiap role secara persis dan mengubah akses 10 dari 12 role.
+Angka net +51 menyesatkan: selisihnya adalah **98 grant yang akan DICABUT** dikurangi **47 grant yang akan DITAMBAH** oleh `sync()` saat `PermissionSeeder` dijalankan ulang (diregenerasi 2026-10-09 setelah migrasi `depot.move`). Jadi re-seed **bukan** sekadar mencabut 51 baris — ia mengganti set permission tiap role secara persis dan mengubah akses 10 dari 12 role.
 
 > **Jangan jalankan `php artisan db:seed --class=PermissionSeeder --force`** sampai baris di bawah ini disetujui satu per satu.
 
@@ -33,8 +33,8 @@ Tidak ada selisih.
 > Catatan: `depot.view_all` untuk `staff_logistic` adalah yang membuat role ini lintas-depo di DB dev meski seeder berniat ter-scope. Ini juga yang menutupi bug cross-depot H1–H3 sebelum diperbaiki.
 
 ### blc — live 57 / target 29
-**Akan dicabut (28):**
-`approval.view`, `biaya_retribusi.delete`, `biaya_retribusi.import`, `biaya_thl.delete`, `biaya_thl.import`, `cluster_principal.create`, `cluster_principal.delete`, `cluster_principal.edit`, `gate.create`, `gate.view`, `opname.create`, `opname.edit`, `opname.progress_all`, `penerimaan.create`, `receiving.create`, `receiving.export`, `receiving.import`, `receiving.template`, `receiving.view`, `rencana_kirim.view`, `retribusi_rates.manage`, `sj_validation.complete`, `sj_validation.create`, `sj_validation.edit`, `sj_validation.validate`, `standarisasi.create`, `standarisasi.delete`, `standarisasi.template`
+**Akan dicabut (29):**
+`approval.view`, `biaya_retribusi.delete`, `biaya_retribusi.import`, `biaya_thl.delete`, `biaya_thl.import`, `cluster_principal.create`, `cluster_principal.delete`, `cluster_principal.edit`, `gate.create`, `gate.view`, `opname.create`, `opname.edit`, `opname.progress_all`, `penerimaan.create`, `receiving.create`, `receiving.export`, `receiving.import`, `receiving.template`, `receiving.view`, `rencana_kirim.view`, `retribusi_rates.manage`, `sj_validation.complete`, `sj_validation.create`, `sj_validation.edit`, `sj_validation.validate`, `standarisasi.create`, `standarisasi.delete`, `standarisasi.export`, `standarisasi.template`
 
 **Akan ditambah (1):**
 `depot.view_all`
@@ -50,7 +50,7 @@ Tidak ada selisih.
 **Akan dicabut (3):**
 `gate.view`, `receiving.view`, `sj_validation.view`
 
-**Akan ditambah (27):**
+**Akan ditambah (28):**
 `biaya_retribusi.create`, `biaya_retribusi.edit`, `biaya_retribusi.export`, `biaya_retribusi.view`, `biaya_thl.create`, `biaya_thl.edit`, `biaya_thl.export`, `biaya_thl.import`, `biaya_thl.view`, `gate.delete`, `gate.edit`, `opname.create`, `opname.delete`, `opname.view`, `receiving.export`, `receiving.import`, `receiving.template`, `reports.biaya_retribusi`, `reports.biaya_thl`, `reports.view`, `roles.export`, `roles.import`, `roles.template`, `standarisasi.export`, `standarisasi.import`, `standarisasi.template`, `users.import`, `users.view`
 
 ### bac — live 22 / target 24
