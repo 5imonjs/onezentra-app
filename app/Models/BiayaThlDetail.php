@@ -41,4 +41,9 @@ class BiayaThlDetail extends Model
     {
         return $this->hasMany(BiayaThlPhoto::class, 'biaya_thl_detail_id')->orderBy('order');
     }
+
+    public function vehicles(): HasMany
+    {
+        return $this->hasMany(BiayaThlVehicle::class, 'biaya_thl_detail_id')->orderBy('order');
+    }
 }

@@ -1191,11 +1191,11 @@ export default function BiayaThlPage() {
   // Berbeda dari versi lama: plat/type BARIS tidak disentuh (milik
   // kendaraan utama sesuai dokumentasi); tambahan tersimpan di
   // kendaraan_sj/nopol/type per baris GUDANG.
-  const [sjVehicle, setSjVehicle] = useState<Record<string, { enabled: boolean; sj: string; nopol: string; type: string }>>({});
+  const [sjVehicle, setSjVehicle] = useState<Record<string, Array<{ id: string; sj: string; nopol: string; type: string }>>>({});
   // Plat tampil di ringkasan: plat baris + plat kendaraan tambahan grup.
   const platList = [...new Set([
     ...formData.details.map((d) => (d.nopol_kendaraan || '').trim().toUpperCase()),
-    ...Object.values(sjVehicle).map((gv) => (gv.enabled ? (gv.nopol || '').trim().toUpperCase() : '')),
+    ...Object.values(sjVehicle).flatMap((arr) => arr.map((v) => (v.nopol || '').trim().toUpperCase())).filter(Boolean),
   ].filter(Boolean))];
   const isRfahRequired = totalNominal > biayaConfig.thl_rfah_threshold;
   const hasIncompleteThlRows = formData.details.some((detail) => !isDetailReady(detail));
@@ -1288,21 +1288,23 @@ export default function BiayaThlPage() {
   const applyGroupVehicle = (rows: FormDetailRow[]): FormDetailRow[] =>
     rows.map((d) => {
       if (String(d.posisi ?? '').trim().toUpperCase() !== 'THL GUDANG') return d;
-      const gv = sjVehicle[d.groupId];
-      if (gv?.enabled) {
-        return { ...d, kendaraan_tambahan: true, kendaraan_sj: gv.sj, kendaraan_nopol: gv.nopol, kendaraan_type: gv.type };
+      const vehicles = sjVehicle[d.groupId] ?? [];
+      if (vehicles.length > 0) {
+        return { ...d, kendaraan: vehicles.map((v) => ({ sj: v.sj, nopol: v.nopol, type: v.type })) };
       }
-      return { ...d, kendaraan_tambahan: false, kendaraan_sj: '', kendaraan_nopol: '', kendaraan_type: '' };
+      return { ...d, kendaraan: [] };
     });
 
   const getGroupVehicleError = (groupId: string): string | null => {
     if (!isGudangGroup(groupId)) return null;
-    const gv = sjVehicle[groupId];
-    if (!gv?.enabled) return null;
+    const vehicles = sjVehicle[groupId] ?? [];
+    if (vehicles.length === 0) return null;
     const problems: string[] = [];
-    if (!gv.sj.trim()) problems.push('No. SJ kendaraan ke-2');
-    if (!gv.nopol.trim()) problems.push('plat kendaraan ke-2');
-    if (!gv.type.trim()) problems.push('type kendaraan ke-2');
+    vehicles.forEach((v, vIdx) => {
+      if (!v.sj.trim()) problems.push(`Kendaraan ke-${vIdx + 2}: No. SJ`);
+      if (!v.nopol.trim()) problems.push(`Kendaraan ke-${vIdx + 2}: plat`);
+      if (!v.type.trim()) problems.push(`Kendaraan ke-${vIdx + 2}: type`);
+    });
     if (problems.length === 0) return null;
     return `Kendaraan tambahan SJ ${Object.values(sjGroups).findIndex((g) => g.groupId === groupId) + 1} belum lengkap: ${problems.join(', ')}.`;
   };
@@ -1462,17 +1464,18 @@ export default function BiayaThlPage() {
     });
     // Pulihkan checklist kendaraan tambahan dari baris GUDANG bertanda
     // (groupId di atas baru dibangkitkan — turunkan dari details yang sama).
-    const restored: Record<string, { enabled: boolean; sj: string; nopol: string; type: string }> = {};
+    const restored: Record<string, Array<{ id: string; sj: string; nopol: string; type: string }>> = {};
     for (const d of details) {
       if (restored[d.groupId]) continue;
       if (String(d.posisi ?? '').trim().toUpperCase() !== 'THL GUDANG') continue;
       if (d.kendaraan_tambahan === true) {
-        restored[d.groupId] = {
-          enabled: true,
-          sj: (d as unknown as { kendaraan_sj?: string }).kendaraan_sj || '',
-          nopol: (d as unknown as { kendaraan_nopol?: string }).kendaraan_nopol || '',
-          type: (d as unknown as { kendaraan_type?: string }).kendaraan_type || '',
-        };
+        const vehicles = (d as unknown as { kendaraan?: Array<{ sj?: string; nopol?: string; type?: string }> }).kendaraan ?? [];
+        restored[d.groupId] = (vehicles as Array<{ sj?: string; nopol?: string; type?: string }>).map((v) => ({
+          id: crypto.randomUUID(),
+          sj: v.sj ?? '',
+          nopol: v.nopol ?? '',
+          type: v.type ?? '',
+        }));
       }
     }
     setSjVehicle(restored);
@@ -2069,78 +2072,45 @@ export default function BiayaThlPage() {
                       </div>
 <div className="p-3 sm:p-4 space-y-2">
                         {isGudangGroup(group.groupId) && (
-                          <div id={`sj-vehicle-${group.groupId}`} className={`rounded-2xl border bg-surface-card overflow-hidden shadow-sm scroll-mt-2 ${sjVehicle[group.groupId]?.enabled ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-300'}`}>
-                            <label className="flex items-center gap-3 px-4 py-3.5 sm:px-5 cursor-pointer">
-                              <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${sjVehicle[group.groupId]?.enabled ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
-                              </span>
-                              <span className="flex-1 min-w-0">
-                                <span className="block text-sm font-black text-slate-900">Kendaraan tambahan</span>
-                                <span className="block text-[11px] text-slate-500">Centang bila kru grup ini juga membongkar kendaraan ke-2 (SJ berbeda)</span>
-                              </span>
-                              <input
-                                type="checkbox"
-                                aria-label="Kendaraan tambahan untuk grup ini"
-                                checked={!!sjVehicle[group.groupId]?.enabled}
-                                onChange={(e) => setSjVehicle((prev) => ({ ...prev, [group.groupId]: { enabled: e.target.checked, sj: prev[group.groupId]?.sj ?? '', nopol: prev[group.groupId]?.nopol ?? '', type: prev[group.groupId]?.type ?? '' } }))}
-                                className="rounded border-gray-300 text-accent-text focus:ring-primary-500 w-5 h-5 shrink-0"
-                              />
-                            </label>
-                            {sjVehicle[group.groupId]?.enabled && (
-                              <div className="border-t border-amber-100 bg-amber-50/50 px-4 py-3 sm:px-5">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div id={`sj-vehicle-${group.groupId}`} className={`rounded-2xl border bg-surface-card overflow-hidden shadow-sm scroll-mt-2 ${(sjVehicle[group.groupId] ?? []).length > 0 ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-300'}`}>
+                            <div className="flex items-center justify-between px-4 py-3.5 sm:px-5">
+                              <div className="flex items-center gap-3">
+                                <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${(sjVehicle[group.groupId] ?? []).length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
+                                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-sm font-black text-slate-900">Kendaraan tambahan</span>
+                                  <span className="block text-[11px] text-slate-500">SJ berbeda per kendaraan; boleh lebih dari 2</span>
+                                </span>
+                              </div>
+                              <button type="button" onClick={() => setSjVehicle((prev) => ({ ...prev, [group.groupId]: [...(prev[group.groupId] ?? []), { id: crypto.randomUUID(), sj: '', nopol: '', type: '' }] }))} className="btn-secondary shrink-0">
+                                <span className="flex items-center gap-1.5"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>Tambah Kendaraan</span>
+                              </button>
+                            </div>
+                            {(sjVehicle[group.groupId] ?? []).map((v, vIdx) => (
+                              <div key={v.id} className="border-t border-amber-100 bg-amber-50/50 px-4 py-3 sm:px-5">
+                                <div className="flex items-center gap-3">
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-black shrink-0">{vIdx + 1}</span>
+                                  <button type="button" onClick={() => setSjVehicle((prev) => ({ ...prev, [group.groupId]: prev[group.groupId]!.filter((_, i) => i !== vIdx) }))} className="shrink-0 text-red-500 hover:bg-red-50 rounded-full p-1" aria-label="Hapus kendaraan">
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                                   <div>
-                                    <label htmlFor={`sjv-sj-${group.groupId}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                                      No. SJ Kendaraan ke-2 <span className="text-red-400">*</span>
-                                    </label>
-                                    <input
-                                      id={`sjv-sj-${group.groupId}`}
-                                      type="text"
-                                      value={sjVehicle[group.groupId]?.sj ?? ''}
-                                      onChange={(e) => setSjVehicle((prev) => {
-                                        const cur = prev[group.groupId] ?? { enabled: true, sj: '', nopol: '', type: '' };
-                                        return { ...prev, [group.groupId]: { ...cur, sj: e.target.value } };
-                                      })}
-                                      placeholder="SJ kendaraan ke-2"
-                                      className="input-field py-2 text-sm font-mono uppercase"
-                                    />
+                                    <label htmlFor={`sjv-sj-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">No. SJ Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
+                                    <input id={`sjv-sj-${group.groupId}-${vIdx}`} type="text" value={sjVehicle[group.groupId]?.[vIdx]?.sj ?? ''} onChange={(e) => setSjVehicle((prev) => { const arr = [...(prev[group.groupId] ?? [])]; if (arr[vIdx]) arr[vIdx] = { ...arr[vIdx], sj: e.target.value }; return { ...prev, [group.groupId]: arr }; })} placeholder="SJ kendaraan ke-2" className="input-field py-2 text-sm font-mono uppercase" />
                                   </div>
                                   <div>
-                                    <label htmlFor={`sjv-nopol-${group.groupId}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                                      Plat Kendaraan ke-2 <span className="text-red-400">*</span>
-                                    </label>
-                                    <input
-                                      id={`sjv-nopol-${group.groupId}`}
-                                      type="text"
-                                      value={sjVehicle[group.groupId]?.nopol ?? ''}
-                                      onChange={(e) => setSjVehicle((prev) => {
-                                        const cur = prev[group.groupId] ?? { enabled: true, sj: '', nopol: '', type: '' };
-                                        return { ...prev, [group.groupId]: { ...cur, nopol: e.target.value.toUpperCase() } };
-                                      })}
-                                      placeholder="KB 1234 XX"
-                                      className="input-field py-2 text-sm font-mono uppercase"
-                                    />
+                                    <label htmlFor={`sjv-nopol-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Plat Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
+                                    <input id={`sjv-nopol-${group.groupId}-${vIdx}`} type="text" value={sjVehicle[group.groupId]?.[vIdx]?.nopol ?? ''} onChange={(e) => setSjVehicle((prev) => { const arr = [...(prev[group.groupId] ?? [])]; if (arr[vIdx]) arr[vIdx] = { ...arr[vIdx], nopol: e.target.value.toUpperCase() }; return { ...prev, [group.groupId]: arr }; })} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
                                   </div>
                                   <div>
-                                    <label htmlFor={`sjv-type-${group.groupId}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                                      Type Kendaraan ke-2 <span className="text-red-400">*</span>
-                                    </label>
-                                    <select
-                                      id={`sjv-type-${group.groupId}`}
-                                      value={sjVehicle[group.groupId]?.type ?? ''}
-                                      onChange={(e) => setSjVehicle((prev) => {
-                                        const cur = prev[group.groupId] ?? { enabled: true, sj: '', nopol: '', type: '' };
-                                        return { ...prev, [group.groupId]: { ...cur, type: e.target.value } };
-                                      })}
-                                      className="select-field py-2 text-sm"
-                                    >
-                                      <option value="">Pilih</option>
-                                      {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                                    </select>
+                                    <label htmlFor={`sjv-type-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Type Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
+                                    <select id={`sjv-type-${group.groupId}-${vIdx}`} value={sjVehicle[group.groupId]?.[vIdx]?.type ?? ''} onChange={(e) => setSjVehicle((prev) => { const arr = [...(prev[group.groupId] ?? [])]; if (arr[vIdx]) arr[vIdx] = { ...arr[vIdx], type: e.target.value }; return { ...prev, [group.groupId]: arr }; })} className="select-field py-2 text-sm"> <option value="">Pilih</option> {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)} </select>
                                   </div>
                                 </div>
                               </div>
-                            )}
+                            ))}
                           </div>
                         )}
                         {group.indices.map((idx) => {

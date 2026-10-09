@@ -307,6 +307,16 @@ class BiayaThlController extends Controller
                     $detail[$field] = strtoupper(trim((string) $detail[$field]));
                 }
             }
+            // Kendaraan tambahan array: uppercase SJ/Nopol/Type per item.
+            if (isset($detail['kendaraan']) && is_array($detail['kendaraan'])) {
+                foreach ($detail['kendaraan'] as &$vehicle) {
+                    foreach (['sj', 'nopol', 'type'] as $field) {
+                        if (isset($vehicle[$field])) {
+                            $vehicle[$field] = strtoupper(trim((string) $vehicle[$field]));
+                        }
+                    }
+                }
+            }
 
             return $detail;
         }, $details);
@@ -324,21 +334,53 @@ class BiayaThlController extends Controller
 
         foreach ($details as $index => $detail) {
             $detailId = isset($detail['id']) ? (int) $detail['id'] : null;
+            $vehicles = $detail['kendaraan'] ?? [];
             $row = null;
             if ($detailId && in_array($detailId, $existingIds, true)) {
                 $row = $biayaThl->details()->whereKey($detailId)->first();
                 $payload = $detail;
-                unset($payload['id'], $payload['photos'], $payload['photos_remove']);
+                unset($payload['id'], $payload['photos'], $payload['photos_remove'], $payload['kendaraan']);
                 $payload['order'] = $index;
                 $row->update($payload);
                 $keptIds[] = $detailId;
             } else {
                 $payload = $detail;
-                unset($payload['id'], $payload['photos'], $payload['photos_remove']);
+                unset($payload['id'], $payload['photos'], $payload['photos_remove'], $payload['kendaraan']);
                 $payload['order'] = $index;
                 $payload['nominal_biaya'] = $detail['nominal_biaya'];
                 $row = $biayaThl->details()->create($payload);
                 $keptIds[] = $row->id;
+            }
+
+            // Sinkron kendaraan tambahan (N per detail): hapus lama, create ulang
+            // bila array `kendaraan` disediakan. Mirror [0] ke legacy.
+            $vehicles = $detail['kendaraan'] ?? [];
+            if (! empty($vehicles)) {
+                $row->vehicles()->delete();
+                foreach ($vehicles as $vIndex => $vehicle) {
+                    $row->vehicles()->create([
+                        'no_sj' => $vehicle['sj'] ?? null,
+                        'nopol' => $vehicle['nopol'] ?? null,
+                        'type' => $vehicle['type'] ?? null,
+                        'order' => $vIndex,
+                    ]);
+                }
+                $first = $vehicles[0];
+                $row->update([
+                    'kendaraan_tambahan' => true,
+                    'kendaraan_sj' => $first['sj'] ?? null,
+                    'kendaraan_nopol' => $first['nopol'] ?? null,
+                    'kendaraan_type' => $first['type'] ?? null,
+                ]);
+            } else {
+                // Array kosong / tidak dikirim → hapus vehicles + reset legacy
+                $row->vehicles()->delete();
+                $row->update([
+                    'kendaraan_tambahan' => false,
+                    'kendaraan_sj' => null,
+                    'kendaraan_nopol' => null,
+                    'kendaraan_type' => null,
+                ]);
             }
 
             foreach ($detail['photos_remove'] ?? [] as $photoId) {
@@ -692,6 +734,13 @@ class BiayaThlController extends Controller
                 'details.*.photos.*' => 'image|mimes:jpg,jpeg,png|max:2048',
                 'details.*.photos_remove' => 'nullable|array',
                 'details.*.photos_remove.*' => 'integer',
+                // Kendaraan tambahan N per detail (opsional). Jika ada, tiap baris
+                // wajib sj, nopol, type. Legacy single fields dibawah tetap
+                // diterima sebagai fallback.
+                'details.*.kendaraan' => 'nullable|array',
+                'details.*.kendaraan.*.sj' => 'nullable|string|max:50',
+                'details.*.kendaraan.*.nopol' => 'nullable|string|max:20',
+                'details.*.kendaraan.*.type' => 'nullable|string|max:50',
             ])->validate();
         }
 
@@ -761,15 +810,32 @@ class BiayaThlController extends Controller
                     }
                 }
 
-                if ($position === 'THL GUDANG' && filter_var($detail['kendaraan_tambahan'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                    // Dokumentasi §2.1 langkah 5 + checklist form: kendaraan
-                    // tambahan wajib memiliki SJ, plat, dan type.
-                    foreach (['kendaraan_sj', 'kendaraan_nopol', 'kendaraan_type'] as $field) {
-                        if (blank($detail[$field] ?? null)) {
-                            $validator->errors()->add(
-                                "details.{$index}.{$field}",
-                                "{$field} wajib diisi untuk kendaraan tambahan."
-                            );
+                if ($position === 'THL GUDANG') {
+                    // Kendaraan tambahan: dukung N per detail via `kendaraan` array.
+                    // Jika array `kendaraan` ada dan non-kosong, validasi tiap baris.
+                    $vehicles = $detail['kendaraan'] ?? [];
+                    if (! empty($vehicles)) {
+                        foreach ($vehicles as $vIndex => $vehicle) {
+                            foreach (['sj', 'nopol', 'type'] as $field) {
+                                if (blank($vehicle[$field] ?? null)) {
+                                    $validator->errors()->add(
+                                        "details.{$index}.kendaraan.{$vIndex}.{$field}",
+                                        "Kendaraan ke-{$vIndex}: {$field} wajib diisi untuk kendaraan tambahan."
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    // Legacy fallback: `kendaraan_tambahan` + `kendaraan_sj/nopol/type`
+                    // hanya divalidasi bila `kendaraan` array tidak disediakan.
+                    elseif (filter_var($detail['kendaraan_tambahan'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                        foreach (['kendaraan_sj', 'kendaraan_nopol', 'kendaraan_type'] as $field) {
+                            if (blank($detail[$field] ?? null)) {
+                                $validator->errors()->add(
+                                    "details.{$index}.{$field}",
+                                    "{$field} wajib diisi untuk kendaraan tambahan."
+                                );
+                            }
                         }
                     }
                 }
@@ -783,11 +849,34 @@ class BiayaThlController extends Controller
     {
         foreach ($details as $index => $detail) {
             $detailPhotos = $detail['photos'] ?? [];
-            unset($detail['photos'], $detail['photos_remove']);
+            $vehicles = $detail['kendaraan'] ?? [];
+            unset($detail['photos'], $detail['photos_remove'], $detail['kendaraan']);
+
             $savedDetail = $biayaThl->details()->create(array_merge($detail, [
                 'order' => $index,
                 'nominal_biaya' => $detail['nominal_biaya'],
             ]));
+
+            // Simpan kendaraan tambahan (N per detail) — mirror [0] ke legacy
+            // supaya frontend lama/export/validasi tetap jalan.
+            if (! empty($vehicles)) {
+                foreach ($vehicles as $vIndex => $vehicle) {
+                    $savedDetail->vehicles()->create([
+                        'no_sj' => $vehicle['sj'] ?? null,
+                        'nopol' => $vehicle['nopol'] ?? null,
+                        'type' => $vehicle['type'] ?? null,
+                        'order' => $vIndex,
+                    ]);
+                }
+                // Mirror kendaraan pertama ke kolom legacy (backward compat)
+                $first = $vehicles[0];
+                $savedDetail->update([
+                    'kendaraan_tambahan' => true,
+                    'kendaraan_sj' => $first['sj'] ?? null,
+                    'kendaraan_nopol' => $first['nopol'] ?? null,
+                    'kendaraan_type' => $first['type'] ?? null,
+                ]);
+            }
 
             foreach ($detailPhotos as $photoIndex => $photo) {
                 $path = $photo->store("biaya_thl/{$biayaThl->id}/detail_{$savedDetail->id}", 'public');

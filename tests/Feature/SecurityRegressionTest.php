@@ -37,7 +37,7 @@ class SecurityRegressionTest extends TestCase
             'full_name' => 'User '.$roleSlug,
             'kode_depo' => $kodeDepo,
             'nama_depo' => $namaDepo,
-            'level' => $roleSlug,
+            'level' => 'staff_logistic',
             'status' => 'active',
         ]);
         $role->users()->attach($user->id);
