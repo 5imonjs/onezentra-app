@@ -52,13 +52,14 @@ export default function DashboardAlerts({ kodeDepo }: { kodeDepo?: string }) {
 
   const cards: React.ReactNode[] = [];
   if (hasPermission('opname.view') && summary.alerts.expired_total > 0) {
+    const atRiskPcs = summary.opname_at_risk ? Math.round(summary.opname_at_risk.pcs) : 0;
     cards.push(
       <AlertCard
         key="expired"
         href="/opname-expired"
         label="Kritis / Kedaluwarsa"
         value={summary.alerts.expired_total.toLocaleString('id-ID')}
-        hint={`${summary.alerts.expired_kritis} kritis perlu tindakan`}
+        hint={`${summary.alerts.expired_kritis} kritis${atRiskPcs > 0 ? ` • ${atRiskPcs.toLocaleString('id-ID')} pcs` : ' perlu tindakan'}`}
         tone="red"
       />
     );
@@ -109,6 +110,32 @@ export default function DashboardAlerts({ kodeDepo }: { kodeDepo?: string }) {
         value={`${summary.sla.avg_gate_to_receiving_hours} jam`}
         hint="rata-rata 30 hari terakhir"
         tone="blue"
+      />
+    );
+  }
+
+  if (hasPermission('receiving.view') && summary.inbound_selisih.items > 0) {
+    cards.push(
+      <AlertCard
+        key="selisih"
+        href="/receiving"
+        label="Selisih Qty Inbound"
+        value={summary.inbound_selisih.items.toLocaleString('id-ID')}
+        hint={`${summary.inbound_selisih.kurang} kurang • ${summary.inbound_selisih.lebih} lebih`}
+        tone="amber"
+      />
+    );
+  }
+
+  if (hasPermission('rencana_kirim.view') && summary.sla.rk_checked_in_count > 0) {
+    cards.push(
+      <AlertCard
+        key="rk"
+        href="/rencana-kirim"
+        label="RK Tertahan di Gate"
+        value={summary.sla.rk_checked_in_count.toLocaleString('id-ID')}
+        hint={summary.sla.rk_checked_in_oldest_days != null ? `tertua ${summary.sla.rk_checked_in_oldest_days} hari` : 'belum diverifikasi'}
+        tone="amber"
       />
     );
   }
