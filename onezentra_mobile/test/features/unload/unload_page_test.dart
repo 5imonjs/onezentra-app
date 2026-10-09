@@ -11,6 +11,7 @@ import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart
 import 'package:onezentra_mobile/features/unload/models/unload_models.dart';
 import 'package:onezentra_mobile/features/unload/pages/unload_page.dart';
 import 'package:onezentra_mobile/features/unload/repositories/unload_repository.dart';
+import 'package:onezentra_mobile/main.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Repository that answers from canned sessions so the Bongkar flow can be
@@ -142,10 +143,7 @@ class _FakeAuthRepository extends AuthRepository {
   }) async => AuthResponse.fromJson(body);
 }
 
-const List<String> _unloadPermissions = [
-  'receiving.view',
-  'receiving.edit',
-];
+const List<String> _unloadPermissions = ['receiving.view', 'receiving.edit'];
 
 Map<String, dynamic> _loginBody({
   List<String> permissions = _unloadPermissions,
@@ -238,9 +236,7 @@ void main() {
     expect(repository.lookupCalls, 0);
   });
 
-  testWidgets('scan PO → siap bongkar → mulai → daftar produk', (
-    tester,
-  ) async {
+  testWidgets('scan PO → siap bongkar → mulai → daftar produk', (tester) async {
     var repository = _FakeUnloadRepository(session: _pendingSession());
     var auth = await _loginAuth();
 
@@ -308,10 +304,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // No scans yet: the button refuses instead of writing an empty receiving.
-    expect(
-      find.text('Selesai Bongkar (belum ada item)'),
-      findsOneWidget,
-    );
+    expect(find.text('Selesai Bongkar (belum ada item)'), findsOneWidget);
 
     var quickButton = find.widgetWithText(FilledButton, 'Sesuai');
     await tester.ensureVisible(quickButton);
@@ -331,7 +324,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.completeCalls, 1);
-    // Finished document continues to Check Out with the PO carried over.
-    expect(find.text('Lanjut ke Check Out PO-042'), findsOneWidget);
+    // Receiving-only: a finished session shows no further action.
+    expect(find.textContaining('tidak ada aksi tersisa'), findsOneWidget);
+    expect(find.textContaining('Check Out'), findsNothing);
+  });
+
+  testWidgets('rute /bongkar merender UnloadPage dengan repo tersuntik', (
+    tester,
+  ) async {
+    var repository = _FakeUnloadRepository(session: _pendingSession());
+    var auth = await _loginAuth();
+    var router = buildRouter(auth, unloadRepository: repository);
+
+    await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
+    await tester.pumpAndSettle();
+
+    router.go('/bongkar');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(UnloadPage), findsOneWidget);
+    expect(find.text('Scan Bongkar'), findsOneWidget);
   });
 }

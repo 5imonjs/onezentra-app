@@ -7,12 +7,13 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
-import 'package:onezentra_mobile/features/checkout/pages/checkout_page.dart';
 import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
 import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
 import 'package:onezentra_mobile/features/home/pages/home_page.dart';
 import 'package:onezentra_mobile/features/inbound/pages/inbound_page.dart';
 import 'package:onezentra_mobile/features/inbound/repositories/inbound_repository.dart';
+import 'package:onezentra_mobile/features/unload/pages/unload_page.dart';
+import 'package:onezentra_mobile/features/unload/repositories/unload_repository.dart';
 import 'package:onezentra_mobile/features/validation/pages/validation_page.dart';
 import 'package:onezentra_mobile/features/validation/repositories/validation_repository.dart';
 
@@ -22,9 +23,7 @@ void main() async {
 
   // Handheld warehouse app: portrait only. Landscape would stretch the
   // single-column operational layouts and shrink the camera scan window.
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Restore the session before the first frame
   var authProvider = AuthProvider();
@@ -118,6 +117,7 @@ GoRouter buildRouter(
   GateRepository? gateRepository,
   ValidationRepository? validationRepository,
   InboundRepository? inboundRepository,
+  UnloadRepository? unloadRepository,
 }) => GoRouter(
   initialLocation: '/login',
   routes: [
@@ -150,12 +150,9 @@ GoRouter buildRouter(
       builder: (context, state) => InboundPage(repository: inboundRepository),
     ),
     GoRoute(
-      path: '/checkout',
-      name: 'checkout',
-      builder: (context, state) => CheckoutPage(
-        repository: gateRepository,
-        initialScanCode: state.extra as String?,
-      ),
+      path: '/bongkar',
+      name: 'bongkar',
+      builder: (context, state) => UnloadPage(repository: unloadRepository),
     ),
   ],
   redirect: (context, state) {

@@ -119,15 +119,12 @@ void main() {
         notes: 'kurang 5',
       );
 
-      expect(
-        hitBody,
-        {
-          'sj_validation_item_id': 31,
-          'actual_qty': 95.0,
-          'condition': 'QTY_KURANG',
-          'notes': 'kurang 5',
-        },
-      );
+      expect(hitBody, {
+        'sj_validation_item_id': 31,
+        'actual_qty': 95.0,
+        'condition': 'QTY_KURANG',
+        'notes': 'kurang 5',
+      });
       expect(item, isA<SjValidationItem>());
       expect(item.status, 'MISMATCH');
       expect(item.actualQty, 95);
@@ -179,10 +176,7 @@ void main() {
       );
 
       expect(hitEndpoint, '/standarisasi-tumpukan');
-      expect(
-        hitBody,
-        {'npn_id': 501, 'tier': 4, 'tinggi_tumpukan': 6},
-      );
+      expect(hitBody, {'npn_id': 501, 'tier': 4, 'tinggi_tumpukan': 6});
     });
 
     test('respons non-objek ditolak dengan pesan jelas', () async {

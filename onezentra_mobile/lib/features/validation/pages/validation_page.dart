@@ -95,10 +95,8 @@ class _ValidationPageState extends State<ValidationPage> {
     var user = context.watch<AuthProvider>().user;
     var canView = user?.hasPermission('sj_validation.view') ?? false;
     var canCreate = user?.hasPermission('sj_validation.create') ?? false;
-    var canValidate =
-        user?.hasPermission('sj_validation.validate') ?? false;
-    var canComplete =
-        user?.hasPermission('sj_validation.complete') ?? false;
+    var canValidate = user?.hasPermission('sj_validation.validate') ?? false;
+    var canComplete = user?.hasPermission('sj_validation.complete') ?? false;
     var validation = context.watch<ValidationProvider>();
 
     return Scaffold(
@@ -130,10 +128,7 @@ class _ValidationPageState extends State<ValidationPage> {
                     children: [
                       _buildHeader(validation),
                       const SizedBox(height: AppTheme.space4),
-                      _buildScanCard(
-                        validation,
-                        canCreate: canCreate,
-                      ),
+                      _buildScanCard(validation, canCreate: canCreate),
                       const SizedBox(height: AppTheme.space4),
                       if (validation.active != null)
                         _buildActiveCard(
@@ -362,8 +357,7 @@ class _ValidationPageState extends State<ValidationPage> {
           _warningBox(
             'Anda tidak memiliki izin sj_validation.create untuk memulai sesi validasi.',
           ),
-        if (validation.message != null)
-          _buildBanner(validation.message!),
+        if (validation.message != null) _buildBanner(validation.message!),
       ],
     ),
   );
@@ -412,14 +406,10 @@ class _ValidationPageState extends State<ValidationPage> {
     margin: const EdgeInsets.only(top: AppTheme.space4),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: message.success
-          ? AppTheme.successWell
-          : const Color(0xFFFFF1F2),
+      color: message.success ? AppTheme.successWell : const Color(0xFFFFF1F2),
       borderRadius: AppTheme.radiusLg,
       border: Border.all(
-        color: message.success
-            ? AppTheme.successText
-            : const Color(0xFFFECDD3),
+        color: message.success ? AppTheme.successText : const Color(0xFFFECDD3),
       ),
     ),
     child: Row(
@@ -428,9 +418,7 @@ class _ValidationPageState extends State<ValidationPage> {
         Icon(
           message.success ? Icons.check_circle_rounded : Icons.error_rounded,
           size: 18,
-          color: message.success
-              ? AppTheme.success
-              : AppTheme.danger,
+          color: message.success ? AppTheme.success : AppTheme.danger,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -559,10 +547,7 @@ class _ValidationPageState extends State<ValidationPage> {
             ],
           ),
           const SizedBox(height: AppTheme.space3),
-          _darkField(
-            'Driver',
-            doc?.driverName ?? '-',
-          ),
+          _darkField('Driver', doc?.driverName ?? '-'),
           const SizedBox(height: AppTheme.space3),
           ClipRRect(
             borderRadius: AppTheme.radiusFull,
@@ -572,9 +557,7 @@ class _ValidationPageState extends State<ValidationPage> {
                   : session.validatedCount / session.items.length,
               minHeight: 6,
               backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                AppTheme.success,
-              ),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
             ),
           ),
           const SizedBox(height: AppTheme.space4),
@@ -616,11 +599,8 @@ class _ValidationPageState extends State<ValidationPage> {
     var tapAction = !canValidate || validation.actionBusy
         ? null
         : () => item.canValidate
-            ? _openItemSheet(item)
-            : _openStandarisasiSheet(
-                item,
-                canCreate: canCreateStandarisasi,
-              );
+              ? _openItemSheet(item)
+              : _openStandarisasiSheet(item, canCreate: canCreateStandarisasi);
     return InkWell(
       onTap: tapAction,
       borderRadius: AppTheme.radiusLg,
@@ -754,25 +734,23 @@ class _ValidationPageState extends State<ValidationPage> {
 
   /// Tombol cetak label untuk item yang sudah tervalidasi.
   Widget _printLabelButton(SjValidationItem item) => SizedBox(
-        height: 40,
-        child: OutlinedButton.icon(
-          onPressed: () => _openPrintSheet(item),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.gray200,
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
-            shape: const RoundedRectangleBorder(
-              borderRadius: AppTheme.radiusLg,
-            ),
-            textStyle: GoogleFonts.roboto(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          icon: const Icon(Icons.print_rounded, size: 16),
-          label: const Text('Cetak Label'),
+    height: 40,
+    child: OutlinedButton.icon(
+      onPressed: () => _openPrintSheet(item),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppTheme.gray200,
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
         ),
-      );
+      ),
+      icon: const Icon(Icons.print_rounded, size: 16),
+      label: const Text('Cetak Label'),
+    ),
+  );
 
   /// Buka panel cetak label dan tampilkan hasilnya ke operator.
   Future<void> _openPrintSheet(SjValidationItem item) async {
@@ -809,27 +787,25 @@ class _ValidationPageState extends State<ValidationPage> {
     ValidationProvider validation, {
     required bool canCreate,
   }) => SizedBox(
-        height: 40,
-        child: FilledButton.icon(
-          onPressed: validation.actionBusy
-              ? null
-              : () => _openStandarisasiSheet(item, canCreate: canCreate),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppTheme.warningText,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
-            shape: const RoundedRectangleBorder(
-              borderRadius: AppTheme.radiusLg,
-            ),
-            textStyle: GoogleFonts.roboto(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          icon: const Icon(Icons.layers_rounded, size: 16),
-          label: const Text('Standarisasi'),
+    height: 40,
+    child: FilledButton.icon(
+      onPressed: validation.actionBusy
+          ? null
+          : () => _openStandarisasiSheet(item, canCreate: canCreate),
+      style: FilledButton.styleFrom(
+        backgroundColor: AppTheme.warningText,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
         ),
-      );
+      ),
+      icon: const Icon(Icons.layers_rounded, size: 16),
+      label: const Text('Standarisasi'),
+    ),
+  );
 
   Future<void> _openStandarisasiSheet(
     SjValidationItem item, {
@@ -852,9 +828,7 @@ class _ValidationPageState extends State<ValidationPage> {
     if (value == null) {
       return '-';
     }
-    return value == value.truncateToDouble()
-        ? '${value.toInt()}'
-        : '$value';
+    return value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
   }
 
   /// Signed qty like the selisih email (`+5`, `-3`).
@@ -872,10 +846,7 @@ class _ValidationPageState extends State<ValidationPage> {
   /// One-tap "matches" validation: actual = expected, condition good.
   /// When the expected qty is unknown the sheet opens instead, so the
   /// operator always enters a real number.
-  Widget _quickOkButton(
-    SjValidationItem item,
-    ValidationProvider validation,
-  ) {
+  Widget _quickOkButton(SjValidationItem item, ValidationProvider validation) {
     var expected = item.expectedQty;
     return SizedBox(
       height: 40,
@@ -887,18 +858,13 @@ class _ValidationPageState extends State<ValidationPage> {
                   _openItemSheet(item);
                   return;
                 }
-                validation.validateItem(
-                  itemId: item.id,
-                  actualQty: expected,
-                );
+                validation.validateItem(itemId: item.id, actualQty: expected);
               },
         style: FilledButton.styleFrom(
           backgroundColor: AppTheme.success,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
-          shape: const RoundedRectangleBorder(
-            borderRadius: AppTheme.radiusLg,
-          ),
+          shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
           textStyle: GoogleFonts.roboto(
             fontSize: 12.5,
             fontWeight: FontWeight.w700,
@@ -1004,55 +970,50 @@ class _ValidationPageState extends State<ValidationPage> {
     }
   }
 
-
   /// Amber reminder mirroring the web banner: validation stays locked
   /// until BLC approves the standarisasi tumpukan.
   Widget _standarisasiBanner() => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(top: AppTheme.space3),
-        padding: const EdgeInsets.all(AppTheme.space3),
-        decoration: BoxDecoration(
-          color: AppTheme.warningDark,
-          borderRadius: AppTheme.radiusLg,
-          border: Border.all(color: AppTheme.warningText),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.layers_rounded,
-              size: 18,
-              color: AppTheme.warning,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Standarisasi Tumpukan Belum Disetujui',
-                    style: GoogleFonts.roboto(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.warningText,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Isi standarisasi per produk di bawah. Setelah disetujui '
-                    'BLC, validasi otomatis terbuka.',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11.5,
-                      height: 1.4,
-                      color: AppTheme.warning,
-                    ),
-                  ),
-                ],
+    width: double.infinity,
+    margin: const EdgeInsets.only(top: AppTheme.space3),
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: AppTheme.warningDark,
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: AppTheme.warningText),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.layers_rounded, size: 18, color: AppTheme.warning),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Standarisasi Tumpukan Belum Disetujui',
+                style: GoogleFonts.roboto(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.warningText,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                'Isi standarisasi per produk di bawah. Setelah disetujui '
+                'BLC, validasi otomatis terbuka.',
+                style: GoogleFonts.roboto(
+                  fontSize: 11.5,
+                  height: 1.4,
+                  color: AppTheme.warning,
+                ),
+              ),
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _darkField(String label, String value, {bool highlight = false}) =>
       Container(
@@ -1068,9 +1029,7 @@ class _ValidationPageState extends State<ValidationPage> {
             : BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1143,19 +1102,14 @@ class _ValidationPageState extends State<ValidationPage> {
           background: AppTheme.success,
           foreground: Colors.white,
           loading: validation.actionBusy,
-          onPressed: pending > 0
-              ? null
-              : () => _confirmComplete(validation),
+          onPressed: pending > 0 ? null : () => _confirmComplete(validation),
         ),
         if (pending > 0) ...[
           const SizedBox(height: AppTheme.space2),
           Text(
             'Validasi dulu $pending item di atas — tombol aktif otomatis.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.roboto(
-              fontSize: 11.5,
-              color: AppTheme.gray400,
-            ),
+            style: GoogleFonts.roboto(fontSize: 11.5, color: AppTheme.gray400),
           ),
         ],
       ],
@@ -1181,9 +1135,7 @@ class _ValidationPageState extends State<ValidationPage> {
         side: outline
             ? BorderSide(color: Colors.white.withValues(alpha: 0.4))
             : null,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppTheme.radiusLg,
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(
           fontSize: 13.5,
           fontWeight: FontWeight.w700,
@@ -1332,11 +1284,9 @@ class _ValidationPageState extends State<ValidationPage> {
                       text: 'Sebelumnya',
                       height: 42,
                       isLoading: validation.isLoading,
-                      onPressed:
-                          validation.canGoBack && !validation.isLoading
-                          ? () => validation.goToPage(
-                              validation.currentPage - 1,
-                            )
+                      onPressed: validation.canGoBack && !validation.isLoading
+                          ? () =>
+                                validation.goToPage(validation.currentPage - 1)
                           : null,
                     ),
                   ),
@@ -1356,9 +1306,8 @@ class _ValidationPageState extends State<ValidationPage> {
                       isLoading: validation.isLoading,
                       onPressed:
                           validation.canGoForward && !validation.isLoading
-                          ? () => validation.goToPage(
-                              validation.currentPage + 1,
-                            )
+                          ? () =>
+                                validation.goToPage(validation.currentPage + 1)
                           : null,
                     ),
                   ),
@@ -1370,73 +1319,75 @@ class _ValidationPageState extends State<ValidationPage> {
     ];
   }
 
-  Widget _historyTile(SjValidation session, ValidationProvider validation) =>
-      InkWell(
-        onTap: validation.actionBusy
-            ? null
-            : () => validation.openSession(session.id),
-        borderRadius: AppTheme.radiusLg,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _iconBox(
-                36,
-                AppTheme.gray100,
-                Icons.verified_rounded,
-                iconColor: AppTheme.gray500,
-              ),
-              const SizedBox(width: AppTheme.space3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _historyTile(
+    SjValidation session,
+    ValidationProvider validation,
+  ) => InkWell(
+    onTap: validation.actionBusy
+        ? null
+        : () => validation.openSession(session.id),
+    borderRadius: AppTheme.radiusLg,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _iconBox(
+            36,
+            AppTheme.gray100,
+            Icons.verified_rounded,
+            iconColor: AppTheme.gray500,
+          ),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            session.document?.poTransporter ??
-                                session.scanCode ??
-                                'Sesi #${session.id}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.foreground,
-                            ),
-                          ),
+                    Expanded(
+                      child: Text(
+                        session.document?.poTransporter ??
+                            session.scanCode ??
+                            'Sesi #${session.id}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.foreground,
                         ),
-                        const SizedBox(width: AppTheme.space2),
-                        AppBadge(
-                          text: ValidationStatus.label(session.status),
-                          variant: session.isRunning
-                              ? AppBadgeVariant.primary
-                              : session.status == 'COMPLETED'
-                              ? AppBadgeVariant.success
-                              : AppBadgeVariant.gray,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${session.validatedCount}/${session.items.length} item'
-                      '${session.validatorName != null ? ' • ${session.validatorName}' : ''}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.roboto(
-                        fontSize: 11,
-                        color: AppTheme.gray500,
                       ),
+                    ),
+                    const SizedBox(width: AppTheme.space2),
+                    AppBadge(
+                      text: ValidationStatus.label(session.status),
+                      variant: session.isRunning
+                          ? AppBadgeVariant.primary
+                          : session.status == 'COMPLETED'
+                          ? AppBadgeVariant.success
+                          : AppBadgeVariant.gray,
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  '${session.validatedCount}/${session.items.length} item'
+                  '${session.validatorName != null ? ' • ${session.validatorName}' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 11,
+                    color: AppTheme.gray500,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 
   Widget _iconBox(
     double size,
@@ -1540,9 +1491,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     if (value == null) {
       return '';
     }
-    return value == value.truncateToDouble()
-        ? '${value.toInt()}'
-        : '$value';
+    return value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
   }
 
   @override
@@ -1574,8 +1523,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
         left: AppTheme.space5,
         right: AppTheme.space5,
         top: AppTheme.space4,
-        bottom:
-            MediaQuery.of(context).viewInsets.bottom + AppTheme.space5,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppTheme.space5,
       ),
       child: SafeArea(
         top: false,
@@ -1625,7 +1573,9 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   ),
                   textInputAction: TextInputAction.next,
                   validator: (value) {
-                    var qty = double.tryParse((value ?? '').replaceAll(',', '.'));
+                    var qty = double.tryParse(
+                      (value ?? '').replaceAll(',', '.'),
+                    );
                     if (qty == null || qty < 0) {
                       return 'Isi qty aktual dengan angka ≥ 0';
                     }
@@ -1769,9 +1719,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     if (value == null) {
       return '-';
     }
-    return value == value.truncateToDouble()
-        ? '${value.toInt()}'
-        : '$value';
+    return value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
   }
 
   Widget _conditionChip(String value) {
@@ -1806,8 +1754,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   Future<void> _pickDate() async {
     var picked = await showDatePicker(
       context: context,
-      initialDate:
-          _expiredDate ?? DateTime.now().add(const Duration(days: 30)),
+      initialDate: _expiredDate ?? DateTime.now().add(const Duration(days: 30)),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
@@ -1828,8 +1775,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     var provider = context.read<ValidationProvider>();
     var success = await provider.validateItem(
       itemId: widget.item.id,
-      actualQty:
-          double.parse(_qtyController.text.trim().replaceAll(',', '.')),
+      actualQty: double.parse(_qtyController.text.trim().replaceAll(',', '.')),
       barcode: _barcodeController.text.trim().isEmpty
           ? null
           : _barcodeController.text.trim(),
@@ -1853,8 +1799,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
       setState(() {
         _saving = false;
         _error =
-            provider.message?.message ??
-            'Gagal menyimpan. Silakan coba lagi.';
+            provider.message?.message ?? 'Gagal menyimpan. Silakan coba lagi.';
       });
     }
   }
@@ -2072,15 +2017,9 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
   }
 
   Widget _noticeBox(String message, {required bool isError}) {
-    var background = isError
-        ? AppTheme.dangerWell
-        : AppTheme.warningWell;
-    var border = isError
-        ? AppTheme.dangerText
-        : AppTheme.warningText;
-    var textColor = isError
-        ? AppTheme.dangerText
-        : AppTheme.warningText;
+    var background = isError ? AppTheme.dangerWell : AppTheme.warningWell;
+    var border = isError ? AppTheme.dangerText : AppTheme.warningText;
+    var textColor = isError ? AppTheme.dangerText : AppTheme.warningText;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space3),
@@ -2129,8 +2068,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
       setState(() {
         _saving = false;
         _error =
-            provider.message?.message ??
-            'Gagal menyimpan. Silakan coba lagi.';
+            provider.message?.message ?? 'Gagal menyimpan. Silakan coba lagi.';
       });
     }
   }

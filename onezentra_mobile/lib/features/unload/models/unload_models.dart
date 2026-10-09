@@ -117,9 +117,8 @@ class UnloadSession {
           ? rawPlan
                 .whereType<Map>()
                 .map(
-                  (item) => UnloadPlanLine.fromJson(
-                    Map<String, dynamic>.from(item),
-                  ),
+                  (item) =>
+                      UnloadPlanLine.fromJson(Map<String, dynamic>.from(item)),
                 )
                 .toList()
           : const [],
@@ -152,8 +151,7 @@ class UnloadSession {
   /// kode_barang, case-insensitive — the server keys the same way).
   int get coveredCount {
     var scannedCodes = {
-      for (var line in scanned)
-        (line.kodeBarang ?? '').toLowerCase(),
+      for (var line in scanned) (line.kodeBarang ?? '').toLowerCase(),
     };
     return plan
         .where(

@@ -20,7 +20,6 @@ import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 /// Repository that answers from canned data so the Check In Point flow can be
 /// exercised without a running API.
 class _FakeGateRepository extends GateRepository {
-
   _FakeGateRepository({
     this.transactions = const [],
     this.cannedStats = const GateStats(),
@@ -94,7 +93,6 @@ class _FakeGateRepository extends GateRepository {
 /// Auth repository that answers a canned login payload, so the widget tests
 /// get a logged-in user with a controlled permission list.
 class _FakeAuthRepository extends AuthRepository {
-
   _FakeAuthRepository(this.body);
   final Map<String, dynamic> body;
 
@@ -168,7 +166,9 @@ const List<String> _fullGatePermissions = [
   'rencana_kirim.edit',
 ];
 
-Map<String, dynamic> _loginBody({List<String> permissions = _fullGatePermissions}) => {
+Map<String, dynamic> _loginBody({
+  List<String> permissions = _fullGatePermissions,
+}) => {
   'message': 'Login successful',
   'token': 'token-abc',
   'token_type': 'Bearer',
@@ -269,7 +269,12 @@ void main() {
           ),
         ),
       ],
-      cannedStats: const GateStats(total: 5, hariIni: 2, terjadwal: 3, selesai: 4),
+      cannedStats: const GateStats(
+        total: 5,
+        hariIni: 2,
+        terjadwal: 3,
+        selesai: 4,
+      ),
     );
     var auth = await _loginAuth();
 
@@ -405,7 +410,12 @@ void main() {
     var repository = _FakeGateRepository(lookupResult: _lookupDocument());
     var auth = await _loginAuth();
 
-    await _pumpGatePage(tester, auth, repository, openScanner: () async => null);
+    await _pumpGatePage(
+      tester,
+      auth,
+      repository,
+      openScanner: () async => null,
+    );
 
     await tester.tap(find.byIcon(Icons.photo_camera_rounded));
     await tester.pumpAndSettle();
@@ -423,9 +433,7 @@ void main() {
     var auth = await _loginAuth();
     var router = buildRouter(auth, gateRepository: repository);
 
-    await tester.pumpWidget(
-      OneZentraApp(authProvider: auth, router: router),
-    );
+    await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
     await tester.pumpAndSettle();
 
     router.push('/gate');
@@ -442,12 +450,8 @@ void main() {
     expect(find.text('Pilih pekerjaan'), findsOneWidget);
   });
 
-  testWidgets('Gate IN → lanjut validasi membawa PO otomatis', (
-    tester,
-  ) async {
-    var gateRepository = _FakeGateRepository(
-      lookupResult: _lookupDocument(),
-    );
+  testWidgets('Gate IN → lanjut validasi membawa PO otomatis', (tester) async {
+    var gateRepository = _FakeGateRepository(lookupResult: _lookupDocument());
     var validationRepository = _FakeValidationRepository(_handedOffSession);
     var auth = await _loginAuth(
       permissions: [
@@ -463,9 +467,7 @@ void main() {
       validationRepository: validationRepository,
     );
 
-    await tester.pumpWidget(
-      OneZentraApp(authProvider: auth, router: router),
-    );
+    await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
     await tester.pumpAndSettle();
 
     router.push('/gate');

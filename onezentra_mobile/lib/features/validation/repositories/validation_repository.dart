@@ -5,10 +5,8 @@ import 'package:onezentra_mobile/features/validation/models/validation_models.da
 typedef ValidationGet = Future<dynamic> Function(String endpoint);
 
 /// POST transport for the validation endpoints, injectable for tests.
-typedef ValidationPost = Future<dynamic> Function(
-  String endpoint,
-  Map<String, dynamic> body,
-);
+typedef ValidationPost =
+    Future<dynamic> Function(String endpoint, Map<String, dynamic> body);
 
 /// Data access for the Validasi SJ menu.
 ///
@@ -93,7 +91,10 @@ class ValidationRepository {
   Future<SjValidation> startByCode(String scanCode) async {
     var code = scanCode.trim();
     if (code.isEmpty) {
-      throw const ApiException('Masukkan / pindai barcode PO terlebih dahulu.', 0);
+      throw const ApiException(
+        'Masukkan / pindai barcode PO terlebih dahulu.',
+        0,
+      );
     }
     return _expectSession(
       await _post('/sj-validations/start-by-code', {'scan_code': code}),

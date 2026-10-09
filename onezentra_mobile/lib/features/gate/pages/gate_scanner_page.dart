@@ -71,46 +71,46 @@ class _GateScannerPageState extends State<GateScannerPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.black,
+    appBar: AppBar(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          widget.title,
-          style: GoogleFonts.roboto(fontSize: 18, fontWeight: FontWeight.w600),
-        ),
-        actions: [
-          if (!kIsWeb)
-            ValueListenableBuilder<MobileScannerState>(
-              valueListenable: _controller,
-              builder: (context, state, _) => IconButton(
-                tooltip: 'Lampu senter',
-                onPressed: state.torchState == TorchState.unavailable
-                    ? null
-                    : _toggleTorch,
-                icon: Icon(
-                  state.torchState == TorchState.on
-                      ? Icons.flashlight_on_rounded
-                      : Icons.flashlight_off_rounded,
-                ),
+      foregroundColor: Colors.white,
+      elevation: 0,
+      title: Text(
+        widget.title,
+        style: GoogleFonts.roboto(fontSize: 18, fontWeight: FontWeight.w600),
+      ),
+      actions: [
+        if (!kIsWeb)
+          ValueListenableBuilder<MobileScannerState>(
+            valueListenable: _controller,
+            builder: (context, state, _) => IconButton(
+              tooltip: 'Lampu senter',
+              onPressed: state.torchState == TorchState.unavailable
+                  ? null
+                  : _toggleTorch,
+              icon: Icon(
+                state.torchState == TorchState.on
+                    ? Icons.flashlight_on_rounded
+                    : Icons.flashlight_off_rounded,
               ),
             ),
-          const SizedBox(width: AppTheme.space2),
-        ],
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-            errorBuilder: _buildError,
           ),
-          _buildScanOverlay(),
-        ],
-      ),
-    );
+        const SizedBox(width: AppTheme.space2),
+      ],
+    ),
+    body: Stack(
+      fit: StackFit.expand,
+      children: [
+        MobileScanner(
+          controller: _controller,
+          onDetect: _onDetect,
+          errorBuilder: _buildError,
+        ),
+        _buildScanOverlay(),
+      ],
+    ),
+  );
 
   /// Shown when the camera cannot start (permission denied, unsupported…).
   Widget _buildError(BuildContext context, MobileScannerException error) {
@@ -147,71 +147,71 @@ class _GateScannerPageState extends State<GateScannerPage> {
   /// Dark scrim around a clear scan window plus the aim instructions,
   /// mirroring the web app's barcode scanner overlay.
   Widget _buildScanOverlay() => LayoutBuilder(
-      builder: (context, constraints) {
-        var windowWidth = (constraints.maxWidth - 48)
-            .clamp(200.0, 320.0)
-            .toDouble();
-        var windowHeight = (constraints.maxHeight * 0.3)
-            .clamp(140.0, 200.0)
-            .toDouble();
+    builder: (context, constraints) {
+      var windowWidth = (constraints.maxWidth - 48)
+          .clamp(200.0, 320.0)
+          .toDouble();
+      var windowHeight = (constraints.maxHeight * 0.3)
+          .clamp(140.0, 200.0)
+          .toDouble();
 
-        return IgnorePointer(
-          child: Stack(
-            children: [
-              Center(
-                child: Container(
-                  width: windowWidth,
-                  height: windowHeight,
-                  decoration: BoxDecoration(
-                    borderRadius: AppTheme.radiusLg,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        spreadRadius: 1000,
-                      ),
-                    ],
+      return IgnorePointer(
+        child: Stack(
+          children: [
+            Center(
+              child: Container(
+                width: windowWidth,
+                height: windowHeight,
+                decoration: BoxDecoration(
+                  borderRadius: AppTheme.radiusLg,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    width: 2,
                   ),
-                ),
-              ),
-              Positioned(
-                left: AppTheme.space5,
-                right: AppTheme.space5,
-                bottom:
-                    constraints.maxHeight / 2 +
-                    windowHeight / 2 +
-                    AppTheme.space4,
-                child: Column(
-                  children: [
-                    Text(
-                      widget.hint,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.roboto(
-                        color: Colors.white,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.space2),
-                    Text(
-                      widget.subtitle,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.roboto(
-                        color: Colors.white70,
-                        fontSize: 12.5,
-                        height: 1.4,
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      spreadRadius: 1000,
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        );
-      },
-    );
+            ),
+            Positioned(
+              left: AppTheme.space5,
+              right: AppTheme.space5,
+              bottom:
+                  constraints.maxHeight / 2 +
+                  windowHeight / 2 +
+                  AppTheme.space4,
+              child: Column(
+                children: [
+                  Text(
+                    widget.hint,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.roboto(
+                      color: Colors.white,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.space2),
+                  Text(
+                    widget.subtitle,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.roboto(
+                      color: Colors.white70,
+                      fontSize: 12.5,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

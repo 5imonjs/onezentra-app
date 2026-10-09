@@ -279,39 +279,39 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     bool isDark,
     AuthProvider authProvider,
   ) => _FieldLabel(
-      label: 'Email',
-      isDark: isDark,
-      child: TextFormField(
-        controller: _emailController,
-        focusNode: _emailFocusNode,
-        keyboardType: TextInputType.emailAddress,
-        textInputAction: TextInputAction.next,
-        // An email is never autocorrected, and the autofill hint lets the
-        // platform password manager fill the credentials in.
-        autocorrect: false,
-        enableSuggestions: false,
-        autofillHints: const [AutofillHints.username],
-        style: _fieldTextStyle(theme, isDark),
-        cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
-        decoration: _inputDecoration(
-          hint: 'nama@onezentra.com',
-          icon: Icons.mail_outline_rounded,
-          isDark: isDark,
-        ),
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return 'Email tidak boleh kosong';
-          }
-          if (!_emailPattern.hasMatch(value.trim())) {
-            return 'Format email tidak valid';
-          }
-          return null;
-        },
-        // Clear the server error as soon as the user starts correcting input.
-        onChanged: (_) => authProvider.clearError(),
-        onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
+    label: 'Email',
+    isDark: isDark,
+    child: TextFormField(
+      controller: _emailController,
+      focusNode: _emailFocusNode,
+      keyboardType: TextInputType.emailAddress,
+      textInputAction: TextInputAction.next,
+      // An email is never autocorrected, and the autofill hint lets the
+      // platform password manager fill the credentials in.
+      autocorrect: false,
+      enableSuggestions: false,
+      autofillHints: const [AutofillHints.username],
+      style: _fieldTextStyle(theme, isDark),
+      cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
+      decoration: _inputDecoration(
+        hint: 'nama@onezentra.com',
+        icon: Icons.mail_outline_rounded,
+        isDark: isDark,
       ),
-    );
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Email tidak boleh kosong';
+        }
+        if (!_emailPattern.hasMatch(value.trim())) {
+          return 'Format email tidak valid';
+        }
+        return null;
+      },
+      // Clear the server error as soon as the user starts correcting input.
+      onChanged: (_) => authProvider.clearError(),
+      onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
+    ),
+  );
 
   Widget _buildPasswordField(
     ThemeData theme,
@@ -372,10 +372,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  TextStyle? _fieldTextStyle(ThemeData theme, bool isDark) => theme.textTheme.bodyLarge?.copyWith(
-      color: isDark ? Colors.white : AppTheme.gray900,
-      fontWeight: FontWeight.w500,
-    );
+  TextStyle? _fieldTextStyle(ThemeData theme, bool isDark) =>
+      theme.textTheme.bodyLarge?.copyWith(
+        color: isDark ? Colors.white : AppTheme.gray900,
+        fontWeight: FontWeight.w500,
+      );
 
   /// Pill shaped input shared by the email and password fields.
   InputDecoration _inputDecoration({
@@ -583,32 +584,32 @@ class _AuroraBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Stack(
-      fit: StackFit.expand,
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF1E1B4B), // primary-950
-                Color(0xFF4F46E5), // primary-600
-                Color(0xFF0F172A), // gray-900
-              ],
-              stops: [0, 0.45, 1],
-            ),
+    fit: StackFit.expand,
+    children: [
+      DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1E1B4B), // primary-950
+              Color(0xFF4F46E5), // primary-600
+              Color(0xFF0F172A), // gray-900
+            ],
+            stops: [0, 0.45, 1],
           ),
         ),
-        Align(
-          alignment: Alignment.topRight,
-          child: _Glow(color: Color(0x4D2DD4BF), size: 280), // accent-400
-        ),
-        Align(
-          alignment: Alignment.bottomLeft,
-          child: _Glow(color: Color(0x4D818CF8), size: 320), // primary-400
-        ),
-      ],
-    );
+      ),
+      Align(
+        alignment: Alignment.topRight,
+        child: _Glow(color: Color(0x4D2DD4BF), size: 280), // accent-400
+      ),
+      Align(
+        alignment: Alignment.bottomLeft,
+        child: _Glow(color: Color(0x4D818CF8), size: 320), // primary-400
+      ),
+    ],
+  );
 }
 
 /// Radial blob used to soften the gradient.
@@ -620,13 +621,13 @@ class _Glow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
-        ),
+    child: Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
       ),
-    );
+    ),
+  );
 }

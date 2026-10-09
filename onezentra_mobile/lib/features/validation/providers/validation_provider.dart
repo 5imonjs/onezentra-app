@@ -69,7 +69,9 @@ class ValidationProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       debugPrint('ValidationProvider.loadStats: ${e.message}');
     } catch (e, stack) {
-      debugPrint('ValidationProvider.loadStats: unhandled ${e.runtimeType}: $e');
+      debugPrint(
+        'ValidationProvider.loadStats: unhandled ${e.runtimeType}: $e',
+      );
       debugPrintStack(stackTrace: stack, maxFrames: 8);
     }
     notifyListeners();
@@ -90,7 +92,9 @@ class ValidationProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _listError = e.message;
     } catch (e, stack) {
-      debugPrint('ValidationProvider.loadItems: unhandled ${e.runtimeType}: $e');
+      debugPrint(
+        'ValidationProvider.loadItems: unhandled ${e.runtimeType}: $e',
+      );
       debugPrintStack(stackTrace: stack, maxFrames: 8);
       _listError = 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     } finally {

@@ -29,7 +29,8 @@ class _FakeLabelPrinter implements LabelPrinter {
 }
 
 class _FailingPrintPrinter extends _FakeLabelPrinter {
-  _FailingPrintPrinter({List<DiscoveredPrinter> printers = const []}) : super(available: printers);
+  _FailingPrintPrinter({List<DiscoveredPrinter> printers = const []})
+    : super(available: printers);
 
   @override
   Future<void> printLabel(DiscoveredPrinter printer, List<int> bytes) async {
@@ -37,8 +38,14 @@ class _FailingPrintPrinter extends _FakeLabelPrinter {
   }
 }
 
-const printerA = DiscoveredPrinter(address: 'AA:BB:CC:DD:EE:01', name: 'Xprinter');
-const printerB = DiscoveredPrinter(address: 'AA:BB:CC:DD:EE:02', name: 'Goojprt');
+const printerA = DiscoveredPrinter(
+  address: 'AA:BB:CC:DD:EE:01',
+  name: 'Xprinter',
+);
+const printerB = DiscoveredPrinter(
+  address: 'AA:BB:CC:DD:EE:02',
+  name: 'Goojprt',
+);
 
 const label = BatchLabelData(
   batchNumber: 'BATCH-1',
@@ -62,8 +69,10 @@ void main() {
       // Fake melewati itu, jadi test ini hanya membuktikan daftar printer
       // diteruskan apa adanya ke UI — pengurutannya diuji terpisah.
       expect(provider.available.length, 2);
-      expect(provider.available.map((p) => p.address).toList(),
-        [printerA.address, printerB.address]);
+      expect(provider.available.map((p) => p.address).toList(), [
+        printerA.address,
+        printerB.address,
+      ]);
       expect(provider.error, isNull);
     });
 
@@ -78,18 +87,21 @@ void main() {
       expect(provider.selected!.address, printerA.address);
     });
 
-    test('menampilkan pesan yang bisa dimengerti saat printer tidak ada', () async {
-      var fake = _FakeLabelPrinter(
-        error: const PrinterException('Printer tidak ditemukan.'),
-      );
-      var provider = LabelPrintProvider(printer: fake);
+    test(
+      'menampilkan pesan yang bisa dimengerti saat printer tidak ada',
+      () async {
+        var fake = _FakeLabelPrinter(
+          error: const PrinterException('Printer tidak ditemukan.'),
+        );
+        var provider = LabelPrintProvider(printer: fake);
 
-      await provider.scan();
+        await provider.scan();
 
-      expect(provider.available, isEmpty);
-      expect(provider.error, 'Printer tidak ditemukan.');
-      expect(provider.scanning, isFalse);
-    });
+        expect(provider.available, isEmpty);
+        expect(provider.error, 'Printer tidak ditemukan.');
+        expect(provider.scanning, isFalse);
+      },
+    );
 
     test('membersihkan PrinterException di luar provoke', () async {
       var fake = _FakeLabelPrinter(error: const PrinterException('boom'));

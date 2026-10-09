@@ -102,7 +102,8 @@ class LabelPrintProvider extends ChangeNotifier {
       _available = found;
       // Pertahankan pilihan yang masih ada supaya label yang sama tidak perlu
       // dipilih ulang setiap kali operator membuka panel cetak.
-      if (_selected != null && !found.any((p) => p.address == _selected!.address)) {
+      if (_selected != null &&
+          !found.any((p) => p.address == _selected!.address)) {
         _selected = null;
       }
       _selected ??= found.isEmpty ? null : found.first;

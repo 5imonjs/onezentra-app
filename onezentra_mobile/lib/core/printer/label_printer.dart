@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
-
 /// Printer yang ditemukan lewat pencarian Bluetooth di handphone.
 class DiscoveredPrinter {
   const DiscoveredPrinter({required this.address, required this.name});
@@ -54,10 +53,13 @@ class BluetoothLabelPrinter implements LabelPrinter {
   @override
   Future<List<DiscoveredPrinter>> scan() async {
     var bonded = await _serial.getBondedDevices();
-    var found = bonded
-        .map((d) => DiscoveredPrinter(address: d.address, name: d.name ?? ''))
-        .toList()
-      ..sort((a, b) => a.displayName.compareTo(b.displayName));
+    var found =
+        bonded
+            .map(
+              (d) => DiscoveredPrinter(address: d.address, name: d.name ?? ''),
+            )
+            .toList()
+          ..sort((a, b) => a.displayName.compareTo(b.displayName));
 
     if (found.isEmpty) {
       throw const PrinterException(
@@ -83,7 +85,9 @@ class BluetoothLabelPrinter implements LabelPrinter {
       // sering terpotong di tengah — label terpotong berarti label salah baca.
       const chunkSize = 180;
       for (var offset = 0; offset < bytes.length; offset += chunkSize) {
-        var end = offset + chunkSize < bytes.length ? offset + chunkSize : bytes.length;
+        var end = offset + chunkSize < bytes.length
+            ? offset + chunkSize
+            : bytes.length;
         // `output.add` sengaja TIDAK di-await: sink-nya tidak mengembalikan
         // Future, jadi `await` di situ akan menunggu `null` selamanya. Beri
         // jeda pendek agar printer sempat mencerna tiap potongan sebelum

@@ -545,9 +545,7 @@ class AppTheme {
     labelStyle: textTheme.labelSmall?.copyWith(color: gray700),
     secondaryLabelStyle: textTheme.labelSmall?.copyWith(color: primary700),
     brightness: Brightness.light,
-    shape: const RoundedRectangleBorder(
-      borderRadius: radiusFull,
-    ),
+    shape: const RoundedRectangleBorder(borderRadius: radiusFull),
   );
 
   // SnackBar Theme

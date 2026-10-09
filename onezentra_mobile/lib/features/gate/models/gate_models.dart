@@ -47,9 +47,12 @@ class GateStatus {
   };
 
   static const Map<String, String> _guides = {
-    'DRAFT': 'Dokumen masih Draft. Jadwalkan terlebih dahulu di menu Replenishment.',
-    'VERIFIED': 'Dokumen sudah diverifikasi dan menunggu proses bongkar. Tidak ada aksi gate saat ini.',
-    'IN_PROGRESS': 'Bongkar sedang berjalan. Gate OUT tersedia setelah status Selesai.',
+    'DRAFT':
+        'Dokumen masih Draft. Jadwalkan terlebih dahulu di menu Replenishment.',
+    'VERIFIED':
+        'Dokumen sudah diverifikasi dan menunggu proses bongkar. Tidak ada aksi gate saat ini.',
+    'IN_PROGRESS': 'Bongkar sedang berjalan. Tidak ada aksi gate saat ini.',
+    'COMPLETED': 'Dokumen selesai. Tidak ada aksi gate tersisa.',
     'CANCELLED': 'Dokumen dibatalkan dan tidak dapat diproses di gate.',
   };
 
@@ -60,7 +63,6 @@ class GateStatus {
   static GateStatusAction actionFor(String status) => switch (status) {
     'SCHEDULED' => GateStatusAction.gateIn,
     'CHECKED_IN' => GateStatusAction.verify,
-    'COMPLETED' => GateStatusAction.gateOut,
     _ => GateStatusAction.none,
   };
 
@@ -69,8 +71,8 @@ class GateStatus {
       _guides[status] ?? 'Tidak ada aksi gate untuk status ini.';
 }
 
-/// Action a document status allows at the gate.
-enum GateStatusAction { gateIn, verify, gateOut, none }
+/// Action a document status allows at the gate (receiving-only: Gate IN).
+enum GateStatusAction { gateIn, verify, none }
 
 /// A rencana kirim as returned by the gate lookup (`search/by-dokumen`).
 class RencanaKirim {
@@ -86,17 +88,17 @@ class RencanaKirim {
   });
 
   factory RencanaKirim.fromJson(Map<String, dynamic> json) => RencanaKirim(
-      id: _readInt(json['id']),
-      poTransporter: _readString(json['po_transporter']),
-      nopol: _readString(json['nopol']),
-      driverName: _readString(json['driver_name']),
-      status: _readString(json['status']) ?? 'DRAFT',
-      kodeDepo: _readString(json['kode_depo']),
-      namaDepo: _readString(json['nama_depo']),
-      itemCount: json['items'] is List
-          ? (json['items'] as List).length
-          : _readInt(json['item_count']),
-    );
+    id: _readInt(json['id']),
+    poTransporter: _readString(json['po_transporter']),
+    nopol: _readString(json['nopol']),
+    driverName: _readString(json['driver_name']),
+    status: _readString(json['status']) ?? 'DRAFT',
+    kodeDepo: _readString(json['kode_depo']),
+    namaDepo: _readString(json['nama_depo']),
+    itemCount: json['items'] is List
+        ? (json['items'] as List).length
+        : _readInt(json['item_count']),
+  );
   final int? id;
   final String? poTransporter;
   final String? nopol;
@@ -107,7 +109,7 @@ class RencanaKirim {
   final int? itemCount;
 }
 
-/// One gate scan record (INBOUND / OUTBOUND) of a rencana kirim.
+/// One gate scan record (INBOUND) of a rencana kirim.
 class GateTransaction {
   const GateTransaction({
     required this.id,
@@ -172,7 +174,10 @@ class GateTransactionPage {
     var items = rawItems is List
         ? rawItems
               .whereType<Map>()
-              .map((item) => GateTransaction.fromJson(Map<String, dynamic>.from(item)))
+              .map(
+                (item) =>
+                    GateTransaction.fromJson(Map<String, dynamic>.from(item)),
+              )
               .toList()
         : <GateTransaction>[];
     return GateTransactionPage(
@@ -190,14 +195,19 @@ class GateTransactionPage {
 
 /// Counters shown in the dark header of the Check In Point screen.
 class GateStats {
-  const GateStats({this.total = 0, this.hariIni = 0, this.terjadwal = 0, this.selesai = 0});
+  const GateStats({
+    this.total = 0,
+    this.hariIni = 0,
+    this.terjadwal = 0,
+    this.selesai = 0,
+  });
 
   factory GateStats.fromJson(Map<String, dynamic> json) => GateStats(
-      total: _readInt(json['total']) ?? 0,
-      hariIni: _readInt(json['hari_ini']) ?? 0,
-      terjadwal: _readInt(json['terjadwal']) ?? 0,
-      selesai: _readInt(json['selesai']) ?? 0,
-    );
+    total: _readInt(json['total']) ?? 0,
+    hariIni: _readInt(json['hari_ini']) ?? 0,
+    terjadwal: _readInt(json['terjadwal']) ?? 0,
+    selesai: _readInt(json['selesai']) ?? 0,
+  );
   final int total;
   final int hariIni;
   final int terjadwal;

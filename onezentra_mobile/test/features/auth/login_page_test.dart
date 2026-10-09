@@ -32,7 +32,8 @@ class _FakeAuthRepository extends AuthRepository {
 /// Serves a canned body so the repository's response validation can be
 /// exercised without a network. A plain string stands in for a non-JSON body,
 /// which is what a proxy error page or an empty 204 looks like on the wire.
-AuthRepository _repositoryAnswering(dynamic body) => AuthRepository(post: (_, _) async => body);
+AuthRepository _repositoryAnswering(dynamic body) =>
+    AuthRepository(post: (_, _) async => body);
 
 User _fakeUser() => User.fromJson(const {
   'id': 1,
@@ -86,7 +87,8 @@ Future<void> _submitCredentials(
 }
 
 /// Decoration of the email field, i.e. the first input on the login card.
-InputDecoration _emailFieldDecoration(WidgetTester tester) => tester.widget<InputDecorator>(find.byType(InputDecorator).first).decoration;
+InputDecoration _emailFieldDecoration(WidgetTester tester) =>
+    tester.widget<InputDecorator>(find.byType(InputDecorator).first).decoration;
 
 /// Resolved colour of the text typed into the email field.
 Color _emailFieldTextColor(WidgetTester tester) {
@@ -181,9 +183,7 @@ void main() {
       expect(find.text('Selamat datang kembali'), findsOneWidget);
     });
 
-    testWidgets('mengarahkan ke home setelah login berhasil', (
-      tester,
-    ) async {
+    testWidgets('mengarahkan ke home setelah login berhasil', (tester) async {
       await _pumpApp(
         tester,
         _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
@@ -329,48 +329,60 @@ void main() {
       );
     });
 
-    test('respons 2xy non-JSON ditolak dengan pesan yang bisa ditindaklanjuti', () async {
-      // Halaman HTML dari proxy atau 204 kosong: `as Map` akan melempar
-      // TypeError dan hanya bisa ditampilkan sebagai "kesalahan tak terduga".
-      var repository = _repositoryAnswering('halaman error');
+    test(
+      'respons 2xy non-JSON ditolak dengan pesan yang bisa ditindaklanjuti',
+      () async {
+        // Halaman HTML dari proxy atau 204 kosong: `as Map` akan melempar
+        // TypeError dan hanya bisa ditampilkan sebagai "kesalahan tak terduga".
+        var repository = _repositoryAnswering('halaman error');
 
-      await expectLater(
-        repository.login(email: 'budi@onezentra.com', password: 'rahasia123'),
-        throwsA(
-          isA<ApiException>()
-              .having((e) => e.message, 'message', contains('tidak valid'))
-              .having((e) => e.isConnectionIssue, 'isConnectionIssue', isTrue),
-        ),
-      );
-    });
+        await expectLater(
+          repository.login(email: 'budi@onezentra.com', password: 'rahasia123'),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.message, 'message', contains('tidak valid'))
+                .having(
+                  (e) => e.isConnectionIssue,
+                  'isConnectionIssue',
+                  isTrue,
+                ),
+          ),
+        );
+      },
+    );
   });
 
   group('Pemetaan error jaringan', () {
-    test('exception transport terpetakan jadi ApiException yang bisa dibaca user', () {
-      // Semua ini dulu lolos ke `catch (_)` provider sehingga user hanya
-      // melihat "Terjadi kesalahan tidak terduga".
-      for (var error in <Object>[
-        const SocketException('Connection refused'),
-        const HttpException('Connection closed before full header was received'),
-        const HandshakeException('CERTIFICATE_VERIFY_FAILED'),
-        const TlsException('handshake failed'),
-        TimeoutException('timeout'),
-      ]) {
-        var mapped = ApiClient.mapTransportError(error);
+    test(
+      'exception transport terpetakan jadi ApiException yang bisa dibaca user',
+      () {
+        // Semua ini dulu lolos ke `catch (_)` provider sehingga user hanya
+        // melihat "Terjadi kesalahan tidak terduga".
+        for (var error in <Object>[
+          const SocketException('Connection refused'),
+          const HttpException(
+            'Connection closed before full header was received',
+          ),
+          const HandshakeException('CERTIFICATE_VERIFY_FAILED'),
+          const TlsException('handshake failed'),
+          TimeoutException('timeout'),
+        ]) {
+          var mapped = ApiClient.mapTransportError(error);
 
-        expect(
-          mapped,
-          isA<ApiException>(),
-          reason: '$error harus dipetakan, bukan lolos sebagai error mentah',
-        );
-        expect(mapped.isConnectionIssue, isTrue);
-        expect(mapped.message, isNotEmpty);
-        expect(
-          mapped.message,
-          isNot(contains('Terjadi kesalahan tidak terduga')),
-        );
-      }
-    });
+          expect(
+            mapped,
+            isA<ApiException>(),
+            reason: '$error harus dipetakan, bukan lolos sebagai error mentah',
+          );
+          expect(mapped.isConnectionIssue, isTrue);
+          expect(mapped.message, isNotEmpty);
+          expect(
+            mapped.message,
+            isNot(contains('Terjadi kesalahan tidak terduga')),
+          );
+        }
+      },
+    );
 
     test('user dengan field null dari server tidak membuat parsing gagal', () {
       // Kolom `level`/`status` bisa null pada user lama; `as String` yang
@@ -432,9 +444,7 @@ void main() {
 
       var decoration = _emailFieldDecoration(tester);
       var textColor = _emailFieldTextColor(tester);
-      var theme = Theme.of(
-        tester.element(find.byType(InputDecorator).first),
-      );
+      var theme = Theme.of(tester.element(find.byType(InputDecorator).first));
 
       // The focus overlay is painted on top of the fill, so both the field and
       // the theme must keep it translucent; an opaque overlay is what made the
@@ -452,26 +462,27 @@ void main() {
       );
     });
 
-    testWidgets('teks input tetap terbaca saat field difokuskan (mode terang)', (
-      tester,
-    ) async {
-      await _pumpApp(
-        tester,
-        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
-      );
+    testWidgets(
+      'teks input tetap terbaca saat field difokuskan (mode terang)',
+      (tester) async {
+        await _pumpApp(
+          tester,
+          _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
+        );
 
-      var decoration = _emailFieldDecoration(tester);
-      var textColor = _emailFieldTextColor(tester);
+        var decoration = _emailFieldDecoration(tester);
+        var textColor = _emailFieldTextColor(tester);
 
-      expect(decoration.focusColor!.a, lessThan(1));
+        expect(decoration.focusColor!.a, lessThan(1));
 
-      // Near-black text on the light fill.
-      expect(textColor, AppTheme.gray900);
-      expect(
-        _contrastRatio(textColor, AppTheme.surfaceHover),
-        greaterThan(4.5),
-      );
-    });
+        // Near-black text on the light fill.
+        expect(textColor, AppTheme.gray900);
+        expect(
+          _contrastRatio(textColor, AppTheme.surfaceHover),
+          greaterThan(4.5),
+        );
+      },
+    );
 
     testWidgets('logo garuda tampil tanpa lapisan warna tambahan', (
       tester,

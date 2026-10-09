@@ -106,9 +106,7 @@ class InboundProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _detailError = e.message;
     } catch (e, stack) {
-      debugPrint(
-        'InboundProvider.openDetail: unhandled ${e.runtimeType}: $e',
-      );
+      debugPrint('InboundProvider.openDetail: unhandled ${e.runtimeType}: $e');
       debugPrintStack(stackTrace: stack, maxFrames: 8);
       _detailError = 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     } finally {

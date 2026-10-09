@@ -12,14 +12,13 @@ import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Check In Point (Gate) — lookup a rencana kirim by PO / Nopol, record
-/// Gate IN / OUT, verify the document, and browse the gate history.
+/// Gate IN, verify the document, and browse the gate history.
 ///
 /// Mirrors the web app's `/gate` screen, adapted for a phone: the scan input
 /// accepts manual typing or the camera barcode scanner, and everything else —
 /// stats, quick scan, action rules per status, permission warnings, paginated
 /// history — matches the web behaviour.
 class GatePage extends StatefulWidget {
-
   const GatePage({super.key, this.repository, this.openScanner});
 
   /// Injectable so tests can run the screen against a fake repository.
@@ -70,10 +69,11 @@ class _GatePageState extends State<GatePage> {
   }
 
   @override
-  Widget build(BuildContext context) => ChangeNotifierProvider<GateProvider>.value(
-      value: _provider,
-      child: Builder(builder: _buildPage),
-    );
+  Widget build(BuildContext context) =>
+      ChangeNotifierProvider<GateProvider>.value(
+        value: _provider,
+        child: Builder(builder: _buildPage),
+      );
 
   Widget _buildPage(BuildContext context) {
     var user = context.watch<AuthProvider>().user;
@@ -89,9 +89,7 @@ class _GatePageState extends State<GatePage> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: canView && !gate.isLoading
-                ? () => gate.refresh()
-                : null,
+            onPressed: canView && !gate.isLoading ? () => gate.refresh() : null,
             tooltip: 'Muat ulang',
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -132,131 +130,131 @@ class _GatePageState extends State<GatePage> {
   // ---------------------------------------------------------------------
 
   Widget _buildNoAccess() => SingleChildScrollView(
+    padding: const EdgeInsets.all(AppTheme.space5),
+    child: Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space5),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppTheme.space5),
-        decoration: BoxDecoration(
-          color: AppTheme.warningWell,
-          borderRadius: AppTheme.radiusXl,
-          border: Border.all(color: AppTheme.warningText),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
-            const SizedBox(width: AppTheme.space3),
-            Expanded(
-              child: Text(
-                'Anda tidak memiliki izin untuk melihat Check In Point.',
-                style: GoogleFonts.roboto(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: AppTheme.warningText,
-                ),
+      decoration: BoxDecoration(
+        color: AppTheme.warningWell,
+        borderRadius: AppTheme.radiusXl,
+        border: Border.all(color: AppTheme.warningText),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Text(
+              'Anda tidak memiliki izin untuk melihat Check In Point.',
+              style: GoogleFonts.roboto(
+                fontSize: 13,
+                height: 1.4,
+                color: AppTheme.warningText,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
+    ),
+  );
 
   // ---------------------------------------------------------------------
   // Dark header with the stats
   // ---------------------------------------------------------------------
 
   Widget _buildHeader(GateProvider gate) => Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.space5),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppTheme.ink900, AppTheme.ink800],
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space5),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppTheme.ink900, AppTheme.ink800],
+      ),
+      borderRadius: AppTheme.radius2xl,
+      boxShadow: [
+        BoxShadow(
+          color: AppTheme.ink900.withValues(alpha: 0.2),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
         ),
-        borderRadius: AppTheme.radius2xl,
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.ink900.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: AppTheme.radiusLg,
-                ),
-                child: const Icon(
-                  Icons.door_front_door_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: AppTheme.radiusLg,
               ),
-              const SizedBox(width: AppTheme.space3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Check In Point',
-                      style: GoogleFonts.roboto(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+              child: const Icon(
+                Icons.door_front_door_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Check In Point',
+                    style: GoogleFonts.roboto(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Scan PO / Nopol — IN ↔ OUT • auto status',
-                      style: GoogleFonts.roboto(
-                        fontSize: 12,
-                        color: AppTheme.gray400,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Scan PO / Nopol — catat Gate IN • auto status',
+                    style: GoogleFonts.roboto(
+                      fontSize: 12,
+                      color: AppTheme.gray400,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space4),
-          Wrap(
-            spacing: AppTheme.space2,
-            runSpacing: AppTheme.space2,
-            children: [
-              _StatChip(
-                label: 'Hari ini',
-                value: gate.stats.hariIni,
-                dotColor: Colors.white,
-              ),
-              _StatChip(
-                label: 'Terjadwal',
-                value: gate.stats.terjadwal,
-                dotColor: AppTheme.info,
-              ),
-              _StatChip(
-                label: 'Selesai',
-                value: gate.stats.selesai,
-                dotColor: AppTheme.success,
-              ),
-              _StatChip(
-                label: 'Total',
-                value: gate.stats.total,
-                dotColor: AppTheme.gray300,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space4),
+        Wrap(
+          spacing: AppTheme.space2,
+          runSpacing: AppTheme.space2,
+          children: [
+            _StatChip(
+              label: 'Hari ini',
+              value: gate.stats.hariIni,
+              dotColor: Colors.white,
+            ),
+            _StatChip(
+              label: 'Terjadwal',
+              value: gate.stats.terjadwal,
+              dotColor: AppTheme.info,
+            ),
+            _StatChip(
+              label: 'Selesai',
+              value: gate.stats.selesai,
+              dotColor: AppTheme.success,
+            ),
+            _StatChip(
+              label: 'Total',
+              value: gate.stats.total,
+              dotColor: AppTheme.gray300,
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 
   // ---------------------------------------------------------------------
   // Quick scan + lookup result + action banner
@@ -267,81 +265,80 @@ class _GatePageState extends State<GatePage> {
     required bool canCreate,
     required bool canVerify,
   }) => AppCard(
-      padding: const EdgeInsets.all(AppTheme.space5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _iconBox(36, AppTheme.gray900, Icons.qr_code_scanner_rounded),
-              const SizedBox(width: AppTheme.space3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quick Scan',
-                      style: GoogleFonts.roboto(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.foreground,
-                      ),
+    padding: const EdgeInsets.all(AppTheme.space5),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _iconBox(36, AppTheme.gray900, Icons.qr_code_scanner_rounded),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Quick Scan',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.foreground,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Scan barcode atau ketik PO / Nopol, lalu Enter',
-                      style: GoogleFonts.roboto(
-                        fontSize: 11,
-                        color: AppTheme.gray400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space4),
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(
-                  controller: _scanController,
-                  hint: 'PO / Nopol...',
-                  prefixIcon: Icons.qr_code_scanner_rounded,
-                  suffixIcon: IconButton(
-                    tooltip: 'Pindai dengan kamera',
-                    onPressed: gate.lookupBusy ? null : _openScanner,
-                    icon: const Icon(Icons.photo_camera_rounded),
                   ),
-                  textInputAction: TextInputAction.done,
-                  onEditingComplete: _submitScan,
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Scan barcode atau ketik PO / Nopol, lalu Enter',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      color: AppTheme.gray400,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppTheme.space3),
-              // Natural width: a fixed 104px box overflows on narrow
-              // screens once the label outgrows the leftover space.
-              AppPrimaryButton(
-                text: 'Cari',
-                height: 48,
-                isFullWidth: false,
-                isLoading: gate.lookupBusy,
-                onPressed: gate.lookupBusy ? null : _submitScan,
-              ),
-            ],
-          ),
-          if (gate.message != null) _buildBanner(gate.message!),
-          if (_justCheckedInPo != null)
-            _buildHandoffCard(_justCheckedInPo!),
-          if (gate.found != null)
-            _buildFoundCard(
-              gate.found!,
-              gate: gate,
-              canCreate: canCreate,
-              canVerify: canVerify,
             ),
-        ],
-      ),
-    );
+          ],
+        ),
+        const SizedBox(height: AppTheme.space4),
+        Row(
+          children: [
+            Expanded(
+              child: AppTextField(
+                controller: _scanController,
+                hint: 'PO / Nopol...',
+                prefixIcon: Icons.qr_code_scanner_rounded,
+                suffixIcon: IconButton(
+                  tooltip: 'Pindai dengan kamera',
+                  onPressed: gate.lookupBusy ? null : _openScanner,
+                  icon: const Icon(Icons.photo_camera_rounded),
+                ),
+                textInputAction: TextInputAction.done,
+                onEditingComplete: _submitScan,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space3),
+            // Natural width: a fixed 104px box overflows on narrow
+            // screens once the label outgrows the leftover space.
+            AppPrimaryButton(
+              text: 'Cari',
+              height: 48,
+              isFullWidth: false,
+              isLoading: gate.lookupBusy,
+              onPressed: gate.lookupBusy ? null : _submitScan,
+            ),
+          ],
+        ),
+        if (gate.message != null) _buildBanner(gate.message!),
+        if (_justCheckedInPo != null) _buildHandoffCard(_justCheckedInPo!),
+        if (gate.found != null)
+          _buildFoundCard(
+            gate.found!,
+            gate: gate,
+            canCreate: canCreate,
+            canVerify: canVerify,
+          ),
+      ],
+    ),
+  );
 
   Future<void> _submitScan() async {
     FocusScope.of(context).unfocus();
@@ -381,45 +378,37 @@ class _GatePageState extends State<GatePage> {
   );
 
   Widget _buildBanner(GateActionMessage message) => Container(
-      margin: const EdgeInsets.only(top: AppTheme.space4),
-      padding: const EdgeInsets.all(AppTheme.space3),
-      decoration: BoxDecoration(
-        color: message.success
-            ? AppTheme.successWell
-            : const Color(0xFFFFF1F2),
-        borderRadius: AppTheme.radiusLg,
-        border: Border.all(
-          color: message.success
-              ? AppTheme.successText
-              : const Color(0xFFFECDD3),
-        ),
+    margin: const EdgeInsets.only(top: AppTheme.space4),
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: message.success ? AppTheme.successWell : const Color(0xFFFFF1F2),
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(
+        color: message.success ? AppTheme.successText : const Color(0xFFFECDD3),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            message.success
-                ? Icons.check_circle_rounded
-                : Icons.error_rounded,
-            size: 18,
-            color: message.success
-                ? AppTheme.success
-                : AppTheme.danger,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message.message,
-              style: GoogleFonts.roboto(
-                fontSize: 12.5,
-                height: 1.4,
-                color: AppTheme.gray700,
-              ),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          message.success ? Icons.check_circle_rounded : Icons.error_rounded,
+          size: 18,
+          color: message.success ? AppTheme.success : AppTheme.danger,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            message.message,
+            style: GoogleFonts.roboto(
+              fontSize: 12.5,
+              height: 1.4,
+              color: AppTheme.gray700,
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
 
   Widget _buildFoundCard(
     RencanaKirim rk, {
@@ -478,14 +467,15 @@ class _GatePageState extends State<GatePage> {
           Row(
             children: [
               Expanded(
-                child: _darkField(
-                  'PO Transporter',
-                  rk.poTransporter ?? '-',
-                ),
+                child: _darkField('PO Transporter', rk.poTransporter ?? '-'),
               ),
               const SizedBox(width: AppTheme.space3),
               Expanded(
-                child: _darkField('No. Polisi', rk.nopol ?? '-', highlight: true),
+                child: _darkField(
+                  'No. Polisi',
+                  rk.nopol ?? '-',
+                  highlight: true,
+                ),
               ),
             ],
           ),
@@ -522,111 +512,113 @@ class _GatePageState extends State<GatePage> {
                     'Anda tidak memiliki izin rencana_kirim.edit untuk memverifikasi dokumen.',
                   )
           else
-            // Gate OUT lives in the dedicated Check Out Point menu — Check
-            // In Point only records IN and verifies, so one action never
-            // hides in two places.
-            _guideBox(
-              'Dokumen selesai. Catat Gate OUT dari menu Check Out Point.',
-            ),
+            // Receiving-only: a finished document has no further gate
+            // action; the flow ends here.
+            _guideBox('Dokumen selesai. Tidak ada aksi gate tersisa.'),
         ],
       ),
     );
   }
 
-  Widget _darkField(String label, String value, {bool highlight = false}) => Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.space3,
-        vertical: AppTheme.space2,
-      ),
-      decoration: highlight
-          ? const BoxDecoration(
-              color: Colors.white,
-              borderRadius: AppTheme.radiusLg,
-            )
-          : BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              borderRadius: AppTheme.radiusLg,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+  Widget _darkField(String label, String value, {bool highlight = false}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.space3,
+          vertical: AppTheme.space2,
+        ),
+        decoration: highlight
+            ? const BoxDecoration(
+                color: Colors.white,
+                borderRadius: AppTheme.radiusLg,
+              )
+            : BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.07),
+                borderRadius: AppTheme.radiusLg,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.roboto(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: highlight ? AppTheme.gray500 : AppTheme.gray400,
+              ),
             ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.roboto(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: highlight ? AppTheme.gray500 : AppTheme.gray400,
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.robotoMono(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: highlight ? AppTheme.gray900 : Colors.white,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.robotoMono(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: highlight ? AppTheme.gray900 : Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
 
   Widget _guideBox(String guide) => Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.space3),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: AppTheme.radiusLg,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.gray400),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              guide,
-              style: GoogleFonts.roboto(
-                fontSize: 12,
-                height: 1.4,
-                color: AppTheme.gray300,
-              ),
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.05),
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.info_outline_rounded,
+          size: 16,
+          color: AppTheme.gray400,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            guide,
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              height: 1.4,
+              color: AppTheme.gray300,
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
 
   Widget _warningBox(String warning) => Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.space3),
-      decoration: BoxDecoration(
-        color: AppTheme.warningDark,
-        borderRadius: AppTheme.radiusLg,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.lock_rounded, size: 16, color: AppTheme.warning),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              warning,
-              style: GoogleFonts.roboto(
-                fontSize: 12,
-                height: 1.4,
-                color: AppTheme.warning,
-              ),
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: AppTheme.warningDark,
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.lock_rounded, size: 16, color: AppTheme.warning),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            warning,
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              height: 1.4,
+              color: AppTheme.warning,
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
 
   Widget _darkActionButton({
     required String label,
@@ -636,41 +628,39 @@ class _GatePageState extends State<GatePage> {
     bool outline = false,
     bool loading = false,
   }) => Container(
-      width: double.infinity,
-      height: 44,
-      decoration: outline
-          ? BoxDecoration(
-              border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-              borderRadius: AppTheme.radiusLg,
-            )
-          : null,
-      child: FilledButton(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: background,
-          foregroundColor: foreground,
-          disabledBackgroundColor: background.withValues(alpha: 0.6),
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
-          shape: const RoundedRectangleBorder(
+    width: double.infinity,
+    height: 44,
+    decoration: outline
+        ? BoxDecoration(
+            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
             borderRadius: AppTheme.radiusLg,
-          ),
-          textStyle: GoogleFonts.roboto(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w700,
-          ),
+          )
+        : null,
+    child: FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: background,
+        foregroundColor: foreground,
+        disabledBackgroundColor: background.withValues(alpha: 0.6),
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
+        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
         ),
-        child: loading
-            ? SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: foreground,
-                ),
-              )
-            : Text(label),
       ),
-    );
+      child: loading
+          ? SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: foreground,
+              ),
+            )
+          : Text(label),
+    ),
+  );
 
   // ---------------------------------------------------------------------
   // Confirmation dialog
@@ -759,8 +749,9 @@ class _GatePageState extends State<GatePage> {
     if (success && mounted) {
       _scanController.clear();
       setState(() {
-        _justCheckedInPo =
-            checkedInPo != null && checkedInPo.isNotEmpty ? checkedInPo : null;
+        _justCheckedInPo = checkedInPo != null && checkedInPo.isNotEmpty
+            ? checkedInPo
+            : null;
       });
     }
   }
@@ -783,9 +774,9 @@ class _GatePageState extends State<GatePage> {
       );
     }
     return (
-      title: 'Catat Gate OUT?',
-      confirm: 'Ya, Catat OUT',
-      note: 'Gate OUT tercatat → status dokumen menjadi Selesai.',
+      title: 'Tidak Ada Aksi?',
+      confirm: 'Tutup',
+      note: 'Dokumen selesai. Tidak ada aksi gate tersisa.',
     );
   }
 
@@ -799,90 +790,90 @@ class _GatePageState extends State<GatePage> {
     if (action == GateStatusAction.verify) {
       return gate.verifyFound();
     }
-    return gate.recordGateOut();
+    return false;
   }
 
   Widget _dialogRow(String label, String value) => Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: GoogleFonts.roboto(fontSize: 12, color: AppTheme.gray500),
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: GoogleFonts.roboto(fontSize: 12, color: AppTheme.gray500),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.roboto(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.gray800,
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: GoogleFonts.roboto(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.gray800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
 
   // ---------------------------------------------------------------------
   // History
   // ---------------------------------------------------------------------
 
   Widget _buildHistory(GateProvider gate) => AppCard(
-      padding: const EdgeInsets.all(AppTheme.space5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _iconBox(
-                36,
-                AppTheme.primary50,
-                Icons.history_rounded,
-                iconColor: AppTheme.primary600,
-              ),
-              const SizedBox(width: AppTheme.space3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Riwayat Gate',
-                      style: GoogleFonts.roboto(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.foreground,
-                      ),
+    padding: const EdgeInsets.all(AppTheme.space5),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _iconBox(
+              36,
+              AppTheme.primary50,
+              Icons.history_rounded,
+              iconColor: AppTheme.primary600,
+            ),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Riwayat Gate',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.foreground,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${gate.total} transaksi tercatat',
-                      style: GoogleFonts.roboto(
-                        fontSize: 11,
-                        color: AppTheme.gray400,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${gate.total} transaksi tercatat',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      color: AppTheme.gray400,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space4),
-          AppTextField(
-            controller: _searchController,
-            hint: 'Cari nopol / PO / driver...',
-            prefixIcon: Icons.search_rounded,
-            onChanged: gate.setSearch,
-          ),
-          const SizedBox(height: AppTheme.space3),
-          ..._historyBody(gate),
-        ],
-      ),
-    );
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space4),
+        AppTextField(
+          controller: _searchController,
+          hint: 'Cari nopol / PO / driver...',
+          prefixIcon: Icons.search_rounded,
+          onChanged: gate.setSearch,
+        ),
+        const SizedBox(height: AppTheme.space3),
+        ..._historyBody(gate),
+      ],
+    ),
+  );
 
   List<Widget> _historyBody(GateProvider gate) {
     var listError = gate.listError;
@@ -924,7 +915,7 @@ class _GatePageState extends State<GatePage> {
                 : 'Belum ada transaksi gate',
             subtitle: gate.search.isNotEmpty
                 ? 'Cari dengan kata kunci lain.'
-                : 'Transaksi muncul setelah Gate IN / OUT pertama tercatat.',
+                : 'Transaksi muncul setelah Gate IN pertama tercatat.',
           ),
         ),
       ];
@@ -1020,12 +1011,7 @@ class _GatePageState extends State<GatePage> {
                       ),
                     ),
                     const SizedBox(width: AppTheme.space2),
-                    AppBadge(
-                      text: item.gateType,
-                      variant: item.gateType == 'OUTBOUND'
-                          ? AppBadgeVariant.primary
-                          : AppBadgeVariant.info,
-                    ),
+                    AppBadge(text: item.gateType),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -1073,14 +1059,14 @@ class _GatePageState extends State<GatePage> {
     IconData icon, {
     Color iconColor = Colors.white,
   }) => Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: AppTheme.radiusLg,
-      ),
-      child: Icon(icon, size: size * 0.5, color: iconColor),
-    );
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: AppTheme.radiusLg,
+    ),
+    child: Icon(icon, size: size * 0.5, color: iconColor),
+  );
 
   static String _formatDateTime(DateTime? time) {
     if (time == null) {
@@ -1091,23 +1077,23 @@ class _GatePageState extends State<GatePage> {
         '${two(time.hour)}:${two(time.minute)}:${two(time.second)}';
   }
 
-  static AppBadgeVariant _statusVariant(String status) =>
-      switch (status) {
-        'SCHEDULED' => AppBadgeVariant.info,
-        'CHECKED_IN' => AppBadgeVariant.primary,
-        'VERIFIED' => AppBadgeVariant.success,
-        'IN_PROGRESS' => AppBadgeVariant.warning,
-        'COMPLETED' => AppBadgeVariant.success,
-        'CANCELLED' => AppBadgeVariant.danger,
-        _ => AppBadgeVariant.gray,
-      };
+  static AppBadgeVariant _statusVariant(String status) => switch (status) {
+    'SCHEDULED' => AppBadgeVariant.info,
+    'CHECKED_IN' => AppBadgeVariant.primary,
+    'VERIFIED' => AppBadgeVariant.success,
+    'IN_PROGRESS' => AppBadgeVariant.warning,
+    'COMPLETED' => AppBadgeVariant.success,
+    'CANCELLED' => AppBadgeVariant.danger,
+    _ => AppBadgeVariant.gray,
+  };
 }
 
 /// Small counter chip in the dark header.
 class _StatChip extends StatelessWidget {
-
   const _StatChip({
-    required this.label, required this.value, required this.dotColor,
+    required this.label,
+    required this.value,
+    required this.dotColor,
   });
   final String label;
   final int value;
@@ -1115,45 +1101,45 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.space3,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: AppTheme.radiusFull,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppTheme.space3,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: AppTheme.radiusFull,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray300),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: AppTheme.radiusFull,
           ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray300),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: AppTheme.radiusFull,
+          child: Text(
+            '$value',
+            style: GoogleFonts.roboto(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
             ),
-            child: Text(
-              '$value',
-              style: GoogleFonts.roboto(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
 }

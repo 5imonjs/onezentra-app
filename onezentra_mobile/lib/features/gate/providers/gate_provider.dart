@@ -9,7 +9,6 @@ import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart
 /// UI state for the Check In Point (gate) menu: stats, paged history,
 /// the quick-scan lookup and the gate actions.
 class GateProvider extends ChangeNotifier {
-
   GateProvider({GateRepository? repository})
     : _repository = repository ?? GateRepository();
   final GateRepository _repository;
@@ -19,7 +18,7 @@ class GateProvider extends ChangeNotifier {
   /// Every loader here awaits the network and then calls [notifyListeners]. If
   /// the screen is closed while a request is in flight, that call lands after
   /// dispose and ChangeNotifier throws "used after being disposed", crashing
-  /// instead of merely skipping a repaint. Same guard as CheckoutProvider.
+  /// instead of merely skipping a repaint.
   bool _disposed = false;
 
   /// Safe to call after dispose: a disposed provider simply stops notifying.
@@ -183,12 +182,6 @@ class GateProvider extends ChangeNotifier {
     successMessage: 'Gate IN berhasil dicatat. Status: Check In',
   );
 
-  /// Records a Gate OUT (OUTBOUND) for the found document.
-  Future<bool> recordGateOut() => _record(
-    'OUTBOUND',
-    successMessage: 'Gate OUT berhasil dicatat. Status: Selesai',
-  );
-
   /// Verifies the found document (status moves to VERIFIED).
   Future<bool> verifyFound() async {
     var id = _found?.id;
@@ -224,7 +217,10 @@ class GateProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> _record(String gateType, {required String successMessage}) async {
+  Future<bool> _record(
+    String gateType, {
+    required String successMessage,
+  }) async {
     var found = _found;
     if (found == null || _actionBusy) {
       return false;

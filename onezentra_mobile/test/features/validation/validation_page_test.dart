@@ -88,9 +88,10 @@ class _FakeValidationRepository extends ValidationRepository {
     scanCalls++;
     lastActualQty = actualQty;
     lastCondition = condition;
-    var current = _session()
-        .items
-        .firstWhere((item) => item.id == itemId, orElse: () => _session().items.first);
+    var current = _session().items.firstWhere(
+      (item) => item.id == itemId,
+      orElse: () => _session().items.first,
+    );
     return SjValidationItem(
       id: current.id,
       validationId: current.validationId,
@@ -194,10 +195,7 @@ Future<void> _pumpValidationPage(
       value: auth,
       child: MaterialApp(
         theme: AppTheme.light,
-        home: ValidationPage(
-          repository: repository,
-          openScanner: openScanner,
-        ),
+        home: ValidationPage(repository: repository, openScanner: openScanner),
       ),
     ),
   );
@@ -281,22 +279,23 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
-  testWidgets('tanpa sj_validation.view hanya kartu izin, API tidak dipanggil', (
-    tester,
-  ) async {
-    var repository = _FakeValidationRepository();
-    var auth = await _loginAuth(permissions: []);
+  testWidgets(
+    'tanpa sj_validation.view hanya kartu izin, API tidak dipanggil',
+    (tester) async {
+      var repository = _FakeValidationRepository();
+      var auth = await _loginAuth(permissions: []);
 
-    await _pumpValidationPage(tester, auth, repository);
+      await _pumpValidationPage(tester, auth, repository);
 
-    expect(
-      find.text('Anda tidak memiliki izin untuk melihat Validasi SJ.'),
-      findsOneWidget,
-    );
-    expect(find.text('Scan Dokumen'), findsNothing);
-    expect(repository.listCalls, 0);
-    expect(repository.statsCalls, 0);
-  });
+      expect(
+        find.text('Anda tidak memiliki izin untuk melihat Validasi SJ.'),
+        findsOneWidget,
+      );
+      expect(find.text('Scan Dokumen'), findsNothing);
+      expect(repository.listCalls, 0);
+      expect(repository.statsCalls, 0);
+    },
+  );
 
   testWidgets('menampilkan statistik dan riwayat validasi', (tester) async {
     var repository = _FakeValidationRepository(
@@ -360,10 +359,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Simpan Validasi'), findsOneWidget);
 
-    var saveButton = find.widgetWithText(
-      AppPrimaryButton,
-      'Simpan Validasi',
-    );
+    var saveButton = find.widgetWithText(AppPrimaryButton, 'Simpan Validasi');
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
@@ -412,10 +408,7 @@ void main() {
 
     // One of two lines still pending: the button shows the remainder and
     // refuses the tap instead of failing on the server.
-    expect(
-      find.text('Selesaikan (1 item tersisa)'),
-      findsOneWidget,
-    );
+    expect(find.text('Selesaikan (1 item tersisa)'), findsOneWidget);
     expect(
       find.text('Validasi dulu 1 item di atas — tombol aktif otomatis.'),
       findsOneWidget,
@@ -484,9 +477,7 @@ void main() {
   testWidgets('item tanpa standarisasi terkunci + banner tampil', (
     tester,
   ) async {
-    var repository = _FakeValidationRepository(
-      sessionToOpen: _lockedSession(),
-    );
+    var repository = _FakeValidationRepository(sessionToOpen: _lockedSession());
     var auth = await _loginAuth();
 
     await _pumpValidationPage(tester, auth, repository);
@@ -496,28 +487,17 @@ void main() {
     await tester.pumpAndSettle();
 
     // Amber banner explains the lock, like the web page.
-    expect(
-      find.text('Standarisasi Tumpukan Belum Disetujui'),
-      findsOneWidget,
-    );
-    expect(
-      find.text('Butuh input standarisasi tumpukan'),
-      findsOneWidget,
-    );
+    expect(find.text('Standarisasi Tumpukan Belum Disetujui'), findsOneWidget);
+    expect(find.text('Butuh input standarisasi tumpukan'), findsOneWidget);
     // No green fast path while locked — the amber shortcut instead.
     expect(find.widgetWithText(FilledButton, 'Sesuai'), findsNothing);
-    expect(
-      find.widgetWithText(FilledButton, 'Standarisasi'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(FilledButton, 'Standarisasi'), findsOneWidget);
   });
 
   testWidgets('input standarisasi terkirim tier × tinggi lalu menunggu BLC', (
     tester,
   ) async {
-    var repository = _FakeValidationRepository(
-      sessionToOpen: _lockedSession(),
-    );
+    var repository = _FakeValidationRepository(sessionToOpen: _lockedSession());
     var auth = await _loginAuth();
 
     await _pumpValidationPage(tester, auth, repository);
@@ -534,14 +514,13 @@ void main() {
     expect(find.text('Standarisasi Tumpukan'), findsWidgets);
     expect(find.text('Simpan Validasi'), findsNothing);
 
-    Future<void> enterSheetField(String key, String value) =>
-        tester.enterText(
-          find.descendant(
-            of: find.byKey(ValueKey(key)),
-            matching: find.byType(TextFormField),
-          ),
-          value,
-        );
+    Future<void> enterSheetField(String key, String value) => tester.enterText(
+      find.descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byType(TextFormField),
+      ),
+      value,
+    );
     await enterSheetField('standarisasi_tier', '4');
     await enterSheetField('standarisasi_tinggi', '6');
     var saveButton = find.widgetWithText(
@@ -557,15 +536,10 @@ void main() {
     expect(repository.lastTier, 4);
     expect(repository.lastTinggi, 6);
     expect(repository.scanCalls, 0);
-    expect(
-      find.textContaining('dikirim untuk approve BLC'),
-      findsWidgets,
-    );
+    expect(find.textContaining('dikirim untuk approve BLC'), findsWidgets);
   });
 
-  testWidgets('dialog selesai merangkum selisih + info email', (
-    tester,
-  ) async {
+  testWidgets('dialog selesai merangkum selisih + info email', (tester) async {
     const mismatchSession = SjValidation(
       id: 9,
       scanCode: 'PO-042',
@@ -597,9 +571,7 @@ void main() {
         ),
       ],
     );
-    var repository = _FakeValidationRepository(
-      sessionToOpen: mismatchSession,
-    );
+    var repository = _FakeValidationRepository(sessionToOpen: mismatchSession);
     var auth = await _loginAuth();
 
     await _pumpValidationPage(tester, auth, repository);

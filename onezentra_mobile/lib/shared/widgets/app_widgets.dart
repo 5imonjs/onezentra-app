@@ -3,7 +3,6 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 
 /// Custom text field matching the web app's input-field style
 class AppTextField extends StatelessWidget {
-
   const AppTextField({
     super.key,
     this.controller,
@@ -99,10 +98,7 @@ class AppTextField extends StatelessWidget {
             ),
             focusedBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(
-                color: AppTheme.primary500,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: AppTheme.primary500, width: 2),
             ),
             errorBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
@@ -137,9 +133,9 @@ class AppTextField extends StatelessWidget {
 
 /// Primary button matching the web app's btn-primary style
 class AppPrimaryButton extends StatelessWidget {
-
   const AppPrimaryButton({
-    required this.text, super.key,
+    required this.text,
+    super.key,
     this.onPressed,
     this.isLoading = false,
     this.isFullWidth = true,
@@ -211,9 +207,9 @@ class AppPrimaryButton extends StatelessWidget {
 
 /// Secondary button matching the web app's btn-secondary style
 class AppSecondaryButton extends StatelessWidget {
-
   const AppSecondaryButton({
-    required this.text, super.key,
+    required this.text,
+    super.key,
     this.onPressed,
     this.isLoading = false,
     this.isFullWidth = true,
@@ -285,9 +281,9 @@ class AppSecondaryButton extends StatelessWidget {
 
 /// Text button matching the web app's style
 class AppTextButton extends StatelessWidget {
-
   const AppTextButton({
-    required this.text, super.key,
+    required this.text,
+    super.key,
     this.onPressed,
     this.style,
   });
@@ -317,9 +313,9 @@ class AppTextButton extends StatelessWidget {
 
 /// Card widget matching the web app's card style
 class AppCard extends StatelessWidget {
-
   const AppCard({
-    required this.child, super.key,
+    required this.child,
+    super.key,
     this.padding,
     this.margin,
     this.color,
@@ -376,9 +372,9 @@ class AppCard extends StatelessWidget {
 
 /// Badge widget matching the web app's badge style
 class AppBadge extends StatelessWidget {
-
   const AppBadge({
-    required this.text, super.key,
+    required this.text,
+    super.key,
     this.variant = AppBadgeVariant.info,
     this.icon,
   });
@@ -428,10 +424,7 @@ class AppBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 6,
-        vertical: 1,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: AppTheme.radiusFull,
@@ -465,9 +458,10 @@ enum AppBadgeVariant { success, warning, danger, info, primary, gray }
 
 /// Loading overlay
 class AppLoadingOverlay extends StatelessWidget {
-
   const AppLoadingOverlay({
-    required this.isLoading, required this.child, super.key,
+    required this.isLoading,
+    required this.child,
+    super.key,
     this.message,
   });
   final bool isLoading;
@@ -476,52 +470,52 @@ class AppLoadingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Stack(
-      children: [
-        child,
-        if (isLoading)
-          Container(
-            color: Colors.black.withValues(alpha: 0.3),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(AppTheme.space6),
-                decoration: const BoxDecoration(
-                  color: AppTheme.surfaceCard,
-                  borderRadius: AppTheme.radiusXl,
-                  boxShadow: [AppTheme.shadowXl],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppTheme.primary600,
-                      ),
+    children: [
+      child,
+      if (isLoading)
+        Container(
+          color: Colors.black.withValues(alpha: 0.3),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(AppTheme.space6),
+              decoration: const BoxDecoration(
+                color: AppTheme.surfaceCard,
+                borderRadius: AppTheme.radiusXl,
+                boxShadow: [AppTheme.shadowXl],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppTheme.primary600,
                     ),
-                    if (message != null) ...[
-                      const SizedBox(height: AppTheme.space4),
-                      Text(
-                        message!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.gray600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                  ),
+                  if (message != null) ...[
+                    const SizedBox(height: AppTheme.space4),
+                    Text(
+                      message!,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: AppTheme.gray600),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
-      ],
-    );
+        ),
+    ],
+  );
 }
 
 /// Error display widget
 class AppErrorDisplay extends StatelessWidget {
-
   const AppErrorDisplay({
-    required this.message, super.key,
+    required this.message,
+    super.key,
     this.onRetry,
     this.retryText,
   });
@@ -589,9 +583,10 @@ class AppErrorDisplay extends StatelessWidget {
 
 /// Empty state widget
 class AppEmptyState extends StatelessWidget {
-
   const AppEmptyState({
-    required this.icon, required this.title, super.key,
+    required this.icon,
+    required this.title,
+    super.key,
     this.subtitle,
     this.action,
   });
@@ -651,7 +646,6 @@ class AppEmptyState extends StatelessWidget {
 
 /// Divider with text
 class AppSectionDivider extends StatelessWidget {
-
   const AppSectionDivider({required this.text, super.key, this.color});
   final String text;
   final Color? color;

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -148,11 +147,7 @@ class _UnloadPageState extends State<UnloadPage> {
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: AppTheme.radiusLg,
           ),
-          child: const Icon(
-            Icons.forklift,
-            color: Colors.white,
-            size: 22,
-          ),
+          child: const Icon(Icons.forklift, color: Colors.white, size: 22),
         ),
         const SizedBox(width: AppTheme.space3),
         Expanded(
@@ -305,14 +300,10 @@ class _UnloadPageState extends State<UnloadPage> {
     margin: const EdgeInsets.only(top: AppTheme.space4),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: message.success
-          ? AppTheme.successWell
-          : const Color(0xFFFFF1F2),
+      color: message.success ? AppTheme.successWell : const Color(0xFFFFF1F2),
       borderRadius: AppTheme.radiusLg,
       border: Border.all(
-        color: message.success
-            ? AppTheme.successText
-            : const Color(0xFFFECDD3),
+        color: message.success ? AppTheme.successText : const Color(0xFFFECDD3),
       ),
     ),
     child: Row(
@@ -321,9 +312,7 @@ class _UnloadPageState extends State<UnloadPage> {
         Icon(
           message.success ? Icons.check_circle_rounded : Icons.error_rounded,
           size: 18,
-          color: message.success
-              ? AppTheme.success
-              : AppTheme.danger,
+          color: message.success ? AppTheme.success : AppTheme.danger,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -389,10 +378,10 @@ class _UnloadPageState extends State<UnloadPage> {
                 variant: session.status == 'IN_PROGRESS'
                     ? AppBadgeVariant.primary
                     : session.status == 'COMPLETED'
-                        ? AppBadgeVariant.success
-                        : session.status == 'CANCELLED'
-                            ? AppBadgeVariant.gray
-                            : AppBadgeVariant.warning,
+                    ? AppBadgeVariant.success
+                    : session.status == 'CANCELLED'
+                    ? AppBadgeVariant.gray
+                    : AppBadgeVariant.warning,
               ),
               IconButton(
                 onPressed: unload.actionBusy ? null : unload.clearActive,
@@ -442,12 +431,7 @@ class _UnloadPageState extends State<UnloadPage> {
                 ),
               ),
               const SizedBox(width: AppTheme.space3),
-              Expanded(
-                child: _darkField(
-                  'Selisih',
-                  _formatQty(selisih),
-                ),
-              ),
+              Expanded(child: _darkField('Selisih', _formatQty(selisih))),
             ],
           ),
           const SizedBox(height: AppTheme.space3),
@@ -457,9 +441,7 @@ class _UnloadPageState extends State<UnloadPage> {
               value: progress,
               minHeight: 6,
               backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                AppTheme.success,
-              ),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
             ),
           ),
           const SizedBox(height: AppTheme.space4),
@@ -501,41 +483,13 @@ class _UnloadPageState extends State<UnloadPage> {
               onPressed: () => _confirmCancel(unload),
             ),
           ] else ...[
-            // COMPLETED / CANCELLED: nothing left to do here — a finished
-            // document continues to Check Out.
+            // COMPLETED / CANCELLED: nothing left to do here — the
+            // receiving flow ends with the finished document.
             const SizedBox(height: AppTheme.space4),
-            if (session.status == 'COMPLETED' &&
-                (session.poTransporter ?? '').isNotEmpty)
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: FilledButton.icon(
-                  onPressed: () => context.push(
-                    '/checkout',
-                    extra: session.poTransporter,
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppTheme.gray900,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: AppTheme.radiusLg,
-                    ),
-                    textStyle: GoogleFonts.roboto(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  icon: const Icon(Icons.output_rounded, size: 18),
-                  label: Text(
-                    'Lanjut ke Check Out ${session.poTransporter}',
-                  ),
-                ),
-              )
-            else
-              _guideBox(
-                'Sesi ${session.status == 'CANCELLED' ? 'dibatalkan' : 'selesai'} — '
-                'tidak ada aksi tersisa.',
-              ),
+            _guideBox(
+              'Sesi ${session.status == 'CANCELLED' ? 'dibatalkan' : 'selesai'} — '
+              'tidak ada aksi tersisa.',
+            ),
           ],
         ],
       ),
@@ -586,9 +540,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     ? Icons.check_circle_rounded
                     : Icons.hourglass_empty_rounded,
                 size: 18,
-                color: covered
-                    ? AppTheme.success
-                    : AppTheme.gray400,
+                color: covered ? AppTheme.success : AppTheme.gray400,
               ),
             ),
             const SizedBox(width: AppTheme.space3),
@@ -717,10 +669,7 @@ class _UnloadPageState extends State<UnloadPage> {
           Text(
             'Pindai dulu minimal 1 produk — tombol aktif otomatis.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.roboto(
-              fontSize: 11.5,
-              color: AppTheme.gray400,
-            ),
+            style: GoogleFonts.roboto(fontSize: 11.5, color: AppTheme.gray400),
           ),
         ],
       ],
@@ -816,35 +765,35 @@ class _UnloadPageState extends State<UnloadPage> {
   }
 
   Widget _guideBox(String guide) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppTheme.space3),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: AppTheme.radiusLg,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.05),
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.info_outline_rounded,
+          size: 16,
+          color: AppTheme.gray400,
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.info_outline_rounded,
-              size: 16,
-              color: AppTheme.gray400,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            guide,
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              height: 1.4,
+              color: AppTheme.gray300,
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                guide,
-                style: GoogleFonts.roboto(
-                  fontSize: 12,
-                  height: 1.4,
-                  color: AppTheme.gray300,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _darkField(String label, String value, {bool highlight = false}) =>
       Container(
@@ -860,9 +809,7 @@ class _UnloadPageState extends State<UnloadPage> {
             : BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -936,9 +883,7 @@ class _UnloadPageState extends State<UnloadPage> {
         side: outline
             ? BorderSide(color: Colors.white.withValues(alpha: 0.4))
             : null,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppTheme.radiusLg,
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(
           fontSize: 13.5,
           fontWeight: FontWeight.w700,
@@ -957,14 +902,15 @@ class _UnloadPageState extends State<UnloadPage> {
     ),
   );
 
-  static String _sessionHeadline(UnloadSession session) =>
-      switch (session.status) {
-        'IN_PROGRESS' =>
-          'BONGKAR BERJALAN • ${session.coveredCount}/${session.plan.length} PRODUK',
-        'COMPLETED' => 'BONGKAR SELESAI • ${session.plan.length} PRODUK',
-        'CANCELLED' => 'BONGKAR DIBATALKAN',
-        _ => 'SIAP BONGKAR • ${session.plan.length} PRODUK',
-      };
+  static String _sessionHeadline(
+    UnloadSession session,
+  ) => switch (session.status) {
+    'IN_PROGRESS' =>
+      'BONGKAR BERJALAN • ${session.coveredCount}/${session.plan.length} PRODUK',
+    'COMPLETED' => 'BONGKAR SELESAI • ${session.plan.length} PRODUK',
+    'CANCELLED' => 'BONGKAR DIBATALKAN',
+    _ => 'SIAP BONGKAR • ${session.plan.length} PRODUK',
+  };
 
   static String _sessionBadge(String status) => switch (status) {
     'IN_PROGRESS' => 'Berjalan',
@@ -977,9 +923,7 @@ class _UnloadPageState extends State<UnloadPage> {
     if (value == null) {
       return '-';
     }
-    return value == value.truncateToDouble()
-        ? '${value.toInt()}'
-        : '$value';
+    return value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
   }
 }
 
@@ -1012,9 +956,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
     if (value == null) {
       return '';
     }
-    return value == value.truncateToDouble()
-        ? '${value.toInt()}'
-        : '$value';
+    return value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
   }
 
   @override
@@ -1195,9 +1137,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
     if (value == null) {
       return '-';
     }
-    return value == value.truncateToDouble()
-        ? '${value.toInt()}'
-        : '$value';
+    return value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
   }
 
   Future<void> _save() async {
@@ -1212,9 +1152,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
     var provider = context.read<UnloadProvider>();
     var success = await provider.scanLine(
       kodeBarang: widget.line.kodeBarang ?? '',
-      actualQty: double.parse(
-        _qtyController.text.trim().replaceAll(',', '.'),
-      ),
+      actualQty: double.parse(_qtyController.text.trim().replaceAll(',', '.')),
       namaBarang: widget.line.namaBarang,
       satuan: widget.line.satuan,
       condition: _condition,

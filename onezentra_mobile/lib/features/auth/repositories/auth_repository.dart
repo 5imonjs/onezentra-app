@@ -7,7 +7,6 @@ import 'package:onezentra_mobile/features/auth/models/auth_models.dart';
 
 /// Auth Repository - handles authentication API calls
 class AuthRepository {
-
   /// Dependencies are injectable so widget tests can run without a network.
   AuthRepository({
     ApiClient? apiClient,
@@ -64,7 +63,10 @@ class AuthRepository {
     } on ApiException catch (e) {
       throw ApiException(localizeMessage(e.message), e.statusCode, e.data);
     } on FormatException catch (e) {
-      throw ApiException('Respons server tidak dapat dibaca (${e.message}).', 0);
+      throw ApiException(
+        'Respons server tidak dapat dibaca (${e.message}).',
+        0,
+      );
     } on TypeError {
       throw const ApiException(
         'Data dari server tidak lengkap atau tidak valid.',
@@ -184,5 +186,6 @@ class AuthRepository {
   };
 
   /// Public so the mapping can be covered by a unit test without a network.
-  static String localizeMessage(String message) => _messageTranslations[message.trim().toLowerCase()] ?? message;
+  static String localizeMessage(String message) =>
+      _messageTranslations[message.trim().toLowerCase()] ?? message;
 }

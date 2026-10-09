@@ -227,13 +227,13 @@ class ApiClient {
 
   /// GET request
   Future<dynamic> get(String endpoint, {bool requireAuth = true}) => _send(
-      endpoint,
-      () => http.get(
-        _uri(endpoint),
-        headers: _getHeaders(requireAuth: requireAuth),
-      ),
-      requireAuth: requireAuth,
-    );
+    endpoint,
+    () => http.get(
+      _uri(endpoint),
+      headers: _getHeaders(requireAuth: requireAuth),
+    ),
+    requireAuth: requireAuth,
+  );
 
   /// POST request
   Future<dynamic> post(
@@ -241,14 +241,14 @@ class ApiClient {
     Map<String, dynamic> body, {
     bool requireAuth = true,
   }) => _send(
-      endpoint,
-      () => http.post(
-        _uri(endpoint),
-        headers: _getHeaders(requireAuth: requireAuth),
-        body: jsonEncode(body),
-      ),
-      requireAuth: requireAuth,
-    );
+    endpoint,
+    () => http.post(
+      _uri(endpoint),
+      headers: _getHeaders(requireAuth: requireAuth),
+      body: jsonEncode(body),
+    ),
+    requireAuth: requireAuth,
+  );
 
   /// PUT request
   Future<dynamic> put(
@@ -256,14 +256,14 @@ class ApiClient {
     Map<String, dynamic> body, {
     bool requireAuth = true,
   }) => _send(
-      endpoint,
-      () => http.put(
-        _uri(endpoint),
-        headers: _getHeaders(requireAuth: requireAuth),
-        body: jsonEncode(body),
-      ),
-      requireAuth: requireAuth,
-    );
+    endpoint,
+    () => http.put(
+      _uri(endpoint),
+      headers: _getHeaders(requireAuth: requireAuth),
+      body: jsonEncode(body),
+    ),
+    requireAuth: requireAuth,
+  );
 
   /// PATCH request
   Future<dynamic> patch(
@@ -271,24 +271,24 @@ class ApiClient {
     Map<String, dynamic> body, {
     bool requireAuth = true,
   }) => _send(
-      endpoint,
-      () => http.patch(
-        _uri(endpoint),
-        headers: _getHeaders(requireAuth: requireAuth),
-        body: jsonEncode(body),
-      ),
-      requireAuth: requireAuth,
-    );
+    endpoint,
+    () => http.patch(
+      _uri(endpoint),
+      headers: _getHeaders(requireAuth: requireAuth),
+      body: jsonEncode(body),
+    ),
+    requireAuth: requireAuth,
+  );
 
   /// DELETE request
   Future<dynamic> delete(String endpoint, {bool requireAuth = true}) => _send(
-      endpoint,
-      () => http.delete(
-        _uri(endpoint),
-        headers: _getHeaders(requireAuth: requireAuth),
-      ),
-      requireAuth: requireAuth,
-    );
+    endpoint,
+    () => http.delete(
+      _uri(endpoint),
+      headers: _getHeaders(requireAuth: requireAuth),
+    ),
+    requireAuth: requireAuth,
+  );
 
   Uri _uri(String endpoint) => Uri.parse('$baseUrl$endpoint');
 
@@ -364,7 +364,9 @@ class ApiClient {
       );
     }
 
-    debugPrint('ApiClient: unhandled transport error ${error.runtimeType}: $error');
+    debugPrint(
+      'ApiClient: unhandled transport error ${error.runtimeType}: $error',
+    );
     return const ApiException(
       'Tidak ada koneksi ke server. Periksa jaringan Anda.',
       0,
@@ -392,7 +394,6 @@ class ApiClient {
 
 /// Custom exception for API errors
 class ApiException implements Exception {
-
   const ApiException(this.message, this.statusCode, [this.data]);
   final String message;
   final int statusCode;

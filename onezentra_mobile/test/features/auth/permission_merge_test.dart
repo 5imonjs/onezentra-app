@@ -46,10 +46,7 @@ void main() {
 
   test('a user object with its own permissions keeps them', () {
     var response = AuthResponse.fromJson(
-      loginPayload(
-        permissions: ['gate.view'],
-        userPermissions: ['users.view'],
-      ),
+      loginPayload(permissions: ['gate.view'], userPermissions: ['users.view']),
     );
 
     expect(response.user.permissions, ['users.view']);

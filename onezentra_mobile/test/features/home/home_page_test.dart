@@ -78,7 +78,7 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
-  testWidgets('menampilkan kelima menu operasional', (tester) async {
+  testWidgets('menampilkan keempat menu operasional', (tester) async {
     var auth = await _loginAuth();
 
     await _pumpHomePage(tester, auth);
@@ -87,8 +87,9 @@ void main() {
     expect(find.text('Operator'), findsOneWidget);
     expect(find.text('Check In Point'), findsOneWidget);
     expect(find.text('Validasi SJ'), findsOneWidget);
+    expect(find.text('Bongkar'), findsOneWidget);
     expect(find.text('Hasil Penerimaan'), findsOneWidget);
-    expect(find.text('Check Out Point'), findsOneWidget);
+    expect(find.text('Check Out Point'), findsNothing);
     // No bottom nav, no dashboard numbers, no "coming soon".
     expect(find.byType(BottomNavigationBar), findsNothing);
     expect(find.text('Ringkasan'), findsNothing);
@@ -100,9 +101,10 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     expect(find.text('Check In Point'), findsOneWidget);
-    expect(find.text('Check Out Point'), findsOneWidget);
+    expect(find.text('Check Out Point'), findsNothing);
     expect(find.text('Validasi SJ'), findsNothing);
-    // Bongkar sudah tidak ada di home page, hanya 4 menu operasional.
+    // Check Out sudah tidak ada di home page; Bongkar butuh receiving.view.
+    expect(find.text('Bongkar'), findsNothing);
     expect(find.text('Hasil Penerimaan'), findsNothing);
   });
 
@@ -133,15 +135,14 @@ void main() {
     expect(find.text('Check In Point'), findsOneWidget);
     expect(find.byType(GridView), findsNothing);
 
-    // Tablet width → two-column grid with the same four menus (no Bongkar).
+    // Tablet width → two-column grid with the same four menus.
     tester.view.physicalSize = const Size(1200, 800);
     await _pumpHomePage(tester, auth);
     expect(find.byType(GridView), findsOneWidget);
     expect(find.text('Check In Point'), findsOneWidget);
     expect(find.text('Validasi SJ'), findsOneWidget);
+    expect(find.text('Bongkar'), findsOneWidget);
     expect(find.text('Hasil Penerimaan'), findsOneWidget);
-    expect(find.text('Check Out Point'), findsOneWidget);
-    // No Bongkar menu.
-    expect(find.text('Bongkar'), findsNothing);
+    expect(find.text('Check Out Point'), findsNothing);
   });
 }

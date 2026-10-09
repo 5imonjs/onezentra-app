@@ -41,11 +41,7 @@ class EscPosBuilder {
 
   /// Nyalakan atau matikan huruf tebal.
   EscPosBuilder bold({bool enabled = true}) {
-    _buffer.add([
-      _esc,
-      0x45,
-      if (enabled) 1 else 0,
-    ]);
+    _buffer.add([_esc, 0x45, if (enabled) 1 else 0]);
     return this;
   }
 

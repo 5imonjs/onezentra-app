@@ -54,10 +54,7 @@ void main() {
         get: (endpoint) async {
           if (endpoint.startsWith('/receivings?')) {
             return {
-              'data': [
-                _receivingRow(id: 1, po: 'PO-0420'),
-                _receivingRow(id: 7, po: 'PO-042'),
-              ],
+              'data': [_receivingRow(id: 1, po: 'PO-0420'), _receivingRow()],
               'current_page': 1,
               'last_page': 1,
               'total': 2,
@@ -90,9 +87,7 @@ void main() {
 
       await expectLater(
         repository.findByPo('PO-042'),
-        throwsA(
-          isA<ApiException>().having((e) => e.statusCode, 'status', 404),
-        ),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
       );
     });
 
@@ -124,6 +119,72 @@ void main() {
       );
     });
 
+    test(
+      'findByPo mengutamakan receiving aktif atas yang dibatalkan',
+      () async {
+        String? detailEndpoint;
+        var repository = UnloadRepository(
+          get: (endpoint) async {
+            if (endpoint.startsWith('/receivings?')) {
+              return {
+                'data': [
+                  _receivingRow(id: 9, status: 'CANCELLED'),
+                  _receivingRow(),
+                ],
+                'current_page': 1,
+                'last_page': 1,
+                'total': 2,
+              };
+            }
+            detailEndpoint = endpoint;
+            return _sessionBody();
+          },
+          post: (_, _) async => throw StateError('unexpected POST'),
+        );
+
+        var session = await repository.findByPo('PO-042');
+
+        expect(session.id, 7);
+        expect(detailEndpoint, '/receivings/7');
+      },
+    );
+
+    test('findByPo menemukan receiving aktif di halaman berikutnya', () async {
+      var requestedPages = <String>[];
+      String? detailEndpoint;
+      var repository = UnloadRepository(
+        get: (endpoint) async {
+          if (endpoint.startsWith('/receivings?')) {
+            var page = Uri.parse(endpoint).queryParameters['page'];
+            requestedPages.add(page ?? '');
+            if (page == '1') {
+              return {
+                'data': [_receivingRow(id: 9, status: 'CANCELLED')],
+                'current_page': 1,
+                'last_page': 2,
+                'total': 2,
+              };
+            }
+            return {
+              'data': [_receivingRow()],
+              'current_page': 2,
+              'last_page': 2,
+              'total': 2,
+            };
+          }
+          detailEndpoint = endpoint;
+          return _sessionBody();
+        },
+        post: (_, _) async => throw StateError('unexpected POST'),
+      );
+
+      var session = await repository.findByPo('PO-042');
+
+      expect(requestedPages, ['1', '2']);
+      expect(session.id, 7);
+      expect(detailEndpoint, '/receivings/7');
+    });
+
     test('scan mengirim field kontrak receiving', () async {
       Map<String, dynamic>? hitBody;
       String? hitEndpoint;
@@ -146,17 +207,14 @@ void main() {
       );
 
       expect(hitEndpoint, '/receivings/7/scan');
-      expect(
-        hitBody,
-        {
-          'kode_barang': 'BRG-1',
-          'actual_qty': 100.0,
-          'nama_barang': 'Gula 50kg',
-          'satuan': 'zak',
-          'condition': 'FISIK_BAGUS',
-          'rencana_kirim_item_id': 101,
-        },
-      );
+      expect(hitBody, {
+        'kode_barang': 'BRG-1',
+        'actual_qty': 100.0,
+        'nama_barang': 'Gula 50kg',
+        'satuan': 'zak',
+        'condition': 'FISIK_BAGUS',
+        'rencana_kirim_item_id': 101,
+      });
     });
 
     test('complete mengirim PO sebagai barcode penutup', () async {

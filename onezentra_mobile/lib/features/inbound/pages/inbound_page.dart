@@ -40,9 +40,7 @@ class _InboundPageState extends State<InboundPage> {
         return;
       }
       var canView =
-          context.read<AuthProvider>().user?.hasPermission(
-            'receiving.view',
-          ) ??
+          context.read<AuthProvider>().user?.hasPermission('receiving.view') ??
           false;
       _provider.bootstrap(canView: canView);
     });
@@ -295,8 +293,7 @@ class _InboundPageState extends State<InboundPage> {
                       text: 'Sebelumnya',
                       height: 42,
                       isLoading: inbound.isLoading,
-                      onPressed:
-                          inbound.canGoBack && !inbound.isLoading
+                      onPressed: inbound.canGoBack && !inbound.isLoading
                           ? () => inbound.goToPage(inbound.currentPage - 1)
                           : null,
                     ),
@@ -315,8 +312,7 @@ class _InboundPageState extends State<InboundPage> {
                       text: 'Selanjutnya',
                       height: 42,
                       isLoading: inbound.isLoading,
-                      onPressed:
-                          inbound.canGoForward && !inbound.isLoading
+                      onPressed: inbound.canGoForward && !inbound.isLoading
                           ? () => inbound.goToPage(inbound.currentPage + 1)
                           : null,
                     ),
@@ -329,83 +325,80 @@ class _InboundPageState extends State<InboundPage> {
     ];
   }
 
-  Widget _historyTile(Receiving receiving, InboundProvider inbound) =>
-      InkWell(
-        onTap: inbound.detailBusy
-            ? null
-            : () => inbound.openDetail(receiving.id),
-        borderRadius: AppTheme.radiusLg,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.gray100,
-                  borderRadius: AppTheme.radiusLg,
-                ),
-                child: const Icon(
-                  Icons.inventory_2_rounded,
-                  size: 18,
-                  color: AppTheme.gray500,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _historyTile(Receiving receiving, InboundProvider inbound) => InkWell(
+    onTap: inbound.detailBusy ? null : () => inbound.openDetail(receiving.id),
+    borderRadius: AppTheme.radiusLg,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppTheme.gray100,
+              borderRadius: AppTheme.radiusLg,
+            ),
+            child: const Icon(
+              Icons.inventory_2_rounded,
+              size: 18,
+              color: AppTheme.gray500,
+            ),
+          ),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            receiving.poTransporter ??
-                                'Penerimaan #${receiving.id}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.foreground,
-                            ),
-                          ),
+                    Expanded(
+                      child: Text(
+                        receiving.poTransporter ??
+                            'Penerimaan #${receiving.id}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.foreground,
                         ),
-                        const SizedBox(width: AppTheme.space2),
-                        AppBadge(
-                          text: ReceivingStatus.label(receiving.status),
-                          variant: _statusVariant(receiving.status),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${receiving.nopol ?? '-'} • ${receiving.driverName ?? '-'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.roboto(
-                        fontSize: 11,
-                        color: AppTheme.gray500,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Diterima ${_formatQty(receiving.totalReceivedQty)}'
-                      ' / ${_formatQty(receiving.totalExpectedQty)}',
-                      style: GoogleFonts.robotoMono(
-                        fontSize: 11,
-                        color: AppTheme.gray400,
-                      ),
+                    const SizedBox(width: AppTheme.space2),
+                    AppBadge(
+                      text: ReceivingStatus.label(receiving.status),
+                      variant: _statusVariant(receiving.status),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  '${receiving.nopol ?? '-'} • ${receiving.driverName ?? '-'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 11,
+                    color: AppTheme.gray500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Diterima ${_formatQty(receiving.totalReceivedQty)}'
+                  ' / ${_formatQty(receiving.totalExpectedQty)}',
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 11,
+                    color: AppTheme.gray400,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 
   // ---------------------------------------------------------------------
   // Opened record
@@ -455,9 +448,7 @@ class _InboundPageState extends State<InboundPage> {
               colors: [AppTheme.ink900, AppTheme.ink800],
             ),
             borderRadius: AppTheme.radius2xl,
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -466,8 +457,7 @@ class _InboundPageState extends State<InboundPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      receiving.poTransporter ??
-                          'Penerimaan #${receiving.id}',
+                      receiving.poTransporter ?? 'Penerimaan #${receiving.id}',
                       style: GoogleFonts.robotoMono(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -545,18 +535,17 @@ class _InboundPageState extends State<InboundPage> {
                     color: AppTheme.gray500,
                   ),
                 )
-              else
-                ...[
-                  for (var i = 0; i < receiving.items.length; i++) ...[
-                    _itemTile(receiving.items[i]),
-                    if (i != receiving.items.length - 1)
-                      const Divider(
-                        height: 1,
-                        color: AppTheme.gray100,
-                        indent: 46,
-                      ),
-                  ],
+              else ...[
+                for (var i = 0; i < receiving.items.length; i++) ...[
+                  _itemTile(receiving.items[i]),
+                  if (i != receiving.items.length - 1)
+                    const Divider(
+                      height: 1,
+                      color: AppTheme.gray100,
+                      indent: 46,
+                    ),
                 ],
+              ],
             ],
           ),
         ),
@@ -659,9 +648,7 @@ class _InboundPageState extends State<InboundPage> {
             : BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,9 +680,7 @@ class _InboundPageState extends State<InboundPage> {
     if (value == null) {
       return '-';
     }
-    return value == value.truncateToDouble()
-        ? '${value.toInt()}'
-        : '$value';
+    return value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
   }
 
   /// Signed qty like the selisih email (`+5`, `-3`).
@@ -735,12 +720,11 @@ class _InboundPageState extends State<InboundPage> {
         '${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  static AppBadgeVariant _statusVariant(String status) =>
-      switch (status) {
-        'PENDING' => AppBadgeVariant.warning,
-        'IN_PROGRESS' => AppBadgeVariant.primary,
-        'COMPLETED' => AppBadgeVariant.success,
-        'CANCELLED' => AppBadgeVariant.danger,
-        _ => AppBadgeVariant.gray,
-      };
+  static AppBadgeVariant _statusVariant(String status) => switch (status) {
+    'PENDING' => AppBadgeVariant.warning,
+    'IN_PROGRESS' => AppBadgeVariant.primary,
+    'COMPLETED' => AppBadgeVariant.success,
+    'CANCELLED' => AppBadgeVariant.danger,
+    _ => AppBadgeVariant.gray,
+  };
 }

@@ -10,7 +10,7 @@ import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 /// Home Page - the only landing after login.
 ///
 /// Exactly four operational menus, nothing else: Check In Point, Validasi
-/// SJ, Hasil Penerimaan, and Check Out Point. Each card is hidden when the
+/// SJ, Bongkar, and Hasil Penerimaan. Each card is hidden when the
 /// role lacks its permission — same rule as the web sidebar.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,6 +25,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Fresh login lands here: pull the latest profile + permissions so a
     // role edited on web applies without forcing logout + login.
     // (Background returns are covered by the app lifecycle observer.)
@@ -37,15 +38,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     // When app returns to foreground, refresh user permissions.
     // During refresh, show loading state.
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed && mounted) {
       setState(() => _isLoading = true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context.read<AuthProvider>().refreshUser().then((_) => setState(() => _isLoading = false));
+        if (!mounted) {
+          return;
+        }
+        context.read<AuthProvider>().refreshUser().then((_) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
+        });
       });
     }
   }
@@ -74,20 +87,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         '/validasi-sj',
       ),
       _HomeMenu(
+        'Bongkar',
+        'Scan PO — bongkar dan pindai produk',
+        Icons.forklift,
+        AppTheme.accent500,
+        const ['receiving.view'],
+        '/bongkar',
+      ),
+      _HomeMenu(
         'Hasil Penerimaan',
         'Histori inbound yang sudah diterima',
         Icons.inventory_2_rounded,
         AppTheme.primary600,
         const ['receiving.view'],
         '/hasil-penerimaan',
-      ),
-      _HomeMenu(
-        'Check Out Point',
-        'Scan PO selesai — catat Gate OUT',
-        Icons.output_rounded,
-        AppTheme.accent500,
-        const ['gate.view'],
-        '/checkout',
       ),
     ];
 
@@ -301,11 +314,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             color: menu.color.withValues(alpha: 0.1),
             borderRadius: AppTheme.radiusFull,
           ),
-          child: Icon(
-            Icons.arrow_forward_rounded,
-            size: 18,
-            color: menu.color,
-          ),
+          child: Icon(Icons.arrow_forward_rounded, size: 18, color: menu.color),
         ),
       ],
     ),

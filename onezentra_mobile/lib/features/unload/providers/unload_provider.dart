@@ -11,6 +11,22 @@ class UnloadProvider extends ChangeNotifier {
     : _repository = repository ?? UnloadRepository();
   final UnloadRepository _repository;
 
+  /// Set in [dispose].
+  ///
+  /// Every loader here awaits the network and then calls [notifyListeners]. If
+  /// the screen is closed while a request is in flight, that call lands after
+  /// dispose and ChangeNotifier throws "used after being disposed", crashing
+  /// instead of merely skipping a repaint.
+  bool _disposed = false;
+
+  /// Safe to call after dispose: a disposed provider simply stops notifying.
+  void _notify() {
+    if (_disposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
   UnloadSession? _active;
   bool _lookupBusy = false;
   bool _actionBusy = false;
@@ -30,14 +46,14 @@ class UnloadProvider extends ChangeNotifier {
         _message = const UnloadActionMessage.failure(
           'Masukkan / pindai barcode PO terlebih dahulu.',
         );
-        notifyListeners();
+        _notify();
       }
       return;
     }
 
     _lookupBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       _active = await _repository.findByPo(code);
@@ -56,7 +72,7 @@ class UnloadProvider extends ChangeNotifier {
       );
     } finally {
       _lookupBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -103,9 +119,7 @@ class UnloadProvider extends ChangeNotifier {
   Future<bool> completeActive() => _run((session) async {
     var po = session.poTransporter ?? '';
     _active = await _repository.complete(session.id, barcode: po);
-    _message = const UnloadActionMessage.success(
-      'Bongkar selesai. Dokumen siap untuk Check Out.',
-    );
+    _message = const UnloadActionMessage.success('Bongkar selesai.');
   });
 
   /// Cancels the running unloading and returns to the scan state.
@@ -123,7 +137,7 @@ class UnloadProvider extends ChangeNotifier {
 
     _actionBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       await action(active);
@@ -140,7 +154,7 @@ class UnloadProvider extends ChangeNotifier {
       return false;
     } finally {
       _actionBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -150,7 +164,7 @@ class UnloadProvider extends ChangeNotifier {
       return;
     }
     _active = null;
-    notifyListeners();
+    _notify();
   }
 
   void clearMessage() {
@@ -158,6 +172,12 @@ class UnloadProvider extends ChangeNotifier {
       return;
     }
     _message = null;
-    notifyListeners();
+    _notify();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

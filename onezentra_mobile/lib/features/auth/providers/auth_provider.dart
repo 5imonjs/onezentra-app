@@ -5,7 +5,6 @@ import 'package:onezentra_mobile/core/network/api_client.dart';
 
 /// Auth Provider - manages authentication state
 class AuthProvider extends ChangeNotifier {
-
   /// Dependencies are injectable so widget tests can substitute the repository
   /// without touching the network or the platform storage.
   AuthProvider({AuthRepository? repository, ApiClient? apiClient})

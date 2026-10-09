@@ -19,10 +19,10 @@ class LabelPrintSheet extends StatefulWidget {
     BuildContext context, {
     required BatchLabelData label,
   }) => showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => LabelPrintSheet(label: label),
-    );
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => LabelPrintSheet(label: label),
+  );
 
   @override
   State<LabelPrintSheet> createState() => _LabelPrintSheetState();
@@ -50,18 +50,19 @@ class _LabelPrintSheetState extends State<LabelPrintSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => ChangeNotifierProvider<LabelPrintProvider>.value(
-      value: _printer,
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+  Widget build(BuildContext context) =>
+      ChangeNotifierProvider<LabelPrintProvider>.value(
+        value: _printer,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: _Body(onPrint: _print),
         ),
-        child: _Body(onPrint: _print),
-      ),
-    );
+      );
 }
 
 /// Badan panel: semua kontrol cetak. Stateless supaya rebuild efficient dan
@@ -106,9 +107,7 @@ class _Body extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: printer.scanning
-                        ? null
-                        : printer.scan,
+                    onPressed: printer.scanning ? null : printer.scan,
                     child: const Text('Cari Printer'),
                   ),
                 ),
@@ -143,6 +142,7 @@ class _Body extends StatelessWidget {
     );
   }
 }
+
 class _PrinterSelector extends StatelessWidget {
   const _PrinterSelector({required this.printer});
 
@@ -188,15 +188,15 @@ class _WidthSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: SegmentedButton<LabelWidth>(
-        segments: LabelWidth.values
-            .map((w) => ButtonSegment(value: w, label: Text(w.label)))
-            .toList(),
-        selected: {printer.width},
-        onSelectionChanged: (s) => printer.setWidth(s.first),
-      ),
-    );
+    padding: const EdgeInsets.only(top: 12),
+    child: SegmentedButton<LabelWidth>(
+      segments: LabelWidth.values
+          .map((w) => ButtonSegment(value: w, label: Text(w.label)))
+          .toList(),
+      selected: {printer.width},
+      onSelectionChanged: (s) => printer.setWidth(s.first),
+    ),
+  );
 }
 
 class _Toggle extends StatelessWidget {
@@ -214,14 +214,14 @@ class _Toggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-      subtitle: hint == null
-          ? null
-          : Text(hint!, style: Theme.of(context).textTheme.bodySmall),
-      value: value,
-      onChanged: onChanged,
-    );
+    contentPadding: EdgeInsets.zero,
+    title: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+    subtitle: hint == null
+        ? null
+        : Text(hint!, style: Theme.of(context).textTheme.bodySmall),
+    value: value,
+    onChanged: onChanged,
+  );
 }
 
 class _Banner extends StatelessWidget {

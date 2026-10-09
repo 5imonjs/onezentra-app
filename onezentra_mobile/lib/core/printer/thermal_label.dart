@@ -78,8 +78,7 @@ String buildLabelText(BatchLabelData data, LabelWidth width) {
     return text.isEmpty ? '-' : text;
   }
 
-  List<String> wrap(String text, int maxChars) =>
-      wrapLabelText(text, maxChars);
+  List<String> wrap(String text, int maxChars) => wrapLabelText(text, maxChars);
 
   String line(String left, String right) {
     var gap = cols - left.length - right.length;

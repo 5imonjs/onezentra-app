@@ -19,12 +19,15 @@ Map<String, dynamic> userJsonWithPermissions(
 
 /// User model
 class User {
-
   User({
     required this.id,
     required this.fullName,
     required this.email,
-    required this.level, required this.status, required this.createdAt, required this.updatedAt, this.kodeDepo,
+    required this.level,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.kodeDepo,
     this.namaDepo,
     this.emailVerifiedAt,
     this.roles,
@@ -32,24 +35,24 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
-      id: _readInt(json['id']) ?? 0,
-      fullName: _readString(json['full_name']) ?? '',
-      email: _readString(json['email']) ?? '',
-      kodeDepo: _readString(json['kode_depo']),
-      namaDepo: _readString(json['nama_depo']),
-      level: _readString(json['level']) ?? 'operator',
-      status: _readString(json['status']) ?? 'active',
-      emailVerifiedAt: _readString(json['email_verified_at']),
-      createdAt: _readDate(json['created_at']) ?? DateTime.now(),
-      updatedAt: _readDate(json['updated_at']) ?? DateTime.now(),
-      roles: (json['roles'] as List<dynamic>?)
-          ?.whereType<Map<String, dynamic>>()
-          .map(Role.fromJson)
-          .toList(),
-      permissions: (json['permissions'] as List<dynamic>?)
-          ?.map((e) => e.toString())
-          .toList(),
-    );
+    id: _readInt(json['id']) ?? 0,
+    fullName: _readString(json['full_name']) ?? '',
+    email: _readString(json['email']) ?? '',
+    kodeDepo: _readString(json['kode_depo']),
+    namaDepo: _readString(json['nama_depo']),
+    level: _readString(json['level']) ?? 'operator',
+    status: _readString(json['status']) ?? 'active',
+    emailVerifiedAt: _readString(json['email_verified_at']),
+    createdAt: _readDate(json['created_at']) ?? DateTime.now(),
+    updatedAt: _readDate(json['updated_at']) ?? DateTime.now(),
+    roles: (json['roles'] as List<dynamic>?)
+        ?.whereType<Map<String, dynamic>>()
+        .map(Role.fromJson)
+        .toList(),
+    permissions: (json['permissions'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList(),
+  );
   final int id;
   final String fullName;
   final String email;
@@ -84,19 +87,19 @@ class User {
   }
 
   Map<String, dynamic> toJson() => {
-      'id': id,
-      'full_name': fullName,
-      'email': email,
-      'kode_depo': kodeDepo,
-      'nama_depo': namaDepo,
-      'level': level,
-      'status': status,
-      'email_verified_at': emailVerifiedAt,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'roles': roles?.map((e) => e.toJson()).toList(),
-      'permissions': permissions,
-    };
+    'id': id,
+    'full_name': fullName,
+    'email': email,
+    'kode_depo': kodeDepo,
+    'nama_depo': namaDepo,
+    'level': level,
+    'status': status,
+    'email_verified_at': emailVerifiedAt,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'roles': roles?.map((e) => e.toJson()).toList(),
+    'permissions': permissions,
+  };
 
   /// Get display name for role
   String get roleDisplayName {
@@ -115,10 +118,12 @@ class User {
   }
 
   /// Check if user has specific permission
-  bool hasPermission(String permission) => permissions?.contains(permission) ?? false;
+  bool hasPermission(String permission) =>
+      permissions?.contains(permission) ?? false;
 
   /// Check if user has any of the permissions
-  bool hasAnyPermission(List<String> permissions) => this.permissions?.any((p) => permissions.contains(p)) ?? false;
+  bool hasAnyPermission(List<String> permissions) =>
+      this.permissions?.any((p) => permissions.contains(p)) ?? false;
 
   /// Check if user is admin
   bool get isAdmin => level == 'admin_master' || level == 'admin_depo';
@@ -127,24 +132,23 @@ class User {
   /// (e.g. profile update) omits the permission list, so saving the profile
   /// cannot silently strip the rights the session already had.
   User withPermissions(List<String>? permissions) => User(
-      id: id,
-      fullName: fullName,
-      email: email,
-      kodeDepo: kodeDepo,
-      namaDepo: namaDepo,
-      level: level,
-      status: status,
-      emailVerifiedAt: emailVerifiedAt,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      roles: roles,
-      permissions: permissions,
-    );
+    id: id,
+    fullName: fullName,
+    email: email,
+    kodeDepo: kodeDepo,
+    namaDepo: namaDepo,
+    level: level,
+    status: status,
+    emailVerifiedAt: emailVerifiedAt,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    roles: roles,
+    permissions: permissions,
+  );
 }
 
 /// Role model
 class Role {
-
   Role({
     required this.id,
     required this.name,
@@ -154,15 +158,15 @@ class Role {
   });
 
   factory Role.fromJson(Map<String, dynamic> json) => Role(
-      id: User._readInt(json['id']) ?? 0,
-      name: User._readString(json['name']) ?? '',
-      slug: User._readString(json['slug']) ?? '',
-      description: User._readString(json['description']) ?? '',
-      permissions: (json['permissions'] as List<dynamic>?)
-          ?.whereType<Map<String, dynamic>>()
-          .map(Permission.fromJson)
-          .toList(),
-    );
+    id: User._readInt(json['id']) ?? 0,
+    name: User._readString(json['name']) ?? '',
+    slug: User._readString(json['slug']) ?? '',
+    description: User._readString(json['description']) ?? '',
+    permissions: (json['permissions'] as List<dynamic>?)
+        ?.whereType<Map<String, dynamic>>()
+        .map(Permission.fromJson)
+        .toList(),
+  );
   final int id;
   final String name;
   final String slug;
@@ -170,17 +174,16 @@ class Role {
   final List<Permission>? permissions;
 
   Map<String, dynamic> toJson() => {
-      'id': id,
-      'name': name,
-      'slug': slug,
-      'description': description,
-      'permissions': permissions?.map((e) => e.toJson()).toList(),
-    };
+    'id': id,
+    'name': name,
+    'slug': slug,
+    'description': description,
+    'permissions': permissions?.map((e) => e.toJson()).toList(),
+  };
 }
 
 /// Permission model
 class Permission {
-
   Permission({
     required this.id,
     required this.name,
@@ -190,12 +193,12 @@ class Permission {
   });
 
   factory Permission.fromJson(Map<String, dynamic> json) => Permission(
-      id: User._readInt(json['id']) ?? 0,
-      name: User._readString(json['name']) ?? '',
-      slug: User._readString(json['slug']) ?? '',
-      description: User._readString(json['description']) ?? '',
-      group: User._readString(json['group']) ?? '',
-    );
+    id: User._readInt(json['id']) ?? 0,
+    name: User._readString(json['name']) ?? '',
+    slug: User._readString(json['slug']) ?? '',
+    description: User._readString(json['description']) ?? '',
+    group: User._readString(json['group']) ?? '',
+  );
   final int id;
   final String name;
   final String slug;
@@ -203,40 +206,40 @@ class Permission {
   final String group;
 
   Map<String, dynamic> toJson() => {
-      'id': id,
-      'name': name,
-      'slug': slug,
-      'description': description,
-      'group': group,
-    };
+    'id': id,
+    'name': name,
+    'slug': slug,
+    'description': description,
+    'group': group,
+  };
 }
 
 /// Auth Response model
 class AuthResponse {
-
   AuthResponse({
     required this.message,
-    required this.user, this.token,
+    required this.user,
+    this.token,
     this.tokenType,
     this.expiresAt,
     this.permissions,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) => AuthResponse(
-      message: User._readString(json['message']) ?? '',
-      token: User._readString(json['token']),
-      tokenType: User._readString(json['token_type']),
-      expiresAt: User._readString(json['expires_at']),
-      user: User.fromJson(
-        userJsonWithPermissions(
-          json['user'] as Map<String, dynamic>,
-          json['permissions'],
-        ),
+    message: User._readString(json['message']) ?? '',
+    token: User._readString(json['token']),
+    tokenType: User._readString(json['token_type']),
+    expiresAt: User._readString(json['expires_at']),
+    user: User.fromJson(
+      userJsonWithPermissions(
+        json['user'] as Map<String, dynamic>,
+        json['permissions'],
       ),
-      permissions: (json['permissions'] as List<dynamic>?)
-          ?.map((e) => e.toString())
-          .toList(),
-    );
+    ),
+    permissions: (json['permissions'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList(),
+  );
   final String message;
   final String? token;
   final String? tokenType;
@@ -247,15 +250,14 @@ class AuthResponse {
 
 /// Login Request model
 class LoginRequest {
-
   LoginRequest({required this.email, required this.password, this.deviceName});
   final String email;
   final String password;
   final String? deviceName;
 
   Map<String, dynamic> toJson() => {
-      'email': email,
-      'password': password,
-      if (deviceName != null) 'device_name': deviceName,
-    };
+    'email': email,
+    'password': password,
+    if (deviceName != null) 'device_name': deviceName,
+  };
 }

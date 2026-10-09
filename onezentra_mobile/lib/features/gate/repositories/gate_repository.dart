@@ -2,23 +2,18 @@ import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/gate/models/gate_models.dart';
 
 /// GET transport for the gate endpoints, injectable for tests.
-typedef GateGet = Future<dynamic> Function(
-  String endpoint,
-  Map<String, String> query,
-);
+typedef GateGet =
+    Future<dynamic> Function(String endpoint, Map<String, String> query);
 
 /// POST transport for the gate endpoints, injectable for tests.
-typedef GatePost = Future<dynamic> Function(
-  String endpoint,
-  Map<String, dynamic> body,
-);
+typedef GatePost =
+    Future<dynamic> Function(String endpoint, Map<String, dynamic> body);
 
 /// Data access for the Check In Point (gate) menu.
 ///
 /// Mirrors the endpoints behind `/api/v1/gate-transactions` and the
 /// `rencana-kirim/{id}/verify` transition the web app uses.
 class GateRepository {
-
   GateRepository({GateGet? get, GatePost? post})
     : _get = get ?? _defaultGet,
       _post = post ?? _defaultPost;
@@ -42,8 +37,8 @@ class GateRepository {
   /// "B 1234 XY" survives the round trip.
   static String _appendQuery(String endpoint, Map<String, String> query) =>
       query.isEmpty
-          ? endpoint
-          : '$endpoint?${Uri(queryParameters: query).query}';
+      ? endpoint
+      : '$endpoint?${Uri(queryParameters: query).query}';
 
   static Map<String, dynamic> _expectObject(dynamic response) {
     if (response is! Map) {

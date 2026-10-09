@@ -9,7 +9,10 @@ import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart
 /// Repository whose profile answer can change between calls, simulating a
 /// role edited on web after the mobile login.
 class _ChangingAuthRepository extends AuthRepository {
-  _ChangingAuthRepository({required this.loginUser, required this.refreshedUser});
+  _ChangingAuthRepository({
+    required this.loginUser,
+    required this.refreshedUser,
+  });
 
   final User loginUser;
   final User refreshedUser;
@@ -19,7 +22,8 @@ class _ChangingAuthRepository extends AuthRepository {
     required String email,
     required String password,
     String? deviceName,
-  }) async => AuthResponse(message: 'Login successful', token: 't', user: loginUser);
+  }) async =>
+      AuthResponse(message: 'Login successful', token: 't', user: loginUser);
 
   @override
   Future<User> getUser() async => refreshedUser;

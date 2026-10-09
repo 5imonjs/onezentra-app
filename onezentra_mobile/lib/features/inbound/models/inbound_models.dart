@@ -120,9 +120,8 @@ class Receiving {
           ? rawItems
                 .whereType<Map>()
                 .map(
-                  (item) => ReceivedItem.fromJson(
-                    Map<String, dynamic>.from(item),
-                  ),
+                  (item) =>
+                      ReceivedItem.fromJson(Map<String, dynamic>.from(item)),
                 )
                 .toList()
           : const [],
@@ -156,9 +155,7 @@ class ReceivingPage {
         ? rawItems
               .whereType<Map>()
               .map(
-                (item) => Receiving.fromJson(
-                  Map<String, dynamic>.from(item),
-                ),
+                (item) => Receiving.fromJson(Map<String, dynamic>.from(item)),
               )
               .toList()
         : <Receiving>[];

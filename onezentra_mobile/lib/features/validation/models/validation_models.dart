@@ -346,9 +346,7 @@ class SjValidation {
       status: _readString(json['status']) ?? 'IN_PROGRESS',
       startedAt: _readDate(json['started_at']),
       completedAt: _readDate(json['completed_at']),
-      document: document == null
-          ? null
-          : ValidationDocument.fromJson(document),
+      document: document == null ? null : ValidationDocument.fromJson(document),
       items: rawItems is List
           ? rawItems
                 .whereType<Map>()
@@ -393,9 +391,8 @@ class ValidationHistoryPage {
         ? rawItems
               .whereType<Map>()
               .map(
-                (item) => SjValidation.fromJson(
-                  Map<String, dynamic>.from(item),
-                ),
+                (item) =>
+                    SjValidation.fromJson(Map<String, dynamic>.from(item)),
               )
               .toList()
         : <SjValidation>[];
