@@ -15,6 +15,7 @@ use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
 use Dompdf\Dompdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -90,11 +91,57 @@ class BiayaThlController extends Controller
             'approved' => (clone $summaryQuery)->where('status', 'approved')->count(),
             'rejected' => (clone $summaryQuery)->where('status', 'rejected')->count(),
             'revisi' => (clone $summaryQuery)->where('status', 'revisi')->count(),
+            'queue' => $this->approvalQueueSummary($summaryQuery),
         ];
 
         return response()->json($response)
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache');
+    }
+
+    /**
+     * Antrean biaya per level approval untuk blok dashboard role-aware:
+     * jumlah, total nominal tertahan, dan umur pengajuan tertua (hari).
+     *
+     * @param  Builder  $summaryQuery
+     * @return array{check: array{count: int, nominal: float, oldest_days: int|null}, approve: array{count: int, nominal: float, oldest_days: int|null}, rfah: array{count: int, nominal: float, oldest_days: int|null}}
+     */
+    private function approvalQueueSummary($summaryQuery): array
+    {
+        $byStatus = (clone $summaryQuery)->reorder()->toBase()
+            ->selectRaw('status, COUNT(*) as c, COALESCE(SUM(nominal_biaya), 0) as nominal, MIN(COALESCE(submitted_at, created_at)) as oldest')
+            ->groupBy('status')
+            ->get()
+            ->keyBy('status');
+
+        $rfah = (clone $summaryQuery)->reorder()
+            ->where('status', 'rlh_approved')
+            ->where('is_rfah_required', true)
+            ->toBase()
+            ->selectRaw('COUNT(*) as c, COALESCE(SUM(nominal_biaya), 0) as nominal, MIN(COALESCE(submitted_at, created_at)) as oldest')
+            ->first();
+
+        return [
+            'check' => $this->queueRow($byStatus->get('pending')),
+            'approve' => $this->queueRow($byStatus->get('checked')),
+            'rfah' => $this->queueRow($rfah),
+        ];
+    }
+
+    /**
+     * @return array{count: int, nominal: float, oldest_days: int|null}
+     */
+    private function queueRow(?object $row): array
+    {
+        $oldest = $row->oldest ?? null;
+
+        return [
+            'count' => (int) ($row->c ?? 0),
+            'nominal' => (float) ($row->nominal ?? 0),
+            'oldest_days' => $oldest
+                ? max(0, (int) floor((now()->getTimestamp() - strtotime((string) $oldest)) / 86400))
+                : null,
+        ];
     }
 
     public function store(Request $request)

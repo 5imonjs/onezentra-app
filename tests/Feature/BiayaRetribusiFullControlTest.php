@@ -111,6 +111,29 @@ class BiayaRetribusiFullControlTest extends TestCase
         $this->assertModelMissing($biaya);
     }
 
+    public function test_index_summary_queue_per_approval_level(): void
+    {
+        Sanctum::actingAs($this->master);
+
+        $base = fn (array $overrides) => BiayaRetribusi::create(array_merge([
+            'tanggal_pengajuan' => '2026-09-24', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A',
+            'created_by' => $this->master->id,
+        ], $overrides));
+
+        $base(['status' => 'pending', 'nominal_biaya' => 100000, 'submitted_at' => now()->subDays(4)]);
+        $base(['status' => 'checked', 'nominal_biaya' => 200000, 'submitted_at' => now()->subDays(1)]);
+        $base(['status' => 'rlh_approved', 'nominal_biaya' => 1500000, 'is_rfah_required' => true, 'submitted_at' => now()->subDays(6)]);
+
+        $res = $this->getJson('/api/v1/biaya-retribusi?per_page=1')->assertOk();
+
+        $this->assertSame(1, $res->json('summary.queue.check.count'));
+        $this->assertSame(4, $res->json('summary.queue.check.oldest_days'));
+        $this->assertSame(1, $res->json('summary.queue.approve.count'));
+        $this->assertSame(1, $res->json('summary.queue.rfah.count'));
+        $this->assertEquals(1500000, $res->json('summary.queue.rfah.nominal'));
+        $this->assertSame(6, $res->json('summary.queue.rfah.oldest_days'));
+    }
+
     private function makeUser(string $email, Role $role): User
     {
         $user = User::create([

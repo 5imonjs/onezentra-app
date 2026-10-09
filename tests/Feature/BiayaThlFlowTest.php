@@ -62,6 +62,34 @@ class BiayaThlFlowTest extends TestCase
         $this->assertSame(1, $res->json('summary.rejected'));
     }
 
+    public function test_index_summary_queue_per_approval_level(): void
+    {
+        Sanctum::actingAs($this->user);
+
+        $base = fn (array $overrides) => BiayaThl::create(array_merge([
+            'tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A',
+            'created_by' => $this->user->id,
+        ], $overrides));
+
+        $base(['status' => 'pending', 'nominal_biaya' => 100000, 'submitted_at' => now()->subDays(3)]);
+        $base(['status' => 'checked', 'nominal_biaya' => 200000, 'submitted_at' => now()->subDays(1)]);
+        $base(['status' => 'rlh_approved', 'nominal_biaya' => 900000, 'is_rfah_required' => true, 'submitted_at' => now()->subDays(5)]);
+        // rlh_approved tanpa RFAH tidak boleh masuk antrean rfah.
+        $base(['status' => 'rlh_approved', 'nominal_biaya' => 300000, 'is_rfah_required' => false, 'submitted_at' => now()->subDays(2)]);
+
+        $res = $this->getJson('/api/v1/biaya-thl?per_page=1')->assertOk();
+
+        $this->assertSame(1, $res->json('summary.queue.check.count'));
+        $this->assertEquals(100000, $res->json('summary.queue.check.nominal'));
+        $this->assertSame(3, $res->json('summary.queue.check.oldest_days'));
+        $this->assertSame(1, $res->json('summary.queue.approve.count'));
+        $this->assertEquals(200000, $res->json('summary.queue.approve.nominal'));
+        $this->assertSame(1, $res->json('summary.queue.approve.oldest_days'));
+        $this->assertSame(1, $res->json('summary.queue.rfah.count'));
+        $this->assertEquals(900000, $res->json('summary.queue.rfah.nominal'));
+        $this->assertSame(5, $res->json('summary.queue.rfah.oldest_days'));
+    }
+
     public function test_index_depot_scope_tolerates_blank_nama_depo_rows(): void
     {
         Sanctum::actingAs($this->user);

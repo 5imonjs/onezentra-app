@@ -126,6 +126,7 @@ class DashboardController extends Controller
             $alerts['standarisasi_pending'] = $this->moduleQuery('standarisasi', $depot, $user)
                 ->where('standarisasi_tumpukan.status', 'pending')->count();
         }
+        $opnameAtRisk = null;
         if ($can('opname.view')) {
             $waveQuery = OpnameExpiredWave::query();
             if ($user->isDepotScoped()) {
@@ -138,6 +139,24 @@ class DashboardController extends Controller
                 $weekQuery = (clone $waveQuery)->where('week_start', $latestWeek);
                 $alerts['expired_kritis'] = (clone $weekQuery)->where('status_ini', 'KRITIS')->count();
                 $alerts['expired_total'] = (clone $weekQuery)->whereIn('status_ini', ['KRITIS', 'EXPIRED'])->count();
+
+                // Kuantitas berisiko (PCS/CRT), bukan sekadar jumlah baris —
+                // sinyal utama operator opname. Satu agregat, bukan per-status.
+                $risk = (clone $weekQuery)
+                    ->toBase()
+                    ->selectRaw(
+                        "COALESCE(SUM(CASE WHEN status_ini = 'KRITIS' THEN 1 ELSE 0 END), 0) as kritis_rows, "
+                        ."COALESCE(SUM(CASE WHEN status_ini = 'EXPIRED' THEN 1 ELSE 0 END), 0) as expired_rows, "
+                        .'COALESCE(SUM(qty_ini_pcs), 0) as pcs, COALESCE(SUM(qty_ini_crt), 0) as crt'
+                    )
+                    ->first();
+                $opnameAtRisk = [
+                    'week_start' => (string) $latestWeek,
+                    'kritis_rows' => (int) $risk->kritis_rows,
+                    'expired_rows' => (int) $risk->expired_rows,
+                    'pcs' => (float) $risk->pcs,
+                    'crt' => (float) $risk->crt,
+                ];
             }
         }
 
@@ -157,6 +176,8 @@ class DashboardController extends Controller
             'avg_gate_to_receiving_hours' => null,
             'sj_open_count' => 0,
             'sj_oldest_days' => null,
+            'rk_checked_in_count' => 0,
+            'rk_checked_in_oldest_days' => null,
         ];
         if ($can('receiving.view')) {
             $pairs = Receiving::query()
@@ -180,6 +201,46 @@ class DashboardController extends Controller
             $sla['sj_open_count'] = (clone $openSj)->count();
             $oldest = (clone $openSj)->min('created_at');
             $sla['sj_oldest_days'] = $oldest ? (int) now()->diffInDays($oldest) : null;
+        }
+
+        // WIP terbuka: RK yang sudah masuk gate tapi belum diverifikasi.
+        // Umur dihitung dari checked_in_at (fallback created_at) agar gate
+        // lama tidak tersembunyi hanya karena status masih CHECKED_IN.
+        if ($can('rencana_kirim.view')) {
+            $rkCheckedIn = RencanaKirim::query()
+                ->where('status', 'CHECKED_IN')
+                ->when($depot, fn ($q) => $q->where('kode_depo', $depot));
+            $rkAgg = $rkCheckedIn->toBase()
+                ->selectRaw('COUNT(*) as c, MIN(COALESCE(checked_in_at, created_at)) as oldest')
+                ->first();
+            $sla['rk_checked_in_count'] = (int) $rkAgg->c;
+            $sla['rk_checked_in_oldest_days'] = $rkAgg->oldest
+                ? max(0, (int) floor((now()->getTimestamp() - strtotime((string) $rkAgg->oldest)) / 86400))
+                : null;
+        }
+
+        // Selisih qty inbound (ledger receiving_items): sinyal kualitas
+        // penerimaan, bukan hanya jumlah dokumen.
+        $inboundSelisih = ['items' => 0, 'kurang' => 0, 'lebih' => 0];
+        if ($can('receiving.view')) {
+            $selisihQuery = ReceivingItem::query()
+                ->whereNotNull('selisih_qty')
+                ->where('selisih_qty', '!=', 0);
+            if ($user->isDepotScoped()) {
+                $selisihQuery->whereHas('receiving.rencanaKirim', fn ($q) => $q->forUserDepot($user));
+            } elseif ($depot) {
+                $selisihQuery->whereHas('receiving.rencanaKirim', fn ($q) => $q->where('kode_depo', $depot));
+            }
+            $selisih = $selisihQuery->toBase()->selectRaw(
+                'COUNT(*) as c,'
+                .' SUM(CASE WHEN selisih_qty < 0 THEN 1 ELSE 0 END) as kurang,'
+                .' SUM(CASE WHEN selisih_qty > 0 THEN 1 ELSE 0 END) as lebih'
+            )->first();
+            $inboundSelisih = [
+                'items' => (int) $selisih->c,
+                'kurang' => (int) $selisih->kurang,
+                'lebih' => (int) $selisih->lebih,
+            ];
         }
 
         $recent = [];
@@ -207,8 +268,10 @@ class DashboardController extends Controller
                 'totals' => $totals,
                 'new_7d' => $new7d,
                 'alerts' => $alerts,
+                'opname_at_risk' => $opnameAtRisk,
                 'quality' => $quality,
                 'sla' => $sla,
+                'inbound_selisih' => $inboundSelisih,
                 'recent' => $recent,
                 'activity_trend' => ['current_7d' => $activityNow, 'prev_7d' => $activityPrev],
             ],

@@ -106,6 +106,8 @@ class DashboardSummaryTest extends TestCase
         $this->assertSame(2, $data['quality']['npn_no_umur']);
         $this->assertSame(1, $data['sla']['sj_open_count']);
         $this->assertSame(0, $data['sla']['sj_oldest_days']);
+        $this->assertSame(1, $data['opname_at_risk']['kritis_rows']);
+        $this->assertGreaterThan(0, $data['opname_at_risk']['pcs']);
         $this->assertNotEmpty($data['recent']);
     }
 
@@ -125,6 +127,9 @@ class DashboardSummaryTest extends TestCase
 
         $this->assertArrayHasKey('npn', $res->json('data.totals'));
         $this->assertArrayNotHasKey('rencana_kirim', $res->json('data.totals'));
+        $this->assertNull($res->json('data.opname_at_risk'));
+        $this->assertSame(0, $res->json('data.inbound_selisih.items'));
+        $this->assertSame(0, $res->json('data.sla.rk_checked_in_count'));
         $this->assertSame([], $res->json('data.recent'));
     }
 
@@ -148,5 +153,38 @@ class DashboardSummaryTest extends TestCase
         $res = $this->getJson('/api/v1/dashboard/summary')->assertOk();
 
         $this->assertEqualsWithDelta(3.0, (float) $res->json('data.sla.avg_gate_to_receiving_hours'), 0.2);
+    }
+
+    public function test_summary_inbound_selisih_by_sign_and_rk_checkin_aging(): void
+    {
+        $user = $this->userWith('dash-selisih@example.com', $this->perms());
+        Sanctum::actingAs($user);
+
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'SJ-SELISIH', 'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test',
+            'status' => 'CHECKED_IN', 'created_by' => $user->id,
+            'checked_in_at' => now()->subDays(2),
+        ]);
+        $receiving = Receiving::create([
+            'rencana_kirim_id' => $rk->id, 'status' => 'pending',
+        ]);
+        ReceivingItem::create([
+            'source' => 'VALIDASI_SJ', 'receiving_id' => $receiving->id, 'kode_barang' => 'B-1',
+            'nama_barang' => 'P1', 'expected_qty' => 10, 'actual_qty' => 8, 'selisih_qty' => -2,
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'condition' => 'FISIK_BAGUS',
+        ]);
+        ReceivingItem::create([
+            'source' => 'VALIDASI_SJ', 'receiving_id' => $receiving->id, 'kode_barang' => 'B-2',
+            'nama_barang' => 'P2', 'expected_qty' => 10, 'actual_qty' => 13, 'selisih_qty' => 3,
+            'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'condition' => 'FISIK_BAGUS',
+        ]);
+
+        $res = $this->getJson('/api/v1/dashboard/summary')->assertOk();
+
+        $this->assertSame(2, $res->json('data.inbound_selisih.items'));
+        $this->assertSame(1, $res->json('data.inbound_selisih.kurang'));
+        $this->assertSame(1, $res->json('data.inbound_selisih.lebih'));
+        $this->assertSame(1, $res->json('data.sla.rk_checked_in_count'));
+        $this->assertSame(2, $res->json('data.sla.rk_checked_in_oldest_days'));
     }
 }
