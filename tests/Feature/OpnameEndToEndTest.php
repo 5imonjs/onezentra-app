@@ -173,6 +173,21 @@ class OpnameEndToEndTest extends TestCase
         $this->assertEquals(-1, (float) $wave->qty_koreksi_crt);
         $this->assertSame($this->checker->id, (int) $wave->validated_by);
         $this->assertSame('COMPLETED', $session->fresh()->status);
+
+        // 8. Regresi: di produksi id baris penerimaan sudah jauh lebih besar
+        // dari sj_validation_item_id. Relasi batch WAJIB memakai kolom
+        // sj_validation_item_id sebagai local key, bukan receiving_items.id.
+        // Baris baru di bawah sengaja punya id != sj_validation_item_id agar
+        // kebetulan id yang menutupi bug (pada DB test yang masih sepi) hilang.
+        $decoy = ReceivingItem::create([
+            'receiving_id' => $receiving->id,
+            'sj_validation_item_id' => $items[0]['id'],
+            'kode_barang' => 'B-E2E-OP',
+            'nama_barang' => 'Produk E2E Opname',
+            'source' => ReceivingItem::SOURCE_VALIDASI,
+        ]);
+        $this->assertNotSame((int) $decoy->sj_validation_item_id, (int) $decoy->id);
+        $this->assertSame($sjBatch->id, $decoy->batch?->id);
     }
 
     public function test_receiving_complete_accepts_uppercase_scan_for_lowercase_po(): void

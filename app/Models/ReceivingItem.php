@@ -96,7 +96,12 @@ class ReceivingItem extends Model
      */
     public function batch(): HasOne
     {
-        return $this->hasOne(Batch::class, 'sj_validation_item_id');
+        // Local key WAJIB ditulis eksplisit: default Eloquent memakai
+        // receiving_items.id, sehingga query jadi
+        // `batches.sj_validation_item_id = receiving_items.id` — tidak
+        // pernah cocok karena kedua kolom beda arti. Yang benar:
+        // `batches.sj_validation_item_id = receiving_items.sj_validation_item_id`.
+        return $this->hasOne(Batch::class, 'sj_validation_item_id', 'sj_validation_item_id');
     }
 
     /**
