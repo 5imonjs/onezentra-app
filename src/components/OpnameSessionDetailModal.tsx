@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import BarcodeScanner, { SCAN_FORMATS_1D, SCAN_FORMATS_QR } from '@/components/BarcodeScanner';
@@ -317,8 +317,8 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
               </div>
             )}
 
-            <div className="border border-gray-300 rounded-xl divide-y divide-gray-100">
-              <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 p-3 bg-surface-card/95 backdrop-blur border-b border-gray-100 rounded-t-xl">
+            <div className="border border-gray-300 rounded-xl overflow-hidden">
+              <div className="flex flex-wrap items-center gap-2 p-3 bg-surface-card/95 backdrop-blur border-b border-gray-100">
                 <div className="relative flex-1 min-w-[200px]">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                   <input
@@ -343,104 +343,155 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                   <span className="text-xs text-slate-500">{visibleItems.length} cocok</span>
                 )}
               </div>
-              {visibleItems.map((it) => {
-                const isVerified = Boolean(it.verified_at);
-                const via = identified[it.id];
-                const formOpen = via && activeId === it.id;
-                const expectedCrt = it.expected_crt != null ? Number(it.expected_crt) : null;
-                const expectedPcs = it.expected_pcs != null ? Number(it.expected_pcs) : null;
 
-                let diffCrt: number | null = null;
-                if (isVerified && it.qty_fisik_crt != null && expectedCrt != null) {
-                  diffCrt = Number(it.qty_fisik_crt) - expectedCrt;
-                }
+              {(detail.items ?? []).length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-gray-500">Belum ada baris dalam sesi ini.</p>
+              ) : (
+                <div className="max-h-[560px] overflow-x-auto overflow-y-auto">
+                  <table className="w-full min-w-[900px] border-collapse">
+                    <caption className="sr-only">Daftar batch sesi opname</caption>
+                    <thead className="sticky top-0 z-10">
+                      <tr className="border-b border-gray-300 bg-surface-raised">
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Barang</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Batch</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Produk</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Hasil</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {visibleItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">Tidak ada baris cocok dengan pencarian.</td>
+                        </tr>
+                      ) : visibleItems.map((it) => {
+                        const isVerified = Boolean(it.verified_at);
+                        const via = identified[it.id];
+                        const formOpen = via && activeId === it.id;
+                        const expectedCrt = it.expected_crt != null ? Number(it.expected_crt) : null;
+                        const expectedPcs = it.expected_pcs != null ? Number(it.expected_pcs) : null;
 
-                return (
-                  <div key={it.id} id={`session-item-${it.id}`} className={`p-3 transition-colors ${highlightId === it.id ? 'bg-amber-50' : ''}`}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-sm font-semibold">{it.wave?.kode_barang}</span>
-                      <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-surface-raised text-slate-600" title={`Batch ${it.batch?.batch_number || '-'} · Barcode ${it.batch?.barcode_label || '-'}`}>{it.batch?.batch_number || 'tanpa batch'}</span>
-                      <span className="text-xs text-gray-500">
-                        {it.wave?.nama_barang || ''} · exp {fmtDate(it.wave?.expired_date_ini)}
-                      </span>
-                      {isVerified
-                        ? <span className="ml-auto text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">Terverifikasi{f(it.qty_fisik_crt)}</span>
-                        : <span className="ml-auto text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">Belum</span>}
-                    </div>
+                        let diffCrt: number | null = null;
+                        if (isVerified && it.qty_fisik_crt != null && expectedCrt != null) {
+                          diffCrt = Number(it.qty_fisik_crt) - expectedCrt;
+                        }
 
-                    {isVerified && expectedCrt != null && (
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
-                        <span className="text-gray-500">
-                          Fisik {it.qty_fisik_crt} CRT{it.qty_fisik_pcs != null ? ` / ${it.qty_fisik_pcs} PCS` : ''}{it.condition ? ` · ${it.condition}` : ''}
-                        </span>
-                        <span className="text-gray-500">Acuan {expectedCrt} CRT{expectedPcs != null ? ` / ${expectedPcs} PCS` : ''}</span>
-                        <span className={diffCrt === 0 ? 'text-slate-500' : diffCrt != null && diffCrt < 0 ? 'text-red-600 font-semibold' : diffCrt != null ? 'text-emerald-600 font-semibold' : ''}>
-                          {diffCrt === 0 ? 'Sesuai' : diffCrt != null ? (diffCrt < 0 ? `Selisih ${diffCrt}` : `Selisih +${diffCrt}`) : ''}
-                        </span>
-                      </div>
-                    )}
-
-                    {!isVerified && canEdit && canCount && (
-                      via
-                        ? (formOpen
-                            ? (
-                              <>
-                                {showExpected && expectedCrt != null && (
-                                  <p className="mt-1.5 text-xs text-slate-500">
-                                    Acuan sistem: {expectedCrt} CRT{expectedPcs != null ? ` / ${expectedPcs} PCS` : ''}
-                                  </p>
+                        return (
+                          <Fragment key={it.id}>
+                            <tr id={`session-item-${it.id}`} className={`transition-colors ${highlightId === it.id ? 'bg-amber-50' : 'hover:bg-overlay-50'}`}>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="font-mono text-sm font-semibold">{it.wave?.kode_barang}</span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span
+                                  className="font-mono text-xs px-1.5 py-0.5 rounded bg-surface-raised text-slate-600"
+                                  title={`Batch ${it.batch?.batch_number || '-'} · Barcode ${it.batch?.barcode_label || '-'}`}
+                                >
+                                  {it.batch?.batch_number || 'tanpa batch'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-xs text-gray-600 max-w-[280px]">
+                                <span className="block truncate">{it.wave?.nama_barang || '-'}</span>
+                                <span className="text-gray-400">exp {fmtDate(it.wave?.expired_date_ini)}</span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {isVerified
+                                  ? <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">Terverifikasi{f(it.qty_fisik_crt)}</span>
+                                  : <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">Belum</span>}
+                              </td>
+                              <td className="px-4 py-3 text-xs whitespace-nowrap">
+                                {isVerified && expectedCrt != null ? (
+                                  <div className="space-y-0.5">
+                                    <span className="block text-gray-700">
+                                      Fisik {it.qty_fisik_crt} CRT{it.qty_fisik_pcs != null ? ` / ${it.qty_fisik_pcs} PCS` : ''}{it.condition ? ` · ${it.condition}` : ''}
+                                    </span>
+                                    <span className="block text-gray-500">Acuan {expectedCrt} CRT{expectedPcs != null ? ` / ${expectedPcs} PCS` : ''}</span>
+                                    <span className={`block ${diffCrt === 0 ? 'text-slate-500' : diffCrt != null && diffCrt < 0 ? 'text-red-600 font-semibold' : diffCrt != null ? 'text-emerald-600 font-semibold' : ''}`}>
+                                      {diffCrt === 0 ? 'Sesuai' : diffCrt != null ? (diffCrt < 0 ? `Selisih ${diffCrt}` : `Selisih +${diffCrt}`) : ''}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">—</span>
                                 )}
-                                <div className="mt-1.5 flex items-center gap-2 text-xs">
-                                  <span className="font-semibold text-emerald-700">Teridentifikasi ({via === 'scan' ? 'scan' : 'manual'})</span>
-                                  <button type="button" onClick={() => clearIdentification(it.id)} className="text-slate-400 hover:text-red-500 underline">Tutup form</button>
-                                </div>
-                                <div className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
-                                  <div>
-                                    <label htmlFor={`vf-crt-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Fisik CRT *</label>
-                                    <input id={`vf-crt-${it.id}`} min="0" step="1" type="number" value={forms[it.id]?.qty_fisik_crt || ''} onChange={(e) => setForm(it.id, { qty_fisik_crt: e.target.value })} className="input-field text-sm" />
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                {!isVerified && canEdit && canCount ? (
+                                  via
+                                    ? (formOpen
+                                        ? <span className="text-xs font-semibold text-emerald-700">Form terbuka</span>
+                                        : (
+                                          <div className="text-right">
+                                            <span className="text-xs font-semibold text-emerald-700">Teridentifikasi ({via === 'scan' ? 'scan' : 'manual'})</span>
+                                            <div className="mt-1 flex justify-end gap-2">
+                                              <button type="button" onClick={() => setActiveId(it.id)} className="font-semibold text-primary-700 underline hover:text-primary-900">Isi form</button>
+                                              <button type="button" onClick={() => clearIdentification(it.id)} className="text-slate-400 hover:text-red-500 underline">Batalkan</button>
+                                            </div>
+                                          </div>
+                                        ))
+                                    : (
+                                      <div className="text-right">
+                                        <button type="button" onClick={() => setShowScanner(true)} className="btn-secondary text-xs">Scan label</button>
+                                        <div className="mt-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => identify(it.id, 'manual')}
+                                            title="Hanya bila label fisik rusak tak terbaca — tercatat sebagai identifikasi manual"
+                                            className="text-xs font-semibold text-slate-500 underline hover:text-slate-700"
+                                          >
+                                            Label rusak — identifikasi manual
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )
+                                ) : (
+                                  <span className="text-gray-400">—</span>
+                                )}
+                              </td>
+                            </tr>
+                            {formOpen && (
+                              <tr className="bg-surface-raised/50">
+                                <td colSpan={6} className="px-4 py-3">
+                                  {showExpected && expectedCrt != null && (
+                                    <p className="text-xs text-slate-500">
+                                      Acuan sistem: {expectedCrt} CRT{expectedPcs != null ? ` / ${expectedPcs} PCS` : ''}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <span className="font-semibold text-emerald-700">Teridentifikasi ({via === 'scan' ? 'scan' : 'manual'})</span>
+                                    <button type="button" onClick={() => clearIdentification(it.id)} className="text-slate-400 hover:text-red-500 underline">Tutup form</button>
                                   </div>
-                                  <div>
-                                    <label htmlFor={`vf-pcs-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Fisik PCS</label>
-                                    <input id={`vf-pcs-${it.id}`} min="0" step="1" type="number" value={forms[it.id]?.qty_fisik_pcs || ''} onChange={(e) => setForm(it.id, { qty_fisik_pcs: e.target.value })} className="input-field text-sm" />
+                                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
+                                    <div>
+                                      <label htmlFor={`vf-crt-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Fisik CRT *</label>
+                                      <input id={`vf-crt-${it.id}`} min="0" step="1" type="number" value={forms[it.id]?.qty_fisik_crt || ''} onChange={(e) => setForm(it.id, { qty_fisik_crt: e.target.value })} className="input-field text-sm" />
+                                    </div>
+                                    <div>
+                                      <label htmlFor={`vf-pcs-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Fisik PCS</label>
+                                      <input id={`vf-pcs-${it.id}`} min="0" step="1" type="number" value={forms[it.id]?.qty_fisik_pcs || ''} onChange={(e) => setForm(it.id, { qty_fisik_pcs: e.target.value })} className="input-field text-sm" />
+                                    </div>
+                                    <div>
+                                      <label htmlFor={`vf-cond-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Kondisi</label>
+                                      <select id={`vf-cond-${it.id}`} value={forms[it.id]?.condition || 'FISIK_BAGUS'} onChange={(e) => setForm(it.id, { condition: e.target.value })} className="input-field text-sm">
+                                        {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label htmlFor={`vf-photo-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Foto{conditionRequiresPhoto(forms[it.id]?.condition) ? ' *' : ''}</label>
+                                      <input id={`vf-photo-${it.id}`} type="file" accept="image/*" onChange={(e) => setForm(it.id, { photo: e.target.files?.[0] ?? null })} className="text-xs" />
+                                    </div>
+                                    <button onClick={() => verify(it)} disabled={busy} className="btn-primary text-sm disabled:opacity-50">Verifikasi</button>
                                   </div>
-                                  <div>
-                                    <label htmlFor={`vf-cond-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Kondisi</label>
-                                    <select id={`vf-cond-${it.id}`} value={forms[it.id]?.condition || 'FISIK_BAGUS'} onChange={(e) => setForm(it.id, { condition: e.target.value })} className="input-field text-sm">
-                                      {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <label htmlFor={`vf-photo-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Foto{conditionRequiresPhoto(forms[it.id]?.condition) ? ' *' : ''}</label>
-                                    <input id={`vf-photo-${it.id}`} type="file" accept="image/*" onChange={(e) => setForm(it.id, { photo: e.target.files?.[0] ?? null })} className="text-xs" />
-                                  </div>
-                                  <button onClick={() => verify(it)} disabled={busy} className="btn-primary text-sm disabled:opacity-50">Verifikasi</button>
-                                </div>
-                              </>
-                            )
-                            : (
-                              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                                <span className="font-semibold text-emerald-700">Teridentifikasi ({via === 'scan' ? 'scan' : 'manual'})</span>
-                                <button type="button" onClick={() => setActiveId(it.id)} className="font-semibold text-primary-700 underline hover:text-primary-900">Isi form</button>
-                                <button type="button" onClick={() => clearIdentification(it.id)} className="text-slate-400 hover:text-red-500 underline">Batalkan</button>
-                              </div>
-                            ))
-                        : (
-                          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                            <button type="button" onClick={() => setShowScanner(true)} className="btn-secondary text-xs">Scan label</button>
-                            <button
-                              type="button"
-                              onClick={() => identify(it.id, 'manual')}
-                              title="Hanya bila label fisik rusak tak terbaca — tercatat sebagai identifikasi manual"
-                              className="text-xs font-semibold text-slate-500 underline hover:text-slate-700"
-                            >
-                              Label rusak — identifikasi manual
-                            </button>
-                          </div>
-                        )
-                    )}
-                  </div>
-                );
-              })}
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
