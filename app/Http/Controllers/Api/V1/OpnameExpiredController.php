@@ -461,23 +461,14 @@ class OpnameExpiredController extends Controller
 
     private function depotSummary(string $weekStart, Request $request): array
     {
+        // Sumber opsi dropdown filter depo di web. Sengaja TIDAK memakai
+        // kode_depo/search dari request: opsi harus tetap lengkap (semua depo
+        // pada minggu itu, dalam scope user) walau tabel sedang difilter,
+        // supaya dropdown tidak kolaps setelah satu depo dipilih.
         $query = OpnameExpiredWave::query()->where('week_start', $weekStart);
 
         if ($request->user()->isDepotScoped()) {
             $query->where('kode_depo', $request->user()->kode_depo);
-        }
-
-        if ($request->kode_depo && ! $request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->kode_depo);
-        }
-
-        if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
-            $query->where(function ($q) use ($like) {
-                $q->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('sumber_material LIKE ? ESCAPE ?', [$like, '\\']);
-            });
         }
 
         return $query->selectRaw('kode_depo, nama_depo, status_ini, count(*) as c, sum(qty_ini_crt) as qty')
