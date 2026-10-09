@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
 import { useDashboardSummary } from '@/lib/dashboardSummary';
+import DashboardCardGrid from '@/components/DashboardCardGrid';
 
 function AlertCard({ href, label, value, hint, tone }: {
   href: string;
@@ -117,7 +118,7 @@ export default function DashboardAlerts({ kodeDepo }: { kodeDepo?: string }) {
   return (
     <section aria-label="Peringatan">
       <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Perlu Perhatian</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">{cards}</div>
+      <DashboardCardGrid>{cards}</DashboardCardGrid>
     </section>
   );
 }
