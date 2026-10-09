@@ -365,16 +365,22 @@ sudo crontab -u www-data -e
 
 ## 4. Bagian B — Deploy web Next.js (Hostinger Web App / Node.js)
 
+Repo ini monorepo (root = Laravel, web Next.js di `onezentra-web/`). Supaya
+Hostinger mendeteksi root dengan benar **tanpa bergantung pada kolom "Root
+directory"**, workflow `.github/workflows/web-deploy-branch.yml` menyalin isi
+`onezentra-web/` ke branch khusus **`web`** — di branch itu app Next.js berada
+di **root** repo (ada `package.json`, `next.config.ts`, `src/`, `public/`).
+
 Di **hPanel → Websites → Add Website → Node.js web app → Import Git repository**:
 
 | Setting | Nilai |
 |---|---|
-| Repository | `5imonjs/project-onezentra` (branch `main`) |
+| Repository | `5imonjs/project-onezentra` |
 | Framework preset | **Next.js** |
-| Branch | `main` |
+| Branch | **`web`** ← WAJIB (bukan `main`) |
 | Node.js version | **22** (minimal 20.9) |
-| **Root directory** | **`onezentra-web`** ← WAJIB |
-| Build command | **`build`** |
+| Root directory | **kosongkan / `/`** (app ada di root branch `web`) |
+| Build command | **`npm run build`** |
 | Package manager | **npm** |
 | Output directory | **`.next`** |
 | Entry file | **kosongkan** (Next.js diabaikan) |
@@ -389,12 +395,24 @@ BACKEND_URL=https://api.onezentra.sbs
 ```
 
 Setelah build hijau, pasang domain `onezentra.sbs` ke Web App ini + aktifkan
-**SSL**. Tiap push ke `main` memicu build ulang otomatis.
+**SSL**.
 
-> **Kenapa Root Directory harus `onezentra-web`:** repo monorepo — root repo
-> adalah aplikasi Laravel (PHP), sedangkan web Next.js ada di subfolder. Root
-> repo hanya punya `package.json` delegasi (`cd onezentra-web && ...`) dan `next`
-> tidak ter-install di root; kalau dibiarkan `/`, build pasti gagal.
+> **Cara update:** tetap push ke `main`. Bila ada perubahan di `onezentra-web/`,
+> workflow men-sync ulang branch `web` secara otomatis, lalu Hostinger build
+> ulang. Bila Action gagal push, aktifkan
+> **Settings → Actions → General → Workflow permissions → Read and write
+> permissions** di GitHub, atau jalankan manual dari tab **Actions → Sync web
+> deploy branch → Run workflow**.
+
+> **Kenapa harus branch `web` (bukan `main`):** root branch `main` adalah
+> aplikasi Laravel (PHP); root hanya punya `package.json` delegasi
+> (`cd onezentra-web && ...`) dan `next` tidak ter-install di root, sehingga
+> build `main` **selalu** gagal (`sh: next: command not found`). Branch `web`
+> membuat auto-detect Hostinger benar sejak awal.
+
+> **Alternatif tanpa branch:** bila kolom "Root directory" memang bisa diedit,
+> deploy dari `main` dengan **Root directory = `onezentra-web`** (tanpa garis
+> miring di depan). Itu juga benar.
 
 > **Jalur satu VPS untuk keduanya:** jalankan web dengan
 > `cd onezentra-web && npm ci && npm run build && pm2 start "npm run start" --name oz-web`
@@ -471,7 +489,7 @@ Checklist manual:
 | Tampil 404 di semua rute termasuk `/` | `.htaccess` mengarah ke `public/` tapi folder `public/` tak ada/salah lokasi | Cek struktur: `public_html/public/index.php` harus ada |
 | Gambar API tidak muncul | `BACKEND_URL` belum diset saat build | Set env lalu build/rebuild web di Hostinger |
 | Perubahan `.env` backend tak berefek | `config:cache` menyimpan nilai lama | `php artisan config:clear && php artisan config:cache` |
-| Web build gagal di Hostinger | Root Directory bukan `onezentra-web` | Set Root Directory = `onezentra-web`, rebuild |
+| Web build gagal `sh: next: command not found` | Deploy masih dari branch `main` (root = Laravel) atau Root Directory salah | Deploy dari branch **`web`** dengan Root directory kosong/`/`, build `npm run build` |
 | `composer install` gagal di SSH | Ekstensi PHP kurang / versi PHP CLI beda | Aktifkan ekstensi di hPanel; pakai binary `php8.3` |
 | Kolom "Kode Batch" banyak `-` | Baris warisan pra-migrasi | Jalankan migrasi backfill; jangan paksa manual |
 
@@ -486,8 +504,8 @@ Checklist manual:
    `SANCTUM_STATEFUL_DOMAINS` (A5).
 5. `key:generate` → `migrate --force` → `storage:link` → `config/route/view:cache` (A6).
 6. SSL subdomain + cron `schedule:run`; queue `sync` (A7–A9).
-7. Web: Hostinger **Node.js web app**, Root Directory `onezentra-web`,
-   env `BACKEND_URL=https://api.onezentra.sbs`, build `build`, output `.next`,
-   lalu pasang domain `onezentra.sbs` + SSL (Bagian B).
+7. Web: Hostinger **Node.js web app** dari branch **`web`** (app di root),
+   env `BACKEND_URL=https://api.onezentra.sbs`, build `npm run build`,
+   output `.next`, lalu pasang domain `onezentra.sbs` + SSL (Bagian B).
 8. Pindahkan/import database lewat phpMyAdmin atau `mysqldump|mysql` (Bagian C).
 9. Verifikasi end-to-end (Bagian D).
