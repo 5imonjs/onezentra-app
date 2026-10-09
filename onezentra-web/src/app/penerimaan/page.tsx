@@ -533,7 +533,7 @@ export default function PenerimaanPage() {
             </div>
           ) : (
             <>
-              <div className="hidden overflow-x-auto md:block">
+              <div className="hidden overflow-x-auto overflow-y-auto max-h-[560px] md:block">
                 <table className="w-full min-w-230 border-collapse">
                   <caption className="sr-only">Daftar penerimaan barang</caption>
                   <thead className="sticky top-0 z-10">
@@ -563,7 +563,7 @@ export default function PenerimaanPage() {
               </div>
 
               {/* Cards - Mobile */}
-              <div className="space-y-3 p-4 md:hidden">
+              <div className="space-y-3 p-4 max-h-[560px] overflow-y-auto md:hidden">
                 {groups.map((group) => {
                   const isOpen = !collapsed.has(group.key);
                   return (
