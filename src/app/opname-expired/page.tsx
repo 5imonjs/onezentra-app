@@ -53,12 +53,21 @@ interface StatusCount {
 
 type StatusSummary = Partial<Record<string, StatusCount>>;
 
+interface DepotSummaryEntry {
+  kode_depo: string;
+  nama_depo: string;
+  status: string;
+  count: number;
+  qty_crt: number;
+}
+
 interface ListMeta {
   weeks: string[];
   thresholds: Record<string, number>;
   status_summary: StatusSummary;
   prev_week_start: string | null;
   prev_status_summary: StatusSummary;
+  depot_summary: DepotSummaryEntry[];
 }
 
 interface ListResponse {
@@ -283,6 +292,9 @@ export default function OpnameExpiredPage() {
   const [searchApply, setSearchApply] = useState('');
   // Filter sumber data: '' semua, 'sj' murni sistem, 'import' manual, 'mixed' campuran.
   const [sourceFilter, setSourceFilter] = useState('');
+  // Filter depo: '' semua; opsi dari meta.depot_summary (semua depo minggu ini).
+  const [depoFilter, setDepoFilter] = useState('');
+  const [depotSummary, setDepotSummary] = useState<DepotSummaryEntry[]>([]);
   const [page, setPage] = useState(1);
   const [tabKey, setTabKey] = useState<TabKey>('ACTION');
   const [thresholds, setThresholds] = useState<Record<string, number>>({});
@@ -322,6 +334,15 @@ export default function OpnameExpiredPage() {
     }
   }, [tabKey]);
 
+  // Opsi dropdown filter depo: de-dupe meta.depot_summary per kode_depo.
+  const depoOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const d of depotSummary) {
+      if (!seen.has(d.kode_depo)) seen.set(d.kode_depo, d.nama_depo || d.kode_depo);
+    }
+    return Array.from(seen, ([kode_depo, nama_depo]) => ({ kode_depo, nama_depo }));
+  }, [depotSummary]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -331,6 +352,7 @@ export default function OpnameExpiredPage() {
         search: searchApply || undefined,
         statuses: tabStatuses?.join(',') || undefined,
         source: sourceFilter || undefined,
+        kode_depo: depoFilter || undefined,
         sort_by: sort.key || undefined,
         sort_dir: sort.key ? sort.dir : undefined,
         per_page: ITEMS_PER_PAGE,
@@ -348,12 +370,19 @@ export default function OpnameExpiredPage() {
       setStatusSummary(res.data.meta.status_summary ?? {});
       setPrevWeekStart(res.data.meta.prev_week_start ?? null);
       setPrevStatusSummary(res.data.meta.prev_status_summary ?? {});
+      // Dropdown depo mengikuti minggu terpilih; reset filter bila depo yang
+      // dipilih tak lagi punya wave di minggu ini.
+      const summary = res.data.meta.depot_summary ?? [];
+      setDepotSummary(summary);
+      if (depoFilter && !summary.some((d: DepotSummaryEntry) => d.kode_depo === depoFilter)) {
+        setDepoFilter('');
+      }
     } catch (e) {
       setLoadError(getErrorMessage(e, 'Gagal memuat data'));
     } finally {
       setLoading(false);
     }
-  }, [weekStart, searchApply, tabStatuses, page, sort, sourceFilter]);
+  }, [weekStart, searchApply, tabStatuses, page, sort, sourceFilter, depoFilter]);
 
   const handleSort = (key: SortKey) => {
     setSort((prev) => prev.key === key
@@ -479,7 +508,7 @@ export default function OpnameExpiredPage() {
 
   const handleExport = async () => {
     try {
-      const res = await opnameExpired.export({ week_start: weekStart || undefined, statuses: tabStatuses?.join(',') || undefined, source: sourceFilter || undefined });
+      const res = await opnameExpired.export({ week_start: weekStart || undefined, statuses: tabStatuses?.join(',') || undefined, source: sourceFilter || undefined, kode_depo: depoFilter || undefined });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -740,6 +769,23 @@ export default function OpnameExpiredPage() {
               initial={searchApply}
               onSearch={(v) => { setPage(1); setSearchApply(v); }}
             />
+            {depoOptions.length > 1 && (
+              <label className="flex items-center gap-2">
+                <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-slate-500">Depo</span>
+                <select
+                  value={depoFilter}
+                  onChange={(e) => { setDepoFilter(e.target.value); setPage(1); }}
+                  aria-label="Filter depo"
+                  title="Saring wave berdasarkan depo"
+                  className="select-field-sm min-w-[160px]"
+                >
+                  <option value="">Semua Depo</option>
+                  {depoOptions.map((d) => (
+                    <option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="flex items-center gap-2">
               <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-slate-500">Sumber</span>
               <select
@@ -895,7 +941,7 @@ export default function OpnameExpiredPage() {
             </div>
           ) : (
             <>
-              <div className="hidden overflow-x-auto md:block" id="opname-table-panel" role="tabpanel" aria-labelledby="tab-ACTION">
+              <div className="hidden md:block max-h-[560px] overflow-x-auto overflow-y-auto" id="opname-table-panel" role="tabpanel" aria-labelledby="tab-ACTION">
                 <table className="w-full min-w-[1040px] border-collapse">
                   <caption className="sr-only">Daftar opname expired</caption>
                   <thead className="sticky top-0 z-10">
@@ -947,7 +993,7 @@ export default function OpnameExpiredPage() {
               </div>
 
               {/* Mobile cards */}
-              <div className="divide-y divide-gray-100 md:hidden">
+              <div className="divide-y divide-gray-100 max-h-[560px] overflow-y-auto md:hidden">
                 {waves.map((w) => {
                   const meta = STATUS_META[w.status_ini] || STATUS_META.AMAN;
                   return (
