@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import DashboardLayout from '@/app/dashboard/layout';
-import { getErrorMessage, sjValidations, batches } from '@/lib/api';
+import { getErrorMessage, sjValidations, batches, depo } from '@/lib/api';
 import Modal from '@/components/Modal';
 import BarcodeScanner, { SCAN_FORMATS_1D } from '@/components/BarcodeScanner';
 import SearchInput from '@/components/SearchInput';
@@ -163,6 +163,8 @@ export default function ValidasiSjPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalRows, setTotalRows] = useState(0);
+  const [kodeDepo, setKodeDepo] = useState('');
+  const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
   const [showScanner, setShowScanner] = useState(false);
@@ -256,7 +258,7 @@ export default function ValidasiSjPage() {
     const reqId = ++listReqRef.current;
     setLoading(true);
     try {
-      const response = await sjValidations.list({ search: debouncedSearch, page, per_page: 20 });
+      const response = await sjValidations.list({ search: debouncedSearch, page, per_page: 20, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) });
       if (listReqRef.current !== reqId) return;
       setItems(response.data.data);
       const pages = Number(response.data.last_page) || 1;
@@ -273,16 +275,28 @@ export default function ValidasiSjPage() {
     } finally {
       if (listReqRef.current === reqId) setLoading(false);
     }
-  }, [debouncedSearch, page]);
+  }, [debouncedSearch, page, kodeDepo]);
+
+  const loadDepots = useCallback(async () => {
+    try {
+      const res = await depo.list();
+      const list = res.data?.data ?? [];
+      setDepots(list);
+      // User scoped hanya punya 1 opsi depo: kunci langsung.
+      if (list.length === 1) setKodeDepo(list[0].kode_depo);
+    } catch (e) {
+      console.error('[Depo]', e);
+    }
+  }, []);
 
   const loadStats = useCallback(async () => {
     try {
-      const response = await sjValidations.stats();
+      const response = await sjValidations.stats(kodeDepo ? { kode_depo: kodeDepo } : undefined);
       setSvStats(response.data.data);
     } catch {
       // Statistik gagal dimuat: chip menampilkan 0, daftar tetap berfungsi.
     }
-  }, []);
+  }, [kodeDepo]);
 
   // Debounce pencarian — tanpa ini tiap ketikan menembak API.
   useEffect(() => {
@@ -294,6 +308,7 @@ export default function ValidasiSjPage() {
   }, [search]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+  useEffect(() => { loadDepots(); }, [loadDepots]);
   useEffect(() => { loadStats(); }, [loadStats]);
 
   // Detak jam untuk kolom Durasi, HANYA saat ada sesi IN_PROGRESS yang tampil.
@@ -791,10 +806,26 @@ export default function ValidasiSjPage() {
                 <div className="w-full sm:w-72">
                   <SearchInput value={search} onChange={(v) => setSearch(v)} placeholder="Cari PO transporter..." resultCount={totalRows} resultLabel="validasi" />
                 </div>
+                {depots.length > 1 && (
+                  <div className="w-full sm:w-56">
+                    <label htmlFor="sj-depo" className="sr-only">Filter depo</label>
+                    <select
+                      id="sj-depo"
+                      value={kodeDepo}
+                      onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
+                      className="w-full appearance-none rounded-xl border border-gray-300 bg-surface-card px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                    >
+                      <option value="">Semua Depo</option>
+                      {depots.map((d) => (
+                        <option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Table - Desktop */}
-              <div className="overflow-x-auto hidden md:block">
+              <div className="overflow-x-auto overflow-y-auto hidden md:block max-h-[560px]">
                 <table className="w-full min-w-180 border-collapse">
                   <caption className="sr-only">Daftar validasi dokumen</caption>
                   <thead className="sticky top-0 z-10">
@@ -893,7 +924,7 @@ export default function ValidasiSjPage() {
               </div>
 
               {/* Mobile cards */}
-              <div className="divide-y divide-gray-100 md:hidden">
+              <div className="divide-y divide-gray-100 md:hidden max-h-[560px] overflow-y-auto">
                 {loading ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <div key={`skel-m-${i}`} className="animate-pulse p-4">

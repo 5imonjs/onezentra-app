@@ -50,7 +50,6 @@ export default function DashboardOpnameChart() {
 
   if (!hasPermission('opname.view')) return null;
 
-  const max = Math.max(...depots.map((d) => d.total), 1);
   const done = depots.filter((d) => d.submitted).length;
 
   return (

@@ -419,7 +419,7 @@ export const docks = {
 
 export const gateTransactions = {
   list: (params?: Record<string, unknown>) => apiClient.get('/gate-transactions', { params }),
-  stats: () => apiClient.get('/gate-transactions/stats'),
+  stats: (params?: Record<string, unknown>) => apiClient.get('/gate-transactions/stats', { params }),
   create: (data: Record<string, unknown>) => apiClient.post('/gate-transactions', data),
   byNoDokumen: (poTransporter: string) => apiClient.get('/gate-transactions/search/by-dokumen', { params: { po_transporter: poTransporter } }),
 };
@@ -474,7 +474,7 @@ export const batches = {
 
 export const sjValidations = {
   list: (params?: Record<string, unknown>) => apiClient.get('/sj-validations', { params }),
-  stats: () => apiClient.get('/sj-validations/stats'),
+  stats: (params?: Record<string, unknown>) => apiClient.get('/sj-validations/stats', { params }),
   get: (id: number) => apiClient.get(`/sj-validations/${id}`),
   lookup: (scanCode: string) => apiClient.get('/sj-validations/lookup', { params: { scan_code: scanCode } }),
   startByCode: (scanCode: string) => apiClient.post('/sj-validations/start-by-code', { scan_code: scanCode }),

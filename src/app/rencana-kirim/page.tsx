@@ -1073,7 +1073,7 @@ export default function RencanaKirimPage() {
                 </div>
               </div>
 
-          <div className="overflow-x-auto hidden lg:block">
+          <div className="overflow-x-auto overflow-y-auto hidden lg:block max-h-[560px]">
             <table className="w-full min-w-[980px] border-collapse">
               <caption className="sr-only">Daftar rencana pengiriman</caption>
               <thead className="sticky top-0 z-10">
@@ -1206,7 +1206,7 @@ export default function RencanaKirimPage() {
           </div>
 
           {/* Mobile cards — tabel desktop disembunyikan di < lg; tanpa kartu ini daftar hilang di ponsel */}
-          <div className="lg:hidden divide-y divide-slate-100">
+          <div className="lg:hidden divide-y divide-slate-100 max-h-[560px] overflow-y-auto">
             {loading && items.length === 0 && (
               <>
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -1573,8 +1573,8 @@ export default function RencanaKirimPage() {
               <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">Ditujukan</h4>
                 <div>
-                  <label htmlFor="f-nama-depo" className="block text-xs font-medium text-gray-500 mb-1">Nama Depo <span className="text-red-500">*</span></label>
-                  <NamaDepoInput value={createForm.nama_depo ?? ''} depoList={depoList} onChange={handleNamaDepoChange} onClear={clearNamaDepo} />
+                  <label htmlFor="f-nama-depo" className="block text-xs font-medium text-gray-500 mb-1">Nama Depo <span className="text-red-500">*</span>{!!editingId && !hasPermission('depot.move') && (<span className="ml-1 font-normal normal-case text-gray-400">(terkunci — butuh izin Pindah Depo)</span>)}</label>
+                  <NamaDepoInput value={createForm.nama_depo ?? ''} depoList={depoList} onChange={handleNamaDepoChange} onClear={clearNamaDepo} disabled={!!editingId && !hasPermission('depot.move')} />
                 </div>
                 <div>
                   <label htmlFor="f-kode-depo" className="block text-xs font-medium text-gray-500 mb-1">Kode Depo</label>

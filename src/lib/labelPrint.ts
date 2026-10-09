@@ -31,10 +31,6 @@ const STORAGE_PREFIX = 'sj-label-printed:';
  *     mewarisi jejak yang sudah terkumpul sebelum kolom printed_at ada.
  */
 
-function storageKey(validationId: number): string {
-  return `${STORAGE_PREFIX}${validationId}`;
-}
-
 function readStore(): Record<string, string[]> {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return {};

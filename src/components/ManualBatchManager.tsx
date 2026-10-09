@@ -593,7 +593,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 )}
               </div>
               {items.length >= 100 && (
-                <p className="text-[11px] text-amber-600 w-full">Menampilkan maksimal 100 batch terbaru — "Hapus semua" mencakup seluruh data, bukan hanya yang tampil</p>
+                <p className="text-[11px] text-amber-600 w-full">Menampilkan maksimal 100 batch terbaru &mdash; &ldquo;Hapus semua&rdquo; mencakup seluruh data, bukan hanya yang tampil</p>
               )}
             </div>
             {loadError ? (

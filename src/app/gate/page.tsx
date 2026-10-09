@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { gateTransactions, rencanaKirim, getErrorMessage } from '@/lib/api';
+import { gateTransactions, rencanaKirim, depo, getErrorMessage } from '@/lib/api';
 import SearchInput from '@/components/SearchInput';
 import BarcodeScanner, { SCAN_FORMATS_1D } from '@/components/BarcodeScanner';
 import Modal from '@/components/Modal';
@@ -35,7 +35,7 @@ const statusLabels: Record<string, string> = {
 const STATUS_GUIDE: Record<string, string> = {
   DRAFT: 'Dokumen masih Draft. Jadwalkan terlebih dahulu di menu Replenishment.',
   VERIFIED: 'Dokumen sudah diverifikasi dan menunggu proses bongkar. Tidak ada aksi gate saat ini.',
-  IN_PROGRESS: 'Bongkar sedang berjalan. Gate OUT tersedia setelah status Selesai.',
+  IN_PROGRESS: 'Bongkar sedang berjalan. Tidak ada aksi gate saat ini.',
   CANCELLED: 'Dokumen dibatalkan dan tidak dapat diproses di gate.',
 };
 
@@ -85,7 +85,9 @@ export default function GatePage() {
   const [lookupBusy, setLookupBusy] = useState(false);
   const [listError, setListError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [confirmAction, setConfirmAction] = useState<null | 'IN' | 'OUT' | 'VERIFY'>(null);
+  const [kodeDepo, setKodeDepo] = useState('');
+  const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
+  const [confirmAction, setConfirmAction] = useState<null | 'IN' | 'VERIFY'>(null);
 
   const [stats, setStats] = useState<{ hariIni: number; terjadwal: number; selesai: number; total: number } | null>(null);
 
@@ -101,7 +103,7 @@ export default function GatePage() {
     const requestPage = Math.min(Math.max(1, page), Math.max(1, lastPageRef.current));
     setLoading(true);
     try {
-      const res = await gateTransactions.list({ search: debouncedSearch, page: requestPage, per_page: 20 });
+      const res = await gateTransactions.list({ search: debouncedSearch, page: requestPage, per_page: 20, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) });
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
       const nextLast = res.data.last_page ?? 1;
@@ -116,7 +118,7 @@ export default function GatePage() {
     } finally {
       if (reqIdRef.current === reqId) setLoading(false);
     }
-  }, [debouncedSearch, page, hasPermission]);
+  }, [debouncedSearch, page, kodeDepo, hasPermission]);
 
   const loadStats = useCallback(async () => {
     if (!hasPermission('gate.view')) {
@@ -124,7 +126,7 @@ export default function GatePage() {
       return;
     }
     try {
-      const res = await gateTransactions.stats();
+      const res = await gateTransactions.stats(kodeDepo ? { kode_depo: kodeDepo } : undefined);
       setStats({
         total: (res.data.data.total ?? 0) as number,
         hariIni: (res.data.data.hari_ini ?? 0) as number,
@@ -134,7 +136,19 @@ export default function GatePage() {
     } catch {
       setStats(null);
     }
-  }, [hasPermission]);
+  }, [kodeDepo, hasPermission]);
+
+  const loadDepots = useCallback(async () => {
+    try {
+      const res = await depo.list();
+      const list = res.data?.data ?? [];
+      setDepots(list);
+      // User scoped hanya punya 1 opsi depo: kunci langsung.
+      if (list.length === 1) setKodeDepo(list[0].kode_depo);
+    } catch (e) {
+      console.error('[Depo]', e);
+    }
+  }, []);
 
   // Debounce pencarian riwayat: tanpa ini tiap ketikan menembak API.
   useEffect(() => {
@@ -152,6 +166,8 @@ export default function GatePage() {
   }, [page, lastPage]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
+
+  useEffect(() => { loadDepots(); }, [loadDepots]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
@@ -200,29 +216,6 @@ export default function GatePage() {
     }
   };
 
-  const handleGateOut = async () => {
-    if (!foundRencanaKirim) return;
-    setScanning(true);
-    try {
-      await gateTransactions.create({
-        rencana_kirim_id: foundRencanaKirim.id as number,
-        gate_type: 'OUTBOUND',
-        nopol: foundRencanaKirim.nopol as string,
-        driver_name: foundRencanaKirim.driver_name as string,
-        po_transporter: foundRencanaKirim.po_transporter as string,
-      });
-      setScanResult({ success: true, message: 'Gate OUT berhasil dicatat. Status: Selesai' });
-      setFoundRencanaKirim(null);
-      setScanNoDokumen('');
-      loadItems();
-      loadStats();
-    } catch (e) {
-      setScanResult({ success: false, message: getErrorMessage(e, 'Error') });
-    } finally {
-      setScanning(false);
-    }
-  };
-
   const handleVerify = async () => {
     if (!foundRencanaKirim) return;
     setScanning(true);
@@ -241,7 +234,7 @@ export default function GatePage() {
   };
 
   // Aksi gate tercatat permanen — selalu lewat dialog konfirmasi dulu.
-  const requestConfirm = (type: 'IN' | 'OUT' | 'VERIFY') => {
+  const requestConfirm = (type: 'IN' | 'VERIFY') => {
     if (!foundRencanaKirim || scanning) return;
     setConfirmAction(type);
   };
@@ -250,7 +243,6 @@ export default function GatePage() {
     if (!confirmAction) return;
     setConfirmAction(null);
     if (confirmAction === 'IN') await handleGateIn();
-    else if (confirmAction === 'OUT') await handleGateOut();
     else await handleVerify();
   };
 
@@ -280,7 +272,7 @@ export default function GatePage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Check In Point</h1>
-                <p className="mt-0.5 text-ink-fg-muted">Scan PO / Nopol — IN ↔ OUT • auto status</p>
+                <p className="mt-0.5 text-ink-fg-muted">Scan PO / Nopol kedatangan — check-in inbound • auto status</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -357,16 +349,15 @@ export default function GatePage() {
                     <div className="relative flex flex-wrap gap-2">
                       {foundRencanaKirim.status === 'SCHEDULED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('IN')} disabled={scanning} className="min-h-11 flex-1 px-4 py-2.5 rounded-xl bg-surface-card text-slate-900 text-sm font-bold hover:bg-slate-100 transition-colors disabled:opacity-50">Gate IN →</button>)}
                       {foundRencanaKirim.status === 'CHECKED_IN' && hasPermission('rencana_kirim.edit') && (<button onClick={() => requestConfirm('VERIFY')} disabled={scanning} className="min-h-11 flex-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-50">Verify ✓</button>)}
-                      {foundRencanaKirim.status === 'COMPLETED' && hasPermission('gate.create') && (<button onClick={() => requestConfirm('OUT')} disabled={scanning} className="min-h-11 flex-1 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm font-bold hover:bg-white/20 transition-colors disabled:opacity-50">Gate OUT</button>)}
                     </div>
                     {typeof foundRencanaKirim.status === 'string' && !['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) && (
                         <p className="relative mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs leading-5 text-ink-fg">
                           {STATUS_GUIDE[foundRencanaKirim.status] ?? 'Status ini tidak memiliki aksi gate.'}
                         </p>
                     )}
-                    {typeof foundRencanaKirim.status === 'string' && ['SCHEDULED', 'CHECKED_IN', 'COMPLETED'].includes(foundRencanaKirim.status) &&
-                      ((foundRencanaKirim.status === 'CHECKED_IN' && !hasPermission('rencana_kirim.edit')) ||
-                        (foundRencanaKirim.status !== 'CHECKED_IN' && !hasPermission('gate.create'))) && (
+                    {typeof foundRencanaKirim.status === 'string' &&
+                      ((foundRencanaKirim.status === 'SCHEDULED' && !hasPermission('gate.create')) ||
+                        (foundRencanaKirim.status === 'CHECKED_IN' && !hasPermission('rencana_kirim.edit'))) && (
                       <p className="relative mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2.5 text-xs leading-5 text-amber-200">
                         Anda tidak memiliki izin untuk aksi ini. Minta akses ke admin.
                       </p>
@@ -408,6 +399,22 @@ export default function GatePage() {
                     resultLabel="transaksi"
                   />
                 </div>
+                {depots.length > 1 && (
+                  <div className="w-full sm:w-56">
+                    <label htmlFor="gate-depo" className="sr-only">Filter depo</label>
+                    <select
+                      id="gate-depo"
+                      value={kodeDepo}
+                      onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
+                      className="w-full appearance-none rounded-xl border border-gray-300 bg-surface-card px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                    >
+                      <option value="">Semua Depo</option>
+                      {depots.map((d) => (
+                        <option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {listError && (
@@ -420,7 +427,7 @@ export default function GatePage() {
               )}
 
               {/* Table - Desktop */}
-              <div className="overflow-x-auto hidden lg:block">
+              <div className="overflow-x-auto overflow-y-auto hidden lg:block max-h-[560px]">
                 <table className="w-full min-w-190 border-collapse">
                   <caption className="sr-only">Riwayat transaksi gate</caption>
                   <thead className="sticky top-0 z-10">
@@ -451,7 +458,7 @@ export default function GatePage() {
                       <tr key={item.id} className="transition-colors hover:bg-overlay-70">
                         <td className="px-5 py-3 text-sm tabular-nums text-slate-500">{(page - 1) * 20 + index + 1}</td>
                         <td className="px-5 py-3">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${item.gate_type === 'INBOUND' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-violet-50 text-violet-700 ring-violet-200'}`}>
+                          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 bg-blue-50 text-blue-700 ring-blue-200">
                             {item.gate_type}
                           </span>
                         </td>
@@ -496,11 +503,11 @@ export default function GatePage() {
 
                 {/* Penjelasan untuk menghindari ambiguitas */}
                 <p className="text-xs text-slate-500 mt-2">
-                  <strong>Catatan:</strong> <span className="font-medium">Gate Type</span> = Tipe transaksi gerbang (INBOUND = masuk, OUTBOUND = keluar). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo). Kedua field ini berasal dari tabel berbeda namun both wajib untuk melengkapi status operasional.
+                  <strong>Catatan:</strong> Semua transaksi gate adalah check-in kedatangan (INBOUND). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo).
                 </p>
 
               {/* Mobile cards */}
-              <div className="divide-y divide-gray-100 lg:hidden">
+              <div className="divide-y divide-gray-100 lg:hidden max-h-[560px] overflow-y-auto">
                 {loading ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <div key={`skel-m-${i}`} className="animate-pulse p-4">
@@ -529,7 +536,7 @@ export default function GatePage() {
                           <p className="text-xs text-slate-500">{item.nopol as string} • {item.driver_name as string}</p>
                         </div>
                       </div>
-                      <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${item.gate_type === 'INBOUND' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-violet-50 text-violet-700 ring-violet-200'}`}>{item.gate_type}</span>
+                      <span className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 bg-blue-50 text-blue-700 ring-blue-200">{item.gate_type}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs tabular-nums text-slate-500">{fmtDateTime(item.scan_time)}</p>
@@ -574,7 +581,7 @@ export default function GatePage() {
         <Modal
           open={confirmAction !== null}
           onClose={() => setConfirmAction(null)}
-          title={confirmAction === 'IN' ? 'Catat Gate IN?' : confirmAction === 'OUT' ? 'Catat Gate OUT?' : 'Verifikasi Dokumen?'}
+          title={confirmAction === 'IN' ? 'Catat Gate IN?' : 'Verifikasi Dokumen?'}
           subtitle="Periksa kembali data sebelum mencatat — aksi ini tersimpan permanen."
           size="md"
           footer={
@@ -584,11 +591,9 @@ export default function GatePage() {
                 type="button"
                 onClick={executeConfirm}
                 disabled={scanning}
-                className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50 sm:w-auto ${
-                  confirmAction === 'OUT' ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20' : 'btn-primary'
-                }`}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50 sm:w-auto btn-primary"
               >
-                {confirmAction === 'IN' ? 'Ya, Catat IN' : confirmAction === 'OUT' ? 'Ya, Catat OUT' : 'Ya, Verifikasi'}
+                {confirmAction === 'IN' ? 'Ya, Catat IN' : 'Ya, Verifikasi'}
               </button>
             </div>
           }
@@ -610,7 +615,6 @@ export default function GatePage() {
               </div>
               <p className="rounded-xl bg-surface-raised border border-slate-100 px-3 py-2.5 text-xs leading-5 text-slate-600">
                 {confirmAction === 'IN' && 'Kendaraan masuk dicatat dan status rencana kirim berubah menjadi Check In.'}
-                {confirmAction === 'OUT' && 'Pastikan kendaraan benar-benar keluar dari area depo.'}
                 {confirmAction === 'VERIFY' && 'Dokumen dinyatakan terverifikasi dan status berubah menjadi Terverifikasi.'}
               </p>
             </div>
