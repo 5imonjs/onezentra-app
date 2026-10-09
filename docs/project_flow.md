@@ -90,7 +90,7 @@ onezentra-warehouse-system/
 | Standarisasi Tumpukan | `standarisasi-tumpukan` | Standar cara tumpuk |
 | Standar Umur Produk | `standar-umur-produk` | Standar umur/expired produk |
 | Rencana Kirim | `rencana-kirim` | Pembuatan & penjadwalan rencana kirim |
-| Gate Check | `gate-transactions` | Check-in / check-out kendaraan |
+| Gate Check | `gate-transactions` | Check-in kendaraan |
 | Receiving | `receivings` | Proses bongkar & penerimaan barang |
 | Roles & Permissions | `roles`, `permissions` | Pengaturan RBAC |
 | Users | `users` | Pengelolaan user |
@@ -106,7 +106,7 @@ onezentra-warehouse-system/
 | Approval Settings | `approval-assignments` | Pengaturan approval biaya THL |
 | Tarif Retribusi | `tarif-retribusi` | Pengaturan tarif retribusi |
 | Docks | `docks` | Master dock (AVAILABLE/OCCUPIED) |
-| Gate | `gate` | Check-in/check-out (with barcode scanner) |
+| Gate | `gate` | Check-in (with barcode scanner) |
 | Validasi SJ | `validasi-sj` | Validasi dokumen SJ/BA (with ZXing scanner) |
 
 ---
@@ -723,10 +723,10 @@ Semua laporan menggunakan filter tanggal + depo. Semua punya permission gate `re
 |--------|----------|--------|------------|
 | GET | `/gate-transactions` | Daftar | `gate.view` |
 | GET | `/gate-transactions/stats` | Stats | `gate.view` |
-| POST | `/gate-transactions` | Check-in/out | `gate.create` |
+| POST | `/gate-transactions` | Check-in | `gate.create` |
 | GET | `/gate-transactions/search/by-dokumen` | Search by PO | `gate.create` |
 
-**Validasi state:** `INBOUND` hanya saat `SCHEDULED`, `OUTBOUND` hanya saat `COMPLETED`. Duplikat ditolak 422.
+**Validasi state (receiving-only):** `INBOUND` hanya saat `SCHEDULED`. Duplikat ditolak 422.
 
 ### Receiving
 
