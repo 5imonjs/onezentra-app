@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\EmailRecipient;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class SeederRoleVerificationTest extends TestCase
@@ -22,7 +24,7 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertSame($levelSlugs, $roleSlugs);
     }
 
-    public function test_all_12_roles_have_correct_name_and_description(): void
+    public function test_all_14_roles_have_correct_name_and_description(): void
     {
         $this->seedRoles();
         $expectedMeta = [
@@ -38,6 +40,8 @@ class SeederRoleVerificationTest extends TestCase
             'cheker' => ['name' => 'Cheker', 'description' => 'Cheker'],
             'sac' => ['name' => 'SAC', 'description' => 'SAC'],
             'operator' => ['name' => 'Operator', 'description' => 'Operator depot'],
+            'ga' => ['name' => 'GA', 'description' => 'Viewer semua modul (view only)'],
+            'bh' => ['name' => 'BH', 'description' => 'BH (setara Admin Planner)'],
         ];
 
         foreach ($expectedMeta as $slug => $meta) {
@@ -183,10 +187,10 @@ class SeederRoleVerificationTest extends TestCase
         // `depot.view_all` = saklar lintas-depo GLOBAL. Revisi 2026-10-09:
         // BLC tidak lagi memegangnya supaya tidak melihat semua depo di semua
         // modul + filter depo dashboard. Yang tersisa hanya role yang memang
-        // lintas-depo secara menyeluruh.
+        // lintas-depo secara menyeluruh (+ GA viewer luas, keputusan 2026-10-09).
         $globalViewAll = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'depot.view_all'))
             ->pluck('slug')->sort()->values()->all();
-        $this->assertSame(['admin_master', 'admin_planner', 'staff_logistic'], $globalViewAll);
+        $this->assertSame(['admin_master', 'admin_planner', 'bh', 'ga', 'staff_logistic'], $globalViewAll);
         $this->assertFalse(
             Role::where('slug', 'blc')->first()->permissions()->where('slug', 'depot.view_all')->exists(),
             'blc tidak boleh memegang depot.view_all (saklar global)'
@@ -221,6 +225,52 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertSame($viewHolders, $progressHolders);
         $this->assertContains('operator', $progressHolders);
         $this->assertContains('sac', $progressHolders);
+        $this->assertContains('ga', $progressHolders);
+    }
+
+    public function test_ga_viewer_luas_dan_bh_mirror_admin_planner(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        // GA = viewer luas: semua modul view-only, lintas depo (keputusan
+        // akses 2026-10-09). Set eksak dikunci supaya drift langsung terlihat.
+        $ga = Role::where('slug', 'ga')->first()->permissions()->pluck('slug')->sort()->values()->all();
+        $this->assertNotEmpty($ga, 'Role ga tidak boleh nol permission (lockout)');
+        $expectedGa = [
+            'dashboard.view', 'depot.view_all',
+            'rencana_kirim.view', 'gate.view', 'sj_validation.view', 'receiving.view',
+            'penerimaan.view', 'npn.view', 'standar_umur.view', 'standarisasi.view',
+            'biaya_thl.view', 'biaya_thl.export',
+            'biaya_retribusi.view', 'biaya_retribusi.export',
+            'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi',
+            'opname.view', 'opname.progress_all',
+            'cluster_principal.view',
+        ];
+        sort($expectedGa);
+        $this->assertSame($expectedGa, $ga);
+
+        // GA VIEW-ONLY: tidak boleh memegang permission aksi tulis apa pun.
+        $writeVerbs = ['create', 'edit', 'delete', 'import', 'submit', 'check', 'approve', 'reject', 'revise', 'rfah', 'validate', 'complete', 'cancel', 'manage', 'full_control'];
+        $gaWrite = array_values(array_filter($ga, function (string $slug) use ($writeVerbs): bool {
+            $verb = explode('.', $slug)[1] ?? '';
+
+            return in_array($verb, $writeVerbs, true);
+        }));
+        $this->assertSame([], $gaWrite, 'ga harus view-only, tidak boleh ada permission tulis');
+
+        // BH = mirror penuh permission Admin Planner.
+        $adminPlanner = Role::where('slug', 'admin_planner')->first()->permissions()->pluck('slug')->sort()->values()->all();
+        $bh = Role::where('slug', 'bh')->first()->permissions()->pluck('slug')->sort()->values()->all();
+        $this->assertNotEmpty($bh, 'Role bh tidak boleh nol permission (lockout)');
+        $this->assertSame($adminPlanner, $bh);
+
+        // Total sistem tetap konsisten: 12 role lama + ga + bh, 97 permission
+        // (tidak ada permission baru), grant naik 20 (ga) + 44 (bh mirror
+        // admin_planner) dari 447 menjadi 511.
+        $this->assertSame(14, Role::count());
+        $this->assertSame(97, Permission::count());
+        $this->assertSame(511, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void
@@ -238,6 +288,8 @@ class SeederRoleVerificationTest extends TestCase
             'cheker' => ['name' => 'Cheker', 'description' => 'Cheker'],
             'sac' => ['name' => 'SAC', 'description' => 'SAC'],
             'operator' => ['name' => 'Operator', 'description' => 'Operator depot'],
+            'ga' => ['name' => 'GA', 'description' => 'Viewer semua modul (view only)'],
+            'bh' => ['name' => 'BH', 'description' => 'BH (setara Admin Planner)'],
         ];
         foreach ($meta as $slug => $data) {
             Role::firstOrCreate(['slug' => $slug], $data);

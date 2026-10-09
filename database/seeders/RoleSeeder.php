@@ -22,6 +22,8 @@ class RoleSeeder extends Seeder
             'cheker' => ['name' => 'Cheker', 'description' => 'Cheker'],
             'sac' => ['name' => 'SAC', 'description' => 'SAC'],
             'operator' => ['name' => 'Operator', 'description' => 'Operator depot'],
+            'ga' => ['name' => 'GA', 'description' => 'Viewer semua modul (view only)'],
+            'bh' => ['name' => 'BH', 'description' => 'BH (setara Admin Planner)'],
         ];
 
         foreach (Role::LEVEL_SLUGS as $slug) {

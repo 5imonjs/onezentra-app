@@ -20,6 +20,8 @@ class Role extends Model
         'cheker',
         'sac',
         'operator',
+        'ga',
+        'bh',
     ];
 
     protected $table = 'roles';

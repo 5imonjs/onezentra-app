@@ -250,6 +250,18 @@ class PermissionSeeder extends Seeder
                 // sensitif ini (grant live yang dipertahankan).
                 'approval.submit', 'retribusi_rates.manage', 'sj_validation.edit_completed', 'opname.edit', 'penerimaan.delete',
             ],
+            // GA = General Affairs: viewer luas (keputusan akses 2026-10-09).
+            // Pantau SEMUA modul view-only lintas depo (depot.view_all) tanpa
+            // aksi tulis apa pun. Turunan otomatis: biaya_*.export (dari view),
+            // opname.progress_all (dari opname.view), cluster_principal.view
+            // (dari npn.view) — lihat aturan post-processing di bawah.
+            'ga' => [
+                'dashboard.view', 'depot.view_all',
+                'rencana_kirim.view', 'gate.view', 'sj_validation.view', 'receiving.view',
+                'penerimaan.view', 'npn.view', 'standar_umur.view', 'standarisasi.view',
+                'biaya_thl.view', 'biaya_retribusi.view',
+                'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view',
+            ],
         ];
 
         // Export mengikuti view: role yang boleh melihat modul biaya juga
@@ -306,8 +318,9 @@ class PermissionSeeder extends Seeder
 
         // sac & operator: user aktif di DB tetapi nol permission = lockout total.
         // Keputusan akses: operator = operasional depo ( = cheker),
-        // sac = checker ( = bac). Referensi langsung agar tidak drift.
-        foreach (['operator' => 'cheker', 'sac' => 'bac'] as $mirror => $source) {
+        // sac = checker ( = bac), bh = setara admin_planner (keputusan akses
+        // 2026-10-09). Referensi langsung agar tidak drift.
+        foreach (['operator' => 'cheker', 'sac' => 'bac', 'bh' => 'admin_planner'] as $mirror => $source) {
             $role = Role::where('slug', $mirror)->first();
             $sourceRole = Role::where('slug', $source)->first();
             if ($role && $sourceRole) {

@@ -100,6 +100,22 @@ class UserSeeder extends Seeder
                 'level' => 'sac',
                 'role_slug' => 'sac',
             ],
+            [
+                'kode_depo' => 'GA-01',
+                'nama_depo' => 'Depo GA',
+                'full_name' => 'User GA',
+                'email' => 'ga@onezentra.com',
+                'level' => 'ga',
+                'role_slug' => 'ga',
+            ],
+            [
+                'kode_depo' => 'BH-01',
+                'nama_depo' => 'Depo BH',
+                'full_name' => 'User BH',
+                'email' => 'bh@onezentra.com',
+                'level' => 'bh',
+                'role_slug' => 'bh',
+            ],
         ];
 
         foreach ($users as $data) {
