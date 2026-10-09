@@ -12,7 +12,7 @@ Ruang lingkup: 33 modul API · 205 route v1 · 28 controller · 32 model · 30 h
 | Backend (PHPUnit) | ✅ PASS | **384 tests / 1586 assertions** |
 | Web (Vitest) | ✅ PASS | **181 tests / 19 files** |
 | E2E Browser (Playwright) | ✅ PASS | **7 tests** (Chromium, halaman nyata) |
-| Load Test | ⚠️ PASS terbatas | 150 concurrent, 0% error |
+| Load Test | ⚠️ Belum tervalidasi | Harness ada (`tests/load/api-load.mjs`); angka "150 concurrent / 0% error" belum direproduksi |
 | TypeScript | ✅ PASS | 0 error |
 | ESLint | ✅ PASS | 0 error |
 | Pint | ✅ PASS | 0 perubahan tersisa |
@@ -351,7 +351,7 @@ vendor/bin/pint --dirty --format agent
 
 | Batasan | Dampak |
 |---|---|
-| **Load test sudah ada, tapi belum sah sebagai capacity plan.** `tests/load/api-load.mjs` dijalankan lokal dengan 150 concurrent, 0% error. Hasil di atas 200 concurrent terbatas `kern.ipc.somaxconn=128` milik macOS, jadi bukan limit aplikasi. Belum pernah dijalankan di Linux/nginx/FPM/MySQL. | Angka kapasitas produksi belum diketahui; angka lokal jangan dipakai untuk sizing server |
+| **Load test belum sah sebagai bukti kapasitas — dan angkanya belum tervalidasi.** Harness `tests/load/api-load.mjs` memang ada dan bisa dijalankan, tetapi butuh `--tokens` hasil login live dan **belum direproduksi** di lingkungan ini (angka "150 concurrent, 0% error" berasal dari catatan lama, bukan run yang tersimpan/terverifikasi). Harness hanya menembak 5 endpoint dan menghitung "gagal" sebatas status 5xx + error transport — 401/403/404/422 tetap dihitung sukses, sehingga "0% error" menyesatkan bila token tidak valid. Uji lokal memakai `php artisan serve` (single-process, bukan php-fpm/nginx) dan belum pernah dijalankan di Linux/nginx/FPM/MySQL. | Angka kapasitas produksi belum diketahui; jangan pakai angka mana pun di laporan ini untuk sizing server |
 | **E2E baru menutup 1 halaman.** Playwright (`onezentra-web/e2e/cluster-principal.spec.ts`, 7 test) baru memverifikasi alur Cluster/Principal di browser sungguhan. Permission matrix di luar itu baru memverifikasi *kontrak* slug backend↔`hasPermission()`, bukan tampilan visual. | Layout pecah di layar kecil, kontras, dan fokus keyboard belum terdeteksi di halaman lain |
 | **Test database memakai refresh-in-memory, bukan MySQL produksi.** Perilaku index dan locking dapat berbeda. | Performa nyata bisa berbeda dari angka di sini |
 | **Mobile app (Flutter) belum diuji** — hanya API mobile (2 route) yang tercakup. | Risiko pada UI mobile belum dinilai |
