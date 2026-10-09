@@ -10,7 +10,7 @@ Dibuat: 2026-10-09 · Sumber: `database/seeders/PermissionSeeder.php` (target) v
 | permissions | 96 | 96 | 0 |
 | role_permission | 458 | 418 | **+40 net** |
 
-Angka net +40 menyesatkan: selisihnya adalah **88 grant yang akan DICABUT** dikurangi **48 grant yang akan DITAMBAH** oleh `sync()` saat `PermissionSeeder` dijalankan ulang (diregenerasi 2026-10-09 setelah `opname.progress_all` mengikuti `opname.view` di seeder). Jadi re-seed **bukan** sekadar mencabut 40 baris — ia mengganti set permission tiap role secara persis dan mengubah akses 7 dari 12 role.
+Angka net +40 menyesatkan: selisihnya adalah **88 grant yang akan DICABUT** dikurangi **48 grant yang akan DITAMBAH** oleh `sync()` saat `PermissionSeeder` dijalankan ulang (diregenerasi 2026-10-09 setelah `opname.progress_all` mengikuti `opname.view` di seeder). Jadi re-seed **bukan** sekadar mencabut 40 baris — ia mengganti set permission tiap role secara persis dan mengubah akses 5 dari 12 role.
 
 > **Jangan jalankan `php artisan db:seed --class=PermissionSeeder --force`** sampai baris di bawah ini disetujui satu per satu.
 
