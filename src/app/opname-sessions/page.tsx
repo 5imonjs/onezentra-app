@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { opnameSessions, getErrorMessage } from '@/lib/api';
+import { opnameSessions, depo, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import { formatDateId } from '@/lib/dates';
 import { useAuthStore } from '@/store/auth';
@@ -26,6 +26,11 @@ export default function OpnameSessionsPage() {
   const [week, setWeek] = useState('');
   const [status, setStatus] = useState('');
   const [mine, setMine] = useState(false);
+  // Filter depo hanya untuk user global (depot.view_all); user depot-scoped
+  // terkunci ke depo sendiri oleh backend (index() mengabaikan kode_depo).
+  const canFilterDepo = hasPermission('depot.view_all');
+  const [kodeDepo, setKodeDepo] = useState('');
+  const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<SessionDetail | null>(null);
@@ -39,6 +44,7 @@ export default function OpnameSessionsPage() {
         week_start: week || undefined,
         status: status || undefined,
         mine: mine || undefined,
+        kode_depo: kodeDepo || undefined,
         per_page: 25,
       }) as { data: { data: { data: SessionDetail[] } } };
       setSessions(res.data.data.data);
@@ -47,9 +53,23 @@ export default function OpnameSessionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [week, status, mine]);
+  }, [week, status, mine, kodeDepo]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Daftar depo tersumber dari master user; user global dengan depot.view_all
+  // melihat seluruh depo. Gagal memuat cukup mematikan dropdown, bukan halaman.
+  const loadDepots = useCallback(async () => {
+    if (!canFilterDepo) return;
+    try {
+      const res = await depo.list();
+      setDepots(res.data?.data ?? []);
+    } catch (e) {
+      console.error('[Depo]', e);
+    }
+  }, [canFilterDepo]);
+
+  useEffect(() => { loadDepots(); }, [loadDepots]);
 
   const loadDetail = useCallback(async (id: number) => {
     setDetailLoading(true);
@@ -97,7 +117,7 @@ export default function OpnameSessionsPage() {
           </div>
           <div>
             <label htmlFor="ss-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label>
-            <select id="ss-status" value={status} onChange={(e) => setStatus(e.target.value)} className="input-field text-sm">
+            <select id="ss-status" value={status} onChange={(e) => setStatus(e.target.value)} className="select-field-sm">
               <option value="">Semua</option>
               <option value="OPEN">Terbuka</option>
               <option value="IN_PROGRESS">Berjalan</option>
@@ -105,12 +125,30 @@ export default function OpnameSessionsPage() {
               <option value="CANCELLED">Dibatalkan</option>
             </select>
           </div>
+          {canFilterDepo && depots.length > 1 && (
+            <div>
+              <label htmlFor="ss-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label>
+              <select
+                id="ss-depo"
+                value={kodeDepo}
+                onChange={(e) => setKodeDepo(e.target.value)}
+                aria-label="Filter depo"
+                title="Saring sesi berdasarkan depo"
+                className="select-field-sm min-w-[160px]"
+              >
+                <option value="">Semua Depo</option>
+                {depots.map((d) => (
+                  <option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>
+                ))}
+              </select>
+            </div>
+          )}
           <label className="inline-flex items-center gap-2 text-sm text-gray-700 pb-2.5 cursor-pointer">
             <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="w-4 h-4 accent-primary-600" />
             Tugas saya
           </label>
-          {(week || status || mine) && (
-            <button onClick={() => { setWeek(''); setStatus(''); setMine(false); }} className="btn-secondary text-sm mb-0.5">Reset</button>
+          {(week || status || mine || kodeDepo) && (
+            <button onClick={() => { setWeek(''); setStatus(''); setMine(false); setKodeDepo(''); }} className="btn-secondary text-sm mb-0.5">Reset</button>
           )}
         </div>
 
@@ -128,7 +166,7 @@ export default function OpnameSessionsPage() {
           </div>
         ) : (
           <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="max-h-[560px] overflow-x-auto overflow-y-auto">
               <table className="w-full min-w-[860px] border-collapse">
                 <caption className="sr-only">Daftar sesi opname</caption>
                 <thead className="sticky top-0 z-10">
