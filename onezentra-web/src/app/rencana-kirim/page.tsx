@@ -1012,55 +1012,19 @@ export default function RencanaKirimPage() {
           <div className="lg:col-span-2">
             {/* Table Card */}
             <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-chip-primary flex items-center justify-center">
-                      <svg className="w-5 h-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+              <div className="px-5 py-4 border-b border-gray-100">
+                <div className="flex flex-col gap-4">
+                  {/* Baris judul + aksi utama */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-chip-primary flex items-center justify-center">
+                        <svg className="w-5 h-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-slate-800">Daftar Rencana Pengiriman</h2>
+                        <p className="mt-0.5 text-xs text-slate-400">Pantau jadwal, kendaraan, tujuan, dan status pengiriman</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-base font-bold text-slate-800">Daftar Rencana Pengiriman</h2>
-                      <p className="mt-0.5 text-xs text-slate-400">Pantau jadwal, kendaraan, tujuan, dan status pengiriman</p>
-                    </div>
-                  </div>
-                  <div className="flex-1 sm:max-w-md">
-                    <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO Transporter/RKH/driver..." resultCount={items.length} totalCount={rkStats?.total} currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0} currentTo={(page - 1) * 20 + items.length} resultLabel="rencana" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <select
-                        value={filterStatus ?? 'Semua'}
-                        onChange={(e) => { setFilterStatus(e.target.value || null); setPage(1); }}
-                        className="appearance-none py-2 px-3 border border-slate-300 rounded-xl bg-surface-card text-gray-900 leading-tfocus focus:outline-none focus:ring-primary-500 focus:border-primary-500 shadow-sm min-w-[120px]"
-                      >
-                        <option value="">Semua</option>
-                        <option value="DRAFT">Draft</option>
-                        <option value="SCHEDULED">Dijadwalkan</option>
-                        <option value="CHECKED_IN">Check In</option>
-                        <option value="VERIFIED">Terverifikasi</option>
-                        <option value="IN_PROGRESS">Diproses</option>
-                        <option value="COMPLETED">Selesai</option>
-                        <option value="CANCELLED">Dibatalkan</option>
-                      </select>
-                      <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
-                    </div>
-                    <div className="relative ml-2">
-                      <select
-                        value={filterKodeDepo ?? ''}
-                        onChange={(e) => { setFilterKodeDepo(e.target.value || null); setPage(1); }}
-                        className="appearance-none py-2 px-3 border border-slate-300 rounded-xl bg-surface-card text-gray-900 leading-tfocus focus:outline-none focus:ring-primary-500 focus:border-primary-500 shadow-sm min-w-[160px] pr-10"
-                      >
-                        <option value="">Semua Depo</option>
-                        {depoList.map((d) => (
-                          <option key={d.kode_depo} value={d.kode_depo}>
-                            {d.nama_depo} ({d.kode_depo})
-                          </option>
-                        ))}
-                      </select>
-                      <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
                     {hasPermission('rencana_kirim.create') && (
                       <button onClick={() => openCreate()} aria-label="Buat rencana kirim baru" className="btn-primary text-sm px-4 py-2 shadow-none">
                         <span className="flex items-center gap-2">
@@ -1069,6 +1033,49 @@ export default function RencanaKirimPage() {
                         </span>
                       </button>
                     )}
+                  </div>
+
+                  {/* Baris pencarian + filter */}
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                    <div className="flex-1 lg:max-w-md">
+                      <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari PO Transporter/RKH/driver..." resultCount={items.length} totalCount={rkStats?.total} currentFrom={items.length > 0 ? (page - 1) * 20 + 1 : 0} currentTo={(page - 1) * 20 + items.length} resultLabel="rencana" />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="relative">
+                        <select
+                          aria-label="Filter status"
+                          value={filterStatus ?? ''}
+                          onChange={(e) => { setFilterStatus(e.target.value || null); setPage(1); }}
+                          className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-surface-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[140px]"
+                        >
+                          <option value="">Semua</option>
+                          <option value="DRAFT">Draft</option>
+                          <option value="SCHEDULED">Dijadwalkan</option>
+                          <option value="CHECKED_IN">Check In</option>
+                          <option value="VERIFIED">Terverifikasi</option>
+                          <option value="IN_PROGRESS">Diproses</option>
+                          <option value="COMPLETED">Selesai</option>
+                          <option value="CANCELLED">Dibatalkan</option>
+                        </select>
+                        <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
+                      </div>
+                      <div className="relative">
+                        <select
+                          aria-label="Filter depo"
+                          value={filterKodeDepo ?? ''}
+                          onChange={(e) => { setFilterKodeDepo(e.target.value || null); setPage(1); }}
+                          className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-surface-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
+                        >
+                          <option value="">Semua Depo</option>
+                          {depoList.map((d) => (
+                            <option key={d.kode_depo} value={d.kode_depo}>
+                              {d.nama_depo} ({d.kode_depo})
+                            </option>
+                          ))}
+                        </select>
+                        <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1130,7 +1137,7 @@ export default function RencanaKirimPage() {
                         {statusConfig[item.status]?.label || item.status}
                       </span>
                     </td>
-<td className="px-5 py-3.5 text-center whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
                       <div className="inline-flex items-center gap-1.5">
                         {hasPermission('rencana_kirim.edit') && item.status === 'DRAFT' && (
                           <button
