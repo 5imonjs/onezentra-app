@@ -19,6 +19,8 @@
 /storage/framework/testing/*
 /storage/framework/views/*
 /storage/logs/*
+# Backup DB manual (mis. dump role_permission) — artefak lokal, jangan commit.
+/storage/backups/
 !/storage/**/.gitkeep
 
 # Bootstrap cache

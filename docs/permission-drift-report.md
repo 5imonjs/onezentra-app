@@ -2,7 +2,18 @@
 
 Dibuat: 2026-10-09 · Sumber: `database/seeders/PermissionSeeder.php` (target) vs DB dev `onezentra_warehouse`.
 
-## Ringkasan
+## Status penerapan
+
+**Re-seed sudah dijalankan** di DB dev `onezentra_warehouse` pada 2026-10-09 setelah backup.
+
+- Backup: `storage/backups/role_permission_20261009_093409.sql` (458 baris, DROP+CREATE+INSERT).
+- Hasil: `roles=12`, `permissions=96`, `role_permission=451`; verifikasi ulang **drift revoke=0 / add=0**.
+- Count per role: `admin_master` 96, `admin_distirbusi` 59, `blc` 49, `admin_planner` 44, `cheker` 39, `operator` 39, `staff_logistic` 39, `bac` 25, `sac` 25, `rlh` 15, `rfah` 15, `rh` 6.
+- Grant keputusan akses terpasang; `approval.view` tetap hanya `admin_master`.
+
+Bagian di bawah adalah **snapshot drift sebelum re-seed** (jejak audit).
+
+## Ringkasan (sebelum re-seed)
 
 | Metrik | DB dev (live) | Target seeder | Delta |
 |---|---:|---:|---:|
@@ -12,7 +23,7 @@ Dibuat: 2026-10-09 · Sumber: `database/seeders/PermissionSeeder.php` (target) v
 
 Angka net +7 menyesatkan: selisihnya adalah **60 grant yang akan DICABUT** dikurangi **53 grant yang akan DITAMBAH** oleh `sync()` saat `PermissionSeeder` dijalankan ulang (diregenerasi 2026-10-09 setelah keputusan akses per role). Re-seed **bukan** sekadar mencabut 7 baris — ia mengganti set tiap role secara persis dan mengubah akses 6 dari 12 role.
 
-> **Jangan jalankan `php artisan db:seed --class=PermissionSeeder --force`** tanpa menyetujui baris di bawah ini lebih dulu.
+> Rencana di bawah **sudah disetujui dan diterapkan**; disimpan sebagai jejak audit.
 
 ## Keputusan akses yang sudah tertanam (2026-10-09)
 
