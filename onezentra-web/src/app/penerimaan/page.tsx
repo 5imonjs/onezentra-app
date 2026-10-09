@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/dashboard/layout';
-import { receivingItems, npn, getErrorMessage, batches } from '@/lib/api';
+import { receivingItems, npn, getErrorMessage, batches, depo } from '@/lib/api';
 import ReceivingItemEditModal from '@/components/ReceivingItemEditModal';
 import SearchInput from '@/components/SearchInput';
 import { useAuthStore } from '@/store/auth';
@@ -212,6 +212,12 @@ export default function PenerimaanPage() {
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  // Filter depo hanya untuk user global (depot.view_all): staff_logistic,
+  // admin_master, admin_planner. User ter-scope depo tidak perlu filter —
+  // backend sudah membatasi ke deponya sendiri.
+  const canFilterDepo = hasPermission('depot.view_all');
+  const [kodeDepo, setKodeDepo] = useState('');
+  const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<ReceivingItem | null>(null);
@@ -227,6 +233,7 @@ export default function PenerimaanPage() {
         search: search.trim() || undefined,
         per_page: GROUPS_PER_PAGE,
         page,
+        ...(kodeDepo ? { kode_depo: kodeDepo } : {}),
       });
       const { data, meta } = res.data;
       setRawGroups(data);
@@ -244,9 +251,23 @@ export default function PenerimaanPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, page]);
+  }, [search, page, kodeDepo]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Daftar depo tersumber dari master user; user global dengan depot.view_all
+  // melihat seluruh depo. Gagal memuat cukup mematikan dropdown, bukan halaman.
+  const loadDepots = useCallback(async () => {
+    if (!canFilterDepo) return;
+    try {
+      const res = await depo.list();
+      setDepots(res.data?.data ?? []);
+    } catch (e) {
+      console.error('[Depo]', e);
+    }
+  }, [canFilterDepo]);
+
+  useEffect(() => { loadDepots(); }, [loadDepots]);
 
   const allItems = useMemo<ReceivingItem[]>(() => rawGroups.flatMap((g) => g.items), [rawGroups]);
 
@@ -397,13 +418,31 @@ export default function PenerimaanPage() {
         {/* Worklist table */}
         <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-            <SearchInput
-              value={search}
-              onChange={(v) => { setSearch(v); setPage(1); }}
-              placeholder="Cari kode / nama barang / sumber material / PO..."
-              resultCount={combos.length}
-              resultLabel="batch"
-            />
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <SearchInput
+                value={search}
+                onChange={(v) => { setSearch(v); setPage(1); }}
+                placeholder="Cari kode / nama barang / sumber material / PO..."
+                resultCount={combos.length}
+                resultLabel="batch"
+              />
+              {canFilterDepo && depots.length > 1 && (
+                <div className="shrink-0">
+                  <label htmlFor="penerimaan-depo" className="sr-only">Filter depo</label>
+                  <select
+                    id="penerimaan-depo"
+                    value={kodeDepo}
+                    onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
+                    className="appearance-none py-2 px-3 border border-slate-300 rounded-xl bg-surface-card text-gray-900 text-sm shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
+                  >
+                    <option value="">Semua Depo</option>
+                    {depots.map((d) => (
+                      <option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {hasPermission('opname.view') && (
                 <button onClick={() => router.push('/opname-expired')} title="Input dan import batch manual dikelola di Batch Expired" className="btn-primary">
