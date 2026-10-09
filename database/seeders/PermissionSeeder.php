@@ -244,6 +244,18 @@ class PermissionSeeder extends Seeder
             }
         }
 
+        // Progres opname mengikuti opname.view: migration
+        // grant_opname_progress_all_to_opname_viewers memberi `opname.progress_all`
+        // ke tiap role yang bisa melihat opname. Tanpa aturan ini, `sync()` di
+        // bawah akan mencabutnya dan membatalkan efek migration diam-diam.
+        // Diturunkan dari peta yang ada, sama seperti export yang mengikuti view.
+        foreach (array_keys($rolePermMap) as $roleSlug) {
+            if (in_array('opname.view', $rolePermMap[$roleSlug], true)
+                && ! in_array('opname.progress_all', $rolePermMap[$roleSlug], true)) {
+                $rolePermMap[$roleSlug][] = 'opname.progress_all';
+            }
+        }
+
         // Cluster/principal mengikuti grant NPN 1:1 (view->view, create->create,
         // dst). Menu ini juga master produk, jadi role yang sudah dipercaya
         // mengelola NPN otomatis managingnya juga di sini. Diturunkan dari peta

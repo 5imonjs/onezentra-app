@@ -126,6 +126,31 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertSame($cheker, $operator);
     }
 
+    public function test_opname_progress_all_mengikuti_opname_view(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        $viewHolders = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'opname.view'))
+            ->pluck('slug')
+            ->sort()
+            ->values()
+            ->all();
+        $progressHolders = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'opname.progress_all'))
+            ->pluck('slug')
+            ->sort()
+            ->values()
+            ->all();
+
+        // Migration grant_opname_progress_all_to_opname_viewers memberi
+        // progress_all ke tiap pemegang opname.view; seeder harus konsisten
+        // supaya `sync()` tidak mencabutnya diam-diam.
+        $this->assertNotEmpty($viewHolders);
+        $this->assertSame($viewHolders, $progressHolders);
+        $this->assertContains('operator', $progressHolders);
+        $this->assertContains('sac', $progressHolders);
+    }
+
     private function seedRoles(): void
     {
         $meta = [
