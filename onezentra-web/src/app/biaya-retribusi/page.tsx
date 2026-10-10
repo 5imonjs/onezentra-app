@@ -256,7 +256,7 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
           return (
             <li key={h.id} className="relative flex gap-3 pb-4 last:pb-0">
               {i < histories.length - 1 && (
-                <span aria-hidden="true" className="absolute left-[15px] top-9 bottom-0 w-[2px] rounded-full bg-slate-200" />
+                <span aria-hidden="true" className="absolute left-3.75 top-9 bottom-0 w-0.5 rounded-full bg-slate-200" />
               )}
               <div className="shrink-0 mt-0.5">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-full border text-[10px] font-black ${meta.badge}`}>
@@ -336,7 +336,7 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
                 {i < steps.length - 1 && (
                   <span
                     aria-hidden="true"
-                    className={`absolute left-[15px] top-8 bottom-0 w-[2px] rounded-full ${state === 'done' ? 'bg-emerald-200' : 'bg-slate-200'}`}
+                    className={`absolute left-3.75 top-8 bottom-0 w-0.5 rounded-full ${state === 'done' ? 'bg-emerald-200' : 'bg-slate-200'}`}
                   />
                 )}
                 <div className="shrink-0 mt-0.5">
@@ -1366,7 +1366,7 @@ export default function BiayaRetribusiPage() {
             </select>
             <div className="flex items-center gap-1">
               <span className="text-xs text-slate-500">/page</span>
-              <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className="select-field-sm w-[90px]">
+              <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className="select-field-sm w-22.5">
                 <option value={25}>25</option>
                 <option value={50}>50</option>
                 <option value={100}>100</option>
@@ -1904,7 +1904,7 @@ export default function BiayaRetribusiPage() {
                 {candidates.length > 0 && (
                   <>
                   <div className="max-h-72 overflow-auto rounded-xl border border-gray-300 shadow-sm hidden sm:block">
-                    <table className="min-w-[680px] w-full text-xs">
+                    <table className="min-w-170 w-full text-xs">
                       <thead className="sticky top-0 bg-surface-raised">
                         <tr>
                           <th className="table-header text-center w-10">
