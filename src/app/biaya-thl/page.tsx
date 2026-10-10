@@ -164,7 +164,7 @@ const thlPipelineSteps = (item: BiayaThlItem): ApprovalPipelineStep[] => {
   });
 };
 
-const VEHICLE_TYPES = ['CDD', 'Fuso', 'Container 20', 'Container 40', 'Box', 'Pickup'];
+const VEHICLE_TYPES = ['CDE', 'CDD', 'Fuso', 'Container 20', 'Container 40', 'Box', 'Pickup'];
 const POSITIONS = ['THL HELPER', 'THL DRIVER', 'THL GUDANG'];
 
 // Identitas visual per grup SJ: warna + nomor selalu tampil berpasangan agar

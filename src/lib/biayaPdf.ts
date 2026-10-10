@@ -256,6 +256,44 @@ export function formatSuratJalan(detail: { no_surat_jalan?: string | null; kenda
   return suratJalans.join(', ') || '-';
 }
 
+/** Ekstrak semua nopol dari array kendaraan (format baru) atau field legacy. */
+const extractAllNopol = (detail: { kendaraan?: Array<{ nopol?: string }>; nopol_kendaraan?: string }): string => {
+  const nopol: string[] = [];
+  // Dari array kendaraan baru
+  if (detail.kendaraan && Array.isArray(detail.kendaraan)) {
+    detail.kendaraan.forEach((v) => { if (v.nopol) nopol.push(String(v.nopol).trim()); });
+  }
+  // Dari field legacy (fallback)
+  if (detail.nopol_kendaraan && !nopol.includes(String(detail.nopol_kendaraan).trim())) {
+    nopol.push(String(detail.nopol_kendaraan).trim());
+  }
+  return nopol.length > 0 ? nopol.join(', ') : '-';
+};
+
+/** Ekstrak semua jenis kendaraan dari array kendaraan (format baru) atau field legacy. */
+const extractAllType = (detail: { kendaraan?: Array<{ type?: string }>; type_kendaraan?: string }): string => {
+  const types: string[] = [];
+  if (detail.kendaraan && Array.isArray(detail.kendaraan)) {
+    detail.kendaraan.forEach((v) => { if (v.type) types.push(String(v.type).trim()); });
+  }
+  if (detail.type_kendaraan && !types.includes(String(detail.type_kendaraan).trim())) {
+    types.push(String(detail.type_kendaraan).trim());
+  }
+  return types.length > 0 ? types.join(', ') : '-';
+};
+
+/** Gabungkan semua surat jalan (no_surat_jalan + kendaraan_sj) dari array kendaraan. */
+const extractAllSuratJalan = (detail: { kendaraan?: Array<{ sj?: string }>; no_surat_jalan?: string }): string => {
+  const sj: string[] = [];
+  if (detail.kendaraan && Array.isArray(detail.kendaraan)) {
+    detail.kendaraan.forEach((v) => { if (v.sj) sj.push(String(v.sj).trim()); });
+  }
+  if (detail.no_surat_jalan && !sj.includes(String(detail.no_surat_jalan).trim())) {
+    sj.push(String(detail.no_surat_jalan).trim());
+  }
+  return sj.length > 0 ? sj.join(', ') : '-';
+};
+
 function formatPdfColumn(primary?: string | null, additional?: string | null): string {
   const values = [primary, additional]
     .flatMap((item) => String(item || '').split(/[,;\n]+/))
@@ -459,7 +497,7 @@ async function loadApprovalSections(data: RetribusiData): Promise<ApprovalSectio
   try {
     const approvalModule = 'no_kendaraan' in data && 'kubikasi_base' in data ? 'biaya_thl' : 'biaya_retribusi';
     const { data: payloadData, status: approvalStatus } = await apiClient.get(
-        `${API_URL}/approval-assignments?kode_depo=${encodeURIComponent(data.kode_depo)}&module=${approvalModule}`,
+        `approval-assignments?kode_depo=${encodeURIComponent(data.kode_depo)}&module=${approvalModule}`,
         { responseType: 'json' }
       );
       if (approvalStatus === 200) {
@@ -619,7 +657,7 @@ async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'J
   if (!(photo instanceof File) && typeof photo.id === 'number') {
     try {
       const { data: blob, status } = await apiClient.get(
-        `${API_URL}/biaya-thl/photos/${photo.id}`,
+        `biaya-thl/photos/${photo.id}`,
         { responseType: 'blob' }
       );
       if (status !== 200) return null;
@@ -667,12 +705,14 @@ async function readPdfBytes(doc: LampiranDoc): Promise<ArrayBuffer> {
     return await doc.file.arrayBuffer();
   }
   const url = doc.id
-    ? `${API_URL}/biaya-retribusi/documents/${doc.id}`
+    ? `biaya-retribusi/documents/${doc.id}`
     : doc.file_path
       ? `${API_ROOT}/storage/${doc.file_path}`
       : null;
   if (!url) throw new Error(`Dokumen ${doc.file_name || '-'} tidak punya sumber file`);
   try {
+    // Note: if URL is absolute (storage path), we need to use fetch directly
+    // since apiClient prepends baseURL. But storage paths are usually absolute.
     const { data: responseData, status: responseStatus } = await apiClient.get(url, { responseType: 'arraybuffer' });
     if (responseStatus !== 200) throw new Error('Gagal memuat dokumen');
     const arrayBuffer = responseData as ArrayBuffer;
@@ -764,13 +804,13 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
     startY: 27,
     margin: { left: pageMargin, right: pageMargin },
     head: [['No', 'NO KENDARAAN', 'JENIS KENDARAAN', 'SURAT JALAN', 'NOMINAL', 'Paraf']],
-    body: data.details.map((detail, index) => [index + 1, String(detail.nopol_kendaraan || '-').toUpperCase(), String(detail.type_kendaraan || '-').toUpperCase(), formatSuratJalan(detail), money(detail.nominal_biaya), '']),
+    body: data.details.map((detail, index) => [index + 1, String(extractAllNopol(detail)).toUpperCase(), String(extractAllType(detail)).toUpperCase(), extractAllSuratJalan(detail), money(detail.nominal_biaya), '']),
     foot: [['', '', '', 'Total', money(data.nominal_biaya), '']],
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 7, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.3, minCellHeight: 5.5, valign: 'middle' },
     headStyles: { fillColor: [210, 210, 210], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
     footStyles: { fillColor: [255, 255, 255], textColor: [20, 20, 20], fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 9, halign: 'center' }, 1: { cellWidth: 62 }, 2: { cellWidth: 52 }, 3: { cellWidth: 55 }, 4: { cellWidth: 46, halign: 'center' }, 5: { cellWidth: 53 } },
+    columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 1: { cellWidth: 55 }, 2: { cellWidth: 48 }, 3: { cellWidth: 50 }, 4: { cellWidth: 42, halign: 'center' }, 5: { cellWidth: 48 } },
     didParseCell: (hookData) => {
       if (hookData.section === 'foot') hookData.cell.styles.halign = 'center';
     },
