@@ -77,3 +77,10 @@ onezentra-web/playwright-report/
 onezentra-web/blob-report/
 onezentra-web/.playwright/
 /.freebuff
+
+# Instruksi AI lokal — jangan commit (sengaja dihapus dari repo).
+/AGENTS.md
+/CLAUDE.md
+/.mcp.json
+onezentra-web/AGENTS.md
+onezentra-web/CLAUDE.md
