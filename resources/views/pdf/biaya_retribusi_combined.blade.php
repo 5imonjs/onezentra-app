@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -6,9 +5,8 @@
     <style>
         @page { margin: 10px; size: A4 landscape; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 7.5px; margin: 0; color: #111827; }
-        table { border-collapse: collapse; width: 100%; }
-        .header { table-layout: fixed; }
-        td, th { border: 1px solid #222; padding: 3px 4px; vertical-align: middle; }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        td, th { border: 1px solid #222; padding: 3px 4px; vertical-align: top; }
         .header { background: #f3f4f6; border: 1px solid #1f2937; }
         .header td { height: 34px; vertical-align: middle; }
         .brand { width: 14%; text-align: center; font-weight: bold; font-size: 10px; }
@@ -18,7 +16,7 @@
         .meta div { padding: 2px 0; }
         .section-date { font-weight: bold; height: 12px; }
         .data th { background: #d2d2d2; text-align: center; font-weight: bold; padding: 4px; }
-        .data td { height: 14px; }
+        .data td { height: 14px; vertical-align: top; }
         .summary .col-no { width: 3%; }
         .summary .col-nopol { width: 23%; }
         .summary .col-type { width: 18%; }
@@ -33,8 +31,8 @@
         .thl-data .col-time { width: 13%; }
         .center { text-align: center; }
         .right { text-align: right; }
-        .approval { margin-top: 7px; }
-        .approval td { height: 18px; text-align: center; vertical-align: middle; }
+        .approval { margin: 7px 0; }
+        .approval td { text-align: center; vertical-align: middle; }
         .approval .heading { height: 12px; font-weight: bold; }
         .approval .signature-space { height: 42px; }
         .approval .signature-space { height: 36px; }
@@ -57,159 +55,167 @@
     </style>
 </head>
 <body>
-    <table class="header">
-        <tr>
-            <td class="brand">
-                @if(!empty($logoData))
-                    <img src="data:image/jpeg;base64,{{ $logoData }}" alt="SNS">
-                @else
-                    SNS
-                @endif
-            </td>
-            <td class="title">FORM KLAIM BIAYA PENGAJUAN RETRIBUSI</td>
-            <td class="meta">
-                <div><b>DEPO</b> : {{ $biayaRetribusi->nama_depo ?: $biayaRetribusi->kode_depo }}</div>
-                <div><b>Tanggal Pengajuan</b> : {{ optional($biayaRetribusi->tanggal_pengajuan)->format('d F Y') }}</div>
-            </td>
-        </tr>
-    </table>
 
-    <table class="data summary">
-        <colgroup>
-            <col class="col-no"><col class="col-nopol"><col class="col-type"><col class="col-sj"><col class="col-nominal"><col class="col-paraf">
-        </colgroup>
-        <thead>
-            <tr><th>No</th><th>NO KENDARAAN</th><th>JENIS KENDARAAN</th><th>SURAT JALAN</th><th>NOMINAL</th><th>Paraf</th></tr>
-        </thead>
-        <tbody>
-            @foreach($biayaRetribusi->details as $detail)
-                <tr>
-                    <td class="center">{{ $loop->iteration }}</td>
-                    @php($kendaraanNopol = collect([$detail->nopol_kendaraan, $detail->biayaThlDetail?->kendaraan_nopol])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
-                    @php($kendaraanType = collect([$detail->type_kendaraan, $detail->biayaThlDetail?->kendaraan_type])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
-                    <td>{{ $kendaraanNopol ?: '-' }}</td>
-                    <td>{{ $kendaraanType ?: '-' }}</td>
-                    <td>
-                        @php($suratJalans = collect([$detail->no_surat_jalan, $detail->biayaThlDetail?->kendaraan_sj])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
-                        {{ $suratJalans ?: '-' }}
-                    </td>
-                    <td class="center">Rp {{ number_format($detail->nominal_biaya, 0, ',', '.') }}</td>
-                    <td></td>
-                </tr>
-            @endforeach
-            <tr><td colspan="4" class="center"><b>Total</b></td><td class="center"><b>Rp {{ number_format($biayaRetribusi->nominal_biaya, 0, ',', '.') }}</b></td><td></td></tr>
-        </tbody>
-    </table>
-
-    @php($stamps = $stamps ?? [])
-    <table class="approval">
-        <tr>
-            @foreach(array_slice($approvalSections, 0, 2) as $section)
-                <td class="heading">{{ $section['title'] }}</td>
-            @endforeach
-            @if(count($approvalSections) > 2)
-                <td class="heading" colspan="{{ count($approvalSections) - 2 }}">Menyetujui</td>
+<table class="header">
+    <tr>
+        <td class="brand">
+            @if(!empty($logoData))
+                <img src="data:image/jpeg;base64,{{ $logoData }}" alt="SNS">
+            @else
+                SNS
             @endif
-        </tr>
-        <tr>
-            @foreach($approvalSections as $section)
-                <td class="signature-space">
-                    @php($stamp = $stamps[$section['title']] ?? null)
-                    @if($stamp)
-                            @php($stampClass = match($stamp['text']) {
-                                'DITOLAK' => 'stamp-red',
-                                'REVISI' => 'stamp-orange',
-                                default => 'stamp-green',
-                            })
-                        <div class="stamp {{ $stampClass }}">
-                            <span class="stamp-text">{{ $stamp['text'] }}</span>
-                            <span class="stamp-date">{{ $stamp['date'] }}</span>
-                        </div>
-                    @endif
+        </td>
+        <td class="title">FORM KLAIM BIAYA PENGAJUAN RETRIBUSI</td>
+        <td class="meta">
+            <div><b>DEPO</b> : {{ $biayaRetribusi->nama_depo ?: $biayaRetribusi->kode_depo }}</div>
+            <div><b>Tanggal Pengajuan</b> : {{ optional($biayaRetribusi->tanggal_pengajuan)->format('d F Y') }}</div>
+        </td>
+    </tr>
+</table>
+
+<!-- Summary Table: No, NO KENDARAAN, JENIS KENDARAAN, SURAT JALAN, NOMINAL, Paraf -->
+<table class="data summary" style="margin-bottom: 8px; width: 100%;">
+    <colgroup>
+        <col class="col-no"><col class="col-nopol"><col class="col-type"><col class="col-sj"><col class="col-nominal"><col class="col-paraf">
+    </colgroup>
+    <thead>
+        <tr><th>No</th><th>NO KENDARAAN</th><th>JENIS KENDARAAN</th><th>SURAT JALAN</th><th>NOMINAL</th><th>Paraf</th></tr>
+    </thead>
+    <tbody>
+        @foreach($biayaRetribusi->details as $detail)
+            <tr>
+                <td class="center">{{ $loop->iteration }}</td>
+                @php($kendaraanNopol = collect([$detail->nopol_kendaraan, $detail->biayaThlDetail?->kendaraan_nopol])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
+                @php($kendaraanType = collect([$detail->type_kendaraan, $detail->biayaThlDetail?->kendaraan_type])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
+                <td>{{ $kendaraanNopol ?: '-' }}</td>
+                <td>{{ $kendaraanType ?: '-' }}</td>
+                <td>
+                    @php($suratJalans = collect([$detail->no_surat_jalan, $detail->biayaThlDetail?->kendaraan_sj])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
+                    {{ $suratJalans ?: '-' }}
                 </td>
-            @endforeach
-        </tr>
-        <tr>
-            @foreach($approvalSections as $section)
-                <td>{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan ?: '-') : ($section['people'][0]['name'] ?? '-') }}</td>
-            @endforeach
-        </tr>
-        <tr>
-            @foreach($approvalSections as $section)
-                <td class="role">{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan_level ?: 'BLC') : ($section['people'][0]['role'] ?? '-') }}</td>
-            @endforeach
-        </tr>
-    </table>
+                <td class="center">Rp {{ number_format($detail->nominal_biaya, 0, ',', '.') }}</td>
+                <td></td>
+            </tr>
+        @endforeach
+        <tr><td colspan="4" class="center"><b>Total</b></td><td class="center"><b>Rp {{ number_format($biayaRetribusi->nominal_biaya, 0, ',', '.') }}</b></td><td></td></tr>
+    </tbody>
+</table>
 
-    @if(collect($stamps)->contains(fn ($stamp) => ($stamp['text'] ?? null) === 'DITOLAK'))
-        <div class="reject-note">DITOLAK — {{ $biayaRetribusi->rejection_reason ?: 'Tanpa alasan' }}</div>
-    @endif
-
-    @if(collect($stamps)->contains(fn ($stamp) => ($stamp['text'] ?? null) === 'REVISI'))
-        <div class="revisi-note">REVISI — {{ $biayaRetribusi->revisi_reason ?: 'Tanpa catatan' }}</div>
-    @endif
-
-    <div class="note">Note: * Jika pengajuan biaya &gt; Rp 750.000</div>
-
-    <table class="header thl-header">
-        <tr>
-            <td class="brand">
-                @if(!empty($logoData))
-                    <img src="data:image/jpeg;base64,{{ $logoData }}" alt="SNS">
-                @else
-                    SNS
+<!-- Approval Table: Mengajukan, Mengetahui, Menyetujui, RFAH* -->
+<table class="approval" style="margin: 8px 0; width: 100%;">
+    <colgroup>
+        <col class="col-heading"><col class="col-signature"><col class="col-signature">
+    </colgroup>
+    <tr>
+        @foreach(array_slice($approvalSections, 0, 2) as $section)
+            <td class="heading">{{ $section['title'] }}</td>
+        @endforeach
+        @if(count($approvalSections) > 2)
+            <td class="heading" colspan="{{ count($approvalSections) - 2 }}">Menyetujui</td>
+        @endif
+    </tr>
+    <tr>
+        @foreach($approvalSections as $section)
+            <td class="signature-space">
+                @php($stamp = $stamps[$section['title']] ?? null)
+                @if($stamp)
+                        @php($stampClass = match($stamp['text']) {
+                            'DITOLAK' => 'stamp-red',
+                            'REVISI' => 'stamp-orange',
+                            default => 'stamp-green',
+                        })
+                    <div class="stamp {{ $stampClass }}">
+                        <span class="stamp-text">{{ $stamp['text'] }}</span>
+                        <span class="stamp-date">{{ $stamp['date'] }}</span>
+                    </div>
                 @endif
             </td>
-            <td class="title">FORM KLAIM TENAGA HARIAN LEPAS</td>
-        </tr>
-        <tr><td colspan="2" class="section-date">TANGGAL {{ optional($biayaRetribusi->tanggal_pengajuan)->format('d F Y') }}</td></tr>
-    </table>
+        @endforeach
+    </tr>
+    <tr>
+        @foreach($approvalSections as $section)
+            <td>{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan ?: '-') : ($section['people'][0]['name'] ?? '-') }}</td>
+        @endforeach
+    </tr>
+    <tr>
+        @foreach($approvalSections as $section)
+            <td class="role">{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan_level ?: 'BLC') : ($section['people'][0]['role'] ?? '-') }}</td>
+        @endforeach
+    </tr>
+</table>
 
-    <table class="data thl-data">
-        <colgroup>
-            <col class="col-no"><col class="col-name"><col class="col-kubikasi"><col class="col-drop-point"><col class="col-position"><col class="col-time"><col class="col-time">
-        </colgroup>
-        <thead>
-            <tr><th>No</th><th>Nama</th><th>Kubikasi</th><th>Drop Point</th><th>Posisi</th><th>Jam Datang</th><th>Jam Pulang</th></tr>
-        </thead>
+@if(collect($stamps)->contains(fn ($stamp) => ($stamp['text'] ?? null) === 'DITOLAK'))
+    <div class="reject-note">DITOLAK — {{ $biayaRetribusi->rejection_reason ?: 'Tanpa alasan' }}</div>
+@endif
+
+@if(collect($stamps)->contains(fn ($stamp) => ($stamp['text'] ?? null) === 'REVISI'))
+    <div class="revisi-note">REVISI — {{ $biayaRetribusi->revisi_reason ?: 'Tanpa catatan' }}</div>
+@endif
+
+<div class="note">Note: * Jika pengajuan biaya > Rp 750.000</div>
+
+<!-- THL Header: FORM KLAIM TENAGA HARIAN LEPAS -->
+<table class="header thl-header" style="width: 100%; margin: 8px 0;">
+    <tr>
+        <td class="brand">
+            @if(!empty($logoData))
+                <img src="data:image/jpeg;base64,{{ $logoData }}" alt="SNS">
+            @else
+                SNS
+            @endif
+        </td>
+        <td class="title">FORM KLAIM TENAGA HARIAN LEPAS</td>
+    </tr>
+    <tr><td colspan="2" class="section-date">TANGGAL {{ optional($biayaRetribusi->tanggal_pengajuan)->format('d F Y') }}</td></tr>
+</table>
+
+<!-- THL Data Table: No, Nama, Kubikasi, Drop Point, Posisi, Jam Datang, Jam Pulang -->
+<table class="data thl-data" style="width: 100%;">
+    <colgroup>
+        <col class="col-no"><col class="col-name"><col class="col-kubikasi"><col class="col-drop-point"><col class="col-position"><col class="col-time"><col class="col-time">
+    </colgroup>
+    <thead>
+        <tr><th>No</th><th>Nama</th><th>Kubikasi</th><th>Drop Point</th><th>Posisi</th><th>Jam Datang</th><th>Jam Pulang</th></tr>
+    </thead>
+    <tbody>
+        @foreach($biayaRetribusi->details as $detail)
+            @php($thl = $detail->biayaThlDetail)
+            <tr>
+                <td class="center">{{ $loop->iteration }}</td>
+                <td>{{ $detail->nopol_kendaraan ?: '-' }} - {{ $thl?->nama_thl ?: $thl?->driver_name ?: '-' }}</td>
+                <td class="center">{{ $thl?->kubikasi ?? 0 }}</td>
+                <td class="center">{{ $thl?->droppoint ?: 0 }}</td>
+                <td>{{ $thl?->posisi ?: 'THL GUDANG' }}</td>
+                <td class="center">{{ $thl?->jam_datang?->format('H:i') ?: '-' }}</td>
+                <td class="center">{{ $thl?->jam_pulang?->format('H:i') ?: '-' }}</td>
+            </tr>
+        @endforeach
+    </tbody>
+</table>
+
+<table>
+    <tr><td class="thl-photos">
+        @foreach($biayaRetribusi->details as $detail)
+            @foreach($detail->biayaThlDetail?->photos ?? [] as $photo)
+                @php($photoPath = storage_path('app/public/'.$photo->file_path))
+                @if(file_exists($photoPath))
+                    <img src="data:image/{{ pathinfo($photo->file_name, PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents($photoPath)) }}" alt="{{ $photo->file_name }}">
+                @endif
+            @endforeach
+        @endforeach
+    </td></tr>
+</table>
+
+@if($biayaRetribusi->documents && $biayaRetribusi->documents->count() > 0)
+    <table class="data documents">
+        <thead><tr><th>No</th><th>Jenis Dokumen</th><th>Nama File</th></tr></thead>
         <tbody>
-            @foreach($biayaRetribusi->details as $detail)
-                @php($thl = $detail->biayaThlDetail)
-                <tr>
-                    <td class="center">{{ $loop->iteration }}</td>
-                    <td>{{ $detail->nopol_kendaraan ?: '-' }} - {{ $thl?->nama_thl ?: $thl?->driver_name ?: '-' }}</td>
-                    <td class="center">{{ $thl?->kubikasi ?? 0 }}</td>
-                    <td class="center">{{ $thl?->droppoint ?: 0 }}</td>
-                    <td>{{ $thl?->posisi ?: 'THL GUDANG' }}</td>
-                    <td class="center">{{ $thl?->jam_datang?->format('H:i') ?: '-' }}</td>
-                    <td class="center">{{ $thl?->jam_pulang?->format('H:i') ?: '-' }}</td>
-                </tr>
+            @foreach($biayaRetribusi->documents as $document)
+                <tr><td class="center">{{ $loop->iteration }}</td><td>{{ strtoupper($document->document_type) }}</td><td>{{ $document->file_name }}</td></tr>
             @endforeach
         </tbody>
     </table>
+@endif
 
-    <table>
-        <tr><td class="thl-photos">
-            @foreach($biayaRetribusi->details as $detail)
-                @foreach($detail->biayaThlDetail?->photos ?? [] as $photo)
-                    @php($photoPath = storage_path('app/public/'.$photo->file_path))
-                    @if(file_exists($photoPath))
-                        <img src="data:image/{{ pathinfo($photo->file_name, PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents($photoPath)) }}" alt="{{ $photo->file_name }}">
-                    @endif
-                @endforeach
-            @endforeach
-        </td></tr>
-    </table>
-
-    @if($biayaRetribusi->documents && $biayaRetribusi->documents->count() > 0)
-        <table class="data documents">
-            <thead><tr><th>No</th><th>Jenis Dokumen</th><th>Nama File</th></tr></thead>
-            <tbody>
-                @foreach($biayaRetribusi->documents as $document)
-                    <tr><td class="center">{{ $loop->iteration }}</td><td>{{ strtoupper($document->document_type) }}</td><td>{{ $document->file_name }}</td></tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
 </body>
 </html>
