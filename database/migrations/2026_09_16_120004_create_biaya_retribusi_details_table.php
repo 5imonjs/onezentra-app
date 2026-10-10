@@ -18,6 +18,12 @@ return new class extends Migration
             $table->string('no_surat_jalan', 50)->nullable();
             $table->decimal('nominal_biaya', 15, 2)->default(0);
             $table->integer('order')->default(0);
+            $table->decimal('kubikasi', 10, 2)->default(0);
+            $table->string('droppoint', 100)->nullable();
+            $table->string('posisi', 50)->nullable();
+            $table->datetime('jam_datang')->nullable();
+            $table->datetime('jam_pulang')->nullable();
+            $table->boolean('kendaraan_tambahan')->default(false);
             $table->timestamps();
 
             $table->foreign('biaya_retribusi_id')->references('id')->on('biaya_retribusis')->onDelete('cascade');

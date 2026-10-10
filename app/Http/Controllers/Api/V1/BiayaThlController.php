@@ -545,7 +545,13 @@ class BiayaThlController extends Controller
                 'nopol_kendaraan' => $thlDetail->nopol_kendaraan,
                 'type_kendaraan' => $thlDetail->type_kendaraan,
                 'no_surat_jalan' => $thlDetail->no_surat_jalan,
+                'kubikasi' => $thlDetail->kubikasi,
+                'droppoint' => $thlDetail->droppoint,
+                'posisi' => $thlDetail->posisi,
+                'jam_datang' => $thlDetail->jam_datang,
+                'jam_pulang' => $thlDetail->jam_pulang,
                 'nominal_biaya' => $thlDetail->nominal_biaya,
+                'kendaraan_tambahan' => $thlDetail->kendaraan_tambahan,
                 'order' => $index,
             ]);
             $retribusiDetail->setRelation('biayaThlDetail', $thlDetail);
@@ -575,7 +581,7 @@ class BiayaThlController extends Controller
 
     private function pdfLogoData(): ?string
     {
-        $logoPath = public_path('biaya THL.jpeg');
+        $logoPath = public_path('biaya_thl.jpeg');
 
         if (! is_file($logoPath)) {
             return null;

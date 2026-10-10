@@ -5,7 +5,8 @@
     <style>
         @page { size: A4 landscape; margin: 10px; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 7px; margin: 0; color: #111827; }
-        table { border-collapse: collapse; width: 100%; }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        .pdf-table { width: 100%; max-width: 100%; table-layout: fixed; }
         td, th { border: 1px solid #222; padding: 3px 4px; }
         .header-box { border: 1px solid #1f2937; background: #f3f4f6; margin-bottom: 6px; }
         .brand-row { height: 22px; }
@@ -32,7 +33,10 @@
     </style>
 </head>
 <body>
-    <table class="header-box">
+    <table class="header-box pdf-table">
+        <colgroup>
+            <col style="width: 14%;"><col style="width: 60%;"><col style="width: 26%;">
+        </colgroup>
         <tr class="brand-row">
             <td class="brand-block"><span class="brand-inline">SNS</span></td>
             <td class="title-main">FORM KLAIM BIAYA PENGAJUAN RETRIBUSI</td>
@@ -44,7 +48,10 @@
     </table>
 
     <div class="section-title">DATA RETRIBUSI</div>
-    <table class="data">
+    <table class="data pdf-table">
+        <colgroup>
+            <col style="width: 3%;"><col style="width: 23%;"><col style="width: 18%;"><col style="width: 20%;"><col style="width: 18%;"><col style="width: 18%;">
+        </colgroup>
         <thead>
             <tr>
                 <th>No</th><th>No Kendaraan</th><th>Jenis Kendaraan</th><th>Surat Jalan</th><th>Nominal</th><th>Paraf</th>
@@ -69,7 +76,7 @@
         <div class="rfah">RFAH: {{ $biayaRetribusi->rfah_name }}</div>
     @endif
 
-    <table class="approval">
+    <table class="approval pdf-table">
         <tr>
             @foreach($approvalSections as $section)
                 @if($section['title'] === 'RFAH*' && !$biayaRetribusi->is_rfah_required)
@@ -107,7 +114,7 @@
     @if($biayaRetribusi->documents->count() > 0)
         <div class="attachment">
             <div class="section-title">LAMPIRAN DOKUMEN (BA / SJ / INVOICE)</div>
-            <table class="data">
+            <table class="data pdf-table">
                 <thead><tr><th>No</th><th>Tipe</th><th>Nama File</th></tr></thead>
                 <tbody>
                     @foreach($biayaRetribusi->documents as $document)

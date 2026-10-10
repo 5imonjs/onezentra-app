@@ -6,6 +6,7 @@
         @page { margin: 10px; size: A4 landscape; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 7.5px; margin: 0; color: #111827; }
         table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        .pdf-table { width: 100%; max-width: 100%; table-layout: fixed; }
         td, th { border: 1px solid #222; padding: 3px 4px; vertical-align: top; }
         .header { background: #f3f4f6; border: 1px solid #1f2937; }
         .header td { height: 34px; vertical-align: middle; }
@@ -37,7 +38,6 @@
         .approval td { text-align: center; vertical-align: middle; }
         .approval .heading { height: 12px; font-weight: bold; }
         .approval .signature-space { height: 42px; }
-        .approval .signature-space { height: 36px; }
         .approval .role { height: 13px; font-weight: bold; }
         .approval .signature-space { position: relative; }
         .stamp { display: inline-block; padding: 7px 16px; border: 2.5px solid currentColor; border-radius: 10px; transform: rotate(-14deg); opacity: 0.72; }
@@ -58,7 +58,10 @@
 </head>
 <body>
 
-<table class="header">
+<table class="header pdf-table">
+    <colgroup>
+        <col style="width: 14%;"><col style="width: 60%;"><col style="width: 26%;">
+    </colgroup>
     <tr>
         <td class="brand">
             @if(!empty($logoData))
@@ -76,7 +79,7 @@
 </table>
 
 <!-- Summary Table: No, NO KENDARAAN, JENIS KENDARAAN, SURAT JALAN, NOMINAL, Paraf -->
-<table class="data summary" style="margin-bottom: 8px; width: 100%;">
+<table class="data summary pdf-table" style="margin-bottom: 8px;">
     <colgroup>
         <col class="col-no"><col class="col-nopol"><col class="col-type"><col class="col-sj"><col class="col-nominal"><col class="col-paraf">
     </colgroup>
@@ -104,7 +107,7 @@
 </table>
 
 <!-- Approval Table: Mengajukan, Mengetahui, Menyetujui, RFAH* -->
-<table class="approval" style="margin: 8px 0; width: 100%;">
+<table class="approval pdf-table" style="margin: 8px 0;">
     <colgroup>
         <col class="col-heading"><col class="col-signature"><col class="col-signature">
     </colgroup>
@@ -157,7 +160,10 @@
 <div class="note">Note: * Jika pengajuan biaya > Rp 750.000</div>
 
 <!-- THL Header: FORM KLAIM TENAGA HARIAN LEPAS -->
-<table class="header thl-header" style="width: 100%; margin: 8px 0;">
+<table class="header thl-header pdf-table" style="margin: 8px 0;">
+    <colgroup>
+        <col style="width: 14%;"><col style="width: 86%;">
+    </colgroup>
     <tr>
         <td class="brand">
             @if(!empty($logoData))
@@ -172,7 +178,7 @@
 </table>
 
 <!-- THL Data Table: No, Nama, Kubikasi, Drop Point, Posisi, Jam Datang, Jam Pulang -->
-<table class="data thl-data" style="width: 100%;">
+<table class="data thl-data pdf-table">
     <colgroup>
         <col class="col-no"><col class="col-name"><col class="col-kubikasi"><col class="col-drop-point"><col class="col-position"><col class="col-time"><col class="col-time">
     </colgroup>
@@ -195,7 +201,7 @@
     </tbody>
 </table>
 
-<table>
+<table class="pdf-table">
     <tr><td class="thl-photos">
         @foreach($biayaRetribusi->details as $detail)
             @foreach($detail->biayaThlDetail?->photos ?? [] as $photo)
@@ -209,7 +215,7 @@
 </table>
 
 @if($biayaRetribusi->documents && $biayaRetribusi->documents->count() > 0)
-    <table class="data documents">
+    <table class="data documents pdf-table">
         <thead><tr><th>No</th><th>Jenis Dokumen</th><th>Nama File</th></tr></thead>
         <tbody>
             @foreach($biayaRetribusi->documents as $document)

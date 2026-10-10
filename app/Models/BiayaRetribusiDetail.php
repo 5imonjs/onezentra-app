@@ -12,7 +12,8 @@ class BiayaRetribusiDetail extends Model
     protected $fillable = [
         'biaya_retribusi_id', 'biaya_thl_id', 'biaya_thl_detail_id', 'receiving_id',
         'nopol_kendaraan', 'type_kendaraan', 'no_surat_jalan',
-        'qty_zak', 'qty_crt', 'nominal_biaya', 'order',
+        'kubikasi', 'droppoint', 'posisi', 'jam_datang', 'jam_pulang',
+        'qty_zak', 'qty_crt', 'nominal_biaya', 'kendaraan_tambahan', 'order',
     ];
 
     protected function casts(): array
@@ -22,10 +23,13 @@ class BiayaRetribusiDetail extends Model
             'biaya_thl_id' => 'integer',
             'biaya_thl_detail_id' => 'integer',
             'receiving_id' => 'integer',
-            'qty_zak' => 'decimal:2',
-            'qty_crt' => 'decimal:2',
+            'kubikasi' => 'decimal:2',
             'nominal_biaya' => 'decimal:2',
+            'droppoint' => 'decimal:2',
+            'kendaraan_tambahan' => 'boolean',
             'order' => 'integer',
+            'jam_datang' => 'datetime',
+            'jam_pulang' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

@@ -5,7 +5,8 @@
     <style>
         @page { margin: 10px; size: A4 landscape; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 8px; margin: 0; color: #111; }
-        table { border-collapse: collapse; width: 100%; }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        .pdf-table { width: 100%; max-width: 100%; table-layout: fixed; }
         td, th { border: 1px solid #222; padding: 3px 4px; }
         .header td { height: 24px; vertical-align: middle; }
         .brand { width: 14%; text-align: center; font-weight: bold; font-size: 10px; font-style: italic; color: #1f5d70; }
@@ -20,7 +21,10 @@
     </style>
 </head>
 <body>
-    <table class="header">
+    <table class="header pdf-table">
+        <colgroup>
+            <col style="width: 14%;"><col style="width: 86%;">
+        </colgroup>
         <tr>
             <td class="brand"><span>SNS</span></td>
             <td class="title">FORM KLAIM TENAGA HARIAN LEPAS</td>
@@ -28,7 +32,10 @@
         <tr><td colspan="2" class="date">TANGGAL {{ optional($biayaThl->tanggal_pengajuan)->format('d F Y') }}</td></tr>
     </table>
 
-    <table class="data">
+    <table class="data pdf-table">
+        <colgroup>
+            <col style="width: 3%;"><col style="width: 29%;"><col style="width: 11%;"><col style="width: 14%;"><col style="width: 17%;"><col style="width: 13%;"><col style="width: 13%;">
+        </colgroup>
         <thead>
             <tr><th>No</th><th>Nama</th><th>Kubikasi</th><th>Drop Point</th><th>Posisi</th><th>Jam Datang</th><th>Jam Pulang</th></tr>
         </thead>
@@ -47,7 +54,7 @@
         </tbody>
     </table>
 
-    <table>
+    <table class="pdf-table">
         <tr><td class="photos">
             @foreach($biayaThl->details as $detail)
                 @foreach($detail->photos as $photo)
