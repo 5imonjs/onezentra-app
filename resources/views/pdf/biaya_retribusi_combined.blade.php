@@ -31,6 +31,8 @@
         .thl-data .col-time { width: 13%; }
         .center { text-align: center; }
         .right { text-align: right; }
+        .approval .col-heading { width: 15%; }
+        .approval .col-signature { width: 42.5%; }
         .approval { margin: 7px 0; }
         .approval td { text-align: center; vertical-align: middle; }
         .approval .heading { height: 12px; font-weight: bold; }
