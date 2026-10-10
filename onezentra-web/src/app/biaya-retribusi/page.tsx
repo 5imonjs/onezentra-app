@@ -585,7 +585,13 @@ export default function BiayaRetribusiPage() {
   };
   /** Kompres foto lapangan (HP 8-12MP) ke JPEG <=1600px agar ringan saat diunggah. */
   const compressDocImage = (file: File): Promise<File> => new Promise((resolve) => {
-    if (!file.type.startsWith('image/') || file.size <= MAX_DOC_BYTES) {
+    // Non-image files (PDF, etc.): validate size but don't compress
+    if (!file.type.startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+    // Images under 20MB: skip compression (already small enough)
+    if (file.size <= MAX_DOC_BYTES) {
       resolve(file);
       return;
     }
@@ -744,9 +750,9 @@ export default function BiayaRetribusiPage() {
       fd.append('_method', 'PUT');
 
       formData.details.forEach((d, i) => {
-        fd.append(`details[${i}][biaya_thl_id]`, String(d.biaya_thl_id || ''));
-        fd.append(`details[${i}][biaya_thl_detail_id]`, String(d.biaya_thl_detail_id || ''));
-        fd.append(`details[${i}][receiving_id]`, String(d.receiving_id || ''));
+        if (d.biaya_thl_id) fd.append(`details[${i}][biaya_thl_id]`, String(d.biaya_thl_id));
+        if (d.biaya_thl_detail_id) fd.append(`details[${i}][biaya_thl_detail_id]`, String(d.biaya_thl_detail_id));
+        if (d.receiving_id) fd.append(`details[${i}][receiving_id]`, String(d.receiving_id));
         fd.append(`details[${i}][nopol_kendaraan]`, d.nopol_kendaraan);
         fd.append(`details[${i}][type_kendaraan]`, d.type_kendaraan);
         fd.append(`details[${i}][no_surat_jalan]`, d.no_surat_jalan || '');

@@ -374,13 +374,26 @@ class BiayaThlController extends Controller
                 ]);
             } else {
                 // Array kosong / tidak dikirim → hapus vehicles + reset legacy
+                // Hanya reset legacy bila tidak ada `kendaraan_sj/nopol/type` di payload
+                // (agar fitur edit/draft tetap bisa menyimpan data lama).
+                $hasLegacy = ! empty($detail['kendaraan_sj'] ?? null) || ! empty($detail['kendaraan_nopol'] ?? null) || ! empty($detail['kendaraan_type'] ?? null);
                 $row->vehicles()->delete();
-                $row->update([
-                    'kendaraan_tambahan' => false,
-                    'kendaraan_sj' => null,
-                    'kendaraan_nopol' => null,
-                    'kendaraan_type' => null,
-                ]);
+                if ($hasLegacy) {
+                    // Simpan legacy fields sebagai row tunggal (backward compat)
+                    $row->update([
+                        'kendaraan_tambahan' => false,
+                        'kendaraan_sj' => $detail['kendaraan_sj'] ?? null,
+                        'kendaraan_nopol' => $detail['kendaraan_nopol'] ?? null,
+                        'kendaraan_type' => $detail['kendaraan_type'] ?? null,
+                    ]);
+                } else {
+                    $row->update([
+                        'kendaraan_tambahan' => false,
+                        'kendaraan_sj' => null,
+                        'kendaraan_nopol' => null,
+                        'kendaraan_type' => null,
+                    ]);
+                }
             }
 
             foreach ($detail['photos_remove'] ?? [] as $photoId) {
