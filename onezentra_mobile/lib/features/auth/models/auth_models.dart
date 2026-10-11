@@ -70,19 +70,27 @@ class User {
   /// throws a [TypeError] that the login screen can only show as "unexpected
   /// error". These readers degrade to a safe default instead.
   static String? _readString(dynamic value) {
-    if (value == null) return null;
+    if (value == null) {
+      return null;
+    }
     var text = value.toString().trim();
     return text.isEmpty ? null : text;
   }
 
   static int? _readInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
     return int.tryParse(value?.toString() ?? '');
   }
 
   static DateTime? _readDate(dynamic value) {
-    if (value is String && value.isNotEmpty) return DateTime.tryParse(value);
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value);
+    }
     return null;
   }
 

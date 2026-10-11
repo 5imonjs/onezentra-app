@@ -117,10 +117,18 @@ class AuthRepository {
     String? passwordConfirmation,
   }) async {
     var body = <String, dynamic>{};
-    if (fullName != null) body['full_name'] = fullName;
-    if (email != null) body['email'] = email;
-    if (currentPassword != null) body['current_password'] = currentPassword;
-    if (password != null) body['password'] = password;
+    if (fullName != null) {
+      body['full_name'] = fullName;
+    }
+    if (email != null) {
+      body['email'] = email;
+    }
+    if (currentPassword != null) {
+      body['current_password'] = currentPassword;
+    }
+    if (password != null) {
+      body['password'] = password;
+    }
     if (passwordConfirmation != null) {
       body['password_confirmation'] = passwordConfirmation;
     }
@@ -156,7 +164,9 @@ class AuthRepository {
     // dart:io's Platform throws UnsupportedError in a web build. The label is
     // resolved without touching dart:io so login cannot crash before the
     // request is even sent.
-    if (kIsWeb) return 'Web';
+    if (kIsWeb) {
+      return 'Web';
+    }
 
     var os =
         _platformLabels[Platform.operatingSystem] ?? Platform.operatingSystem;

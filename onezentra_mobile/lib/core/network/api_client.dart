@@ -33,7 +33,9 @@ class ApiClient {
   /// [kIsWeb] is checked first: `Platform.isAndroid` throws UnsupportedError
   /// in a web build (dart:io is not implemented there).
   static String get _platformBaseUrl {
-    if (kIsWeb) return 'http://localhost:8000/api/v1';
+    if (kIsWeb) {
+      return 'http://localhost:8000/api/v1';
+    }
     return Platform.isAndroid
         ? 'http://10.0.2.2:8000/api/v1' // host machine, seen from the Android emulator
         : 'http://localhost:8000/api/v1'; // iOS simulator / desktop
@@ -72,7 +74,9 @@ class ApiClient {
   /// is treated as expired so we fail fast instead of waiting for a 401.
   bool get isExpired {
     var expiry = _expiresAt;
-    if (expiry == null) return false;
+    if (expiry == null) {
+      return false;
+    }
     return !DateTime.now().isBefore(
       expiry.subtract(const Duration(seconds: 30)),
     );
@@ -174,7 +178,9 @@ class ApiClient {
   /// Decodes a JSON object body, tolerating empty bodies and non-JSON error
   /// pages (proxy/gateway HTML) instead of throwing a [FormatException].
   Map<String, dynamic>? _decodeBody(http.Response response) {
-    if (response.bodyBytes.isEmpty) return null;
+    if (response.bodyBytes.isEmpty) {
+      return null;
+    }
     try {
       return _decodeMap(utf8.decode(response.bodyBytes));
     } catch (_) {
@@ -189,8 +195,12 @@ class ApiClient {
 
   /// Builds a message the user can act on, in the language of the app.
   String _errorMessage(int statusCode, Map<String, dynamic>? body) {
-    if (statusCode == 401) return 'Sesi berakhir. Silakan login kembali.';
-    if (statusCode == 403) return 'Anda tidak memiliki akses ke data ini.';
+    if (statusCode == 401) {
+      return 'Sesi berakhir. Silakan login kembali.';
+    }
+    if (statusCode == 403) {
+      return 'Anda tidak memiliki akses ke data ini.';
+    }
     if (statusCode == 429) {
       return 'Terlalu banyak percobaan. Tunggu 1 menit lalu coba lagi.';
     }
@@ -199,10 +209,14 @@ class ApiClient {
     }
 
     var validationError = _firstValidationMessage(body);
-    if (validationError != null) return validationError;
+    if (validationError != null) {
+      return validationError;
+    }
 
     var serverMessage = body?['message']?.toString();
-    if (serverMessage != null && serverMessage.isNotEmpty) return serverMessage;
+    if (serverMessage != null && serverMessage.isNotEmpty) {
+      return serverMessage;
+    }
 
     return 'Permintaan gagal (HTTP $statusCode).';
   }
@@ -210,7 +224,9 @@ class ApiClient {
   /// Laravel validation errors arrive as `{"errors": {"email": ["..."]}}`.
   String? _firstValidationMessage(Map<String, dynamic>? body) {
     var errors = body?['errors'];
-    if (errors is! Map) return null;
+    if (errors is! Map) {
+      return null;
+    }
 
     for (var messages in errors.values) {
       if (messages is List && messages.isNotEmpty) {
@@ -322,7 +338,9 @@ class ApiClient {
   /// [ApiException] rather than escaping as a raw error, because the login
   /// screen can only surface a generic message for unmapped exceptions.
   static ApiException mapTransportError(Object error) {
-    if (error is ApiException) return error;
+    if (error is ApiException) {
+      return error;
+    }
 
     if (error is TimeoutException) {
       return const ApiException(

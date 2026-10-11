@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -435,7 +437,7 @@ void main() {
     await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
     await tester.pumpAndSettle();
 
-    router.push('/gate');
+    unawaited(router.push('/gate'));
     await tester.pumpAndSettle();
 
     // Halaman Check In Point yang tampil.
@@ -469,7 +471,7 @@ void main() {
     await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
     await tester.pumpAndSettle();
 
-    router.push('/gate');
+    unawaited(router.push('/gate'));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextFormField).first, 'PO-042');

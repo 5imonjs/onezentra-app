@@ -63,7 +63,9 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     // Guard against a double tap or the keyboard "done" action while a
     // request is already running (the button state is not enough).
-    if (_isLoading) return false;
+    if (_isLoading) {
+      return false;
+    }
 
     _setLoading(true);
     _clearError();
@@ -137,7 +139,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// Refresh user data from server
   Future<void> refreshUser() async {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      return;
+    }
 
     try {
       var user = await _repository.getUser();
@@ -161,7 +165,9 @@ class AuthProvider extends ChangeNotifier {
     String? password,
     String? passwordConfirmation,
   }) async {
-    if (_isLoading) return false;
+    if (_isLoading) {
+      return false;
+    }
 
     _setLoading(true);
     _clearError();
@@ -214,7 +220,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// Public method to clear error
   void clearError() {
-    if (_error == null) return;
+    if (_error == null) {
+      return;
+    }
     _clearError();
     notifyListeners();
   }

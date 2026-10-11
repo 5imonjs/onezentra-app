@@ -68,7 +68,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   Future<void> _handleLogin() async {
     var formState = _formKey.currentState;
-    if (formState == null || !formState.validate()) return;
+    if (formState == null || !formState.validate()) {
+      return;
+    }
 
     // Hide the keyboard so the user immediately sees the result of the login.
     FocusScope.of(context).unfocus();
@@ -79,7 +81,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       password: _passwordController.text,
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     // The app is wired to GoRouter: `Navigator.pushReplacementNamed` would throw
     // because GoRouter does not expose named routes on its Navigator.
@@ -226,7 +230,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   Widget _buildErrorMessage(AuthProvider authProvider, bool isDark) {
     var error = authProvider.error;
-    if (error == null) return const SizedBox.shrink();
+    if (error == null) {
+      return const SizedBox.shrink();
+    }
 
     var background = isDark
         ? AppTheme.danger.withValues(alpha: 0.16)

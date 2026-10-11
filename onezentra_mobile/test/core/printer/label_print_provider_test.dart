@@ -17,7 +17,9 @@ class _FakeLabelPrinter implements LabelPrinter {
 
   @override
   Future<List<DiscoveredPrinter>> scan() async {
-    if (error != null) throw error!;
+    if (error != null) {
+      throw error!;
+    }
     return available;
   }
 
