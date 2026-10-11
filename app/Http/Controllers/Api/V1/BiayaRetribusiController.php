@@ -77,7 +77,9 @@ class BiayaRetribusiController extends Controller
             'queue' => $this->approvalQueueSummary($summaryQuery),
         ];
 
-        return response()->json($response);
+        return response()->json($response)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     /**
@@ -251,7 +253,7 @@ class BiayaRetribusiController extends Controller
                 }
                 $this->validateReceivingReferences($request, $validated['details']);
 
-                $biayaRetribusi = BiayaRetribusi::create($validated);
+                $biayaRetribusi = BiayaRetribusi::create(collect($validated)->except(['details', 'files', 'documents'])->toArray());
 
                 foreach ($validated['details'] as $index => $detail) {
                     $biayaRetribusi->details()->create(array_merge($detail, [
@@ -352,6 +354,15 @@ class BiayaRetribusiController extends Controller
         }
         abort_if($biayaRetribusi->status === 'approved', 422, 'Pengajuan yang sudah approved tidak dapat diedit.');
 
+        // Simpan draft tidak boleh mengembalikan antrean yang berjalan.
+        if ($request->boolean('is_draft')) {
+            abort_unless(
+                in_array($biayaRetribusi->status, ['draft', 'rejected', 'revisi'], true),
+                422,
+                "Draft hanya dapat disimpan saat status draft/ditolak/revisi (saat ini: {$biayaRetribusi->status})."
+            );
+        }
+
         $validated = $request->validate([
             'tanggal_pengajuan' => 'required|date',
             'details' => 'required|array|min:1|max:20',
@@ -364,7 +375,7 @@ class BiayaRetribusiController extends Controller
             'details.*.qty_zak' => 'nullable|numeric|min:0',
             'details.*.qty_crt' => 'nullable|numeric|min:0',
             'details.*.nominal_biaya' => 'required|numeric|min:0',
-            'documents' => 'nullable|array',
+            'documents' => 'nullable|array|max:20',
             'documents.*.document_type' => 'string|max:50|in:BA,SJ,invoice,manifest,lainnya',
             'documents.*.file_path' => 'nullable|string|max:255',
             'documents.*.file_name' => 'nullable|string|max:255',
@@ -399,7 +410,7 @@ class BiayaRetribusiController extends Controller
                 }
                 $this->validateReceivingReferences($request, $validated['details'], $biayaRetribusi->id);
 
-                $biayaRetribusi->update($validated);
+                $biayaRetribusi->update(collect($validated)->except(['details', 'files', 'documents', 'documents_remove'])->toArray());
                 $biayaRetribusi->details()->delete();
 
                 foreach ($validated['details'] as $index => $detail) {

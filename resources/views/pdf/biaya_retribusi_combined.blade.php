@@ -157,7 +157,7 @@
     <div class="revisi-note">REVISI — {{ $biayaRetribusi->revisi_reason ?: 'Tanpa catatan' }}</div>
 @endif
 
-<div class="note">Note: * Jika pengajuan biaya > Rp 750.000</div>
+<div class="note">Note: * Jika pengajuan biaya &gt; Rp {{ number_format($rfahThreshold ?? 750000, 0, ',', '.') }}</div>
 
 <!-- THL Header: FORM KLAIM TENAGA HARIAN LEPAS -->
 <table class="header thl-header pdf-table" style="margin: 8px 0;">

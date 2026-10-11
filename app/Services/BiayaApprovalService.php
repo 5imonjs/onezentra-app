@@ -108,6 +108,14 @@ class BiayaApprovalService
                     }
                 }
             }
+            // Paritas dengan FE: durasi kerja maksimal 18 jam.
+            if (! blank($detail->jam_datang) && ! blank($detail->jam_pulang)) {
+                $datang = strtotime((string) $detail->jam_datang);
+                $pulang = strtotime((string) $detail->jam_pulang);
+                if ($datang && $pulang && $pulang > $datang && ($pulang - $datang) > 18 * 3600) {
+                    $errors["{$prefix}.jam_pulang"] = ['Durasi kerja melebihi 18 jam — periksa kembali jam datang/pulang.'];
+                }
+            }
         }
 
         if ($errors !== []) {

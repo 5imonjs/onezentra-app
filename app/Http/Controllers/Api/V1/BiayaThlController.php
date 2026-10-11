@@ -9,6 +9,7 @@ use App\Models\ApprovalAssignment;
 use App\Models\BiayaRetribusi;
 use App\Models\BiayaRetribusiDetail;
 use App\Models\BiayaThl;
+use App\Models\BiayaThlDetail;
 use App\Models\BiayaThlPhoto;
 use App\Models\User;
 use App\Services\ApprovalSectionResolver;
@@ -28,13 +29,12 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class BiayaThlController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Scope dasar yang sama untuk index + export: approver melihat antrean
+     * depo assignment-nya (fallback global ADMIN), selainnya depo sendiri.
+     */
+    private function scopedExportQuery(User $user): Builder
     {
-        $request->validate([
-            'status' => 'nullable|string|in:draft,pending,checked,rlh_approved,approved,rejected,revisi',
-        ]);
-
-        $user = $request->user();
         $assignedDepots = ApprovalAssignment::query()
             ->where('module', ApprovalAssignment::MODULE_THL)
             ->where('user_id', $user->id)
@@ -57,6 +57,18 @@ class BiayaThlController extends Controller
         } else {
             $query->forUserDepot($user);
         }
+
+        return $query;
+    }
+
+    public function index(Request $request)
+    {
+        $request->validate([
+            'status' => 'nullable|string|in:draft,pending,checked,rlh_approved,approved,rejected,revisi',
+        ]);
+
+        $user = $request->user();
+        $query = $this->scopedExportQuery($user);
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('no_kendaraan', 'like', '%'.$request->search.'%')
@@ -188,13 +200,13 @@ class BiayaThlController extends Controller
         $validated['no_surat_jalan'] = $firstDetail['no_surat_jalan'] ?? null;
 
         $biayaThl = DB::transaction(function () use ($validated) {
-            $biayaThl = BiayaThl::create($validated);
+            $biayaThl = BiayaThl::create(collect($validated)->except(['details'])->toArray());
             $this->storeThlDetails($biayaThl, $validated['details'] ?? []);
 
             return $biayaThl;
         });
 
-        return response()->json(['message' => 'Biaya THL created', 'data' => $biayaThl->load('details.photos', 'photos')], 201);
+        return response()->json(['message' => 'Biaya THL created', 'data' => $biayaThl->load('details.photos', 'details.vehicles', 'photos')], 201);
     }
 
     public function show(BiayaThl $biayaThl)
@@ -255,7 +267,7 @@ class BiayaThlController extends Controller
             );
         }
 
-        $validated = $this->validateThlRequest($request, true);
+        $validated = $this->validateThlRequest($request, true, $biayaThl->id);
 
         foreach ($validated['details'] ?? [] as &$detail) {
             $detail['kubikasi'] = (float) ($detail['kubikasi'] ?? 0);
@@ -290,7 +302,7 @@ class BiayaThlController extends Controller
             $this->syncThlDetails($biayaThl, $validated['details'] ?? []);
         });
 
-        return response()->json(['message' => 'Biaya THL updated', 'data' => $biayaThl->load('details.photos', 'photos')]);
+        return response()->json(['message' => 'Biaya THL updated', 'data' => $biayaThl->load('details.photos', 'details.vehicles', 'photos')]);
     }
 
     /**
@@ -487,6 +499,16 @@ class BiayaThlController extends Controller
     }
 
     /**
+     * MIME foto yang boleh disajikan inline. Di luar daftar ini respons
+     * dipaksa download agar konten tak tebak (mis. text/html atau SVG
+     * berisi script) tidak dieksekusi browser (XSS via upload).
+     */
+    private const INLINE_PHOTO_ALLOWLIST = [
+        'image/jpeg',
+        'image/png',
+    ];
+
+    /**
      * Sajikan foto bukti lewat API (ber-CORS + berizin) karena file
      * statis public/storage tidak mengirim header CORS ke frontend.
      */
@@ -501,6 +523,12 @@ class BiayaThlController extends Controller
         $disk = Storage::disk('public');
         abort_unless($photo->file_path && $disk->exists($photo->file_path), 404);
         $safeName = str_replace(['"', "\n", "\r"], '', $photo->file_name ?: basename($photo->file_path));
+
+        if (! in_array($photo->mime_type, self::INLINE_PHOTO_ALLOWLIST, true)) {
+            return $disk->download($photo->file_path, $safeName, [
+                'Content-Type' => 'application/octet-stream',
+            ]);
+        }
 
         return $disk->response(
             $photo->file_path,
@@ -567,6 +595,7 @@ class BiayaThlController extends Controller
             'approvalSections' => $approvalSections,
             'stamps' => $this->resolveStamps($biayaThl),
             'logoData' => $this->pdfLogoData(),
+            'rfahThreshold' => config('biaya.thl_rfah_threshold', 750000),
         ])->render();
 
         $dompdf = new Dompdf;
@@ -725,7 +754,7 @@ class BiayaThlController extends Controller
         return ['submitter' => $submitter, 'checker' => $checker, 'approver' => $approver, 'rfah' => $rfah];
     }
 
-    private function validateThlRequest(Request $request, bool $isUpdate = false): array
+    private function validateThlRequest(Request $request, bool $isUpdate = false, ?int $parentId = null): array
     {
         // Mode draft (is_draft=true): simpan apa adanya tanpa syarat lengkap.
         // Kelengkapan diverifikasi saat submit (BiayaApprovalService::submit).
@@ -801,7 +830,7 @@ class BiayaThlController extends Controller
         }
 
         $validator = Validator::make($request->all(), $rules);
-        $validator->after(function ($validator) use ($request): void {
+        $validator->after(function ($validator) use ($request, $isUpdate, $parentId): void {
             foreach ($request->input('details', []) as $index => $detail) {
                 $position = strtoupper(trim((string) ($detail['posisi'] ?? '')));
                 if (in_array($position, ['THL HELPER', 'THL DRIVER'], true)) {
@@ -821,6 +850,32 @@ class BiayaThlController extends Controller
                         "details.{$index}.jam_pulang",
                         'Jam Pulang harus setelah Jam Datang.'
                     );
+                }
+
+                // Paritas dengan FE (getMissingFields): durasi kerja maksimal 18 jam.
+                if (! empty($detail['jam_datang'] ?? null) && ! empty($detail['jam_pulang'] ?? null)
+                    && $detail['jam_pulang'] > $detail['jam_datang']) {
+                    $datang = strtotime((string) $detail['jam_datang']);
+                    $pulang = strtotime((string) $detail['jam_pulang']);
+                    if ($datang && $pulang && ($pulang - $datang) > 18 * 3600) {
+                        $validator->errors()->add(
+                            "details.{$index}.jam_pulang",
+                            'Durasi kerja melebihi 18 jam — periksa kembali jam datang/pulang.'
+                        );
+                    }
+                }
+
+                // ID baris harus milik pengajuan yang sedang diedit (anti-id asing).
+                if ($isUpdate && $parentId && ! empty($detail['id'])) {
+                    $owned = BiayaThlDetail::whereKey((int) $detail['id'])
+                        ->where('biaya_thl_id', $parentId)
+                        ->exists();
+                    if (! $owned) {
+                        $validator->errors()->add(
+                            "details.{$index}.id",
+                            'ID baris tidak dikenal pada pengajuan ini.'
+                        );
+                    }
                 }
 
                 if ($position === 'THL GUDANG') {
@@ -860,6 +915,27 @@ class BiayaThlController extends Controller
                                     "{$field} wajib diisi untuk kendaraan tambahan."
                                 );
                             }
+                        }
+                    }
+                }
+
+                // SJ sama antar-baris sah (multi-pekerja 1 SJ/truk) — cek
+                // duplikat hanya berlaku antar-GRUP di frontend (groupId),
+                // bukan antar-baris, sehingga backend tidak menolaknya.
+
+                // Batas 1 foto per baris: tolak bila foto tersimpan + unggahan baru > 1.
+                if ($isUpdate && ! empty($detail['id'])) {
+                    $row = BiayaThlDetail::whereKey((int) $detail['id'])->first();
+                    if ($row) {
+                        $remove = $detail['photos_remove'] ?? [];
+                        $kept = $row->photos()->whereNotIn('id', array_map('intval', (array) $remove))->count();
+                        $uploads = $request->file("details.{$index}.photos", []);
+                        $newCount = is_array($uploads) ? count($uploads) : 1;
+                        if ($kept + $newCount > 1) {
+                            $validator->errors()->add(
+                                "details.{$index}.photos",
+                                'Maksimal 1 foto bukti per baris — hapus foto lama sebelum mengunggah yang baru.'
+                            );
                         }
                     }
                 }
@@ -918,7 +994,7 @@ class BiayaThlController extends Controller
 
     public function export(Request $request)
     {
-        $query = BiayaThl::query()->forUserDepot($request->user());
+        $query = $this->scopedExportQuery($request->user());
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }

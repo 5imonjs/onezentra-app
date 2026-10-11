@@ -29,6 +29,8 @@ type ThlData = {
   nominal_biaya: number;
   is_rfah_required: boolean;
   rfah_name: string;
+  /** Ambang RFAH efektif (per modul) untuk catatan kaki — fallback per modul bila tak diisi. */
+  rfah_threshold?: number;
   status: string;
   submitted_at?: string | null;
   checked_at?: string | null;
@@ -74,6 +76,8 @@ export type RetribusiData = {
   nominal_biaya: number;
   is_rfah_required: boolean;
   rfah_name: string;
+  /** Ambang RFAH efektif (per modul) untuk catatan kaki — fallback per modul bila tak diisi. */
+  rfah_threshold?: number;
   status: string;
   submitted_at?: string | null;
   checked_at?: string | null;
@@ -99,6 +103,7 @@ export type RetribusiData = {
     kendaraan_sj?: string;
     kendaraan_nopol?: string;
     kendaraan_type?: string;
+    kendaraan?: Array<{ sj?: string; nopol?: string; type?: string }>;
     nominal_biaya: number;
     biaya_thl_detail?: {
       nama_thl?: string;
@@ -177,6 +182,19 @@ async function readBlob(blob: Blob): Promise<{ dataUrl: string; format: 'JPEG' |
   return { dataUrl, format: blob.type === 'image/png' ? 'PNG' : 'JPEG' };
 }
 
+/** Dimensi asli gambar agar skala lampiran PDF tidak distorsi. */
+function imageDimensions(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({
+      w: img.naturalWidth || 4,
+      h: img.naturalHeight || 3,
+    });
+    img.onerror = () => resolve({ w: 4, h: 3 });
+    img.src = dataUrl;
+  });
+}
+
 /**
  * Lampirkan dokumen ke PDF retribusi: gambar (JPG/PNG/WEBP) menjadi
  * halaman penuh; selain itu (PDF/lainnya) masuk daftar manifest karena
@@ -205,9 +223,10 @@ async function appendLampiranPages(doc: jsPDF, data: RetribusiData): Promise<voi
         const top = 18;
         const maxW = pageWidth;
         const maxH = 210 - top - 10;
-        const ratio = Math.min(maxW / 100, maxH / 70);
-        const w = Math.min(maxW, 100 * ratio);
-        const h = Math.min(maxH, 70 * ratio);
+        const natural = await imageDimensions(image.dataUrl);
+        const ratio = Math.min(maxW / natural.w, maxH / natural.h);
+        const w = Math.min(maxW, natural.w * ratio);
+        const h = Math.min(maxH, natural.h * ratio);
         doc.addImage(image.dataUrl, image.format, pageMargin + (maxW - w) / 2, top + (maxH - h) / 2, w, h, undefined, 'FAST');
         embedded = true;
       } catch {
@@ -408,7 +427,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // Sejajar server (resolveStamps): cap mengikuti AKSI submit (status),
     // bukan keberadaan nama — nama bisa kosong pada data lama/API langsung.
     return status && status !== 'draft' && dates.submitted && dates.submitted !== '-'
-      ? { text: 'DIAJUKAN', color: STAMP_RED, date: dates.submitted || '' }
+      ? { text: 'PENGAJUAN', color: STAMP_GREEN, date: dates.submitted || '' }
       : null;
   }
 
@@ -417,7 +436,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // benar terjadi (checked_at ada) — BUKAN karena nama assignee terdaftar.
     // Nama pelaku boleh tidak terbawa pada data PDF, tetapi cap audit tetap
     // harus tampil karena timestamp adalah bukti aksinya.
-    if (dates.checked && dates.checked !== '-') return { text: 'DIPERIKSA', color: STAMP_RED, date: dates.checked };
+    if (dates.checked && dates.checked !== '-') return { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked };
     // Revisi/ditolak oleh BAC menempel di kotak Mengetahui (bukan RLH).
     if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'Mengetahui' && dates.revised && actorName(data, 'revisedBy')) {
       return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
@@ -433,9 +452,9 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // melewati RLH; status revisi/ditolak pasca-RLH menampilkan cap
     // terminal (REVISI/DITOLAK) sesuai pelaku, konsisten dengan server.
     if (dates.rlhApproved && dates.rlhApproved !== '-' && (status === 'rlh_approved' || status === 'approved')) {
-      return { text: 'DISETUJUI RLH', color: STAMP_RED, date: dates.rlhApproved };
+      return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
     }
-    if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) return { text: 'DISETUJUI', color: STAMP_RED, date: dates.approved };
+    if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) return { text: 'DISETUJUI', color: STAMP_GREEN, date: dates.approved };
     if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'Menyetujui' && dates.rejected && actorName(data, 'rejectedBy')) return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
     if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'Menyetujui' && dates.revised && actorName(data, 'revisedBy')) return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
     // Persetujuan RLH pada siklus sebelumnya tetap tercatat di kotaknya
@@ -448,7 +467,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
 
   if (section.title === 'RFAH*') {
     if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) {
-      return { text: 'DISETUJUI RFAH', color: STAMP_RED, date: dates.approved };
+      return { text: 'DISETUJUI RFAH', color: STAMP_GREEN, date: dates.approved };
     }
     if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'RFAH*' && dates.rejected && actorName(data, 'rejectedBy')) {
       return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
@@ -580,6 +599,7 @@ function toCombinedRetribusiData(data: ThlData): RetribusiData {
     nominal_biaya: data.nominal_biaya,
     is_rfah_required: data.is_rfah_required,
     rfah_name: data.rfah_name,
+    rfah_threshold: data.rfah_threshold,
     status: data.status,
     submitted_at: data.submitted_at,
     checked_at: data.checked_at,
@@ -603,6 +623,7 @@ function toCombinedRetribusiData(data: ThlData): RetribusiData {
       type_kendaraan: extractAllType({ kendaraan: detail.kendaraan, type_kendaraan: formatPdfColumn(detail.type_kendaraan, detail.kendaraan_type) }),
       no_surat_jalan: formatSuratJalan(detail),
       kendaraan_sj: detail.kendaraan_sj,
+      kendaraan: detail.kendaraan?.map((v) => ({ sj: v.sj, nopol: v.nopol, type: v.type })),
       nominal_biaya: detail.nominal_biaya,
       biaya_thl_detail: detail,
     })),
@@ -865,7 +886,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
   });
   setDocFont(doc, 'normal');
   doc.setFontSize(6.2);
-  doc.text('Note: * Jika pengajuan biaya > Rp 750.000', pageMargin, approvalY + 47);
+  doc.text(`Note: * Jika pengajuan biaya > Rp ${(Number(data.rfah_threshold) || (includeThlSection ? 750000 : 1000000)).toLocaleString('id-ID')}`, pageMargin, approvalY + 47);
 
   if (!includeThlSection) {
     await appendLampiranPages(doc, data);
