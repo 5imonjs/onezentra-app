@@ -44,6 +44,7 @@ interface DetailRow {
   kendaraan_sj?: string;
   kendaraan_nopol?: string;
   kendaraan_type?: string;
+  kendaraan?: Array<{ sj: string; nopol: string; type: string }>;
   order: number;
   photos: PhotoItem[];
   photos_remove?: number[];
@@ -825,6 +826,11 @@ export default function BiayaThlPage() {
       if (d.kendaraan_sj) fd.append(`details[${i}][kendaraan_sj]`, d.kendaraan_sj);
       if (d.kendaraan_nopol) fd.append(`details[${i}][kendaraan_nopol]`, d.kendaraan_nopol);
       if (d.kendaraan_type) fd.append(`details[${i}][kendaraan_type]`, d.kendaraan_type);
+      (d.kendaraan ?? []).forEach((v, j) => {
+        fd.append(`details[${i}][kendaraan][${j}][sj]`, v.sj);
+        fd.append(`details[${i}][kendaraan][${j}][nopol]`, v.nopol);
+        fd.append(`details[${i}][kendaraan][${j}][type]`, v.type);
+      });
       fd.append(`details[${i}][order]`, String(i));
       d.photos.forEach((photo) => { if (!isStoredPhoto(photo)) fd.append(`details[${i}][photos][]`, photo); });
     });
@@ -920,6 +926,11 @@ export default function BiayaThlPage() {
       put('kendaraan_sj', d.kendaraan_sj);
       put('kendaraan_nopol', d.kendaraan_nopol);
       put('kendaraan_type', d.kendaraan_type);
+      (d.kendaraan ?? []).forEach((v, j) => {
+        if (v.sj) fd.append(`details[${i}][kendaraan][${j}][sj]`, v.sj);
+        if (v.nopol) fd.append(`details[${i}][kendaraan][${j}][nopol]`, v.nopol);
+        if (v.type) fd.append(`details[${i}][kendaraan][${j}][type]`, v.type);
+      });
       const fdRow = d as FormDetailRow;
       if (fdRow.detailId) fd.append(`details[${i}][id]`, String(fdRow.detailId));
       (fdRow.photos_remove ?? []).forEach((pid) => fd.append(`details[${i}][photos_remove][]`, String(pid)));

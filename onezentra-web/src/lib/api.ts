@@ -559,8 +559,14 @@ export const biayaRetribusi = {
     return apiClient.post('/biaya-retribusi', data, config);
   },
   update: (id: number, data: Record<string, unknown> | FormData) => {
-    const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
-    return apiClient.put(`/biaya-retribusi/${id}`, data, config);
+    if (data instanceof FormData) {
+      // PHP tidak mem-parse body multipart pada PUT: spoof method via POST.
+      if (!data.has('_method')) data.append('_method', 'PUT');
+      return apiClient.post(`/biaya-retribusi/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return apiClient.put(`/biaya-retribusi/${id}`, data);
   },
   delete: (id: number) => apiClient.delete(`/biaya-retribusi/${id}`),
   documentUrl: (docId: number) => `${API_URL}/biaya-retribusi/documents/${docId}`,

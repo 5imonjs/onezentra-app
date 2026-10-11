@@ -263,7 +263,7 @@ class BiayaRetribusiController extends Controller
                 foreach ($validated['files'] ?? [] as $index => $file) {
                     $path = $file->store("biaya_retribusi/{$biayaRetribusi->id}", 'public');
                     $biayaRetribusi->documents()->create([
-                        'document_type' => 'lainnya',
+                        'document_type' => $validated['documents'][$index]['document_type'] ?? 'lainnya',
                         'file_path' => $path,
                         'file_name' => $file->getClientOriginalName(),
                         'mime_type' => $file->getMimeType(),
@@ -273,6 +273,11 @@ class BiayaRetribusiController extends Controller
                 }
 
                 foreach ($validated['documents'] ?? [] as $index => $doc) {
+                    // Entri tanpa file_path adalah metadata pasangan untuk upload
+                    // files[] di atas (sudah dibuat) — lewati agar tidak duplikat.
+                    if (empty($doc['file_path'])) {
+                        continue;
+                    }
                     $biayaRetribusi->documents()->create([
                         'document_type' => $doc['document_type'],
                         'file_path' => $doc['file_path'] ?? '',
@@ -415,7 +420,7 @@ class BiayaRetribusiController extends Controller
                 foreach ($validated['files'] ?? [] as $index => $file) {
                     $path = $file->store("biaya_retribusi/{$biayaRetribusi->id}", 'public');
                     $biayaRetribusi->documents()->create([
-                        'document_type' => 'lainnya',
+                        'document_type' => $validated['documents'][$index]['document_type'] ?? 'lainnya',
                         'file_path' => $path,
                         'file_name' => $file->getClientOriginalName(),
                         'mime_type' => $file->getMimeType(),

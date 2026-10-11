@@ -90,12 +90,12 @@
         @foreach($biayaRetribusi->details as $detail)
             <tr>
                 <td class="center">{{ $loop->iteration }}</td>
-                @php($kendaraanNopol = collect([$detail->nopol_kendaraan, $detail->biayaThlDetail?->kendaraan_nopol])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
-                @php($kendaraanType = collect([$detail->type_kendaraan, $detail->biayaThlDetail?->kendaraan_type])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
+                @php($kendaraanNopol = collect([$detail->nopol_kendaraan, $detail->biayaThlDetail?->kendaraan_nopol, ...($detail->biayaThlDetail?->vehicles?->pluck('nopol')->all() ?? [])])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
+                @php($kendaraanType = collect([$detail->type_kendaraan, $detail->biayaThlDetail?->kendaraan_type, ...($detail->biayaThlDetail?->vehicles?->pluck('type')->all() ?? [])])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
                 <td>{{ $kendaraanNopol ?: '-' }}</td>
                 <td>{{ $kendaraanType ?: '-' }}</td>
                 <td>
-                    @php($suratJalans = collect([$detail->no_surat_jalan, $detail->biayaThlDetail?->kendaraan_sj])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
+                    @php($suratJalans = collect([$detail->no_surat_jalan, $detail->biayaThlDetail?->kendaraan_sj, ...($detail->biayaThlDetail?->vehicles?->pluck('sj')->all() ?? [])])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
                     {{ $suratJalans ?: '-' }}
                 </td>
                 <td class="center">Rp {{ number_format($detail->nominal_biaya, 0, ',', '.') }}</td>

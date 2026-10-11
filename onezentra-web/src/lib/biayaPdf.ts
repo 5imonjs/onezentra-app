@@ -56,6 +56,7 @@ type ThlData = {
     kendaraan_sj?: string;
     kendaraan_nopol?: string;
     kendaraan_type?: string;
+    kendaraan?: Array<{ sj?: string; nopol?: string; type?: string }>;
     nominal_biaya: number;
     kubikasi: number;
     droppoint: string;
@@ -247,8 +248,11 @@ async function appendLampiranPages(doc: jsPDF, data: RetribusiData): Promise<voi
 }
 
 /** Gabungkan seluruh nomor surat jalan milik satu kendaraan ke sel PDF yang sama. */
-export function formatSuratJalan(detail: { no_surat_jalan?: string | null; kendaraan_sj?: string | null }): string {
-  const suratJalans = [detail.no_surat_jalan, detail.kendaraan_sj]
+export function formatSuratJalan(detail: { no_surat_jalan?: string | null; kendaraan_sj?: string | null; kendaraan?: Array<{ sj?: string }> }): string {
+  const fromArray = Array.isArray(detail.kendaraan)
+    ? detail.kendaraan.flatMap((v) => String(v?.sj || '').split(/[,;\n]+/))
+    : [];
+  const suratJalans = [detail.no_surat_jalan, detail.kendaraan_sj, ...fromArray]
     .flatMap((item) => String(item || '').split(/[,;\n]+/))
     .map((item) => item.trim())
     .filter((item, index, values) => item !== '' && values.indexOf(item) === index);
@@ -595,8 +599,8 @@ function toCombinedRetribusiData(data: ThlData): RetribusiData {
     rejectedBy: data.rejectedBy,
     revisedBy: data.revisedBy,
     details: data.details.map((detail) => ({
-      nopol_kendaraan: formatPdfColumn(detail.nopol_kendaraan, detail.kendaraan_nopol),
-      type_kendaraan: formatPdfColumn(detail.type_kendaraan, detail.kendaraan_type),
+      nopol_kendaraan: extractAllNopol({ kendaraan: detail.kendaraan, nopol_kendaraan: formatPdfColumn(detail.nopol_kendaraan, detail.kendaraan_nopol) }),
+      type_kendaraan: extractAllType({ kendaraan: detail.kendaraan, type_kendaraan: formatPdfColumn(detail.type_kendaraan, detail.kendaraan_type) }),
       no_surat_jalan: formatSuratJalan(detail),
       kendaraan_sj: detail.kendaraan_sj,
       nominal_biaya: detail.nominal_biaya,

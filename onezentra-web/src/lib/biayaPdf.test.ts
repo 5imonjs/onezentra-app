@@ -20,6 +20,14 @@ describe('formatSuratJalan', () => {
   it('uses a placeholder when no surat jalan exists', () => {
     expect(formatSuratJalan({})).toBe('-');
   });
+
+  it('merges SJ from kendaraan array with primary and legacy', () => {
+    expect(formatSuratJalan({
+      no_surat_jalan: 'SJ-G1',
+      kendaraan_sj: 'SJ-G2',
+      kendaraan: [{ sj: 'SJ-G3' }, { sj: 'SJ-G1' }, { sj: '' }],
+    })).toBe('SJ-G1, SJ-G2, SJ-G3');
+  });
 });
 
 const section = (title: string): ApprovalSection => ({ title, people: [{ name: '-', role: title }] });

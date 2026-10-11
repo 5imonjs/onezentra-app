@@ -79,7 +79,7 @@ class BiayaThlController extends Controller
         $query->orderBy($sortField, $sortDir);
         // Ringkasan dihitung dari SELURUH baris terfilter, bukan halaman aktif.
         $summaryQuery = clone $query;
-        $data = $query->with('details.photos', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'resubmittedBy', 'createdBy')
+        $data = $query->with('details.photos', 'details.vehicles', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'resubmittedBy', 'createdBy')
             ->paginate($this->perPage($request, 50));
 
         $response = $data->toArray();
@@ -203,6 +203,7 @@ class BiayaThlController extends Controller
 
         $biayaThl->load(
             'details.photos',
+            'details.vehicles',
             'photos',
             'submittedBy',
             'checkedBy',
@@ -512,7 +513,7 @@ class BiayaThlController extends Controller
     {
         $this->authorizePdfPrinter($biayaThl);
 
-        $biayaThl->load('details.photos', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
+        $biayaThl->load('details.photos', 'details.vehicles', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
         $names = $this->approvalActorNames($biayaThl);
         $approvalSections = app(ApprovalSectionResolver::class)->resolve(
@@ -788,6 +789,10 @@ class BiayaThlController extends Controller
             'details.*.order' => 'nullable|integer',
             'details.*.photos' => 'nullable|array|max:1',
             'details.*.photos.*' => 'image|mimes:jpg,jpeg,png|max:2048',
+            'details.*.kendaraan' => 'nullable|array',
+            'details.*.kendaraan.*.sj' => 'nullable|string|max:50',
+            'details.*.kendaraan.*.nopol' => 'nullable|string|max:20',
+            'details.*.kendaraan.*.type' => 'nullable|string|max:50',
         ];
 
         if ($isUpdate) {
@@ -920,7 +925,7 @@ class BiayaThlController extends Controller
         $sortField = in_array($request->sort, ['tanggal_pengajuan', 'type_kendaraan', 'nominal_biaya', 'status', 'no_kendaraan', 'created_at']) ? $request->sort : 'created_at';
         $sortDir = $request->dir === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortField, $sortDir);
-        $query->with('details.photos');
+        $query->with('details.photos', 'details.vehicles');
         ExportGuard::ensureWithinLimit($query);
 
         return Excel::download(new BiayaThlExport($query, $request->user()), 'biaya_thl.xlsx');
