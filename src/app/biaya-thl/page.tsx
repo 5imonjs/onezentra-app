@@ -1343,10 +1343,18 @@ export default function BiayaThlPage() {
    * kolom kendaraan tambahan yang ditulis; nopol/type baris (kendaraan
    * utama) tidak disentuh.
    */
+  /**
+   * Kendaraan tambahan bersifat OPSIONAL: hanya divalidasi/dikirim jika user
+   * benar-benar mengisinya. Baris yang sepenuhnya kosong (mis. tidak sengaja
+   * klik "Tambah Kendaraan") diabaikan agar tidak memblokir Lanjut ke Review.
+   */
+  const activeVehicles = (groupId: string): Array<{ id: string; sj: string; nopol: string; type: string }> =>
+    (sjVehicle[groupId] ?? []).filter((v) => v.sj.trim() || v.nopol.trim() || v.type.trim());
+
   const applyGroupVehicle = (rows: FormDetailRow[]): FormDetailRow[] =>
     rows.map((d) => {
       if (String(d.posisi ?? '').trim().toUpperCase() !== 'THL GUDANG') return d;
-      const vehicles = sjVehicle[d.groupId] ?? [];
+      const vehicles = activeVehicles(d.groupId);
       if (vehicles.length > 0) {
         return { ...d, kendaraan: vehicles.map((v) => ({ sj: v.sj, nopol: v.nopol, type: v.type })) };
       }
@@ -1355,7 +1363,7 @@ export default function BiayaThlPage() {
 
   const getGroupVehicleError = (groupId: string): string | null => {
     if (!isGudangGroup(groupId)) return null;
-    const vehicles = sjVehicle[groupId] ?? [];
+    const vehicles = activeVehicles(groupId);
     if (vehicles.length === 0) return null;
     const problems: string[] = [];
     vehicles.forEach((v, vIdx) => {
@@ -1408,6 +1416,10 @@ export default function BiayaThlPage() {
     }
 
     if (step === 3) {
+      if (formData.details.length === 0) {
+        notifyGlobal('Tambahkan minimal 1 data pekerja sebelum lanjut ke review', 'error');
+        return;
+      }
       if (sjGroupError || vehicleError) {
         const errGroupIndex = sjGroupError ? sjGroupErrorInfo.groupIndex : null;
         setErrorSJGroupIndex(errGroupIndex);
@@ -1454,13 +1466,10 @@ export default function BiayaThlPage() {
     setFormStep(step);
   };
 
-  // Step 2 butuh tanggal; Step 3 butuh tanggal + minimal 1 baris valid.
+  // Step 2 butuh tanggal pengajuan terisi.
   const isStepBlocked = (step: number): string | null => {
     if (step <= formStep) return null;
     if (step > 1 && !formData.tanggal_pengajuan) return 'Isi tanggal pengajuan terlebih dahulu';
-    if (step > 2 && (formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError)) {
-      return 'Lengkapi data pekerja terlebih dahulu';
-    }
     return null;
   };
 
@@ -1918,7 +1927,7 @@ export default function BiayaThlPage() {
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
               </button>
             ) : formStep === 2 ? (
-              <button type="button" onClick={() => goToStep(3)} disabled={busy || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title={formData.details.length === 0 ? 'Tambahkan minimal 1 pekerja' : hasIncompleteThlRows || hasBlockingError ? 'Lengkapi data pekerja yang belum valid' : 'Lanjut ke ringkasan akhir'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+              <button type="button" onClick={() => goToStep(3)} disabled={busy} title={formData.details.length === 0 ? 'Tambahkan minimal 1 pekerja' : hasIncompleteThlRows || hasBlockingError ? 'Klik untuk melihat data pekerja yang belum lengkap' : 'Lanjut ke ringkasan akhir'} className="btn-primary inline-flex w-full items-center justify-center gap-2 sm:w-auto">
                 Lanjut ke Review
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
               </button>
@@ -2142,8 +2151,8 @@ export default function BiayaThlPage() {
                                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
                                 </span>
                                 <span className="flex-1 min-w-0">
-                                  <span className="block text-sm font-black text-slate-900">Kendaraan tambahan</span>
-                                  <span className="block text-[11px] text-slate-500">SJ berbeda per kendaraan; boleh lebih dari 2</span>
+                                  <span className="block text-sm font-black text-slate-900">Kendaraan tambahan <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">opsional</span></span>
+                                  <span className="block text-[11px] text-slate-500">Hanya jika 1 kru membongkar 2+ kendaraan — boleh dikosongkan</span>
                                 </span>
                               </div>
                               <button type="button" onClick={() => setSjVehicle((prev) => ({ ...prev, [group.groupId]: [...(prev[group.groupId] ?? []), { id: generateId(), sj: '', nopol: '', type: '' }] }))} className="btn-secondary shrink-0">
