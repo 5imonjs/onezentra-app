@@ -10,6 +10,7 @@ import { todayLocal } from '@/lib/dates';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { generateRetribusiPdf, previewRetribusiPdf, type ApprovalSection } from '@/lib/biayaPdf';
 import { getBiayaConfigFresh, getBiayaConfigFreshWithStatus, clearBiayaConfigCache, BIAYA_CONFIG_FALLBACK, type BiayaConfig } from '@/lib/biaya';
 import ApprovalPipeline, { type ApprovalPipelineStep } from '@/components/ApprovalPipeline';
@@ -281,7 +282,7 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
   );
 }
 
-function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
+function ApprovalStepper({ item, rfahThreshold }: { item: BiayaRetribusiItem; rfahThreshold?: number }) {
   const rejected = item.status === 'rejected';
   const revised = item.status === 'revisi';
   const deciderLevel = (item.revisedBy?.level || item.rejectedBy?.level || item.approvedBy?.level || 'rlh').toUpperCase().replace('_', ' ');
@@ -387,7 +388,7 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
             </span>
             <div className="min-w-0">
               <p className="text-xs font-bold text-amber-800">RFAH* — nilai di atas ketentuan</p>
-              <p className="text-xs text-amber-700 mt-0.5">Nominal melebihi Rp 1.000.000, memerlukan pemantauan {item.rfah_name || '-'}.</p>
+              <p className="text-xs text-amber-700 mt-0.5">Nominal melebihi Rp {Number(rfahThreshold ?? 1000000).toLocaleString('id-ID')}, memerlukan pemantauan {item.rfah_name || '-'}.</p>
             </div>
           </div>
         )}
@@ -433,6 +434,7 @@ export default function BiayaRetribusiPage() {
   const [summary, setSummary] = useState<{ total: number; total_nominal: number; pending: number; checked: number; approved: number; rejected: number; revisi: number } | null>(null);
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
   const [editingDepo, setEditingDepo] = useState('');
+  const [editingNamaDepo, setEditingNamaDepo] = useState('');
   /** Sumber baris pengajuan: receiving otomatis atau manual (borongan). null = belum pilih. */
   const [sourceType, setSourceType] = useState<'receiving' | 'manual' | null>(null);
   /** Wizard: 1 Tipe · 2 Data · 3 Lampiran · 4 Review. */
@@ -584,14 +586,15 @@ export default function BiayaRetribusiPage() {
     return `${(n / (1024 * 1024)).toFixed(2)} MB`;
   };
   /** Kompres foto lapangan (HP 8-12MP) ke JPEG <=1600px agar ringan saat diunggah. */
+  const COMPRESS_ABOVE_BYTES = 1.5 * 1024 * 1024; // di atas 1,5 MB → coba kompres
   const compressDocImage = (file: File): Promise<File> => new Promise((resolve) => {
     // Non-image files (PDF, etc.): validate size but don't compress
     if (!file.type.startsWith('image/')) {
       resolve(file);
       return;
     }
-    // Images under 20MB: skip compression (already small enough)
-    if (file.size <= MAX_DOC_BYTES) {
+    // Gambar kecil (<=1,5 MB): lewati kompres (sudah cukup ringan)
+    if (file.size <= COMPRESS_ABOVE_BYTES) {
       resolve(file);
       return;
     }
@@ -837,13 +840,23 @@ export default function BiayaRetribusiPage() {
   };
 
   /** Hapus hanya untuk draft/ditolak/revisi — yang sudah masuk antrean tak boleh hilang. */
-  const handleDelete = async (id: number) => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
+  const handleDelete = (id: number) => {
     if (deletingId !== null) return;
-    if (!confirm('Yakin ingin menghapus?')) return;
-    setDeletingId(id);
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteTargetId === null || deletingId !== null) return;
+    setDeletingId(deleteTargetId);
     try {
-      await biayaRetribusi.delete(id);
+      await biayaRetribusi.delete(deleteTargetId);
       notifyGlobal('Biaya Retribusi berhasil dihapus', 'success');
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
       fetchItems();
     } catch (e: unknown) {
       notifyGlobal(getErrorMessage(e, 'Gagal menghapus'), 'error');
@@ -1003,6 +1016,7 @@ export default function BiayaRetribusiPage() {
     + manualDetails.reduce((sum, md) => sum + manualNominal(md), 0);
   const isRfahRequired = totalNominal > biayaConfig.retribusi_rfah_threshold;
   const hasIncompleteManualRows = manualDetails.some((row) => !row.nopol_kendaraan || !row.type_kendaraan || Number(row.nominal_biaya || 0) <= 0);
+  const hasIncompleteExistingRows = formData.details.some((d) => !d.nopol_kendaraan || !d.type_kendaraan || Number(existingNominal(d)) <= 0);
   const hasIncompleteCandidateRows = selectedCandidates.some((id) => {
     if (!isKoliMode) return Number(candidateNominals[id] || 0) <= 0;
     const c = candidates.find((c2) => c2.id === id);
@@ -1084,6 +1098,7 @@ export default function BiayaRetribusiPage() {
   if (selectedRowCount === 0) blockerReasons.push('Pilih receiving atau tambah baris manual');
   if (missingNominalNopols.length > 0) blockerReasons.push(`Isi nominal: ${missingNominalNopols.join(', ')}`);
   if (hasIncompleteManualRows) blockerReasons.push('Lengkapi baris manual');
+  if (hasIncompleteExistingRows) blockerReasons.push('Lengkapi baris tersimpan');
   const emptyDocIndex = formData.documents.findIndex((doc) => !doc.file && !doc.file_path);
   if (emptyDocIndex >= 0) blockerReasons.push(`Lampiran #${emptyDocIndex + 1} belum ada file — hapus atau pilih file`);
   const hasDocuments = formData.documents.some((doc) => doc.file || doc.file_path);
@@ -1093,7 +1108,7 @@ export default function BiayaRetribusiPage() {
     : [...blockerReasons, 'Lampirkan minimal 1 dokumen (PDF/foto) sebelum dikirim'];
   const stepDone = [
     editingId ? true : !!sourceType,
-    !!formData.tanggal_pengajuan && selectedRowCount > 0 && !hasIncompleteManualRows && (editingId || !hasIncompleteCandidateRows),
+    !!formData.tanggal_pengajuan && selectedRowCount > 0 && !hasIncompleteManualRows && !hasIncompleteExistingRows && (editingId || !hasIncompleteCandidateRows),
     formData.documents.length > 0,
     false,
   ];
@@ -1143,11 +1158,14 @@ export default function BiayaRetribusiPage() {
     }));
     previewRetribusiPdf({
       tanggal_pengajuan: formData.tanggal_pengajuan,
-      kode_depo: user?.kode_depo ?? '',
-      nama_depo: user?.nama_depo ?? '',
+      kode_depo: effectiveDepo || user?.kode_depo || '',
+      nama_depo: editingId
+        ? (editingNamaDepo || user?.nama_depo || '')
+        : (targetDepoLabel.split(' — ').slice(1).join(' — ') || user?.nama_depo || ''),
       nominal_biaya: totalNominal,
       is_rfah_required: isRfahRequired,
       rfah_name: isRfahRequired ? biayaConfig.rfah_name : '',
+      rfah_threshold: biayaConfig.retribusi_rfah_threshold,
       approval_pengajuan: user?.full_name || '',
       status: 'draft',
       details: [...candidateDetails, ...existingDetails, ...manualDetails.map((item) => ({ ...item, nominal_biaya: manualNominal(item), biaya_thl_detail: null }))],
@@ -1165,6 +1183,15 @@ export default function BiayaRetribusiPage() {
 
   const removeManualDetail = (index: number) => {
     setManualDetails(prev => prev.filter((_, i) => i !== index));
+  };
+
+  /** Baris tersimpan (edit mode): boleh dikoreksi/dihapus seperti baris manual. */
+  const updateExistingDetail = (index: number, field: 'nopol_kendaraan' | 'type_kendaraan' | 'no_surat_jalan' | 'qty_zak' | 'qty_crt' | 'nominal_biaya', value: string | number) => {
+    setFormData((prev) => ({ ...prev, details: prev.details.map((d, i) => i === index ? { ...d, [field]: value } : d) }));
+  };
+
+  const removeExistingDetail = (index: number) => {
+    setFormData((prev) => ({ ...prev, details: prev.details.filter((_, i) => i !== index) }));
   };
 
   /** Saat seksi Baris Manual masih kosong, form starter tampil langsung; input
@@ -1250,6 +1277,7 @@ export default function BiayaRetribusiPage() {
     setEditingId(null);
     setEditingStatus(null);
     setEditingDepo('');
+    setEditingNamaDepo('');
     setSourceType(null);
     setFormStep(1);
     setTariffOpen(false);
@@ -1270,6 +1298,7 @@ export default function BiayaRetribusiPage() {
     setSourceType('manual');
     setFormStep(2);
     setEditingDepo(item.kode_depo || '');
+    setEditingNamaDepo(item.nama_depo || '');
     setFormData({
       tanggal_pengajuan: toDateInputValue(item.tanggal_pengajuan),
       details: item.details.map((d) => ({ ...d })),
@@ -1977,6 +2006,83 @@ export default function BiayaRetribusiPage() {
               </div>
             )}
 
+            {/* Baris Tersimpan (edit mode) */}
+            {editingId && formData.details.length > 0 && formStep === 2 && (
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                  </span>
+                  Baris Tersimpan
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{formData.details.length} baris</span>
+                </label>
+              </div>
+              <div className="space-y-2">
+                {formData.details.map((d, i) => (
+                  <details key={i} open className="group relative rounded-lg border border-gray-100 bg-surface-card">
+                    <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-raised rounded-lg transition-colors list-none">
+                      <div className="w-6 h-6 rounded-md bg-emerald-100 border border-emerald-200 flex items-center justify-center text-[10px] font-bold text-emerald-700 shrink-0">
+                        {i + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-bold text-gray-800 block truncate">{d.nopol_kendaraan || `Tersimpan #${i + 1}`}</span>
+                        <span className="text-[11px] text-gray-400">{d.type_kendaraan || 'Pilih type'} · {formatCurrency(Number(existingNominal(d)) || 0)}</span>
+                      </div>
+                      <svg className="w-4 h-4 text-gray-300 group-open:rotate-180 transition-transform shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                    </summary>
+                    <button type="button" onClick={() => removeExistingDetail(i)} className="absolute right-10 top-2 h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Hapus" aria-label={`Hapus baris tersimpan ${i + 1}`}>
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                    <div className="px-3 pb-3 pt-1 border-t border-gray-100">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Plat Kendaraan <span className="text-red-400">*</span>
+                          </label>
+                          <input type="text" value={d.nopol_kendaraan} onChange={(e) => updateExistingDetail(i, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" id={`existing-row-${i}-nopol_kendaraan`} className="input-field py-2 text-sm font-mono uppercase" />
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Type Kendaraan <span className="text-red-400">*</span>
+                          </label>
+                          <select value={d.type_kendaraan} onChange={(e) => updateExistingDetail(i, 'type_kendaraan', e.target.value)} id={`existing-row-${i}-type_kendaraan`} className="select-field py-2 text-sm">
+                            <option value="">Pilih</option>
+                            {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            No. SJ
+                          </label>
+                          <input type="text" value={d.no_surat_jalan} onChange={(e) => updateExistingDetail(i, 'no_surat_jalan', e.target.value)} placeholder="Nomor SJ" id={`existing-row-${i}-no_surat_jalan`} className="input-field py-2 text-sm font-mono" />
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Qty Zak
+                          </label>
+                          <input type="number" min="0" value={d.qty_zak || ''} onChange={(e) => updateExistingDetail(i, 'qty_zak', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-qty_zak`} className="input-field py-2 text-sm text-right" />
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Qty Crt
+                          </label>
+                          <input type="number" min="0" value={d.qty_crt || ''} onChange={(e) => updateExistingDetail(i, 'qty_crt', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-qty_crt`} className="input-field py-2 text-sm text-right" />
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Nominal (Rp) <span className="text-red-400">*</span>
+                          </label>
+                          <input type="number" min="0" value={d.nominal_biaya || ''} onChange={(e) => updateExistingDetail(i, 'nominal_biaya', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-nominal_biaya`} className="input-field py-2 text-sm font-bold" />
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </div>
+            )}
+
             {/* Baris Manual */}            {/* Baris Manual */}
             {(editingId || sourceType === 'manual') && formStep === 2 && (
             <div>
@@ -2315,7 +2421,7 @@ export default function BiayaRetribusiPage() {
             {viewItem?.status === 'pending' ? <>{hasRole('bac', 'admin_master') && hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}{hasRole('bac', 'admin_master') && hasPermission('approval.check') ? <button onClick={() => void approvalAction('check')} className="btn-secondary w-full sm:w-auto">Periksa</button> : null}</> : null}
             {viewItem?.status === 'checked' && viewItem ? <>{hasPermission('approval.reject') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('revise', viewItem)} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600">Perlu Revisi</button> : null}{hasPermission('approval.approve') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('approve', viewItem)} className="btn-primary w-full sm:w-auto">Setujui</button> : null}</> : null}
             {viewItem?.status === 'rlh_approved' ? <>{hasPermission('approval.rfah') && hasRole('rfah', 'admin_master') ? <button onClick={() => void approvalAction('rfahApprove')} className="btn-primary w-full sm:w-auto">Setujui</button> : null}{hasPermission('approval.reject') && (hasRole('rfah', 'admin_master')) ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') && (hasRole('rfah', 'admin_master')) ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}</> : null}
-            {viewItem && <button onClick={() => { void (async () => { try { const fresh = await loadLatestPdfItem(viewItem); previewRetribusiPdf({ tanggal_pengajuan: fresh.tanggal_pengajuan, kode_depo: fresh.kode_depo, nama_depo: fresh.nama_depo, nominal_biaya: Number(fresh.nominal_biaya), is_rfah_required: fresh.is_rfah_required, rfah_name: fresh.rfah_name, status: fresh.status, submitted_at: fresh.submitted_at, checked_at: fresh.checked_at, rlh_approved_at: fresh.rlh_approved_at, approved_at: fresh.approved_at, rejected_at: fresh.rejected_at, rejection_reason: fresh.rejection_reason, revised_at: fresh.revised_at, revisi_reason: fresh.revisi_reason, submittedBy: fresh.submittedBy, checkedBy: fresh.checkedBy, rlhApprovedBy: fresh.rlhApprovedBy, approvedBy: fresh.approvedBy, rejectedBy: fresh.rejectedBy, revisedBy: fresh.revisedBy, approval_sections: fresh.approval_sections, details: (fresh.details || []).map((d) => ({ nopol_kendaraan: d.nopol_kendaraan, type_kendaraan: d.type_kendaraan, no_surat_jalan: d.no_surat_jalan, nominal_biaya: Number(d.nominal_biaya), biaya_thl_detail: d.biaya_thl_detail ?? null })), documents: (fresh.documents || []).map((doc) => ({ id: doc.id, document_type: doc.document_type, file_name: doc.file_name, file_path: doc.file_path, file_size: doc.file_size })) }, { onWarning: warnLampiran }); } catch (e: unknown) { console.error('[Preview PDF]', e); notifyGlobal(e instanceof Error ? `Gagal membuka preview PDF: ${e.message}` : 'Gagal membuka preview PDF', 'error'); } })(); }} className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
+            {viewItem && <button onClick={() => { void (async () => { try { const fresh = await loadLatestPdfItem(viewItem); previewRetribusiPdf({ tanggal_pengajuan: fresh.tanggal_pengajuan, kode_depo: fresh.kode_depo, nama_depo: fresh.nama_depo, nominal_biaya: Number(fresh.nominal_biaya), is_rfah_required: fresh.is_rfah_required, rfah_name: fresh.rfah_name, rfah_threshold: biayaConfig.retribusi_rfah_threshold, status: fresh.status, submitted_at: fresh.submitted_at, checked_at: fresh.checked_at, rlh_approved_at: fresh.rlh_approved_at, approved_at: fresh.approved_at, rejected_at: fresh.rejected_at, rejection_reason: fresh.rejection_reason, revised_at: fresh.revised_at, revisi_reason: fresh.revisi_reason, submittedBy: fresh.submittedBy, checkedBy: fresh.checkedBy, rlhApprovedBy: fresh.rlhApprovedBy, approvedBy: fresh.approvedBy, rejectedBy: fresh.rejectedBy, revisedBy: fresh.revisedBy, approval_sections: fresh.approval_sections, details: (fresh.details || []).map((d) => ({ nopol_kendaraan: d.nopol_kendaraan, type_kendaraan: d.type_kendaraan, no_surat_jalan: d.no_surat_jalan, nominal_biaya: Number(d.nominal_biaya), biaya_thl_detail: d.biaya_thl_detail ?? null })), documents: (fresh.documents || []).map((doc) => ({ id: doc.id, document_type: doc.document_type, file_name: doc.file_name, file_path: doc.file_path, file_size: doc.file_size })) }, { onWarning: warnLampiran }); } catch (e: unknown) { console.error('[Preview PDF]', e); notifyGlobal(e instanceof Error ? `Gagal membuka preview PDF: ${e.message}` : 'Gagal membuka preview PDF', 'error'); } })(); }} className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               Preview PDF
             </button>}
@@ -2409,7 +2515,7 @@ export default function BiayaRetribusiPage() {
               </div>
 
               {/* Alur persetujuan */}
-              <ApprovalStepper item={viewItem} />
+              <ApprovalStepper item={viewItem} rfahThreshold={biayaConfig.retribusi_rfah_threshold} />
               <ApprovalHistoryList histories={viewItem.approvalHistories} />
 
               {/* Detail Retribusi */}
@@ -2623,6 +2729,16 @@ export default function BiayaRetribusiPage() {
         </Modal>
 
         {/* Import Modal */}
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onClose={() => { if (deletingId !== null) return; setShowDeleteConfirm(false); setDeleteTargetId(null); }}
+          onConfirm={confirmDelete}
+          title="Hapus Pengajuan"
+          message="Apakah Anda yakin ingin menghapus pengajuan ini? Tindakan ini tidak dapat dibatalkan."
+          confirmLabel="Hapus"
+          variant="danger"
+          loading={deletingId !== null}
+        />
         <Modal
           open={showImportModal}
           onClose={() => { setShowImportModal(false); setImportFile(null); }}

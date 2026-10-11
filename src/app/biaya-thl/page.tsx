@@ -1091,7 +1091,7 @@ export default function BiayaThlPage() {
       const groupRows = prev.details.filter(d => d.groupId === groupId);
       const source = groupRows.length > 0 ? groupRows[groupRows.length - 1] : null;
       const newRow: FormDetailRow = source
-        ? { ...source, nama_thl: '', photos: [], groupId, order: prev.details.length }
+        ? { ...source, nama_thl: '', photos: [], groupId, order: prev.details.length, kendaraan_tambahan: false, kendaraan_sj: '', kendaraan_nopol: '', kendaraan_type: '', kendaraan: [] }
         : createEmptyDetail(prev.details.length, '', groupId);
       return { ...prev, details: [...prev.details, newRow] };
     });
@@ -1129,6 +1129,13 @@ export default function BiayaThlPage() {
         no_surat_jalan: '',
         photos: [],
         photos_remove: [],
+        // Kendaraan tambahan milik grup asal (SJ berbeda) — reset agar tidak
+        // terbawa basi ke grup baru; user tambah ulang bila memang ada.
+        kendaraan_tambahan: false,
+        kendaraan_sj: '',
+        kendaraan_nopol: '',
+        kendaraan_type: '',
+        kendaraan: [],
       }));
       const details = [...prev.details];
       const lastIdx = details.map((d) => d.groupId).lastIndexOf(groupId);
@@ -1187,7 +1194,7 @@ export default function BiayaThlPage() {
     const groupRows = formData.details.filter(d => d.groupId === groupId);
     const sourceInGroup = groupRows.length > 0 ? groupRows[groupRows.length - 1] : null;
     const row: FormDetailRow = sourceInGroup
-      ? { ...sourceInGroup, nama_thl: '', photos: [], groupId, order: atIndex }
+      ? { ...sourceInGroup, nama_thl: '', photos: [], groupId, order: atIndex, kendaraan_tambahan: false, kendaraan_sj: '', kendaraan_nopol: '', kendaraan_type: '', kendaraan: [] }
       : createEmptyDetail(atIndex, '', groupId);
     setFormData((prev) => {
       const details = [...prev.details];
@@ -1333,6 +1340,7 @@ export default function BiayaThlPage() {
       nominal_biaya: totalNominal,
       is_rfah_required: isRfahRequired,
       rfah_name: isRfahRequired ? biayaConfig.rfah_name : '',
+      rfah_threshold: biayaConfig.thl_rfah_threshold,
       approval_pengajuan: user?.full_name || '',
       status: 'draft',
       details: applyGroupVehicle(formData.details.map(normalizeThlDetail)),
@@ -1921,9 +1929,9 @@ export default function BiayaThlPage() {
             )}
             {formStep === 3 && (!editingId || (canSaveDraft && hasPermission('approval.submit'))) ? (
               <>
-                <button type="button" onClick={editingId ? handleUpdate : handleCreate} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title="Hanya menyimpan — belum masuk antrean pemeriksaan" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                <button type="button" onClick={editingId ? handleUpdate : handleCreate} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title="Menyimpan lengkap sebagai draft (belum masuk antrean pemeriksaan)" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
                   {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-600" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
-                  {busy ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Draft'}
+                  {busy ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Lengkap'}
                 </button>
                 <button type="button" onClick={handleCreateAndSubmit} disabled={busy || !formData.tanggal_pengajuan || formData.details.length === 0 || hasIncompleteThlRows || hasBlockingError} title={editingStatus === 'revisi' ? 'Simpan perbaikan lalu kirim kembali ke approver yang meminta revisi' : 'Simpan dan langsung kirim ke antrean pemeriksaan'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
