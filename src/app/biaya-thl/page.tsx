@@ -197,15 +197,18 @@ const createEmptyDetail = (order: number, sj: string, groupId: string): FormDeta
   groupId,
 });
 
-const createGroupId = () =>
-  typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `grp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+const generateId = (prefix = 'id'): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // Fallback jika browser melempar exception pada insecure context
+    }
+  }
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
 
-const generateId = () =>
-  typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+const createGroupId = () => generateId('grp');
 
 const normalizeThlDetail = <T extends DetailRow>(detail: T): T => {
   const normalized = { ...detail };
@@ -461,7 +464,7 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
           return (
             <li key={h.id} className="relative flex gap-3 pb-4 last:pb-0">
               {i < histories.length - 1 && (
-                <span aria-hidden="true" className="absolute left-[15px] top-9 bottom-0 w-[2px] rounded-full bg-slate-200" />
+                <span aria-hidden="true" className="absolute left-3.75 top-9 bottom-0 w-0.5 rounded-full bg-slate-200" />
               )}
               <div className="shrink-0 mt-0.5">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-full border text-[10px] font-black ${meta.badge}`}>
@@ -559,7 +562,7 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
                 {i < steps.length - 1 && (
                   <span
                     aria-hidden="true"
-                    className={`absolute left-[15px] top-8 bottom-0 w-[2px] rounded-full ${state === 'done' ? 'bg-emerald-200' : 'bg-slate-200'}`}
+                    className={`absolute left-3.75 top-8 bottom-0 w-0.5 rounded-full ${state === 'done' ? 'bg-emerald-200' : 'bg-slate-200'}`}
                   />
                 )}
                 <div className="shrink-0 mt-0.5">
@@ -1641,7 +1644,7 @@ export default function BiayaThlPage() {
             </select>
             <div className="flex items-center gap-1">
               <span className="text-xs text-slate-500">/page</span>
-              <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className="select-field-sm w-[90px]">
+              <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className="select-field-sm w-22.5">
                 <option value={25}>25</option>
                 <option value={50}>50</option>
                 <option value={100}>100</option>
@@ -1962,7 +1965,7 @@ export default function BiayaThlPage() {
                   <div className="flex items-end justify-between gap-3"><span className="text-xs text-ink-fg-muted">Kubikasi</span><span className="text-sm font-black tabular-nums">{totalKubikasi} m³</span></div>
                   <div className="flex items-end justify-between gap-3"><span className="text-xs text-ink-fg-muted">Komposisi</span><span className="text-xs font-bold tabular-nums text-right">{compositionLabel}</span></div>
                   <div className="flex items-start justify-between gap-3"><span className="text-xs text-ink-fg-muted pt-0.5">Plat</span>{platList.length > 0 ? (
-                    <span className="flex flex-wrap justify-end gap-1 max-w-[130px]">
+                    <span className="flex flex-wrap justify-end gap-1 max-w-32.5">
                       {platList.slice(0, 4).map((p) => (
                         <span key={p} title={p} className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-ink-fg truncate max-w-full">{p}</span>
                       ))}
@@ -2106,7 +2109,7 @@ export default function BiayaThlPage() {
                           </div>
                         )}
                     <div key={group.groupId} id={`sj-group-${gIdx}`} className={`rounded-2xl border bg-surface-card overflow-hidden shadow-sm scroll-mt-2 ${errorSJGroupIndex === gIdx ? 'border-red-300 ring-2 ring-red-200' : 'border-gray-300'}`}>
-                      <div className={`h-1 bg-gradient-to-r ${accent.bar}`} aria-hidden="true" />
+                      <div className={`h-1 bg-linear-to-r ${accent.bar}`} aria-hidden="true" />
                       <div className="sticky top-0 z-10 flex items-center gap-3 px-4 sm:px-5 py-4 bg-surface-card border-b border-gray-100">
                         <div className={`w-8 h-8 rounded-lg ${accent.solid} text-white flex items-center justify-center text-xs font-black shadow-sm shrink-0`} aria-hidden="true">
                           {gIdx + 1}
@@ -2126,7 +2129,7 @@ export default function BiayaThlPage() {
                       </div>
                       <div className="flex items-center gap-2 border-b border-gray-100 bg-surface-card px-4 sm:px-5 py-1.5" aria-hidden="true">
                         <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100">
-                          <div className={`h-1 rounded-full bg-gradient-to-r ${accent.bar} transition-all`} style={{ width: `${group.indices.length === 0 ? 0 : Math.round((readyCount / group.indices.length) * 100)}%` }} />
+                          <div className={`h-1 rounded-full bg-linear-to-r ${accent.bar} transition-all`} style={{ width: `${group.indices.length === 0 ? 0 : Math.round((readyCount / group.indices.length) * 100)}%` }} />
                         </div>
                         <span className="text-[10px] font-black tabular-nums text-slate-400">{readyCount}/{group.indices.length} siap</span>
                       </div>
