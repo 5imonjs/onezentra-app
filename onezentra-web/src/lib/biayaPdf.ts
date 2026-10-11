@@ -261,7 +261,7 @@ async function appendLampiranPages(doc: jsPDF, data: RetribusiData): Promise<voi
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 7, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.3, valign: 'middle' },
       headStyles: { fillColor: [210, 210, 210], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
-      columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 1: { cellWidth: 40 }, 2: { cellWidth: 150 }, 3: { cellWidth: 30, halign: 'right' } },
+      columnStyles: { 0: { cellWidth: MANIFEST_COL_WIDTHS[0], halign: 'center' }, 1: { cellWidth: MANIFEST_COL_WIDTHS[1] }, 2: { cellWidth: MANIFEST_COL_WIDTHS[2] }, 3: { cellWidth: MANIFEST_COL_WIDTHS[3], halign: 'right' } },
     });
   }
 }
@@ -327,6 +327,19 @@ function formatPdfColumn(primary?: string | null, additional?: string | null): s
 }
 
 const money = (value: number) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+
+/**
+ * Lebar kolom tabel PDF (mm). Semua tabel memakai jumlah yang sama dengan
+ * lebar halaman efektif (A4 landscape 297 − margin 2×10 = 277) agar tabel
+ * atas dan bawah sama panjang.
+ */
+export const PDF_PAGE_WIDTH = 277;
+/** No, No Kendaraan, Jenis, Surat Jalan, Nominal, Paraf. */
+export const SUMMARY_COL_WIDTHS = [9, 61, 53, 55, 46, 53];
+/** No, Nama, Kubikasi, Drop Point, Posisi, Jam Datang, Jam Pulang. */
+export const THL_COL_WIDTHS = [9, 80, 32, 40, 48, 34, 34];
+/** No, Tipe, Nama File, Ukuran (manifest lampiran). */
+export const MANIFEST_COL_WIDTHS = [10, 45, 182, 40];
 // Normalisasi 'YYYY-MM-DD HH:mm:ss' (gaya Laravel) menjadi ISO agar
 // new Date() dapat mem-parse; format ISO (dengan 'T' atau 'Z') dibiarkan.
 const normalizedDateInput = (value: string) => (value.includes('T') ? value : value.replace(' ', 'T'));
@@ -836,7 +849,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
     styles: { font: 'helvetica', fontSize: 7, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.3, minCellHeight: 5.5, valign: 'middle' },
     headStyles: { fillColor: [210, 210, 210], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
     footStyles: { fillColor: [255, 255, 255], textColor: [20, 20, 20], fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 1: { cellWidth: 55 }, 2: { cellWidth: 48 }, 3: { cellWidth: 50 }, 4: { cellWidth: 42, halign: 'center' }, 5: { cellWidth: 48 } },
+    columnStyles: { 0: { cellWidth: SUMMARY_COL_WIDTHS[0], halign: 'center' }, 1: { cellWidth: SUMMARY_COL_WIDTHS[1] }, 2: { cellWidth: SUMMARY_COL_WIDTHS[2] }, 3: { cellWidth: SUMMARY_COL_WIDTHS[3] }, 4: { cellWidth: SUMMARY_COL_WIDTHS[4], halign: 'center' }, 5: { cellWidth: SUMMARY_COL_WIDTHS[5] } },
     didParseCell: (hookData) => {
       if (hookData.section === 'foot') hookData.cell.styles.halign = 'center';
     },
@@ -950,7 +963,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 6.5, textColor: [20, 20, 20], lineColor: [35, 35, 35], lineWidth: 0.25, cellPadding: 1.1, minCellHeight: 5, valign: 'middle' },
     headStyles: { fillColor: [210, 210, 210], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
-    columnStyles: { 0: { cellWidth: 9, halign: 'center' }, 1: { cellWidth: 80 }, 2: { cellWidth: 32, halign: 'center' }, 3: { cellWidth: 40, halign: 'center' }, 4: { cellWidth: 48 }, 5: { cellWidth: 34, halign: 'center' }, 6: { cellWidth: 34, halign: 'center' } },
+    columnStyles: { 0: { cellWidth: THL_COL_WIDTHS[0], halign: 'center' }, 1: { cellWidth: THL_COL_WIDTHS[1] }, 2: { cellWidth: THL_COL_WIDTHS[2], halign: 'center' }, 3: { cellWidth: THL_COL_WIDTHS[3], halign: 'center' }, 4: { cellWidth: THL_COL_WIDTHS[4] }, 5: { cellWidth: THL_COL_WIDTHS[5], halign: 'center' }, 6: { cellWidth: THL_COL_WIDTHS[6], halign: 'center' } },
   });
   const thlY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? thlTop + 50;
   const photoTop = thlY + 1;
