@@ -202,6 +202,11 @@ const createGroupId = () =>
     ? crypto.randomUUID()
     : `grp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
+const generateId = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
 const normalizeThlDetail = <T extends DetailRow>(detail: T): T => {
   const normalized = { ...detail };
   const position = normalized.posisi?.trim().toUpperCase();
@@ -247,10 +252,19 @@ const getMissingFields = (detail: FormDetailRow): string[] => {
   if (requiresWorkHours(position)) {
     if (!detail.jam_datang) missing.push('Jam Datang');
     if (!detail.jam_pulang) missing.push('Jam Pulang');
-    if (detail.jam_datang && detail.jam_pulang && detail.jam_pulang <= detail.jam_datang) {
-      missing.push('Jam Pulang harus setelah Jam Datang');
+    if (detail.jam_datang && detail.jam_pulang) {
+      if (detail.jam_pulang <= detail.jam_datang) {
+        missing.push('Jam Pulang harus setelah Jam Datang');
+      } else {
+        const diffMs = new Date(detail.jam_pulang).getTime() - new Date(detail.jam_datang).getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+        if (diffHours > 18) {
+          missing.push('Durasi kerja melebihi 18 jam — periksa kembali jam datang/pulang');
+        }
+      }
     }
   }
+
   return missing;
 };
 
@@ -803,7 +817,8 @@ export default function BiayaThlPage() {
       if (d.posisi) fd.append(`details[${i}][posisi]`, d.posisi);
       if (d.jam_datang) fd.append(`details[${i}][jam_datang]`, d.jam_datang);
       if (d.jam_pulang) fd.append(`details[${i}][jam_pulang]`, d.jam_pulang);
-      if (d.kendaraan_tambahan) fd.append(`details[${i}][kendaraan_tambahan]`, '1');
+      fd.append(`details[${i}][kendaraan_tambahan]`, d.kendaraan_tambahan ? '1' : '0');
+
       if (d.kendaraan_sj) fd.append(`details[${i}][kendaraan_sj]`, d.kendaraan_sj);
       if (d.kendaraan_nopol) fd.append(`details[${i}][kendaraan_nopol]`, d.kendaraan_nopol);
       if (d.kendaraan_type) fd.append(`details[${i}][kendaraan_type]`, d.kendaraan_type);
@@ -895,7 +910,10 @@ export default function BiayaThlPage() {
       put('posisi', d.posisi);
       put('jam_datang', d.jam_datang);
       put('jam_pulang', d.jam_pulang);
-      if (d.kendaraan_tambahan) fd.append(`details[${i}][kendaraan_tambahan]`, '1');
+      // Kirim eksplisit 0/1 agar server dapat reset flag saat baris diubah dari
+      // kendaraan_tambahan=true menjadi false (update, bukan create baru).
+      fd.append(`details[${i}][kendaraan_tambahan]`, d.kendaraan_tambahan ? '1' : '0');
+
       put('kendaraan_sj', d.kendaraan_sj);
       put('kendaraan_nopol', d.kendaraan_nopol);
       put('kendaraan_type', d.kendaraan_type);
@@ -1021,19 +1039,36 @@ export default function BiayaThlPage() {
     setSjVehicle({});
   };
 
-  const insertSjGroupBefore = (nextGroupId: string | null) => {
+  const insertSjGroupBefore = (nextGroupId: string | null): string => {
+    const newGroupId = createGroupId();
     setFormData(prev => {
       const insertAt = nextGroupId ? prev.details.findIndex(d => d.groupId === nextGroupId) : prev.details.length;
       if (nextGroupId && insertAt < 0) return prev;
-      const newRow = createEmptyDetail(prev.details.length, '', createGroupId());
+      const newRow = createEmptyDetail(prev.details.length, '', newGroupId);
       const details = [...prev.details];
       details.splice(insertAt, 0, newRow);
       return { ...prev, details: details.map((d, i) => ({ ...d, order: i })) };
     });
+    return newGroupId;
+  };
+
+  /** Arahkan fokus ke input No. Surat Jalan sebuah grup agar user mulai dari SJ dulu. */
+  const focusSjInput = (groupId: string) => {
+    requestAnimationFrame(() => {
+      const groups = document.querySelectorAll<HTMLInputElement>('[data-sj-group-id]');
+      for (const el of groups) {
+        if (el.dataset.sjGroupId === groupId) {
+          el.focus();
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
+    });
   };
 
   const addSjGroup = () => {
-    insertSjGroupBefore(null);
+    const gid = insertSjGroupBefore(null);
+    focusSjInput(gid);
   };
 
   const addDetailRow = (groupId: string) => {
@@ -1098,7 +1133,8 @@ export default function BiayaThlPage() {
     notifyGlobal('Grup diduplikat — isi SJ baru dan upload foto bukti tiap baris', 'success');
   };
 
-  const updateSjNumber = (groupId: string, value: string) => {    setErrorSJGroupIndex((prev) => (prev === Object.values(sjGroups).findIndex((g) => g.groupId === groupId) ? null : prev));
+  const updateSjNumber = (groupId: string, value: string) => {
+    setErrorSJGroupIndex((prev) => (prev === Object.values(sjGroups).findIndex((g) => g.groupId === groupId) ? null : prev));
     setFormData(prev => ({
       ...prev,
       details: prev.details.map((d) =>
@@ -1106,6 +1142,21 @@ export default function BiayaThlPage() {
       ),
     }));
   };
+
+  /** Trim spasi tepi No. SJ saat blur agar validasi duplikat tidak bisa dibypass
+   *  dengan trailing-space (mis. "SJ-001" vs "SJ-001 "). */
+  const commitSjNumber = (groupId: string, value: string) => {
+    const trimmed = value.trim();
+    if (trimmed !== value) {
+      setFormData(prev => ({
+        ...prev,
+        details: prev.details.map((d) =>
+          d.groupId === groupId ? { ...d, no_surat_jalan: trimmed } : d
+        ),
+      }));
+    }
+  };
+
 
   const scrollToWorker = (globalIdx: number) => {
     requestAnimationFrame(() => {
@@ -1117,9 +1168,12 @@ export default function BiayaThlPage() {
   };
 
   const insertDetailBefore = (groupId: string, atIndex: number) => {
-    const source = formData.details[atIndex - 1];
-    const row: FormDetailRow = source
-      ? { ...source, nama_thl: '', photos: [], groupId, order: atIndex }
+    // Ambil source HANYA dari grup yang sama agar no_surat_jalan tidak tercemar
+    // dari grup SJ lain saat ada beberapa SJ dalam satu form.
+    const groupRows = formData.details.filter(d => d.groupId === groupId);
+    const sourceInGroup = groupRows.length > 0 ? groupRows[groupRows.length - 1] : null;
+    const row: FormDetailRow = sourceInGroup
+      ? { ...sourceInGroup, nama_thl: '', photos: [], groupId, order: atIndex }
       : createEmptyDetail(atIndex, '', groupId);
     setFormData((prev) => {
       const details = [...prev.details];
@@ -1128,6 +1182,7 @@ export default function BiayaThlPage() {
     });
     scrollToWorker(atIndex);
   };
+
 
   const removeDetail = (index: number) => {
     setFormData(prev => ({
@@ -1342,10 +1397,13 @@ export default function BiayaThlPage() {
     // Pola "input langsung" (sama seperti retribusi): pembuatan baru yang masuk
     // ke step Data Pekerja tanpa baris langsung disiapkan 1 grup SJ + 1 baris
     // pekerja kosong — user langsung mengetik tanpa klik "Tambah Surat Jalan".
+    // Fokus diarahkan ke input No. Surat Jalan (bukan Nama THL) agar flow
+    // pengisian dimulai dari SJ dulu, baru data pekerja.
     if (step === 2 && editingId === null && formData.details.length === 0) {
-      insertSjGroupBefore(null);
-      scrollToWorker(0);
+      const gid = insertSjGroupBefore(null);
+      focusSjInput(gid);
     }
+
     if (step === 3) {
       if (sjGroupError || vehicleError) {
         const errGroupIndex = sjGroupError ? sjGroupErrorInfo.groupIndex : null;
@@ -1471,7 +1529,7 @@ export default function BiayaThlPage() {
       if (d.kendaraan_tambahan === true) {
         const vehicles = (d as unknown as { kendaraan?: Array<{ sj?: string; nopol?: string; type?: string }> }).kendaraan ?? [];
         restored[d.groupId] = (vehicles as Array<{ sj?: string; nopol?: string; type?: string }>).map((v) => ({
-          id: crypto.randomUUID(),
+          id: generateId(),
           sj: v.sj ?? '',
           nopol: v.nopol ?? '',
           type: v.type ?? '',
@@ -1918,7 +1976,7 @@ export default function BiayaThlPage() {
             </aside>
             <div className="min-w-0">
           {/* Step Indicator */}
-          <div className="mb-6 rounded-2xl border border-slate-300 bg-overlay-80 p-2 sm:p-3">
+          <div className="sticky top-0 z-20 mb-6 rounded-2xl border border-slate-300 bg-surface-card/90 backdrop-blur-md p-2 sm:p-3">
             <div className="mb-2 flex items-center justify-between px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
               <span>Progress pengajuan</span>
               <span className="text-accent-text">Langkah {formStep} dari 3</span>
@@ -2039,7 +2097,8 @@ export default function BiayaThlPage() {
                         {gIdx > 0 && (
                           <div className="flex items-center gap-3 py-1">
                             <div className="h-px flex-1 border-t-2 border-dashed border-gray-300" />
-                            <button type="button" onClick={() => insertSjGroupBefore(group.groupId)} title={`Sisipkan Surat Jalan sebelum nomor ${gIdx + 1}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-surface-card px-3 py-1 text-[11px] font-black text-gray-500 hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
+                            <button type="button" onClick={() => { const gid = insertSjGroupBefore(group.groupId); focusSjInput(gid); }} title={`Sisipkan Surat Jalan sebelum nomor ${gIdx + 1}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-surface-card px-3 py-1 text-[11px] font-black text-gray-500 hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
+
                               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                               Tambah Surat Jalan di sini
                             </button>
@@ -2054,7 +2113,8 @@ export default function BiayaThlPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Nomor Surat Jalan <span className="text-red-400">*</span></label>
-                          <input type="text" value={group.sj} onChange={(e) => updateSjNumber(group.groupId, e.target.value)} placeholder="Contoh: SJ-2025-0001" className={`w-full rounded-xl border px-3 py-2 font-mono text-sm font-bold text-gray-800 placeholder:text-gray-300 transition-colors focus:outline-none focus:ring-4 bg-surface-card ${errorSJGroupIndex === gIdx ? 'border-red-400 focus:border-red-400 focus:ring-red-50' : 'border-slate-300 focus:border-primary-400 focus:ring-brand-wash'}`} />
+                          <input type="text" data-sj-group-id={group.groupId} value={group.sj} onChange={(e) => updateSjNumber(group.groupId, e.target.value)} onBlur={(e) => commitSjNumber(group.groupId, e.target.value)} placeholder="Contoh: SJ-2025-0001" className={`w-full rounded-xl border px-3 py-2 font-mono text-sm font-bold text-gray-800 placeholder:text-gray-300 transition-colors focus:outline-none focus:ring-4 bg-surface-card ${errorSJGroupIndex === gIdx ? 'border-red-400 focus:border-red-400 focus:ring-red-50' : 'border-slate-300 focus:border-primary-400 focus:ring-brand-wash'}`} />
+
                         </div>
                         <span className={`inline-flex items-center rounded-full ${accent.soft} ${accent.text} px-2.5 py-1 text-[11px] font-bold whitespace-nowrap shrink-0`}>{group.indices.length} pekerja</span>
                         <button type="button" onClick={() => duplicateSjGroup(group.groupId, gIdx)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-accent-text hover:bg-chip-primary transition-colors shrink-0" title="Duplikat grup — salin pekerja, tinggal isi SJ baru" aria-label={`Duplikat Surat Jalan ${gIdx + 1}`}>
@@ -2083,7 +2143,7 @@ export default function BiayaThlPage() {
                                   <span className="block text-[11px] text-slate-500">SJ berbeda per kendaraan; boleh lebih dari 2</span>
                                 </span>
                               </div>
-                              <button type="button" onClick={() => setSjVehicle((prev) => ({ ...prev, [group.groupId]: [...(prev[group.groupId] ?? []), { id: crypto.randomUUID(), sj: '', nopol: '', type: '' }] }))} className="btn-secondary shrink-0">
+                              <button type="button" onClick={() => setSjVehicle((prev) => ({ ...prev, [group.groupId]: [...(prev[group.groupId] ?? []), { id: generateId(), sj: '', nopol: '', type: '' }] }))} className="btn-secondary shrink-0">
                                 <span className="flex items-center gap-1.5"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>Tambah Kendaraan</span>
                               </button>
                             </div>
