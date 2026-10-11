@@ -688,6 +688,8 @@ export default function BiayaRetribusiPage() {
       formData.documents.forEach((doc, i) => {
         if (doc.file) {
           fd.append(`files[${i}]`, doc.file);
+          fd.append(`documents[${i}][document_type]`, doc.document_type || 'lainnya');
+          fd.append(`documents[${i}][file_name]`, doc.file.name);
         }
       });
 
@@ -776,6 +778,8 @@ export default function BiayaRetribusiPage() {
       formData.documents.forEach((doc, i) => {
         if (doc.file) {
           fd.append(`files[${i}]`, doc.file);
+          fd.append(`documents[${i}][document_type]`, doc.document_type || 'lainnya');
+          fd.append(`documents[${i}][file_name]`, doc.file.name);
         }
       });
       documentsRemove.forEach((docId) => fd.append('documents_remove[]', String(docId)));
