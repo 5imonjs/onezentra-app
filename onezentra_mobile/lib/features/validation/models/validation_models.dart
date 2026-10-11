@@ -200,17 +200,17 @@ class ValidationBatch {
     this.createdAt,
   });
 
-  factory ValidationBatch.fromJson(Map<String, dynamic> json) {
-    return ValidationBatch(
-      id: _readInt(json['id']) ?? 0,
-      batchNumber: _readString(json['batch_number']),
-      // `barcode_label` adalah identitas fisik label; nilainya harus sama
-      // persis dengan yang dicetak ke kertas, jadi barcodenya bisa dibaca mesin.
-      barcodeLabel: _readString(json['barcode_label']),
-      batchNumberLabel: _readString(json['batch_number_label']),
-      createdAt: _readString(json['created_at']),
-    );
-  }
+  factory ValidationBatch.fromJson(
+    Map<String, dynamic> json,
+  ) => ValidationBatch(
+    id: _readInt(json['id']) ?? 0,
+    batchNumber: _readString(json['batch_number']),
+    // `barcode_label` adalah identitas fisik label; nilainya harus sama
+    // persis dengan yang dicetak ke kertas, jadi barcodenya bisa dibaca mesin.
+    barcodeLabel: _readString(json['barcode_label']),
+    batchNumberLabel: _readString(json['batch_number_label']),
+    createdAt: _readString(json['created_at']),
+  );
 
   final int id;
   final String? batchNumber;

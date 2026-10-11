@@ -313,7 +313,7 @@ function ApprovalStepper({ item }: { item: BiayaRetribusiItem }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-300 overflow-hidden shadow-sm">
+    <div className="sticky top-0 z-10 rounded-2xl border border-slate-300 overflow-hidden shadow-sm bg-surface-card">
       <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-slate-50 to-surface-card border-b border-slate-100">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 8H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M7 17L21 3m0 0h-5.5M21 3v5.5" /></svg>
@@ -1717,7 +1717,7 @@ export default function BiayaRetribusiPage() {
             </aside>
             <div className="min-w-0">
           <div className="space-y-4 sm:space-y-5">
-            <div className="lg:hidden rounded-2xl border border-slate-300 bg-surface-card px-4 py-3 shadow-sm">
+            <div className="sticky top-0 z-10 lg:hidden rounded-2xl border border-slate-300 bg-surface-card px-4 py-3 shadow-sm">
               <div className="flex items-center gap-1.5">
                 {WIZARD_LABELS.map((label, i) => {
                   const stepNo = i + 1;
@@ -1733,7 +1733,7 @@ export default function BiayaRetribusiPage() {
                 })}
               </div>
             </div>
-            <div className="hidden rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm lg:block">
+            <div className="sticky top-0 z-10 hidden rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm lg:block">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Alur pengajuan</p>

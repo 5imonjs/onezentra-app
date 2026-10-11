@@ -140,7 +140,6 @@ class _FakeValidationRepository extends ValidationRepository {
 const _handedOffSession = SjValidation(
   id: 9,
   scanCode: 'PO-042',
-  status: 'IN_PROGRESS',
   document: ValidationDocument(
     id: 11,
     poTransporter: 'PO-042',

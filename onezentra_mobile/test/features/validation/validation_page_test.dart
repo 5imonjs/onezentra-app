@@ -423,7 +423,6 @@ void main() {
     const readySession = SjValidation(
       id: 9,
       scanCode: 'PO-042',
-      status: 'IN_PROGRESS',
       document: ValidationDocument(
         id: 11,
         poTransporter: 'PO-042',
@@ -543,7 +542,6 @@ void main() {
     const mismatchSession = SjValidation(
       id: 9,
       scanCode: 'PO-042',
-      status: 'IN_PROGRESS',
       document: ValidationDocument(
         id: 11,
         poTransporter: 'PO-042',

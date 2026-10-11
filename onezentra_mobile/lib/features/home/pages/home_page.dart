@@ -70,36 +70,36 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     var user = auth.user;
 
     var menus = [
-      _HomeMenu(
+      const _HomeMenu(
         'Check In Point',
         'Scan PO / Nopol — catat Gate IN',
         Icons.door_front_door_rounded,
         AppTheme.primary700,
-        const ['gate.view'],
+        ['gate.view'],
         '/gate',
       ),
-      _HomeMenu(
+      const _HomeMenu(
         'Validasi SJ',
         'Scan PO — validasi produk per item',
         Icons.verified_rounded,
         AppTheme.success,
-        const ['sj_validation.view'],
+        ['sj_validation.view'],
         '/validasi-sj',
       ),
-      _HomeMenu(
+      const _HomeMenu(
         'Bongkar',
         'Scan PO — bongkar dan pindai produk',
         Icons.forklift,
         AppTheme.accent500,
-        const ['receiving.view'],
+        ['receiving.view'],
         '/bongkar',
       ),
-      _HomeMenu(
+      const _HomeMenu(
         'Hasil Penerimaan',
         'Histori inbound yang sudah diterima',
         Icons.inventory_2_rounded,
         AppTheme.primary600,
-        const ['receiving.view'],
+        ['receiving.view'],
         '/hasil-penerimaan',
       ),
     ];

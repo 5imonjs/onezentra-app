@@ -85,10 +85,7 @@ class UnloadRepository {
       var body = _expectObject(await _get('/receivings?$query'));
       var raw = body['data'];
       var candidates = raw is List
-          ? raw
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList()
+          ? raw.whereType<Map>().map(Map<String, dynamic>.from).toList()
           : <Map<String, dynamic>>[];
 
       for (var candidate in candidates) {
@@ -164,8 +161,7 @@ class UnloadRepository {
         'condition': condition,
         if (barcode != null && barcode.isNotEmpty) 'barcode': barcode,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
-        if (rencanaKirimItemId != null)
-          'rencana_kirim_item_id': rencanaKirimItemId,
+        'rencana_kirim_item_id': ?rencanaKirimItemId,
       }),
     );
   }

@@ -127,8 +127,8 @@ class ValidationRepository {
         'condition': condition,
         if (expiredDate?.isNotEmpty ?? false) 'expired_date': expiredDate,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
-        if (tier != null) 'tier': tier,
-        if (tinggiTumpukan != null) 'tinggi_tumpukan': tinggiTumpukan,
+        'tier': ?tier,
+        'tinggi_tumpukan': ?tinggiTumpukan,
       }),
     );
     var data = body['data'];

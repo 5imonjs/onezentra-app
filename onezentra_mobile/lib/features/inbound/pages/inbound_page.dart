@@ -336,7 +336,7 @@ class _InboundPageState extends State<InboundPage> {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppTheme.gray100,
               borderRadius: AppTheme.radiusLg,
             ),

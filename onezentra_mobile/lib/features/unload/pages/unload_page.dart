@@ -191,7 +191,7 @@ class _UnloadPageState extends State<UnloadPage> {
             Container(
               width: 36,
               height: 36,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.gray900,
                 borderRadius: AppTheme.radiusLg,
               ),

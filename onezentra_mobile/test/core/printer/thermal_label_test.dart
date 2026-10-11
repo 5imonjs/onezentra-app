@@ -28,7 +28,7 @@ void main() {
     });
 
     test('semua preset punya label yang bisa ditampilkan', () {
-      for (final w in LabelWidth.values) {
+      for (var w in LabelWidth.values) {
         expect(w.label, isNotEmpty);
         expect(w.charsPerLine, greaterThan(0));
       }
@@ -41,8 +41,8 @@ void main() {
       // dengan cara yang tidak kita kendalikan, sehingga layout label rusak.
       const longName =
           'Indomie Goreng Special Extra Pedas Sambal Matah Kemasan Besar Isi 85 Gram';
-      for (final width in LabelWidth.values) {
-        final text = buildLabelText(
+      for (var width in LabelWidth.values) {
+        var text = buildLabelText(
           const BatchLabelData(
             batchNumber: 'BATCH-1',
             barcodeLabel: 'LBL-1',
@@ -56,7 +56,7 @@ void main() {
           ),
           width,
         );
-        for (final line in text.split('\n')) {
+        for (var line in text.split('\n')) {
           expect(
             line.length,
             lessThanOrEqualTo(width.charsPerLine),
@@ -67,15 +67,15 @@ void main() {
     });
 
     test('memakai kata utuh, tidak memotong di tengah kata', () {
-      final text = buildLabelText(sample, LabelWidth.w58);
-      final lines = text.split('\n');
+      var text = buildLabelText(sample, LabelWidth.w58);
+      var lines = text.split('\n');
       expect(lines.any((l) => l.contains('Indomie Goreng 85g')), isTrue);
     });
 
     test('memotong kata tunggal yang lebih panjang dari label', () {
       // Satu kode barang yang sangat panjang tidak boleh membuat baris yang
       // melebihi lebar printer dan merusak seluruh layout.
-      final text = buildLabelText(
+      var text = buildLabelText(
         const BatchLabelData(
           batchNumber: 'BATCH-1',
           barcodeLabel: 'LBL-1',
@@ -83,7 +83,7 @@ void main() {
         ),
         LabelWidth.w58,
       );
-      for (final line in text.split('\n')) {
+      for (var line in text.split('\n')) {
         expect(line.length, lessThanOrEqualTo(32));
       }
     });
@@ -91,14 +91,14 @@ void main() {
     test('menampilkan barcode_label apa adanya sebagai teks', () {
       // Pada jalur ESC/POS barcode jadi gambar yang bisa discan; teks ini adalah
       // catatan baca-manual untuk operator ketika scanner gagal.
-      final text = buildLabelText(sample, LabelWidth.w58);
+      var text = buildLabelText(sample, LabelWidth.w58);
       expect(text, contains('LBL-XYZ98765'));
       expect('LBL-XYZ98765'.allMatches(text).length, 1);
     });
 
     test('mencetak identitas sistem pada setiap label', () {
       // Label yang lepas dari kardus harus masih bisa ditelusuri balik ke sistem.
-      for (final width in LabelWidth.values) {
+      for (var width in LabelWidth.values) {
         expect(buildLabelText(sample, width), contains('ONEZENTRA'));
         expect(buildLabelText(sample, width), contains('LANGKAU KAMI'));
       }
@@ -107,18 +107,18 @@ void main() {
     test('tidak mengubah tanggal expired, memakai nilai dari server', () {
       // Kalau tanggal dihitung ulang dari objek Date, zona waktu perangkat bisa
       // menggesernya satu hari — produk lalu dilabeli tanggal yang salah.
-      final text = buildLabelText(sample, LabelWidth.w58);
+      var text = buildLabelText(sample, LabelWidth.w58);
       expect(text, contains('2027-01-31'));
     });
 
     test('qty bulat tidak jadi "120.00"', () {
-      final text = buildLabelText(sample, LabelWidth.w58);
+      var text = buildLabelText(sample, LabelWidth.w58);
       expect(text, contains('QTY 120 PCS'));
       expect(text, isNot(contains('120.00')));
     });
 
     test('qty pecahan tetap dua desimal', () {
-      final text = buildLabelText(
+      var text = buildLabelText(
         const BatchLabelData(
           batchNumber: 'BATCH-1',
           barcodeLabel: 'LBL-1',
@@ -132,7 +132,7 @@ void main() {
 
     test('tidak melempar saat semua field kosong', () {
       // Petugas tetap butuh label tempel walau data produk belum lengkap.
-      final text = buildLabelText(
+      var text = buildLabelText(
         const BatchLabelData(batchNumber: null, barcodeLabel: null),
         LabelWidth.w58,
       );
@@ -141,7 +141,7 @@ void main() {
     });
 
     test('menerjemahkan kondisi ke bahasa yang tampil', () {
-      final text = buildLabelText(
+      var text = buildLabelText(
         const BatchLabelData(
           batchNumber: 'BATCH-1',
           barcodeLabel: 'LBL-1',
@@ -159,16 +159,16 @@ void main() {
       // jumlah baris sama di keduanya, jadi tidak membuktikan apa pun.
       const longName =
           'Indomie Goreng Special Extra Pedas Sambal Matah Kemasan Besar Isi 85 Gram Promo Ekstra';
-      final narrow = buildLabelText(
-        BatchLabelData(
+      var narrow = buildLabelText(
+        const BatchLabelData(
           batchNumber: 'B',
           barcodeLabel: 'L',
           namaBarang: longName,
         ),
         LabelWidth.w58,
       );
-      final wide = buildLabelText(
-        BatchLabelData(
+      var wide = buildLabelText(
+        const BatchLabelData(
           batchNumber: 'B',
           barcodeLabel: 'L',
           namaBarang: longName,
@@ -218,7 +218,7 @@ void main() {
     test('mengirim perintah barcode Code39 yang bisa discan mesin', () {
       // Ini inti dari fitur: label harus punya barcode yang bisa dibaca scanner,
       // bukan sekadar teks. Perintah yang salah = tidak ada barcode sama sekali.
-      final b = buildLabelBytes(sample, LabelWidth.w58);
+      var b = buildLabelBytes(sample, LabelWidth.w58);
       var idx = findBarcodeCommand(b);
       expect(idx, greaterThanOrEqualTo(0), reason: 'perintah Code39 tidak ada');
 
@@ -261,7 +261,7 @@ void main() {
     });
 
     test('mengirim perintah potong saat diaktifkan', () {
-      var b = buildLabelBytes(sample, LabelWidth.w58, enableCut: true);
+      var b = buildLabelBytes(sample, LabelWidth.w58);
       var hasCut = false;
       for (var i = 0; i < b.length - 2; i++) {
         if (b[i] == 0x1D && b[i + 1] == 0x56) {
