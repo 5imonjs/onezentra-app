@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actedNameFor, auditDates, formatSuratJalan, stampFor, type ApprovalSection, type RetribusiData } from './biayaPdf';
+import { actedNameFor, auditDates, formatSuratJalan, MANIFEST_COL_WIDTHS, PDF_PAGE_WIDTH, stampFor, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
 
 describe('formatSuratJalan', () => {
   it('renders primary and additional surat jalan in one cell', () => {
@@ -27,6 +27,16 @@ describe('formatSuratJalan', () => {
       kendaraan_sj: 'SJ-G2',
       kendaraan: [{ sj: 'SJ-G3' }, { sj: 'SJ-G1' }, { sj: '' }],
     })).toBe('SJ-G1, SJ-G2, SJ-G3');
+  });
+});
+
+describe('pdf table widths', () => {
+  const sum = (widths: number[]) => widths.reduce((a, b) => a + b, 0);
+
+  it('tabel atas, tabel THL, dan manifest sama panjang dengan lebar halaman', () => {
+    expect(sum(SUMMARY_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
+    expect(sum(THL_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
+    expect(sum(MANIFEST_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
   });
 });
 
