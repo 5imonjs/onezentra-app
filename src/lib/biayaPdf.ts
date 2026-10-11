@@ -317,6 +317,7 @@ const value = (item: unknown) => String(item ?? '-');
 const STAMP_GREEN: [number, number, number] = [21, 128, 61];
 const STAMP_RED: [number, number, number] = [220, 38, 38];
 const STAMP_ORANGE: [number, number, number] = [217, 119, 6];
+const STAMP_PURPLE: [number, number, number] = [124, 58, 237];
 
 export type AuditDates = { submitted?: string; checked?: string; rlhApproved?: string; approved?: string; rejected?: string; revised?: string };
 
@@ -403,7 +404,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // Sejajar server (resolveStamps): cap mengikuti AKSI submit (status),
     // bukan keberadaan nama — nama bisa kosong pada data lama/API langsung.
     return status && status !== 'draft' && dates.submitted && dates.submitted !== '-'
-      ? { text: 'PENGAJUAN', color: STAMP_GREEN, date: dates.submitted || '' }
+      ? { text: 'DIAJUKAN', color: STAMP_RED, date: dates.submitted || '' }
       : null;
   }
 
@@ -412,7 +413,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // benar terjadi (checked_at ada) — BUKAN karena nama assignee terdaftar.
     // Nama pelaku boleh tidak terbawa pada data PDF, tetapi cap audit tetap
     // harus tampil karena timestamp adalah bukti aksinya.
-    if (dates.checked && dates.checked !== '-') return { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked };
+    if (dates.checked && dates.checked !== '-') return { text: 'DIPERIKSA', color: STAMP_RED, date: dates.checked };
     // Revisi/ditolak oleh BAC menempel di kotak Mengetahui (bukan RLH).
     if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'Mengetahui' && dates.revised && actorName(data, 'revisedBy')) {
       return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
@@ -428,9 +429,9 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // melewati RLH; status revisi/ditolak pasca-RLH menampilkan cap
     // terminal (REVISI/DITOLAK) sesuai pelaku, konsisten dengan server.
     if (dates.rlhApproved && dates.rlhApproved !== '-' && (status === 'rlh_approved' || status === 'approved')) {
-      return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
+      return { text: 'DISETUJUI RLH', color: STAMP_RED, date: dates.rlhApproved };
     }
-    if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) return { text: 'DISETUJUI', color: STAMP_GREEN, date: dates.approved };
+    if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) return { text: 'DISETUJUI', color: STAMP_RED, date: dates.approved };
     if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'Menyetujui' && dates.rejected && actorName(data, 'rejectedBy')) return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
     if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'Menyetujui' && dates.revised && actorName(data, 'revisedBy')) return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
     // Persetujuan RLH pada siklus sebelumnya tetap tercatat di kotaknya
@@ -443,7 +444,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
 
   if (section.title === 'RFAH*') {
     if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) {
-      return { text: 'DISETUJUI RFAH', color: STAMP_GREEN, date: dates.approved };
+      return { text: 'DISETUJUI RFAH', color: STAMP_RED, date: dates.approved };
     }
     if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'RFAH*' && dates.rejected && actorName(data, 'rejectedBy')) {
       return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
@@ -459,26 +460,23 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
 
 function drawStamp(doc: jsPDF, cx: number, cy: number, stamp: StampSpec) {
   setDocFont(doc, 'bold');
-  doc.setFontSize(10);
-  const w = Math.max(doc.getTextWidth(stamp.text) + 16, 34);
-  const h = 12;
-  const left = cx - w / 2;
-  const top = cy - h / 2;
+  doc.setFontSize(9);
+  const radius = 14;
   doc.setDrawColor(stamp.color[0], stamp.color[1], stamp.color[2]);
   doc.setFillColor(255, 255, 255);
   doc.setLineWidth(0.55);
-  doc.roundedRect(left, top, w, h, 2, 2, 'FD');
+  doc.circle(cx, cy, radius, 'FD');
   doc.setLineWidth(0.25);
-  doc.roundedRect(left + 1.2, top + 1.2, w - 2.4, h - 2.4, 1.2, 1.2, 'S');
+  doc.circle(cx, cy, radius - 1.2, 'S');
   doc.setTextColor(stamp.color[0], stamp.color[1], stamp.color[2]);
-  doc.text(stamp.text, cx, top + 4.7, { align: 'center' });
+  doc.text(stamp.text, cx, cy - 1, { align: 'center' });
 
   doc.setDrawColor(stamp.color[0], stamp.color[1], stamp.color[2]);
-  doc.line(left + 3, top + 6.7, left + w - 3, top + 6.7);
+  doc.line(cx - radius + 3, cy + 2, cx + radius - 3, cy + 2);
   setDocFont(doc, 'normal');
-  doc.setFontSize(5.5);
+  doc.setFontSize(5);
   const dateLabel = stamp.date || '-';
-  doc.text(dateLabel, cx, top + 10.2, { align: 'center' });
+  doc.text(dateLabel, cx, cy + 6, { align: 'center' });
   doc.setDrawColor(35, 35, 35);
   doc.setTextColor(20, 20, 20);
   doc.setLineWidth(0.25);
@@ -678,18 +676,22 @@ async function readPhoto(photo: ThlPhoto): Promise<{ dataUrl: string; format: 'J
   }
 
   if (!photo.file_path) return null;
-  const { data: photoBlobData, status: photoStatus } = await apiClient.get(
-    `${API_ROOT}/storage/${photo.file_path}`,
-    { responseType: 'blob' }
-  );
-  if (photoStatus !== 200) return null;
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(photoBlobData);
-  });
-  return { dataUrl, format: photoBlobData.type === 'image/png' ? 'PNG' : 'JPEG' };
+  try {
+    const { data: photoBlobData, status: photoStatus } = await apiClient.get(
+      `${API_ROOT}/storage/${photo.file_path}`,
+      { responseType: 'blob' }
+    );
+    if (photoStatus !== 200) return null;
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(photoBlobData);
+    });
+    return { dataUrl, format: photoBlobData.type === 'image/png' ? 'PNG' : 'JPEG' };
+  } catch {
+    return null;
+  }
 }
 
 const isPdfDoc = (doc: LampiranDoc, blobType = ''): boolean => {
@@ -699,9 +701,9 @@ const isPdfDoc = (doc: LampiranDoc, blobType = ''): boolean => {
   return byName;
 };
 
-async function readPdfBytes(doc: LampiranDoc): Promise<ArrayBuffer> {
+async function readPdfBytes(doc: LampiranDoc): Promise<ArrayBuffer | null> {
   if (doc.file instanceof File) {
-    if (!isPdfDoc(doc)) throw new Error(`File ${doc.file.name} bukan PDF`);
+    if (!isPdfDoc(doc)) return null;
     return await doc.file.arrayBuffer();
   }
   const url = doc.id
@@ -709,17 +711,15 @@ async function readPdfBytes(doc: LampiranDoc): Promise<ArrayBuffer> {
     : doc.file_path
       ? `${API_ROOT}/storage/${doc.file_path}`
       : null;
-  if (!url) throw new Error(`Dokumen ${doc.file_name || '-'} tidak punya sumber file`);
+  if (!url) return null;
   try {
-    // Note: if URL is absolute (storage path), we need to use fetch directly
-    // since apiClient prepends baseURL. But storage paths are usually absolute.
     const { data: responseData, status: responseStatus } = await apiClient.get(url, { responseType: 'arraybuffer' });
-    if (responseStatus !== 200) throw new Error('Gagal memuat dokumen');
+    if (responseStatus !== 200) return null;
     const arrayBuffer = responseData as ArrayBuffer;
-    if (!isPdfDoc(doc)) throw new Error(`File ${doc.file_name || '-'} bukan PDF valid`);
+    if (!isPdfDoc(doc)) return null;
     return arrayBuffer;
   } catch {
-    throw new Error(`Tidak dapat mengunduh ${doc.file_name || '-'} (jaringan/CORS)`);
+    return null;
   }
 }
 
@@ -732,10 +732,11 @@ async function mergePdfAttachments(doc: jsPDF, data: RetribusiData, warnings: st
   const pdfParts: ArrayBuffer[] = [];
   for (const item of data.documents || []) {
     if (!isPdfDoc(item)) continue;
-    try {
-      pdfParts.push(await readPdfBytes(item));
-    } catch (e) {
-      warnings.push(e instanceof Error ? e.message : `Lampiran ${item.file_name || '-'} gagal dibaca`);
+    const bytes = await readPdfBytes(item);
+    if (bytes) {
+      pdfParts.push(bytes);
+    } else {
+      warnings.push(`Lampiran ${item.file_name || '-'} tidak dapat dimuat (file tidak ditemukan)`);
     }
   }
   if (pdfParts.length === 0) return null;
