@@ -76,37 +76,56 @@
         <div class="rfah">RFAH: {{ $biayaRetribusi->rfah_name }}</div>
     @endif
 
+    <style>
+        .stamp { display: inline-block; padding: 6px 14px; border: 2.5px solid currentColor; border-radius: 8px; transform: rotate(-12deg); opacity: 0.75; }
+        .stamp-green { color: #15803d; border-color: #15803d; }
+        .stamp-red { color: #dc2626; border-color: #dc2626; }
+        .stamp-orange { color: #d97706; border-color: #d97706; }
+        .stamp-text { display: block; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-align: center; line-height: 1.2; }
+        .stamp-date { display: block; font-size: 7px; letter-spacing: 1px; text-align: center; border-top: 1px solid currentColor; margin-top: 2px; padding-top: 2px; }
+    </style>
+    @php
+        $visibleSections = collect($approvalSections)->filter(function ($section) use ($biayaRetribusi) {
+            return !($section['title'] === 'RFAH*' && !$biayaRetribusi->is_rfah_required);
+        })->values();
+    @endphp
     <table class="approval pdf-table">
         <tr>
-            @foreach($approvalSections as $section)
-                @if($section['title'] === 'RFAH*' && !$biayaRetribusi->is_rfah_required)
-                    @continue
-                @endif
+            @foreach($visibleSections as $section)
                 <td class="heading">{{ $section['title'] }}</td>
             @endforeach
         </tr>
         <tr>
-            @foreach($approvalSections as $section)
-                @if($section['title'] === 'RFAH*' && !$biayaRetribusi->is_rfah_required)
-                    @continue
-                @endif
-                <td></td>
+            @foreach($visibleSections as $section)
+                <td class="signature-space">
+                    @php
+                        $stamp = $stamps[$section['title']] ?? null;
+                        $stampClass = 'stamp-green';
+                        if ($stamp) {
+                            $stampClass = match($stamp['text']) {
+                                'DITOLAK' => 'stamp-red',
+                                'REVISI' => 'stamp-orange',
+                                default => 'stamp-green',
+                            };
+                        }
+                    @endphp
+                    @if($stamp)
+                        <div class="stamp {{ $stampClass }}" style="margin: 0 auto;">
+                            <span class="stamp-text">{{ $stamp['text'] }}</span>
+                            <span class="stamp-date">{{ $stamp['date'] }}</span>
+                        </div>
+                    @endif
+                </td>
             @endforeach
         </tr>
         <tr>
-            @foreach($approvalSections as $section)
-                @if($section['title'] === 'RFAH*' && !$biayaRetribusi->is_rfah_required)
-                    @continue
-                @endif
-                <td>{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan ?: '-') : ($section['people'][0]['name'] ?? '-') }}</td>
+            @foreach($visibleSections as $section)
+                <td style="text-align: center; vertical-align: middle;">{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan ?: '-') : ($section['people'][0]['name'] ?? '-') }}</td>
             @endforeach
         </tr>
         <tr>
-            @foreach($approvalSections as $section)
-                @if($section['title'] === 'RFAH*' && !$biayaRetribusi->is_rfah_required)
-                    @continue
-                @endif
-                <td class="role">{{ $section['people'][0]['role'] ?? '-' }}</td>
+            @foreach($visibleSections as $section)
+                <td class="role" style="text-align: center;">{{ $section['people'][0]['role'] ?? '-' }}</td>
             @endforeach
         </tr>
     </table>

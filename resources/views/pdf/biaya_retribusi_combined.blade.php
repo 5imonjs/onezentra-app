@@ -40,11 +40,11 @@
         .approval .signature-space { height: 42px; }
         .approval .role { height: 13px; font-weight: bold; }
         .approval .signature-space { position: relative; }
-        .stamp { display: inline-block; padding: 7px 16px; border: 2.5px solid currentColor; border-radius: 10px; transform: rotate(-14deg); opacity: 0.72; }
+        .stamp { display: inline-block; padding: 6px 14px; border: 2.5px solid currentColor; border-radius: 8px; transform: rotate(-12deg); opacity: 0.75; }
         .stamp-green { color: #15803d; border-color: #15803d; }
         .stamp-red { color: #dc2626; border-color: #dc2626; }
         .stamp-orange { color: #d97706; border-color: #d97706; }
-        .stamp-text { display: block; font-size: 15px; font-weight: bold; letter-spacing: 3px; text-align: center; }
+        .stamp-text { display: block; font-size: 13px; font-weight: bold; letter-spacing: 2px; text-align: center; line-height: 1.2; }
         .stamp-date { display: block; font-size: 7px; letter-spacing: 1px; text-align: center; border-top: 1px solid currentColor; margin-top: 2px; padding-top: 2px; }
         .reject-note { margin-top: 4px; font-size: 8px; font-weight: bold; color: #b91c1c; border: 1.5px solid #b91c1c; padding: 3px 6px; }
         .revisi-note { margin-top: 4px; font-size: 8px; font-weight: bold; color: #b45309; border: 1.5px solid #b45309; padding: 3px 6px; }
@@ -121,7 +121,7 @@
     </tr>
     <tr>
         @foreach($approvalSections as $section)
-            <td class="signature-space">
+            <td class="signature-space" style="text-align: center; vertical-align: middle;">
                 @php($stamp = $stamps[$section['title']] ?? null)
                 @if($stamp)
                         @php($stampClass = match($stamp['text']) {
@@ -129,7 +129,7 @@
                             'REVISI' => 'stamp-orange',
                             default => 'stamp-green',
                         })
-                    <div class="stamp {{ $stampClass }}">
+                    <div class="stamp {{ $stampClass }}" style="margin: 0 auto;">
                         <span class="stamp-text">{{ $stamp['text'] }}</span>
                         <span class="stamp-date">{{ $stamp['date'] }}</span>
                     </div>
@@ -139,12 +139,12 @@
     </tr>
     <tr>
         @foreach($approvalSections as $section)
-            <td>{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan ?: '-') : ($section['people'][0]['name'] ?? '-') }}</td>
+            <td style="text-align: center; vertical-align: middle;">{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan ?: '-') : ($section['people'][0]['name'] ?? '-') }}</td>
         @endforeach
     </tr>
     <tr>
         @foreach($approvalSections as $section)
-            <td class="role">{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan_level ?: 'BLC') : ($section['people'][0]['role'] ?? '-') }}</td>
+            <td class="role" style="text-align: center;">{{ $section['title'] === 'Mengajukan' ? ($biayaRetribusi->approval_pengajuan_level ?: 'BLC') : ($section['people'][0]['role'] ?? '-') }}</td>
         @endforeach
     </tr>
 </table>
