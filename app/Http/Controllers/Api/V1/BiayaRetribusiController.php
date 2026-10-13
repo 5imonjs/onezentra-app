@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
+use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
@@ -582,8 +583,23 @@ class BiayaRetribusiController extends Controller
 
         return response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="biaya_retribusi_'.$biayaRetribusi->id.'.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$this->downloadFilename('Biaya_Retribusi', $biayaRetribusi->tanggal_pengajuan, 'pdf').'"',
         ]);
+    }
+
+    /**
+     * Nama file unduhan seragam: `DD-MM-YYYY_Biaya_Retribusi.pdf`.
+     * Tanggal dari tanggal pengajuan; bila tak valid, pakai hari ini.
+     */
+    private function downloadFilename(string $kind, mixed $tanggal, string $ext): string
+    {
+        try {
+            $date = Carbon::parse((string) ($tanggal ?: now()))->format('d-m-Y');
+        } catch (\Throwable) {
+            $date = now()->format('d-m-Y');
+        }
+
+        return "{$date}_{$kind}.{$ext}";
     }
 
     /**
@@ -850,7 +866,7 @@ class BiayaRetribusiController extends Controller
         $query->with('details');
         ExportGuard::ensureWithinLimit($query);
 
-        return Excel::download(new BiayaRetribusiExport($query, $request->user()), 'biaya_retribusi.xlsx');
+        return Excel::download(new BiayaRetribusiExport($query, $request->user()), $this->downloadFilename('Biaya_Retribusi', now(), 'xlsx'));
     }
 
     /**

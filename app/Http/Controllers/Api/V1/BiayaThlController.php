@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
+use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -605,8 +606,23 @@ class BiayaThlController extends Controller
 
         return response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="biaya_thl_'.$biayaThl->id.'.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$this->downloadFilename('Biaya_THL', $biayaThl->tanggal_pengajuan, 'pdf').'"',
         ]);
+    }
+
+    /**
+     * Nama file unduhan seragam: `DD-MM-YYYY_Biaya_THL.pdf`.
+     * Tanggal dari tanggal pengajuan; bila tak valid, pakai hari ini.
+     */
+    private function downloadFilename(string $kind, mixed $tanggal, string $ext): string
+    {
+        try {
+            $date = Carbon::parse((string) ($tanggal ?: now()))->format('d-m-Y');
+        } catch (\Throwable) {
+            $date = now()->format('d-m-Y');
+        }
+
+        return "{$date}_{$kind}.{$ext}";
     }
 
     private function pdfLogoData(): ?string
@@ -1004,7 +1020,7 @@ class BiayaThlController extends Controller
         $query->with('details.photos', 'details.vehicles');
         ExportGuard::ensureWithinLimit($query);
 
-        return Excel::download(new BiayaThlExport($query, $request->user()), 'biaya_thl.xlsx');
+        return Excel::download(new BiayaThlExport($query, $request->user()), $this->downloadFilename('Biaya_THL', now(), 'xlsx'));
     }
 
     private function authorizeCreator(BiayaThl $biayaThl): void

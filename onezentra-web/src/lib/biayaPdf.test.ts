@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actedNameFor, auditDates, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
+import { actedNameFor, auditDates, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, pdfFilename, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
 
 describe('formatSuratJalan', () => {
   it('renders primary and additional surat jalan in one cell', () => {
@@ -37,6 +37,24 @@ describe('pdf table widths', () => {
     expect(sum(SUMMARY_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
     expect(sum(THL_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
     expect(sum(MANIFEST_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
+  });
+});
+
+describe('pdfFilename', () => {
+  it('format tanggal + jenis biaya THL', () => {
+    expect(pdfFilename('THL', '2026-10-12')).toBe('12-10-2026_Biaya_THL.pdf');
+  });
+
+  it('format tanggal + jenis biaya retribusi (dengan jam)', () => {
+    expect(pdfFilename('Retribusi', '2026-09-24 10:00:00')).toBe(
+      '24-09-2026_Biaya_Retribusi.pdf',
+    );
+  });
+
+  it('tanggal tak valid memakai hari ini', () => {
+    expect(pdfFilename('THL', '')).toMatch(
+      /^\d{2}-\d{2}-\d{4}_Biaya_THL\.pdf$/,
+    );
   });
 });
 
