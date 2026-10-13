@@ -328,6 +328,25 @@ function formatPdfColumn(primary?: string | null, additional?: string | null): s
 
 const money = (value: number) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
 
+/** Jenis biaya untuk nama file unduhan. */
+export type BiayaPdfKind = 'THL' | 'Retribusi';
+
+/**
+ * Nama file unduhan yang seragam: `DD-MM-YYYY_Biaya_THL.pdf`.
+ * Tanggal dari tanggal pengajuan; bila tak valid, pakai hari ini.
+ */
+export function pdfFilename(kind: BiayaPdfKind, tanggalPengajuan: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(tanggalPengajuan || '').trim());
+  const stamp = m
+    ? `${m[3]}-${m[2]}-${m[1]}`
+    : (() => {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`;
+    })();
+  return `${stamp}_Biaya_${kind}.pdf`;
+}
+
 /**
  * Lebar kolom tabel PDF (mm). Semua tabel memakai jumlah yang sama dengan
  * lebar halaman efektif (A4 landscape 297 − margin 2×10 = 277) agar tabel
@@ -921,7 +940,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
 
   if (!includeThlSection) {
     await appendLampiranPages(doc, data);
-    const filename = `biaya_retribusi_${data.nama_depo || 'pengajuan'}_${data.tanggal_pengajuan}.pdf`;
+    const filename = pdfFilename('Retribusi', data.tanggal_pengajuan);
     const warnings: string[] = [];
     const merged = await mergePdfAttachments(doc, data, warnings);
     if (warnings.length > 0) options?.onWarning?.(`Lampiran bermasalah: ${warnings.slice(0, 2).join(' · ')}`);
@@ -998,7 +1017,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
     photoX += 20;
   }
 
-  const filename = `biaya_retribusi_${data.nama_depo || 'pengajuan'}_${data.tanggal_pengajuan}.pdf`;
+  const filename = pdfFilename('THL', data.tanggal_pengajuan);
   if (mode === 'preview') showPreview(doc); else doc.save(filename);
 }
 
