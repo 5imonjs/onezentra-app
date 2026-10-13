@@ -103,7 +103,7 @@ class BiayaRetribusiPdfTest extends TestCase
             'stamps' => [
                 'Mengajukan' => [
                     'text' => 'PENGAJUAN',
-                    'color' => '#15803d',
+                    'color' => '#dc2626',
                     'date' => '22 Sep 2026',
                 ],
             ],

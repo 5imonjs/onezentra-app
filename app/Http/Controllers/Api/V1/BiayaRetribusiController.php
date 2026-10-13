@@ -597,7 +597,7 @@ class BiayaRetribusiController extends Controller
         if ($biayaRetribusi->status !== 'draft') {
             $stamps['Mengajukan'] = [
                 'text' => 'PENGAJUAN',
-                'color' => '#15803d',
+                'color' => '#dc2626',
                 'date' => $biayaRetribusi->submitted_at?->format('d M Y'),
             ];
         }
@@ -605,7 +605,7 @@ class BiayaRetribusiController extends Controller
         if ($biayaRetribusi->checked_at) {
             $stamps['Mengetahui'] = [
                 'text' => 'DIPERIKSA',
-                'color' => '#15803d',
+                'color' => '#dc2626',
                 'date' => $biayaRetribusi->checked_at->format('d M Y'),
             ];
         }
@@ -613,7 +613,7 @@ class BiayaRetribusiController extends Controller
         if ($biayaRetribusi->status === 'approved') {
             $stamps['Menyetujui'] = [
                 'text' => 'DISETUJUI',
-                'color' => '#15803d',
+                'color' => '#dc2626',
                 'date' => $biayaRetribusi->approved_at?->format('d M Y'),
             ];
         } elseif ($biayaRetribusi->status === 'rejected') {
@@ -628,7 +628,7 @@ class BiayaRetribusiController extends Controller
             if ($actorSection !== 'Menyetujui' && $biayaRetribusi->rlh_approved_at && $biayaRetribusi->rlhApprovedBy) {
                 $stamps['Menyetujui'] = [
                     'text' => 'DISETUJUI RLH',
-                    'color' => '#15803d',
+                    'color' => '#dc2626',
                     'date' => $biayaRetribusi->rlh_approved_at->format('d M Y'),
                 ];
             }
@@ -642,7 +642,7 @@ class BiayaRetribusiController extends Controller
             if ($actorSection !== 'Menyetujui' && $biayaRetribusi->rlh_approved_at && $biayaRetribusi->rlhApprovedBy) {
                 $stamps['Menyetujui'] = [
                     'text' => 'DISETUJUI RLH',
-                    'color' => '#15803d',
+                    'color' => '#dc2626',
                     'date' => $biayaRetribusi->rlh_approved_at->format('d M Y'),
                 ];
             }

@@ -268,7 +268,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'stamps' => [
                 'Mengajukan' => [
                     'text' => 'PENGAJUAN',
-                    'color' => '#15803d',
+                    'color' => '#dc2626',
                     'date' => '24 Sep 2026',
                 ],
                 'Mengetahui' => [

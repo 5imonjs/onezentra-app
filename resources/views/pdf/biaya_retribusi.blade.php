@@ -100,12 +100,12 @@
                 <td class="signature-space">
                     @php
                         $stamp = $stamps[$section['title']] ?? null;
-                        $stampClass = 'stamp-green';
+                        $stampClass = 'stamp-red';
                         if ($stamp) {
                             $stampClass = match($stamp['text']) {
                                 'DITOLAK' => 'stamp-red',
                                 'REVISI' => 'stamp-orange',
-                                default => 'stamp-green',
+                                default => 'stamp-red',
                             };
                         }
                     @endphp

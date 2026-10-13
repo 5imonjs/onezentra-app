@@ -631,7 +631,7 @@ class BiayaThlController extends Controller
         if ($biayaThl->status !== 'draft' && $biayaThl->submitted_at) {
             $stamps['Mengajukan'] = [
                 'text' => 'PENGAJUAN',
-                'color' => '#15803d',
+                'color' => '#dc2626',
                 'date' => $biayaThl->submitted_at?->format('d M Y'),
             ];
         }
@@ -639,7 +639,7 @@ class BiayaThlController extends Controller
         if ($biayaThl->checked_at) {
             $stamps['Mengetahui'] = [
                 'text' => 'DIPERIKSA',
-                'color' => '#15803d',
+                'color' => '#dc2626',
                 'date' => $biayaThl->checked_at->format('d M Y'),
             ];
         }
@@ -647,24 +647,24 @@ class BiayaThlController extends Controller
         if ($biayaThl->status === 'rlh_approved' && $biayaThl->rlh_approved_at) {
             $stamps['Menyetujui'] = [
                 'text' => 'DISETUJUI RLH',
-                'color' => '#15803d',
+                'color' => '#dc2626',
                 'date' => $biayaThl->rlh_approved_at->format('d M Y'),
             ];
         } elseif ($biayaThl->status === 'approved' && $biayaThl->approved_at && $biayaThl->approvedBy) {
             $stamps['Menyetujui'] = [
                 'text' => 'DISETUJUI',
-                'color' => '#15803d',
+                'color' => '#dc2626',
                 'date' => $biayaThl->approved_at?->format('d M Y'),
             ];
             if ($biayaThl->is_rfah_required && $biayaThl->rlh_approved_at && $biayaThl->rlhApprovedBy) {
                 $stamps['Menyetujui'] = [
                     'text' => 'DISETUJUI',
-                    'color' => '#15803d',
+                    'color' => '#dc2626',
                     'date' => $biayaThl->rlh_approved_at->format('d M Y'),
                 ];
                 $stamps['RFAH*'] = [
                     'text' => 'DISETUJUI RFAH',
-                    'color' => '#15803d',
+                    'color' => '#dc2626',
                     'date' => $biayaThl->approved_at->format('d M Y'),
                 ];
             }
@@ -680,7 +680,7 @@ class BiayaThlController extends Controller
             if ($actorSection !== 'Menyetujui' && $biayaThl->rlh_approved_at && $biayaThl->rlhApprovedBy) {
                 $stamps['Menyetujui'] = [
                     'text' => 'DISETUJUI RLH',
-                    'color' => '#15803d',
+                    'color' => '#dc2626',
                     'date' => $biayaThl->rlh_approved_at->format('d M Y'),
                 ];
             }
@@ -694,7 +694,7 @@ class BiayaThlController extends Controller
             if ($actorSection !== 'Menyetujui' && $biayaThl->rlh_approved_at && $biayaThl->rlhApprovedBy) {
                 $stamps['Menyetujui'] = [
                     'text' => 'DISETUJUI RLH',
-                    'color' => '#15803d',
+                    'color' => '#dc2626',
                     'date' => $biayaThl->rlh_approved_at->format('d M Y'),
                 ];
             }

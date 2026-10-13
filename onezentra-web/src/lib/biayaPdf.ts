@@ -350,7 +350,6 @@ const date = (value: string | null | undefined) => {
 };
 const value = (item: unknown) => String(item ?? '-');
 
-const STAMP_GREEN: [number, number, number] = [21, 128, 61];
 const STAMP_RED: [number, number, number] = [220, 38, 38];
 const STAMP_ORANGE: [number, number, number] = [217, 119, 6];
 const STAMP_PURPLE: [number, number, number] = [124, 58, 237];
@@ -455,7 +454,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // Sejajar server (resolveStamps): cap mengikuti AKSI submit (status),
     // bukan keberadaan nama — nama bisa kosong pada data lama/API langsung.
     return status && status !== 'draft' && dates.submitted && dates.submitted !== '-'
-      ? { text: 'PENGAJUAN', color: STAMP_GREEN, date: dates.submitted || '' }
+      ? { text: 'PENGAJUAN', color: STAMP_RED, date: dates.submitted || '' }
       : null;
   }
 
@@ -464,7 +463,7 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // benar terjadi (checked_at ada) — BUKAN karena nama assignee terdaftar.
     // Nama pelaku boleh tidak terbawa pada data PDF, tetapi cap audit tetap
     // harus tampil karena timestamp adalah bukti aksinya.
-    if (dates.checked && dates.checked !== '-') return { text: 'DIPERIKSA', color: STAMP_GREEN, date: dates.checked };
+    if (dates.checked && dates.checked !== '-') return { text: 'DIPERIKSA', color: STAMP_RED, date: dates.checked };
     // Revisi/ditolak oleh BAC menempel di kotak Mengetahui (bukan RLH).
     if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'Mengetahui' && dates.revised && actorName(data, 'revisedBy')) {
       return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
@@ -480,22 +479,22 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
     // melewati RLH; status revisi/ditolak pasca-RLH menampilkan cap
     // terminal (REVISI/DITOLAK) sesuai pelaku, konsisten dengan server.
     if (dates.rlhApproved && dates.rlhApproved !== '-' && (status === 'rlh_approved' || status === 'approved')) {
-      return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
+      return { text: 'DISETUJUI RLH', color: STAMP_RED, date: dates.rlhApproved };
     }
-    if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) return { text: 'DISETUJUI', color: STAMP_GREEN, date: dates.approved };
+    if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) return { text: 'DISETUJUI', color: STAMP_RED, date: dates.approved };
     if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'Menyetujui' && dates.rejected && actorName(data, 'rejectedBy')) return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };
     if (status === 'revisi' && stampSectionFor(data.revisedBy?.level) === 'Menyetujui' && dates.revised && actorName(data, 'revisedBy')) return { text: 'REVISI', color: STAMP_ORANGE, date: dates.revised };
     // Persetujuan RLH pada siklus sebelumnya tetap tercatat di kotaknya
     // walau aksi terminal (revisi/ditolak) dilakukan pelaku lain (BAC/RFAH)
     // — cap terminal ada di kotak pelakunya, sehingga kotak RLH tidak kosong.
-    if (status === 'rejected' && dates.rejected && dates.rlhApproved && dates.rlhApproved !== '-' && stampSectionFor(data.rejectedBy?.level) !== 'Menyetujui') return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
-    if (status === 'revisi' && dates.revised && dates.rlhApproved && dates.rlhApproved !== '-' && stampSectionFor(data.revisedBy?.level) !== 'Menyetujui') return { text: 'DISETUJUI RLH', color: STAMP_GREEN, date: dates.rlhApproved };
+    if (status === 'rejected' && dates.rejected && dates.rlhApproved && dates.rlhApproved !== '-' && stampSectionFor(data.rejectedBy?.level) !== 'Menyetujui') return { text: 'DISETUJUI RLH', color: STAMP_RED, date: dates.rlhApproved };
+    if (status === 'revisi' && dates.revised && dates.rlhApproved && dates.rlhApproved !== '-' && stampSectionFor(data.revisedBy?.level) !== 'Menyetujui') return { text: 'DISETUJUI RLH', color: STAMP_RED, date: dates.rlhApproved };
     return null;
   }
 
   if (section.title === 'RFAH*') {
     if (status === 'approved' && dates.approved && actorName(data, 'approvedBy')) {
-      return { text: 'DISETUJUI RFAH', color: STAMP_GREEN, date: dates.approved };
+      return { text: 'DISETUJUI RFAH', color: STAMP_RED, date: dates.approved };
     }
     if (status === 'rejected' && stampSectionFor(data.rejectedBy?.level) === 'RFAH*' && dates.rejected && actorName(data, 'rejectedBy')) {
       return { text: 'DITOLAK', color: STAMP_RED, date: dates.rejected };

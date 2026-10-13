@@ -127,7 +127,7 @@
                         @php($stampClass = match($stamp['text']) {
                             'DITOLAK' => 'stamp-red',
                             'REVISI' => 'stamp-orange',
-                            default => 'stamp-green',
+                            default => 'stamp-red',
                         })
                     <div class="stamp {{ $stampClass }}" style="margin: 0 auto;">
                         <span class="stamp-text">{{ $stamp['text'] }}</span>
