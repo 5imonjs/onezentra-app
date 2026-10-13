@@ -355,6 +355,21 @@ const STAMP_RED: [number, number, number] = [220, 38, 38];
 const STAMP_ORANGE: [number, number, number] = [217, 119, 6];
 const STAMP_PURPLE: [number, number, number] = [124, 58, 237];
 
+/** Radius lingkaran cap (mm) — muat di kotak approval setinggi 22mm. */
+export const STAMP_MAX_RADIUS = 10;
+/** Ukuran font dasar teks cap (pt) sebelum penyesuaian. */
+export const STAMP_BASE_FONT_SIZE = 8;
+
+/**
+ * Kecilkan font agar teks terpanjang (mis. "DISETUJUI RFAH") tetap di dalam
+ * lingkaran cap. Murni agar bisa diuji tanpa jsPDF.
+ */
+export function fitStampFontSize(textWidth: number, radius: number, baseSize = STAMP_BASE_FONT_SIZE): number {
+  const maxTextWidth = 2 * (radius - 2.5);
+  if (textWidth <= 0 || textWidth <= maxTextWidth) return baseSize;
+  return Math.max(5, (baseSize * maxTextWidth) / textWidth);
+}
+
 export type AuditDates = { submitted?: string; checked?: string; rlhApproved?: string; approved?: string; rejected?: string; revised?: string };
 
 /** Nama pelaku aksi dari relasi *By (ada pada item tersimpan, kosong pada draft form). */
@@ -494,10 +509,14 @@ export function stampFor(section: ApprovalSection, data: RetribusiData, dates: A
   return null;
 }
 
-function drawStamp(doc: jsPDF, cx: number, cy: number, stamp: StampSpec) {
+function drawStamp(doc: jsPDF, cx: number, cy: number, stamp: StampSpec, approvalWidth: number) {
   setDocFont(doc, 'bold');
-  doc.setFontSize(9);
-  const radius = 14;
+  // Lingkaran harus muat di kotak approval (tinggi 22mm): radius maks 10mm
+  // sekaligus menyisakan margin dari sisi kolom tersempit (4 seksi ≈ 69mm).
+  const radius = Math.min(STAMP_MAX_RADIUS, approvalWidth / 2 - 3);
+  doc.setFontSize(STAMP_BASE_FONT_SIZE);
+  const fittedSize = fitStampFontSize(doc.getTextWidth(stamp.text), radius);
+  doc.setFontSize(fittedSize);
   doc.setDrawColor(stamp.color[0], stamp.color[1], stamp.color[2]);
   doc.setFillColor(255, 255, 255);
   doc.setLineWidth(0.55);
@@ -895,7 +914,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
     doc.text(approvalRole.toUpperCase(), x + approvalWidth / 2, approvalY + 39.5, { align: 'center' });
 
     const stamp = cleanDraftPreview ? null : stampFor(section, data, audit);
-    if (stamp) drawStamp(doc, x + approvalWidth / 2, approvalY + 16, stamp);
+    if (stamp) drawStamp(doc, x + approvalWidth / 2, approvalY + 16, stamp, approvalWidth);
   });
   setDocFont(doc, 'normal');
   doc.setFontSize(6.2);
