@@ -179,5 +179,43 @@ void main() {
       expect(provider.success, isNotNull);
       expect(provider.error, isNull);
     });
+
+    test('izin bluetooth ditolak: scan dibatalkan dengan pesan jelas', () async {
+      var fake = _DenyCountingPrinter(available: [printerA]);
+      var provider = LabelPrintProvider(
+        printer: fake,
+        requestPermissions: () async => false,
+      );
+      await provider.scan();
+
+      expect(fake.scanCalls, 0);
+      expect(provider.available, isEmpty);
+      expect(provider.error, contains('Izin Bluetooth ditolak'));
+      expect(provider.scanning, isFalse);
+    });
+
+    test('izin bluetooth diberikan: scan berjalan normal', () async {
+      var fake = _FakeLabelPrinter(available: [printerA, printerB]);
+      var provider = LabelPrintProvider(
+        printer: fake,
+        requestPermissions: () async => true,
+      );
+      await provider.scan();
+
+      expect(provider.available, hasLength(2));
+      expect(provider.error, isNull);
+    });
   });
+}
+
+class _DenyCountingPrinter extends _FakeLabelPrinter {
+  _DenyCountingPrinter({super.available});
+
+  var scanCalls = 0;
+
+  @override
+  Future<List<DiscoveredPrinter>> scan() async {
+    scanCalls++;
+    return super.scan();
+  }
 }

@@ -27,6 +27,8 @@ dependencies:
   # flutter_blue_plus TIDAK akan menemukannya — dan versi 2.x-nya mewajibkan
   # commercial license untuk penggunaan komersial.
   flutter_bluetooth_serial: ^0.4.0
+  # Izin runtime Bluetooth Android 12+ (SCAN/CONNECT) untuk cari printer.
+  permission_handler: ^12.0.0
 
 dev_dependencies:
   flutter_test:

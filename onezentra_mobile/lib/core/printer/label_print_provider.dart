@@ -12,10 +12,13 @@ import 'package:onezentra_mobile/core/printer/thermal_label.dart';
 /// UI tinggal menampilkan, dan supaya alurnya bisa diuji memakai [LabelPrinter]
 /// palsu tanpa radio bluetooth sungguhan.
 class LabelPrintProvider extends ChangeNotifier {
-  LabelPrintProvider({LabelPrinter? printer})
-    : _printer = printer ?? BluetoothLabelPrinter();
+  LabelPrintProvider({LabelPrinter? printer, BluetoothPermissionRequest? requestPermissions})
+    : _printer = printer ?? BluetoothLabelPrinter(),
+      _requestPermissions =
+          requestPermissions ?? BluetoothPermissions.request;
 
   final LabelPrinter _printer;
+  final BluetoothPermissionRequest _requestPermissions;
 
   List<DiscoveredPrinter> _available = const [];
   DiscoveredPrinter? _selected;
@@ -98,6 +101,14 @@ class LabelPrintProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Android 12+ mewajibkan izin runtime SCAN/CONNECT; tanpa ini
+      // pemindaian gagal diam-diam dengan PlatformException.
+      if (!await _requestPermissions()) {
+        _error =
+            'Izin Bluetooth ditolak. Aktifkan di Pengaturan HP > Aplikasi > '
+            'ONEZENTRA > Izin, lalu pindai lagi.';
+        return;
+      }
       var found = await _printer.scan();
       _available = found;
       // Pertahankan pilihan yang masih ada supaya label yang sama tidak perlu

@@ -1,7 +1,42 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+/// Permintaan izin runtime Bluetooth, disuntik agar alur scan bisa diuji
+/// tanpa dialog sistem.
+typedef BluetoothPermissionRequest = Future<bool> Function();
+
+/// Izin Bluetooth Android 12+ (SCAN untuk mencari, CONNECT untuk mencetak).
+/// Tanpa keduanya, pemindaian gagal dengan PlatformException yang samar —
+/// jadi diminta eksplisit di sini dengan pesan yang bisa ditindaklanjuti.
+///
+/// Bukan Android (iOS simulator, web, desktop): tidak ada izin runtime yang
+/// relevan, langsung lolos. Catatan: iOS tidak mendukung Bluetooth Classic
+/// SPP untuk aplikasi pihak ketiga (butuh MFi), jadi cetak label praktisnya
+/// Android saja; di iOS pemindaian gagal dengan pesan di bawah.
+class BluetoothPermissions {
+  BluetoothPermissions._();
+
+  static Future<bool> request() async {
+    if (kIsWeb) {
+      return true;
+    }
+    if (!Platform.isAndroid) {
+      return true;
+    }
+    try {
+      var scan = await Permission.bluetoothScan.request();
+      var connect = await Permission.bluetoothConnect.request();
+      return scan.isGranted && connect.isGranted;
+    } catch (_) {
+      return false;
+    }
+  }
+}
 
 /// Printer yang ditemukan lewat pencarian Bluetooth di handphone.
 class DiscoveredPrinter {
@@ -52,7 +87,15 @@ class BluetoothLabelPrinter implements LabelPrinter {
 
   @override
   Future<List<DiscoveredPrinter>> scan() async {
-    var bonded = await _serial.getBondedDevices();
+    List<BluetoothDevice> bonded;
+    try {
+      bonded = await _serial.getBondedDevices();
+    } on PlatformException {
+      throw const PrinterException(
+        'Bluetooth tidak tersedia atau izin ditolak. Aktifkan Bluetooth dan '
+        'izinkan akses di Pengaturan HP.',
+      );
+    }
     var found =
         bonded
             .map(
