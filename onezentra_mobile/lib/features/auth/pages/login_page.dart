@@ -26,6 +26,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   final _passwordFocusNode = FocusNode();
 
   bool _showPassword = false;
+  bool _showServer = false;
+  bool _savingServer = false;
+  String? _serverNotice;
+  final _serverController = TextEditingController();
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
@@ -61,6 +65,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _animationController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _serverController.dispose();
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
@@ -182,9 +187,137 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             _buildTrustNote(theme, isDark),
             const SizedBox(height: AppTheme.space4),
             _buildFooter(theme, isDark),
+            _buildServerSection(theme, isDark, authProvider),
           ],
         ),
       ),
+    );
+  }
+
+  /// Pilihan server API saat runtime: app mengikuti server mana pun tanpa
+  /// rebuild. Ganti server membuang sesi lama (token milik server sebelumnya).
+  void _toggleServerPanel(AuthProvider authProvider) {
+    setState(() {
+      _showServer = !_showServer;
+      _serverNotice = null;
+      if (_showServer) {
+        _serverController.text = authProvider.apiBaseUrl;
+      }
+    });
+  }
+
+  Future<void> _handleSaveServer(AuthProvider authProvider) async {
+    setState(() {
+      _savingServer = true;
+      _serverNotice = null;
+    });
+    FocusScope.of(context).unfocus();
+    var effective = await authProvider.setApiBaseUrl(_serverController.text);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _savingServer = false;
+      if (effective != null) {
+        _serverNotice = 'Server: $effective — silakan login ulang.';
+      }
+    });
+  }
+
+  Future<void> _handleResetServer(AuthProvider authProvider) async {
+    setState(() {
+      _savingServer = true;
+      _serverNotice = null;
+    });
+    var effective = await authProvider.setApiBaseUrl('');
+    if (!mounted) {
+      return;
+    }
+    _serverController.text = authProvider.apiBaseUrl;
+    setState(() {
+      _savingServer = false;
+      _serverNotice = 'Kembali ke server bawaan: $effective';
+    });
+  }
+
+  Widget _buildServerSection(
+    ThemeData theme,
+    bool isDark,
+    AuthProvider authProvider,
+  ) {
+    var muted = isDark
+        ? const Color(0xFF94A3B8) // gray-400
+        : AppTheme.gray400;
+    var parsedHost = Uri.tryParse(authProvider.apiBaseUrl)?.host ?? '';
+    var host = parsedHost.isEmpty ? authProvider.apiBaseUrl : parsedHost;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppTheme.space2),
+        TextButton.icon(
+          onPressed: () => _toggleServerPanel(authProvider),
+          icon: Icon(Icons.dns_outlined, size: 16, color: muted),
+          label: Text(
+            'Server: $host',
+            style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (_showServer) ...[
+          const SizedBox(height: AppTheme.space2),
+          TextField(
+            controller: _serverController,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            enableSuggestions: false,
+            style: _fieldTextStyle(theme, isDark),
+            cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
+            decoration: _inputDecoration(
+              hint: 'https://api.onezentra.sbs',
+              icon: Icons.link_outlined,
+              isDark: isDark,
+            ),
+            onSubmitted: (_) => _handleSaveServer(authProvider),
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _savingServer
+                      ? null
+                      : () => _handleResetServer(authProvider),
+                  child: const Text('Bawaan'),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: FilledButton(
+                  onPressed: _savingServer
+                      ? null
+                      : () => _handleSaveServer(authProvider),
+                  child: _savingServer
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Simpan'),
+                ),
+              ),
+            ],
+          ),
+          if (_serverNotice != null) ...[
+            const SizedBox(height: AppTheme.space2),
+            Text(
+              _serverNotice!,
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ],
     );
   }
 

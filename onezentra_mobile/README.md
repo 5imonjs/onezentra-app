@@ -111,6 +111,15 @@ menunjuk ke server lain:
 flutter build apk --release --dart-define=API_BASE_URL=https://api-lain/api/v1
 ```
 
+### Ganti server tanpa rebuild
+
+Di layar login ada panel **Server** yang menampilkan alamat API aktif.
+Isi alamat baru (contoh `https://api.onezentra.sbs` atau `http://192.168.1.5:8000`)
+lalu Simpan — app langsung memakai server itu (sesi lama dibuang, login ulang).
+Tombol Bawaan mengembalikan ke default. Prioritas yang dipakai:
+`--dart-define` > pilihan panel Server > default release (API produksi) >
+default debug per platform.
+
 Catatan tambahan:
 
 - `php artisan serve` hanya bind ke `127.0.0.1` secara default, sehingga tidak

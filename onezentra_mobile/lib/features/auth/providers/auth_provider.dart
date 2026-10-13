@@ -226,4 +226,28 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
     notifyListeners();
   }
+
+  /// Server API yang sedang dipakai aplikasi.
+  String get apiBaseUrl => _apiClient.baseUrl;
+
+  /// Label asal URL: build (dart-define), kustom (pilihan pengguna), bawaan.
+  String get apiBaseUrlSource => _apiClient.baseUrlSource;
+
+  /// Ganti server API saat runtime. Sesi lokal dibuang karena token milik
+  /// server sebelumnya; pengguna harus login ulang. Mengembalikan URL
+  /// ternormalisasi yang dipakai, atau pesan error bila input tidak valid.
+  Future<String?> setApiBaseUrl(String? url) async {
+    try {
+      var effective = await _apiClient.setBaseUrl(url);
+      _token = null;
+      _user = null;
+      _expiresAt = null;
+      _error = null;
+      notifyListeners();
+      return effective;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return null;
+    }
+  }
 }

@@ -50,6 +50,31 @@ class ApiClient {
   static String get resolvedBaseUrl =>
       _overrideBaseUrl.isNotEmpty ? _overrideBaseUrl : _platformBaseUrl;
 
+  /// Normalisasi input server oleh pengguna: rapikan slash, lengkapi skema
+  /// (default https), dan lengkapi path `/api/v1` bila hanya host yang diisi.
+  /// Mengembalikan null bila input bukan URL http(s) yang valid.
+  static String? normalizeBaseUrl(String input) {
+    var text = input.trim().replaceAll(RegExp(r'/+$'), '');
+    if (text.isEmpty) {
+      return null;
+    }
+    if (!text.contains('://')) {
+      text = 'https://$text';
+    }
+    var uri = Uri.tryParse(text);
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty ||
+        uri.host == uri.scheme ||
+        (uri.host != 'localhost' && !uri.host.contains('.'))) {
+      return null;
+    }
+    if (uri.path.isEmpty || uri.path == '/') {
+      return '${uri.scheme}://${uri.authority}/api/v1';
+    }
+    return text;
+  }
+
   /// Hard limit per request, so a dead network can never leave a loading
   /// indicator (or the login button) spinning forever.
   static const Duration requestTimeout = Duration(seconds: 20);
@@ -58,6 +83,10 @@ class ApiClient {
   static const String _expiresAtKey = 'auth_token_expires_at';
   static const String _userKey = 'auth_user';
 
+  /// Pilihan server API oleh pengguna (diatur dari layar login). Mengalahkan
+  /// semua default di bawah agar app bisa mengikuti server tanpa rebuild.
+  static const String _apiBaseUrlKey = 'api_base_url';
+
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
@@ -65,12 +94,27 @@ class ApiClient {
   String? _token;
   Map<String, dynamic>? _user;
   DateTime? _expiresAt;
+  String? _runtimeBaseUrl;
 
   /// Called when the server rejects the stored token, so the app can drop the
   /// local session and send the user back to the login screen.
   void Function()? onUnauthorized;
 
-  String get baseUrl => resolvedBaseUrl;
+  String get baseUrl => _runtimeBaseUrl ?? resolvedBaseUrl;
+
+  /// Dari mana base URL efektif berasal: override build, pilihan pengguna,
+  /// atau default per platform. Ditampilkan di layar login.
+  String get baseUrlSource {
+    if (_overrideBaseUrl.isNotEmpty) {
+      return 'build';
+    }
+    if (_runtimeBaseUrl != null) {
+      return 'kustom';
+    }
+    return 'bawaan';
+  }
+
+  bool get usesCustomBaseUrl => _runtimeBaseUrl != null;
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
   DateTime? get expiresAt => _expiresAt;
@@ -110,6 +154,36 @@ class ApiClient {
     if (userJson != null && userJson.isNotEmpty) {
       _user = _decodeMap(userJson);
     }
+
+    var savedBaseUrl = prefs.getString(_apiBaseUrlKey);
+    if (savedBaseUrl != null && savedBaseUrl.isNotEmpty) {
+      _runtimeBaseUrl = normalizeBaseUrl(savedBaseUrl);
+    }
+  }
+
+  /// Ganti server API saat runtime (tersimpan di perangkat). Sesi lama
+  /// dibuang karena token milik server sebelumnya. URL kosong/null
+  /// mengembalikan ke default. Mengembalikan URL ternormalisasi yang dipakai.
+  Future<String?> setBaseUrl(String? url) async {
+    var normalized = (url == null || url.trim().isEmpty)
+        ? null
+        : normalizeBaseUrl(url);
+    if (url != null && url.trim().isNotEmpty && normalized == null) {
+      throw const ApiException(
+        'Alamat server tidak valid. Contoh: https://api.onezentra.sbs',
+        0,
+      );
+    }
+
+    _runtimeBaseUrl = normalized;
+    var prefs = await SharedPreferences.getInstance();
+    if (normalized == null) {
+      await prefs.remove(_apiBaseUrlKey);
+    } else {
+      await prefs.setString(_apiBaseUrlKey, normalized);
+    }
+    await clearAuth();
+    return normalized ?? resolvedBaseUrl;
   }
 
   /// Set auth token and user data
@@ -141,8 +215,8 @@ class ApiClient {
     _user = null;
     _expiresAt = null;
 
-    await _secureStorage.delete(key: _tokenKey);
-    await _secureStorage.delete(key: _expiresAtKey);
+    await _deleteSecure(_tokenKey);
+    await _deleteSecure(_expiresAtKey);
 
     var prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userKey);
@@ -412,6 +486,15 @@ class ApiClient {
       await _secureStorage.write(key: key, value: value);
     } catch (_) {
       // The token stays in memory for this run; the next login will retry.
+    }
+  }
+
+  Future<void> _deleteSecure(String key) async {
+    try {
+      await _secureStorage.delete(key: key);
+    } catch (_) {
+      // In-memory state above is already cleared; a stale entry is
+      // overwritten on the next login.
     }
   }
 }
