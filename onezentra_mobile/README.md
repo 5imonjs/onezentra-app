@@ -92,6 +92,25 @@ Tanpa `--dart-define`, app memakai default per platform: `10.0.2.2:8000` di
 Android dan `localhost:8000` di iOS. Default ini **tidak** bekerja di physical
 device dan akan berakhir dengan pesan "Tidak ada koneksi ke server".
 
+### Build Produksi (satu ekosistem dengan web)
+
+Build `release` otomatis memakai API produksi di server yang sama dengan web
+(`https://api.onezentra.sbs/api/v1`) — tanpa `--dart-define`:
+
+```bash
+flutter build apk --release
+flutter build ipa --release
+```
+
+Satu akun/user, satu database, satu backend Laravel untuk web + mobile:
+web login cookie via `/api/v1/login`, mobile login Bearer token via
+`/api/v1/mobile/login` (satu token per perangkat). Override hanya bila perlu
+menunjuk ke server lain:
+
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://api-lain/api/v1
+```
+
 Catatan tambahan:
 
 - `php artisan serve` hanya bind ke `127.0.0.1` secara default, sehingga tidak

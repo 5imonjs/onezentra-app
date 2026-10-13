@@ -33,6 +33,12 @@ class ApiClient {
   /// [kIsWeb] is checked first: `Platform.isAndroid` throws UnsupportedError
   /// in a web build (dart:io is not implemented there).
   static String get _platformBaseUrl {
+    // Build release (APK/IPA produksi): langsung ke API produksi di server
+    // yang sama dengan web (api.onezentra.sbs) — tanpa --dart-define.
+    // Bisa tetap dioverride via API_BASE_URL bila perlu.
+    if (kReleaseMode) {
+      return 'https://api.onezentra.sbs/api/v1';
+    }
     if (kIsWeb) {
       return 'http://localhost:8000/api/v1';
     }
