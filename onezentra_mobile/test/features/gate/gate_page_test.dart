@@ -500,4 +500,28 @@ void main() {
     expect(find.textContaining('SESI BERJALAN'), findsOneWidget);
     expect(find.text('Gula 50kg'), findsOneWidget);
   });
+
+  testWidgets('banner gagal memakai warna bahaya yang terbaca di tema gelap', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(
+      lookupError: const ApiException('Rencana kirim tidak ditemukan.', 404),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-TIDAK-ADA');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    var banner = find.byWidgetPredicate(
+      (widget) =>
+          widget is Container &&
+          widget.decoration is BoxDecoration &&
+          (widget.decoration! as BoxDecoration).color ==
+              AppTheme.dangerWell,
+    );
+    expect(banner, findsOneWidget);
+  });
 }

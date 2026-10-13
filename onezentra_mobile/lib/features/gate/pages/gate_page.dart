@@ -381,10 +381,10 @@ class _GatePageState extends State<GatePage> {
     margin: const EdgeInsets.only(top: AppTheme.space4),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: message.success ? AppTheme.successWell : const Color(0xFFFFF1F2),
+      color: message.success ? AppTheme.successWell : AppTheme.dangerWell,
       borderRadius: AppTheme.radiusLg,
       border: Border.all(
-        color: message.success ? AppTheme.successText : const Color(0xFFFECDD3),
+        color: message.success ? AppTheme.successText : AppTheme.dangerText,
       ),
     ),
     child: Row(
@@ -702,7 +702,7 @@ class _GatePageState extends State<GatePage> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.4,
-                  color: const Color(0xFF1D4ED8),
+                  color: AppTheme.infoText,
                 ),
               ),
             ),

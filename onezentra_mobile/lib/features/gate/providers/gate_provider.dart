@@ -155,6 +155,9 @@ class GateProvider extends ChangeNotifier {
     }
 
     _lookupBusy = true;
+    // Hasil lama dibuang di awal agar kartu basi tidak terpajang selama
+    // pencarian baru berjalan.
+    _found = null;
     _message = null;
     _notify();
 
