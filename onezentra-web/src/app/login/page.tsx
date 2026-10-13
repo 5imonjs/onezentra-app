@@ -145,7 +145,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field"
-                  placeholder="admin@onezentra.com"
+                  placeholder="Masukkan email"
                   required
                   autoComplete="email"
                 />
@@ -160,7 +160,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="input-field pr-12"
-                    placeholder="Enter your password"
+                    placeholder="Masukkan password"
                     required
                     autoComplete="current-password"
                   />
