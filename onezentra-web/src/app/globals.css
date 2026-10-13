@@ -939,3 +939,13 @@ tbody tr.excel-row-selected td.excel-cell.excel-sticky-right {
   font-size: 30px;
   line-height: 36px;
 }
+
+/* Logo sidebar (artwork putih) mengikuti tema: dibalik menjadi gelap di
+   tema terang, tampil asli di tema gelap. Default :root adalah terang,
+   jadi invert adalah bawaan dan hanya tema gelap yang menonaktifkannya. */
+.sidebar-logo img {
+  filter: invert(1);
+}
+[data-theme='dark'] .sidebar-logo img {
+  filter: none;
+}
