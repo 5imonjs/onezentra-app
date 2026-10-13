@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actedNameFor, auditDates, formatSuratJalan, MANIFEST_COL_WIDTHS, PDF_PAGE_WIDTH, stampFor, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
+import { actedNameFor, auditDates, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
 
 describe('formatSuratJalan', () => {
   it('renders primary and additional surat jalan in one cell', () => {
@@ -37,6 +37,22 @@ describe('pdf table widths', () => {
     expect(sum(SUMMARY_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
     expect(sum(THL_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
     expect(sum(MANIFEST_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
+  });
+});
+
+describe('fitStampFontSize', () => {
+  it('lingkaran cap muat di kotak approval setinggi 22mm', () => {
+    expect(STAMP_MAX_RADIUS * 2).toBeLessThanOrEqual(22);
+  });
+
+  it('teks pendek memakai ukuran dasar', () => {
+    expect(fitStampFontSize(10, STAMP_MAX_RADIUS)).toBe(STAMP_BASE_FONT_SIZE);
+  });
+
+  it('teks terpanjang (DISETUJUI RFAH) dikecilkan agar muat dalam lingkaran', () => {
+    const fitted = fitStampFontSize(28, STAMP_MAX_RADIUS);
+    expect(fitted).toBeLessThan(STAMP_BASE_FONT_SIZE);
+    expect(fitted).toBeGreaterThanOrEqual(5);
   });
 });
 
