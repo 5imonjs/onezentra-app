@@ -699,7 +699,8 @@ class SjValidationController extends Controller
             'sj_ba',
             'validated',
             $rencanaKirim->fresh(),
-            new SjValidated($rencanaKirim->fresh(), $sjValidation->fresh('items'))
+            new SjValidated($rencanaKirim->fresh(), $sjValidation->fresh('items')),
+            $rencanaKirim->kode_depo
         );
 
         // Kirim notif selisih qty jika ada
@@ -709,7 +710,8 @@ class SjValidationController extends Controller
                 'selisih',
                 'selisih_qty',
                 $rencanaKirim->fresh(),
-                new SelisihQtyNotification($rencanaKirim->fresh(), $receivingItems)
+                new SelisihQtyNotification($rencanaKirim->fresh(), $receivingItems),
+                $rencanaKirim->kode_depo
             );
         }
 

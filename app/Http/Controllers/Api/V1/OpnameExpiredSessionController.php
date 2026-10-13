@@ -332,7 +332,8 @@ class OpnameExpiredSessionController extends Controller
                 'total' => $fresh->items->count(),
                 'validated' => $fresh->items->count(),
                 'submitted' => true,
-            ]])
+            ]]),
+            $fresh->kode_depo
         );
 
         return response()->json([

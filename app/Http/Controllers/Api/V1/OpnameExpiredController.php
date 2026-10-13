@@ -296,12 +296,15 @@ class OpnameExpiredController extends Controller
 
         abort_unless(count($pending) > 0, 422, 'Semua depo sudah kirim — tidak ada yang perlu diingatkan.');
 
-        $emailService->send(
-            'opname_expired',
-            'reminder',
-            $request->user(),
-            new OpnameExpiredNotification('reminder', $weekStart, $pending)
-        );
+        foreach ($pending as $depot) {
+            $emailService->send(
+                'opname_expired',
+                'reminder',
+                $request->user(),
+                new OpnameExpiredNotification('reminder', $weekStart, [$depot]),
+                $depot['kode_depo']
+            );
+        }
 
         return response()->json([
             'message' => 'Pengingat dikirim ke '.count($pending).' depo yang belum kirim.',

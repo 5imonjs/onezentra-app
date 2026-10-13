@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EmailRecipient extends Model
 {
     protected $fillable = [
-        'document_type', 'trigger', 'recipient_type', 'field',
+        'document_type', 'trigger', 'kode_depo', 'recipient_type', 'field',
         'email', 'user_id', 'role_slug', 'label', 'is_active',
     ];
 
@@ -48,5 +48,25 @@ class EmailRecipient extends Model
         return User::whereHas('roles', function ($q) {
             $q->where('slug', $this->role_slug);
         })->where('status', 'active')->pluck('email')->filter()->values()->all();
+    }
+
+    /**
+     * Resolve role emails filtered by depot.
+     */
+    public function resolveRoleEmailsByDepot(?string $kodeDepo = null): array
+    {
+        if ($this->recipient_type !== 'role' || ! $this->role_slug) {
+            return [];
+        }
+
+        $query = User::whereHas('roles', function ($q) {
+            $q->where('slug', $this->role_slug);
+        })->where('status', 'active');
+
+        if ($kodeDepo) {
+            $query->where('kode_depo', $kodeDepo);
+        }
+
+        return $query->pluck('email')->filter()->values()->all();
     }
 }

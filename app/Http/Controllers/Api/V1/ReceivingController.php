@@ -449,7 +449,8 @@ class ReceivingController extends Controller
                 'receiving',
                 'completed',
                 $receiving->rencanaKirim,
-                new ReceivingCompleted($receiving)
+                new ReceivingCompleted($receiving),
+                $receiving->rencanaKirim->kode_depo
             );
         }
 

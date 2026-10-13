@@ -350,7 +350,8 @@ class StandarisasiTumpukanController extends Controller
             'standarisasi_tumpukan',
             $trigger,
             $standarisasi,
-            new StandarisasiStatusNotification($standarisasi)
+            new StandarisasiStatusNotification($standarisasi),
+            $standarisasi->kode_depo
         );
     }
 

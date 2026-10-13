@@ -414,7 +414,8 @@ class RencanaKirimController extends Controller
                 'rencana_kirim',
                 'created',
                 $locked,
-                new RencanaKirimCreated($locked->fresh(['items', 'creator']))
+                new RencanaKirimCreated($locked->fresh(['items', 'creator'])),
+                $locked->kode_depo
             );
 
             return $locked;
@@ -495,7 +496,8 @@ class RencanaKirimController extends Controller
                 'rencana_kirim',
                 'cancelled',
                 $locked,
-                new RencanaKirimCancelled($locked->fresh(['items', 'creator']))
+                new RencanaKirimCancelled($locked->fresh(['items', 'creator'])),
+                $locked->kode_depo
             );
 
             return $locked;

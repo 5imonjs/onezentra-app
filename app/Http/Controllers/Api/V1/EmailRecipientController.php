@@ -68,6 +68,12 @@ class EmailRecipientController extends Controller
     {
         $users = User::where('status', 'active')->select('id', 'full_name', 'email')->orderBy('full_name')->get();
         $roles = Role::select('id', 'name', 'slug')->orderBy('name')->get();
+        $depots = User::where('status', 'active')
+            ->whereNotNull('kode_depo')
+            ->select('kode_depo', 'nama_depo')
+            ->distinct()
+            ->orderBy('kode_depo')
+            ->get();
         $types = ['rencana_kirim', 'sj_ba', 'receiving', 'selisih', 'standarisasi_tumpukan', 'biaya_thl', 'biaya_retribusi', 'opname_expired'];
         $triggers = ['created', 'cancelled', 'validated', 'completed', 'selisih_qty', 'approved', 'rejected', 'submitted', 'checked', 'rlh_approved', 'revisi', 'reminder'];
         $fields = ['TO', 'CC'];
@@ -78,6 +84,7 @@ class EmailRecipientController extends Controller
             'fields' => $fields,
             'users' => $users,
             'roles' => $roles,
+            'depots' => $depots,
         ]);
     }
 

@@ -197,7 +197,8 @@ class BiayaApprovalService
             $this->documentTypeFor($biaya),
             $trigger,
             $fresh,
-            new BiayaApprovalNotification($fresh, $trigger)
+            new BiayaApprovalNotification($fresh, $trigger),
+            $fresh->kode_depo
         );
     }
 
@@ -255,8 +256,8 @@ class BiayaApprovalService
             },
         );
 
-        $this->notify($refreshed, 'submitted');
-
+        // JANGAN panggil notify() di sini agar submit tidak terblokir email
+        // email akan dikirim secara async oleh worker antrean setelah response terkirim
         return $refreshed;
     }
 

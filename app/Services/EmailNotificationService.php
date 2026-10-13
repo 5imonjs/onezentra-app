@@ -43,20 +43,49 @@ class EmailNotificationService
     /**
      * Resolve recipient emails for a trigger (document_type + trigger + field).
      *
+     * Priority:
+     * 1. Depot-specific recipients (kode_depo matches)
+     * 2. Global default recipients (kode_depo = null)
+     *
      * @return string[]
      */
-    public function resolveRecipients(string $documentType, string $trigger, string $field): array
+    public function resolveRecipients(string $documentType, string $trigger, string $field, ?string $kodeDepo = null): array
+    {
+        // 1. Try depot-specific recipients first
+        if ($kodeDepo) {
+            $emails = $this->resolveByDepot($documentType, $trigger, $field, $kodeDepo);
+            if (! empty($emails)) {
+                return array_values(array_unique(array_filter($emails)));
+            }
+        }
+
+        // 2. Fallback to global default (kode_depo = null)
+        return $this->resolveByDepot($documentType, $trigger, $field, null);
+    }
+
+    /**
+     * Resolve recipients by specific depot (or global if kodeDepo is null).
+     */
+    private function resolveByDepot(string $documentType, string $trigger, string $field, ?string $kodeDepo): array
     {
         $emails = [];
-        $recipients = EmailRecipient::where('document_type', $documentType)
+
+        $query = EmailRecipient::where('document_type', $documentType)
             ->where('trigger', $trigger)
             ->where('field', $field)
-            ->where('is_active', true)
-            ->get();
+            ->where('is_active', true);
+
+        if ($kodeDepo) {
+            $query->where('kode_depo', $kodeDepo);
+        } else {
+            $query->whereNull('kode_depo');
+        }
+
+        $recipients = $query->get();
 
         foreach ($recipients as $recipient) {
             if ($recipient->recipient_type === 'role') {
-                foreach ($recipient->resolveRoleEmails() as $email) {
+                foreach ($recipient->resolveRoleEmailsByDepot($kodeDepo) as $email) {
                     $emails[] = $email;
                 }
             } else {
@@ -78,13 +107,14 @@ class EmailNotificationService
         string $documentType,
         string $trigger,
         object $context,
-        object $mailable
+        object $mailable,
+        ?string $kodeDepo = null
     ): void {
         try {
             $this->applySmtpSettings();
 
-            $to = $this->resolveRecipients($documentType, $trigger, 'TO');
-            $cc = $this->resolveRecipients($documentType, $trigger, 'CC');
+            $to = $this->resolveRecipients($documentType, $trigger, 'TO', $kodeDepo);
+            $cc = $this->resolveRecipients($documentType, $trigger, 'CC', $kodeDepo);
 
             if (empty($to) && empty($cc)) {
                 Log::warning('Email notification skipped: no recipients configured.', [
