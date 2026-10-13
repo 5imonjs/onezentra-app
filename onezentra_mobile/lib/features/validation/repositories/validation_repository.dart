@@ -167,4 +167,11 @@ class ValidationRepository {
   Future<void> cancel(int id) async {
     _expectObject(await _post('/sj-validations/$id/cancel', const {}));
   }
+
+  /// Melaporkan label batch sudah tercetak fisik (jejak server lintas
+  /// device, paritas tombol Cetak web). Idempoten; batch CANCELLED ditolak
+  /// server dengan pesannya sendiri.
+  Future<void> markPrinted(int batchId) async {
+    _expectObject(await _post('/batches/$batchId/mark-printed', const {}));
+  }
 }

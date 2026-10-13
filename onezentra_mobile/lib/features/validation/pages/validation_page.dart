@@ -722,8 +722,17 @@ class _ValidationPageState extends State<ValidationPage> {
               ),
             // Item yang sudah divalidasi punya batch label dari server, jadi
             // operator bisa mencetak (atau mencetak ulang) labelnya di sini.
+            // Badge tercetak mengikuti printed_at server (mark-printed),
+            // sinkron lintas device seperti web.
             if (item.hasLabel) ...[
               const SizedBox(width: AppTheme.space2),
+              if (item.batch?.isPrinted == true)
+                const AppBadge(
+                  text: 'Tercetak',
+                  variant: AppBadgeVariant.success,
+                ),
+              if (item.batch?.isPrinted == true)
+                const SizedBox(width: AppTheme.space2),
               _printLabelButton(item),
             ],
           ],
@@ -740,6 +749,10 @@ class _ValidationPageState extends State<ValidationPage> {
       style: OutlinedButton.styleFrom(
         foregroundColor: AppTheme.gray200,
         side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+        // Tema memaksa minimumSize full-width (Size(double.infinity, 52));
+        // di dalam Row tak terbatas itu crash (minWidth tak hingga), jadi
+        // kunci ulang ke lebar konten × tinggi baris tile.
+        minimumSize: const Size(0, 40),
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(
@@ -748,16 +761,19 @@ class _ValidationPageState extends State<ValidationPage> {
         ),
       ),
       icon: const Icon(Icons.print_rounded, size: 16),
-      label: const Text('Cetak Label'),
+      label: Text(item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label'),
     ),
   );
 
   /// Buka panel cetak label dan tampilkan hasilnya ke operator.
+  /// Setelah cetak fisik, status dilaporkan ke server (mark-printed) agar
+  /// badge tercetak sinkron lintas device — paritas tombol Cetak web.
   Future<void> _openPrintSheet(SjValidationItem item) async {
     var batch = item.batch;
     var printed = await LabelPrintSheet.show(
       context,
       label: BatchLabelData(
+        batchId: batch?.id,
         batchNumber: batch?.batchNumber,
         barcodeLabel: batch?.barcodeLabel,
         kodeBarang: item.kodeBarang,
@@ -772,10 +788,30 @@ class _ValidationPageState extends State<ValidationPage> {
       return;
     }
     if (printed ?? false) {
+      // Lapor ke server dulu supaya badge tercetak sinkron; gagal lapor
+      // tidak membatalkan cetakan fisik (paritas web).
+      var reported = true;
+      String? reportWarning;
+      if (batch != null && batch.id > 0) {
+        reported = await context
+            .read<ValidationProvider>()
+            .markLabelPrinted(batch.id);
+        if (!mounted) {
+          return;
+        }
+        var message = context.read<ValidationProvider>().message;
+        if (!reported && message?.success == false) {
+          reportWarning = message?.message;
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Label ${batch?.barcodeLabel ?? ''} tercetak.'),
-          backgroundColor: AppTheme.success,
+          content: Text(
+            reported
+                ? 'Label ${batch?.barcodeLabel ?? ''} tercetak.'
+                : (reportWarning ?? 'Label tercetak, status gagal dilaporkan.'),
+          ),
+          backgroundColor: reported ? AppTheme.success : AppTheme.warning,
         ),
       );
     }
@@ -1088,27 +1124,42 @@ class _ValidationPageState extends State<ValidationPage> {
   /// Complete section: the button stays disabled while lines are still
   /// pending — the server would reject the attempt anyway, so the operator
   /// is told exactly how many lines are left instead of failing on tap.
+  /// Paritas web: label fisik wajib menempel — item tervalidasi yang
+  /// labelnya belum dilaporkan tercetak ikut mengunci tombol.
   Widget _buildCompleteSection(
     SjValidation session,
     ValidationProvider validation,
   ) {
     var pending = session.items.where((item) => item.isPending).length;
+    var unprinted = session.items
+        .where(
+          (item) =>
+              !item.isPending &&
+              item.hasLabel &&
+              !(item.batch?.isPrinted ?? false),
+        )
+        .length;
+    var blocked = pending > 0 || unprinted > 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _darkActionButton(
           label: pending > 0
               ? 'Selesaikan ($pending item tersisa)'
+              : unprinted > 0
+              ? 'Cetak $unprinted label dulu'
               : 'Selesaikan Validasi ✓',
           background: AppTheme.success,
           foreground: Colors.white,
           loading: validation.actionBusy,
-          onPressed: pending > 0 ? null : () => _confirmComplete(validation),
+          onPressed: blocked ? null : () => _confirmComplete(validation),
         ),
-        if (pending > 0) ...[
+        if (blocked) ...[
           const SizedBox(height: AppTheme.space2),
           Text(
-            'Validasi dulu $pending item di atas — tombol aktif otomatis.',
+            pending > 0
+                ? 'Validasi dulu $pending item di atas — tombol aktif otomatis.'
+                : 'Cetak label $unprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',
             textAlign: TextAlign.center,
             style: GoogleFonts.roboto(fontSize: 11.5, color: AppTheme.gray400),
           ),

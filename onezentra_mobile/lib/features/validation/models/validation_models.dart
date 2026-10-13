@@ -197,6 +197,7 @@ class ValidationBatch {
     this.batchNumber,
     this.barcodeLabel,
     this.batchNumberLabel,
+    this.printedAt,
     this.createdAt,
   });
 
@@ -209,6 +210,7 @@ class ValidationBatch {
     // persis dengan yang dicetak ke kertas, jadi barcodenya bisa dibaca mesin.
     barcodeLabel: _readString(json['barcode_label']),
     batchNumberLabel: _readString(json['batch_number_label']),
+    printedAt: _readDate(json['printed_at']),
     createdAt: _readString(json['created_at']),
   );
 
@@ -216,7 +218,11 @@ class ValidationBatch {
   final String? batchNumber;
   final String? barcodeLabel;
   final String? batchNumberLabel;
+  final DateTime? printedAt;
   final String? createdAt;
+
+  /// Label sudah dilaporkan tercetak ke server (sumber kebenaran lintas device).
+  bool get isPrinted => printedAt != null;
 }
 
 class SjValidationItem {

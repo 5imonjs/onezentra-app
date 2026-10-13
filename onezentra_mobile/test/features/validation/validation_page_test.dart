@@ -630,4 +630,99 @@ void main() {
     );
     expect(banner, findsOneWidget);
   });
+
+  SjValidation printedSession() => SjValidation(
+    id: 9,
+    rencanaKirimId: 11,
+    scanCode: 'PO-042',
+    items: [
+      SjValidationItem(
+        id: 31,
+        validationId: 9,
+        kodeBarang: 'BRG-1',
+        namaBarang: 'Gula 50kg',
+        expectedQty: 100,
+        actualQty: 100,
+        satuan: 'zak',
+        status: 'VALIDATED',
+        standarisasi: const ItemStandarisasi(
+          tier: 4,
+          tinggiTumpukan: 6,
+          status: 'approved',
+        ),
+        batch: ValidationBatch(
+          id: 7,
+          batchNumber: 'B-1',
+          barcodeLabel: 'LBL-1',
+          printedAt: DateTime(2026, 1, 2, 3, 4),
+        ),
+      ),
+    ],
+  );
+
+  SjValidation unprintedSession() => const SjValidation(
+    id: 9,
+    rencanaKirimId: 11,
+    scanCode: 'PO-042',
+    items: [
+      SjValidationItem(
+        id: 31,
+        validationId: 9,
+        kodeBarang: 'BRG-1',
+        namaBarang: 'Gula 50kg',
+        expectedQty: 100,
+        actualQty: 100,
+        satuan: 'zak',
+        status: 'VALIDATED',
+        standarisasi: ItemStandarisasi(
+          tier: 4,
+          tinggiTumpukan: 6,
+          status: 'approved',
+        ),
+        batch: ValidationBatch(
+          id: 7,
+          batchNumber: 'B-1',
+          barcodeLabel: 'LBL-1',
+        ),
+      ),
+    ],
+  );
+
+  testWidgets('item tervalidasi yang labelnya belum dilaporkan mengunci Selesaikan', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: unprintedSession(),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cetak 1 label dulu'), findsOneWidget);
+    expect(find.text('Selesaikan Validasi ✓'), findsNothing);
+    expect(find.text('Tercetak'), findsNothing);
+  });
+
+  testWidgets('item yang labelnya sudah dilaporkan membuka Selesaikan + badge', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: printedSession(),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selesaikan Validasi ✓'), findsOneWidget);
+    expect(find.text('Tercetak'), findsOneWidget);
+    expect(find.text('Cetak Ulang'), findsOneWidget);
+  });
 }

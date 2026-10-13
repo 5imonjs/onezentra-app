@@ -28,6 +28,7 @@ class BatchLabelData {
   const BatchLabelData({
     required this.batchNumber,
     required this.barcodeLabel,
+    this.batchId,
     this.kodeBarang,
     this.namaBarang,
     this.actualQty,
@@ -38,6 +39,8 @@ class BatchLabelData {
     this.poTransporter,
   });
 
+  /// Id batch server — untuk lapor mark-printed setelah cetak fisik.
+  final int? batchId;
   final String? batchNumber;
   final String? barcodeLabel;
   final String? kodeBarang;

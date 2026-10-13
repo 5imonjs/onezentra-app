@@ -383,6 +383,42 @@ class ValidationProvider extends ChangeNotifier {
     }
   }
 
+  /// Melaporkan satu label batch sudah tercetak fisik, lalu memuat ulang
+  /// sesi agar badge cetak sinkron. Gagal lapor tidak membatalkan cetakan
+  /// (paritas web) — pesannya disampaikan lewat [_message].
+  /// Mengembalikan true bila status cetak tersimpan di server.
+  Future<bool> markLabelPrinted(int batchId) async {
+    var active = _active;
+    if (active == null || _actionBusy) {
+      return false;
+    }
+
+    _actionBusy = true;
+    _notify();
+    try {
+      await _repository.markPrinted(batchId);
+      _active = await _repository.show(active.id);
+      return true;
+    } on ApiException catch (e) {
+      _message = ValidationActionMessage.failure(
+        'Label tercetak, tapi status cetak gagal dilaporkan: ${e.message}',
+      );
+      return false;
+    } catch (e, stack) {
+      debugPrint(
+        'ValidationProvider.markLabelPrinted: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      _message = const ValidationActionMessage.failure(
+        'Label tercetak, tapi status cetak gagal dilaporkan.',
+      );
+      return false;
+    } finally {
+      _actionBusy = false;
+      _notify();
+    }
+  }
+
   /// Drops the open session without recording anything (e.g. when the
   /// operator starts a new PO scan).
   void clearActive() {
