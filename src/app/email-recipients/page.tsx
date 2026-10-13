@@ -13,6 +13,7 @@ interface Recipient {
   id: number;
   document_type: string;
   trigger: string;
+  kode_depo: string | null;
   recipient_type: string;
   field: string;
   email: string;
@@ -35,6 +36,7 @@ interface Options {
 const emptyForm = {
   document_type: 'rencana_kirim',
   trigger: 'created',
+  kode_depo: null,
   recipient_type: 'role',
   field: 'TO',
   email: '',
@@ -178,6 +180,7 @@ export default function EmailRecipientsPage() {
       const payload: Record<string, unknown> = {
         document_type: form.document_type,
         trigger: form.trigger,
+        kode_depo: form.kode_depo,
         recipient_type: form.recipient_type,
         field: form.field,
         label: form.label,
@@ -319,6 +322,7 @@ export default function EmailRecipientsPage() {
                   <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Dokumen</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Trigger</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Field</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Penerima</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Label</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Aktif</th>
@@ -337,6 +341,11 @@ export default function EmailRecipientsPage() {
                     <td className="px-5 py-4 text-sm text-gray-700">{triggerLabel(r.document_type, r.trigger)}</td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${fieldBadge(r.field)}`}>{r.field}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${r.kode_depo ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
+                        {r.kode_depo ? r.kode_depo : 'Global'}
+                      </span>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
@@ -456,6 +465,16 @@ export default function EmailRecipientsPage() {
                   <option key={t} value={t}>{docTypeLabel[t] || t}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label htmlFor="er-kode-depo" className="block text-xs font-medium text-gray-500 mb-1">Kode Depo (Opsional)</label>
+              <select id="er-kode-depo" value={form.kode_depo || ''} onChange={(e) => setForm({ ...form, kode_depo: e.target.value || null })} className="select-field">
+                <option value="">Global (Semua Depo)</option>
+                {(options.depots || []).map(d => (
+                  <option key={d.kode_depo} value={d.kode_depo}>{d.kode_depo} - {d.nama_depo}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-gray-400">Kosongkan untuk berlaku global (semua depo). Isi untuk berlaku hanya di depo tertentu.</p>
             </div>
             <div>
               <label htmlFor="er-trigger" className="block text-xs font-medium text-gray-500 mb-1">Trigger</label>
