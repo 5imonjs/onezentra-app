@@ -677,6 +677,7 @@ class _GatePageState extends State<GatePage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
         title: Text(
           copy.title,
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),

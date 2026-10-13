@@ -406,10 +406,10 @@ class _ValidationPageState extends State<ValidationPage> {
     margin: const EdgeInsets.only(top: AppTheme.space4),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: message.success ? AppTheme.successWell : const Color(0xFFFFF1F2),
+      color: message.success ? AppTheme.successWell : AppTheme.dangerWell,
       borderRadius: AppTheme.radiusLg,
       border: Border.all(
-        color: message.success ? AppTheme.successText : const Color(0xFFFECDD3),
+        color: message.success ? AppTheme.successText : AppTheme.dangerText,
       ),
     ),
     child: Row(
@@ -903,6 +903,7 @@ class _ValidationPageState extends State<ValidationPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
         title: Text(
           'Selesaikan validasi?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -1514,10 +1515,13 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   @override
   Widget build(BuildContext context) {
     var item = widget.item;
+    // Panel gelap mengikuti aplikasi (dark-first): teks token terang di
+    // file ini hanya terbaca di atas permukaan gelap.
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: AppTheme.gray300),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.space5,
@@ -1539,7 +1543,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                     width: 40,
                     height: 4,
                     decoration: const BoxDecoration(
-                      color: AppTheme.gray200,
+                      color: AppTheme.gray300,
                       borderRadius: AppTheme.radiusFull,
                     ),
                   ),
@@ -1638,6 +1642,8 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                       color: AppTheme.gray600,
                     ),
                   ),
+                  iconColor: AppTheme.gray500,
+                  collapsedIconColor: AppTheme.gray500,
                   tilePadding: EdgeInsets.zero,
                   childrenPadding: EdgeInsets.zero,
                   shape: const Border(),
@@ -1733,10 +1739,10 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
           vertical: AppTheme.space2,
         ),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary600 : AppTheme.gray100,
+          color: selected ? AppTheme.primary600 : AppTheme.surfaceCard,
           borderRadius: AppTheme.radiusFull,
           border: Border.all(
-            color: selected ? AppTheme.primary600 : AppTheme.gray200,
+            color: selected ? AppTheme.primary600 : AppTheme.gray300,
           ),
         ),
         child: Text(
@@ -1848,9 +1854,10 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
     var pending = standarisasi?.status == 'pending';
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: AppTheme.gray300),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.space5,
@@ -1872,7 +1879,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                     width: 40,
                     height: 4,
                     decoration: const BoxDecoration(
-                      color: AppTheme.gray200,
+                      color: AppTheme.gray300,
                       borderRadius: AppTheme.radiusFull,
                     ),
                   ),

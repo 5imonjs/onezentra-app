@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/models/auth_models.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
@@ -20,11 +21,13 @@ class _FakeValidationRepository extends ValidationRepository {
     this.history = const [],
     this.cannedStats = const ValidationStats(),
     this.sessionToOpen,
+    this.startError,
   });
 
   final List<SjValidation> history;
   final ValidationStats cannedStats;
   final SjValidation? sessionToOpen;
+  final Object? startError;
 
   int listCalls = 0;
   int statsCalls = 0;
@@ -67,6 +70,10 @@ class _FakeValidationRepository extends ValidationRepository {
   Future<SjValidation> startByCode(String scanCode) async {
     startCalls++;
     lastScanCode = scanCode.trim();
+    var error = startError;
+    if (error != null) {
+      throw error;
+    }
     return _session();
   }
 
@@ -597,5 +604,30 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Email validasi terkirim ke BLC.'), findsOneWidget);
+  });
+
+  testWidgets('banner gagal memakai warna bahaya yang terbaca di tema gelap', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      startError: const ApiException('PO tidak ditemukan.', 404),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-SALAH');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('PO tidak ditemukan'), findsOneWidget);
+    var banner = find.byWidgetPredicate(
+      (widget) =>
+          widget is Container &&
+          widget.decoration is BoxDecoration &&
+          (widget.decoration! as BoxDecoration).color ==
+              AppTheme.dangerWell,
+    );
+    expect(banner, findsOneWidget);
   });
 }

@@ -13,6 +13,22 @@ class ValidationProvider extends ChangeNotifier {
     : _repository = repository ?? ValidationRepository();
   final ValidationRepository _repository;
 
+  /// Set in [dispose].
+  ///
+  /// Every loader here awaits the network and then calls [notifyListeners]. If
+  /// the screen is closed while a request is in flight, that call lands after
+  /// dispose and ChangeNotifier throws "used after being disposed", crashing
+  /// instead of merely skipping a repaint.
+  bool _disposed = false;
+
+  /// Safe to call after dispose: a disposed provider simply stops notifying.
+  void _notify() {
+    if (_disposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
   List<SjValidation> _items = const [];
   ValidationStats _stats = const ValidationStats();
   bool _isLoading = false;
@@ -74,13 +90,13 @@ class ValidationProvider extends ChangeNotifier {
       );
       debugPrintStack(stackTrace: stack, maxFrames: 8);
     }
-    notifyListeners();
+    _notify();
   }
 
   Future<void> loadItems() async {
     _isLoading = true;
     _listError = null;
-    notifyListeners();
+    _notify();
     try {
       var page = await _repository.list(
         search: _search.isEmpty ? null : _search,
@@ -99,7 +115,7 @@ class ValidationProvider extends ChangeNotifier {
       _listError = 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -131,14 +147,17 @@ class ValidationProvider extends ChangeNotifier {
         _message = const ValidationActionMessage.failure(
           'Masukkan / pindai barcode PO terlebih dahulu.',
         );
-        notifyListeners();
+        _notify();
       }
       return;
     }
 
     _startBusy = true;
+    // Sesi lama dibuang di awal agar kartu basi tidak terpajang selama
+    // pemindaian baru berjalan.
+    _active = null;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       _active = await _repository.startByCode(code);
@@ -158,7 +177,7 @@ class ValidationProvider extends ChangeNotifier {
       );
     } finally {
       _startBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -166,7 +185,7 @@ class ValidationProvider extends ChangeNotifier {
   Future<void> openSession(int id) async {
     _actionBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
     try {
       _active = await _repository.show(id);
     } on ApiException catch (e) {
@@ -181,7 +200,7 @@ class ValidationProvider extends ChangeNotifier {
       );
     } finally {
       _actionBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -203,7 +222,7 @@ class ValidationProvider extends ChangeNotifier {
 
     _actionBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       await _repository.scanItem(
@@ -238,7 +257,7 @@ class ValidationProvider extends ChangeNotifier {
       return false;
     } finally {
       _actionBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -257,7 +276,7 @@ class ValidationProvider extends ChangeNotifier {
 
     _actionBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       await _repository.createStandarisasi(
@@ -285,7 +304,7 @@ class ValidationProvider extends ChangeNotifier {
       return false;
     } finally {
       _actionBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -300,7 +319,7 @@ class ValidationProvider extends ChangeNotifier {
 
     _actionBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       _active = await _repository.complete(active.id);
@@ -323,7 +342,7 @@ class ValidationProvider extends ChangeNotifier {
       return false;
     } finally {
       _actionBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -336,7 +355,7 @@ class ValidationProvider extends ChangeNotifier {
 
     _actionBusy = true;
     _message = null;
-    notifyListeners();
+    _notify();
 
     try {
       await _repository.cancel(active.id);
@@ -360,7 +379,7 @@ class ValidationProvider extends ChangeNotifier {
       return false;
     } finally {
       _actionBusy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -371,7 +390,7 @@ class ValidationProvider extends ChangeNotifier {
       return;
     }
     _active = null;
-    notifyListeners();
+    _notify();
   }
 
   void clearMessage() {
@@ -379,11 +398,12 @@ class ValidationProvider extends ChangeNotifier {
       return;
     }
     _message = null;
-    notifyListeners();
+    _notify();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _searchDebounce?.cancel();
     super.dispose();
   }
