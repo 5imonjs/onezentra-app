@@ -122,4 +122,28 @@ class MobileAuthTest extends TestCase
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
+
+    public function test_mobile_login_ignores_csrf_from_stateful_browser_origin(): void
+    {
+        // Flutter Web mengirim Origin sehingga Sanctum menganggapnya stateful.
+        // Endpoint Bearer mobile dikecualikan dari CSRF via
+        // App\Http\Middleware\VerifyCsrfToken::$except. Catatan: framework
+        // me-bypass CSRF saat unit test (runningUnitTests), jadi tes ini
+        // mengunci perilaku ujung-ke-ujung (status + token + header browser),
+        // bukan gerbang CSRF-nya — gerbangnya diverifikasi manual via curl
+        // (mobile 200, web tanpa sesi tetap 419).
+        User::factory()->create([
+            'email' => 'mobile-web@onezentra.com',
+            'password' => 'secret-123',
+            'status' => 'active',
+        ]);
+
+        $this->postJson('/api/v1/mobile/login', [
+            'email' => 'mobile-web@onezentra.com',
+            'password' => 'secret-123',
+        ], [
+            'Origin' => 'http://localhost:3000',
+            'Referer' => 'http://localhost:3000/#/login',
+        ])->assertOk()->assertJsonPath('token_type', 'Bearer');
+    }
 }
