@@ -26,8 +26,10 @@ const rel = (file: string) => file.slice(SRC.length + 1);
 describe('theme token discipline', () => {
   it('has no raw hex colour literals in component source', () => {
     // A literal in a className or an inline style bypasses the theme entirely.
-    // Allowed: the sidebar's own gradient (deliberately always dark) and the
-    // explanatory comments that mention one.
+    // Allowed: explanatory comments that mention one. (The sidebar gradient
+    // used to be a deliberate always-dark exception; it now follows the
+    // theme ramp, so no source line should match — the Sidebar filter below
+    // stays purely as a safety net.)
     const offenders = files.flatMap((file) =>
       read(file)
         .split('\n')
@@ -217,8 +219,9 @@ describe('theme token discipline', () => {
         .filter(({ text }) => darkPanel.test(text) && neutralInk.test(text))
         // Fixed, theme-independent inks are correct on a dark panel.
         .filter(({ text }) => !/\btext-ink-(?:fg|fg-muted)\b/.test(text))
-        // A hover tint is not the resting state of the copy, and Sidebar owns
-        // the always-dark chrome where the neutral steps still read as chrome.
+        // A hover tint is not the resting state of the copy. (The Sidebar
+        // exemption below predates the theme-aware sidebar and stays only
+        // as a safety net.)
         .filter(({ text }) => !/\bhover:bg-white\/(?:5|10|20)\b/.test(text))
         .filter(({ rel: r }) => !r.endsWith('Sidebar.tsx')),
     );
@@ -291,8 +294,8 @@ describe('theme token discipline', () => {
       return hits;
     });
 
-    // Sidebar owns the always-dark app chrome, where the neutral steps are read
-    // as chrome against the ink rail rather than as copy on a panel.
+    // The Sidebar filter below predates the theme-aware sidebar (it used to
+    // own always-dark app chrome) and stays only as a safety net.
     expect(offenders.filter((o) => !o.includes('components/Sidebar.tsx'))).toEqual([]);
   });
 

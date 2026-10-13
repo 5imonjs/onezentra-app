@@ -98,8 +98,8 @@ function NavItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
         !isExpanded ? 'justify-center p-3' : 'px-3 py-2.5 gap-3'
       } ${
         isActive
-          ? 'bg-primary-500/10 text-white'
-          : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+          ? 'bg-primary-500/10 text-gray-900'
+          : 'text-slate-400 hover:bg-overlay-60 hover:text-gray-700'
       }`}
     >
       {isActive && (
@@ -109,7 +109,7 @@ function NavItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
         <Icon
           name={icon}
           className={`w-5 h-5 shrink-0 transition-colors duration-150 ${
-            isActive ? 'text-primary-300' : 'text-slate-500 group-hover:text-slate-300'
+            isActive ? 'text-accent-text' : 'text-slate-500 group-hover:text-slate-400'
           }`}
         />
       )}
@@ -126,21 +126,21 @@ function NavSubItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
       aria-current={isActive ? 'page' : undefined}
       className={`group relative flex items-center gap-2.5 rounded-lg py-2 pr-3 text-[13px] font-medium transition-colors duration-150 ${
         isActive
-          ? 'bg-linear-to-r from-primary-500/15 to-primary-500/5 text-white'
-          : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+          ? 'bg-linear-to-r from-primary-500/15 to-primary-500/5 text-gray-900'
+          : 'text-slate-400 hover:bg-overlay-60 hover:text-gray-700'
       }`}
     >
       {isActive && (
         <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.75 rounded-r-full bg-linear-to-b from-primary-400 to-primary-600" />
       )}
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ring-4 ring-transparent transition-colors duration-150 ${
-        isActive ? 'bg-primary-400' : 'bg-slate-600 group-hover:bg-slate-400'
+        isActive ? 'bg-primary-500' : 'bg-slate-600 group-hover:bg-slate-400'
       }`} />
       {icon && (
         <Icon
           name={icon}
           className={`w-4.25 h-4.25 shrink-0 transition-colors duration-150 ${
-            isActive ? 'text-primary-300' : 'text-slate-500 group-hover:text-slate-300'
+            isActive ? 'text-accent-text' : 'text-slate-500 group-hover:text-slate-400'
           }`}
         />
       )}
@@ -184,8 +184,8 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
         title={title}
         className={`relative flex justify-center w-full p-3 rounded-lg transition-colors duration-150 ${
           isActiveAny
-            ? 'bg-primary-500/10 text-primary-300'
-            : 'text-slate-500 hover:bg-white/5 hover:text-slate-100'
+            ? 'bg-primary-500/10 text-accent-text'
+            : 'text-slate-500 hover:bg-overlay-60 hover:text-gray-700'
         }`}
       >
         {isActiveAny && (
@@ -203,23 +203,23 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
         aria-expanded={open}
         className={`flex items-center gap-3 rounded-lg px-3 py-2.5 w-full transition-all duration-150 ${
           accent
-            ? 'bg-emerald-500/10 text-emerald-300 border-l-2 border-emerald-500'
+            ? 'bg-emerald-500/10 text-emerald-700 border-l-2 border-emerald-500'
             : open
-              ? 'bg-white/5 text-white'
+              ? 'bg-overlay-60 text-gray-900'
               : isActiveAny
-                ? 'text-white hover:bg-white/5'
-                : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+                ? 'text-gray-900 hover:bg-overlay-60'
+                : 'text-slate-400 hover:bg-overlay-60 hover:text-gray-700'
         }`}
       >
         <Icon
           name={icon}
           className={`w-4.5 h-4.5 shrink-0 transition-colors duration-150 ${
-            accent ? 'text-emerald-400' : isActiveAny || open ? 'text-primary-300' : 'text-slate-500'
+            accent ? 'text-emerald-600' : isActiveAny || open ? 'text-accent-text' : 'text-slate-500'
           }`}
         />
-        <span className={`flex-1 text-left text-[11px] font-bold uppercase tracking-[0.12em] ${accent ? 'text-emerald-300' : ''}`}>{title}</span>
+        <span className={`flex-1 text-left text-[11px] font-bold uppercase tracking-[0.12em] ${accent ? 'text-emerald-700' : ''}`}>{title}</span>
         <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md transition-colors duration-150 ${
-          open ? 'bg-primary-500/15 text-primary-300' : 'bg-white/5 text-ink-fg-muted'
+          open ? 'bg-primary-500/15 text-accent-text' : 'bg-overlay-60 text-gray-500'
         }`}>
           {visibleItems.length}
         </span>
@@ -232,7 +232,7 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
       </button>
       {open && (
         <div className="relative mt-1 ml-5 pl-3 space-y-0.5">
-          <span className="absolute left-0 top-1 bottom-1 w-px bg-linear-to-b from-slate-700/80 via-slate-700/50 to-transparent pointer-events-none" />
+          <span className="absolute left-0 top-1 bottom-1 w-px bg-linear-to-b from-gray-300/80 via-gray-300/50 to-transparent pointer-events-none" />
           {visibleItems.map((child) => (
             <NavSubItem
               key={child.path}
@@ -327,19 +327,19 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       aria-label="Navigasi utama"
-      className={`fixed top-0 left-0 h-dvh bg-linear-to-b from-[#0b1020] via-[#0f172a] to-[#080d18] text-white flex flex-col z-40 sidebar-transition shadow-2xl lg:shadow-none ${
+      className={`fixed top-0 left-0 h-dvh bg-linear-to-b from-gray-100 via-gray-100 to-gray-50 text-gray-900 flex flex-col z-40 sidebar-transition shadow-2xl lg:shadow-none ${
         mobileOpen ? 'translate-x-0 visible' : '-translate-x-full invisible lg:visible lg:translate-x-0'
       } ${
         isExpanded ? 'w-70 max-w-[85vw] lg:max-w-none lg:w-65' : 'w-70 max-w-[85vw] lg:max-w-none lg:w-18'
       }`}
     >
-      <div className={`border-b border-ink-700/80 flex items-center ${isExpanded ? 'justify-between px-5 py-4' : 'justify-center py-4'}`}>
+      <div className={`border-b border-gray-300 flex items-center ${isExpanded ? 'justify-between px-5 py-4' : 'justify-center py-4'}`}>
         {isExpanded ? (
-          <div className="relative h-14 flex-1 min-w-0 animate-fade-in">
+          <div className="relative h-14 flex-1 min-w-0 animate-fade-in rounded-xl bg-ink-950 px-3 ring-1 ring-gray-300/30">
             <Image src="/LOGO.png" alt="ONEZENTRA" fill sizes="200px" className="object-contain object-left" />
           </div>
         ) : (
-          <div className="relative w-9 h-9 rounded-xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
+          <div className="relative w-9 h-9 rounded-xl bg-ink-950 ring-1 ring-gray-300/30 overflow-hidden">
             <Image src="/LOGO.png" alt="ONEZENTRA" fill sizes="36px" className="object-contain p-1" />
           </div>
         )}
@@ -348,7 +348,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             <button
               onClick={onClose}
               aria-label="Tutup navigasi"
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors min-w-11 min-h-11"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-gray-900 hover:bg-overlay-60 transition-colors min-w-11 min-h-11"
             >
               <Icon name="menuOpen" className="w-5 h-5" />
             </button>
@@ -356,7 +356,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             <button
               onClick={onToggle}
               aria-label="Sembunyikan sidebar"
-              className="w-9 h-9 hidden lg:flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors min-w-11 min-h-11"
+              className="w-9 h-9 hidden lg:flex items-center justify-center rounded-lg text-slate-400 hover:text-gray-900 hover:bg-overlay-60 transition-colors min-w-11 min-h-11"
             >
               <Icon name="menu" className="w-5 h-5" />
             </button>
@@ -394,7 +394,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             onExpandRequest={onToggle}
           />
 
-          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-slate-700/60 to-transparent" />
+          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-gray-300/60 to-transparent" />
 
           <CollapsibleGroup
             title="Data Master"
@@ -408,7 +408,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             onExpandRequest={onToggle}
           />
 
-          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-slate-700/60 to-transparent" />
+          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-gray-300/60 to-transparent" />
 
           <CollapsibleGroup
             title="Keuangan"
@@ -423,7 +423,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             onExpandRequest={onToggle}
           />
 
-          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-slate-700/60 to-transparent" />
+          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-gray-300/60 to-transparent" />
 
           <CollapsibleGroup
             title="Laporan"
@@ -437,7 +437,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             onExpandRequest={onToggle}
           />
 
-          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-slate-700/60 to-transparent" />
+          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-gray-300/60 to-transparent" />
 
           <CollapsibleGroup
             title="Sistem"
@@ -454,15 +454,15 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
       </nav>
 
       {user && !mobileOpen && (
-        <div className="border-t border-ink-700/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className={`flex items-center gap-3 ${!isExpanded ? 'justify-center' : 'px-2 py-1.5 rounded-xl bg-white/5 ring-1 ring-white/5'}`}>
+        <div className="border-t border-gray-300 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className={`flex items-center gap-3 ${!isExpanded ? 'justify-center' : 'px-2 py-1.5 rounded-xl bg-overlay-50 ring-1 ring-gray-300/60'}`}>
             <Link href="/dashboard/profile" aria-label="Buka profil saya" className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-9 h-9 bg-linear-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 shadow-lg shadow-primary-600/20 ring-1 ring-white/10">
+              <div className="w-9 h-9 bg-linear-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-lg shadow-primary-600/20 ring-1 ring-white/10">
                 {user.full_name?.charAt(0) || 'A'}
               </div>
               {isExpanded && (
                 <div className="flex-1 min-w-0 animate-fade-in">
-                  <p className="text-sm font-semibold text-white truncate">{user.full_name}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{user.full_name}</p>
                   <p className="text-xs text-slate-400 truncate">{user.roles?.[0]?.name || user.level}</p>
                 </div>
               )}
@@ -471,7 +471,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
               <button
                 onClick={handleLogout}
                 aria-label="Logout"
-                className="shrink-0 p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors min-w-11 min-h-11 flex items-center justify-center"
+                className="shrink-0 p-2 text-slate-400 hover:text-red-600 hover:bg-red-500/10 rounded-lg transition-colors min-w-11 min-h-11 flex items-center justify-center"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
