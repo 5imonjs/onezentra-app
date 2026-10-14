@@ -92,7 +92,7 @@ class _OneZentraAppState extends State<OneZentraApp>
           // matching the web console; leaving this on the default
           // ThemeMode.system made the OS preference swap in AppTheme.dark
           // while pages kept painting hardcoded light colours.
-          themeMode: ThemeMode.dark,
+          themeMode: ThemeMode.light,
           routerConfig: widget.router,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
