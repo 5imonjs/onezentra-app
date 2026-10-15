@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { getErrorMessage } from '@/lib/api';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -110,7 +111,13 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
+        {/* Kontrol tema global (tersimpan, berlaku sebelum login): tanpa ini
+            halaman login selalu mengikuti OS dan pilihan di dashboard tidak
+            terlihat di sini. */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle compact />
+        </div>
         <div className="w-full max-w-md animate-fade-in">
           <div className="lg:hidden text-center mb-8">
             <div className="relative w-44 h-16 bg-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-600/30 px-3 overflow-hidden">
