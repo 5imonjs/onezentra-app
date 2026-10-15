@@ -701,40 +701,48 @@ class _ValidationPageState extends State<ValidationPage> {
               ),
             ),
             const SizedBox(width: AppTheme.space2),
-            // Fast path for the common case: the received qty matches, so one
-            // tap validates without opening the sheet. Anything else (shortage,
-            // damage, …) still goes through the sheet via the tile tap.
-            // Locked lines offer the standarisasi input instead.
-            if (item.isPending && canValidate && item.canValidate)
-              _quickOkButton(item, validation)
-            else if (item.isPending && canValidate && !item.canValidate)
-              _standarisasiButton(
-                item,
-                validation,
-                canCreate: canCreateStandarisasi,
-              )
-            else
-              AppBadge(
-                text: ValidationCondition.label(item.condition),
-                variant: item.condition == 'FISIK_BAGUS'
-                    ? AppBadgeVariant.gray
-                    : AppBadgeVariant.warning,
+            // Aksi trailing dibungkus Wrap: pada layar sempit (badge kondisi
+            // + badge tercetak + tombol cetak) melipat ke baris berikut
+            // daripada meluber keluar kartu.
+            Flexible(
+              child: Wrap(
+                spacing: AppTheme.space2,
+                runSpacing: AppTheme.space2,
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (item.isPending && canValidate && item.canValidate)
+                    _quickOkButton(item, validation)
+                  else if (item.isPending &&
+                      canValidate &&
+                      !item.canValidate)
+                    _standarisasiButton(
+                      item,
+                      validation,
+                      canCreate: canCreateStandarisasi,
+                    )
+                  else
+                    AppBadge(
+                      text: ValidationCondition.label(item.condition),
+                      variant: item.condition == 'FISIK_BAGUS'
+                          ? AppBadgeVariant.gray
+                          : AppBadgeVariant.warning,
+                    ),
+                  // Item yang sudah divalidasi punya batch label dari server,
+                  // jadi operator bisa mencetak (atau mencetak ulang) labelnya
+                  // di sini. Badge tercetak mengikuti printed_at server
+                  // (mark-printed), sinkron lintas device seperti web.
+                  if (item.hasLabel) ...[
+                    if (item.batch?.isPrinted == true)
+                      const AppBadge(
+                        text: 'Tercetak',
+                        variant: AppBadgeVariant.success,
+                      ),
+                    _printLabelButton(item),
+                  ],
+                ],
               ),
-            // Item yang sudah divalidasi punya batch label dari server, jadi
-            // operator bisa mencetak (atau mencetak ulang) labelnya di sini.
-            // Badge tercetak mengikuti printed_at server (mark-printed),
-            // sinkron lintas device seperti web.
-            if (item.hasLabel) ...[
-              const SizedBox(width: AppTheme.space2),
-              if (item.batch?.isPrinted == true)
-                const AppBadge(
-                  text: 'Tercetak',
-                  variant: AppBadgeVariant.success,
-                ),
-              if (item.batch?.isPrinted == true)
-                const SizedBox(width: AppTheme.space2),
-              _printLabelButton(item),
-            ],
+            ),
           ],
         ),
       ),

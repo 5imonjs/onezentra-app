@@ -725,4 +725,23 @@ void main() {
     expect(find.text('Tercetak'), findsOneWidget);
     expect(find.text('Cetak Ulang'), findsOneWidget);
   });
+
+  testWidgets('tile item tidak overflow di layar sempit', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    var repository = _FakeValidationRepository(
+      sessionToOpen: printedSession(),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }
