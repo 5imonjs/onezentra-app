@@ -16,6 +16,14 @@ class DepotSettingSeeder extends Seeder
     {
         $depots = [
             [
+                'kode_depo' => '000',
+                'nama_depo' => 'Region JataKalbar',
+                'nama_pengirim' => 'OneZentra Region JataKalbar',
+                'alamat_pengirim' => 'Jl Trans Kalimantan Ambawang, KM 11',
+                'nama_tujuan' => 'Region JataKalbar',
+                'alamat_tujuan' => 'Jl Trans Kalimantan Ambawang, KM 11',
+            ],
+            [
                 'kode_depo' => '0126',
                 'nama_depo' => 'Depo Pontianak',
                 'nama_pengirim' => 'OneZentra Pontianak',
