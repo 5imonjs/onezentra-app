@@ -239,6 +239,8 @@ class _PairingSection extends StatelessWidget {
                   child: Text(
                     device.displayName,
                     style: textTheme.bodyMedium,
+                    maxLines: 1,
+                    softWrap: false,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
