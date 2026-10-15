@@ -186,13 +186,29 @@ class _PrinterSelector extends StatelessWidget {
 /// Pairing perangkat baru dari dalam aplikasi: discovery perangkat sekitar
 /// + tombol Pair per baris. Berhasil pairing → daftar bonded dimuat ulang
 /// sehingga printer langsung bisa dipilih tanpa buka Pengaturan HP.
-class _PairingSection extends StatelessWidget {
+class _PairingSection extends StatefulWidget {
   const _PairingSection({required this.printer});
 
   final LabelPrintProvider printer;
 
   @override
+  State<_PairingSection> createState() => _PairingSectionState();
+}
+
+class _PairingSectionState extends State<_PairingSection> {
+  late final TextEditingController _pinController = TextEditingController(
+    text: '0000',
+  );
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    var printer = widget.printer;
     var textTheme = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -209,6 +225,33 @@ class _PairingSection extends StatelessWidget {
           label: Text(
             printer.discovering ? 'Berhenti Mencari' : 'Pairing Perangkat Baru',
           ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _pinController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'PIN printer',
+                  hintText: '0000',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              flex: 2,
+              child: Text(
+                'Umumnya 0000 / 1234. Kosongkan bila printer tanpa PIN.',
+              ),
+            ),
+          ],
         ),
         if (printer.discovering && printer.discovered.isEmpty)
           Padding(
@@ -248,7 +291,10 @@ class _PairingSection extends StatelessWidget {
                 FilledButton.tonal(
                   onPressed: printer.bonding
                       ? null
-                      : () => printer.bond(device),
+                      : () => printer.bond(
+                          device,
+                          pin: _pinController.text.trim(),
+                        ),
                   child: const Text('Pair'),
                 ),
               ],

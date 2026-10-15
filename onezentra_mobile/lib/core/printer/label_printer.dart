@@ -68,8 +68,10 @@ abstract class LabelPrinter {
   Stream<DiscoveredPrinter> discover();
 
   /// Pairing ke perangkat hasil discovery. Dialog PIN sistem bisa muncul;
-  /// mengembalikan true bila perangkat berhasil bonded.
-  Future<bool> bond(DiscoveredPrinter printer);
+  /// mengembalikan true bila perangkat berhasil bonded. [pin] opsional
+  /// (umumnya `0000` untuk printer thermal) untuk menjawab otomatis bila
+  /// printer memintanya.
+  Future<bool> bond(DiscoveredPrinter printer, {String? pin});
 
   /// Hentikan discovery yang sedang berjalan. Aman dipanggil saat idle.
   Future<void> cancelDiscovery();
@@ -131,10 +133,16 @@ class BluetoothLabelPrinter implements LabelPrinter {
     ),
   );
 
+  /// Pairing ke perangkat hasil discovery. Dialog PIN sistem bisa muncul;
+  /// mengembalikan true bila perangkat berhasil bonded.
   @override
-  Future<bool> bond(DiscoveredPrinter printer) async {
+  Future<bool> bond(DiscoveredPrinter printer, {String? pin}) async {
     try {
-      return await _serial.bondDeviceAtAddress(printer.address) ?? false;
+      return await _serial.bondDeviceAtAddress(
+            printer.address,
+            pin: pin?.isEmpty ?? true ? null : pin,
+          ) ??
+          false;
     } on PlatformException {
       return false;
     } catch (_) {

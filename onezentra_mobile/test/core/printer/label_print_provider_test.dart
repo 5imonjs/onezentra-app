@@ -33,8 +33,9 @@ class _FakeLabelPrinter implements LabelPrinter {
       discoverFn != null ? discoverFn!() : Stream.fromIterable(available);
 
   @override
-  Future<bool> bond(DiscoveredPrinter printer) async {
+  Future<bool> bond(DiscoveredPrinter printer, {String? pin}) async {
     bondCalls.add(printer);
+    lastPin = pin;
     if (bondFn != null) {
       return bondFn!(printer);
     }
@@ -45,6 +46,8 @@ class _FakeLabelPrinter implements LabelPrinter {
   Future<void> cancelDiscovery() async {
     cancelCalls++;
   }
+
+  String? lastPin;
 
   @override
   Future<void> printLabel(DiscoveredPrinter printer, List<int> bytes) async {
@@ -285,6 +288,18 @@ void main() {
       expect(ok, isFalse);
       expect(provider.success, isNull);
       expect(provider.error, contains('gagal'));
+    });
+
+    test('bond meneruskan PIN ke printer', () async {
+      var fake = _FakeLabelPrinter(available: [printerA]);
+      var provider = LabelPrintProvider(
+        printer: fake,
+        requestPermissions: () async => true,
+      );
+      var ok = await provider.bond(printerB, pin: '0000');
+
+      expect(ok, isTrue);
+      expect(fake.lastPin, '0000');
     });
   });
 }

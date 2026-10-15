@@ -206,7 +206,7 @@ class LabelPrintProvider extends ChangeNotifier {
 
   /// Pairing ke perangkat hasil discovery. Berhasil → daftar bonded
   /// dimuat ulang supaya printer langsung bisa dipilih.
-  Future<bool> bond(DiscoveredPrinter printer) async {
+  Future<bool> bond(DiscoveredPrinter printer, {String? pin}) async {
     if (_bondingAddress != null) {
       return false;
     }
@@ -215,17 +215,20 @@ class LabelPrintProvider extends ChangeNotifier {
     _success = null;
     notifyListeners();
     try {
-      var ok = await _printer.bond(printer);
+      var ok = await _printer.bond(printer, pin: pin);
       if (!ok) {
         _error =
-            'Pairing ${printer.displayName} gagal / dibatalkan. Coba lagi.';
+            'Pairing ${printer.displayName} gagal / dibatalkan. Pastikan '
+            'printer dalam mode pairing dan PIN benar (umumnya 0000).';
         return false;
       }
       await scan();
       _success = 'Terhubung: ${printer.displayName}.';
       return true;
     } catch (_) {
-      _error = 'Pairing ${printer.displayName} gagal. Coba lagi.';
+      _error =
+          'Pairing ${printer.displayName} gagal. Pastikan printer dalam mode '
+          'pairing dan PIN benar (umumnya 0000).';
       return false;
     } finally {
       _bondingAddress = null;
