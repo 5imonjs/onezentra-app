@@ -32,6 +32,13 @@ class ApprovalAssignment extends Model
         return $biaya instanceof BiayaThl ? self::MODULE_THL : self::MODULE_RETRIBUSI;
     }
 
+    /**
+     * Nama penanggung jawab level approval dengan fallback berlapis agar
+     * kolom approval di PDF tidak kosong:
+     * 1. Assignment aktif di depo tersebut (prioritas depo > ADMIN).
+     * 2. User aktif ber-role level tersebut di depo yang sama.
+     * 3. Nama default dari config biaya.{blc,bac,rlh,rfah}_name.
+     */
     public static function approverName(string $level, ?string $kodeDepo, string $module = self::MODULE_THL): ?string
     {
         if (blank($kodeDepo)) {
@@ -53,7 +60,42 @@ class ApprovalAssignment extends Model
             ->with(['user:id,full_name,email'])
             ->first();
 
-        return $assignment?->user?->full_name ?: $assignment?->user?->email;
+        if ($assignment?->user) {
+            return $assignment->user->full_name ?: $assignment->user->email;
+        }
+
+        $roleSlug = match (strtoupper($level)) {
+            'BLC' => 'blc',
+            'BAC' => 'bac',
+            'RLH' => 'rlh',
+            'RFAH' => 'rfah',
+            default => strtolower($level),
+        };
+
+        $fallbackUser = User::whereHas('roles', fn ($q) => $q->where('slug', $roleSlug))
+            ->where('kode_depo', $kodeDepo)
+            ->where('status', 'active')
+            ->whereNotNull('email')
+            ->where('email', '<>', '')
+            ->first();
+
+        if ($fallbackUser) {
+            return $fallbackUser->full_name ?: $fallbackUser->email;
+        }
+
+        $configKey = match (strtoupper($level)) {
+            'BLC' => 'biaya.blc_name',
+            'BAC' => 'biaya.bac_name',
+            'RLH' => 'biaya.rlh_name',
+            'RFAH' => 'biaya.rfah_name',
+            default => null,
+        };
+
+        if ($configKey && config($configKey)) {
+            return config($configKey);
+        }
+
+        return null;
     }
 
     /**

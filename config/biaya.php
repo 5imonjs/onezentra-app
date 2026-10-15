@@ -15,6 +15,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Nama default per level approval (fallback bila assignment tidak ada)
+    |--------------------------------------------------------------------------
+    | Dipakai ApprovalAssignment::approverName() agar kolom approval di PDF
+    | tidak kosong bila depo belum punya assignment aktif.
+    */
+    'blc_name' => env('BIAYA_BLC_NAME', 'BLC Admin'),
+    'bac_name' => env('BIAYA_BAC_NAME', 'BAC Admin'),
+    'rlh_name' => env('BIAYA_RLH_NAME', 'RLH Admin'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Logika hitung retribusi per depo
     |--------------------------------------------------------------------------
     | mode 'borongan' : user input qty zak/crt sebagai info, nominal rupiah

@@ -600,9 +600,23 @@ class BiayaThlController extends Controller
         ])->render();
 
         $dompdf = new Dompdf;
+        $dompdf->set_option('isRemoteEnabled', true);
+        $dompdf->set_option('defaultFont', 'DejaVu Sans');
+        $dompdf->set_option('tempDir', sys_get_temp_dir());
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'landscape');
+
+        $previousTimeLimit = ini_get('max_execution_time');
+        $previousMemoryLimit = ini_get('memory_limit');
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
+
         $dompdf->render();
+
+        if ($previousTimeLimit !== false) {
+            set_time_limit((int) $previousTimeLimit);
+        }
+        ini_set('memory_limit', $previousMemoryLimit);
 
         return response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',
