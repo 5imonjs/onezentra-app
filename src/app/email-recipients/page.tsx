@@ -31,9 +31,23 @@ interface Options {
   fields: string[];
   users: { id: number; full_name: string; email: string }[];
   roles: { id: number; name: string; slug: string }[];
+  depots: { kode_depo: string; nama_depo: string }[];
 }
 
-const emptyForm = {
+interface FormState {
+  document_type: string;
+  trigger: string;
+  kode_depo: string | null;
+  recipient_type: string;
+  field: string;
+  email: string;
+  user_id: number;
+  role_slug: string;
+  label: string;
+  is_active: boolean;
+}
+
+const emptyForm: FormState = {
   document_type: 'rencana_kirim',
   trigger: 'created',
   kode_depo: null,
@@ -111,12 +125,12 @@ const resolveProblem = (r: Recipient): string | null => {
 export default function EmailRecipientsPage() {
   const { hasPermission } = useAuthStore();
   const [items, setItems] = useState<Recipient[]>([]);
-  const [options, setOptions] = useState<Options>({ document_types: [], triggers: [], fields: [], users: [], roles: [] });
+  const [options, setOptions] = useState<Options>({ document_types: [], triggers: [], fields: [], users: [], roles: [], depots: [] });
   const [search, setSearch] = useState('');
   const [documentType, setDocumentType] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<Recipient | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -154,7 +168,7 @@ export default function EmailRecipientsPage() {
 
   const openCreate = () => {
     setEditTarget(null);
-    setForm({ ...emptyForm });
+    setForm(emptyForm);
     setShowCreate(true);
   };
 
@@ -163,6 +177,7 @@ export default function EmailRecipientsPage() {
     setForm({
       document_type: r.document_type,
       trigger: r.trigger,
+      kode_depo: r.kode_depo,
       recipient_type: r.recipient_type,
       field: r.field,
       email: r.email || '',
@@ -470,7 +485,7 @@ export default function EmailRecipientsPage() {
               <label htmlFor="er-kode-depo" className="block text-xs font-medium text-gray-500 mb-1">Kode Depo (Opsional)</label>
               <select id="er-kode-depo" value={form.kode_depo || ''} onChange={(e) => setForm({ ...form, kode_depo: e.target.value || null })} className="select-field">
                 <option value="">Global (Semua Depo)</option>
-                {(options.depots || []).map(d => (
+                {(options.depots || []).map((d: { kode_depo: string; nama_depo: string }) => (
                   <option key={d.kode_depo} value={d.kode_depo}>{d.kode_depo} - {d.nama_depo}</option>
                 ))}
               </select>
