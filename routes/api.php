@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\BiayaThlPdfSettingController;
 use App\Http\Controllers\Api\V1\ClusterPrincipalController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DepoController;
+use App\Http\Controllers\Api\V1\DepotSettingController;
 use App\Http\Controllers\Api\V1\DockController;
 use App\Http\Controllers\Api\V1\EmailRecipientController;
 use App\Http\Controllers\Api\V1\EmailSettingController;
@@ -56,6 +57,14 @@ Route::prefix('v1')->group(function () {
         Route::put('user', [AuthController::class, 'updateProfile']);
     });
     Route::get('depo', [DepoController::class, 'index'])->middleware(['auth:sanctum', 'throttle:600,1,api']);
+
+    // Master alamat depo untuk auto-fill form (asal pengirim dari depo
+    // sendiri, alamat tujuan dari depo tujuan). Read: semua user login.
+    Route::prefix('depot-settings')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
+        Route::get('/', [DepotSettingController::class, 'index']);
+        Route::get('/{kodeDepo}', [DepotSettingController::class, 'show']);
+        Route::put('/{kodeDepo}', [DepotSettingController::class, 'upsert']);
+    });
 
     Route::get('dashboard/activity', [DashboardController::class, 'activity'])
         ->middleware(['auth:sanctum', 'permission:dashboard.view', 'throttle:600,1,api']);
