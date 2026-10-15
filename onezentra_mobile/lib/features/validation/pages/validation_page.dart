@@ -1084,7 +1084,9 @@ class _ValidationPageState extends State<ValidationPage> {
               style: GoogleFonts.roboto(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: highlight ? AppTheme.gray500 : AppTheme.gray400,
+                color: highlight
+                    ? AppTheme.gray50.withValues(alpha: 0.65)
+                    : AppTheme.gray400,
               ),
             ),
             const SizedBox(height: 2),
@@ -1095,7 +1097,7 @@ class _ValidationPageState extends State<ValidationPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.gray900 : Colors.white,
+                color: highlight ? AppTheme.gray50 : Colors.white,
               ),
             ),
           ],

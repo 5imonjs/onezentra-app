@@ -300,10 +300,10 @@ class _UnloadPageState extends State<UnloadPage> {
     margin: const EdgeInsets.only(top: AppTheme.space4),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: message.success ? AppTheme.successWell : const Color(0xFFFFF1F2),
+      color: message.success ? AppTheme.successWell : AppTheme.dangerWell,
       borderRadius: AppTheme.radiusLg,
       border: Border.all(
-        color: message.success ? AppTheme.successText : const Color(0xFFFECDD3),
+        color: message.success ? AppTheme.successText : AppTheme.dangerText,
       ),
     ),
     child: Row(
@@ -821,7 +821,9 @@ class _UnloadPageState extends State<UnloadPage> {
               style: GoogleFonts.roboto(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: highlight ? AppTheme.gray500 : AppTheme.gray400,
+                color: highlight
+                    ? AppTheme.gray50.withValues(alpha: 0.65)
+                    : AppTheme.gray400,
               ),
             ),
             const SizedBox(height: 2),
@@ -832,7 +834,7 @@ class _UnloadPageState extends State<UnloadPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.gray900 : Colors.white,
+                color: highlight ? AppTheme.gray50 : Colors.white,
               ),
             ),
           ],
