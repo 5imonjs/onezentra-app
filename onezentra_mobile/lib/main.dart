@@ -90,9 +90,11 @@ class _OneZentraAppState extends State<OneZentraApp>
           darkTheme: AppTheme.dark,
           // Pinned to the dark aurora theme. The app is a dark-first design
           // matching the web console; leaving this on the default
-          // ThemeMode.system made the OS preference swap in AppTheme.dark
-          // while pages kept painting hardcoded light colours.
-          themeMode: ThemeMode.light,
+          // ThemeMode.system made the OS preference swap themes while pages
+          // kept painting hardcoded dark colours. ThemeMode.light is never
+          // correct here — the login card and every Material surface would
+          // go light while the pages stay dark (guarded by theme_guard_test).
+          themeMode: ThemeMode.dark,
           routerConfig: widget.router,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(

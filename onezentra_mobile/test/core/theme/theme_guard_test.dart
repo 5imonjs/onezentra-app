@@ -23,6 +23,16 @@ void main() {
   }
 
   group('disiplin tema gelap', () {
+    test('aplikasi dikunci ke tema gelap global', () {
+      // Seluruh layar (termasuk login) harus memakai tema yang sama.
+      // ThemeMode.light/system membuat kartu login dan permukaan Material
+      // menjadi terang sementara halaman mengecat gelap.
+      var main = File('lib/main.dart').readAsStringSync();
+      expect(main, contains('themeMode: ThemeMode.dark'));
+      expect(main, isNot(contains('themeMode: ThemeMode.light')));
+      expect(main, isNot(contains('themeMode: ThemeMode.system')));
+    });
+
     test('tanpa pastel terang pembunuh di permukaan gelap', () {
       // 0xFFFFF1F2/0xFFFECDD3 = rose terang (banner gagal tak terbaca),
       // 0xFF1D4ED8 = biru gelap (catatan dialog tak terbaca).
