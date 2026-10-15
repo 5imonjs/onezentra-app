@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { rencanaKirim, npn, depo, getErrorMessage } from '@/lib/api';
+import { rencanaKirim, npn, depo, depotSettings, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import { type RencanaKirimData } from '@/lib/suratJalanPdf';
 import SearchInput from '@/components/SearchInput';
@@ -515,7 +515,7 @@ export default function RencanaKirimPage() {
   // Baseline isi form saat mode edit dibuka — deteksi "kotor" diukur dari sini, bukan form kosong.
   const [editSnapshot, setEditSnapshot] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
-  const { hasPermission } = useAuthStore();
+  const { hasPermission, user } = useAuthStore();
 
   const loadItems = useCallback(async (silent = false) => {
     const reqId = ++reqIdRef.current;
@@ -588,6 +588,21 @@ export default function RencanaKirimPage() {
         destination_name: nama,
       };
     });
+    // Alamat tujuan terisi otomatis dari setting depo tujuan — user tetap
+    // bisa mengubah manual setelahnya. Gagal fetch = tetap manual.
+    const matched = depoList.find(d => d.nama_depo.trim().toLowerCase() === nama.trim().toLowerCase());
+    if (matched?.kode_depo) {
+      depotSettings.get(matched.kode_depo)
+        .then(res => {
+          const s = res.data?.data ?? {};
+          setCreateForm(prev => ({
+            ...prev,
+            destination_name: s.nama_tujuan?.trim() ? s.nama_tujuan : prev.destination_name,
+            destination_address: s.alamat_tujuan ?? prev.destination_address ?? '',
+          }));
+        })
+        .catch(() => { /* setting depo belum ada — isi manual */ });
+    }
   };
 
   const clearNamaDepo = () => {
@@ -643,6 +658,23 @@ export default function RencanaKirimPage() {
     setTypingItems(new Set());
     setCurrentStep(1);
     setShowCreate(true);
+    // Asal pengirim terisi otomatis dari setting depo milik planner yang
+    // login — hanya mengisi kolom yang masih kosong agar tidak menimpa
+    // ketikan yang sudah ada. Gagal fetch = tetap manual seperti dulu.
+    const ownDepo = user?.kode_depo?.trim();
+    if (ownDepo) {
+      depotSettings.get(ownDepo)
+        .then(res => {
+          const s = res.data?.data ?? {};
+          setCreateForm(prev => ({
+            ...prev,
+            shipper_name: prev.shipper_name?.trim() ? prev.shipper_name : (s.nama_pengirim ?? prev.shipper_name ?? ''),
+            shipper_address: prev.shipper_address?.trim() ? prev.shipper_address : (s.alamat_pengirim ?? prev.shipper_address ?? ''),
+            shipper_phone: prev.shipper_phone?.trim() ? prev.shipper_phone : (s.telepon_pengirim ?? prev.shipper_phone ?? ''),
+          }));
+        })
+        .catch(() => { /* setting depo belum ada — isi manual */ });
+    }
   };
 
   const handleDateClick = (date: string) => {
@@ -1571,6 +1603,7 @@ export default function RencanaKirimPage() {
                 <div>
                   <label htmlFor="f-shipper-addr" className="block text-xs font-medium text-gray-500 mb-1">Alamat Pengirim</label>
                   <textarea id="f-shipper-addr" value={createForm.shipper_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_address: e.target.value }))} placeholder="cth: Jl. Raya Singkawang No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
+                  <p className="text-[10px] text-gray-400 mt-0.5">Terisi otomatis dari depo Anda — boleh diubah manual</p>
                 </div>
                 <div>
                   <label htmlFor="f-shipper-phone" className="block text-xs font-medium text-gray-500 mb-1">No. HP Pengirim</label>
@@ -1594,6 +1627,7 @@ export default function RencanaKirimPage() {
                 <div>
                   <label htmlFor="f-dest-addr" className="block text-xs font-medium text-gray-500 mb-1">Alamat Tujuan</label>
                   <textarea id="f-dest-addr" value={createForm.destination_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, destination_address: e.target.value }))} placeholder="cth: Jl. Karang Intan No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
+                  <p className="text-[10px] text-gray-400 mt-0.5">Terisi otomatis dari depo tujuan — boleh diubah manual</p>
                   <p className="text-[10px] text-gray-400 mt-0.5">Alamat lengkap tujuan (akan tampil di Detail & PDF di bawah Singkawang)</p>
                 </div>
               </div>

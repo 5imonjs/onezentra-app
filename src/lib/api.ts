@@ -311,6 +311,12 @@ export const depo = {
   list: () => apiClient.get('/depo'),
 };
 
+export const depotSettings = {
+  list: () => apiClient.get('/depot-settings'),
+  get: (kodeDepo: string) => apiClient.get(`/depot-settings/${kodeDepo}`),
+  upsert: (kodeDepo: string, data: Record<string, unknown>) => apiClient.put(`/depot-settings/${kodeDepo}`, data),
+};
+
 export const retribusiRates = {
   list: () => apiClient.get('/retribusi-rates'),
   save: (data: Record<string, unknown>) => apiClient.post('/retribusi-rates', data),
