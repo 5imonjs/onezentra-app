@@ -263,43 +263,6 @@ export default function GatePage() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        {/* Header — reflektif, konsisten dengan pola desain modern */}
-        <header className="rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
-                <svg aria-hidden="true" className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold leading-tight">Check In Point</h1>
-                <p className="mt-0.5 text-ink-fg-muted">Scan PO / Nopol kedatangan — check-in inbound • auto status</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                Hari ini
-                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{stats?.hariIni ?? 0}</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                Terjadwal
-                <span className="rounded-md bg-blue-400 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-blue-950">{stats?.terjadwal ?? 0}</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Selesai
-                <span className="rounded-md bg-emerald-400 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-emerald-950">{stats?.selesai ?? 0}</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
-                <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
-                Total
-                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{stats?.total ?? 0}</span>
-              </span>
-            </div>
-          </div>
-        </header>
-
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
           {/* Quick Scan — panel pencarian + aksi gate */}
           <div className="lg:col-span-2">

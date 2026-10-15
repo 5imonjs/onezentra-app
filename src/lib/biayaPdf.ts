@@ -1004,7 +1004,7 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
   });
   const thlY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? thlTop + 50;
   const photoTop = thlY + 1;
-  doc.rect(pageMargin, photoTop, pageWidth, 25);
+  doc.rect(pageMargin, photoTop, pageWidth, 30);
   const photos = data.details.flatMap((detail) => detail.biaya_thl_detail?.photos || []).slice(0, 10);
   let photoX = pageMargin + 2;
   for (const photo of photos) {
