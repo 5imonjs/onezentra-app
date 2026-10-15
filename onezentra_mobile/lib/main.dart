@@ -7,6 +7,7 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
+import 'package:onezentra_mobile/features/gate/pages/gate_history_page.dart';
 import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
 import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
 import 'package:onezentra_mobile/features/home/pages/home_page.dart';
@@ -137,6 +138,12 @@ GoRouter buildRouter(
       path: '/gate',
       name: 'gate',
       builder: (context, state) => GatePage(repository: gateRepository),
+    ),
+    GoRoute(
+      path: '/gate/riwayat',
+      name: 'gate_riwayat',
+      builder: (context, state) =>
+          GateHistoryPage(repository: gateRepository),
     ),
     GoRoute(
       path: '/validasi-sj',

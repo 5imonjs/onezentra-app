@@ -38,7 +38,6 @@ class _GatePageState extends State<GatePage> {
     repository: widget.repository,
   );
   final _scanController = TextEditingController();
-  final _searchController = TextEditingController();
 
   /// PO of the last successful Gate IN in this visit — offered as a
   /// one-tap handoff into Validasi SJ so the operator never retypes it.
@@ -49,21 +48,24 @@ class _GatePageState extends State<GatePage> {
     super.initState();
     // Deferred so `context.read` runs after the first frame, when the
     // inherited AuthProvider is guaranteed to be available.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) {
         return;
       }
       var canView =
           context.read<AuthProvider>().user?.hasPermission('gate.view') ??
           false;
-      _provider.bootstrap(canView: canView);
+      // Halaman ini hanya Scan: cukup statistik header, riwayat dimuat di
+      // halaman Riwayat Gate tersendiri.
+      if (canView) {
+        await _provider.loadStats();
+      }
     });
   }
 
   @override
   void dispose() {
     _scanController.dispose();
-    _searchController.dispose();
     _provider.dispose();
     super.dispose();
   }
@@ -88,6 +90,11 @@ class _GatePageState extends State<GatePage> {
         title: const Text('Check In Point'),
         elevation: 0,
         actions: [
+          IconButton(
+            onPressed: canView ? () => context.push('/gate/riwayat') : null,
+            tooltip: 'Riwayat Gate',
+            icon: const Icon(Icons.history_rounded),
+          ),
           IconButton(
             onPressed: canView && !gate.isLoading ? () => gate.refresh() : null,
             tooltip: 'Muat ulang',
@@ -115,7 +122,7 @@ class _GatePageState extends State<GatePage> {
                         canVerify: canVerify,
                       ),
                       const SizedBox(height: AppTheme.space4),
-                      _buildHistory(gate),
+                      _buildHistoryTeaser(context),
                       const SizedBox(height: AppTheme.space8),
                     ],
                   ),
@@ -822,239 +829,15 @@ class _GatePageState extends State<GatePage> {
     ),
   );
 
-  // ---------------------------------------------------------------------
-  // History
-  // ---------------------------------------------------------------------
-
-  Widget _buildHistory(GateProvider gate) => AppCard(
-    padding: const EdgeInsets.all(AppTheme.space5),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            _iconBox(
-              36,
-              AppTheme.primary50,
-              Icons.history_rounded,
-              iconColor: AppTheme.primary600,
-            ),
-            const SizedBox(width: AppTheme.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Riwayat Gate',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${gate.total} transaksi tercatat',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      color: AppTheme.gray400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space4),
-        AppTextField(
-          controller: _searchController,
-          hint: 'Cari nopol / PO / driver...',
-          prefixIcon: Icons.search_rounded,
-          onChanged: gate.setSearch,
-        ),
-        const SizedBox(height: AppTheme.space3),
-        ..._historyBody(gate),
-      ],
-    ),
-  );
-
-  List<Widget> _historyBody(GateProvider gate) {
-    var listError = gate.listError;
-    if (listError != null) {
-      return [
-        SizedBox(
-          width: double.infinity,
-          child: AppErrorDisplay(message: listError, onRetry: gate.loadItems),
-        ),
-      ];
-    }
-
-    if (gate.isLoading && gate.items.isEmpty) {
-      return [
-        Column(
-          children: List.generate(
-            3,
-            (_) => Container(
-              height: 64,
-              margin: const EdgeInsets.only(bottom: AppTheme.space3),
-              decoration: const BoxDecoration(
-                color: AppTheme.gray100,
-                borderRadius: AppTheme.radiusLg,
-              ),
-            ),
-          ),
-        ),
-      ];
-    }
-
-    if (gate.items.isEmpty) {
-      return [
-        SizedBox(
-          width: double.infinity,
-          child: AppEmptyState(
-            icon: Icons.door_front_door_rounded,
-            title: gate.search.isNotEmpty
-                ? 'Tidak ada hasil'
-                : 'Belum ada transaksi gate',
-            subtitle: gate.search.isNotEmpty
-                ? 'Cari dengan kata kunci lain.'
-                : 'Transaksi muncul setelah Gate IN pertama tercatat.',
-          ),
-        ),
-      ];
-    }
-
-    var items = gate.items;
-    return [
-      Column(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            _historyTile(items[i]),
-            if (i != items.length - 1)
-              const Divider(height: 1, color: AppTheme.gray100, indent: 46),
-          ],
-        ],
-      ),
-      if (gate.lastPage > 1)
-        Padding(
-          padding: const EdgeInsets.only(top: AppTheme.space4),
-          child: Column(
-            children: [
-              const Divider(height: 1, color: AppTheme.gray100),
-              const SizedBox(height: AppTheme.space3),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppSecondaryButton(
-                      text: 'Sebelumnya',
-                      height: 42,
-                      isLoading: gate.isLoading,
-                      onPressed: gate.canGoBack && !gate.isLoading
-                          ? () => gate.goToPage(gate.currentPage - 1)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.space2),
-                  Text(
-                    'Halaman ${gate.currentPage}/${gate.lastPage}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11.5,
-                      color: AppTheme.gray500,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.space2),
-                  Expanded(
-                    child: AppSecondaryButton(
-                      text: 'Selanjutnya',
-                      height: 42,
-                      isLoading: gate.isLoading,
-                      onPressed: gate.canGoForward && !gate.isLoading
-                          ? () => gate.goToPage(gate.currentPage + 1)
-                          : null,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-    ];
-  }
-
-  Widget _historyTile(GateTransaction item) {
-    var rk = item.rencanaKirim;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _iconBox(
-            36,
-            AppTheme.gray100,
-            Icons.local_shipping_rounded,
-            iconColor: AppTheme.gray500,
-          ),
-          const SizedBox(width: AppTheme.space3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.poTransporter ?? rk?.poTransporter ?? '-',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.robotoMono(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.foreground,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.space2),
-                    AppBadge(text: item.gateType),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${item.nopol ?? '-'} • ${item.driverName ?? '-'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    color: AppTheme.gray500,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _formatDateTime(item.scanTime),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.robotoMono(
-                          fontSize: 11,
-                          color: AppTheme.gray400,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.space2),
-                    AppBadge(
-                      text: GateStatus.label(item.documentStatus),
-                      variant: _statusVariant(item.documentStatus),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  static AppBadgeVariant _statusVariant(String status) => switch (status) {
+    'SCHEDULED' => AppBadgeVariant.info,
+    'CHECKED_IN' => AppBadgeVariant.primary,
+    'VERIFIED' => AppBadgeVariant.success,
+    'IN_PROGRESS' => AppBadgeVariant.warning,
+    'COMPLETED' => AppBadgeVariant.success,
+    'CANCELLED' => AppBadgeVariant.danger,
+    _ => AppBadgeVariant.gray,
+  };
 
   Widget _iconBox(
     double size,
@@ -1071,24 +854,46 @@ class _GatePageState extends State<GatePage> {
     child: Icon(icon, size: size * 0.5, color: iconColor),
   );
 
-  static String _formatDateTime(DateTime? time) {
-    if (time == null) {
-      return '—';
-    }
-    String two(int value) => value.toString().padLeft(2, '0');
-    return '${two(time.day)}/${two(time.month)}/${time.year} '
-        '${two(time.hour)}:${two(time.minute)}:${two(time.second)}';
-  }
-
-  static AppBadgeVariant _statusVariant(String status) => switch (status) {
-    'SCHEDULED' => AppBadgeVariant.info,
-    'CHECKED_IN' => AppBadgeVariant.primary,
-    'VERIFIED' => AppBadgeVariant.success,
-    'IN_PROGRESS' => AppBadgeVariant.warning,
-    'COMPLETED' => AppBadgeVariant.success,
-    'CANCELLED' => AppBadgeVariant.danger,
-    _ => AppBadgeVariant.gray,
-  };
+  /// Pintu masuk ke halaman Riwayat Gate tersendiri.
+  Widget _buildHistoryTeaser(BuildContext context) => AppCard(
+    padding: const EdgeInsets.all(AppTheme.space5),
+    onTap: () => context.push('/gate/riwayat'),
+    child: Row(
+      children: [
+        _iconBox(
+          36,
+          AppTheme.primary50,
+          Icons.history_rounded,
+          iconColor: AppTheme.primary600,
+        ),
+        const SizedBox(width: AppTheme.space3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Riwayat Gate',
+                style: GoogleFonts.roboto(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.foreground,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Cari + telusuri semua transaksi',
+                style: GoogleFonts.roboto(
+                  fontSize: 11,
+                  color: AppTheme.gray400,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Icon(Icons.chevron_right_rounded, color: AppTheme.gray400),
+      ],
+    ),
+  );
 }
 
 /// Small counter chip in the dark header.

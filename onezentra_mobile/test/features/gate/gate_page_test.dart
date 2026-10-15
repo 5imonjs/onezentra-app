@@ -250,7 +250,7 @@ void main() {
     expect(repository.statsCalls, 0);
   });
 
-  testWidgets('menampilkan statistik dan riwayat gate', (tester) async {
+  testWidgets('menampilkan statistik tanpa memuat riwayat', (tester) async {
     var repository = _FakeGateRepository(
       transactions: [
         GateTransaction(
@@ -281,14 +281,36 @@ void main() {
 
     await _pumpGatePage(tester, auth, repository);
 
+    // Halaman Check In Point kini hanya Scan: statistik + teaser riwayat,
+    // tanpa daftar transaksi (pindah ke /gate/riwayat).
     expect(find.text('Check In Point'), findsWidgets);
     expect(find.text('Quick Scan'), findsOneWidget);
     expect(find.text('Hari ini'), findsOneWidget);
-    expect(find.text('1 transaksi tercatat'), findsOneWidget);
-    expect(find.text('PO-TEST-001'), findsWidgets);
-    expect(find.text('INBOUND'), findsOneWidget);
-    expect(repository.listCalls, greaterThan(0));
+    expect(find.text('Riwayat Gate'), findsOneWidget);
+    expect(find.text('PO-TEST-001'), findsNothing);
+    expect(find.text('1 transaksi tercatat'), findsNothing);
     expect(repository.statsCalls, greaterThan(0));
+    expect(repository.listCalls, 0);
+  });
+
+  testWidgets('tombol riwayat membuka halaman riwayat terpisah', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository();
+    var auth = await _loginAuth();
+    var router = buildRouter(auth, gateRepository: repository);
+
+    await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
+    await tester.pumpAndSettle();
+
+    unawaited(router.push('/gate'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Riwayat Gate'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pencarian'), findsOneWidget);
+    expect(find.text('Transaksi'), findsOneWidget);
   });
 
   testWidgets('lookup → Gate IN → konfirmasi → transaksi tercatat', (
