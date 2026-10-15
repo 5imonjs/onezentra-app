@@ -639,7 +639,9 @@ class AppTheme {
     ),
   );
 
-  // Dark Theme (for future use)
+  // Dark Theme — koheren dengan aplikasi dark-first: permukaan gelap,
+  // teks terang. (Sebelumnya permukaan memakai nilai terang sehingga
+  // teks token terang tenggelam di dialog/sheet/appbar bawaan tema.)
   static ThemeData get dark => light.copyWith(
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
@@ -649,16 +651,16 @@ class AppTheme {
       onSecondary: gray900,
       tertiary: primary300,
       onTertiary: gray900,
-      surface: gray800,
-      onSurface: gray50,
-      surfaceContainerHighest: gray700,
+      surface: surfaceCard,
+      onSurface: foreground,
+      surfaceContainerHighest: surfaceHover,
       error: danger,
       onError: Colors.white,
-      outline: gray600,
-      outlineVariant: gray700,
+      outline: gray300,
+      outlineVariant: gray200,
     ),
-    scaffoldBackgroundColor: gray900,
-    canvasColor: gray800,
+    scaffoldBackgroundColor: background,
+    canvasColor: surfaceCard,
     // Overlays stay white and translucent so a focused dark input keeps its
     // dark fill and the white typed text remains readable.
     splashColor: Colors.white.withValues(alpha: 0.14),
@@ -666,22 +668,22 @@ class AppTheme {
     hoverColor: Colors.white.withValues(alpha: 0.06),
     focusColor: Colors.white.withValues(alpha: 0.10),
     cardTheme: cardTheme.copyWith(
-      color: gray800,
+      color: surfaceCard,
       shape: const RoundedRectangleBorder(
         borderRadius: radius2xl,
-        side: BorderSide(color: gray700),
+        side: BorderSide(color: gray300),
       ),
     ),
     inputDecorationTheme: inputDecorationTheme.copyWith(
       filled: true,
-      fillColor: gray800,
+      fillColor: surfaceCard,
       border: const OutlineInputBorder(
         borderRadius: radiusXl,
-        borderSide: BorderSide(color: gray700),
+        borderSide: BorderSide(color: gray300),
       ),
       enabledBorder: const OutlineInputBorder(
         borderRadius: radiusXl,
-        borderSide: BorderSide(color: gray700),
+        borderSide: BorderSide(color: gray300),
       ),
       focusedBorder: const OutlineInputBorder(
         borderRadius: radiusXl,
@@ -689,23 +691,23 @@ class AppTheme {
       ),
     ),
     bottomSheetTheme: bottomSheetTheme.copyWith(
-      backgroundColor: gray800,
-      modalBackgroundColor: gray800,
+      backgroundColor: surfaceCard,
+      modalBackgroundColor: surfaceCard,
     ),
-    dialogTheme: dialogTheme.copyWith(backgroundColor: gray800),
+    dialogTheme: dialogTheme.copyWith(backgroundColor: surfaceCard),
     appBarTheme: appBarTheme.copyWith(
-      backgroundColor: gray800,
-      foregroundColor: gray50,
+      backgroundColor: surface,
+      foregroundColor: foreground,
       titleTextStyle: textTheme.headlineMedium?.copyWith(
         fontWeight: FontWeight.w700,
-        color: gray50,
+        color: foreground,
       ),
-      iconTheme: const IconThemeData(color: gray50, size: 24),
-      actionsIconTheme: const IconThemeData(color: gray50, size: 24),
+      iconTheme: const IconThemeData(color: foreground, size: 24),
+      actionsIconTheme: const IconThemeData(color: foreground, size: 24),
     ),
     snackBarTheme: snackBarTheme.copyWith(
-      backgroundColor: gray700,
-      contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
+      backgroundColor: surfaceCard,
+      contentTextStyle: textTheme.bodyMedium?.copyWith(color: foreground),
     ),
   );
 }

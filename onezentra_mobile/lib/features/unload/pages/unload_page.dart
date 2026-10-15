@@ -688,6 +688,7 @@ class _UnloadPageState extends State<UnloadPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
         title: Text(
           'Selesaikan bongkar?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -731,6 +732,7 @@ class _UnloadPageState extends State<UnloadPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
         title: Text(
           'Batalkan bongkar?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -971,9 +973,10 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
   Widget build(BuildContext context) {
     var line = widget.line;
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: AppTheme.gray300),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.space5,
@@ -995,7 +998,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
                     width: 40,
                     height: 4,
                     decoration: const BoxDecoration(
-                      color: AppTheme.gray200,
+                      color: AppTheme.gray300,
                       borderRadius: AppTheme.radiusFull,
                     ),
                   ),
@@ -1115,10 +1118,10 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
           vertical: AppTheme.space2,
         ),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary600 : AppTheme.gray100,
+          color: selected ? AppTheme.primary600 : AppTheme.surfaceCard,
           borderRadius: AppTheme.radiusFull,
           border: Border.all(
-            color: selected ? AppTheme.primary600 : AppTheme.gray200,
+            color: selected ? AppTheme.primary600 : AppTheme.gray300,
           ),
         ),
         child: Text(
