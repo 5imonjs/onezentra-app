@@ -85,6 +85,8 @@ class _Body extends StatelessWidget {
             const SizedBox(height: 16),
             _PrinterSelector(printer: printer),
             const SizedBox(height: 12),
+            _PairingSection(printer: printer),
+            const SizedBox(height: 12),
             _WidthSelector(printer: printer),
             _Toggle(
               label: 'Cetak barcode (bisa discan mesin)',
@@ -177,6 +179,80 @@ class _PrinterSelector extends StatelessWidget {
           printer.select(match.first);
         }
       },
+    );
+  }
+}
+
+/// Pairing perangkat baru dari dalam aplikasi: discovery perangkat sekitar
+/// + tombol Pair per baris. Berhasil pairing → daftar bonded dimuat ulang
+/// sehingga printer langsung bisa dipilih tanpa buka Pengaturan HP.
+class _PairingSection extends StatelessWidget {
+  const _PairingSection({required this.printer});
+
+  final LabelPrintProvider printer;
+
+  @override
+  Widget build(BuildContext context) {
+    var textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: printer.discovering
+              ? printer.stopDiscovery
+              : printer.startDiscovery,
+          icon: Icon(
+            printer.discovering
+                ? Icons.stop_rounded
+                : Icons.bluetooth_searching_rounded,
+          ),
+          label: Text(
+            printer.discovering ? 'Berhenti Mencari' : 'Pairing Perangkat Baru',
+          ),
+        ),
+        if (printer.discovering && printer.discovered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                const SizedBox(
+                  height: 14,
+                  width: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Mencari printer di sekitar HP…',
+                    style: textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        for (var device in printer.discovered)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    device.displayName,
+                    style: textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.tonal(
+                  onPressed: printer.bonding
+                      ? null
+                      : () => printer.bond(device),
+                  child: const Text('Pair'),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

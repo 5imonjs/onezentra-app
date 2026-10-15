@@ -15,12 +15,35 @@ class _FakeLabelPrinter implements LabelPrinter {
   final List<String> printed = [];
   DiscoveredPrinter? lastPrinter;
 
+  Stream<DiscoveredPrinter> Function()? discoverFn;
+  Future<bool> Function(DiscoveredPrinter)? bondFn;
+  var cancelCalls = 0;
+  final List<DiscoveredPrinter> bondCalls = [];
+
   @override
   Future<List<DiscoveredPrinter>> scan() async {
     if (error != null) {
       throw error!;
     }
     return available;
+  }
+
+  @override
+  Stream<DiscoveredPrinter> discover() =>
+      discoverFn != null ? discoverFn!() : Stream.fromIterable(available);
+
+  @override
+  Future<bool> bond(DiscoveredPrinter printer) async {
+    bondCalls.add(printer);
+    if (bondFn != null) {
+      return bondFn!(printer);
+    }
+    return true;
+  }
+
+  @override
+  Future<void> cancelDiscovery() async {
+    cancelCalls++;
   }
 
   @override
@@ -204,6 +227,64 @@ void main() {
 
       expect(provider.available, hasLength(2));
       expect(provider.error, isNull);
+    });
+
+    test('discovery mengisi perangkat tanpa duplikat lalu berhenti', () async {
+      var fake = _FakeLabelPrinter();
+      fake.discoverFn = () => Stream.fromIterable([printerA, printerA, printerB]);
+      var provider = LabelPrintProvider(
+        printer: fake,
+        requestPermissions: () async => true,
+      );
+      await provider.startDiscovery();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(provider.discovering, isFalse);
+      expect(
+        provider.discovered.map((d) => d.address),
+        ['AA:BB:CC:DD:EE:01', 'AA:BB:CC:DD:EE:02'],
+      );
+    });
+
+    test('izin ditolak: discovery tidak dimulai', () async {
+      var fake = _FakeLabelPrinter();
+      var provider = LabelPrintProvider(
+        printer: fake,
+        requestPermissions: () async => false,
+      );
+      await provider.startDiscovery();
+
+      expect(provider.discovered, isEmpty);
+      expect(provider.discovering, isFalse);
+      expect(provider.error, contains('Izin Bluetooth ditolak'));
+    });
+
+    test('bond berhasil: daftar bonded dimuat ulang + pesan terhubung', () async {
+      var fake = _FakeLabelPrinter(available: [printerA]);
+      var provider = LabelPrintProvider(
+        printer: fake,
+        requestPermissions: () async => true,
+      );
+      var ok = await provider.bond(printerB);
+
+      expect(ok, isTrue);
+      expect(fake.bondCalls, [printerB]);
+      expect(provider.available, [printerA]);
+      expect(provider.success, contains('Terhubung'));
+    });
+
+    test('bond gagal: pesan jelas, bonded tidak berubah', () async {
+      var fake = _FakeLabelPrinter(available: [printerA]);
+      fake.bondFn = (_) async => false;
+      var provider = LabelPrintProvider(
+        printer: fake,
+        requestPermissions: () async => true,
+      );
+      var ok = await provider.bond(printerB);
+
+      expect(ok, isFalse);
+      expect(provider.success, isNull);
+      expect(provider.error, contains('gagal'));
     });
   });
 }

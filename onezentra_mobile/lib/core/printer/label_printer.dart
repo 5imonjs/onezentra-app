@@ -63,6 +63,17 @@ abstract class LabelPrinter {
   /// Pencarian printer dari radio bluetooth handphone.
   Future<List<DiscoveredPrinter>> scan();
 
+  /// Discovery perangkat di sekitar (belum tentu sudah di-pair).
+  /// Dipakai alur pairing dalam aplikasi.
+  Stream<DiscoveredPrinter> discover();
+
+  /// Pairing ke perangkat hasil discovery. Dialog PIN sistem bisa muncul;
+  /// mengembalikan true bila perangkat berhasil bonded.
+  Future<bool> bond(DiscoveredPrinter printer);
+
+  /// Hentikan discovery yang sedang berjalan. Aman dipanggil saat idle.
+  Future<void> cancelDiscovery();
+
   /// Kirim byte ESC/POS label ke printer yang dipilih.
   ///
   /// Menerima [List<int]>, bukan String, karena barcode Code39 harus dikirim
@@ -110,6 +121,34 @@ class BluetoothLabelPrinter implements LabelPrinter {
       );
     }
     return found;
+  }
+
+  @override
+  Stream<DiscoveredPrinter> discover() => _serial.startDiscovery().map(
+    (result) => DiscoveredPrinter(
+      address: result.device.address,
+      name: result.device.name ?? '',
+    ),
+  );
+
+  @override
+  Future<bool> bond(DiscoveredPrinter printer) async {
+    try {
+      return await _serial.bondDeviceAtAddress(printer.address) ?? false;
+    } on PlatformException {
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> cancelDiscovery() async {
+    try {
+      await _serial.cancelDiscovery();
+    } catch (_) {
+      // Idle / radio mati: tidak ada yang perlu dihentikan.
+    }
   }
 
   @override

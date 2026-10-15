@@ -27,12 +27,21 @@ class LabelPrintProvider extends ChangeNotifier {
   String? _error;
   String? _success;
 
+  /// Discovery perangkat baru (belum tentu bonded) untuk alur pairing.
+  List<DiscoveredPrinter> _discovered = const [];
+  bool _discovering = false;
+  String? _bondingAddress;
+  StreamSubscription<DiscoveredPrinter>? _discoverySub;
+
   List<DiscoveredPrinter> get available => _available;
   DiscoveredPrinter? get selected => _selected;
   bool get scanning => _scanning;
   bool get printing => _printing;
   String? get error => _error;
   String? get success => _success;
+  List<DiscoveredPrinter> get discovered => _discovered;
+  bool get discovering => _discovering;
+  bool get bonding => _bondingAddress != null;
 
   /// Width printer. Bawaan 58 mm — paling umum di gudang.
   LabelWidth _width = LabelWidth.w58;
@@ -131,6 +140,99 @@ class LabelPrintProvider extends ChangeNotifier {
     }
   }
 
+  /// Discovery perangkat baru untuk pairing dalam aplikasi.
+  ///
+  /// Hasil diakumulasi (deduplikat per address) sampai dihentikan. Perangkat
+  /// yang sudah bonded tetap muncul di daftar bonded lewat [scan].
+  Future<void> startDiscovery() async {
+    if (_discovering) {
+      return;
+    }
+    _discovering = true;
+    _discovered = const [];
+    _error = null;
+    notifyListeners();
+
+    try {
+      if (!await _requestPermissions()) {
+        _error =
+            'Izin Bluetooth ditolak. Aktifkan di Pengaturan HP > Aplikasi > '
+            'ONEZENTRA > Izin, lalu cari lagi.';
+        _notifyDiscoveryDone();
+        return;
+      }
+      await _discoverySub?.cancel();
+      _discoverySub = _printer
+          .discover()
+          .listen(
+            (device) {
+              if (_discovered.any((d) => d.address == device.address)) {
+                return;
+              }
+              _discovered = [..._discovered, device];
+              notifyListeners();
+            },
+            onError: (_) {
+              _error = 'Pencarian terhenti. Coba lagi.';
+              _notifyDiscoveryDone();
+            },
+            onDone: _notifyDiscoveryDone,
+          );
+    } catch (_) {
+      _error = 'Pencarian gagal dimulai. Pastikan Bluetooth menyala.';
+      _notifyDiscoveryDone();
+    }
+  }
+
+  void _notifyDiscoveryDone() {
+    _discovering = false;
+    notifyListeners();
+  }
+
+  /// Hentikan discovery (mis. saat panel ditutup).
+  Future<void> stopDiscovery() async {
+    await _discoverySub?.cancel();
+    _discoverySub = null;
+    try {
+      await _printer.cancelDiscovery();
+    } catch (_) {
+      // Abaikan: radio mungkin sudah idle.
+    }
+    if (_discovering) {
+      _discovering = false;
+      notifyListeners();
+    }
+  }
+
+  /// Pairing ke perangkat hasil discovery. Berhasil → daftar bonded
+  /// dimuat ulang supaya printer langsung bisa dipilih.
+  Future<bool> bond(DiscoveredPrinter printer) async {
+    if (_bondingAddress != null) {
+      return false;
+    }
+    _bondingAddress = printer.address;
+    _error = null;
+    _success = null;
+    notifyListeners();
+    try {
+      var ok = await _printer.bond(printer);
+      if (!ok) {
+        _error =
+            'Pairing ${printer.displayName} gagal / dibatalkan. Coba lagi.';
+        return false;
+      }
+      await scan();
+      _success = 'Terhubung: ${printer.displayName}.';
+      return true;
+    } catch (_) {
+      _error = 'Pairing ${printer.displayName} gagal. Coba lagi.';
+      return false;
+    } finally {
+      _bondingAddress = null;
+      notifyListeners();
+    }
+  }
+
   /// Cetak satu label batch.
   ///
   /// Mengembalikan true kalau berhasil, supaya pemanggil tahu tidak perlu
@@ -173,6 +275,8 @@ class LabelPrintProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _discoverySub?.cancel();
+    _discoverySub = null;
     var printer = _printer;
     if (printer is BluetoothLabelPrinter) {
       unawaited(printer.dispose());
