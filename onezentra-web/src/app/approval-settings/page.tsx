@@ -21,6 +21,7 @@ export default function ApprovalSettingsPage() {
   const { user, hasPermission } = useAuthStore();
   const [module, setModule] = useState<'biaya_thl' | 'biaya_retribusi'>('biaya_thl');
   const [approvers, setApprovers] = useState<Approver[]>([]);
+  const [assignments, setAssignments] = useState<Record<string, Assignment>>({});
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,6 +36,7 @@ export default function ApprovalSettingsPage() {
       const response = await approvalAssignments.get(selectedDepot || kodeDepo, module) as { data: { data: Record<string, Assignment>; users: Approver[]; depots?: Depot[] } };
       setApprovers(response.data.users);
       if (response.data.depots) setDepots(response.data.depots);
+      setAssignments(response.data.data || {});
       setSelected(Object.fromEntries(Object.entries(response.data.data).map(([level, assignment]) => [level, String(assignment.user.id)])));
     } catch {
       notifyGlobal('Gagal memuat pengaturan approval', 'error');
@@ -87,7 +89,7 @@ export default function ApprovalSettingsPage() {
                 { key: 'biaya_thl', label: 'Biaya THL' },
                 { key: 'biaya_retribusi', label: 'Biaya Retribusi' },
               ] as const).map((tab) => (
-                <button key={tab.key} role="tab" aria-selected={module === tab.key} onClick={() => { setModule(tab.key); setSelected({}); }} className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${module === tab.key ? 'bg-surface-card text-slate-900 shadow' : 'text-ink-fg-muted hover:text-ink-fg'}`}>
+                <button key={tab.key} role="tab" aria-selected={module === tab.key} onClick={() => { setModule(tab.key); setSelected({}); setAssignments({}); }} className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${module === tab.key ? 'bg-surface-card text-slate-900 shadow' : 'text-ink-fg-muted hover:text-ink-fg'}`}>
                   {tab.label}
                 </button>
               ))}
@@ -107,16 +109,39 @@ export default function ApprovalSettingsPage() {
                 {depots.map((depot) => <option key={depot.kode_depo} value={depot.kode_depo}>{depot.nama_depo || depot.kode_depo} ({depot.kode_depo})</option>)}
               </select>
             </label>
+            {(() => {
+              // Setting tersimpan bisa menunjuk user yang levelnya berubah /
+              // nonaktif sehingga tak masuk daftar dropdown — tampilkan
+              // peringatan, bukan kolom kosong yang terlihat seperti "berubah".
+              const stale = LEVELS.filter(({ key }) => {
+                const id = selected[key];
+                if (!id) return false;
+                return !approvers.some((a) => String(a.id) === id);
+              });
+              if (stale.length === 0) return null;
+              return (
+                <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                  Penetapan tersimpan menunjuk user yang sudah tidak valid ({stale.map(({ key }) => key).join(', ')}: level berubah / nonaktif). Pilih ulang lalu Simpan Pengaturan.
+                </div>
+              );
+            })()}
             {loading ? <div className="h-32 animate-pulse rounded-xl bg-slate-100" /> : LEVELS.map(({ key, title, description }) => {
               const matchingLevel = key.toLowerCase();
               const levelApprovers = approvers.filter((approver) => approver.level.toLowerCase() === matchingLevel);
+              // User tersimpan yang tak masuk filter tetap ditampilkan agar
+              // tidak terlihat kosong.
+              const savedId = selected[key] || '';
+              const savedUser = assignments[key]?.user;
+              const options = savedId && savedUser && !levelApprovers.some((a) => String(a.id) === savedId)
+                ? [...levelApprovers, { ...savedUser, full_name: `${savedUser.full_name} (level berubah/nonaktif)` }]
+                : levelApprovers;
 
               return (
               <label key={key} className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
                 <span><span className="block text-sm font-semibold text-slate-800">{title}</span><span className="text-xs text-slate-500">{description} ({key})</span></span>
                 <select value={selected[key] || ''} onChange={(event) => setSelected((current) => ({ ...current, [key]: event.target.value }))} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
                   <option value="">Pilih user aktif</option>
-                  {levelApprovers.map((approver) => <option key={approver.id} value={approver.id}>{approver.full_name} - {approver.email}</option>)}
+                  {options.map((approver) => <option key={approver.id} value={approver.id}>{approver.full_name} - {approver.email}</option>)}
                 </select>
               </label>
               );
