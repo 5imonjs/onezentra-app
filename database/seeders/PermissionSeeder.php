@@ -71,6 +71,9 @@ class PermissionSeeder extends Seeder
             ['name' => 'Roles Template', 'slug' => 'roles.template', 'menu_group' => 'Sistem', 'icon' => 'file-template', 'route' => 'roles.template', 'sort_order' => 413],
             ['name' => 'Email Setting View', 'slug' => 'emails.view', 'menu_group' => 'Sistem', 'icon' => 'mail', 'route' => 'email.index', 'sort_order' => 420],
             ['name' => 'Email Setting Edit', 'slug' => 'emails.edit', 'menu_group' => 'Sistem', 'icon' => 'mail-edit', 'route' => 'email.update', 'sort_order' => 430],
+            // Reset Data Operasional hanya untuk admin_master: tidak masuk
+            // peta role lain di bawah, dan controller meng-gate ulang level.
+            ['name' => 'Reset Data Operasional', 'slug' => 'database.purge', 'menu_group' => 'Sistem', 'icon' => 'trash', 'route' => 'admin.database', 'sort_order' => 435],
             ['name' => 'Laporan View', 'slug' => 'reports.view', 'menu_group' => 'Laporan', 'icon' => 'chart', 'route' => 'reports.index', 'sort_order' => 440],
             ['name' => 'Laporan Biaya THL View', 'slug' => 'reports.biaya_thl', 'menu_group' => 'Laporan', 'icon' => 'coins', 'route' => 'reports.biaya_thl', 'sort_order' => 441],
             ['name' => 'Laporan Biaya Retribusi View', 'slug' => 'reports.biaya_retribusi', 'menu_group' => 'Laporan', 'icon' => 'file-dollar', 'route' => 'reports.biaya_retribusi', 'sort_order' => 442],

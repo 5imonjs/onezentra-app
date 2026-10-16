@@ -638,4 +638,9 @@ export const approvalAssignments = {
   save: (data: { kode_depo: string; module?: 'biaya_thl' | 'biaya_retribusi'; assignments: { approval_level: string; user_id: number }[] }) => apiClient.post('/approval-assignments', data),
 };
 
+export const adminDatabase = {
+  summary: () => apiClient.get('/admin/database/summary'),
+  purge: (data: { modules: string[]; confirm: string; dry_run?: boolean }) => apiClient.post('/admin/database/purge', data),
+};
+
 export default apiClient;

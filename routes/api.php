@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ApprovalAssignmentController;
-use App\Http\Controllers\Api\V1\AuthController;
-use App\Http\Controllers\Api\V1\BatchController;
+use App\Http\Controllers\Api\V1\AdminDatabaseController;
+use App\Http\Controllers\Api\V1\AuthController;use App\Http\Controllers\Api\V1\BatchController;
 use App\Http\Controllers\Api\V1\BiayaConfigController;
 use App\Http\Controllers\Api\V1\BiayaRetribusiController;
 use App\Http\Controllers\Api\V1\BiayaThlController;
@@ -341,6 +341,14 @@ Route::prefix('v1')->group(function () {
         Route::get('/options', [EmailRecipientController::class, 'options'])->middleware('permission:emails.view');
         Route::put('/{emailRecipient}', [EmailRecipientController::class, 'update'])->middleware('permission:emails.edit');
         Route::delete('/{emailRecipient}', [EmailRecipientController::class, 'destroy'])->middleware('permission:emails.edit');
+    });
+
+    // Reset data operasional per modul — KHUSUS admin_master. Middleware
+    // permission menyaring di tepi; controller meng-gate ulang level agar
+    // grant manual slug ini ke role lain lewat UI tetap tidak bisa purge.
+    Route::prefix('admin/database')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
+        Route::get('/summary', [AdminDatabaseController::class, 'summary'])->middleware('permission:database.purge');
+        Route::post('/purge', [AdminDatabaseController::class, 'purge'])->middleware(['permission:database.purge', 'throttle:10,1,heavy-write']);
     });
 
     Route::prefix('sj-validations')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
