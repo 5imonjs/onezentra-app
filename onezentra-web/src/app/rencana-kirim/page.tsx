@@ -1611,7 +1611,6 @@ export default function RencanaKirimPage() {
                 <div>
                   <label htmlFor="f-shipper-addr" className="block text-xs font-medium text-gray-500 mb-1">Alamat Pengirim</label>
                   <textarea id="f-shipper-addr" value={createForm.shipper_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_address: e.target.value }))} placeholder="cth: Jl. Raya Singkawang No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
-                  <p className="text-[10px] text-gray-400 mt-0.5">Terisi otomatis dari depo Anda — boleh diubah manual</p>
                 </div>
                 <div>
                   <label htmlFor="f-shipper-phone" className="block text-xs font-medium text-gray-500 mb-1">No. HP Pengirim</label>
