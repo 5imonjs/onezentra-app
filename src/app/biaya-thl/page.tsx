@@ -1582,6 +1582,16 @@ export default function BiayaThlPage() {
           nopol: v.nopol ?? '',
           type: v.type ?? '',
         }));
+      } else if ((d.kendaraan_sj || '').trim() || (d.kendaraan_nopol || '').trim()) {
+        // Data lama format tunggal (pra-kendaraan[]): kendaraan_tambahan=false
+        // tetapi kolom legacy terisi — pulihkan sebagai 1 entri agar tidak
+        // hilang saat edit; saat disimpan ikut naik ke format array.
+        restored[d.groupId] = [{
+          id: generateId(),
+          sj: d.kendaraan_sj ?? '',
+          nopol: d.kendaraan_nopol ?? '',
+          type: d.kendaraan_type ?? '',
+        }];
       }
     }
     setSjVehicle(restored);
