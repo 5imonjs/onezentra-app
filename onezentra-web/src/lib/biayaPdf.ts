@@ -791,7 +791,14 @@ const isPdfDoc = (doc: LampiranDoc, blobType = ''): boolean => {
 async function readPdfBytes(doc: LampiranDoc): Promise<ArrayBuffer | null> {
   if (doc.file instanceof File) {
     if (!isPdfDoc(doc)) return null;
-    return await doc.file.arrayBuffer();
+    try {
+      return await doc.file.arrayBuffer();
+    } catch {
+      // File lokal tak terbaca (dipindah/dihapus/placeholder cloud setelah
+      // dipilih): lewati lampiran ini agar preview tetap terbuka; pemanggil
+      // mencatat peringatan, bukan menggagalkan seluruh PDF.
+      return null;
+    }
   }
   const url = doc.id
     ? `biaya-retribusi/documents/${doc.id}`
