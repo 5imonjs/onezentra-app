@@ -280,42 +280,42 @@ export function formatSuratJalan(detail: { no_surat_jalan?: string | null; kenda
 }
 
 /** Ekstrak semua nopol dari array kendaraan (format baru) atau field legacy. */
-const extractAllNopol = (detail: { kendaraan?: Array<{ nopol?: string }>; nopol_kendaraan?: string }): string => {
-  const nopol: string[] = [];
-  // Dari array kendaraan baru
-  if (detail.kendaraan && Array.isArray(detail.kendaraan)) {
-    detail.kendaraan.forEach((v) => { if (v.nopol) nopol.push(String(v.nopol).trim()); });
-  }
-  // Dari field legacy (fallback)
-  if (detail.nopol_kendaraan && !nopol.includes(String(detail.nopol_kendaraan).trim())) {
-    nopol.push(String(detail.nopol_kendaraan).trim());
-  }
+export function extractAllNopol(detail: { kendaraan?: Array<{ nopol?: string }>; nopol_kendaraan?: string }): string {
+  // Input bisa berupa string gabungan ("A, B") karena toCombinedRetribusiData
+  // sudah menggabungkan duluan — pecah lagi lalu dedupe agar tidak double.
+  const fromArray = Array.isArray(detail.kendaraan)
+    ? detail.kendaraan.flatMap((v) => String(v?.nopol || '').split(/[,;\n]+/))
+    : [];
+  const nopol = [detail.nopol_kendaraan, ...fromArray]
+    .flatMap((item) => String(item || '').split(/[,;\n]+/))
+    .map((item) => item.trim())
+    .filter((item, index, values) => item !== '' && values.indexOf(item) === index);
   return nopol.length > 0 ? nopol.join(', ') : '-';
-};
+}
 
 /** Ekstrak semua jenis kendaraan dari array kendaraan (format baru) atau field legacy. */
-const extractAllType = (detail: { kendaraan?: Array<{ type?: string }>; type_kendaraan?: string }): string => {
-  const types: string[] = [];
-  if (detail.kendaraan && Array.isArray(detail.kendaraan)) {
-    detail.kendaraan.forEach((v) => { if (v.type) types.push(String(v.type).trim()); });
-  }
-  if (detail.type_kendaraan && !types.includes(String(detail.type_kendaraan).trim())) {
-    types.push(String(detail.type_kendaraan).trim());
-  }
+export function extractAllType(detail: { kendaraan?: Array<{ type?: string }>; type_kendaraan?: string }): string {
+  const fromArray = Array.isArray(detail.kendaraan)
+    ? detail.kendaraan.flatMap((v) => String(v?.type || '').split(/[,;\n]+/))
+    : [];
+  const types = [detail.type_kendaraan, ...fromArray]
+    .flatMap((item) => String(item || '').split(/[,;\n]+/))
+    .map((item) => item.trim())
+    .filter((item, index, values) => item !== '' && values.indexOf(item) === index);
   return types.length > 0 ? types.join(', ') : '-';
-};
+}
 
 /** Gabungkan semua surat jalan (no_surat_jalan + kendaraan_sj) dari array kendaraan. */
-const extractAllSuratJalan = (detail: { kendaraan?: Array<{ sj?: string }>; no_surat_jalan?: string }): string => {
-  const sj: string[] = [];
-  if (detail.kendaraan && Array.isArray(detail.kendaraan)) {
-    detail.kendaraan.forEach((v) => { if (v.sj) sj.push(String(v.sj).trim()); });
-  }
-  if (detail.no_surat_jalan && !sj.includes(String(detail.no_surat_jalan).trim())) {
-    sj.push(String(detail.no_surat_jalan).trim());
-  }
+export function extractAllSuratJalan(detail: { kendaraan?: Array<{ sj?: string }>; no_surat_jalan?: string }): string {
+  const fromArray = Array.isArray(detail.kendaraan)
+    ? detail.kendaraan.flatMap((v) => String(v?.sj || '').split(/[,;\n]+/))
+    : [];
+  const sj = [...fromArray, detail.no_surat_jalan]
+    .flatMap((item) => String(item || '').split(/[,;\n]+/))
+    .map((item) => item.trim())
+    .filter((item, index, values) => item !== '' && values.indexOf(item) === index);
   return sj.length > 0 ? sj.join(', ') : '-';
-};
+}
 
 function formatPdfColumn(primary?: string | null, additional?: string | null): string {
   const values = [primary, additional]

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actedNameFor, auditDates, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, overflowsPage, pdfFilename, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
+import { actedNameFor, auditDates, extractAllNopol, extractAllSuratJalan, extractAllType, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, overflowsPage, pdfFilename, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
 
 describe('formatSuratJalan', () => {
   it('renders primary and additional surat jalan in one cell', () => {
@@ -27,6 +27,39 @@ describe('formatSuratJalan', () => {
       kendaraan_sj: 'SJ-G2',
       kendaraan: [{ sj: 'SJ-G3' }, { sj: 'SJ-G1' }, { sj: '' }],
     })).toBe('SJ-G1, SJ-G2, SJ-G3');
+  });
+});
+
+describe('extractAll* — input gabungan tidak boleh double', () => {
+  // Regresi: toCombinedRetribusiData mengirim string yang SUDAH digabung
+  // (formatSuratJalan/formatPdfColumn) ke tabel ringkasan — extractor harus
+  // memecah lagi + dedupe, bukan menempel string gabungan apa adanya
+  // (kasus 3 SJ jadi 5 dengan double di PDF).
+  it('extractAllSuratJalan memecah string gabungan dan membuang double', () => {
+    expect(extractAllSuratJalan({
+      no_surat_jalan: 'SJ-587, SJ-589, SJ-588',
+      kendaraan: [{ sj: 'SJ-589' }, { sj: 'SJ-588' }],
+    })).toBe('SJ-589, SJ-588, SJ-587');
+  });
+
+  it('extractAllNopol memecah string gabungan dan membuang double', () => {
+    expect(extractAllNopol({
+      nopol_kendaraan: 'KB 8340 CF, B 9614 SCN, KB 9317 D',
+      kendaraan: [{ nopol: 'KB 8340 CF' }, { nopol: 'B 9614 SCN' }],
+    })).toBe('KB 8340 CF, B 9614 SCN, KB 9317 D');
+  });
+
+  it('extractAllType memecah string gabungan dan membuang double', () => {
+    expect(extractAllType({
+      type_kendaraan: 'CDD, CDD',
+      kendaraan: [{ type: 'CDD' }],
+    })).toBe('CDD');
+  });
+
+  it('tetap "-" bila kosong semua', () => {
+    expect(extractAllSuratJalan({})).toBe('-');
+    expect(extractAllNopol({})).toBe('-');
+    expect(extractAllType({})).toBe('-');
   });
 });
 

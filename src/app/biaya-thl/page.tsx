@@ -45,6 +45,10 @@ interface DetailRow {
   kendaraan_nopol?: string;
   kendaraan_type?: string;
   kendaraan?: Array<{ sj: string; nopol: string; type: string }>;
+  // Bentuk mentah dari backend: relasi `vehicles` (kolom `no_sj`) — selalu
+  // dinormalisasi ke `kendaraan` oleh normalizeBiayaThlItem agar seluruh
+  // consumer (review, restore edit, PDF) membaca satu bentuk saja.
+  vehicles?: Array<{ sj?: string; no_sj?: string; nopol?: string; type?: string }>;
   order: number;
   photos: PhotoItem[];
   photos_remove?: number[];
@@ -106,7 +110,18 @@ const normalizeBiayaThlItem = (item: BiayaThlItem): BiayaThlItem => ({
   rejectedBy: item.rejectedBy ?? (item as BiayaThlItem & { rejected_by?: BiayaThlItem['rejectedBy'] }).rejected_by,
   revisedBy: item.revisedBy ?? (item as BiayaThlItem & { revised_by?: BiayaThlItem['revisedBy'] }).revised_by,
   resubmittedBy: item.resubmittedBy ?? (item as BiayaThlItem & { resubmitted_by?: BiayaThlItem['resubmittedBy'] }).resubmitted_by,
-  details: Array.isArray(item.details) ? item.details : [],
+  details: Array.isArray(item.details) ? item.details.map((d) => {
+    // Backend mengirim kendaraan tambahan sebagai relasi `vehicles` dengan
+    // kunci SJ `no_sj`; form memakai `kendaraan[]` dengan kunci `sj`.
+    // Tanpa pemetaan ini, edit kehilangan kendaraan ke-2+ dan PDF dari data
+    // tersimpan melewatkan SJ tambahannya.
+    if (Array.isArray(d.kendaraan) && d.kendaraan.length > 0) return d;
+    const fromVehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
+    return {
+      ...d,
+      kendaraan: fromVehicles.map((v) => ({ sj: v.sj ?? v.no_sj ?? '', nopol: v.nopol ?? '', type: v.type ?? '' })),
+    };
+  }) : [],
   photos: Array.isArray(item.photos) ? item.photos : [],
 });
 
@@ -1535,7 +1550,9 @@ export default function BiayaThlPage() {
     setEditingId(item.id);
     setEditingStatus(item.status);
     const sjGroupIds = new Map<string, string>();
-    const details = (item.details as unknown as DetailRow[]).map((d): FormDetailRow => {
+    // Normalisasi dulu: relasi backend `vehicles` → `kendaraan[]` agar
+    // restore checklist kendaraan tambahan membaca bentuk yang sama.
+    const details = (normalizeBiayaThlItem(item).details as unknown as DetailRow[]).map((d): FormDetailRow => {
       const sj = d.no_surat_jalan || '';
       if (!sjGroupIds.has(sj)) sjGroupIds.set(sj, createGroupId());
       return {
@@ -2559,19 +2576,33 @@ export default function BiayaThlPage() {
                       </button>
                       {open && (
                         <div className="divide-y divide-gray-50 px-3">
-                          {rows.map(({ d, i }) => (
+                          {rows.map(({ d, i }) => {
+                            // Kendaraan tambahan milik grup (1 kru, N kendaraan): di state
+                            // segar baca dari checklist grup; di data tersimpan baca dari
+                            // kendaraan[] yang sudah dinormalisasi. Tidak pernah keduanya
+                            // (isi sjVehicle hasil restore/edit sama dengan kendaraan[]).
+                            const groupExtras = String(d.posisi ?? '').trim().toUpperCase() === 'THL GUDANG'
+                              ? activeVehicles(d.groupId).map((v) => ({ sj: v.sj, nopol: v.nopol, type: v.type }))
+                              : [];
+                            const storedExtras = (d.kendaraan ?? []).filter((v) => (v.sj || '').trim() || (v.nopol || '').trim());
+                            const extras = groupExtras.length > 0 ? groupExtras : storedExtras;
+                            return (
                             <div key={i} className="flex items-center gap-3 py-2">
                               <span className="w-6 h-6 rounded-md bg-chip-primary text-accent-text flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
                               <div className="flex-1 min-w-0">
                                 <span className="text-sm font-bold text-gray-800 block truncate">{d.nama_thl || `Pekerja ${i + 1}`}</span>
                                 <span className="text-[11px] text-gray-400 block truncate">{d.nopol_kendaraan} · {d.no_surat_jalan || '—'}</span>
-                                {d.kendaraan_tambahan ? (
+                                {extras.map((v, vi) => (
+                                  <span key={vi} className="mt-0.5 mr-1 inline-flex items-center rounded-md bg-amber-50 border border-amber-200 px-1.5 py-px text-[10px] font-bold text-amber-700">+ Kendaraan ke-{vi + 2} ({v.nopol || '?'} · {v.sj || 'SJ?'})</span>
+                                ))}
+                                {extras.length === 0 && d.kendaraan_tambahan ? (
                                   <span className="mt-0.5 inline-flex items-center rounded-md bg-amber-50 border border-amber-200 px-1.5 py-px text-[10px] font-bold text-amber-700">+ Kendaraan ke-2 ({d.kendaraan_sj || 'SJ?'})</span>
                                 ) : null}
                               </div>
                               <span className="text-xs font-bold text-gray-600 tabular-nums">{formatCurrency(Number(d.nominal_biaya))}</span>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
