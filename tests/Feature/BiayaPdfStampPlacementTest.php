@@ -283,6 +283,72 @@ class BiayaPdfStampPlacementTest extends TestCase
         $this->assertStringContainsString('stamp-orange', $html);
     }
 
+    public function test_blade_thl_menampilkan_semua_sj_tambahan_tanpa_double(): void
+    {
+        // Regresi: blade memakai pluck('sj') padahal kolomnya `no_sj` —
+        // SJ kendaraan ke-2+ hilang dari PDF server. Setelah perbaiki,
+        // ketiga SJ (utama + 2 tambahan) muncul tepat 1x di sel ringkasan.
+        $user = $this->user('admin_master', 'Admin Blade');
+        $biayaThl = BiayaThl::create([
+            'tanggal_pengajuan' => '2026-10-16',
+            'kode_depo' => 'DPS',
+            'nama_depo' => 'Depo Singkawang',
+            'nominal_biaya' => 131000,
+            'created_by' => $user->id,
+        ]);
+        $thlDetail = BiayaThlDetail::create([
+            'biaya_thl_id' => $biayaThl->id,
+            'no_surat_jalan' => 'SJ-587',
+            'nama_thl' => 'Juyanto',
+            'nopol_kendaraan' => 'KB 9317 D',
+            'type_kendaraan' => 'CDD',
+            'posisi' => 'THL GUDANG',
+            'jam_datang' => '2026-10-16 08:00:00',
+            'jam_pulang' => '2026-10-16 19:00:00',
+            'nominal_biaya' => 131000,
+            'kendaraan_tambahan' => true,
+            'kendaraan_sj' => 'SJ-589',
+            'kendaraan_nopol' => 'KB 8340 CF',
+            'kendaraan_type' => 'CDD',
+        ]);
+        $thlDetail->vehicles()->create(['no_sj' => 'SJ-589', 'nopol' => 'KB 8340 CF', 'type' => 'CDD', 'order' => 0]);
+        $thlDetail->vehicles()->create(['no_sj' => 'SJ-588', 'nopol' => 'B 9614 SCN', 'type' => 'CDD', 'order' => 1]);
+        $biayaRetribusi = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-10-16',
+            'kode_depo' => 'DPS',
+            'nama_depo' => 'Depo Singkawang',
+            'nominal_biaya' => 131000,
+            'approval_pengajuan' => 'Admin Blade',
+            'approval_pengajuan_level' => 'admin_master',
+            'created_by' => $user->id,
+        ]);
+        $biayaRetribusi->details()->create([
+            'biaya_thl_id' => $biayaThl->id,
+            'biaya_thl_detail_id' => $thlDetail->id,
+            'nopol_kendaraan' => 'KB 9317 D',
+            'type_kendaraan' => 'CDD',
+            'no_surat_jalan' => 'SJ-587',
+            'nominal_biaya' => 131000,
+        ]);
+
+        $html = view('pdf.biaya_retribusi_combined', [
+            'biayaRetribusi' => $biayaRetribusi->load('details.biayaThlDetail.vehicles', 'documents'),
+            'approvalSections' => [
+                ['title' => 'Mengajukan', 'people' => [['name' => 'Admin Blade', 'role' => 'BLC']]],
+                ['title' => 'Mengetahui', 'people' => [['name' => 'Bac User', 'role' => 'BAC']]],
+                ['title' => 'Menyetujui', 'people' => [['name' => 'Rlh User', 'role' => 'RLH']]],
+            ],
+            'stamps' => [],
+        ])->render();
+
+        foreach (['SJ-587', 'SJ-589', 'SJ-588'] as $sj) {
+            $this->assertSame(1, substr_count($html, $sj), "SJ {$sj} harus muncul tepat 1x (tidak hilang, tidak double)");
+        }
+        foreach (['KB 9317 D', 'KB 8340 CF', 'B 9614 SCN'] as $nopol) {
+            $this->assertStringContainsString($nopol, $html);
+        }
+    }
+
     public function test_thl_revisi_oleh_rfah_nama_rfah_masuk_kotak_rfah_bukan_menyetujui(): void
     {
         $rlh = $this->user('rlh', 'Rlh User');

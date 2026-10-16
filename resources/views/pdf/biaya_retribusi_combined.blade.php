@@ -95,7 +95,7 @@
                 <td>{{ $kendaraanNopol ?: '-' }}</td>
                 <td>{{ $kendaraanType ?: '-' }}</td>
                 <td>
-                    @php($suratJalans = collect([$detail->no_surat_jalan, $detail->biayaThlDetail?->kendaraan_sj, ...($detail->biayaThlDetail?->vehicles?->pluck('sj')->all() ?? [])])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
+                    @php($suratJalans = collect([$detail->no_surat_jalan, $detail->biayaThlDetail?->kendaraan_sj, ...($detail->biayaThlDetail?->vehicles?->pluck('no_sj')->all() ?? [])])->flatMap(fn ($value) => preg_split('/[,;\n]+/', (string) $value))->map(fn ($value) => trim($value))->filter()->unique()->implode(', '))
                     {{ $suratJalans ?: '-' }}
                 </td>
                 <td class="center">Rp {{ number_format($detail->nominal_biaya, 0, ',', '.') }}</td>
