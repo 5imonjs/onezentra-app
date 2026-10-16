@@ -64,7 +64,10 @@ Route::prefix('v1')->group(function () {
     Route::prefix('depot-settings')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
         Route::get('/', [DepotSettingController::class, 'index']);
         Route::get('/{kodeDepo}', [DepotSettingController::class, 'show']);
-        Route::put('/{kodeDepo}', [DepotSettingController::class, 'upsert']);
+        // PUT digate permission (invarian AuthorizationInventoryTest) + gate
+        // ulang level admin_master di controller — grant manual ke role lain
+        // tetap 403. GET sengaja tanpa gate: dipakai auto-fill form semua role.
+        Route::put('/{kodeDepo}', [DepotSettingController::class, 'upsert'])->middleware('permission:depot_settings.manage');
     });
 
     Route::get('dashboard/activity', [DashboardController::class, 'activity'])

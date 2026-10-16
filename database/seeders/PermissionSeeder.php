@@ -74,6 +74,9 @@ class PermissionSeeder extends Seeder
             // Reset Data Operasional hanya untuk admin_master: tidak masuk
             // peta role lain di bawah, dan controller meng-gate ulang level.
             ['name' => 'Reset Data Operasional', 'slug' => 'database.purge', 'menu_group' => 'Sistem', 'icon' => 'trash', 'route' => 'admin.database', 'sort_order' => 435],
+            // Ubah Setting Depo hanya untuk admin_master: tidak masuk peta
+            // role lain di bawah, dan controller meng-gate ulang level.
+            ['name' => 'Ubah Setting Depo', 'slug' => 'depot_settings.manage', 'menu_group' => 'Sistem', 'icon' => 'building-office', 'route' => null, 'sort_order' => 436],
             ['name' => 'Laporan View', 'slug' => 'reports.view', 'menu_group' => 'Laporan', 'icon' => 'chart', 'route' => 'reports.index', 'sort_order' => 440],
             ['name' => 'Laporan Biaya THL View', 'slug' => 'reports.biaya_thl', 'menu_group' => 'Laporan', 'icon' => 'coins', 'route' => 'reports.biaya_thl', 'sort_order' => 441],
             ['name' => 'Laporan Biaya Retribusi View', 'slug' => 'reports.biaya_retribusi', 'menu_group' => 'Laporan', 'icon' => 'file-dollar', 'route' => 'reports.biaya_retribusi', 'sort_order' => 442],

@@ -100,6 +100,16 @@ class DepotSettingTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_upsert_forbidden_for_non_master_walau_permission_diberikan(): void
+    {
+        // Gate ganda: middleware permission lolos (grant manual), tetapi
+        // controller meng-gate ulang level admin_master — tetap 403.
+        Sanctum::actingAs($this->user('admin_planner', 'DPA', ['depot_settings.manage']));
+
+        $this->putJson('/api/v1/depot-settings/DPA', ['alamat_pengirim' => 'Jl Baru'])
+            ->assertForbidden();
+    }
+
     public function test_upsert_allowed_for_admin_master(): void
     {
         Sanctum::actingAs($this->user('admin_master', 'DPA'));
