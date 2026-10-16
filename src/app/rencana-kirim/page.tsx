@@ -653,7 +653,15 @@ export default function RencanaKirimPage() {
 
   const openCreate = (date?: string) => {
     if (!hasPermission('rencana_kirim.create')) return;
-    setCreateForm(prev => ({ ...prev, rkh_date: date ?? prev.rkh_date ?? todayDateStr() }));
+    // Asal pengirim terisi otomatis dari user yang login (nama depo +
+    // alamat yang didaftarkan saat user dibuat) — hanya mengisi kolom yang
+    // masih kosong agar tidak menimpa ketikan yang sudah ada.
+    setCreateForm(prev => ({
+      ...prev,
+      rkh_date: date ?? prev.rkh_date ?? todayDateStr(),
+      shipper_name: prev.shipper_name?.trim() ? prev.shipper_name : (user?.nama_depo?.trim() ?? prev.shipper_name ?? ''),
+      shipper_address: prev.shipper_address?.trim() ? prev.shipper_address : (user?.alamat?.trim() ?? prev.shipper_address ?? ''),
+    }));
     setEditingId(null);
     setTypingItems(new Set());
     setCurrentStep(1);

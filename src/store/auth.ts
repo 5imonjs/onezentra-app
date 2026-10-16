@@ -6,6 +6,7 @@ interface User {
   kode_depo: string;
   nama_depo: string;
   full_name: string;
+  alamat: string;
   email: string;
   level: string;
   status: string;
