@@ -23,7 +23,7 @@ use Laravel\Sanctum\HasApiTokens;
 //
 // Penulisan ke kolom ini harus selalu eksplisit di sisi server, lihat
 // SecurityAuditTest::test_role_id_bisa_ditulis_server_walau_tidak_fillable.
-#[Fillable(['kode_depo', 'nama_depo', 'full_name', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'status'])]
+#[Fillable(['kode_depo', 'nama_depo', 'full_name', 'alamat', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'status'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {

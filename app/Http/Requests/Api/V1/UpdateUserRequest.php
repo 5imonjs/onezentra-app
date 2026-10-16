@@ -38,6 +38,7 @@ class UpdateUserRequest extends FormRequest
             'kode_depo' => 'sometimes|string|max:20',
             'nama_depo' => 'sometimes|string|max:100',
             'full_name' => 'sometimes|string|max:100',
+            'alamat' => 'nullable|string|max:2000',
             'email' => 'sometimes|email|max:255|unique:users,email,'.$ignoreId,
             'password' => 'nullable|string|min:8|confirmed',
             'level' => 'sometimes|in:'.implode(',', Role::LEVEL_SLUGS),

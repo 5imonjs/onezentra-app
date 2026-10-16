@@ -32,6 +32,7 @@ class StoreUserRequest extends FormRequest
             'kode_depo' => 'required|string|max:20',
             'nama_depo' => 'required|string|max:100',
             'full_name' => 'required|string|max:100',
+            'alamat' => 'nullable|string|max:2000',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             'level' => 'required|in:'.implode(',', Role::LEVEL_SLUGS),
