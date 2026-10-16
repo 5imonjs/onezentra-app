@@ -16,9 +16,12 @@ class AdminDatabasePurgeTest extends TestCase
 
     private function master(): User
     {
-        Permission::create([
-            'slug' => 'database.purge', 'name' => 'Reset Data Operasional', 'menu_group' => 'Sistem',
-        ]);
+        // Permission database.purge sudah ada dari migration
+        // add_database_purge_permission yang ikut RefreshDatabase.
+        Permission::firstOrCreate(
+            ['slug' => 'database.purge'],
+            ['name' => 'Reset Data Operasional', 'menu_group' => 'Sistem']
+        );
 
         return User::factory()->create(['level' => 'admin_master', 'status' => 'active']);
     }
@@ -49,7 +52,10 @@ class AdminDatabasePurgeTest extends TestCase
         $user = $this->otherUser();
         $role = Role::where('slug', 'no_purge')->firstOrFail();
         $role->permissions()->attach(
-            Permission::create(['slug' => 'database.purge', 'name' => 'Reset', 'menu_group' => 'Sistem'])->id
+            Permission::firstOrCreate(
+                ['slug' => 'database.purge'],
+                ['name' => 'Reset', 'menu_group' => 'Sistem']
+            )->id
         );
 
         Sanctum::actingAs($user);
