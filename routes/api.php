@@ -44,7 +44,11 @@ Route::prefix('v1')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum', 'throttle:600,1,api']);
 
     Route::prefix('approval-assignments')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
-        Route::get('/', [ApprovalAssignmentController::class, 'index'])->middleware('permission:approval.view');
+        // GET tanpa gate permission: nama approver depo sendiri dibutuhkan
+        // alur preview PDF semua role pengaju (BLC tanpa approval.view).
+        // Proteksinya: canAccessDepot (403 lintas depo) + daftar user
+        // di-scope ke depo sendiri untuk user ter-scope.
+        Route::get('/', [ApprovalAssignmentController::class, 'index']);
         Route::post('/', [ApprovalAssignmentController::class, 'upsert'])->middleware('permission:approval.manage');
     });
 

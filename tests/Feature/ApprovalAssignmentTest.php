@@ -88,6 +88,28 @@ class ApprovalAssignmentTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_index_dapat_dibaca_tanpa_approval_view_untuk_depo_sendiri(): void
+    {
+        // Regresi: preview PDF memanggil endpoint ini untuk nama approver —
+        // BLC (tanpa approval.view) 403 sehingga toast "tidak memiliki izin"
+        // muncul walau preview sebenarnya punya fallback. Proteksi tersisa:
+        // canAccessDepot (403 lintas depo), bukan permission.
+        $role = Role::create(['slug' => 'plain_blc', 'name' => 'Plain BLC']);
+        $blc = User::create([
+            'email' => 'plain-blc@test.com', 'password' => 'password', 'full_name' => 'Blc',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'blc',
+            'status' => 'active',
+        ]);
+        $role->users()->attach($blc->id);
+
+        Sanctum::actingAs($blc);
+        $this->getJson('/api/v1/approval-assignments?kode_depo=DPT-A&module=biaya_retribusi')
+            ->assertOk()
+            ->assertJsonStructure(['data', 'depots', 'users', 'levels']);
+        $this->getJson('/api/v1/approval-assignments?kode_depo=DPT-B&module=biaya_retribusi')
+            ->assertForbidden();
+    }
+
     public function test_global_rlh_assignment_sees_and_can_approve_depot_submission(): void
     {
         $viewPermission = Permission::create(['slug' => 'biaya_thl.view', 'name' => 'THL View', 'menu_group' => 'Biaya']);
