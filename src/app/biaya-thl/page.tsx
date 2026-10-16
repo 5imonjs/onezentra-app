@@ -300,6 +300,10 @@ type GroupedWorkerDetail = {
     photos: PhotoItem[];
   }[];
   nominal_biaya: number;
+  // Kendaraan tambahan grup (1 kru, N kendaraan — khusus GUDANG): diambil
+  // dari baris pertama grup yang membawa kendaraan[] agar modal detail ikut
+  // menampilkan semuanya, bukan hanya kendaraan utama.
+  extras: { sj: string; nopol: string; type: string }[];
 };
 
 const groupWorkersBySuratJalan = (details: DetailRow[]): GroupedWorkerDetail[] => {
@@ -311,6 +315,7 @@ const groupWorkersBySuratJalan = (details: DetailRow[]): GroupedWorkerDetail[] =
       no_surat_jalan: suratJalan,
       workers: [],
       nominal_biaya: 0,
+      extras: [],
     };
 
     const nominalBiaya = Number(detail.nominal_biaya) || 0;
@@ -322,6 +327,11 @@ const groupWorkersBySuratJalan = (details: DetailRow[]): GroupedWorkerDetail[] =
       nominal_biaya: nominalBiaya,
       photos: detail.photos || [],
     });
+    if (group.extras.length === 0 && Array.isArray(detail.kendaraan)) {
+      group.extras = detail.kendaraan
+        .filter((v) => (v.sj || '').trim() || (v.nopol || '').trim())
+        .map((v) => ({ sj: v.sj || '', nopol: v.nopol || '', type: v.type || '' }));
+    }
     group.nominal_biaya += nominalBiaya;
     groups.set(suratJalan, group);
   });
@@ -2378,6 +2388,14 @@ export default function BiayaThlPage() {
                       </select>
                     </div>
                   </div>
+                  {String(detail.posisi ?? '').trim().toUpperCase() === 'THL GUDANG' && activeVehicles(detail.groupId).length > 0 && (
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      Kru ini juga membongkar:{' '}
+                      {activeVehicles(detail.groupId).map((v, vi) => (
+                        <span key={v.id} className="mr-1 inline-flex items-center rounded-md bg-amber-50 border border-amber-200 px-1.5 py-px text-[10px] font-bold text-amber-700">ke-{vi + 2}: {v.nopol || '?'} · {v.sj || 'SJ?'}</span>
+                      ))}
+                    </p>
+                  )}
                 </div>
 
                                 {/* Biaya & Muatan */}
@@ -2700,7 +2718,11 @@ export default function BiayaThlPage() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">No Surat Jalan</span>
                   </div>
                   <div className="mt-2.5 space-y-0.5 text-sm font-bold font-mono text-slate-800">
-                    {[...new Set((viewItem.details || []).flatMap((d: DetailRow) => (d.no_surat_jalan || '').split(/[,;\n]+/).map((value) => value.trim()).filter(Boolean)))].map((suratJalan) => (
+                    {[...new Set((viewItem.details || []).flatMap((d: DetailRow) => [
+                      ...(d.no_surat_jalan || '').split(/[,;\n]+/),
+                      ...(d.kendaraan_sj || '').split(/[,;\n]+/),
+                      ...((d.kendaraan ?? []).flatMap((v) => (v.sj || '').split(/[,;\n]+/))),
+                    ].map((value) => value.trim()).filter(Boolean)))].map((suratJalan) => (
                       <p key={suratJalan} className="break-all">{suratJalan}</p>
                     ))}
                     {!(viewItem.details || []).some((d: DetailRow) => d.no_surat_jalan) && <p>-</p>}
@@ -2759,6 +2781,9 @@ export default function BiayaThlPage() {
                             </td>
                             <td className="table-cell font-mono">
                               <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">{group.no_surat_jalan}</span>
+                              {group.extras.map((v, vi) => v.sj.trim() ? (
+                                <span key={`s-${v.sj}-${vi}`} className="mt-0.5 block w-fit rounded-md bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">+{v.sj}</span>
+                              ) : null)}
                             </td>
                             <td className="table-cell">
                               <div className="space-y-1">
@@ -2783,6 +2808,12 @@ export default function BiayaThlPage() {
                                   <div key={`${worker.nopol_kendaraan}-${workerIndex}`} className="space-y-0.5">
                                     <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium font-mono text-slate-700">{worker.nopol_kendaraan}</span>
                                     <span className="block text-[10px] text-slate-400">{worker.type_kendaraan}</span>
+                                  </div>
+                                ))}
+                                {group.extras.map((v, vi) => (
+                                  <div key={`x-${v.nopol}-${vi}`} className="space-y-0.5">
+                                    <span className="inline-flex items-center rounded-md bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[11px] font-bold font-mono text-amber-700">+{v.nopol || '?'}</span>
+                                    <span className="block text-[10px] text-slate-400">{v.type || ''}{v.type && v.sj ? ' · ' : ''}{v.sj || ''}</span>
                                   </div>
                                 ))}
                               </div>
