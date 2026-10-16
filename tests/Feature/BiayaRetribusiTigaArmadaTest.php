@@ -8,6 +8,8 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -98,5 +100,33 @@ class BiayaRetribusiTigaArmadaTest extends TestCase
             'tanggal_pengajuan' => '2026-10-16',
             'details' => $rows,
         ])->assertCreated();
+    }
+
+    public function test_store_manual_tiga_baris_empat_dokumen_pdf(): void
+    {
+        Storage::fake('public');
+        Sanctum::actingAs($this->master());
+
+        $payload = [
+            'tanggal_pengajuan' => '2026-10-16',
+            'details' => $this->tigaBaris(),
+        ];
+        $types = ['SJ', 'SJ', 'SJ', 'BA'];
+        foreach (range(0, 3) as $i) {
+            $payload['files'][$i] = UploadedFile::fake()->create("sj-{$i}.pdf", 100, 'application/pdf');
+            $payload['documents'][$i] = ['document_type' => $types[$i]];
+        }
+
+        $response = $this->post('/api/v1/biaya-retribusi', $payload);
+
+        $response->assertCreated();
+        $id = $response->json('data.id');
+        $biaya = BiayaRetribusi::findOrFail($id);
+        $this->assertSame(3, $biaya->details()->count());
+        $this->assertSame(4, $biaya->documents()->count());
+        $this->assertSame(['SJ', 'SJ', 'SJ', 'BA'], $biaya->documents()->orderBy('order')->pluck('document_type')->all());
+        foreach ($biaya->documents as $doc) {
+            Storage::disk('public')->assertExists($doc->file_path);
+        }
     }
 }
