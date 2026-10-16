@@ -815,6 +815,11 @@ export default function BiayaRetribusiPage() {
   const handleUpdate = async () => {
     if (!editingId) return;
     if (abortOversized()) return;
+    // Pengaman yang sama dengan create: jangan kirim PUT kosong.
+    if (blockerReasons.length > 0) {
+      notifyGlobal(blockerReasons[0], 'error');
+      return;
+    }
     setBusy(true);
     try {
       const fd = buildUpdatePayload();
@@ -1332,6 +1337,11 @@ export default function BiayaRetribusiPage() {
     });
     setDocumentsRemove([]);
     setManualDetails([]);
+    // Pilihan receiving sesi buat sebelumnya tidak boleh bocor ke sesi edit:
+    // review menampilkannya, penghitung mengabaikannya, update membuangnya.
+    setSelectedCandidates([]);
+    setCandidates([]);
+    setCandidateNominals({});
     setOpenModal(true);
   };
 
