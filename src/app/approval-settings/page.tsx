@@ -29,11 +29,21 @@ export default function ApprovalSettingsPage() {
   const [selectedDepot, setSelectedDepot] = useState('');
 
   const kodeDepo = user?.kode_depo;
+  // SATU sumber kebenaran depo aktif: dropdown yang terlihat user HARUS sama
+  // dengan yang di-load dan di-save. Sebelumnya value select bisa jatuh ke
+  // option pertama sementara load/save memakai kode_depo user (yang bahkan
+  // bisa tidak ada di daftar) — user mengira mengatur depo A padahal
+  // tersimpan di depo B, dan yang tampil selalu kosong.
+  const effectiveDepot =
+    selectedDepot ||
+    (kodeDepo && depots.some((d) => d.kode_depo === kodeDepo)
+      ? kodeDepo
+      : depots[0]?.kode_depo ?? '');
   const load = useCallback(async () => {
-    if (!kodeDepo) return;
+    if (!effectiveDepot) return;
     setLoading(true);
     try {
-      const response = await approvalAssignments.get(selectedDepot || kodeDepo, module) as { data: { data: Record<string, Assignment>; users: Approver[]; depots?: Depot[] } };
+      const response = await approvalAssignments.get(effectiveDepot, module) as { data: { data: Record<string, Assignment>; users: Approver[]; depots?: Depot[] } };
       setApprovers(response.data.users);
       if (response.data.depots) setDepots(response.data.depots);
       setAssignments(response.data.data || {});
@@ -43,12 +53,12 @@ export default function ApprovalSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [kodeDepo, selectedDepot, module]);
+  }, [effectiveDepot, module]);
 
   useEffect(() => { void load(); }, [load]);
 
   const save = async () => {
-    if (!user?.kode_depo) return;
+    if (!effectiveDepot) return;
     const localAssignments = LEVELS.filter(({ key }) => key === 'BLC' || key === 'BAC')
       .map(({ key }) => ({ approval_level: key, user_id: Number(selected[key]) }))
       .filter((assignment) => assignment.user_id > 0);
@@ -61,7 +71,7 @@ export default function ApprovalSettingsPage() {
     }
     setSaving(true);
     try {
-      await approvalAssignments.save({ kode_depo: selectedDepot || user.kode_depo, module, assignments: localAssignments });
+      await approvalAssignments.save({ kode_depo: effectiveDepot, module, assignments: localAssignments });
       await approvalAssignments.save({ kode_depo: 'ADMIN', module, assignments: globalAssignments });
       notifyGlobal('Pengaturan approval berhasil disimpan', 'success');
       await load();
@@ -82,7 +92,7 @@ export default function ApprovalSettingsPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-bold leading-tight">Pengaturan Approval</h1>
-              <p className="mt-0.5 text-ink-fg-muted">Tentukan approver biaya untuk {user?.nama_depo || user?.kode_depo || 'depo aktif'}</p>
+              <p className="mt-0.5 text-ink-fg-muted">Tentukan approver biaya untuk {depots.find((d) => d.kode_depo === effectiveDepot)?.nama_depo || effectiveDepot || 'depo aktif'}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1 rounded-xl bg-white/10 p-1 backdrop-blur" role="tablist" aria-label="Modul biaya">
               {([
@@ -105,7 +115,7 @@ export default function ApprovalSettingsPage() {
           <div className="space-y-4 p-5">
             <label className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
               <span><span className="block text-sm font-semibold text-slate-800">Depo BLC/BAC</span><span className="text-xs text-slate-500">Pilih depo yang akan diatur</span></span>
-              <select value={selectedDepot || kodeDepo || ''} onChange={(event) => setSelectedDepot(event.target.value)} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
+              <select value={effectiveDepot} onChange={(event) => setSelectedDepot(event.target.value)} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
                 {depots.map((depot) => <option key={depot.kode_depo} value={depot.kode_depo}>{depot.nama_depo || depot.kode_depo} ({depot.kode_depo})</option>)}
               </select>
             </label>
