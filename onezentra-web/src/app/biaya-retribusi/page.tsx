@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { biayaRetribusi, retribusiRates, getErrorMessage } from '@/lib/api';
+import { biayaRetribusi, retribusiRates, getErrorMessage, compressPdf } from '@/lib/api';
 import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
 import { pageWindow } from '@/lib/pagination';
 import { useAuthStore } from '@/store/auth';
@@ -622,12 +622,27 @@ export default function BiayaRetribusiPage() {
   });
 
   const handleDocFile = async (index: number, file: File) => {
-    const ready = await compressDocImage(file);
+    let ready = await compressDocImage(file);
+    // PDF di atas 4 MB dikompres otomatis (object streams) agar upload
+    // lampiran banyak tidak timeout; gagal kompres = pakai file asli.
+    const PDF_COMPRESS_ABOVE_BYTES = 4 * 1024 * 1024;
+    if (ready.type === 'application/pdf' && ready.size > PDF_COMPRESS_ABOVE_BYTES) {
+      try {
+        const compressed = await compressPdf(ready, MAX_DOC_BYTES);
+        if (compressed.size < ready.size) {
+          notifyGlobal(`PDF dikompresi ${formatBytes(file.size)} → ${formatBytes(compressed.size)} agar upload lancar`, 'info');
+          ready = compressed;
+        }
+      } catch (e) {
+        notifyGlobal(e instanceof Error ? e.message : 'PDF terlalu besar dan gagal dikompresi — perkecil/ganti file lalu coba lagi', 'error');
+        return;
+      }
+    }
     if (ready.size > MAX_DOC_BYTES) {
       notifyGlobal(`File ${file.name} (${formatBytes(ready.size)}) melebihi batas 20 MB — perkecil/ganti file lalu coba lagi`, 'error');
       return;
     }
-    if (ready !== file) {
+    if (ready !== file && ready.type.startsWith('image/')) {
       notifyGlobal(`Foto dikompresi ${formatBytes(file.size)} → ${formatBytes(ready.size)} agar bisa diunggah`, 'info');
     }
     updateDocument(index, 'file', ready);

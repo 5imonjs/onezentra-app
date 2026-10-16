@@ -51,6 +51,12 @@ export function getErrorMessage(e: unknown, fallback = 'Terjadi kesalahan'): str
     : undefined;
   if (err.response?.status === 403) return data?.message ?? alias ?? 'Anda tidak memiliki izin untuk melakukan aksi ini.';
 
+  // Timeout upload (ECONNABORTED): beri tahu user apa yang terjadi dan apa
+  // yang bisa dilakukan, bukan pesan teknis mentah dari axios.
+  if (err.code === 'ECONNABORTED' || /timeout of .* exceeded|timeout/i.test(err.message ?? '')) {
+    return 'Upload terputus karena timeout. File besar butuh koneksi stabil — coba lagi, atau perkecil lampiran bila masih gagal.';
+  }
+
   const errors = data?.errors;
   const summary = data?.message ?? alias;
 
@@ -89,13 +95,20 @@ export const apiClient = axios.create({
 });
 
 /**
+ * Timeout khusus upload multipart (lampiran banyak/besar): 15 dtk bawaan
+ * terlalu cepat habis di koneksi lambat sehingga user hanya melihat
+ * "timeout" tanpa tahu harus apa.
+ */
+export const UPLOAD_TIMEOUT_MS = 120000;
+
+/**
  * Status respons yang berarti sesi bermasalah (auth hilang / token tak valid).
  * 401 = sesi kadaluwarsa/dihentikan; 419 = CSRF mismatch.
 */
 /**
  * Dipanggil otomatis kalau file > 10MB (Next.js dev limit).
  */
-async function compressPdf(file: File, maxSize: number): Promise<File> {
+export async function compressPdf(file: File, maxSize: number): Promise<File> {
   const fileArrayBuffer = await file.arrayBuffer();
   const pdfDoc = await PDFDocument.load(fileArrayBuffer, { ignoreEncryption: true });
 
@@ -151,6 +164,17 @@ export function registerResponseInterceptors(
   // Pertahanan ekstra: request refresh CSRF sendiri jangan di-retry (kalau
   // endpoint itu pernah menjawab 419, langsung jatuh ke penanganan sesi).
   const isCsrfRefresh = (url?: string) => !!url?.includes('/sanctum/csrf-cookie');
+
+  // Timeout longgar untuk SEMUA upload multipart (berlaku global, termasuk
+  // modul yang tidak menyebut timeout eksplisit): lampiran besar di koneksi
+  // lambat butuh waktu lebih dari 15 dtk bawaan.
+  client.interceptors.request.use((config) => {
+    const contentType = config.headers?.['Content-Type'] ?? config.headers?.['content-type'];
+    if (typeof contentType === 'string' && contentType.includes('multipart/form-data')) {
+      config.timeout = UPLOAD_TIMEOUT_MS;
+    }
+    return config;
+  });
 
   client.interceptors.response.use(
     (response) => response,
@@ -513,7 +537,7 @@ export const biayaThl = {
   list: (params?: Record<string, unknown>) => apiClient.get('/biaya-thl', { params }),
   get: (id: number) => apiClient.get(`/biaya-thl/${id}`),
   create: (data: Record<string, unknown> | FormData) => {
-    const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+    const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT_MS } : {};
     return apiClient.post('/biaya-thl', data, config);
   },
   update: (id: number, data: Record<string, unknown> | FormData) => {
@@ -522,6 +546,7 @@ export const biayaThl = {
       if (!data.has('_method')) data.append('_method', 'PUT');
       return apiClient.post(`/biaya-thl/${id}`, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: UPLOAD_TIMEOUT_MS,
       });
     }
     return apiClient.put(`/biaya-thl/${id}`, data);
@@ -542,6 +567,7 @@ export const biayaThl = {
         formData.append('file', compressed);
         return apiClient.post('/biaya-thl/import', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: UPLOAD_TIMEOUT_MS,
         });
       }).catch((err: unknown) => {
         throw err;
@@ -561,7 +587,7 @@ export const biayaRetribusi = {
   candidates: (params?: Record<string, unknown>) => apiClient.get('/biaya-retribusi/candidates', { params }),
   get: (id: number) => apiClient.get(`/biaya-retribusi/${id}`),
   create: (data: Record<string, unknown> | FormData) => {
-    const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+    const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT_MS } : {};
     return apiClient.post('/biaya-retribusi', data, config);
   },
   update: (id: number, data: Record<string, unknown> | FormData) => {
@@ -570,6 +596,7 @@ export const biayaRetribusi = {
       if (!data.has('_method')) data.append('_method', 'PUT');
       return apiClient.post(`/biaya-retribusi/${id}`, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: UPLOAD_TIMEOUT_MS,
       });
     }
     return apiClient.put(`/biaya-retribusi/${id}`, data);
@@ -591,6 +618,7 @@ export const biayaRetribusi = {
         formData.append('file', compressed);
         return apiClient.post('/biaya-retribusi/import', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: UPLOAD_TIMEOUT_MS,
         });
       }).catch((err: unknown) => {
         throw err;

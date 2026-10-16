@@ -110,6 +110,18 @@ describe('getErrorMessage — validasi Laravel (tidak boleh regresi)', () => {
 
     expect(msg).toBeTruthy();
   });
+
+  it('timeout upload (ECONNABORTED) memakai pesan yang jelas', () => {
+    const err = new AxiosError(
+      'timeout of 15000ms exceeded',
+      AxiosError.ECONNABORTED,
+      { headers: {} } as never,
+    );
+    const msg = getErrorMessage(err, 'Simpan gagal');
+
+    expect(msg).toContain('timeout');
+    expect(msg).not.toContain('timeout of 15000ms exceeded');
+  });
 });
 
 /** Konstruksi `error.response` yang cukup untuk dibaca interceptor. */
