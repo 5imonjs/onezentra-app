@@ -160,7 +160,8 @@ export default function AccessManagementPage() {
 
 // ==================== ROLES TAB ====================
 function RolesTab() {
-  const { hasPermission } = useAuthStore();
+  const { hasPermission, user } = useAuthStore();
+  const isMaster = user?.level === 'admin_master';
   const [roleList, setRoleList] = useState<Role[]>([]);
   const [totalPermissions, setTotalPermissions] = useState(0);
   const [_error, setError] = useState<string | null>(null);
@@ -532,9 +533,12 @@ function RolesTab() {
               {hasPermission('roles.edit') ? (
                 <ToggleSwitch
                   checked={role.is_active}
-                  disabled={role.is_active && role.users_count > 0}
+                  disabled={role.is_active && role.users_count > 0 && !isMaster}
                   onChange={async (checked) => {
                     try {
+                      if (!checked && role.is_active && role.users_count > 0) {
+                        if (!confirm(`Role "${role.name}" dipakai ${role.users_count} user. Nonaktifkan? User terkait langsung kehilangan akses role ini.`)) return;
+                      }
                       await roles.update(role.id, { is_active: checked });
                       loadRoles();
                     } catch (e) {

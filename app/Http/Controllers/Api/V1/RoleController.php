@@ -79,9 +79,14 @@ class RoleController extends Controller
         }
 
         if (isset($validated['is_active']) && ! $validated['is_active'] && $role->users()->exists()) {
-            return response()->json([
-                'message' => 'Peran dengan user aktif tidak dapat dinonaktifkan.',
-            ], 422);
+            // Pengaman data: role ber-user tidak boleh mati agar user tidak
+            // kehilangan akses diam-diam — kecuali admin master yang
+            // melakukannya secara sadar lewat konfirmasi di UI.
+            abort_unless(
+                $request->user()?->level === 'admin_master',
+                422,
+                'Peran dengan user aktif tidak dapat dinonaktifkan.'
+            );
         }
 
         $role->update($validated);
