@@ -679,7 +679,6 @@ export default function BiayaRetribusiPage() {
   const persistCreate = async (): Promise<number> => {
       const fd = new FormData();
       fd.append('tanggal_pengajuan', formData.tanggal_pengajuan);
-
       selectedCandidates.forEach((cId, i) => {
         const c = candidates.find((c2) => c2.id === cId);
         if (!c) return;
@@ -712,10 +711,29 @@ export default function BiayaRetribusiPage() {
         }
       });
 
+      logPayloadDiag(fd, 'create');
       const res = await biayaRetribusi.create(fd);
       const id = (res as { data?: { data?: { id?: number } } }).data?.data?.id;
       if (id == null) throw new Error('empty');
       return id;
+  };
+
+  /** Jejak diagnostik sekali jalan: buktikan isi payload yang benar-benar
+   *  dikirim + revisi build yang berjalan (membedakan kode basi vs state kosong). */
+  const logPayloadDiag = (fd: FormData, label: string): void => {
+    if (typeof window === 'undefined') return;
+    const keys: string[] = [];
+    fd.forEach((value, key) => {
+      keys.push(`${key}=${value instanceof File ? `File(${value.name},${value.size}B)` : String(value).slice(0, 40)}`);
+    });
+    console.info(`[BiayaRetribusi/${label}] rev=diag-3armada`, {
+      tanggal: formData.tanggal_pengajuan,
+      candidates: selectedCandidates.length,
+      manual: manualDetails.length,
+      existing: formData.details.length,
+      documents: formData.documents.length,
+      payloadKeys: keys,
+    });
   };
 
   const finishAfterSave = async () => {
@@ -809,6 +827,7 @@ export default function BiayaRetribusiPage() {
         }
       });
       documentsRemove.forEach((docId) => fd.append('documents_remove[]', String(docId)));
+      logPayloadDiag(fd, 'update');
       return fd;
   };
 
