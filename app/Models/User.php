@@ -137,15 +137,22 @@ class User extends Authenticatable
             });
         }
 
-        $perms = Permission::join('role_permission', 'permissions.id', '=', 'role_permission.permission_id')
-            ->join('role_user', 'role_permission.role_id', '=', 'role_user.role_id')
-            ->join('roles', 'role_permission.role_id', '=', 'roles.id')
-            ->where('role_user.user_id', $this->id)
-            ->where('roles.is_active', true)
-            ->where('permissions.is_active', true)
-            ->select('permissions.*')
-            ->distinct()
-            ->get();
+        // Level master melewati RBAC role: selalu memegang seluruh permission
+        // aktif. Satu titik ini mengendalikan middleware permission, respons
+        // login (slug ke frontend), dan semua hasPermission di backend.
+        if ($this->level === 'admin_master') {
+            $perms = Permission::where('is_active', true)->get();
+        } else {
+            $perms = Permission::join('role_permission', 'permissions.id', '=', 'role_permission.permission_id')
+                ->join('role_user', 'role_permission.role_id', '=', 'role_user.role_id')
+                ->join('roles', 'role_permission.role_id', '=', 'roles.id')
+                ->where('role_user.user_id', $this->id)
+                ->where('roles.is_active', true)
+                ->where('permissions.is_active', true)
+                ->select('permissions.*')
+                ->distinct()
+                ->get();
+        }
 
         // Simpan sebagai array plain untuk hindari __PHP_Incomplete_Class saat unserialize di database cache
         Cache::put($cacheKey, $perms->map->getAttributes()->toArray(), 300);
