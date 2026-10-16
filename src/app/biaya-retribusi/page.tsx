@@ -669,7 +669,8 @@ export default function BiayaRetribusiPage() {
       if (keys.some((k) => k.includes('nopol_kendaraan'))) return 'Plat kendaraan wajib diisi pada setiap baris.';
       if (keys.some((k) => k.includes('type_kendaraan'))) return 'Type kendaraan wajib dipilih pada setiap baris.';
       if (keys.some((k) => k.includes('nominal_biaya'))) return 'Nominal wajib diisi pada setiap baris.';
-      if (keys.some((k) => k.includes('tanggal_pengajuan'))) return 'Tanggal pengajuan tidak valid.';
+      if (keys.some((k) => k.includes('tanggal_pengajuan'))) return 'Isi tanggal pengajuan dulu.';
+      if (keys.some((k) => k === 'details')) return 'Pilih receiving atau tambah baris manual dulu — tidak ada baris yang terkirim.';
     }
     return getErrorMessage(e, fallback);
   };
@@ -732,6 +733,13 @@ export default function BiayaRetribusiPage() {
 
   const handleCreate = async () => {
     if (abortOversized()) return;
+    // Pengaman ganda: tombol memang disable saat blocker ada, tapi state bisa
+    // terkosongkan di antara render dan klik (depo diganti / kandidat
+    // dimuat ulang) — jangan kirim POST kosong yang hanya menghasilkan 422.
+    if (blockerReasons.length > 0) {
+      notifyGlobal(blockerReasons[0], 'error');
+      return;
+    }
     setBusy(true);
     try {
       await persistCreate();
