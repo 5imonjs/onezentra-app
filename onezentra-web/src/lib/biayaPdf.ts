@@ -353,6 +353,18 @@ export function pdfFilename(kind: BiayaPdfKind, tanggalPengajuan: string): strin
  * atas dan bawah sama panjang.
  */
 export const PDF_PAGE_WIDTH = 277;
+/** Tinggi halaman A4 landscape (mm) beserta margin untuk cek muat. */
+export const PDF_PAGE_HEIGHT = 210;
+export const PDF_PAGE_MARGIN = 10;
+/** true bila kotak setinggi boxHeight mulai di y melewati area cetak. */
+export function overflowsPage(
+  y: number,
+  boxHeight: number,
+  pageHeight = PDF_PAGE_HEIGHT,
+  margin = PDF_PAGE_MARGIN,
+): boolean {
+  return y + boxHeight > pageHeight - margin;
+}
 /** No, No Kendaraan, Jenis, Surat Jalan, Nominal, Paraf. */
 export const SUMMARY_COL_WIDTHS = [9, 61, 53, 55, 46, 53];
 /** No, Nama, Kubikasi, Drop Point, Posisi, Jam Datang, Jam Pulang. */
@@ -957,7 +969,12 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
 
   const rejected = data.status === 'rejected';
   const revisi = data.status === 'revisi';
-  const thlTop = approvalY + (rejected ? 63 : revisi ? 63 : 52);
+  let thlTop = approvalY + (rejected ? 63 : revisi ? 63 : 52);
+  // Header + tabel THL tidak boleh mulai di ujung bawah kertas.
+  if (overflowsPage(thlTop, 32)) {
+    doc.addPage('a4', 'landscape');
+    thlTop = 12;
+  }
   if (rejected && data.rejection_reason) {
     setDocFont(doc, 'bold');
     doc.setFontSize(7);
@@ -1003,7 +1020,13 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
     columnStyles: { 0: { cellWidth: THL_COL_WIDTHS[0], halign: 'center' }, 1: { cellWidth: THL_COL_WIDTHS[1] }, 2: { cellWidth: THL_COL_WIDTHS[2], halign: 'center' }, 3: { cellWidth: THL_COL_WIDTHS[3], halign: 'center' }, 4: { cellWidth: THL_COL_WIDTHS[4] }, 5: { cellWidth: THL_COL_WIDTHS[5], halign: 'center' }, 6: { cellWidth: THL_COL_WIDTHS[6], halign: 'center' } },
   });
   const thlY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? thlTop + 50;
-  const photoTop = thlY + 1;
+  // Kotak foto 30mm: pindah halaman baru bila sisa ruang tak cukup,
+  // kalau tidak bingkai bawahnya terpotong dan "garis hilang".
+  let photoTop = thlY + 1;
+  if (overflowsPage(photoTop, 32)) {
+    doc.addPage('a4', 'landscape');
+    photoTop = 12;
+  }
   doc.rect(pageMargin, photoTop, pageWidth, 30);
   const photos = data.details.flatMap((detail) => detail.biaya_thl_detail?.photos || []).slice(0, 10);
   let photoX = pageMargin + 2;

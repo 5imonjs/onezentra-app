@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actedNameFor, auditDates, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, pdfFilename, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
+import { actedNameFor, auditDates, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, overflowsPage, pdfFilename, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
 
 describe('formatSuratJalan', () => {
   it('renders primary and additional surat jalan in one cell', () => {
@@ -37,6 +37,14 @@ describe('pdf table widths', () => {
     expect(sum(SUMMARY_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
     expect(sum(THL_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
     expect(sum(MANIFEST_COL_WIDTHS)).toBe(PDF_PAGE_WIDTH);
+  });
+});
+
+describe('overflowsPage', () => {
+  it('kotak foto 30mm di ujung bawah pindah halaman', () => {
+    expect(overflowsPage(170, 32)).toBe(true);
+    expect(overflowsPage(100, 32)).toBe(false);
+    expect(overflowsPage(168, 32)).toBe(false);
   });
 });
 
