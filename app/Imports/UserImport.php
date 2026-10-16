@@ -33,6 +33,7 @@ class UserImport implements ToCollection, WithHeadingRow
                 'level' => trim((string) ($row['level'] ?? $row['role'] ?? $row['level_akses'] ?? '')),
                 'kode_depo' => trim((string) ($row['depo'] ?? $row['kode_depo'] ?? $row['depot'] ?? '')),
                 'nama_depo' => trim((string) ($row['nama_depo'] ?? $row['nama_depot'] ?? '')),
+                'alamat' => trim((string) ($row['alamat'] ?? $row['address'] ?? '')),
                 'status' => trim((string) ($row['status'] ?? 'active')),
             ];
 
@@ -42,8 +43,8 @@ class UserImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            if (mb_strlen($data['full_name']) > 100 || mb_strlen($data['kode_depo']) > 20 || mb_strlen($data['nama_depo']) > 100) {
-                $this->errors[] = ['row' => $rowNumber, 'errors' => 'Nama/kode depo melebihi batas panjang'];
+            if (mb_strlen($data['full_name']) > 100 || mb_strlen($data['kode_depo']) > 20 || mb_strlen($data['nama_depo']) > 100 || mb_strlen($data['alamat']) > 2000) {
+                $this->errors[] = ['row' => $rowNumber, 'errors' => 'Nama/kode depo/alamat melebihi batas panjang'];
 
                 continue;
             }
@@ -103,6 +104,7 @@ class UserImport implements ToCollection, WithHeadingRow
                     'full_name' => $data['full_name'] ?: null,
                     'kode_depo' => $data['kode_depo'] ?: null,
                     'nama_depo' => $data['nama_depo'] ?: null,
+                    'alamat' => $data['alamat'] ?: null,
                     'level' => $data['level'] ?: null,
                     'status' => $data['status'],
                 ], static fn ($value) => $value !== null));

@@ -15,6 +15,7 @@ interface UserItem {
   kode_depo: string;
   nama_depo: string;
   full_name: string;
+  alamat: string;
   email: string;
   level: string;
   status: string;
@@ -41,7 +42,7 @@ const levels = [
 ];
 
 const emptyForm = {
-  kode_depo: '', nama_depo: '', full_name: '', email: '',
+  kode_depo: '', nama_depo: '', full_name: '', alamat: '', email: '',
   password: '', password_confirmation: '',
   level: 'staff_logistic', status: 'active',
 };
@@ -129,6 +130,7 @@ export default function UsersPage() {
       kode_depo: item.kode_depo || '',
       nama_depo: item.nama_depo || '',
       full_name: item.full_name || '',
+      alamat: item.alamat || '',
       email: item.email || '',
       password: '',
       password_confirmation: '',
@@ -598,6 +600,10 @@ export default function UsersPage() {
               <input value={createForm.nama_depo} onChange={(e) => setCreateForm(prev => ({ ...prev, nama_depo: e.target.value }))} className="input-field" placeholder="Masukkan nama depo" />
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Alamat</label>
+            <textarea value={createForm.alamat} onChange={(e) => setCreateForm(prev => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Level *</label>
@@ -639,7 +645,7 @@ export default function UsersPage() {
           >
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
             <p className="text-sm font-medium text-gray-700">{selectedFile?.name || 'Klik untuk memilih file'}</p>
-            <p className="text-xs text-gray-400 mt-1">Kolom: email, full_name, kode_depo, nama_depo, level, status</p>
+            <p className="text-xs text-gray-400 mt-1">Kolom: email, full_name, alamat, kode_depo, nama_depo, level, status</p>
           </div>
           {importResult && (
             <div className={`p-4 rounded-xl ${importResult.errors?.length ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
@@ -704,6 +710,10 @@ export default function UsersPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Depo</label>
               <input value={editForm.nama_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, nama_depo: e.target.value }))} className="input-field" />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Alamat</label>
+            <textarea value={editForm.alamat || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
