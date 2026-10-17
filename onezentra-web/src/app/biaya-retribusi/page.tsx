@@ -586,7 +586,7 @@ export default function BiayaRetribusiPage() {
     return `${(n / (1024 * 1024)).toFixed(2)} MB`;
   };
   /** Kompres foto lapangan (HP 8-12MP) ke JPEG <=1600px agar ringan saat diunggah. */
-  const COMPRESS_ABOVE_BYTES = 1.5 * 1024 * 1024; // di atas 1,5 MB → coba kompres
+  const COMPRESS_ABOVE_BYTES = 0.5 * 1024 * 1024; // di atas 0,5 MB → coba kompres (lebih agresif)
   const compressDocImage = (file: File): Promise<File> => new Promise((resolve) => {
     // Non-image files (PDF, etc.): validate size but don't compress
     if (!file.type.startsWith('image/')) {
@@ -624,7 +624,7 @@ export default function BiayaRetribusiPage() {
   const handleDocFile = async (index: number, file: File) => {
     let ready = await compressDocImage(file);
     // PDF di atas 1,5 MB dikompres otomatis (mengoptimalkan foto/scan di dalam PDF + object streams)
-    const PDF_COMPRESS_ABOVE_BYTES = 1.5 * 1024 * 1024;
+    const PDF_COMPRESS_ABOVE_BYTES = 0.5 * 1024 * 1024;
     if (ready.type === 'application/pdf' && ready.size > PDF_COMPRESS_ABOVE_BYTES) {
       try {
         notifyGlobal(`Mengompresi PDF (${formatBytes(ready.size)})...`, 'info');
