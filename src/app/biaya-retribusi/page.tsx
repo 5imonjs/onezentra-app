@@ -623,18 +623,18 @@ export default function BiayaRetribusiPage() {
 
   const handleDocFile = async (index: number, file: File) => {
     let ready = await compressDocImage(file);
-    // PDF di atas 4 MB dikompres otomatis (object streams) agar upload
-    // lampiran banyak tidak timeout; gagal kompres = pakai file asli.
-    const PDF_COMPRESS_ABOVE_BYTES = 4 * 1024 * 1024;
+    // PDF di atas 1,5 MB dikompres otomatis (mengoptimalkan foto/scan di dalam PDF + object streams)
+    const PDF_COMPRESS_ABOVE_BYTES = 1.5 * 1024 * 1024;
     if (ready.type === 'application/pdf' && ready.size > PDF_COMPRESS_ABOVE_BYTES) {
       try {
+        notifyGlobal(`Mengompresi PDF (${formatBytes(ready.size)})...`, 'info');
         const compressed = await compressPdf(ready, MAX_DOC_BYTES);
         if (compressed.size < ready.size) {
-          notifyGlobal(`PDF dikompresi ${formatBytes(file.size)} → ${formatBytes(compressed.size)} agar upload lancar`, 'info');
+          notifyGlobal(`PDF berhasil dikompresi: ${formatBytes(file.size)} → ${formatBytes(compressed.size)}`, 'success');
           ready = compressed;
         }
       } catch (e) {
-        notifyGlobal(e instanceof Error ? e.message : 'PDF terlalu besar dan gagal dikompresi — perkecil/ganti file lalu coba lagi', 'error');
+        notifyGlobal(e instanceof Error ? e.message : 'PDF terlalu besar dan gagal dikompresi — perkecil file lalu coba lagi', 'error');
         return;
       }
     }
@@ -703,12 +703,12 @@ export default function BiayaRetribusiPage() {
         fd.append(`details[${idx}][order]`, String(idx));
       });
 
-      formData.documents.forEach((doc, i) => {
-        if (doc.file) {
-          fd.append(`files[${i}]`, doc.file);
-          fd.append(`documents[${i}][document_type]`, doc.document_type || 'lainnya');
-          fd.append(`documents[${i}][file_name]`, doc.file.name);
-        }
+      // Hanya kirim dokumen yang memiliki file valid (urutan sequential)
+      const validDocs = formData.documents.filter((doc) => doc.file != null);
+      validDocs.forEach((doc, i) => {
+        fd.append(`files[${i}]`, doc.file!);
+        fd.append(`documents[${i}][document_type]`, doc.document_type || 'lainnya');
+        fd.append(`documents[${i}][file_name]`, doc.file!.name);
       });
 
       logPayloadDiag(fd, 'create');
@@ -751,11 +751,8 @@ export default function BiayaRetribusiPage() {
 
   const handleCreate = async () => {
     if (abortOversized()) return;
-    // Pengaman ganda: tombol memang disable saat blocker ada, tapi state bisa
-    // terkosongkan di antara render dan klik (depo diganti / kandidat
-    // dimuat ulang) — jangan kirim POST kosong yang hanya menghasilkan 422.
-    if (blockerReasons.length > 0) {
-      notifyGlobal(blockerReasons[0], 'error');
+    if (draftBlockers.length > 0) {
+      notifyGlobal(`Belum bisa simpan draft: ${draftBlockers[0]}`, 'error');
       return;
     }
     setBusy(true);
@@ -773,7 +770,7 @@ export default function BiayaRetribusiPage() {
   const handleCreateAndSubmit = async () => {
     if (abortOversized()) return;
     if (submitBlockers.length > 0) {
-      notifyGlobal(`Belum bisa dikirim: ${submitBlockers.slice(0, 2).join(' · ')}`, 'error');
+      notifyGlobal(`Belum bisa dikirim: ${submitBlockers[0]}`, 'error');
       return;
     }
     setBusy(true);
@@ -819,12 +816,11 @@ export default function BiayaRetribusiPage() {
         fd.append(`details[${idx}][order]`, String(idx));
       });
 
-      formData.documents.forEach((doc, i) => {
-        if (doc.file) {
-          fd.append(`files[${i}]`, doc.file);
-          fd.append(`documents[${i}][document_type]`, doc.document_type || 'lainnya');
-          fd.append(`documents[${i}][file_name]`, doc.file.name);
-        }
+      const validDocs = formData.documents.filter((doc) => doc.file != null);
+      validDocs.forEach((doc, i) => {
+        fd.append(`files[${i}]`, doc.file!);
+        fd.append(`documents[${i}][document_type]`, doc.document_type || 'lainnya');
+        fd.append(`documents[${i}][file_name]`, doc.file!.name);
       });
       documentsRemove.forEach((docId) => fd.append('documents_remove[]', String(docId)));
       logPayloadDiag(fd, 'update');
@@ -834,9 +830,8 @@ export default function BiayaRetribusiPage() {
   const handleUpdate = async () => {
     if (!editingId) return;
     if (abortOversized()) return;
-    // Pengaman yang sama dengan create: jangan kirim PUT kosong.
-    if (blockerReasons.length > 0) {
-      notifyGlobal(blockerReasons[0], 'error');
+    if (draftBlockers.length > 0) {
+      notifyGlobal(`Belum bisa simpan: ${draftBlockers[0]}`, 'error');
       return;
     }
     setBusy(true);
@@ -863,7 +858,7 @@ export default function BiayaRetribusiPage() {
     if (!editingId) return;
     if (abortOversized()) return;
     if (submitBlockers.length > 0) {
-      notifyGlobal(`Belum bisa dikirim: ${submitBlockers.slice(0, 2).join(' · ')}`, 'error');
+      notifyGlobal(`Belum bisa dikirim: ${submitBlockers[0]}`, 'error');
       return;
     }
     setBusy(true);
@@ -1138,34 +1133,73 @@ export default function BiayaRetribusiPage() {
       setRateSaving(false);
     }
   };
-  /** Alasan tombol terkunci — ditampilkan agar user tidak menebak. */
-  const blockerReasons: string[] = [];
-  if (!editingId && !sourceType) blockerReasons.push('Pilih tipe pengajuan');
-  if (!formData.tanggal_pengajuan) blockerReasons.push('Isi tanggal pengajuan');
-  if (selectedRowCount === 0) blockerReasons.push('Pilih receiving atau tambah baris manual');
-  if (missingNominalNopols.length > 0) blockerReasons.push(`Isi nominal: ${missingNominalNopols.join(', ')}`);
-  if (hasIncompleteManualRows) blockerReasons.push('Lengkapi baris manual');
-  if (hasIncompleteExistingRows) blockerReasons.push('Lengkapi baris tersimpan');
+  /** Validasi per langkah agar tombol tidak terkunci bisu dan user mendapat feedback jelas. */
+  const step1Blockers: string[] = [];
+  if (!editingId && !sourceType) step1Blockers.push('Pilih tipe pengajuan terlebih dahulu (Otomatis dari Receiving atau Input Manual)');
+
+  const step2Blockers: string[] = [];
+  if (!formData.tanggal_pengajuan) step2Blockers.push('Isi tanggal pengajuan');
+  if (selectedRowCount === 0) step2Blockers.push('Pilih minimal 1 receiving atau tambah baris manual');
+  if (missingNominalNopols.length > 0) step2Blockers.push(`Isi nominal untuk kendaraan: ${missingNominalNopols.join(', ')}`);
+  if (hasIncompleteManualRows) step2Blockers.push('Lengkapi baris manual (plat, tipe kendaraan, dan nominal > 0)');
+  if (hasIncompleteExistingRows) step2Blockers.push('Lengkapi baris tersimpan (plat, tipe kendaraan, dan nominal > 0)');
+
   const emptyDocIndex = formData.documents.findIndex((doc) => !doc.file && !doc.file_path);
-  if (emptyDocIndex >= 0) blockerReasons.push(`Lampiran #${emptyDocIndex + 1} belum ada file — hapus atau pilih file`);
-  const hasDocuments = formData.documents.some((doc) => doc.file || doc.file_path);
-  /** Syarat kirim = syarat draft + minimal 1 dokumen lampiran. */
-  const submitBlockers = hasDocuments
-    ? blockerReasons
-    : [...blockerReasons, 'Lampirkan minimal 1 dokumen (PDF/foto) sebelum dikirim'];
+  const step3Blockers: string[] = [];
+  if (emptyDocIndex >= 0) step3Blockers.push(`Lampiran #${emptyDocIndex + 1} belum ada file — pilih file atau hapus baris dokumen tersebut`);
+
+  const hasDocuments = formData.documents.some((doc) => Boolean(doc.file || doc.file_path));
+
+  /** Syarat simpan draft: langkah 1 & 2 lengkap (lampiran bersifat opsional untuk draft). */
+  const draftBlockers: string[] = [
+    ...step1Blockers,
+    ...step2Blockers,
+    ...(oversizedDoc ? [`File ${oversizedDoc.file?.name} melebihi batas 20 MB`] : []),
+  ];
+
+  /** Syarat kirim ke approval: syarat draft + minimal 1 dokumen lampiran. */
+  const submitBlockers: string[] = [
+    ...draftBlockers,
+    ...step3Blockers,
+    ...(!hasDocuments ? ['Lampirkan minimal 1 dokumen pendukung (PDF/foto) sebelum dikirim'] : []),
+    ...(totalNominal <= 0 ? ['Total nominal pengajuan harus lebih dari Rp 0'] : []),
+  ];
+
+  const blockerReasons = draftBlockers;
   const stepDone = [
     editingId ? true : !!sourceType,
     !!formData.tanggal_pengajuan && selectedRowCount > 0 && !hasIncompleteManualRows && !hasIncompleteExistingRows && (editingId || !hasIncompleteCandidateRows),
-    formData.documents.length > 0,
+    hasDocuments,
     false,
   ];
   const WIZARD_LABELS = ['Tipe', 'Data', 'Lampiran', 'Review'];
   const minStep = editingId ? 2 : 1;
   const stepProgress = formStep >= 4 ? 100 : Math.round((stepDone.slice(0, 3).filter(Boolean).length / 3) * 100);
   const goNext = () => {
-    if (formStep === 1 && !editingId && !sourceType) { notifyGlobal('Pilih tipe pengajuan dulu', 'info'); return; }
-    if (formStep === 2 && blockerReasons.length > 0) { notifyGlobal(blockerReasons[0], 'error'); return; }
-    setFormStep((s) => Math.min(4, s + 1));
+    if (formStep === 1) {
+      if (step1Blockers.length > 0) {
+        notifyGlobal(step1Blockers[0], 'error');
+        return;
+      }
+      setFormStep(2);
+      return;
+    }
+    if (formStep === 2) {
+      if (step2Blockers.length > 0) {
+        notifyGlobal(step2Blockers[0], 'error');
+        return;
+      }
+      setFormStep(3);
+      return;
+    }
+    if (formStep === 3) {
+      if (step3Blockers.length > 0) {
+        notifyGlobal(step3Blockers[0], 'error');
+        return;
+      }
+      setFormStep(4);
+      return;
+    }
   };
   const goBack = () => setFormStep((s) => Math.max(minStep, s - 1));
 
@@ -1686,8 +1720,11 @@ export default function BiayaRetribusiPage() {
         {/* Create/Edit Modal */}
         <Modal open={openModal} onClose={() => { setOpenModal(false); setEditingId(null); setEditingStatus(null); }} title={editingId ? 'Edit Biaya Retribusi' : 'Buat Biaya Retribusi'} subtitle={`Langkah ${formStep} dari 4: ${WIZARD_LABELS[formStep - 1]}`} size="2xl" footer={
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-            {formStep === 2 && blockerReasons.length > 0 && !busy && (
-              <p className="text-xs font-semibold text-amber-600 sm:mr-auto">Lengkapi dulu: {blockerReasons.slice(0, 2).join(' · ')}{blockerReasons.length > 2 ? ` (+${blockerReasons.length - 2})` : ''}</p>
+            {formStep === 2 && step2Blockers.length > 0 && !busy && (
+              <p className="text-xs font-semibold text-amber-600 sm:mr-auto">Lengkapi dulu: {step2Blockers.slice(0, 2).join(' · ')}{step2Blockers.length > 2 ? ` (+${step2Blockers.length - 2})` : ''}</p>
+            )}
+            {formStep === 3 && step3Blockers.length > 0 && !busy && (
+              <p className="text-xs font-semibold text-amber-600 sm:mr-auto">Periksa lampiran: {step3Blockers.slice(0, 2).join(' · ')}</p>
             )}
             {formStep === 4 && submitBlockers.length > 0 && !busy && (
               <p className="text-xs font-semibold text-amber-600 sm:mr-auto">Belum bisa dikirim: {submitBlockers.slice(0, 2).join(' · ')}{submitBlockers.length > 2 ? ` (+${submitBlockers.length - 2})` : ''}</p>
@@ -1697,40 +1734,40 @@ export default function BiayaRetribusiPage() {
               <button type="button" onClick={goBack} disabled={busy} className="btn-secondary w-full sm:w-auto">‹ Kembali</button>
             )}
             {formStep < 4 && (
-              <button type="button" onClick={goNext} disabled={busy || (formStep === 1 && !editingId && !sourceType) || (formStep === 2 && blockerReasons.length > 0)} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+              <button type="button" onClick={goNext} disabled={busy} className="btn-primary inline-flex w-full items-center justify-center gap-2 sm:w-auto">
                 {formStep === 3 ? 'Review ›' : 'Lanjut ›'}
               </button>
             )}
             {formStep === 4 && (
               <>
-                <button type="button" onClick={previewRetribusi} disabled={busy || blockerReasons.length > 0} className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                <button type="button" onClick={previewRetribusi} disabled={busy} className="btn-secondary inline-flex w-full items-center justify-center gap-2 sm:w-auto">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                   Preview PDF
                 </button>
                 {!editingId ? (
                   <>
-                    <button type="button" onClick={handleCreate} disabled={busy || blockerReasons.length > 0} title="Hanya menyimpan — belum masuk antrean pemeriksaan" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                    <button type="button" onClick={handleCreate} disabled={busy} title="Hanya menyimpan — belum masuk antrean pemeriksaan" className="btn-secondary inline-flex w-full items-center justify-center gap-2 sm:w-auto">
                       {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-600" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
                       {busy ? 'Menyimpan...' : 'Simpan Draft'}
                     </button>
-                    <button type="button" onClick={handleCreateAndSubmit} disabled={busy || submitBlockers.length > 0} title={submitBlockers.length > 0 ? `Belum bisa dikirim: ${submitBlockers.slice(0, 2).join(' · ')}` : 'Simpan dan langsung kirim ke antrean pemeriksaan'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                    <button type="button" onClick={handleCreateAndSubmit} disabled={busy} title="Simpan dan langsung kirim ke antrean pemeriksaan" className="btn-primary inline-flex w-full items-center justify-center gap-2 sm:w-auto">
                       {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>}
                       {busy ? 'Mengirim...' : 'Simpan & Kirim'}
                     </button>
                   </>
                 ) : editingStatus === 'revisi' ? (
                   <>
-                    <button type="button" onClick={handleUpdate} disabled={busy || blockerReasons.length > 0} title="Hanya menyimpan perbaikan" className="btn-secondary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                    <button type="button" onClick={handleUpdate} disabled={busy} title="Hanya menyimpan perbaikan" className="btn-secondary inline-flex w-full items-center justify-center gap-2 sm:w-auto">
                       {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/40 border-t-gray-600" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
                       {busy ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </button>
-                    <button type="button" onClick={handleUpdateAndSubmit} disabled={busy || submitBlockers.length > 0} title={submitBlockers.length > 0 ? `Belum bisa dikirim: ${submitBlockers.slice(0, 2).join(' · ')}` : 'Simpan perbaikan lalu kirim kembali ke approver yang meminta revisi'} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                    <button type="button" onClick={handleUpdateAndSubmit} disabled={busy} title="Simpan perbaikan lalu kirim kembali ke approver yang meminta revisi" className="btn-primary inline-flex w-full items-center justify-center gap-2 sm:w-auto">
                       {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>}
                       {busy ? 'Mengirim...' : 'Simpan Perubahan & Kirim Ulang'}
                     </button>
                   </>
                 ) : (
-                  <button type="button" onClick={handleUpdate} disabled={busy || blockerReasons.length > 0} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                  <button type="button" onClick={handleUpdate} disabled={busy} className="btn-primary inline-flex w-full items-center justify-center gap-2 sm:w-auto">
                     {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
                     {busy ? 'Menyimpan...' : 'Simpan Perubahan'}
                   </button>
@@ -2322,13 +2359,15 @@ export default function BiayaRetribusiPage() {
               ) : (
                 <div className="space-y-2">
                   {formData.documents.map((doc, i) => (
-                    <details key={i} open className="group relative rounded-lg border border-gray-100 bg-surface-card">
+                    <details key={i} open className={`group relative rounded-lg border bg-surface-card ${!doc.file && !doc.file_path ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-100'}`}>
                       <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-raised rounded-lg transition-colors list-none">
-                        <div className="w-6 h-6 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-[10px] font-bold text-amber-600 shrink-0">
+                        <div className={`w-6 h-6 rounded-md border flex items-center justify-center text-[10px] font-bold shrink-0 ${!doc.file && !doc.file_path ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
                           {i + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-gray-800 block truncate">{doc.file_name || `Dokumen #${i + 1}`}</span>
+                          <span className={`text-sm font-bold block truncate ${!doc.file && !doc.file_path ? 'text-amber-800' : 'text-gray-800'}`}>
+                            {doc.file_name || `Dokumen #${i + 1} (Belum ada file dipilih)`}
+                          </span>
                           <span className="text-[11px] text-gray-400">{DOCUMENT_TYPES.find(dt => dt.value === doc.document_type)?.label || 'Pilih tipe'}</span>
                         </div>
                         <svg className="w-4 h-4 text-gray-300 group-open:rotate-180 transition-transform shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
