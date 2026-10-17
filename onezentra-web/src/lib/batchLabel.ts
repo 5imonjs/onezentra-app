@@ -176,7 +176,20 @@ export function downloadBatchLabel(
 ): void {
   const doc = buildBatchLabelPdf(data, options);
   const fileName = safe(data.kode_barang).replace(/[^\w-]+/g, '_');
-  doc.save(`label-batch-${fileName}.pdf`);
+  const url = URL.createObjectURL(doc.output('blob'));
+
+  // Unduh lewat <a download> eksplisit, bukan `doc.save()`: perilaku `save()`
+  // berbeda antara build browser dan Node (yang terakhir menulis ke disk saat
+  // tes), sedangkan pola anchor ini sama dan sudah dipakai di PDF lain.
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `label-batch-${fileName}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  // Revoke ditunda: sebagian browser membaca blob setelah click() kembali.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**
@@ -186,29 +199,62 @@ export function downloadBatchLabel(
  * thermal dan mengatur ukuran kertas ke "Label" agar tidak ada margin putih.
  * Printer Bluetooth langsung hanya mungkin di mobile — browser tidak boleh
  * berbicara ke perangkat BLE tanpa izin eksplisit pengguna per perangkat.
+ *
+ * PDF-nya dimuat ke <iframe> tersembunyi dari `blob:` lalu di-print dari
+ * dokumen frame itu. Dua hal yang mudah salah:
+ * - CSP aplikasi wajib mengizinkan `frame-src blob:` (lihat next.config.mjs).
+ *   Tanpa itu frame diblokir, iframe tetap `about:blank`, dan print() melempar
+ *   SecurityError "Blocked a frame ... from accessing a cross-origin frame".
+ * - `blob:` harus di-revoke setelah frame dibuang, kalau tidak setiap cetak
+ *   meninggalkan satu blob PDF di memori.
+ *
+ * Mengembalikan `true` HANYA kalau `print()` benar-benar berhasil dipanggil.
+ * Pemanggil memakai nilai ini untuk menandai label "tercetak": menandai saat
+ * cetak gagal (dulu selalu) membuat tombol berubah jadi "Cetak Ulang" padahal
+ * label belum pernah keluar dari printer — persis keluhan operator.
+ *
+ * Kalau `print()` ditolak (CSP/cross-origin), label diunduh sebagai gantinya
+ * dan hasilnya `false` (unduh ≠ cetak, jadi tidak menandai tercetak).
  */
 export function printBatchLabel(
   data: BatchLabelData,
   options?: { width?: LabelWidth; height?: number },
-): void {
+): Promise<boolean> {
   const doc = buildBatchLabelPdf(data, options);
-  const url = doc.output('bloburl');
-  const frame = document.createElement('iframe');
-  frame.style.position = 'fixed';
-  frame.style.right = '0';
-  frame.style.bottom = '0';
-  frame.style.width = '0';
-  frame.style.height = '0';
-  frame.style.border = '0';
-  frame.src = String(url);
-  frame.onload = () => {
-    try {
-      frame.contentWindow?.focus();
-      frame.contentWindow?.print();
-    } finally {
+  const url = URL.createObjectURL(doc.output('blob'));
+
+  return new Promise<boolean>((resolve) => {
+    const frame = document.createElement('iframe');
+    // 0x0 di pojok: dialog cetak memakai dokumen di dalam frame, halaman tidak
+    // perlu menampilkan apa pun.
+    frame.style.position = 'fixed';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    frame.setAttribute('aria-hidden', 'true');
+    frame.src = url;
+
+    frame.onload = () => {
+      let printed = false;
+      try {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+        printed = true;
+      } catch {
+        downloadBatchLabel(data, options);
+      }
+
       // Beri dialog print waktu mengambil dokumen sebelum iframe dibuang.
-      window.setTimeout(() => frame.remove(), 1000);
-    }
-  };
-  document.body.appendChild(frame);
+      window.setTimeout(() => {
+        frame.remove();
+        URL.revokeObjectURL(url);
+      }, 1000);
+
+      resolve(printed);
+    };
+
+    document.body.appendChild(frame);
+  });
 }
