@@ -68,6 +68,7 @@ const docTypeLabel: Record<string, string> = {
   standarisasi_tumpukan: 'Standarisasi Tumpukan',
   biaya_thl: 'Biaya THL',
   biaya_retribusi: 'Biaya Retribusi',
+  opname_expired: 'Opname Expired',
 };
 
 const triggerOptions: Record<string, { value: string; label: string; description: string }[]> = {
@@ -92,6 +93,7 @@ const triggerOptions: Record<string, { value: string; label: string; description
     { value: 'submitted', label: 'Biaya THL diajukan', description: 'Terpicu saat BLC (pengaju) mengirim pengajuan untuk diperiksa (pemroses: approval Biaya THL).' },
     { value: 'checked', label: 'Biaya THL diperiksa BAC', description: 'Terpicu saat BAC menandai pengajuan telah diperiksa (pemroses: approval Biaya THL).' },
     { value: 'approved', label: 'Biaya THL disetujui', description: 'Terpicu saat RLH menyetujui pengajuan. Jika nominal > Rp 750.000, pengajuan juga butuh pemantauan RFAH.' },
+    { value: 'rlh_approved', label: 'Biaya THL disetujui RLH (butuh RFAH)', description: 'Terpicu saat RLH menyetujui pengajuan dengan nominal > Rp 750.000 yang juga butuh pemantauan RFAH (pemroses: approval Biaya THL).' },
     { value: 'rejected', label: 'Biaya THL ditolak', description: 'Terpicu saat RLH menolak pengajuan beserta alasan penolakannya (pemroses: approval Biaya THL).' },
     { value: 'revisi', label: 'Biaya THL perlu revisi', description: 'Terpicu saat BAC/RLH mengirim pengajuan kembali untuk direvisi beserta catatan perbaikan (pemroses: approval Biaya THL).' },
   ],
@@ -99,8 +101,13 @@ const triggerOptions: Record<string, { value: string; label: string; description
     { value: 'submitted', label: 'Biaya Retribusi diajukan', description: 'Terpicu saat BLC (pengaju) mengirim pengajuan untuk diperiksa (pemroses: approval Biaya Retribusi).' },
     { value: 'checked', label: 'Biaya Retribusi diperiksa BAC', description: 'Terpicu saat BAC menandai pengajuan telah diperiksa (pemroses: approval Biaya Retribusi).' },
     { value: 'approved', label: 'Biaya Retribusi disetujui', description: 'Terpicu saat RLH menyetujui pengajuan. Jika nominal > Rp 1.000.000, pengajuan juga butuh pemantauan RFAH.' },
+    { value: 'rlh_approved', label: 'Biaya Retribusi disetujui RLH (butuh RFAH)', description: 'Terpicu saat RLH menyetujui pengajuan dengan nominal > Rp 1.000.000 yang juga butuh pemantauan RFAH (pemroses: approval Biaya Retribusi).' },
     { value: 'rejected', label: 'Biaya Retribusi ditolak', description: 'Terpicu saat RLH menolak pengajuan beserta alasan penolakannya (pemroses: approval Biaya Retribusi).' },
     { value: 'revisi', label: 'Biaya Retribusi perlu revisi', description: 'Terpicu saat BAC/RLH mengirim pengajuan kembali untuk direvisi beserta catatan perbaikan (pemroses: approval Biaya Retribusi).' },
+  ],
+  opname_expired: [
+    { value: 'completed', label: 'Opname Expired selesai', description: 'Terpicu saat sesi Opname Expired selesai (pemroses: modul Opname Expired).' },
+    { value: 'reminder', label: 'Pengingat Opname Expired', description: 'Terpicu saat pengingat dikirim ke depo yang belum kirim (pemroses: modul Opname Expired).' },
   ],
 };
 
@@ -255,6 +262,7 @@ export default function EmailRecipientsPage() {
       receiving: 'bg-teal-50 text-teal-700',
       selisih: 'bg-rose-50 text-rose-700',
       standarisasi_tumpukan: 'bg-amber-50 text-amber-700',
+      opname_expired: 'bg-indigo-50 text-indigo-700',
     };
     return colors[type] || 'bg-gray-100 text-gray-700';
   };
@@ -428,6 +436,7 @@ export default function EmailRecipientsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   <p className="text-slate-500">Penerima: <span className="font-medium text-slate-700">{describe(r)}</span></p>
+                  <p className="text-slate-500">Depo: <span className="font-medium text-slate-700">{r.kode_depo || 'Global'}</span></p>
                   <p className="text-slate-500">Aktif: <span className="font-medium text-slate-700">{r.is_active ? 'Aktif' : 'Nonaktif'}</span></p>
                   {r.label && <p className="text-slate-500 col-span-2">Label: <span className="font-medium text-slate-700">{r.label}</span></p>}
                 </div>

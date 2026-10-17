@@ -64,9 +64,11 @@ function LabelActions({ item, po, depo }: { item: ReceivingItem; po: string; dep
   return (
     <div className="flex items-center justify-end gap-1">
       <button
-        onClick={() => {
-          printBatchLabel(labelData);
-          markPrinted();
+        onClick={async () => {
+          // Tandai tercetak hanya kalau cetak benar-benar jalan; kalau tidak,
+          // badge/tombol akan bilang "tercetak" padahal label belum dicetak.
+          const printed = await printBatchLabel(labelData);
+          if (printed) markPrinted();
         }}
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-chip-primary hover:text-accent-text"
         title={`Cetak label ${labelName}`}
