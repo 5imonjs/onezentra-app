@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import DashboardCardGrid from '@/components/DashboardCardGrid';
 import { rencanaKirim } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 
@@ -16,29 +17,27 @@ type StatusKey =
 interface StatusDef {
   key: StatusKey;
   label: string;
-  hex: string;
-  color: string;
   dot: string;
-  bg: string;
+  box: string;
+  num: string;
+  name: string;
 }
 
 /**
  * Palet ramah buta warna: alur progres memakai skala intensitas satu hue (biru
- * muda -> gelap) sehingga urutan tahap tetap terbaca tanpa mengandalkan perbedaan
- * warna; abu untuk draf, merah hanya untuk status pengecualian (dibatalkan).
- *
- * `hex` points at a CSS variable rather than a literal. A raw hex in the
- * conic-gradient bypasses the theme entirely, so the ring would keep its
- * light-mode tints on the dark canvas. `var()` resolves per theme instead.
+ * muda -> gelap) sehingga urutan tahap tetap terbaca tanpa mengandalkan
+ * perbedaan warna; abu untuk draf, merah hanya untuk status pengecualian
+ * (dibatalkan). Kartu memakai kombinasi border+bg yang sama dengan kartu
+ * "Antrean Persetujuan Biaya" supaya dua blok di dashboard terlihat satu gaya.
  */
 const STATUSES: StatusDef[] = [
-  { key: 'DRAFT',        label: 'Rencana Kirim',   hex: 'var(--oz-gray-400)',  color: 'bg-slate-400',   dot: 'bg-slate-400',   bg: 'bg-surface-raised' },
-  { key: 'SCHEDULED',    label: 'Dijadwalkan',     hex: 'var(--oz-blue-300)',  color: 'bg-blue-300',    dot: 'bg-blue-400',    bg: 'bg-blue-50' },
-  { key: 'CHECKED_IN',   label: 'Gate Check-in',   hex: 'var(--oz-blue-400)',  color: 'bg-blue-400',    dot: 'bg-blue-500',    bg: 'bg-blue-50' },
-  { key: 'VERIFIED',     label: 'Verifikasi',      hex: 'var(--oz-blue-500)',  color: 'bg-blue-500',    dot: 'bg-blue-600',    bg: 'bg-blue-50' },
-  { key: 'IN_PROGRESS',  label: 'Receiving',       hex: 'var(--oz-blue-600)',  color: 'bg-blue-600',    dot: 'bg-blue-700',    bg: 'bg-blue-50' },
-  { key: 'COMPLETED',    label: 'Selesai Receiving', hex: 'var(--oz-blue-700)', color: 'bg-blue-700',    dot: 'bg-blue-700',    bg: 'bg-blue-50' },
-  { key: 'CANCELLED',    label: 'Dibatalkan',      hex: 'var(--oz-red-500)',   color: 'bg-red-500',     dot: 'bg-red-500',     bg: 'bg-red-50' },
+  { key: 'DRAFT',       label: 'Rencana Kirim',     dot: 'bg-slate-400', box: 'border-slate-200 bg-surface-raised', num: 'text-slate-700', name: 'text-slate-500' },
+  { key: 'SCHEDULED',   label: 'Dijadwalkan',       dot: 'bg-blue-300',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
+  { key: 'CHECKED_IN',  label: 'Gate Check-in',     dot: 'bg-blue-400',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
+  { key: 'VERIFIED',    label: 'Verifikasi',        dot: 'bg-blue-500',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
+  { key: 'IN_PROGRESS', label: 'Receiving',         dot: 'bg-blue-600',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
+  { key: 'COMPLETED',   label: 'Selesai Receiving', dot: 'bg-blue-700',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-800',  name: 'text-blue-700' },
+  { key: 'CANCELLED',   label: 'Dibatalkan',        dot: 'bg-red-500',   box: 'border-red-200 bg-red-50',           num: 'text-red-700',   name: 'text-red-600' },
 ];
 
 // Tahap yang membentuk alur normal rencana kirim -> receiving. CANCELLED
@@ -106,24 +105,24 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
     return null;
   }
 
-  const pipelineTotal = PIPELINE_STATUSES.reduce((a, s) => a + (counts[s.key] ?? 0), 0);
-  const total = pipelineTotal;
-
-
+  const total = PIPELINE_STATUSES.reduce((a, s) => a + (counts[s.key] ?? 0), 0);
+  const totalQty = Object.values(qtyMap).reduce((a, b) => a + b, 0);
+  const totalKubikasi = Object.values(kubikasiMap).reduce((a, b) => a + b, 0);
 
   return (
     <section className="bg-surface-card rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow">
-      <div className="px-6 py-4 border-b border-slate-100 bg-linear-to-r from-slate-50 to-surface-card flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
-          </div>
-          <div>
-            <h2 className="text-base font-black tracking-tight text-slate-900">Progress Rencana Kirim</h2>
-            <p className="text-xs text-slate-500">Sebaran status • qty & kubikasi</p>
-            {failed && !loading && (<p className="text-xs text-amber-600 mt-0.5">Sebagian gagal dimuat</p>)}
-          </div>
+      <div className="px-4 py-3 sm:px-5 border-b border-slate-100 bg-linear-to-r from-slate-50 to-surface-card flex flex-wrap items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-sm font-black tracking-tight text-slate-800">Progress Rencana Kirim</h2>
+          <p className="text-[11px] text-slate-400">Sebaran status • qty &amp; kubikasi</p>
         </div>
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-chip-primary-border bg-chip-primary px-2.5 py-1 text-[11px] font-bold text-accent-text">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
+          {total} pengiriman
+        </span>
         <button
           onClick={load}
           disabled={loading}
@@ -142,16 +141,19 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
         </button>
       </div>
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
+        {failed && !loading && (<p className="mb-3 text-xs text-amber-600">Sebagian gagal dimuat</p>)}
+
         {loading ? (
-          <div className="flex items-center gap-3">
+          <DashboardCardGrid>
             {PIPELINE_STATUSES.map((s) => (
-              <div key={s.key} className="flex flex-col items-center gap-2 flex-1">
-                <div className="h-3 w-3 rounded-full bg-slate-200 animate-pulse" />
-                <div className="h-3 w-12 bg-slate-100 rounded animate-pulse" />
+              <div key={s.key} className="rounded-2xl border border-slate-200 bg-surface-card p-3">
+                <div className="h-3 w-16 rounded bg-slate-100 animate-pulse" />
+                <div className="mt-2 h-5 w-8 rounded bg-slate-200 animate-pulse" />
+                <div className="mt-2 h-3 w-20 rounded bg-slate-100 animate-pulse" />
               </div>
             ))}
-          </div>
+          </DashboardCardGrid>
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <div className="w-14 h-14 rounded-2xl bg-surface-raised flex items-center justify-center mb-4">
@@ -162,37 +164,39 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-700">Progres Rencana Kirim → Receiving</p>
-              <span className="text-xs text-gray-500">{total} pengiriman</span>
-            </div>
             <div
+              role="group"
               aria-label={`Progres rencana kirim sampai receiving: ${PIPELINE_STATUSES.map((s) => `${s.label} ${counts[s.key]}`).join(', ')}`}
-              className="flex flex-wrap items-center gap-x-1 gap-y-3"
             >
-              {PIPELINE_STATUSES.map((s, i) => (
-                <Fragment key={s.key}>
-                  {i > 0 && <span aria-hidden="true" className="h-px w-4 sm:w-8 bg-slate-300" />}
-                  <div
-                    className="flex flex-col items-center gap-1 min-w-[60px] flex-1 sm:flex-none"
-                    title={`${s.label}: ${counts[s.key]} pengiriman • ${qtyMap[s.key].toLocaleString('id-ID')} qty • ${kubikasiMap[s.key].toFixed(2)} m³`}
-                    data-role={s.key}
-                    data-count={counts[s.key]}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`flex h-3 w-3 rounded-full ${counts[s.key] > 0 ? s.dot : 'bg-slate-300'}`}
-                    />
-                    <span className="text-[10px] font-black leading-none tracking-wide text-center text-gray-600">
-                      {s.label.toUpperCase().replace(/\s+/g, '')}
-                    </span>
-                    <span className="text-sm font-bold tabular-nums text-gray-900">{counts[s.key]}</span>
-                  </div>
-                </Fragment>
-              ))}
+              <DashboardCardGrid>
+                {PIPELINE_STATUSES.map((s) => {
+                  const count = counts[s.key];
+                  const active = count > 0;
+                  return (
+                    <div
+                      key={s.key}
+                      data-role={s.key}
+                      data-count={count}
+                      title={`${s.label}: ${count} pengiriman • ${qtyMap[s.key].toLocaleString('id-ID')} qty • ${kubikasiMap[s.key].toFixed(2)} m³`}
+                      className={`rounded-2xl border p-3 transition-colors ${active ? s.box : 'border-slate-200 bg-surface-card'}`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${active ? s.dot : 'bg-slate-300'}`} />
+                        <p className={`truncate text-[11px] font-semibold uppercase tracking-wider ${active ? s.name : 'text-slate-400'}`}>{s.label}</p>
+                      </div>
+                      <p className={`mt-1.5 text-xl leading-none font-black tabular-nums ${active ? s.num : 'text-slate-400'}`}>{count}</p>
+                      {active && (
+                        <p className="mt-1 truncate text-[11px] text-slate-500">
+                          {qtyMap[s.key].toLocaleString('id-ID')} qty • {kubikasiMap[s.key].toFixed(2)} m³
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </DashboardCardGrid>
             </div>
-            <p className="text-xs text-gray-500">
-              Total {total} pengiriman • {Object.values(qtyMap).reduce((a, b) => a + b, 0).toLocaleString('id-ID')} qty • {Object.values(kubikasiMap).reduce((a, b) => a + b, 0).toFixed(2)} m³
+            <p className="text-xs text-slate-500">
+              Total {total} pengiriman • {totalQty.toLocaleString('id-ID')} qty • {totalKubikasi.toFixed(2)} m³
             </p>
           </div>
         )}
