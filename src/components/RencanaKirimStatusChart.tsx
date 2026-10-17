@@ -181,7 +181,10 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
                       className={`rounded-2xl border p-3 transition-colors ${active ? s.box : 'border-slate-200 bg-surface-card'}`}
                     >
                       <div className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${active ? s.dot + ' animate-pulse' : 'bg-slate-300'}`} />
+                        <span aria-hidden="true" className="relative flex h-2 w-2 shrink-0">
+  {active && <span className={`absolute inline-flex h-full w-full rounded-full ${s.dot} opacity-75 animate-ping`} />}
+  <span className={`relative inline-flex h-2 w-2 rounded-full ${active ? s.dot : 'bg-slate-300'}`} />
+</span>
                         <p className={`truncate text-[11px] font-semibold uppercase tracking-wider ${active ? s.name : 'text-slate-400'}`}>{s.label}</p>
                       </div>
                       <p className={`mt-1.5 text-xl leading-none font-black tabular-nums ${active ? s.num : 'text-slate-400'}`}>{count}</p>
