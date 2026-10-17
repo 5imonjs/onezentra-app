@@ -495,7 +495,7 @@ export default function ValidasiSjPage() {
       nama_barang: item.nama_barang,
       actual_qty: item.actual_qty,
       satuan: item.satuan,
-      expired_date: item.expired_date,
+      expired_date: fmtDate(item.expired_date),
       condition: item.condition,
       po_transporter: active?.rencana_kirim?.po_transporter ?? null,
     };
