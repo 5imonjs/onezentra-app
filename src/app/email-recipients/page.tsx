@@ -377,8 +377,16 @@ export default function EmailRecipientsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {items.map((r) => (
-                  <tr key={r.id} className="group hover:bg-overlay-70 transition-colors">
+                {items.map((r, idx) => (
+                  <>
+                    {(idx === 0 || items[idx - 1].field !== r.field) && (
+                      <tr key={`group-${r.field}-${idx}`} className="bg-slate-50">
+                        <td colSpan={9} className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+                          {r.field === 'TO' ? 'Penerima TO' : 'Penerima CC'}
+                        </td>
+                      </tr>
+                    )}
+                    <tr key={r.id} className="group hover:bg-overlay-70 transition-colors">
                     <td className="px-5 py-4 text-sm text-slate-500">{r.id}</td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${docBadge(r.document_type)}`}>
@@ -430,6 +438,7 @@ export default function EmailRecipientsPage() {
                       </div>
                     </td>
                   </tr>
+                  </>
                 ))}
                 {items.length === 0 && (
                   <tr>
