@@ -108,3 +108,4 @@ class BiayaThl extends Model
     {
         return $this->belongsTo(BiayaRetribusiDetail::class);
     }
+}
