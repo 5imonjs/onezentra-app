@@ -17,8 +17,6 @@ class BiayaThl extends Model
     protected $table = 'biaya_thls';
 
     protected $fillable = [
-        'tanggal_pengajuan', 'kode_depo', 'nama_depo',
-        'no_kendaraan', 'type_kendaraan', 'no_surat_jalan',
         'kubikasi_base', 'nominal_biaya', 'is_rfah_required', 'rfah_name',
         'approval_pengajuan', 'approval_pengajuan_level', 'created_by', 'status',
         'submitted_by', 'submitted_at', 'checked_by', 'checked_at',
@@ -28,6 +26,7 @@ class BiayaThl extends Model
         'revised_by', 'revised_at', 'revisi_reason',
         'resubmitted_by', 'resubmitted_at',
         'revision_return_status',
+        'biaya_retribusi_detail_id',
     ];
 
     protected function casts(): array

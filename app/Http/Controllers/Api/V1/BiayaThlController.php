@@ -236,9 +236,28 @@ class BiayaThlController extends Controller
     {
         $validated = $this->validateThlRequest($request);
 
+        // Ambil data dari BiayaRetribusiDetail jika biaya_retribusi_detail_id disediakan
+        $retribusiDetail = null;
+        if ($validated['biaya_retribusi_detail_id'] ?? null) {
+            $retribusiDetail = BiayaRetribusiDetail::find($validated['biaya_retribusi_detail_id']);
+        }
+
         foreach ($validated['details'] ?? [] as &$detail) {
             $detail['kubikasi'] = (float) ($detail['kubikasi'] ?? 0);
             $detail['droppoint'] = (string) ($detail['droppoint'] ?? '0');
+
+            // Override dengan field dari BiayaRetribusiDetail jika tersedia
+            if ($retribusiDetail) {
+                $detail['nopol_kendaraan'] = $retribusiDetail->nopol_kendaraan;
+                $detail['type_kendaraan'] = $retribusiDetail->type_kendaraan;
+                $detail['no_surat_jalan'] = $retribusiDetail->no_surat_jalan;
+                $detail['kubikasi'] = $retribusiDetail->kubikasi;
+                $detail['droppoint'] = $retribusiDetail->droppoint;
+                $detail['posisi'] = $retribusiDetail->posisi;
+                $detail['jam_datang'] = $retribusiDetail->jam_datang;
+                $detail['jam_pulang'] = $retribusiDetail->jam_pulang;
+                $detail['kendaraan_tambahan'] = $retribusiDetail->kendaraan_tambahan;
+            }
 
             if (strtoupper(trim((string) ($detail['posisi'] ?? ''))) === 'THL GUDANG') {
                 $detail['kubikasi'] = 0;
@@ -660,7 +679,7 @@ class BiayaThlController extends Controller
             $retribusi->no_surat_jalan = $retribusiDetail->no_surat_jalan;
         }
 
-                $retribusiDetails = $biayaThl->details->map(function ($thlDetail, int $index): BiayaRetribusiDetail {
+        $retribusiDetails = $biayaThl->details->map(function ($thlDetail, int $index): BiayaRetribusiDetail {
             $retribusiDetail = new BiayaRetribusiDetail([
                 'nopol_kendaraan' => $thlDetail->nopol_kendaraan,
                 'type_kendaraan' => $thlDetail->type_kendaraan,
@@ -929,6 +948,7 @@ class BiayaThlController extends Controller
 
         $rules = [
             'tanggal_pengajuan' => 'required|date',
+            'biaya_retribusi_detail_id' => 'nullable|exists:biaya_retribusi_details,id',
             'kubikasi_base' => 'nullable|numeric|min:0',
             'details' => 'required|array|min:1|max:20',
             'details.*.id' => 'nullable|integer|exists:biaya_thl_details,id',

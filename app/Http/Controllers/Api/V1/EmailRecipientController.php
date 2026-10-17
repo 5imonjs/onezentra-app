@@ -139,6 +139,7 @@ class EmailRecipientController extends Controller
             'trigger' => 'required|string|in:created,cancelled,validated,completed,selisih_qty,approved,rejected,submitted,checked,rlh_approved,revisi,reminder',
             'recipient_type' => 'required|string|in:email,user,role',
             'field' => 'required|string|in:TO,CC',
+            'kode_depo' => 'nullable|string|max:10',
             'email' => 'nullable|email|max:255',
             'user_id' => 'nullable|exists:users,id',
             'role_slug' => 'nullable|string|exists:roles,slug|max:50',
