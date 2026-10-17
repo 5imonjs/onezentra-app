@@ -45,6 +45,13 @@ interface FormState {
   role_slug: string;
   label: string;
   is_active: boolean;
+  // mode tambah: dua bagian TO/CC
+  to_user_ids: number[];
+  to_emails: string;
+  to_role: string;
+  cc_user_ids: number[];
+  cc_emails: string;
+  cc_role: string;
 }
 
 const emptyForm: FormState = {
@@ -58,6 +65,12 @@ const emptyForm: FormState = {
   role_slug: 'blc',
   label: '',
   is_active: true,
+  to_user_ids: [],
+  to_emails: '',
+  to_role: '',
+  cc_user_ids: [],
+  cc_emails: '',
+  cc_role: '',
 };
 
 const docTypeLabel: Record<string, string> = {
@@ -192,6 +205,12 @@ export default function EmailRecipientsPage() {
       role_slug: r.role_slug || '',
       label: r.label || '',
       is_active: r.is_active,
+      to_user_ids: [],
+      to_emails: '',
+      to_role: '',
+      cc_user_ids: [],
+      cc_emails: '',
+      cc_role: '',
     });
     setShowCreate(true);
   };
@@ -222,19 +241,21 @@ export default function EmailRecipientsPage() {
         return;
       }
 
-      // Tambah: dukung banyak penerima sekaligus
-      let targets: Array<Record<string, unknown>> = [];
-      if (form.recipient_type === 'email') {
-        const emails = form.email.split(/[,;\\n]/).map((e) => e.trim()).filter(Boolean);
-        if (emails.length === 0) throw new Error('Email wajib diisi');
-        targets = emails.map((e) => ({ ...base, email: e }));
-      } else if (form.recipient_type === 'user') {
-        if (form.user_ids.length === 0) throw new Error('Pilih minimal satu pengguna');
-        targets = form.user_ids.map((uid) => ({ ...base, user_id: uid }));
-      } else {
-        if (!form.role_slug) throw new Error('Pilih role');
-        targets = [{ ...base, role_slug: form.role_slug }];
-      }
+      // Tambah: dua bagian TO dan CC
+      const buildTargets = (field: string, userIds: number[], emailsRaw: string, role: string) => {
+        const out: Array<Record<string, unknown>> = [];
+        for (const uid of userIds) out.push({ ...base, field, recipient_type: 'user', user_id: uid });
+        for (const e of emailsRaw.split(/[,;\\n]/).map((x) => x.trim()).filter(Boolean)) {
+          out.push({ ...base, field, recipient_type: 'email', email: e });
+        }
+        if (role) out.push({ ...base, field, recipient_type: 'role', role_slug: role });
+        return out;
+      };
+      const targets = [
+        ...buildTargets('TO', form.to_user_ids, form.to_emails, form.to_role),
+        ...buildTargets('CC', form.cc_user_ids, form.cc_emails, form.cc_role),
+      ];
+      if (targets.length === 0) throw new Error('Pilih minimal satu penerima untuk TO atau CC');
 
       let created = 0;
       for (const t of targets) {
@@ -544,49 +565,45 @@ export default function EmailRecipientsPage() {
                 <p className="mt-1.5 text-xs text-gray-400">{triggerDescription(form.document_type, form.trigger)}</p>
               )}
             </div>
-            <div>
-              <label htmlFor="er-field" className="block text-xs font-medium text-gray-500 mb-1">Field</label>
-              <select id="er-field" value={form.field} onChange={(e) => setForm({ ...form, field: e.target.value })} className="select-field">
-                {options.fields.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="er-recipient-type" className="block text-xs font-medium text-gray-500 mb-1">Tipe Penerima</label>
-              <select id="er-recipient-type" value={form.recipient_type} onChange={(e) => setForm({ ...form, recipient_type: e.target.value })} className="select-field">
-                <option value="email">Email Langsung</option>
-                <option value="user">Pengguna Tertentu</option>
-                <option value="role">Semua Anggota Role</option>
-              </select>
-              <p className="mt-1.5 text-xs text-gray-400">
-                {form.recipient_type === 'email' && 'Kirim ke satu alamat email bebas.'}
-                {form.recipient_type === 'user' && 'Kirim ke satu atau banyak akun pengguna sistem.'}
-                {form.recipient_type === 'role' && 'Kirim ke seluruh anggota role terpilih (contoh: semua BLC).'}
-              </p>
-            </div>
           </div>
 
-          {form.recipient_type === 'email' && (
-            <div>
-              <label htmlFor="er-email" className="block text-xs font-medium text-gray-500 mb-1">Alamat Email (bisa lebih dari satu)</label>
-              <textarea id="er-email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="nama1@domain.com, nama2@domain.com" className="input-field text-sm py-2 min-h-[80px]" />
-              <p className="mt-1.5 text-xs text-gray-400">Pisahkan dengan koma, titik koma, atau baris baru. Setiap email akan menjadi satu baris penerima.</p>
+          {editTarget && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="er-field" className="block text-xs font-medium text-gray-500 mb-1">Field</label>
+                <select id="er-field" value={form.field} onChange={(e) => setForm({ ...form, field: e.target.value })} className="select-field">
+                  {options.fields.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="er-recipient-type" className="block text-xs font-medium text-gray-500 mb-1">Tipe Penerima</label>
+                <select id="er-recipient-type" value={form.recipient_type} onChange={(e) => setForm({ ...form, recipient_type: e.target.value })} className="select-field">
+                  <option value="email">Email Langsung</option>
+                  <option value="user">Pengguna Tertentu</option>
+                  <option value="role">Semua Anggota Role</option>
+                </select>
+              </div>
             </div>
           )}
-          {form.recipient_type === 'user' && (
+
+          {editTarget && form.recipient_type === 'email' && (
             <div>
-              <label htmlFor="er-user" className="block text-xs font-medium text-gray-500 mb-1">Pilih Pengguna (bisa lebih dari satu)</label>
-              <select id="er-user" multiple value={form.user_ids.map(String)} onChange={(e) => {
-                const vals = Array.from(e.target.selectedOptions).map((o) => parseInt(o.value)).filter(Boolean);
-                setForm({ ...form, user_ids: vals });
-              }} className="select-field min-h-[160px]">
+              <label htmlFor="er-email" className="block text-xs font-medium text-gray-500 mb-1">Alamat Email</label>
+              <input id="er-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="nama@domain.com" className="input-field text-sm py-2" />
+            </div>
+          )}
+          {editTarget && form.recipient_type === 'user' && (
+            <div>
+              <label htmlFor="er-user" className="block text-xs font-medium text-gray-500 mb-1">Pilih Pengguna</label>
+              <select id="er-user" value={form.user_ids[0] || 0} onChange={(e) => setForm({ ...form, user_ids: [parseInt(e.target.value) || 0] })} className="select-field">
+                <option value={0}>Pilih user...</option>
                 {options.users.map(u => (
                   <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
                 ))}
               </select>
-              <p className="mt-1.5 text-xs text-gray-400">Tahan Ctrl/Cmd untuk memilih banyak pengguna. Setiap pengguna akan menjadi satu baris penerima.</p>
             </div>
           )}
-          {form.recipient_type === 'role' && (
+          {editTarget && form.recipient_type === 'role' && (
             <div>
               <label htmlFor="er-role" className="block text-xs font-medium text-gray-500 mb-1">Pilih Role</label>
               <select id="er-role" value={form.role_slug} onChange={(e) => setForm({ ...form, role_slug: e.target.value })} className="select-field">
@@ -595,6 +612,70 @@ export default function EmailRecipientsPage() {
                   <option key={r.id} value={r.slug}>{r.name}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {!editTarget && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="text-sm font-bold text-slate-700 mb-3">Penerima TO</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Pengguna (bisa lebih dari satu)</label>
+                    <select multiple value={form.to_user_ids.map(String)} onChange={(e) => {
+                      const vals = Array.from(e.target.selectedOptions).map((o) => parseInt(o.value)).filter(Boolean);
+                      setForm({ ...form, to_user_ids: vals });
+                    }} className="select-field min-h-[120px]">
+                      {options.users.map(u => (
+                        <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Email tambahan (luar sistem)</label>
+                    <textarea value={form.to_emails} onChange={(e) => setForm({ ...form, to_emails: e.target.value })} placeholder="nama1@domain.com, nama2@domain.com" className="input-field text-sm py-2 min-h-[60px]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Role (semua anggota)</label>
+                    <select value={form.to_role} onChange={(e) => setForm({ ...form, to_role: e.target.value })} className="select-field">
+                      <option value="">Tidak ada</option>
+                      {options.roles.map(r => (
+                        <option key={r.id} value={r.slug}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4">
+                <p className="text-sm font-bold text-slate-700 mb-3">Penerima CC</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Pengguna (bisa lebih dari satu)</label>
+                    <select multiple value={form.cc_user_ids.map(String)} onChange={(e) => {
+                      const vals = Array.from(e.target.selectedOptions).map((o) => parseInt(o.value)).filter(Boolean);
+                      setForm({ ...form, cc_user_ids: vals });
+                    }} className="select-field min-h-[120px]">
+                      {options.users.map(u => (
+                        <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Email tambahan (luar sistem)</label>
+                    <textarea value={form.cc_emails} onChange={(e) => setForm({ ...form, cc_emails: e.target.value })} placeholder="nama1@domain.com, nama2@domain.com" className="input-field text-sm py-2 min-h-[60px]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Role (semua anggota)</label>
+                    <select value={form.cc_role} onChange={(e) => setForm({ ...form, cc_role: e.target.value })} className="select-field">
+                      <option value="">Tidak ada</option>
+                      {options.roles.map(r => (
+                        <option key={r.id} value={r.slug}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
