@@ -34,6 +34,11 @@ const securityHeaders = [
       "default-src 'self'",
       "base-uri 'self'",
       "frame-ancestors 'none'",
+      // Cetak label batch memuat PDF dari `blob:` ke dalam <iframe> tersembunyi
+      // lalu memanggil contentWindow.print(). Tanpa frame-src, frame jatuh ke
+      // fallback default-src 'self' sehingga blob diblokir, iframe tidak pernah
+      // memuat, dan print() melempar SecurityError lintas-origin.
+      "frame-src 'self' blob:",
       "form-action 'self'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
