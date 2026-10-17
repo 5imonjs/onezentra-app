@@ -103,4 +103,8 @@ class BiayaThl extends Model
     {
         return $this->belongsTo(User::class, 'resubmitted_by');
     }
-}
+
+    public function biayaRetribusiDetail(): BelongsTo
+    {
+        return $this->belongsTo(BiayaRetribusiDetail::class);
+    }

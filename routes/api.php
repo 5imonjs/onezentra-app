@@ -170,6 +170,7 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('biaya-thl')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
         Route::get('/', [BiayaThlController::class, 'index'])->middleware('permission:biaya_thl.view');
+        Route::get('/candidates', [BiayaThlController::class, 'candidates'])->middleware('permission:biaya_thl.view');
         Route::post('/', [BiayaThlController::class, 'store'])->middleware('permission:biaya_thl.create');
         Route::get('/export', [BiayaThlController::class, 'export'])->middleware(['permission:biaya_thl.export', 'throttle:30,1,heavy-read']);
         Route::get('/photos/{photo}', [BiayaThlController::class, 'photo'])->middleware('permission:biaya_thl.view');

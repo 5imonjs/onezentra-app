@@ -12,19 +12,14 @@ return new class extends Migration
             $table->id();
             $table->string('kode_depo', 20)->unique();
             $table->string('nama_depo', 100);
-
-            // Origin fields (Pengirim)
             $table->string('nama_pengirim', 200)->nullable();
             $table->text('alamat_pengirim')->nullable();
             $table->string('telepon_pengirim', 50)->nullable();
             $table->string('email_pengirim', 255)->nullable();
-
-            // Destination fields (Tujuan)
             $table->string('nama_tujuan', 200)->nullable();
             $table->text('alamat_tujuan')->nullable();
             $table->string('telepon_tujuan', 50)->nullable();
             $table->string('email_tujuan', 255)->nullable();
-
             $table->string('npwp', 50)->nullable();
             $table->string('logo_path', 255)->nullable();
             $table->boolean('is_active')->default(true);

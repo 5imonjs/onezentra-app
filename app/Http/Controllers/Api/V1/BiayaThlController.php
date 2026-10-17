@@ -11,6 +11,7 @@ use App\Models\BiayaRetribusiDetail;
 use App\Models\BiayaThl;
 use App\Models\BiayaThlDetail;
 use App\Models\BiayaThlPhoto;
+use App\Models\Receiving;
 use App\Models\User;
 use App\Services\ApprovalSectionResolver;
 use App\Services\BiayaApprovalService;
@@ -155,6 +156,80 @@ class BiayaThlController extends Controller
                 ? max(0, (int) floor((now()->getTimestamp() - strtotime((string) $oldest)) / 86400))
                 : null,
         ];
+    }
+
+    /**
+     * Kandidat pembongkaran diambil dari penerimaan (receiving) yang COMPLETED
+     * dan divalidasi checker, agar pengajuan Biaya THL dapat otomatis mewarisi
+     * nopol kendaraan, tipe kendaraan, surat jalan, dan driver tanpa input ulang.
+     */
+    public function candidates(Request $request)
+    {
+        $allowedTypes = ['CDD', 'Fuso', 'Container 20', 'Container 40'];
+
+        $query = Receiving::query()
+            ->with(['rencanaKirim.sjValidations', 'checker'])
+            ->where('status', 'COMPLETED')
+            ->whereNotNull('checked_by')
+            ->whereHas('rencanaKirim', function ($q) use ($request) {
+                $q->forUserDepot($request->user());
+            });
+
+        if ($request->filled('type_kendaraan')) {
+            $query->whereHas('rencanaKirim', fn ($q) => $q->where('jenis_kendaraan', $request->type_kendaraan));
+        } else {
+            $query->whereHas('rencanaKirim', fn ($q) => $q->whereIn('jenis_kendaraan', $allowedTypes));
+        }
+        if ($request->filled('nopol_kendaraan')) {
+            $query->whereHas('rencanaKirim', fn ($q) => $q->where('nopol', 'like', '%'.$request->nopol_kendaraan.'%'));
+        }
+        if ($request->filled('kode_depo')) {
+            $query->whereHas('rencanaKirim', function ($q) use ($request) {
+                $q->where('kode_depo', $request->kode_depo);
+            });
+        }
+
+        $data = $query->with('items')
+            ->orderByDesc('actual_end_time')
+            ->orderByDesc('id')
+            ->limit(80)
+            ->get()
+            ->map(function (Receiving $receiving) {
+                $qtyZak = (float) $receiving->items
+                    ->filter(fn ($item) => str_contains(strtoupper((string) $item->satuan), 'ZAK'))
+                    ->sum('actual_qty');
+                $qtyCrt = (float) $receiving->items
+                    ->filter(fn ($item) => str_contains(strtoupper((string) $item->satuan), 'CRT'))
+                    ->sum('actual_qty');
+
+                $retribusiDetail = BiayaRetribusiDetail::query()
+                    ->where('receiving_id', $receiving->id)
+                    ->with('biayaRetribusi')
+                    ->first();
+
+                return [
+                    'id' => $receiving->id,
+                    'receiving_id' => $receiving->id,
+                    'tanggal_selesai' => ($receiving->actual_end_time ?: $receiving->updated_at)?->toDateString(),
+                    'nopol_kendaraan' => $receiving->rencanaKirim?->nopol ?? '-',
+                    'type_kendaraan' => $receiving->rencanaKirim?->jenis_kendaraan ?? '-',
+                    'po_transporter' => $receiving->rencanaKirim?->po_transporter ?? '-',
+                    'driver_name' => $receiving->rencanaKirim?->driver_name ?? '-',
+                    'checker_name' => $receiving->checker?->full_name ?? '-',
+                    'kode_depo' => $receiving->rencanaKirim?->kode_depo ?? '-',
+                    'nama_depo' => $receiving->rencanaKirim?->nama_depo ?? '-',
+                    'no_surat_jalan' => $receiving->rencanaKirim?->sjValidations
+                        ->where('status', 'COMPLETED')->sortByDesc('completed_at')->first()?->scan_code
+                        ?? $receiving->rencanaKirim?->sjValidations->first()?->scan_code ?? '',
+                    'qty_zak' => $qtyZak,
+                    'qty_crt' => $qtyCrt,
+                    'has_retribusi' => $retribusiDetail !== null,
+                    'retribusi_id' => $retribusiDetail?->biaya_retribusi_id,
+                    'retribusi_status' => $retribusiDetail?->biayaRetribusi?->status,
+                ];
+            });
+
+        return response()->json($data);
     }
 
     public function store(Request $request)
@@ -542,7 +617,7 @@ class BiayaThlController extends Controller
     {
         $this->authorizePdfPrinter($biayaThl);
 
-        $biayaThl->load('details.photos', 'details.vehicles', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
+        $biayaThl->load('details.photos', 'details.vehicles', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'biayaRetribusiDetail');
 
         $names = $this->approvalActorNames($biayaThl);
         $approvalSections = app(ApprovalSectionResolver::class)->resolve(
@@ -570,7 +645,22 @@ class BiayaThlController extends Controller
             'rejection_reason' => $biayaThl->rejection_reason,
             'revisi_reason' => $biayaThl->revisi_reason,
         ]);
-        $retribusiDetails = $biayaThl->details->map(function ($thlDetail, int $index): BiayaRetribusiDetail {
+
+        // Map THL detail fields from BiayaRetribusiDetail if linked
+        if ($biayaThl->biayaRetribusiDetail) {
+            $retribusiDetail = $biayaThl->biayaRetribusiDetail;
+            $retribusi->kubikasi = $retribusiDetail->kubikasi;
+            $retribusi->droppoint = $retribusiDetail->droppoint;
+            $retribusi->posisi = $retribusiDetail->posisi;
+            $retribusi->jam_datang = $retribusiDetail->jam_datang;
+            $retribusi->jam_pulang = $retribusiDetail->jam_pulang;
+            $retribusi->kendaraan_tambahan = $retribusiDetail->kendaraan_tambahan;
+            $retribusi->nopol_kendaraan = $retribusiDetail->nopol_kendaraan;
+            $retribusi->type_kendaraan = $retribusiDetail->type_kendaraan;
+            $retribusi->no_surat_jalan = $retribusiDetail->no_surat_jalan;
+        }
+
+                $retribusiDetails = $biayaThl->details->map(function ($thlDetail, int $index): BiayaRetribusiDetail {
             $retribusiDetail = new BiayaRetribusiDetail([
                 'nopol_kendaraan' => $thlDetail->nopol_kendaraan,
                 'type_kendaraan' => $thlDetail->type_kendaraan,
@@ -585,6 +675,20 @@ class BiayaThlController extends Controller
                 'order' => $index,
             ]);
             $retribusiDetail->setRelation('biayaThlDetail', $thlDetail);
+
+            // Override with BiayaRetribusiDetail values if linked
+            if ($biayaThl->biayaRetribusiDetail) {
+                $rd = $biayaThl->biayaRetribusiDetail;
+                $retribusiDetail->kubikasi = $rd->kubikasi;
+                $retribusiDetail->droppoint = $rd->droppoint;
+                $retribusiDetail->posisi = $rd->posisi;
+                $retribusiDetail->jam_datang = $rd->jam_datang;
+                $retribusiDetail->jam_pulang = $rd->jam_pulang;
+                $retribusiDetail->kendaraan_tambahan = $rd->kendaraan_tambahan;
+                $retribusiDetail->nopol_kendaraan = $rd->nopol_kendaraan;
+                $retribusiDetail->type_kendaraan = $rd->type_kendaraan;
+                $retribusiDetail->no_surat_jalan = $rd->no_surat_jalan;
+            }
 
             return $retribusiDetail;
         });

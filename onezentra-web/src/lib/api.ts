@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFNumber, PDFRawStream } from 'pdf-lib';
 import { notifyPermissionDenied } from '@/store/globalToast';
 
 const CSRF_URL = '/sanctum/csrf-cookie';
@@ -106,24 +106,119 @@ export const UPLOAD_TIMEOUT_MS = 120000;
  * 401 = sesi kadaluwarsa/dihentikan; 419 = CSRF mismatch.
 */
 /**
- * Dipanggil otomatis kalau file > 10MB (Next.js dev limit).
+ * Helper kompresi gambar JPEG yang tertanam di dalam file PDF (misal hasil scan atau foto dokumen).
+ */
+async function compressEmbeddedJpeg(
+  bytes: Uint8Array,
+  maxDimension = 1600,
+  quality = 0.75
+): Promise<{ bytes: Uint8Array; width: number; height: number } | null> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+  try {
+    const blob = new Blob([bytes as BlobPart], { type: 'image/jpeg' });
+    let origWidth = 0;
+    let origHeight = 0;
+    let imgBitmap: ImageBitmap | HTMLImageElement | null = null;
+
+    if (typeof createImageBitmap === 'function') {
+      imgBitmap = await createImageBitmap(blob);
+      origWidth = imgBitmap.width;
+      origHeight = imgBitmap.height;
+    } else if (typeof window.Image !== 'undefined') {
+      const url = URL.createObjectURL(blob);
+      const img = new window.Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = url;
+      });
+      URL.revokeObjectURL(url);
+      imgBitmap = img;
+      origWidth = img.width;
+      origHeight = img.height;
+    }
+
+    if (!imgBitmap || origWidth <= 0 || origHeight <= 0) return null;
+
+    const scale = Math.min(1, maxDimension / Math.max(origWidth, origHeight));
+    const targetWidth = Math.max(1, Math.round(origWidth * scale));
+    const targetHeight = Math.max(1, Math.round(origHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.drawImage(imgBitmap, 0, 0, targetWidth, targetHeight);
+    if ('close' in imgBitmap && typeof (imgBitmap as ImageBitmap).close === 'function') {
+      (imgBitmap as ImageBitmap).close();
+    }
+
+    const compressedBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', quality);
+    });
+    if (!compressedBlob) return null;
+
+    const buffer = await compressedBlob.arrayBuffer();
+    const newBytes = new Uint8Array(buffer);
+    if (newBytes.length < bytes.length) {
+      return { bytes: newBytes, width: targetWidth, height: targetHeight };
+    }
+    return null;
+  } catch (err) {
+    console.warn('[compressEmbeddedJpeg] Gagal kompresi embedded JPEG:', err);
+    return null;
+  }
+}
+
+/**
+ * Kompresi PDF otomatis:
+ * 1. Mengoptimalkan gambar raster JPEG (hasil foto HP / scan) di dalam PDF.
+ * 2. Mengaktifkan object streams (useObjectStreams: true) untuk memadatkan metadata & struktur PDF.
  */
 export async function compressPdf(file: File, maxSize: number): Promise<File> {
   const fileArrayBuffer = await file.arrayBuffer();
   const pdfDoc = await PDFDocument.load(fileArrayBuffer, { ignoreEncryption: true });
 
-  // Gunakan object streams → pdf-lib akan mengompresi streams
+  // Kompresi gambar yang tertanam jika ada
+  try {
+    const objects = pdfDoc.context.enumerateIndirectObjects();
+    for (const [, obj] of objects) {
+      if (obj instanceof PDFRawStream) {
+        const dict = obj.dict;
+        const subtype = dict.get(PDFName.of('Subtype'))?.toString();
+        const filter = dict.get(PDFName.of('Filter'))?.toString();
+
+        if (subtype === '/Image' && filter === '/DCTDecode' && obj.contents && obj.contents.length > 50 * 1024) {
+          const res = await compressEmbeddedJpeg(obj.contents, 1600, 0.75);
+          if (res) {
+            (obj as unknown as { contents: Uint8Array }).contents = res.bytes;
+            obj.dict.set(PDFName.of('Width'), PDFNumber.of(res.width));
+            obj.dict.set(PDFName.of('Height'), PDFNumber.of(res.height));
+          }
+        }
+      }
+    }
+  } catch (imgErr) {
+    console.warn('[compressPdf] Gagal mengoptimalkan gambar di dalam PDF, fallback ke stream compression:', imgErr);
+  }
+
+  // Gunakan object streams → pdf-lib akan memadatkan streams
   const savedBytes = await pdfDoc.save({ useObjectStreams: true });
   const arrayBuffer = new Uint8Array(savedBytes).buffer;
   const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
   const compressed = new File([blob], file.name, { type: 'application/pdf' });
-  // Jangan upload sia-sia bila hasil kompresi masih di atas batas.
-  if (compressed.size > maxSize) {
+
+  // Gunakan file terkecil di antara hasil kompresi dan file asli
+  const bestFile = compressed.size < file.size ? compressed : file;
+
+  if (bestFile.size > maxSize) {
     const limitMb = (maxSize / (1024 * 1024)).toFixed(0);
-    const actualMb = (compressed.size / (1024 * 1024)).toFixed(1);
-    throw new Error(`PDF masih > ${limitMb} MB setelah kompresi (${actualMb} MB). Perkecil file sebelum upload.`);
+    const actualMb = (bestFile.size / (1024 * 1024)).toFixed(1);
+    throw new Error(`PDF masih > ${limitMb} MB setelah kompresi (${actualMb} MB). Perkecil resolusi scan sebelum upload.`);
   }
-  return compressed;
+  return bestFile;
 }
 
 
@@ -535,6 +630,7 @@ export const reports = {
 
 export const biayaThl = {
   list: (params?: Record<string, unknown>) => apiClient.get('/biaya-thl', { params }),
+  candidates: (params?: Record<string, unknown>) => apiClient.get('/biaya-thl/candidates', { params }),
   get: (id: number) => apiClient.get(`/biaya-thl/${id}`),
   create: (data: Record<string, unknown> | FormData) => {
     const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT_MS } : {};
