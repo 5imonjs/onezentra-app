@@ -209,17 +209,34 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
               <div className="relative h-20 w-20 shrink-0">
                 <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
                   <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9"
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="3"
-                    strokeDasharray={`${total > 0 ? (counts.COMPLETED / total) * 100 : 0} ${100 - (total > 0 ? (counts.COMPLETED / total) * 100 : 0)}`}
-                    strokeLinecap="round"
-                    className="transition-all duration-500"
-                  />
+                  {PIPELINE_STATUSES.map((s, i) => {
+                    const pct = total > 0 ? (counts[s.key] / total) * 100 : 0;
+                    if (pct <= 0) return null;
+                    const offset = PIPELINE_STATUSES.slice(0, i).reduce((a, st) => a + (total > 0 ? (counts[st.key] / total) * 100 : 0), 0);
+                    const colorMap: Record<string, string> = {
+                      DRAFT: '#94a3b8',
+                      SCHEDULED: '#93c5fd',
+                      CHECKED_IN: '#60a5fa',
+                      VERIFIED: '#3b82f6',
+                      IN_PROGRESS: '#2563eb',
+                      COMPLETED: '#1d4ed8',
+                    };
+                    return (
+                      <circle
+                        key={s.key}
+                        cx="18"
+                        cy="18"
+                        r="15.9"
+                        fill="none"
+                        stroke={colorMap[s.key]}
+                        strokeWidth="3"
+                        strokeDasharray={`${pct} ${100 - pct}`}
+                        strokeDashoffset={-offset}
+                        strokeLinecap="butt"
+                        className="transition-all duration-500"
+                      />
+                    );
+                  })}
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-sm font-black text-slate-800">
