@@ -181,9 +181,16 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
                       className={`rounded-2xl border p-3 transition-colors ${active ? s.box : 'border-slate-200 bg-surface-card'}`}
                     >
                       <div className="flex items-center gap-1.5">
-                        <span aria-hidden="true" className="relative flex h-2 w-2 shrink-0">
-  {active && <span className={`absolute inline-flex h-full w-full rounded-full ${s.dot} opacity-75 animate-ping`} />}
-  <span className={`relative inline-flex h-2 w-2 rounded-full ${active ? s.dot : 'bg-slate-300'}`} />
+                        <span aria-hidden="true" className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+  {active && <span className={`absolute inline-flex h-full w-full rounded-full ${s.dot} opacity-60 animate-ping`} />}
+  <span className={`relative flex h-5 w-5 items-center justify-center rounded-full ${active ? s.dot : 'bg-slate-200'} text-white shadow-sm`}>
+    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 3h13v13H1z" />
+      <path d="M14 8h4l3 3v5h-7V8z" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  </span>
 </span>
                         <p className={`truncate text-[11px] font-semibold uppercase tracking-wider ${active ? s.name : 'text-slate-400'}`}>{s.label}</p>
                       </div>
