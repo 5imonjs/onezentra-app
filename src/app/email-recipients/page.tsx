@@ -41,7 +41,7 @@ interface FormState {
   recipient_type: string;
   field: string;
   email: string;
-  user_id: number;
+  user_ids: number[];
   role_slug: string;
   label: string;
   is_active: boolean;
@@ -54,7 +54,7 @@ const emptyForm: FormState = {
   recipient_type: 'role',
   field: 'TO',
   email: '',
-  user_id: 0,
+  user_ids: [],
   role_slug: 'blc',
   label: '',
   is_active: true,
@@ -188,7 +188,7 @@ export default function EmailRecipientsPage() {
       recipient_type: r.recipient_type,
       field: r.field,
       email: r.email || '',
-      user_id: r.user_id || 0,
+      user_ids: r.user_id ? [r.user_id] : [],
       role_slug: r.role_slug || '',
       label: r.label || '',
       is_active: r.is_active,
@@ -199,7 +199,7 @@ export default function EmailRecipientsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload: Record<string, unknown> = {
+      const base: Record<string, unknown> = {
         document_type: form.document_type,
         trigger: form.trigger,
         kode_depo: form.kode_depo,
@@ -208,16 +208,40 @@ export default function EmailRecipientsPage() {
         label: form.label,
         is_active: form.is_active,
       };
-      if (form.recipient_type === 'email') payload.email = form.email;
-      if (form.recipient_type === 'user') payload.user_id = form.user_id;
-      if (form.recipient_type === 'role') payload.role_slug = form.role_slug;
 
+      // Edit: satu baris
       if (editTarget) {
+        const payload = { ...base };
+        if (form.recipient_type === 'email') payload.email = form.email;
+        if (form.recipient_type === 'user') payload.user_id = form.user_ids[0] || null;
+        if (form.recipient_type === 'role') payload.role_slug = form.role_slug;
         await emailRecipients.update(editTarget.id, payload);
-      } else {
-        await emailRecipients.create(payload);
+        setToast({ message: 'Penerima email diperbarui', type: 'success' });
+        setShowCreate(false);
+        load();
+        return;
       }
-      setToast({ message: editTarget ? 'Penerima email diperbarui' : 'Penerima email ditambahkan', type: 'success' });
+
+      // Tambah: dukung banyak penerima sekaligus
+      let targets: Array<Record<string, unknown>> = [];
+      if (form.recipient_type === 'email') {
+        const emails = form.email.split(/[,;\\n]/).map((e) => e.trim()).filter(Boolean);
+        if (emails.length === 0) throw new Error('Email wajib diisi');
+        targets = emails.map((e) => ({ ...base, email: e }));
+      } else if (form.recipient_type === 'user') {
+        if (form.user_ids.length === 0) throw new Error('Pilih minimal satu pengguna');
+        targets = form.user_ids.map((uid) => ({ ...base, user_id: uid }));
+      } else {
+        if (!form.role_slug) throw new Error('Pilih role');
+        targets = [{ ...base, role_slug: form.role_slug }];
+      }
+
+      let created = 0;
+      for (const t of targets) {
+        await emailRecipients.create(t);
+        created++;
+      }
+      setToast({ message: `${created} penerima email ditambahkan`, type: 'success' });
       setShowCreate(false);
       load();
     } catch (e) {
@@ -526,7 +550,7 @@ export default function EmailRecipientsPage() {
               </select>
               <p className="mt-1.5 text-xs text-gray-400">
                 {form.recipient_type === 'email' && 'Kirim ke satu alamat email bebas.'}
-                {form.recipient_type === 'user' && 'Kirim ke satu akun pengguna sistem.'}
+                {form.recipient_type === 'user' && 'Kirim ke satu atau banyak akun pengguna sistem.'}
                 {form.recipient_type === 'role' && 'Kirim ke seluruh anggota role terpilih (contoh: semua BLC).'}
               </p>
             </div>
@@ -534,19 +558,23 @@ export default function EmailRecipientsPage() {
 
           {form.recipient_type === 'email' && (
             <div>
-              <label htmlFor="er-email" className="block text-xs font-medium text-gray-500 mb-1">Alamat Email</label>
-              <input id="er-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="nama@domain.com" className="input-field text-sm py-2" />
+              <label htmlFor="er-email" className="block text-xs font-medium text-gray-500 mb-1">Alamat Email (bisa lebih dari satu)</label>
+              <textarea id="er-email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="nama1@domain.com, nama2@domain.com" className="input-field text-sm py-2 min-h-[80px]" />
+              <p className="mt-1.5 text-xs text-gray-400">Pisahkan dengan koma, titik koma, atau baris baru. Setiap email akan menjadi satu baris penerima.</p>
             </div>
           )}
           {form.recipient_type === 'user' && (
             <div>
-              <label htmlFor="er-user" className="block text-xs font-medium text-gray-500 mb-1">Pilih Pengguna</label>
-              <select id="er-user" value={form.user_id} onChange={(e) => setForm({ ...form, user_id: parseInt(e.target.value) || 0 })} className="select-field">
-                <option value={0}>Pilih user...</option>
+              <label htmlFor="er-user" className="block text-xs font-medium text-gray-500 mb-1">Pilih Pengguna (bisa lebih dari satu)</label>
+              <select id="er-user" multiple value={form.user_ids.map(String)} onChange={(e) => {
+                const vals = Array.from(e.target.selectedOptions).map((o) => parseInt(o.value)).filter(Boolean);
+                setForm({ ...form, user_ids: vals });
+              }} className="select-field min-h-[160px]">
                 {options.users.map(u => (
                   <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
                 ))}
               </select>
+              <p className="mt-1.5 text-xs text-gray-400">Tahan Ctrl/Cmd untuk memilih banyak pengguna. Setiap pengguna akan menjadi satu baris penerima.</p>
             </div>
           )}
           {form.recipient_type === 'role' && (
