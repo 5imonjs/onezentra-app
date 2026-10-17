@@ -205,9 +205,34 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
                 })}
               </DashboardCardGrid>
             </div>
-            <p className="text-xs text-slate-500">
-              Total {total} pengiriman • {totalQty.toLocaleString('id-ID')} qty • {totalKubikasi.toFixed(2)} m³
-            </p>
+            <div className="flex items-center gap-4">
+              <div className="relative h-20 w-20 shrink-0">
+                <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15.9"
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="3"
+                    strokeDasharray={`${total > 0 ? (counts.COMPLETED / total) * 100 : 0} ${100 - (total > 0 ? (counts.COMPLETED / total) * 100 : 0)}`}
+                    strokeLinecap="round"
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-black text-slate-800">
+                    {total > 0 ? Math.round((counts.COMPLETED / total) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">
+                Total {total} pengiriman • {totalQty.toLocaleString('id-ID')} qty • {totalKubikasi.toFixed(2)} m³
+                <br />
+                Selesai receiving: {counts.COMPLETED} dari {total}
+              </p>
+            </div>
           </div>
         )}
       </div>
