@@ -561,6 +561,21 @@ class BiayaRetribusiController extends Controller
 
         $biayaRetribusi->load('details.biayaThlDetail.photos', 'documents', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
+        // Format dates for PDF display
+        $biayaRetribusi->tanggal_pengajuan = $biayaRetribusi->tanggal_pengajuan ? \Carbon\Carbon::parse($biayaRetribusi->tanggal_pengajuan)->format('d M Y') : null;
+        $biayaRetribusi->submitted_at = $biayaRetribusi->submitted_at ? \Carbon\Carbon::parse($biayaRetribusi->submitted_at)->format('d M Y') : null;
+        $biayaRetribusi->checked_at = $biayaRetribusi->checked_at ? \Carbon\Carbon::parse($biayaRetribusi->checked_at)->format('d M Y') : null;
+        $biayaRetribusi->rlh_approved_at = $biayaRetribusi->rlh_approved_at ? \Carbon\Carbon::parse($biayaRetribusi->rlh_approved_at)->format('d M Y') : null;
+        $biayaRetribusi->approved_at = $biayaRetribusi->approved_at ? \Carbon\Carbon::parse($biayaRetribusi->approved_at)->format('d M Y') : null;
+        $biayaRetribusi->rejected_at = $biayaRetribusi->rejected_at ? \Carbon\Carbon::parse($biayaRetribusi->rejected_at)->format('d M Y') : null;
+        $biayaRetribusi->revised_at = $biayaRetribusi->revised_at ? \Carbon\Carbon::parse($biayaRetribusi->revised_at)->format('d M Y') : null;
+
+        // Format THL detail fields
+        foreach ($biayaRetribusi->details as $detail) {
+            $detail->jam_datang = $detail->jam_datang ? \Carbon\Carbon::parse($detail->jam_datang)->format('d M Y H:i') : null;
+            $detail->jam_pulang = $detail->jam_pulang ? \Carbon\Carbon::parse($detail->jam_pulang)->format('d M Y H:i') : null;
+        }
+
         $names = $this->approvalActorNames($biayaRetribusi);
         $approvalSections = app(ApprovalSectionResolver::class)->resolve(
             $biayaRetribusi->kode_depo ?: '',

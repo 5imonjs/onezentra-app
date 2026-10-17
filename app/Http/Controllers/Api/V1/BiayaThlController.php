@@ -632,11 +632,20 @@ class BiayaThlController extends Controller
         );
     }
 
-    public function pdf(BiayaThl $biayaThl)
+        public function pdf(BiayaThl $biayaThl)
     {
         $this->authorizePdfPrinter($biayaThl);
 
         $biayaThl->load('details.photos', 'details.vehicles', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'biayaRetribusiDetail');
+
+        // Format dates for PDF display
+        $biayaThl->tanggal_pengajuan = $biayaThl->tanggal_pengajuan ? \Carbon\Carbon::parse($biayaThl->tanggal_pengajuan)->format('d M Y') : '';
+        $biayaThl->submitted_at = $biayaThl->submitted_at ? \Carbon\Carbon::parse($biayaThl->submitted_at)->format('d M Y') : null;
+        $biayaThl->checked_at = $biayaThl->checked_at ? \Carbon\Carbon::parse($biayaThl->checked_at)->format('d M Y') : null;
+        $biayaThl->rlh_approved_at = $biayaThl->rlh_approved_at ? \Carbon\Carbon::parse($biayaThl->rlh_approved_at)->format('d M Y') : null;
+        $biayaThl->approved_at = $biayaThl->approved_at ? \Carbon\Carbon::parse($biayaThl->approved_at)->format('d M Y') : null;
+        $biayaThl->rejected_at = $biayaThl->rejected_at ? \Carbon\Carbon::parse($biayaThl->rejected_at)->format('d M Y') : null;
+        $biayaThl->revised_at = $biayaThl->revised_at ? \Carbon\Carbon::parse($biayaThl->revised_at)->format('d M Y') : null;
 
         $names = $this->approvalActorNames($biayaThl);
         $approvalSections = app(ApprovalSectionResolver::class)->resolve(
@@ -687,8 +696,8 @@ class BiayaThlController extends Controller
                 'kubikasi' => $thlDetail->kubikasi,
                 'droppoint' => $thlDetail->droppoint,
                 'posisi' => $thlDetail->posisi,
-                'jam_datang' => $thlDetail->jam_datang,
-                'jam_pulang' => $thlDetail->jam_pulang,
+                'jam_datang' => $thlDetail->jam_datang ? \Carbon\Carbon::parse($thlDetail->jam_datang)->format('d M Y H:i') : null,
+                'jam_pulang' => $thlDetail->jam_pulang ? \Carbon\Carbon::parse($thlDetail->jam_pulang)->format('d M Y H:i') : null,
                 'nominal_biaya' => $thlDetail->nominal_biaya,
                 'kendaraan_tambahan' => $thlDetail->kendaraan_tambahan,
                 'order' => $index,
