@@ -19,6 +19,7 @@ class EmailRecipientController extends Controller
         $query = EmailRecipient::with('user:id,full_name,email')
             ->when($request->document_type, fn ($q) => $q->where('document_type', $request->document_type))
             ->when($request->trigger, fn ($q) => $q->where('trigger', $request->trigger))
+            ->when($request->field, fn ($q) => $q->where('field', $request->field))
             ->when($request->search, function ($q) use ($request) {
                 $q->where(function ($qq) use ($request) {
                     $qq->where('email', 'like', "%{$request->search}%")
@@ -68,8 +69,7 @@ class EmailRecipientController extends Controller
     {
         $users = User::where('status', 'active')->select('id', 'full_name', 'email')->orderBy('full_name')->get();
         $roles = Role::select('id', 'name', 'slug')->orderBy('name')->get();
-        $depots = User::where('status', 'active')
-            ->whereNotNull('kode_depo')
+        $depots = User::whereNotNull('kode_depo')
             ->select('kode_depo', 'nama_depo')
             ->distinct()
             ->orderBy('kode_depo')

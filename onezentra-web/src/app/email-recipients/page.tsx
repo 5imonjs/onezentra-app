@@ -148,7 +148,7 @@ export default function EmailRecipientsPage() {
   const [options, setOptions] = useState<Options>({ document_types: [], triggers: [], fields: [], users: [], roles: [], depots: [] });
   const [search, setSearch] = useState('');
   const [documentType, setDocumentType] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
+  const [fieldFilter, setFieldFilter] = useState('');  const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<Recipient | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -158,12 +158,11 @@ export default function EmailRecipientsPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await emailRecipients.list({ search, document_type: documentType || undefined });
-      setItems(res.data.data);
+      const res = await emailRecipients.list({ search, document_type: documentType || undefined, field: fieldFilter || undefined });      setItems(res.data.data);
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal memuat data'), type: 'error' });
     }
-  }, [search, documentType]);
+  }, [search, documentType, fieldFilter]);
 
   const loadOptions = async () => {
     try {
@@ -369,6 +368,11 @@ export default function EmailRecipientsPage() {
                   <option key={t} value={t}>{docTypeLabel[t] || t}</option>
                 ))}
               </select>
+              <select value={fieldFilter} onChange={(e) => setFieldFilter(e.target.value)} className="select-field text-sm py-2" aria-label="Filter field">
+                <option value="">Semua Field</option>
+                <option value="TO">TO</option>
+                <option value="CC">CC</option>
+              </select>
             {hasPermission('emails.edit') && (
               <button onClick={openCreate} className="btn-primary whitespace-nowrap">
                 <span className="flex items-center gap-2">
@@ -489,8 +493,9 @@ export default function EmailRecipientsPage() {
                   <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${fieldBadge(r.field)}`}>{r.field}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <p className="text-slate-500">Penerima: <span className="font-medium text-slate-700">{describe(r)}</span></p>
+                  <p className="text-slate-500">Trigger: <span className="font-medium text-slate-700">{triggerLabel(r.document_type, r.trigger)}</span></p>
                   <p className="text-slate-500">Depo: <span className="font-medium text-slate-700">{r.kode_depo || 'Global'}</span></p>
+                  <p className="text-slate-500">Penerima: <span className="font-medium text-slate-700">{describe(r)}</span></p>
                   <p className="text-slate-500">Aktif: <span className="font-medium text-slate-700">{r.is_active ? 'Aktif' : 'Nonaktif'}</span></p>
                   {r.label && <p className="text-slate-500 col-span-2">Label: <span className="font-medium text-slate-700">{r.label}</span></p>}
                 </div>
