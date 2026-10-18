@@ -40,7 +40,7 @@ class BugHuntTest extends TestCase
             $roleOther->permissions()->syncWithoutDetaching([$p->id]);
         }
 
-        $this->admin = User::create(['email' => 'bug_admin@test.com', 'password' => 'password', 'full_name' => 'Bug Admin', 'kode_depo' => 'BUG-A', 'nama_depo' => 'Depo A', 'level' => 'admin_master', 'status' => 'active', 'role_id' => $roleAdmin->id]);
+        $this->admin = User::create(['email' => 'bug_admin@test.com', 'password' => 'password', 'full_name' => 'Bug Admin', 'kode_depo' => 'BUG-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active', 'role_id' => $roleAdmin->id]);
         $roleAdmin->users()->attach($this->admin->id);
         $this->otherDepotUser = User::create(['email' => 'bug_other@test.com', 'password' => 'password', 'full_name' => 'Bug Other', 'kode_depo' => 'BUG-B', 'nama_depo' => 'Depo B', 'level' => 'operator', 'status' => 'active', 'role_id' => $roleOther->id]);
         $roleOther->users()->attach($this->otherDepotUser->id);

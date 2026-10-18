@@ -562,18 +562,18 @@ class BiayaRetribusiController extends Controller
         $biayaRetribusi->load('details.biayaThlDetail.photos', 'documents', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
         // Format dates for PDF display
-        $biayaRetribusi->tanggal_pengajuan = $biayaRetribusi->tanggal_pengajuan ? \Carbon\Carbon::parse($biayaRetribusi->tanggal_pengajuan)->format('d M Y') : null;
-        $biayaRetribusi->submitted_at = $biayaRetribusi->submitted_at ? \Carbon\Carbon::parse($biayaRetribusi->submitted_at)->format('d M Y') : null;
-        $biayaRetribusi->checked_at = $biayaRetribusi->checked_at ? \Carbon\Carbon::parse($biayaRetribusi->checked_at)->format('d M Y') : null;
-        $biayaRetribusi->rlh_approved_at = $biayaRetribusi->rlh_approved_at ? \Carbon\Carbon::parse($biayaRetribusi->rlh_approved_at)->format('d M Y') : null;
-        $biayaRetribusi->approved_at = $biayaRetribusi->approved_at ? \Carbon\Carbon::parse($biayaRetribusi->approved_at)->format('d M Y') : null;
-        $biayaRetribusi->rejected_at = $biayaRetribusi->rejected_at ? \Carbon\Carbon::parse($biayaRetribusi->rejected_at)->format('d M Y') : null;
-        $biayaRetribusi->revised_at = $biayaRetribusi->revised_at ? \Carbon\Carbon::parse($biayaRetribusi->revised_at)->format('d M Y') : null;
+        $biayaRetribusi->tanggal_pengajuan = $biayaRetribusi->tanggal_pengajuan ? Carbon::parse($biayaRetribusi->tanggal_pengajuan)->format('d M Y') : null;
+        $biayaRetribusi->submitted_at = $biayaRetribusi->submitted_at ? Carbon::parse($biayaRetribusi->submitted_at)->format('d M Y') : null;
+        $biayaRetribusi->checked_at = $biayaRetribusi->checked_at ? Carbon::parse($biayaRetribusi->checked_at)->format('d M Y') : null;
+        $biayaRetribusi->rlh_approved_at = $biayaRetribusi->rlh_approved_at ? Carbon::parse($biayaRetribusi->rlh_approved_at)->format('d M Y') : null;
+        $biayaRetribusi->approved_at = $biayaRetribusi->approved_at ? Carbon::parse($biayaRetribusi->approved_at)->format('d M Y') : null;
+        $biayaRetribusi->rejected_at = $biayaRetribusi->rejected_at ? Carbon::parse($biayaRetribusi->rejected_at)->format('d M Y') : null;
+        $biayaRetribusi->revised_at = $biayaRetribusi->revised_at ? Carbon::parse($biayaRetribusi->revised_at)->format('d M Y') : null;
 
         // Format THL detail fields
         foreach ($biayaRetribusi->details as $detail) {
-            $detail->jam_datang = $detail->jam_datang ? \Carbon\Carbon::parse($detail->jam_datang)->format('d M Y H:i') : null;
-            $detail->jam_pulang = $detail->jam_pulang ? \Carbon\Carbon::parse($detail->jam_pulang)->format('d M Y H:i') : null;
+            $detail->jam_datang = $detail->jam_datang ? Carbon::parse($detail->jam_datang)->format('d M Y H:i') : null;
+            $detail->jam_pulang = $detail->jam_pulang ? Carbon::parse($detail->jam_pulang)->format('d M Y H:i') : null;
         }
 
         $names = $this->approvalActorNames($biayaRetribusi);
@@ -910,7 +910,13 @@ class BiayaRetribusiController extends Controller
             abort(403);
         }
 
-        if ($user->level === 'admin_master' || $user->hasRole('admin_master') || $user->hasRole('blc') || $user->hasRole('staff_logistic') || $biayaRetribusi->created_by === $user->id) {
+        if ($user->isAdminMaster() || $user->hasRole('admin_master') || $biayaRetribusi->created_by === $user->id) {
+            return;
+        }
+
+        // Peran pengaju hanya boleh melihat data depo-nya sendiri.
+        if (($user->hasRole('blc') || $user->hasRole('staff_logistic'))
+            && $user->canAccessDepotRow($biayaRetribusi->kode_depo, $biayaRetribusi->nama_depo)) {
             return;
         }
 
@@ -932,11 +938,22 @@ class BiayaRetribusiController extends Controller
     {
         /** @var User|null $user */
         $user = Auth::user();
-        if ($user && ($user->level === 'admin_master' || $user->hasRole('blc') || $user->hasRole('staff_logistic'))) {
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($user->isAdminMaster() || $biayaRetribusi->created_by === $user->id) {
             return;
         }
+
+        // Peran pengaju dan pemegang kendali penuh hanya boleh mengubah data
+        // di depo-nya sendiri (cegah IDOR lintas depo).
+        $canManage = $user->hasRole('blc')
+            || $user->hasRole('staff_logistic')
+            || $user->hasPermission('biaya_retribusi.full_control');
+
         abort_unless(
-            $biayaRetribusi->created_by === $user?->id,
+            $canManage && $user->canAccessDepotRow($biayaRetribusi->kode_depo, $biayaRetribusi->nama_depo),
             403,
             'Anda tidak memiliki izin untuk mengubah data ini.'
         );

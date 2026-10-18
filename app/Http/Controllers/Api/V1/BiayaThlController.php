@@ -632,20 +632,20 @@ class BiayaThlController extends Controller
         );
     }
 
-        public function pdf(BiayaThl $biayaThl)
+    public function pdf(BiayaThl $biayaThl)
     {
         $this->authorizePdfPrinter($biayaThl);
 
         $biayaThl->load('details.photos', 'details.vehicles', 'photos', 'submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy', 'biayaRetribusiDetail');
 
         // Format dates for PDF display
-        $biayaThl->tanggal_pengajuan = $biayaThl->tanggal_pengajuan ? \Carbon\Carbon::parse($biayaThl->tanggal_pengajuan)->format('d M Y') : '';
-        $biayaThl->submitted_at = $biayaThl->submitted_at ? \Carbon\Carbon::parse($biayaThl->submitted_at)->format('d M Y') : null;
-        $biayaThl->checked_at = $biayaThl->checked_at ? \Carbon\Carbon::parse($biayaThl->checked_at)->format('d M Y') : null;
-        $biayaThl->rlh_approved_at = $biayaThl->rlh_approved_at ? \Carbon\Carbon::parse($biayaThl->rlh_approved_at)->format('d M Y') : null;
-        $biayaThl->approved_at = $biayaThl->approved_at ? \Carbon\Carbon::parse($biayaThl->approved_at)->format('d M Y') : null;
-        $biayaThl->rejected_at = $biayaThl->rejected_at ? \Carbon\Carbon::parse($biayaThl->rejected_at)->format('d M Y') : null;
-        $biayaThl->revised_at = $biayaThl->revised_at ? \Carbon\Carbon::parse($biayaThl->revised_at)->format('d M Y') : null;
+        $biayaThl->tanggal_pengajuan = $biayaThl->tanggal_pengajuan ? Carbon::parse($biayaThl->tanggal_pengajuan)->format('d M Y') : '';
+        $biayaThl->submitted_at = $biayaThl->submitted_at ? Carbon::parse($biayaThl->submitted_at)->format('d M Y') : null;
+        $biayaThl->checked_at = $biayaThl->checked_at ? Carbon::parse($biayaThl->checked_at)->format('d M Y') : null;
+        $biayaThl->rlh_approved_at = $biayaThl->rlh_approved_at ? Carbon::parse($biayaThl->rlh_approved_at)->format('d M Y') : null;
+        $biayaThl->approved_at = $biayaThl->approved_at ? Carbon::parse($biayaThl->approved_at)->format('d M Y') : null;
+        $biayaThl->rejected_at = $biayaThl->rejected_at ? Carbon::parse($biayaThl->rejected_at)->format('d M Y') : null;
+        $biayaThl->revised_at = $biayaThl->revised_at ? Carbon::parse($biayaThl->revised_at)->format('d M Y') : null;
 
         $names = $this->approvalActorNames($biayaThl);
         $approvalSections = app(ApprovalSectionResolver::class)->resolve(
@@ -688,7 +688,7 @@ class BiayaThlController extends Controller
             $retribusi->no_surat_jalan = $retribusiDetail->no_surat_jalan;
         }
 
-        $retribusiDetails = $biayaThl->details->map(function ($thlDetail, int $index): BiayaRetribusiDetail {
+        $retribusiDetails = $biayaThl->details->map(function ($thlDetail, int $index) use ($biayaThl): BiayaRetribusiDetail {
             $retribusiDetail = new BiayaRetribusiDetail([
                 'nopol_kendaraan' => $thlDetail->nopol_kendaraan,
                 'type_kendaraan' => $thlDetail->type_kendaraan,
@@ -696,8 +696,8 @@ class BiayaThlController extends Controller
                 'kubikasi' => $thlDetail->kubikasi,
                 'droppoint' => $thlDetail->droppoint,
                 'posisi' => $thlDetail->posisi,
-                'jam_datang' => $thlDetail->jam_datang ? \Carbon\Carbon::parse($thlDetail->jam_datang)->format('d M Y H:i') : null,
-                'jam_pulang' => $thlDetail->jam_pulang ? \Carbon\Carbon::parse($thlDetail->jam_pulang)->format('d M Y H:i') : null,
+                'jam_datang' => $thlDetail->jam_datang ? Carbon::parse($thlDetail->jam_datang)->format('d M Y H:i') : null,
+                'jam_pulang' => $thlDetail->jam_pulang ? Carbon::parse($thlDetail->jam_pulang)->format('d M Y H:i') : null,
                 'nominal_biaya' => $thlDetail->nominal_biaya,
                 'kendaraan_tambahan' => $thlDetail->kendaraan_tambahan,
                 'order' => $index,
@@ -1174,11 +1174,23 @@ class BiayaThlController extends Controller
     {
         /** @var User|null $user */
         $user = Auth::user();
-        if ($user && ($user->level === 'admin_master' || $user->hasRole('blc') || $user->hasRole('staff_logistic'))) {
+        if (! $user) {
+            abort(403);
+        }
+
+        if ($user->isAdminMaster() || $biayaThl->created_by === $user->id) {
             return;
         }
+
+        // Peran pengaju (BLC/staff_logistic) dan pemegang kendali penuh boleh
+        // mengubah pengajuan pengaju lain, tetapi hanya di depo-nya sendiri.
+        // Sebelumnya role ini lolos tanpa cek depo (IDOR lintas depo).
+        $canManage = $user->hasRole('blc')
+            || $user->hasRole('staff_logistic')
+            || $user->hasPermission('biaya_thl.full_control');
+
         abort_unless(
-            $biayaThl->created_by === $user?->id,
+            $canManage && $user->canAccessDepotRow($biayaThl->kode_depo, $biayaThl->nama_depo),
             403,
             'Anda tidak memiliki izin untuk mengubah data ini.'
         );
@@ -1188,7 +1200,7 @@ class BiayaThlController extends Controller
     {
         /** @var User|null $user */
         $user = Auth::user();
-        if ($user && ($user->isAdminMaster() || $user->hasRole('blc') || $biayaThl->created_by === $user->id)) {
+        if ($user && ($user->isAdminMaster() || $biayaThl->created_by === $user->id)) {
             return;
         }
         $this->authorizeViewer($biayaThl);
@@ -1202,7 +1214,13 @@ class BiayaThlController extends Controller
             abort(403);
         }
 
-        if ($user->isAdminMaster() || $user->hasRole('blc') || $user->hasRole('staff_logistic') || $biayaThl->created_by === $user->id) {
+        if ($user->isAdminMaster() || $biayaThl->created_by === $user->id) {
+            return;
+        }
+
+        // Peran pengaju hanya boleh melihat data depo-nya sendiri.
+        if (($user->hasRole('blc') || $user->hasRole('staff_logistic'))
+            && $user->canAccessDepotRow($biayaThl->kode_depo, $biayaThl->nama_depo)) {
             return;
         }
 

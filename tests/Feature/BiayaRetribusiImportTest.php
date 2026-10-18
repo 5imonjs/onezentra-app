@@ -126,6 +126,7 @@ class BiayaRetribusiImportTest extends TestCase
             'email' => $email,
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
+            'level' => 'staff_logistic',
         ]);
         $user->roles()->attach($role->id);
 

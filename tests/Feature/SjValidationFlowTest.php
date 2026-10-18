@@ -34,7 +34,7 @@ class SjValidationFlowTest extends TestCase
             'full_name' => 'SJ Test User',
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo Test',
-            'level' => 'admin_master',
+            'level' => 'staff_logistic',
             'status' => 'active',
         ]);
         $role->users()->attach($user->id);

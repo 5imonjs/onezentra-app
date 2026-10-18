@@ -256,8 +256,11 @@ class BiayaApprovalService
             },
         );
 
-        // JANGAN panggil notify() di sini agar submit tidak terblokir email
-        // email akan dikirim secara async oleh worker antrean setelah response terkirim
+        // Email "submitted" dikirim via notify(). EmailNotificationService::send()
+        // menerapkan afterResponse pada non-testing sehingga submit tidak lagi
+        // terblokir SMTP (pada testing dikirim sync agar Mail::assertSent jalan).
+        $this->notify($refreshed, 'submitted');
+
         return $refreshed;
     }
 

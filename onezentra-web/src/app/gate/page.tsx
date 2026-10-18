@@ -89,8 +89,6 @@ export default function GatePage() {
   const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [confirmAction, setConfirmAction] = useState<null | 'IN' | 'VERIFY'>(null);
 
-  const [stats, setStats] = useState<{ hariIni: number; terjadwal: number; selesai: number; total: number } | null>(null);
-
   // Anti race: respons basi (filter sudah berubah) dibuang.
   const reqIdRef = useRef(0);
   // Cermin lastPage agar clamp bisa baca nilai terbaru tanpa jadi dep fetch.
@@ -120,24 +118,6 @@ export default function GatePage() {
     }
   }, [debouncedSearch, page, kodeDepo, hasPermission]);
 
-  const loadStats = useCallback(async () => {
-    if (!hasPermission('gate.view')) {
-      setStats(null);
-      return;
-    }
-    try {
-      const res = await gateTransactions.stats(kodeDepo ? { kode_depo: kodeDepo } : undefined);
-      setStats({
-        total: (res.data.data.total ?? 0) as number,
-        hariIni: (res.data.data.hari_ini ?? 0) as number,
-        terjadwal: (res.data.data.terjadwal ?? 0) as number,
-        selesai: (res.data.data.selesai ?? 0) as number,
-      });
-    } catch {
-      setStats(null);
-    }
-  }, [kodeDepo, hasPermission]);
-
   const loadDepots = useCallback(async () => {
     try {
       const res = await depo.list();
@@ -164,8 +144,6 @@ export default function GatePage() {
   useEffect(() => {
     if (page > lastPage) setPage(Math.max(1, lastPage));
   }, [page, lastPage]);
-
-  useEffect(() => { loadStats(); }, [loadStats]);
 
   useEffect(() => { loadDepots(); }, [loadDepots]);
 
@@ -208,7 +186,6 @@ export default function GatePage() {
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
-      loadStats();
     } catch (e) {
       setScanResult({ success: false, message: getErrorMessage(e, 'Error') });
     } finally {
@@ -225,7 +202,6 @@ export default function GatePage() {
       setFoundRencanaKirim(null);
       setScanNoDokumen('');
       loadItems();
-      loadStats();
     } catch (e) {
       setScanResult({ success: false, message: getErrorMessage(e, 'Error') });
     } finally {

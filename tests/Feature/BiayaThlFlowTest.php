@@ -752,7 +752,7 @@ class BiayaThlFlowTest extends TestCase
             'full_name' => 'Editor Biasa',
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
-            'level' => 'admin_master',
+            'level' => 'staff_logistic',
             'status' => 'active',
             'role_id' => $role->id,
         ]);
@@ -763,7 +763,7 @@ class BiayaThlFlowTest extends TestCase
             'tanggal_pengajuan' => '2026-09-24',
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
-            'created_by' => $this->user->id,
+            'created_by' => $editor->id,
             'status' => 'pending',
             'nominal_biaya' => 100000,
         ]);
@@ -787,7 +787,7 @@ class BiayaThlFlowTest extends TestCase
             'full_name' => 'Deleter Biasa',
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
-            'level' => 'admin_master',
+            'level' => 'staff_logistic',
             'status' => 'active',
             'role_id' => $role->id,
         ]);
@@ -798,7 +798,7 @@ class BiayaThlFlowTest extends TestCase
             'tanggal_pengajuan' => '2026-09-24',
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
-            'created_by' => $this->user->id,
+            'created_by' => $deleter->id,
             'status' => 'pending',
             'nominal_biaya' => 100000,
         ]);

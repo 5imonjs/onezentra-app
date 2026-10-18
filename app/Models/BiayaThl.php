@@ -17,6 +17,8 @@ class BiayaThl extends Model
     protected $table = 'biaya_thls';
 
     protected $fillable = [
+        'tanggal_pengajuan', 'kode_depo', 'nama_depo',
+        'no_kendaraan', 'type_kendaraan', 'no_surat_jalan',
         'kubikasi_base', 'nominal_biaya', 'is_rfah_required', 'rfah_name',
         'approval_pengajuan', 'approval_pengajuan_level', 'created_by', 'status',
         'submitted_by', 'submitted_at', 'checked_by', 'checked_at',

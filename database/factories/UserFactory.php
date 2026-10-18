@@ -22,9 +22,20 @@ class UserFactory extends Factory
             'full_name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
-            'level' => 'admin_master',
+            'level' => 'staff_logistic',
             'status' => 'active',
         ];
+    }
+
+    /**
+     * User dengan hak penuh (melewati semua pemeriksaan permission).
+     * Gunakan eksplisit di test agar superpower tidak pernah "gratis".
+     */
+    public function adminMaster(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'level' => 'admin_master',
+        ]);
     }
 
     public function configure(): static

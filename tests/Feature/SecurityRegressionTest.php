@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Exports\ReceivingExport;
 use App\Models\BiayaRetribusi;
 use App\Models\BiayaRetribusiDetail;
+use App\Models\BiayaThl;
 use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\RencanaKirim;
@@ -215,5 +216,72 @@ class SecurityRegressionTest extends TestCase
             BiayaRetribusiDetail::where('receiving_id', $receiving->id)->count(),
             'Receiving ter-klaim dua kali di level database.'
         );
+    }
+
+    /**
+     * Peran pengaju (blc) tidak boleh menyentuh pengajuan depo lain.
+     * Sebelumnya authorizeCreator/authorizeViewer meloloskan role ini tanpa
+     * cek depo (IDOR lintas depo).
+     */
+    public function test_blc_lintas_depo_tidak_bisa_akses_biaya_thl(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'blc'], ['name' => 'BLC']);
+        foreach (['biaya_thl.view', 'biaya_thl.edit', 'biaya_thl.delete'] as $slug) {
+            $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
+            $role->permissions()->syncWithoutDetaching([$perm->id]);
+        }
+
+        $userA = $this->makeUser('blc-a@test.com', 'blc');
+        $userB = $this->makeUser('blc-b@test.com', 'blc', 'DEPO-B', 'Depo B');
+
+        $biaya = BiayaThl::create([
+            'tanggal_pengajuan' => '2026-10-01',
+            'kode_depo' => 'DEPO-A',
+            'nama_depo' => 'Depo A',
+            'created_by' => $userA->id,
+            'status' => 'draft',
+            'nominal_biaya' => 100000,
+        ]);
+
+        // Pemilik depo boleh.
+        Sanctum::actingAs($userA);
+        $this->getJson("/api/v1/biaya-thl/{$biaya->id}")->assertOk();
+
+        // Peran sama (blc) tetapi depo berbeda → ditolak.
+        Sanctum::actingAs($userB);
+        $this->getJson("/api/v1/biaya-thl/{$biaya->id}")->assertForbidden();
+        $this->putJson("/api/v1/biaya-thl/{$biaya->id}", ['tanggal_pengajuan' => '2026-10-01', 'details' => []])->assertForbidden();
+        $this->deleteJson("/api/v1/biaya-thl/{$biaya->id}")->assertForbidden();
+        $this->assertModelExists($biaya);
+    }
+
+    public function test_blc_lintas_depo_tidak_bisa_akses_biaya_retribusi(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'blc'], ['name' => 'BLC']);
+        foreach (['biaya_retribusi.view', 'biaya_retribusi.edit', 'biaya_retribusi.delete'] as $slug) {
+            $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
+            $role->permissions()->syncWithoutDetaching([$perm->id]);
+        }
+
+        $userA = $this->makeUser('blc-ra@test.com', 'blc');
+        $userB = $this->makeUser('blc-rb@test.com', 'blc', 'DEPO-B', 'Depo B');
+
+        $biaya = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-10-01',
+            'kode_depo' => 'DEPO-A',
+            'nama_depo' => 'Depo A',
+            'created_by' => $userA->id,
+            'status' => 'draft',
+            'nominal_biaya' => 100000,
+        ]);
+
+        Sanctum::actingAs($userA);
+        $this->getJson("/api/v1/biaya-retribusi/{$biaya->id}")->assertOk();
+
+        Sanctum::actingAs($userB);
+        $this->getJson("/api/v1/biaya-retribusi/{$biaya->id}")->assertForbidden();
+        $this->putJson("/api/v1/biaya-retribusi/{$biaya->id}", ['tanggal_pengajuan' => '2026-10-01', 'details' => []])->assertForbidden();
+        $this->deleteJson("/api/v1/biaya-retribusi/{$biaya->id}")->assertForbidden();
+        $this->assertModelExists($biaya);
     }
 }

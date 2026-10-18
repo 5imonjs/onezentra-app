@@ -403,7 +403,17 @@ class SystemEndToEndTest extends TestCase
         // tidak bisa deactivate role yang punya user (RoleControllerTest.php:40)
         $assigned = Role::firstOrCreate(['slug' => 'assigned_sync'], ['name' => 'Assigned Sync']);
         $assigned->users()->attach($this->admin->id);
+        // Guard "role ber-user tidak bisa dinonaktifkan" diuji lewat user
+        // non-admin: admin_master memang sengaja diizinkan (RoleController::update).
+        $roleGuard = User::create([
+            'email' => 'role-guard@test.com', 'password' => 'password',
+            'full_name' => 'Role Guard', 'kode_depo' => 'ADMIN', 'nama_depo' => 'Kantor Pusat',
+            'level' => 'staff_logistic', 'status' => 'active', 'role_id' => $this->roleAdmin->id,
+        ]);
+        $this->roleAdmin->users()->attach($roleGuard->id);
+        Sanctum::actingAs($roleGuard);
         $this->putJson("/api/v1/roles/{$assigned->id}", ['is_active' => false])->assertStatus(422);
+        Sanctum::actingAs($this->admin);
 
         // tidak bisa delete permission yang masih ter-assign (PermissionController.php:77)
         $this->deleteJson("/api/v1/permissions/{$permId}")->assertStatus(422); // masih ter-assign ke role_baru

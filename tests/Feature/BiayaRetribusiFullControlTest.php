@@ -50,7 +50,7 @@ class BiayaRetribusiFullControlTest extends TestCase
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
             'nominal_biaya' => 100000,
-            'created_by' => $this->master->id,
+            'created_by' => $this->editor->id,
             'status' => 'pending',
         ]);
 
@@ -69,7 +69,7 @@ class BiayaRetribusiFullControlTest extends TestCase
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
             'nominal_biaya' => 100000,
-            'created_by' => $this->master->id,
+            'created_by' => $this->editor->id,
             'status' => 'pending',
         ]);
 
@@ -142,7 +142,7 @@ class BiayaRetribusiFullControlTest extends TestCase
             'full_name' => 'User',
             'kode_depo' => 'DPT-A',
             'nama_depo' => 'Depo A',
-            'level' => 'admin_master',
+            'level' => 'staff_logistic',
             'status' => 'active',
             'role_id' => $role->id,
         ]);

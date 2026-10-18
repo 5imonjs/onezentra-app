@@ -383,7 +383,6 @@ const value = (item: unknown) => String(item ?? '-');
 
 const STAMP_RED: [number, number, number] = [220, 38, 38];
 const STAMP_ORANGE: [number, number, number] = [217, 119, 6];
-const STAMP_PURPLE: [number, number, number] = [124, 58, 237];
 
 /** Radius lingkaran cap (mm) — muat di kotak approval setinggi 22mm. */
 export const STAMP_MAX_RADIUS = 10;
