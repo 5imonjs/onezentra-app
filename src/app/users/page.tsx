@@ -572,48 +572,48 @@ export default function UsersPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name *</label>
-              <input value={createForm.full_name} onChange={(e) => setCreateForm(prev => ({ ...prev, full_name: e.target.value }))} className="input-field" placeholder="Nama lengkap" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="full-name">Full Name *</label>
+              <input id="full-name" value={createForm.full_name} onChange={(e) => setCreateForm(prev => ({ ...prev, full_name: e.target.value }))} className="input-field" placeholder="Nama lengkap" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
-              <input type="email" value={createForm.email} onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))} className="input-field" placeholder="email@contoh.com" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password *</label>
-              <input type="password" value={createForm.password} onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Konfirmasi Password *</label>
-              <input type="password" value={createForm.password_confirmation} onChange={(e) => setCreateForm(prev => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="email">Email *</label>
+              <input id="email" type="email" value={createForm.email} onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))} className="input-field" placeholder="email@contoh.com" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Kode Depo *</label>
-              <input value={createForm.kode_depo} onChange={(e) => setCreateForm(prev => ({ ...prev, kode_depo: e.target.value }))} className="input-field" placeholder="Masukkan kode depo" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password">Password *</label>
+              <input id="password" type="password" value={createForm.password} onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Depo *</label>
-              <input value={createForm.nama_depo} onChange={(e) => setCreateForm(prev => ({ ...prev, nama_depo: e.target.value }))} className="input-field" placeholder="Masukkan nama depo" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password">Konfirmasi Password *</label>
+              <input id="konfirmasi-password" type="password" value={createForm.password_confirmation} onChange={(e) => setCreateForm(prev => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-depo">Kode Depo *</label>
+              <input id="kode-depo" value={createForm.kode_depo} onChange={(e) => setCreateForm(prev => ({ ...prev, kode_depo: e.target.value }))} className="input-field" placeholder="Masukkan kode depo" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="nama-depo">Nama Depo *</label>
+              <input id="nama-depo" value={createForm.nama_depo} onChange={(e) => setCreateForm(prev => ({ ...prev, nama_depo: e.target.value }))} className="input-field" placeholder="Masukkan nama depo" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Alamat</label>
-            <textarea value={createForm.alamat} onChange={(e) => setCreateForm(prev => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
+            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat">Alamat</label>
+            <textarea id="alamat" value={createForm.alamat} onChange={(e) => setCreateForm(prev => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Level *</label>
-              <select value={createForm.level} onChange={(e) => setCreateForm(prev => ({ ...prev, level: e.target.value }))} className="select-field">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="level">Level *</label>
+              <select id="level" value={createForm.level} onChange={(e) => setCreateForm(prev => ({ ...prev, level: e.target.value }))} className="select-field">
                 {levels.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
-              <select value={createForm.status} onChange={(e) => setCreateForm(prev => ({ ...prev, status: e.target.value }))} className="select-field">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="status">Status</label>
+              <select id="status" value={createForm.status} onChange={(e) => setCreateForm(prev => ({ ...prev, status: e.target.value }))} className="select-field">
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
@@ -683,48 +683,48 @@ export default function UsersPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
-              <input value={editForm.full_name || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, full_name: e.target.value }))} className="input-field" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="full-name-2">Full Name</label>
+              <input id="full-name-2" value={editForm.full_name || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, full_name: e.target.value }))} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-              <input type="email" value={editForm.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, email: e.target.value }))} className="input-field" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password (kosongkan jika tidak diubah)</label>
-              <input type="password" value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Konfirmasi Password</label>
-              <input type="password" value={editForm.password_confirmation || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="email-2">Email</label>
+              <input id="email-2" type="email" value={editForm.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, email: e.target.value }))} className="input-field" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Kode Depo</label>
-              <input value={editForm.kode_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, kode_depo: e.target.value }))} className="input-field" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password-kosongkan-jika-tidak-diubah">Password (kosongkan jika tidak diubah)</label>
+              <input id="password-kosongkan-jika-tidak-diubah" type="password" value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Depo</label>
-              <input value={editForm.nama_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, nama_depo: e.target.value }))} className="input-field" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password-2">Konfirmasi Password</label>
+              <input id="konfirmasi-password-2" type="password" value={editForm.password_confirmation || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-depo-2">Kode Depo</label>
+              <input id="kode-depo-2" value={editForm.kode_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, kode_depo: e.target.value }))} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="nama-depo-2">Nama Depo</label>
+              <input id="nama-depo-2" value={editForm.nama_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, nama_depo: e.target.value }))} className="input-field" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Alamat</label>
-            <textarea value={editForm.alamat || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
+            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat-2">Alamat</label>
+            <textarea id="alamat-2" value={editForm.alamat || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Level</label>
-              <select value={editForm.level || 'staff_logistic'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, level: e.target.value }))} className="select-field">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="level-2">Level</label>
+              <select id="level-2" value={editForm.level || 'staff_logistic'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, level: e.target.value }))} className="select-field">
                 {levels.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
-              <select value={editForm.status || 'active'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, status: e.target.value }))} className="select-field">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="status-2">Status</label>
+              <select id="status-2" value={editForm.status || 'active'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, status: e.target.value }))} className="select-field">
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>

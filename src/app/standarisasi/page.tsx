@@ -974,12 +974,12 @@ const confirmApprove = async () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Tier <span className="text-primary-500">*</span></label>
-            <input type="number" min="1" max="100" value={createForm.tier || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tier: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
+            <label className="block text-xs font-medium text-slate-500 mb-1.5" htmlFor="tier">Tier <span className="text-primary-500">*</span></label>
+            <input id="tier" type="number" min="1" max="100" value={createForm.tier || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tier: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Tinggi Tumpukan <span className="text-primary-500">*</span></label>
-            <input type="number" min="1" max="100" value={createForm.tinggi_tumpukan || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tinggi_tumpukan: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
+            <label className="block text-xs font-medium text-slate-500 mb-1.5" htmlFor="tinggi-tumpukan">Tinggi Tumpukan <span className="text-primary-500">*</span></label>
+            <input id="tinggi-tumpukan" type="number" min="1" max="100" value={createForm.tinggi_tumpukan || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tinggi_tumpukan: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
           </div>
         </div>
         <div className="bg-surface-raised rounded-xl p-4 mt-4">
@@ -1052,8 +1052,8 @@ const confirmApprove = async () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-500 mb-1">Pilih File</label>
-            <input
+            <label className="block text-sm font-medium text-slate-500 mb-1" htmlFor="pilih-file">Pilih File</label>
+            <input id="pilih-file"
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
