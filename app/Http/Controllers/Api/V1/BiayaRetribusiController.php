@@ -4,22 +4,25 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\BiayaRetribusiExport;
 use App\Helpers\PdfCompressor;
+use App\Http\Controllers\Api\V1\Concerns\AuthorizesBiayaRows;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\BiayaRetribusiResource;
 use App\Imports\BiayaRetribusiImport;
 use App\Models\ApprovalAssignment;
 use App\Models\BiayaRetribusi;
 use App\Models\BiayaRetribusiDetail;
 use App\Models\BiayaRetribusiDocument;
-use App\Models\BiayaThlDetail;
 use App\Models\Receiving;
-use App\Models\RetribusiRate;
 use App\Models\User;
-use App\Services\ApprovalSectionResolver;
+use App\Services\Biaya\BiayaApprovalPresenter;
+use App\Services\Biaya\BiayaDetailNormalizer;
+use App\Services\Biaya\BiayaPdfRenderer;
+use App\Services\Biaya\BiayaQueueSummary;
+use App\Services\Biaya\BiayaRetribusiCalculator;
+use App\Services\Biaya\BiayaRetribusiReferenceValidator;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
 use Carbon\Carbon;
-use Dompdf\Dompdf;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
@@ -32,6 +35,16 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class BiayaRetribusiController extends Controller
 {
+    use AuthorizesBiayaRows;
+
+    public function __construct(
+        private readonly BiayaApprovalPresenter $approvalPresenter,
+        private readonly BiayaPdfRenderer $pdfRenderer,
+        private readonly BiayaDetailNormalizer $normalizer,
+        private readonly BiayaRetribusiCalculator $calculator,
+        private readonly BiayaRetribusiReferenceValidator $referenceValidator,
+    ) {}
+
     public function index(Request $request)
     {
         $request->validate([
@@ -67,6 +80,7 @@ class BiayaRetribusiController extends Controller
             ->paginate($this->perPage($request, 50));
 
         $response = $data->toArray();
+        $response['data'] = BiayaRetribusiResource::collection($data->items())->resolve($request);
         $response['summary'] = [
             'total' => (clone $summaryQuery)->count(),
             'total_nominal' => (float) (clone $summaryQuery)->sum('nominal_biaya'),
@@ -75,57 +89,12 @@ class BiayaRetribusiController extends Controller
             'approved' => (clone $summaryQuery)->where('status', 'approved')->count(),
             'rejected' => (clone $summaryQuery)->where('status', 'rejected')->count(),
             'revisi' => (clone $summaryQuery)->where('status', 'revisi')->count(),
-            'queue' => $this->approvalQueueSummary($summaryQuery),
+            'queue' => BiayaQueueSummary::build($summaryQuery),
         ];
 
         return response()->json($response)
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache');
-    }
-
-    /**
-     * Antrean biaya per level approval untuk blok dashboard role-aware:
-     * jumlah, total nominal tertahan, dan umur pengajuan tertua (hari).
-     *
-     * @param  Builder  $summaryQuery
-     * @return array{check: array{count: int, nominal: float, oldest_days: int|null}, approve: array{count: int, nominal: float, oldest_days: int|null}, rfah: array{count: int, nominal: float, oldest_days: int|null}}
-     */
-    private function approvalQueueSummary($summaryQuery): array
-    {
-        $byStatus = (clone $summaryQuery)->reorder()->toBase()
-            ->selectRaw('status, COUNT(*) as c, COALESCE(SUM(nominal_biaya), 0) as nominal, MIN(COALESCE(submitted_at, created_at)) as oldest')
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status');
-
-        $rfah = (clone $summaryQuery)->reorder()
-            ->where('status', 'rlh_approved')
-            ->where('is_rfah_required', true)
-            ->toBase()
-            ->selectRaw('COUNT(*) as c, COALESCE(SUM(nominal_biaya), 0) as nominal, MIN(COALESCE(submitted_at, created_at)) as oldest')
-            ->first();
-
-        return [
-            'check' => $this->queueRow($byStatus->get('pending')),
-            'approve' => $this->queueRow($byStatus->get('checked')),
-            'rfah' => $this->queueRow($rfah),
-        ];
-    }
-
-    /**
-     * @return array{count: int, nominal: float, oldest_days: int|null}
-     */
-    private function queueRow(?object $row): array
-    {
-        $oldest = $row->oldest ?? null;
-
-        return [
-            'count' => (int) ($row->c ?? 0),
-            'nominal' => (float) ($row->nominal ?? 0),
-            'oldest_days' => $oldest
-                ? max(0, (int) floor((now()->getTimestamp() - strtotime((string) $oldest)) / 86400))
-                : null,
-        ];
     }
 
     /**
@@ -224,8 +193,8 @@ class BiayaRetribusiController extends Controller
             'files.*' => 'mimes:pdf,jpg,jpeg,png,webp|max:20480',
         ]);
 
-        $this->validateThlReferences($request, $validated['details']);
-        $validated = $this->inheritReceivingDepot($validated);
+        $this->referenceValidator->validateThlReferences($request, $validated['details']);
+        $validated = $this->calculator->inheritReceivingDepot($validated);
 
         /** @var User $user */
         $user = $request->user();
@@ -234,8 +203,8 @@ class BiayaRetribusiController extends Controller
         $validated['created_by'] = $user->id;
         $validated['status'] = 'draft';
         $validated = $user->depotAttributes($validated);
-        $validated['details'] = $this->normalizeDetailCasing($validated['details']);
-        $validated['details'] = $this->applyRetribusiCalc($validated['kode_depo'] ?? null, $validated['details']);
+        $validated['details'] = $this->normalizer->forRetribusi($validated['details']);
+        $validated['details'] = $this->calculator->apply($validated['kode_depo'] ?? null, $validated['details']);
         $validated['nominal_biaya'] = collect($validated['details'])->sum('nominal_biaya');
         $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.retribusi_rfah_threshold', 1000000);
         if ($validated['is_rfah_required']) {
@@ -252,7 +221,7 @@ class BiayaRetribusiController extends Controller
                 if ($receivingIds->isNotEmpty()) {
                     Receiving::whereIn('id', $receivingIds)->lockForUpdate()->get();
                 }
-                $this->validateReceivingReferences($request, $validated['details']);
+                $this->referenceValidator->validateReceivingReferences($request, $validated['details']);
 
                 $biayaRetribusi = BiayaRetribusi::create(collect($validated)->except(['details', 'files', 'documents'])->toArray());
 
@@ -294,7 +263,7 @@ class BiayaRetribusiController extends Controller
                 return $biayaRetribusi;
             });
 
-            return response()->json(['message' => 'Biaya Retribusi created', 'data' => $biayaRetribusi->load('details', 'documents')], 201);
+            return response()->json(['message' => 'Biaya Retribusi created', 'data' => new BiayaRetribusiResource($biayaRetribusi->load('details', 'documents'))], 201);
         } catch (QueryException $e) {
             // Unique index brd_receiving_id_unique: transaksi pesaing commit
             // duluan — jawab 422 agar frontend menampilkan "sudah diklaim",
@@ -325,23 +294,7 @@ class BiayaRetribusiController extends Controller
             'revisedBy',
         );
 
-        $names = $this->approvalActorNames($biayaRetribusi);
-        $approvalSections = app(ApprovalSectionResolver::class)->resolve(
-            $biayaRetribusi->kode_depo ?: '',
-            $names['submitter'],
-            $names['checker'],
-            $names['approver'],
-            $names['rfah'],
-            ApprovalAssignment::MODULE_RETRIBUSI,
-        );
-
-        $data = $biayaRetribusi->toArray();
-        $data['approval_sections'] = array_values(array_filter(
-            $approvalSections,
-            fn (array $section): bool => $section['title'] !== 'RFAH*' || $biayaRetribusi->is_rfah_required,
-        ));
-
-        return response()->json(['data' => $data]);
+        return response()->json(['data' => (new BiayaRetribusiResource($biayaRetribusi))->withApprovalSections()]);
     }
 
     public function update(Request $request, BiayaRetribusi $biayaRetribusi)
@@ -387,13 +340,13 @@ class BiayaRetribusiController extends Controller
             'files.*' => 'mimes:pdf,jpg,jpeg,png,webp|max:20480',
         ]);
 
-        $this->validateThlReferences($request, $validated['details']);
+        $this->referenceValidator->validateThlReferences($request, $validated['details']);
         // Samakan dengan store: ganti set receiving ikut memindahkan depo +
         // tarif (tanpa ini nominal dihitung dengan tarif depo lama).
-        $validated = $this->inheritReceivingDepot($validated);
+        $validated = $this->calculator->inheritReceivingDepot($validated);
 
-        $validated['details'] = $this->normalizeDetailCasing($validated['details']);
-        $validated['details'] = $this->applyRetribusiCalc($validated['kode_depo'] ?? $biayaRetribusi->kode_depo, $validated['details']);
+        $validated['details'] = $this->normalizer->forRetribusi($validated['details']);
+        $validated['details'] = $this->calculator->apply($validated['kode_depo'] ?? $biayaRetribusi->kode_depo, $validated['details']);
         $validated['nominal_biaya'] = collect($validated['details'])->sum('nominal_biaya');
         $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.retribusi_rfah_threshold', 1000000);
         if ($validated['is_rfah_required']) {
@@ -409,7 +362,7 @@ class BiayaRetribusiController extends Controller
                 if ($receivingIds->isNotEmpty()) {
                     Receiving::whereIn('id', $receivingIds)->lockForUpdate()->get();
                 }
-                $this->validateReceivingReferences($request, $validated['details'], $biayaRetribusi->id);
+                $this->referenceValidator->validateReceivingReferences($request, $validated['details'], $biayaRetribusi->id);
 
                 $biayaRetribusi->update(collect($validated)->except(['details', 'files', 'documents', 'documents_remove'])->toArray());
                 $biayaRetribusi->details()->delete();
@@ -451,7 +404,7 @@ class BiayaRetribusiController extends Controller
             throw $e;
         }
 
-        return response()->json(['message' => 'Biaya Retribusi updated', 'data' => $biayaRetribusi->load('details', 'documents')]);
+        return response()->json(['message' => 'Biaya Retribusi updated', 'data' => new BiayaRetribusiResource($biayaRetribusi->load('details', 'documents'))]);
     }
 
     public function destroy(BiayaRetribusi $biayaRetribusi)
@@ -592,59 +545,13 @@ class BiayaRetribusiController extends Controller
             $detail->jam_pulang = $detail->jam_pulang ? Carbon::parse($detail->jam_pulang)->format('d M Y H:i') : null;
         }
 
-        $names = $this->approvalActorNames($biayaRetribusi);
-        $approvalSections = app(ApprovalSectionResolver::class)->resolve(
-            $biayaRetribusi->kode_depo ?: '',
-            $names['submitter'],
-            $names['checker'],
-            $names['approver'],
-            $names['rfah'],
-        );
+        $approvalSections = $this->approvalPresenter->approvalSectionsFor($biayaRetribusi, ApprovalAssignment::MODULE_RETRIBUSI);
 
-        $html = view('pdf.biaya_retribusi', [
+        return $this->pdfRenderer->render('pdf.biaya_retribusi', [
             'biayaRetribusi' => $biayaRetribusi,
             'approvalSections' => $approvalSections,
             'stamps' => $this->resolveStamps($biayaRetribusi),
-        ])->render();
-
-        $dompdf = new Dompdf;
-        $dompdf->set_option('isRemoteEnabled', true);
-        $dompdf->set_option('defaultFont', 'DejaVu Sans');
-        $dompdf->set_option('tempDir', sys_get_temp_dir());
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'landscape');
-
-        $previousTimeLimit = ini_get('max_execution_time');
-        $previousMemoryLimit = ini_get('memory_limit');
-        set_time_limit(300);
-        ini_set('memory_limit', '512M');
-
-        $dompdf->render();
-
-        if ($previousTimeLimit !== false) {
-            set_time_limit((int) $previousTimeLimit);
-        }
-        ini_set('memory_limit', $previousMemoryLimit);
-
-        return response($dompdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$this->downloadFilename('Biaya_Retribusi', $biayaRetribusi->tanggal_pengajuan, 'pdf').'"',
-        ]);
-    }
-
-    /**
-     * Nama file unduhan seragam: `DD-MM-YYYY_Biaya_Retribusi.pdf`.
-     * Tanggal dari tanggal pengajuan; bila tak valid, pakai hari ini.
-     */
-    private function downloadFilename(string $kind, mixed $tanggal, string $ext): string
-    {
-        try {
-            $date = Carbon::parse((string) ($tanggal ?: now()))->format('d-m-Y');
-        } catch (\Throwable) {
-            $date = now()->format('d-m-Y');
-        }
-
-        return "{$date}_{$kind}.{$ext}";
+        ], $this->pdfRenderer->downloadFilename('Biaya_Retribusi', $biayaRetribusi->tanggal_pengajuan, 'pdf'));
     }
 
     /**
@@ -653,256 +560,27 @@ class BiayaRetribusiController extends Controller
      */
     public function resolveStamps(BiayaRetribusi $biayaRetribusi): array
     {
-        $stamps = [];
-
-        if ($biayaRetribusi->status !== 'draft') {
-            $stamps['Mengajukan'] = [
-                'text' => 'PENGAJUAN',
-                'color' => '#dc2626',
-                'date' => $biayaRetribusi->submitted_at?->format('d M Y'),
-            ];
-        }
-
-        if ($biayaRetribusi->checked_at) {
-            $stamps['Mengetahui'] = [
-                'text' => 'DIPERIKSA',
-                'color' => '#dc2626',
-                'date' => $biayaRetribusi->checked_at->format('d M Y'),
-            ];
-        }
-
-        if ($biayaRetribusi->status === 'approved') {
-            $stamps['Menyetujui'] = [
-                'text' => 'DISETUJUI',
-                'color' => '#dc2626',
-                'date' => $biayaRetribusi->approved_at?->format('d M Y'),
-            ];
-        } elseif ($biayaRetribusi->status === 'rejected') {
-            $actorSection = $this->stampSectionFor((string) $biayaRetribusi->rejectedBy?->level);
-            $stamps[$actorSection] = [
-                'text' => 'DITOLAK',
-                'color' => '#dc2626',
-                'date' => $biayaRetribusi->rejected_at?->format('d M Y'),
-            ];
-            // Persetujuan RLH pada siklus sebelumnya tetap tercatat di kotaknya
-            // bila aksi terminal (ditolak) dilakukan pelaku lain (BAC/RFAH).
-            if ($actorSection !== 'Menyetujui' && $biayaRetribusi->rlh_approved_at && $biayaRetribusi->rlhApprovedBy) {
-                $stamps['Menyetujui'] = [
-                    'text' => 'DISETUJUI RLH',
-                    'color' => '#dc2626',
-                    'date' => $biayaRetribusi->rlh_approved_at->format('d M Y'),
-                ];
-            }
-        } elseif ($biayaRetribusi->status === 'revisi') {
-            $actorSection = $this->stampSectionFor((string) $biayaRetribusi->revisedBy?->level);
-            $stamps[$actorSection] = [
-                'text' => 'REVISI',
-                'color' => '#d97706',
-                'date' => $biayaRetribusi->revised_at?->format('d M Y'),
-            ];
-            if ($actorSection !== 'Menyetujui' && $biayaRetribusi->rlh_approved_at && $biayaRetribusi->rlhApprovedBy) {
-                $stamps['Menyetujui'] = [
-                    'text' => 'DISETUJUI RLH',
-                    'color' => '#dc2626',
-                    'date' => $biayaRetribusi->rlh_approved_at->format('d M Y'),
-                ];
-            }
-        }
-
-        return $stamps;
+        return $this->approvalPresenter->resolveRetribusi($biayaRetribusi);
     }
 
     /**
      * Kotak kolom approval tempat cap REVISI/DITOLAK diletakkan mengikuti
      * peran pelaku aksi: BAC -> Mengetahui, RFAH -> RFAH*, selainnya
-     * (RLH / data lama tanpa level) -> Menyetujui. Sejajar dengan
-     * stampSectionFor() pada generator PDF frontend.
+     * (RLH / data lama tanpa level) -> Menyetujui.
      */
     public function stampSectionFor(string $level): string
     {
-        return match (strtoupper($level)) {
-            'BAC' => 'Mengetahui',
-            'RFAH' => 'RFAH*',
-            default => 'Menyetujui',
-        };
+        return $this->approvalPresenter->stampSectionFor($level);
     }
 
     /**
-     * Nama pelaku per kotak approval, diurutkan sesuai ApprovalSectionResolver:
-     * submitter (BLC), checker (BAC), approver (RLH), rfah (RFAH*). Nama
-     * mengikuti peran pelaku aksi — revisi/ditolak oleh RFAH atau BAC tidak
-     * boleh tertukar ke kotak RLH. Publik agar dapat diuji langsung.
+     * Nama pelaku per kotak approval. Publik agar dapat diuji langsung.
      *
      * @return array{submitter: ?string, checker: ?string, approver: ?string, rfah: ?string}
      */
     public function approvalActorNames(BiayaRetribusi $biayaRetribusi): array
     {
-        $submitter = $biayaRetribusi->approval_pengajuan;
-        $checker = $biayaRetribusi->checkedBy?->full_name;
-        $approver = null;
-        $rfah = null;
-
-        if ($biayaRetribusi->status === 'rlh_approved') {
-            $approver = $biayaRetribusi->rlhApprovedBy?->full_name;
-        } elseif ($biayaRetribusi->status === 'approved') {
-            if ($biayaRetribusi->is_rfah_required) {
-                $approver = $biayaRetribusi->rlhApprovedBy?->full_name;
-                $rfah = $biayaRetribusi->approvedBy?->full_name;
-            } else {
-                $approver = $biayaRetribusi->approvedBy?->full_name;
-            }
-        } elseif (in_array($biayaRetribusi->status, ['rejected', 'revisi'], true)) {
-            $actor = $biayaRetribusi->status === 'rejected' ? $biayaRetribusi->rejectedBy : $biayaRetribusi->revisedBy;
-            match (strtoupper((string) ($actor?->level ?? ''))) {
-                'BAC' => $checker = $actor?->full_name,
-                'RFAH' => $rfah = $actor?->full_name,
-                default => $approver = $actor?->full_name,
-            };
-        }
-
-        return ['submitter' => $submitter, 'checker' => $checker, 'approver' => $approver, 'rfah' => $rfah];
-    }
-
-    /**
-     * Normalisasi casing plat agar konsisten kapital di database.
-     *
-     * @param  array<int, array<string, mixed>>  $details
-     * @return array<int, array<string, mixed>>
-     */
-    private function normalizeDetailCasing(array $details): array
-    {
-        return array_map(function ($detail) {
-            if (isset($detail['nopol_kendaraan'])) {
-                $detail['nopol_kendaraan'] = strtoupper(trim((string) $detail['nopol_kendaraan']));
-            }
-            if (isset($detail['type_kendaraan'])) {
-                $detail['type_kendaraan'] = strtoupper(trim((string) $detail['type_kendaraan']));
-            }
-
-            return $detail;
-        }, $details);
-    }
-
-    /**
-     * Terapkan logika hitung retribusi: hanya baris receiving yang mengikuti
-     * mode koli depo (nominal = qty_zak * rate_zak + qty_crt * rate_crt);
-     * baris manual (tanpa receiving_id) selalu memakai nominal manual
-     * (borongan) agar tidak termanipulasi client.
-     *
-     * @param  array<int, array<string, mixed>>  $details
-     * @return array<int, array<string, mixed>>
-     */
-    private function applyRetribusiCalc(?string $kodeDepo, array $details): array
-    {
-        $cfg = RetribusiRate::resolveFor($kodeDepo);
-        if ($cfg['mode'] !== 'koli') {
-            return $details;
-        }
-        $rateZak = (float) $cfg['rate_zak'];
-        $rateCrt = (float) $cfg['rate_crt'];
-
-        return array_map(fn ($detail) => empty($detail['receiving_id']) ? $detail : array_merge($detail, [
-            'nominal_biaya' => ((float) ($detail['qty_zak'] ?? 0)) * $rateZak
-                + ((float) ($detail['qty_crt'] ?? 0)) * $rateCrt,
-        ]), $details);
-    }
-
-    /**
-     * Bila seluruh baris berasal dari receiving yang se-depo, pengajuan
-     * mewarisi depo receiving (bukan depo pembuat) agar tarif koli,
-     * laporan, dan filter depo konsisten siapa pun yang membuat.
-     */
-    private function inheritReceivingDepot(array $validated): array
-    {
-        $details = $validated['details'] ?? [];
-        if (count($details) === 0) {
-            return $validated;
-        }
-        foreach ($details as $detail) {
-            if (empty($detail['receiving_id'])) {
-                return $validated;
-            }
-        }
-        $depots = Receiving::query()
-            ->whereIn('id', collect($details)->pluck('receiving_id')->unique()->values())
-            ->with('rencanaKirim')
-            ->get()
-            ->map(fn (Receiving $r) => [$r->rencanaKirim?->kode_depo, $r->rencanaKirim?->nama_depo])
-            ->unique()
-            ->values();
-        if ($depots->count() !== 1 || blank($depots->first()[0])) {
-            return $validated;
-        }
-        $validated['kode_depo'] = $depots->first()[0];
-        $validated['nama_depo'] = $depots->first()[1] ?? $depots->first()[0];
-
-        return $validated;
-    }
-
-    private function validateThlReferences(Request $request, array $details): void
-    {
-        foreach ($details as $index => $detail) {
-            if (empty($detail['biaya_thl_detail_id'])) {
-                continue;
-            }
-
-            $source = BiayaThlDetail::query()
-                ->with('biayaThl')
-                ->find($detail['biaya_thl_detail_id']);
-
-            $valid = $source
-                && $source->biaya_thl_id === ($detail['biaya_thl_id'] ?? null)
-                && $source->biayaThl?->status === 'approved';
-
-            if ($valid && $request->user()->isDepotScoped()) {
-                $valid = $source->biayaThl->kode_depo === $request->user()->kode_depo
-                    && $source->biayaThl->nama_depo === $request->user()->nama_depo;
-            }
-
-            if (! $valid) {
-                throw ValidationException::withMessages([
-                    "details.{$index}.biaya_thl_detail_id" => 'Sumber THL tidak valid untuk depo pengguna.',
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Pastikan receiving sumber sudah COMPLETED, divalidasi checker,
-     * se-depo dengan pengguna, dan belum diklaim retribusi lain.
-     */
-    private function validateReceivingReferences(Request $request, array $details, ?int $exceptRetribusiId = null): void
-    {
-        foreach ($details as $index => $detail) {
-            if (empty($detail['receiving_id'])) {
-                continue;
-            }
-
-            $receiving = Receiving::query()->with('rencanaKirim')->find($detail['receiving_id']);
-
-            $valid = $receiving
-                && $receiving->status === 'COMPLETED'
-                && $receiving->checked_by !== null;
-
-            if ($valid && $request->user()->isDepotScoped()) {
-                $valid = $receiving->rencanaKirim
-                    && $receiving->rencanaKirim->kode_depo === $request->user()->kode_depo;
-            }
-
-            if ($valid) {
-                $claimed = BiayaRetribusiDetail::query()
-                    ->where('receiving_id', $detail['receiving_id'])
-                    ->when($exceptRetribusiId, fn ($q) => $q->where('biaya_retribusi_id', '!=', $exceptRetribusiId))
-                    ->exists();
-                $valid = ! $claimed;
-            }
-
-            if (! $valid) {
-                throw ValidationException::withMessages([
-                    "details.{$index}.receiving_id" => 'Receiving tidak valid: harus COMPLETED tervalidasi checker, se-depo, dan belum diklaim.',
-                ]);
-            }
-        }
+        return $this->approvalPresenter->actorNamesRetribusi($biayaRetribusi);
     }
 
     public function export(Request $request)
@@ -914,7 +592,7 @@ class BiayaRetribusiController extends Controller
         $query->with('details');
         ExportGuard::ensureWithinLimit($query);
 
-        return Excel::download(new BiayaRetribusiExport($query, $request->user()), $this->downloadFilename('Biaya_Retribusi', now(), 'xlsx'));
+        return Excel::download(new BiayaRetribusiExport($query, $request->user()), $this->pdfRenderer->downloadFilename('Biaya_Retribusi', now(), 'xlsx'));
     }
 
     /**
@@ -923,59 +601,12 @@ class BiayaRetribusiController extends Controller
      */
     private function authorizeViewer(BiayaRetribusi $biayaRetribusi): void
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-        if (! $user) {
-            abort(403);
-        }
-
-        if ($user->isAdminMaster() || $user->hasRole('admin_master') || $biayaRetribusi->created_by === $user->id) {
-            return;
-        }
-
-        // Peran pengaju hanya boleh melihat data depo-nya sendiri.
-        if (($user->hasRole('blc') || $user->hasRole('staff_logistic'))
-            && $user->canAccessDepotRow($biayaRetribusi->kode_depo, $biayaRetribusi->nama_depo)) {
-            return;
-        }
-
-        $assigned = ApprovalAssignment::query()
-            ->where('module', ApprovalAssignment::MODULE_RETRIBUSI)
-            ->where('user_id', $user->id)
-            ->whereIn('approval_level', ['BAC', 'RLH', 'RFAH'])
-            ->where('is_active', true)
-            ->where(function ($query) use ($biayaRetribusi): void {
-                $query->where('kode_depo', $biayaRetribusi->kode_depo)
-                    ->orWhere('kode_depo', 'ADMIN');
-            })
-            ->exists();
-
-        abort_unless($assigned, 403, 'Anda bukan approver yang ditetapkan untuk pengajuan ini.');
+        $this->authorizeBiayaRowViewer($biayaRetribusi, ApprovalAssignment::MODULE_RETRIBUSI, allowAdminRole: true);
     }
 
     private function authorizeCreator(BiayaRetribusi $biayaRetribusi): void
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-        if (! $user) {
-            abort(403);
-        }
-
-        if ($user->isAdminMaster() || $biayaRetribusi->created_by === $user->id) {
-            return;
-        }
-
-        // Peran pengaju dan pemegang kendali penuh hanya boleh mengubah data
-        // di depo-nya sendiri (cegah IDOR lintas depo).
-        $canManage = $user->hasRole('blc')
-            || $user->hasRole('staff_logistic')
-            || $user->hasPermission('biaya_retribusi.full_control');
-
-        abort_unless(
-            $canManage && $user->canAccessDepotRow($biayaRetribusi->kode_depo, $biayaRetribusi->nama_depo),
-            403,
-            'Anda tidak memiliki izin untuk mengubah data ini.'
-        );
+        $this->authorizeBiayaRowCreator($biayaRetribusi, 'biaya_retribusi.full_control');
     }
 
     public function import(Request $request)
