@@ -20,11 +20,11 @@ type Group = {
   tone: Tone;
 };
 
-const TONE_STYLES: Record<Tone, { iconBg: string; chip: string }> = {
-  amber:  { iconBg: 'bg-amber-500',  chip: 'bg-amber-50 text-amber-700' },
-  blue:   { iconBg: 'bg-blue-600',   chip: 'bg-blue-50 text-blue-700' },
-  sky:    { iconBg: 'bg-sky-600',    chip: 'bg-sky-50 text-sky-700' },
-  violet: { iconBg: 'bg-primary-600', chip: 'bg-chip-primary text-accent-text' },
+const TONE_STYLES: Record<Tone, { dot: string; chip: string; label: string }> = {
+  amber:  { dot: 'bg-amber-500',   chip: 'bg-amber-50 text-amber-700',      label: 'text-amber-700' },
+  blue:   { dot: 'bg-blue-600',    chip: 'bg-blue-50 text-blue-700',        label: 'text-blue-700' },
+  sky:    { dot: 'bg-sky-600',     chip: 'bg-sky-50 text-sky-700',          label: 'text-sky-700' },
+  violet: { dot: 'bg-primary-600', chip: 'bg-chip-primary text-accent-text', label: 'text-accent-text' },
 };
 
 const MAX_PER_GROUP = 4;
@@ -268,39 +268,48 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
           <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
         </div>
       )}
-      <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Perlu Tindakan</h2>
-          <p className="text-sm text-gray-500">Item yang menunggu aksi Anda hari ini</p>
+      <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-wash text-accent-text" aria-hidden="true">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-gray-900">Perlu Tindakan</h2>
+            <p className="truncate text-xs text-gray-500">Item yang menunggu aksi Anda hari ini</p>
+          </div>
         </div>
-        <span className="inline-flex items-center rounded-full bg-red-50 text-red-700 px-3 py-1 text-xs font-bold tabular-nums">
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold tabular-nums text-red-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
           {groups.reduce((sum, g) => sum + g.total, 0)} item
         </span>
       </div>
-      <div className="p-5 space-y-5">
+      <div className="divide-y divide-gray-100">
         {groups.map((group) => {
           const tone = TONE_STYLES[group.tone];
           return (
-            <div key={group.key}>
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <h3 className={`text-sm font-semibold ${tone.chip.split(' ')[1]}`}>{group.label}</h3>
-                <Link href={group.href} className="text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors">
+            <div key={group.key} className="px-5 py-4">
+              <div className="mb-2.5 flex items-center gap-2">
+                <h3 className={`truncate text-sm font-semibold ${tone.label}`}>{group.label}</h3>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${tone.chip}`}>{group.total}</span>
+                <Link href={group.href} className="ml-auto shrink-0 text-xs font-semibold text-gray-400 transition-colors hover:text-gray-700">
                   Lihat semua →
                 </Link>
               </div>
-              <ul className="space-y-2">
+              <ul className="space-y-1.5">
                 {group.items.map((item) => (
                   <li key={item.id}>
                     <Link
                       href={item.href}
-                      className="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2.5 hover:border-gray-300 hover:bg-surface-raised transition-colors group"
+                      className="group flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2.5 transition-colors hover:border-gray-200 hover:bg-surface-raised"
                     >
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${tone.iconBg}`} aria-hidden="true" />
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${tone.dot}`} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium text-gray-900 truncate">{item.primary}</span>
-                        <span className="block text-xs text-gray-400 truncate">{item.secondary}</span>
+                        <span className="block truncate text-sm font-medium text-gray-900">{item.primary}</span>
+                        <span className="block truncate text-xs text-gray-400">{item.secondary}</span>
                       </span>
-                      <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                      <svg className="h-4 w-4 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </Link>
                   </li>
                 ))}
