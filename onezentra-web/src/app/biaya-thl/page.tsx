@@ -2180,8 +2180,8 @@ export default function BiayaThlPage() {
                           {gIdx + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Nomor Surat Jalan <span className="text-red-400">*</span></label>
-                          <input type="text" data-sj-group-id={group.groupId} value={group.sj} onChange={(e) => updateSjNumber(group.groupId, e.target.value)} onBlur={(e) => commitSjNumber(group.groupId, e.target.value)} placeholder="Contoh: SJ-2025-0001" className={`w-full rounded-xl border px-3 py-2 font-mono text-sm font-bold text-gray-800 placeholder:text-gray-300 transition-colors focus:outline-none focus:ring-4 bg-surface-card ${errorSJGroupIndex === gIdx ? 'border-red-400 focus:border-red-400 focus:ring-red-50' : 'border-slate-300 focus:border-primary-400 focus:ring-brand-wash'}`} />
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1" htmlFor={`nomor-surat-jalan-${gIdx}`}>Nomor Surat Jalan <span className="text-red-400">*</span></label>
+                          <input id={`nomor-surat-jalan-${gIdx}`} type="text" data-sj-group-id={group.groupId} value={group.sj} onChange={(e) => updateSjNumber(group.groupId, e.target.value)} onBlur={(e) => commitSjNumber(group.groupId, e.target.value)} placeholder="Contoh: SJ-2025-0001" className={`w-full rounded-xl border px-3 py-2 font-mono text-sm font-bold text-gray-800 placeholder:text-gray-300 transition-colors focus:outline-none focus:ring-4 bg-surface-card ${errorSJGroupIndex === gIdx ? 'border-red-400 focus:border-red-400 focus:ring-red-50' : 'border-slate-300 focus:border-primary-400 focus:ring-brand-wash'}`} />
 
                         </div>
                         <span className={`inline-flex items-center rounded-full ${accent.soft} ${accent.text} px-2.5 py-1 text-[11px] font-bold whitespace-nowrap shrink-0`}>{group.indices.length} pekerja</span>
@@ -2326,16 +2326,16 @@ export default function BiayaThlPage() {
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nama_thl`}>
                                         Nama THL <span className="text-red-400">*</span>
                                       </label>
-                                      <input type="text" value={detail.nama_thl} onChange={(e) => updateDetail(idx, 'nama_thl', e.target.value)} placeholder="Nama pekerja" className="input-field py-2 text-sm" />
+                                      <input id={`detail-${idx}-nama_thl`} type="text" value={detail.nama_thl} onChange={(e) => updateDetail(idx, 'nama_thl', e.target.value)} placeholder="Nama pekerja" className="input-field py-2 text-sm" />
                                     </div>
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-posisi`}>
                                         Posisi <span className="text-red-400">*</span>
                                       </label>
-                                      <select value={detail.posisi} onChange={(e) => {
+                                      <select id={`detail-${idx}-posisi`} value={detail.posisi} onChange={(e) => {
                                         const position = e.target.value;
                                         updateDetail(idx, 'posisi', position);
                                         if (position.trim().toUpperCase() === 'THL GUDANG') {
@@ -2354,10 +2354,10 @@ export default function BiayaThlPage() {
                                     </div>
 {requiresDriverName(detail.posisi) && (
                       <div>
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-driver_name`}>
                           Nama Driver <span className="text-red-400">*</span>
                         </label>
-                        <input type="text" value={detail.driver_name} onChange={(e) => updateDetail(idx, 'driver_name', e.target.value)} placeholder="Nama driver" className="input-field py-2 text-sm" />
+                        <input id={`detail-${idx}-driver_name`} type="text" value={detail.driver_name} onChange={(e) => updateDetail(idx, 'driver_name', e.target.value)} placeholder="Nama driver" className="input-field py-2 text-sm" />
                       </div>
                     )}
                   </div>
@@ -2373,16 +2373,16 @@ export default function BiayaThlPage() {
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nopol_kendaraan`}>
                                         Plat Kendaraan <span className="text-red-400">*</span>
                                       </label>
-                                      <input type="text" value={detail.nopol_kendaraan} onChange={(e) => updateDetail(idx, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" title="Nomor polisi kendaraan, contoh: KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
+                                      <input id={`detail-${idx}-nopol_kendaraan`} type="text" value={detail.nopol_kendaraan} onChange={(e) => updateDetail(idx, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" title="Nomor polisi kendaraan, contoh: KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
                                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-type_kendaraan`}>
                         Type Kendaraan <span className="text-red-400">*</span>
                       </label>
-                      <select value={detail.type_kendaraan} onChange={(e) => updateDetail(idx, 'type_kendaraan', e.target.value)} className="select-field py-2 text-sm">
+                      <select id={`detail-${idx}-type_kendaraan`} value={detail.type_kendaraan} onChange={(e) => updateDetail(idx, 'type_kendaraan', e.target.value)} className="select-field py-2 text-sm">
                         <option value="">Pilih</option>
                         {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
@@ -2408,23 +2408,23 @@ export default function BiayaThlPage() {
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nominal_biaya`}>
                                         Nominal Biaya (Rp) <span className="text-red-400">*</span>
                                       </label>
-                                      <input type="text" inputMode="decimal" value={detail.nominal_biaya ? formatRibuan(detail.nominal_biaya) : ''} onChange={(e) => updateDetail(idx, 'nominal_biaya', parseRibuan(e.target.value))} placeholder="0" title="Besaran biaya/honor THL dalam rupiah (minimal Rp 1)" className="input-field py-2 text-sm font-bold tabular-nums" />
+                                      <input id={`detail-${idx}-nominal_biaya`} type="text" inputMode="decimal" value={detail.nominal_biaya ? formatRibuan(detail.nominal_biaya) : ''} onChange={(e) => updateDetail(idx, 'nominal_biaya', parseRibuan(e.target.value))} placeholder="0" title="Besaran biaya/honor THL dalam rupiah (minimal Rp 1)" className="input-field py-2 text-sm font-bold tabular-nums" />
                                       <p className="mt-1 text-[10px] text-gray-400">Contoh: 150000 = Rp 150.000</p>
                                     </div>
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-kubikasi`}>
                                         Kubikasi (m³) {requiresDriverName(detail.posisi) && <span className="text-red-400">*</span>}
                                       </label>
-                                      <input type="number" min="0" step="0.01" value={detail.posisi === 'THL GUDANG' ? 0 : detail.kubikasi || ''} onChange={(e) => updateDetail(idx, 'kubikasi', Number(e.target.value))} placeholder="0" disabled={detail.posisi === 'THL GUDANG'} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
+                                      <input id={`detail-${idx}-kubikasi`} type="number" min="0" step="0.01" value={detail.posisi === 'THL GUDANG' ? 0 : detail.kubikasi || ''} onChange={(e) => updateDetail(idx, 'kubikasi', Number(e.target.value))} placeholder="0" disabled={detail.posisi === 'THL GUDANG'} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
                                     </div>
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-droppoint`}>
                                         Droppoint {requiresDriverName(detail.posisi) && <span className="text-red-400">*</span>}
                                       </label>
-                                      <input type="text" value={detail.posisi === 'THL GUDANG' ? '' : detail.droppoint} onChange={(e) => updateDetail(idx, 'droppoint', e.target.value)} placeholder={detail.posisi === 'THL GUDANG' ? 'Tidak diperlukan' : 'Lokasi tujuan'} disabled={detail.posisi === 'THL GUDANG'} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
+                                      <input id={`detail-${idx}-droppoint`} type="text" value={detail.posisi === 'THL GUDANG' ? '' : detail.droppoint} onChange={(e) => updateDetail(idx, 'droppoint', e.target.value)} placeholder={detail.posisi === 'THL GUDANG' ? 'Tidak diperlukan' : 'Lokasi tujuan'} disabled={detail.posisi === 'THL GUDANG'} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
                                     </div>
                                   </div>
                                 </div>
@@ -2441,16 +2441,16 @@ export default function BiayaThlPage() {
                                     </div>
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                       <div>
-                                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-jam_datang`}>
                                           Jam Datang <span className="text-red-400">*</span>
                                         </label>
-                                        <input type="datetime-local" value={detail.jam_datang} onChange={(e) => updateDetail(idx, 'jam_datang', e.target.value)} disabled={!detail.posisi} title={!detail.posisi ? 'Pilih posisi terlebih dahulu' : undefined} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
+                                        <input id={`detail-${idx}-jam_datang`} type="datetime-local" value={detail.jam_datang} onChange={(e) => updateDetail(idx, 'jam_datang', e.target.value)} disabled={!detail.posisi} title={!detail.posisi ? 'Pilih posisi terlebih dahulu' : undefined} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
                                       </div>
                                       <div>
-                                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-jam_pulang`}>
                                           Jam Pulang <span className="text-red-400">*</span>
                                         </label>
-                                        <input type="datetime-local" value={detail.jam_pulang} onChange={(e) => updateDetail(idx, 'jam_pulang', e.target.value)} disabled={!detail.posisi} title={!detail.posisi ? 'Pilih posisi terlebih dahulu' : undefined} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
+                                        <input id={`detail-${idx}-jam_pulang`} type="datetime-local" value={detail.jam_pulang} onChange={(e) => updateDetail(idx, 'jam_pulang', e.target.value)} disabled={!detail.posisi} title={!detail.posisi ? 'Pilih posisi terlebih dahulu' : undefined} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
                                       </div>
                                     </div>
                                   </div>
@@ -3009,8 +3009,8 @@ export default function BiayaThlPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-500 mb-1">Pilih File</label>
-            <input
+            <label className="block text-sm font-medium text-slate-500 mb-1" htmlFor="pilih-file">Pilih File</label>
+            <input id="pilih-file"
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}

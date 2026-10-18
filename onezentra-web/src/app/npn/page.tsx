@@ -678,8 +678,8 @@ export default function NpnPage() {
                 ['decRate', 'decRate', false, 'number'],
               ].map(([label, key, full, type]) => (
                 <div key={key as string} className={full ? 'col-span-2' : ''}>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">{label as string}</label>
-                  <input
+                  <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor={`field-${key}`}>{label as string}</label>
+                  <input id={`field-${key}`}
                     type={(type as string) || 'text'}
                     value={(editForm[key as keyof NpnItem] as string | number) ?? ''}
                     onChange={(e) => setEditForm(prev => ({ ...prev, [key as string]: type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value }))}
@@ -698,12 +698,12 @@ export default function NpnPage() {
                     return (
                       <div key={i} className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Cat {i + 1}</label>
-                          <input value={(editForm[catKey as keyof NpnItem] as string) ?? ''} onChange={(e) => setEditForm(prev => ({ ...prev, [catKey]: e.target.value }))} className="input-field text-xs" />
+                          <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="cat">Cat {i + 1}</label>
+                          <input id="cat" value={(editForm[catKey as keyof NpnItem] as string) ?? ''} onChange={(e) => setEditForm(prev => ({ ...prev, [catKey]: e.target.value }))} className="input-field text-xs" />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Desc {i + 1}</label>
-                          <input value={(editForm[descKey as keyof NpnItem] as string) ?? ''} onChange={(e) => setEditForm(prev => ({ ...prev, [descKey]: e.target.value }))} className="input-field text-xs" />
+                          <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="desc">Desc {i + 1}</label>
+                          <input id="desc" value={(editForm[descKey as keyof NpnItem] as string) ?? ''} onChange={(e) => setEditForm(prev => ({ ...prev, [descKey]: e.target.value }))} className="input-field text-xs" />
                         </div>
                       </div>
                     );

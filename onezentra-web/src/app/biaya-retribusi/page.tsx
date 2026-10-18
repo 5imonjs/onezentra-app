@@ -1912,11 +1912,11 @@ export default function BiayaRetribusiPage() {
 
             {/* Tanggal */}
             <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2" htmlFor="tanggal-pengajuan">
                 <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                 Tanggal Pengajuan <span className="text-red-500">*</span>
               </label>
-              <input type="date" value={formData.tanggal_pengajuan} onChange={(e) => setFormData({ ...formData, tanggal_pengajuan: e.target.value })} className="input-field py-3 text-sm" />
+              <input id="tanggal-pengajuan" type="date" value={formData.tanggal_pengajuan} onChange={(e) => setFormData({ ...formData, tanggal_pengajuan: e.target.value })} className="input-field py-3 text-sm" />
             </div>
             </div>
             )}
@@ -2126,13 +2126,13 @@ export default function BiayaRetribusiPage() {
                     <div className="px-3 pb-3 pt-1 border-t border-gray-100">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-nopol_kendaraan`}>
                             Plat Kendaraan <span className="text-red-400">*</span>
                           </label>
                           <input type="text" value={d.nopol_kendaraan} onChange={(e) => updateExistingDetail(i, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" id={`existing-row-${i}-nopol_kendaraan`} className="input-field py-2 text-sm font-mono uppercase" />
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-type_kendaraan`}>
                             Type Kendaraan <span className="text-red-400">*</span>
                           </label>
                           <select value={d.type_kendaraan} onChange={(e) => updateExistingDetail(i, 'type_kendaraan', e.target.value)} id={`existing-row-${i}-type_kendaraan`} className="select-field py-2 text-sm">
@@ -2141,25 +2141,25 @@ export default function BiayaRetribusiPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-no_surat_jalan`}>
                             No. SJ
                           </label>
                           <input type="text" value={d.no_surat_jalan} onChange={(e) => updateExistingDetail(i, 'no_surat_jalan', e.target.value)} placeholder="Nomor SJ" id={`existing-row-${i}-no_surat_jalan`} className="input-field py-2 text-sm font-mono" />
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-qty_zak`}>
                             Qty Zak
                           </label>
                           <input type="number" min="0" value={d.qty_zak || ''} onChange={(e) => updateExistingDetail(i, 'qty_zak', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-qty_zak`} className="input-field py-2 text-sm text-right" />
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-qty_crt`}>
                             Qty Crt
                           </label>
                           <input type="number" min="0" value={d.qty_crt || ''} onChange={(e) => updateExistingDetail(i, 'qty_crt', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-qty_crt`} className="input-field py-2 text-sm text-right" />
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-nominal_biaya`}>
                             Nominal (Rp) <span className="text-red-400">*</span>
                           </label>
                           <input type="number" min="0" value={d.nominal_biaya || ''} onChange={(e) => updateExistingDetail(i, 'nominal_biaya', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-nominal_biaya`} className="input-field py-2 text-sm font-bold" />
@@ -2195,43 +2195,43 @@ export default function BiayaRetribusiPage() {
                 <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-surface-card p-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="plat-kendaraan">
                         Plat Kendaraan <span className="text-red-400">*</span>
                       </label>
-                      <input type="text" onChange={(e) => startManualRow('nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
+                      <input id="plat-kendaraan" type="text" onChange={(e) => startManualRow('nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="type-kendaraan">
                         Type Kendaraan <span className="text-red-400">*</span>
                       </label>
-                      <select defaultValue="" onChange={(e) => startManualRow('type_kendaraan', e.target.value)} className="select-field py-2 text-sm">
+                      <select id="type-kendaraan" defaultValue="" onChange={(e) => startManualRow('type_kendaraan', e.target.value)} className="select-field py-2 text-sm">
                         <option value="">Pilih</option>
                         {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="no-sj">
                         No. SJ
                       </label>
-                      <input type="text" onChange={(e) => startManualRow('no_surat_jalan', e.target.value)} placeholder="Nomor SJ" className="input-field py-2 text-sm font-mono" />
+                      <input id="no-sj" type="text" onChange={(e) => startManualRow('no_surat_jalan', e.target.value)} placeholder="Nomor SJ" className="input-field py-2 text-sm font-mono" />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="qty-zak">
                         Qty Zak
                       </label>
-                      <input type="number" min="0" onChange={(e) => startManualRow('qty_zak', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
+                      <input id="qty-zak" type="number" min="0" onChange={(e) => startManualRow('qty_zak', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="qty-crt">
                         Qty Crt
                       </label>
-                      <input type="number" min="0" onChange={(e) => startManualRow('qty_crt', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
+                      <input id="qty-crt" type="number" min="0" onChange={(e) => startManualRow('qty_crt', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="nominal-rp">
                         Nominal (Rp) <span className="text-red-400">*</span>
                       </label>
-                      <input type="number" min="0" onChange={(e) => startManualRow('nominal_biaya', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm font-bold" />
+                      <input id="nominal-rp" type="number" min="0" onChange={(e) => startManualRow('nominal_biaya', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm font-bold" />
                     </div>
                   </div>
                   <p className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-400">
@@ -2260,13 +2260,13 @@ export default function BiayaRetribusiPage() {
                       <div className="px-3 pb-3 pt-1 border-t border-gray-100">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-nopol_kendaraan`}>
                               Plat Kendaraan <span className="text-red-400">*</span>
                             </label>
                             <input type="text" value={md.nopol_kendaraan} onChange={(e) => updateManualDetail(i, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" id={`manual-row-${i}-nopol_kendaraan`} className="input-field py-2 text-sm font-mono uppercase" />
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-type_kendaraan`}>
                               Type Kendaraan <span className="text-red-400">*</span>
                             </label>
                             <select value={md.type_kendaraan} onChange={(e) => updateManualDetail(i, 'type_kendaraan', e.target.value)} id={`manual-row-${i}-type_kendaraan`} className="select-field py-2 text-sm">
@@ -2275,25 +2275,25 @@ export default function BiayaRetribusiPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-no_surat_jalan`}>
                               No. SJ
                             </label>
                             <input type="text" value={md.no_surat_jalan} onChange={(e) => updateManualDetail(i, 'no_surat_jalan', e.target.value)} placeholder="Nomor SJ" id={`manual-row-${i}-no_surat_jalan`} className="input-field py-2 text-sm font-mono" />
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-qty_zak`}>
                               Qty Zak
                             </label>
                             <input type="number" min="0" value={md.qty_zak || ''} onChange={(e) => updateManualDetail(i, 'qty_zak', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-qty_zak`} className="input-field py-2 text-sm text-right" />
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-qty_crt`}>
                               Qty Crt
                             </label>
                             <input type="number" min="0" value={md.qty_crt || ''} onChange={(e) => updateManualDetail(i, 'qty_crt', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-qty_crt`} className="input-field py-2 text-sm text-right" />
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-nominal_biaya`}>
                               Nominal (Rp) <span className="text-red-400">*</span>
                             </label>
                             <input type="number" min="0" value={md.nominal_biaya || ''} onChange={(e) => updateManualDetail(i, 'nominal_biaya', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-nominal_biaya`} className="input-field py-2 text-sm font-bold" />
@@ -2328,16 +2328,16 @@ export default function BiayaRetribusiPage() {
                 <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-surface-card p-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="tipe-dokumen">
                         Tipe Dokumen <span className="text-red-400">*</span>
                       </label>
-                      <select defaultValue="" onChange={(e) => { const t = e.target.value; if (t) startDocument('document_type', t); }} className="select-field py-2 text-sm">
+                      <select id="tipe-dokumen" defaultValue="" onChange={(e) => { const t = e.target.value; if (t) startDocument('document_type', t); }} className="select-field py-2 text-sm">
                         <option value="">Pilih</option>
                         {DOCUMENT_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="doc-file-start">
                         File <span className="text-red-400">*</span>
                       </label>
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only" id="doc-file-start" onChange={(e) => {
@@ -2379,15 +2379,15 @@ export default function BiayaRetribusiPage() {
                       <div className="px-3 pb-3 pt-1 border-t border-gray-100">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`tipe-dokumen-${i}`}>
                               Tipe Dokumen <span className="text-red-400">*</span>
                             </label>
-                            <select value={doc.document_type} onChange={(e) => updateDocument(i, 'document_type', e.target.value)} className="select-field py-2 text-sm">
+                            <select id={`tipe-dokumen-${i}`} value={doc.document_type} onChange={(e) => updateDocument(i, 'document_type', e.target.value)} className="select-field py-2 text-sm">
                               {DOCUMENT_TYPES.map(dt => <option key={dt.value} value={dt.value}>{dt.label}</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`doc-file-${i}`}>
                               File <span className="text-red-400">*</span>
                             </label>
                             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only" id={`doc-file-${i}`} onChange={(e) => {
@@ -2847,8 +2847,8 @@ export default function BiayaRetribusiPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-500 mb-1">Pilih File</label>
-              <input
+              <label className="block text-sm font-medium text-slate-500 mb-1" htmlFor="pilih-file">Pilih File</label>
+              <input id="pilih-file"
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}

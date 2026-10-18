@@ -410,8 +410,8 @@ export default function StandarUmurPage() {
     <div className="grid grid-cols-2 gap-4">
       {allFields.map(([key, label, full, type]) => (
         <div key={key as string} className={full ? 'col-span-2' : ''}>
-          <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
-          <input
+          <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor={`field-${label}`}>{label}</label>
+          <input id={`field-${label}`}
             type={type || 'text'}
             value={(form[key] as string | number) ?? ''}
             onChange={(e) => setForm(prev => ({ ...prev, [key as string]: type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value }))}
