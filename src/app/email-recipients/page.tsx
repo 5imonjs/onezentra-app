@@ -34,6 +34,31 @@ interface Options {
   depots: { kode_depo: string; nama_depo: string }[];
 }
 
+/** Meta paginasi per-depo dari server. */
+interface PageMeta {
+  group: string;
+  page: number;
+  per_page: number;
+  last_page: number;
+  total_groups: number;
+  total_rows: number;
+  has_prev: boolean;
+  has_next: boolean;
+}
+
+/** Ringkasan audit dari server (dihitung atas seluruh baris terfilter). */
+interface RecipientSummary {
+  total: number;
+  to: number;
+  cc: number;
+  ok: number;
+  broken: number;
+  broken_sample: Recipient[];
+}
+
+/** Jumlah depo per halaman (paginasi per-depo, bukan per-baris). */
+const PER_PAGE = 8;
+
 /** Form tambah (satu field TO/CC, banyak penerima sekaligus). */
 interface CreateForm {
   document_type: string;
@@ -165,7 +190,11 @@ export default function EmailRecipientsPage() {
   const canEdit = hasPermission('emails.edit');
 
   const [rawItems, setRawItems] = useState<Recipient[]>([]);
+  const [meta, setMeta] = useState<PageMeta | null>(null);
+  const [summary, setSummary] = useState<RecipientSummary | null>(null);
+  const [page, setPage] = useState(1);
   const [options, setOptions] = useState<Options>({ document_types: [], triggers: [], fields: [], users: [], roles: [], depots: [] });
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [documentType, setDocumentType] = useState('');
   const [kodeDepoFilter, setKodeDepoFilter] = useState<string>('');
@@ -182,16 +211,24 @@ export default function EmailRecipientsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Ambil SEMUA baris, filter dilakukan di klien agar pencarian kode depo
-  // (yang tidak didukung backend) tetap bekerja.
+  // Filter & pencarian dilakukan di server; paginasi per DEPO (bukan per
+  // baris) agar grup TO/CC tiap depo tetap utuh dalam satu halaman.
   const load = useCallback(async () => {
     try {
-      const res = await emailRecipients.list();
+      const res = await emailRecipients.list({
+        per_page: PER_PAGE,
+        page,
+        document_type: documentType || undefined,
+        kode_depo: kodeDepoFilter || undefined,
+        search: search || undefined,
+      });
       setRawItems(res.data.data);
+      setMeta(res.data.meta ?? null);
+      setSummary(res.data.summary ?? null);
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal memuat data'), type: 'error' });
     }
-  }, []);
+  }, [page, documentType, kodeDepoFilter, search]);
 
   const loadOptions = useCallback(async () => {
     try {
@@ -205,26 +242,24 @@ export default function EmailRecipientsPage() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadOptions(); }, [loadOptions]);
 
+  // Debounce pencarian lalu reset ke halaman pertama.
+  useEffect(() => {
+    const next = searchInput.trim();
+    if (next === search) return;
+    const timer = setTimeout(() => {
+      setSearch(next);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, search]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const doc = params.get('document_type');
     if (doc) setDocumentType(doc);
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rawItems.filter((r) => {
-      if (documentType && r.document_type !== documentType) return false;
-      if (kodeDepoFilter && r.kode_depo !== kodeDepoFilter) return false;
-      if (q) {
-        const haystack = [r.email, r.label, r.user?.full_name, r.role_slug, r.document_type, r.trigger, r.field, r.kode_depo]
-          .join(' ')
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [rawItems, search, documentType, kodeDepoFilter]);
+  const filtered = rawItems;
 
   // Kelompokkan per depo -> { TO, CC }. Global (null) selalu paling atas.
   const depoGroups = useMemo(() => {
@@ -244,16 +279,12 @@ export default function EmailRecipientsPage() {
     return order.map((k) => [k, map.get(k)!] as const);
   }, [filtered]);
 
-  const totals = useMemo(() => {
-    let ok = 0, broken = 0, to = 0, cc = 0;
-    for (const r of filtered) {
-      if (resolveProblem(r) === null) ok += 1; else broken += 1;
-      if (r.field === 'TO') to += 1; else cc += 1;
-    }
-    return { total: filtered.length, ok, broken, to, cc };
-  }, [filtered]);
+  const totals = useMemo(
+    () => summary ?? { total: 0, to: 0, cc: 0, ok: 0, broken: 0 },
+    [summary],
+  );
 
-  const brokenRecipients = useMemo(() => filtered.filter((r) => resolveProblem(r) !== null), [filtered]);
+  const brokenRecipients = summary?.broken_sample ?? [];
 
   const depotLabel = (kodeDepo: string | null): string => {
     if (!kodeDepo) return 'Global (Semua Depo)';
@@ -514,19 +545,19 @@ export default function EmailRecipientsPage() {
         </div>
 
         {/* Alert penerima bermasalah */}
-        {brokenRecipients.length > 0 && (
+        {totals.broken > 0 && (
           <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4" role="alert">
             <svg className="h-5 w-5 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-amber-900">{brokenRecipients.length} penerima tidak akan terkirim</p>
+              <p className="text-sm font-bold text-amber-900">{totals.broken} penerima tidak akan terkirim</p>
               <ul className="mt-1 space-y-0.5">
-                {brokenRecipients.slice(0, 5).map((r) => (
+                {brokenRecipients.map((r) => (
                   <li key={r.id} className="text-xs text-amber-700">
                     {depotLabel(r.kode_depo)} ({r.field}) · {docTypeLabel[r.document_type] || r.document_type} · {triggerLabel(r.document_type, r.trigger)} — {resolveProblem(r)}
                   </li>
                 ))}
-                {brokenRecipients.length > 5 && (
-                  <li className="text-xs text-amber-600">+{brokenRecipients.length - 5} lainnya — periksa badge &quot;Tak terkirim&quot; pada daftar di bawah.</li>
+                {totals.broken > brokenRecipients.length && (
+                  <li className="text-xs text-amber-600">+{totals.broken - brokenRecipients.length} lainnya — periksa badge &quot;Tak terkirim&quot; pada daftar di bawah.</li>
                 )}
               </ul>
             </div>
@@ -537,16 +568,16 @@ export default function EmailRecipientsPage() {
         <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1 min-w-0">
-              <SearchInput value={search} onChange={(v) => setSearch(v)} placeholder="Cari email, nama, role, atau kode depo..." resultCount={filtered.length} resultLabel="penerima" />
+              <SearchInput value={searchInput} onChange={(v) => setSearchInput(v)} placeholder="Cari email, nama, role, atau kode depo..." resultCount={totals.total} resultLabel="penerima" />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <select value={documentType} onChange={(e) => setDocumentType(e.target.value)} className="select-field text-sm py-2" aria-label="Filter jenis dokumen">
+              <select value={documentType} onChange={(e) => { setDocumentType(e.target.value); setPage(1); }} className="select-field text-sm py-2" aria-label="Filter jenis dokumen">
                 <option value="">Semua Dokumen</option>
                 {(options.document_types || []).map((t) => (
                   <option key={t} value={t}>{docTypeLabel[t] || t}</option>
                 ))}
               </select>
-              <select value={kodeDepoFilter} onChange={(e) => setKodeDepoFilter(e.target.value)} className="select-field text-sm py-2 lg:w-52" aria-label="Fokus depo">
+              <select value={kodeDepoFilter} onChange={(e) => { setKodeDepoFilter(e.target.value); setPage(1); }} className="select-field text-sm py-2 lg:w-52" aria-label="Fokus depo">
                 <option value="">Semua Depo</option>
                 {(options.depots || []).map((d) => (
                   <option key={d.kode_depo} value={d.kode_depo}>{d.kode_depo} — {d.nama_depo}</option>
@@ -568,6 +599,34 @@ export default function EmailRecipientsPage() {
             </p>
           )}
         </div>
+
+        {/* Paginasi per depo */}
+        {meta && meta.last_page > 1 && (
+          <nav className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-surface-card px-5 py-3" aria-label="Paginasi depo">
+            <p className="text-xs text-gray-500">
+              Depo halaman <strong className="text-gray-700">{meta.page}</strong> dari{' '}
+              <strong className="text-gray-700">{meta.last_page}</strong> · {meta.total_groups} depo · {meta.total_rows} penerima
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={!meta.has_prev}
+                className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Sebelumnya
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={!meta.has_next}
+                className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </nav>
+        )}
 
         {/* Daftar per depo */}
         {depoGroups.length === 0 ? (
