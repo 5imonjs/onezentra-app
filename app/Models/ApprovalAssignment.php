@@ -57,6 +57,7 @@ class ApprovalAssignment extends Model
             ->where('approval_level', $level)
             ->where('is_active', true)
             ->orderByRaw('CASE WHEN kode_depo = ? THEN 0 ELSE 1 END', [$kodeDepo])
+            ->orderBy('id')
             ->with(['user:id,full_name,email'])
             ->first();
 

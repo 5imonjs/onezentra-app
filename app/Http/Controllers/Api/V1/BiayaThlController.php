@@ -549,12 +549,29 @@ class BiayaThlController extends Controller
                 "Pengajuan yang sudah dikirim (status {$biayaThl->status}) tidak dapat dihapus."
             );
         }
-        foreach ($biayaThl->photos as $photo) {
-            Storage::disk('public')->delete($photo->file_path);
-            $photo->delete();
+
+        // Hapus baris DB dalam satu transaksi agar tidak menyisakan pengajuan
+        // tanpa detail bila salah satu delete gagal. File storage baru dihapus
+        // setelah commit supaya kegagalan rollback tidak menghapus file yang
+        // datanya masih ada.
+        /** @var array<int, string> $filePaths */
+        $filePaths = DB::transaction(function () use ($biayaThl): array {
+            $paths = [];
+            foreach ($biayaThl->photos as $photo) {
+                if ($photo->file_path) {
+                    $paths[] = $photo->file_path;
+                }
+                $photo->delete();
+            }
+            $biayaThl->details()->delete();
+            $biayaThl->delete();
+
+            return $paths;
+        });
+
+        foreach ($filePaths as $path) {
+            Storage::disk('public')->delete($path);
         }
-        $biayaThl->details()->delete();
-        $biayaThl->delete();
 
         return response()->json(['message' => 'Biaya THL deleted']);
     }

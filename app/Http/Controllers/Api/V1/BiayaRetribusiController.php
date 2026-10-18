@@ -467,12 +467,28 @@ class BiayaRetribusiController extends Controller
                 "Pengajuan yang sudah dikirim (status {$biayaRetribusi->status}) tidak dapat dihapus."
             );
         }
-        foreach ($biayaRetribusi->documents as $doc) {
-            Storage::disk('public')->delete($doc->file_path);
-            $doc->delete();
+        // Hapus baris DB dalam satu transaksi agar tidak menyisakan pengajuan
+        // tanpa detail bila salah satu delete gagal. File storage baru dihapus
+        // setelah commit supaya kegagalan rollback tidak menghapus file yang
+        // datanya masih ada.
+        /** @var array<int, string> $filePaths */
+        $filePaths = DB::transaction(function () use ($biayaRetribusi): array {
+            $paths = [];
+            foreach ($biayaRetribusi->documents as $doc) {
+                if ($doc->file_path) {
+                    $paths[] = $doc->file_path;
+                }
+                $doc->delete();
+            }
+            $biayaRetribusi->details()->delete();
+            $biayaRetribusi->delete();
+
+            return $paths;
+        });
+
+        foreach ($filePaths as $path) {
+            Storage::disk('public')->delete($path);
         }
-        $biayaRetribusi->details()->delete();
-        $biayaRetribusi->delete();
 
         return response()->json(['message' => 'Biaya Retribusi deleted']);
     }
@@ -748,12 +764,6 @@ class BiayaRetribusiController extends Controller
     }
 
     /**
-     * Terapkan logika hitung retribusi: hanya baris receiving yang mengikuti
-     * mode koli depo (nominal = qty_zak * rate_zak + qty_crt * rate_crt);
-     * baris manual (tanpa receiving_id) selalu memakai nominal manual
-     * (borongan) agar tidak termanipulasi client.
-     */
-    /**
      * Normalisasi casing plat agar konsisten kapital di database.
      *
      * @param  array<int, array<string, mixed>>  $details
@@ -773,6 +783,15 @@ class BiayaRetribusiController extends Controller
         }, $details);
     }
 
+    /**
+     * Terapkan logika hitung retribusi: hanya baris receiving yang mengikuti
+     * mode koli depo (nominal = qty_zak * rate_zak + qty_crt * rate_crt);
+     * baris manual (tanpa receiving_id) selalu memakai nominal manual
+     * (borongan) agar tidak termanipulasi client.
+     *
+     * @param  array<int, array<string, mixed>>  $details
+     * @return array<int, array<string, mixed>>
+     */
     private function applyRetribusiCalc(?string $kodeDepo, array $details): array
     {
         $cfg = RetribusiRate::resolveFor($kodeDepo);
