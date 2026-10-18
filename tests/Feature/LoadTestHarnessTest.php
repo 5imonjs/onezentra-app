@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -16,7 +17,12 @@ use Tests\TestCase;
  * Fungsinya bukan menguji endpoint, tapi menyediakan token + data yang bisa
  * dipakai `tests/load/api-load.mjs`. Dipisah dari test biasa karena harus
  * jalan dengan APP_ENV lokal dan database dev, bukan saat `php artisan test`.
+ *
+ * Grup 'performance': dikecualikan dari CI default
+ * (`--exclude-group=performance`) agar token debug tidak tercetak di suite biasa.
+ * Jalankan manual: php artisan test --filter=LoadTestHarnessTest
  */
+#[Group('performance')]
 class LoadTestHarnessTest extends TestCase
 {
     use RefreshDatabase;
