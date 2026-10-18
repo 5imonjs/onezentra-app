@@ -56,7 +56,7 @@ Konsekuensi: butuh **dua host**, yaitu `onezentra.sbs` (web) dan
 | Domain | `onezentra.sbs` (web) + subdomain `api.onezentra.sbs` (backend) |
 | GitHub | repo `5imonjs/project-onezentra`, branch `main` (privat tidak masalah) |
 | Node | **≥ 20.9** (Next 16.3.4). Pilih Node 20/22 di panel |
-| PHP | **≥ 8.3** (`composer.json` mensyaratkan `^8.3`), ekstensi: `mbstring xml curl zip gd bcmath intl mysql dom` |
+| PHP | **≥ 8.4** (`composer.json` mensyaratkan `^8.4`), ekstensi: `mbstring xml curl zip gd bcmath intl mysql dom` |
 | Database | MySQL/MariaDB |
 | Redis | opsional (hanya bila `QUEUE_CONNECTION=redis` / `CACHE_STORE=redis`) |
 
@@ -89,7 +89,7 @@ Hostinger tidak mengizinkan mengubah document root situs menjadi
 
 1. hPanel → **Domains / Websites** → tambah **Subdomain**: `api.onezentra.sbs`.
    Catat folder-nya, mis. `~/domains/api.onezentra.sbs/public_html`.
-2. Set **versi PHP** subdomain ke **8.3 atau lebih baru** (hPanel → PHP
+2. Set **versi PHP** subdomain ke **8.4 atau lebih baru** (hPanel → PHP
    Configuration). Aktifkan ekstensi: `mbstring, xml, curl, zip, gd, bcmath,
    intl, mysql, dom, fileinfo, openssl`.
 3. Aktifkan **SSH Access** (hPanel → Advanced → SSH Access). Catat host, user
@@ -122,7 +122,7 @@ php composer-setup.php --quiet && rm composer-setup.php
 php composer.phar install --no-dev --optimize-autoloader
 ```
 
-Jika `php -v` di SSH bukan 8.3+, pakai binary berversi (mis. `php8.3`) atau
+Jika `php -v` di SSH bukan 8.4+, pakai binary berversi (mis. `php8.4`) atau
 sesuaikan PATH agar CLI memakai versi yang sama dengan web.
 
 #### A4. `.htaccess` di root (WAJIB)
@@ -249,8 +249,8 @@ untuk saat ini.
 ```bash
 sudo apt update && sudo apt -y upgrade
 sudo apt -y install nginx git unzip curl \
-  php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml \
-  php8.3-curl php8.3-zip php8.3-gd php8.3-bcmath php8.3-intl \
+  php8.4-fpm php8.4-cli php8.4-mysql php8.4-mbstring php8.4-xml \
+  php8.4-curl php8.4-zip php8.4-gd php8.4-bcmath php8.4-intl \
   mariadb-server redis-server
 
 # Composer
@@ -311,7 +311,7 @@ server {
 
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
     }
 
     location ~ /\.(?!well-known).* { deny all; }
@@ -516,14 +516,14 @@ Checklist manual:
 | Perubahan `.env` backend tak berefek | `config:cache` menyimpan nilai lama | `php artisan config:clear && php artisan config:cache` |
 | Web build gagal `sh: next: command not found` | Deploy masih dari branch `main` (root = Laravel) atau Root Directory salah | Deploy dari branch **`web`** dengan Root directory kosong/`/`, build `npm run build` |
 | Build gagal `Failed to load next.config.ts` + `GLIBC_2.29 not found` | Server build Hostinger glibc lama → SWC native gagal (fallback WASM) → kompilasi config `.ts` rusak | Pastikan config bernama **`next.config.mjs`** (bukan `.ts`); rebuild |
-| `composer install` gagal di SSH | Ekstensi PHP kurang / versi PHP CLI beda | Aktifkan ekstensi di hPanel; pakai binary `php8.3` |
+| `composer install` gagal di SSH | Ekstensi PHP kurang / versi PHP CLI beda | Aktifkan ekstensi di hPanel; pakai binary `php8.4` |
 | Kolom "Kode Batch" banyak `-` | Baris warisan pra-migrasi | Jalankan migrasi backfill; jangan paksa manual |
 
 ---
 
 ## 8. Ringkasan urutan deploy
 
-1. Backend: buat subdomain `api.onezentra.sbs` + set PHP 8.3 + aktifkan SSH (A1).
+1. Backend: buat subdomain `api.onezentra.sbs` + set PHP 8.4 + aktifkan SSH (A1).
 2. Clone repo ke `public_html`, `composer install --no-dev` (A2–A3).
 3. Pasang `.htaccess` rewrite ke `public/` (A4).
 4. Buat DB + isi `.env` produksi — **domain web** di `FRONTEND_URL` +

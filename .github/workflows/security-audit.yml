@@ -36,11 +36,17 @@ jobs:
         run: php artisan key:generate --no-interaction
 
       - name: Run security audit tests
-        run: php vendor/bin/phpunit --filter=SecurityAuditTest --log-junit security-audit-results.xml 2>&1 | tee security-audit-output.log
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpunit --filter=SecurityAuditTest --log-junit security-audit-results.xml 2>&1 | tee security-audit-output.log
         env:
           # Pastikan DB dalam mode testing
           DB_CONNECTION: sqlite
           DB_DATABASE: :memory:
+
+      - name: Audit PHP dependencies
+        run: composer audit --no-interaction
 
       - name: Upload test results as artifact
         if: always()

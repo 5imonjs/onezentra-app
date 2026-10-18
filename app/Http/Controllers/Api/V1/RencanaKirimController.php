@@ -657,7 +657,7 @@ class RencanaKirimController extends Controller
 
         try {
             $import = new RencanaKirimImport($request->user());
-            Excel::import($import, $request->file('file'));
+            DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
             return response()->json([
                 'message' => 'Import berhasil',

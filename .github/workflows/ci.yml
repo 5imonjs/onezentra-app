@@ -39,6 +39,9 @@ jobs:
       - name: Check code style
         run: vendor/bin/pint --test
 
+      - name: Audit PHP dependencies
+        run: composer audit --no-interaction
+
   web:
     name: Web (Next.js)
     runs-on: ubuntu-latest
@@ -59,6 +62,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Audit JS dependencies (production)
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Type check
         run: npx tsc --noEmit

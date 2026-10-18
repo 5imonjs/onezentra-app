@@ -23,7 +23,7 @@ class PermissionEnforcementTest extends TestCase
         ]);
 
         $user = User::create([
-            'email' => $roleSlug.'@depot.test',
+            'email' => strtolower($roleSlug).'-'.strtolower($kodeDepo).'@depot.test',
             'password' => 'password',
             'full_name' => 'User '.$roleSlug,
             'kode_depo' => $kodeDepo,

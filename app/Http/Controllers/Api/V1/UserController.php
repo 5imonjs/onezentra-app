@@ -11,6 +11,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
@@ -205,7 +206,7 @@ class UserController extends Controller
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
 
         $import = new UserImport($request->user());
-        Excel::import($import, $request->file('file'));
+        DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
         return response()->json([
             'message' => 'Import selesai',

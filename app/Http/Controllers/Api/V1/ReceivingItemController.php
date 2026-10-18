@@ -415,7 +415,7 @@ class ReceivingItemController extends Controller
 
         try {
             $import = new ReceivingItemImport($request->user());
-            Excel::import($import, $request->file('file'));
+            DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
             return response()->json([
                 'message' => 'Import penerimaan manual selesai.',

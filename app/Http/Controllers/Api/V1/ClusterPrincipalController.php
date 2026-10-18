@@ -10,6 +10,7 @@ use App\Services\ExportGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
@@ -186,7 +187,7 @@ class ClusterPrincipalController extends Controller
         $import = new ClusterPrincipalImport(Auth::user());
 
         try {
-            Excel::import($import, $request->file('file'));
+            DB::transaction(fn () => Excel::import($import, $request->file('file')));
         } catch (\Exception $e) {
             Log::error('ClusterPrincipal Import Error', ['error' => $e->getMessage()]);
 

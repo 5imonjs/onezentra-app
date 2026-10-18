@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import nextConfig from '../../next.config.mjs';
+import nextConfig, { buildContentSecurityPolicy } from '../../next.config.mjs';
 
 /**
  * Regresi bug cetak label batch di detail Validasi Dokumen:
@@ -29,5 +29,10 @@ describe('Content-Security-Policy', () => {
 
     expect(csp).toContain('frame-src');
     expect(csp).toMatch(/frame-src[^;]*blob:/);
+  });
+
+  it('menghilangkan unsafe-eval pada produksi', () => {
+    expect(buildContentSecurityPolicy(true)).not.toContain("'unsafe-eval'");
+    expect(buildContentSecurityPolicy(false)).toContain("'unsafe-eval'");
   });
 });
