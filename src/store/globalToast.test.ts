@@ -41,4 +41,19 @@ describe('useGlobalToastStore', () => {
 
     expect(state().toasts[0].message).toBe('Akses ditolak untuk depo ini.');
   });
+
+  it('dedupe: pesan identik yang masih tampil tidak ditumpuk (mis. 403 paralel)', () => {
+    notifyGlobal('Anda tidak memiliki izin.', 'error');
+    notifyGlobal('Anda tidak memiliki izin.', 'error');
+
+    expect(state().toasts).toHaveLength(1);
+  });
+
+  it('pesan identik bisa muncul lagi setelah toast sebelumnya ditutup', () => {
+    notifyGlobal('Akses ditolak');
+    state().dismiss(state().toasts[0].id);
+    notifyGlobal('Akses ditolak');
+
+    expect(state().toasts).toHaveLength(1);
+  });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { dashboard, getErrorMessage } from '@/lib/api';
 import { useDashboardSummary } from '@/lib/dashboardSummary';
 import { useAuthStore } from '@/store/auth';
@@ -30,21 +30,41 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
   // (field activity_trend) — dikambil lewat cache bersama, tanpa request ekstra.
   const { summary, loading: summaryLoading } = useDashboardSummary(kodeDepo);
 
+  // Guard balapan: ganti periode berturut-turut bisa membuat respons lama
+  // tiba setelah yang baru dan menimpa data. Setiap request memakai nomor urut
+  // dan AbortController; respons usang dibatalkan dan diabaikan.
+  const requestSeqRef = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+
   const load = useCallback(async (days: number, depot?: string) => {
+    const seq = ++requestSeqRef.current;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
     setLoading(true);
     setError('');
     try {
-      const response = await dashboard.activity(days, depot) as UsageResponse;
+      const response = await dashboard.activity(days, depot, controller.signal) as UsageResponse;
+      if (seq !== requestSeqRef.current) return;
       const payload = response.data?.data;
       if (!payload || !Array.isArray(payload.daily) || !Array.isArray(payload.top_users)) {
         throw new Error('Format data penggunaan sistem tidak valid.');
       }
       setUsage(payload);
     } catch (exception) {
+      // Permintaan usang/dibatalkan bukan kegagalan — jangan tampilkan error.
+      if (seq !== requestSeqRef.current) return;
       setError(getErrorMessage(exception, 'Gagal memuat penggunaan sistem.'));
     } finally {
-      setLoading(false);
+      if (seq === requestSeqRef.current) setLoading(false);
     }
+  }, []);
+
+  useEffect(() => () => {
+    // Batalkan request yang masih berjalan saat unmount agar tidak ada setState
+    // setelah komponen hilang.
+    requestSeqRef.current += 1;
+    controllerRef.current?.abort();
   }, []);
 
   useEffect(() => {

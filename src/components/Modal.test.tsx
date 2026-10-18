@@ -81,4 +81,32 @@ describe('Modal', () => {
     expect(screen.getByRole('button', { name: 'Simpan' })).toBeInTheDocument();
     cleanup();
   });
+
+  it('regresi: menutup satu dari dua modal tidak melepas scroll-lock body', () => {
+    const { rerender } = render(
+      <>
+        <Modal open onClose={() => {}} title="Modal A"><p>a</p></Modal>
+        <Modal open onClose={() => {}} title="Modal B"><p>b</p></Modal>
+      </>,
+    );
+    expect(document.body.style.overflow).toBe('hidden');
+
+    // Tutup modal A saja — B masih terbuka, scroll harus tetap terkunci.
+    rerender(
+      <>
+        <Modal open={false} onClose={() => {}} title="Modal A"><p>a</p></Modal>
+        <Modal open onClose={() => {}} title="Modal B"><p>b</p></Modal>
+      </>,
+    );
+    expect(document.body.style.overflow).toBe('hidden');
+
+    // Tutup modal terakhir — scroll kembali normal.
+    rerender(
+      <>
+        <Modal open={false} onClose={() => {}} title="Modal A"><p>a</p></Modal>
+        <Modal open={false} onClose={() => {}} title="Modal B"><p>b</p></Modal>
+      </>,
+    );
+    expect(document.body.style.overflow).toBe('');
+  });
 });

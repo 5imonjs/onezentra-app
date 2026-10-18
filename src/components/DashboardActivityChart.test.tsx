@@ -59,12 +59,12 @@ describe('DashboardActivityChart', () => {
   it('regresi: tombol refresh mempertahankan filter depo (dulu reset ke semua depo)', async () => {
     render(<DashboardActivityChart kodeDepo="DPO" />);
 
-    await waitFor(() => expect(activity).toHaveBeenCalledWith(30, 'DPO'));
+    await waitFor(() => expect(activity).toHaveBeenCalledWith(30, 'DPO', expect.anything()));
 
     fireEvent.click(screen.getByRole('button', { name: 'Muat ulang penggunaan sistem' }));
 
     await waitFor(() => expect(activity).toHaveBeenCalledTimes(2));
-    expect(activity).toHaveBeenLastCalledWith(30, 'DPO');
+    expect(activity).toHaveBeenLastCalledWith(30, 'DPO', expect.anything());
   });
 
   it('menampilkan chip tren mingguan dari activity_trend summary', async () => {
@@ -100,5 +100,28 @@ describe('DashboardActivityChart', () => {
 
     expect(container).toBeEmptyDOMElement();
     expect(activity).not.toHaveBeenCalled();
+  });
+
+  it('regresi: respons lama yang tiba belakangan tidak menimpa periode yang baru dipilih', async () => {
+    let resolveFirst: (value: unknown) => void = () => {};
+    const first = new Promise((resolve) => { resolveFirst = resolve; });
+    activity.mockReturnValueOnce(first);
+    activity.mockResolvedValueOnce({
+      data: { data: { ...usagePayload(), days: 7, daily: [{ date: '2026-09-01', requests: 99, active_users: 3 }] } },
+    });
+
+    render(<DashboardActivityChart />);
+    await waitFor(() => expect(activity).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('button', { name: '7 hari' }));
+    await waitFor(() => expect(activity).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('99')).toBeInTheDocument();
+
+    // Permintaan 30 hari (mount) baru selesai SETELAH permintaan 7 hari.
+    // Tanpa guard balapan, angka lama (5) akan menimpa angka terbaru.
+    resolveFirst({ data: { data: { ...usagePayload(), days: 30, daily: [{ date: '2026-09-01', requests: 5, active_users: 2 }] } } });
+
+    await waitFor(() => expect(screen.getByText('99')).toBeInTheDocument());
+    expect(screen.queryByText('5')).not.toBeInTheDocument();
   });
 });
