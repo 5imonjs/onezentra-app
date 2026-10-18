@@ -56,6 +56,11 @@ onezentra-web/.turbo
 onezentra-web/.vercel
 onezentra-web/next-env.d.ts
 
+# ===== Artefak sesi & cookie lokal =====
+# cookies.txt (hasil `curl -c`) memuat laravel-session/sanctum token — JANGAN commit.
+cookies.txt
+**/cookies.txt
+
 # ===== OS & editor =====
 .DS_Store
 **/.DS_Store
