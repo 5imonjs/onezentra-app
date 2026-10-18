@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { emailRecipients, getErrorMessage } from '@/lib/api';
 import SearchInput from '@/components/SearchInput';
@@ -14,6 +14,7 @@ interface Recipient {
   document_type: string;
   trigger: string;
   kode_depo: string | null;
+  nama_depo?: string | null;
   recipient_type: string;
   field: string;
   email: string;
@@ -45,7 +46,7 @@ interface FormState {
   role_slug: string;
   label: string;
   is_active: boolean;
-  // mode tambah: dua bagian TO/CC
+  // Tambah: dua bagian TO/CC
   to_user_ids: number[];
   to_emails: string;
   to_role: string;
@@ -82,6 +83,17 @@ const docTypeLabel: Record<string, string> = {
   biaya_thl: 'Biaya THL',
   biaya_retribusi: 'Biaya Retribusi',
   opname_expired: 'Opname Expired',
+};
+
+const docTypeColors: Record<string, string> = {
+  rencana_kirim: 'bg-sky-50 text-sky-700',
+  sj_ba: 'bg-chip-primary text-accent-text',
+  receiving: 'bg-teal-50 text-teal-700',
+  selisih: 'bg-rose-50 text-rose-700',
+  standarisasi_tumpukan: 'bg-amber-50 text-amber-700',
+  opname_expired: 'bg-indigo-50 text-indigo-700',
+  biaya_thl: 'bg-purple-50 text-purple-700',
+  biaya_retribusi: 'bg-orange-50 text-orange-700',
 };
 
 const triggerOptions: Record<string, { value: string; label: string; description: string }[]> = {
@@ -144,25 +156,55 @@ const resolveProblem = (r: Recipient): string | null => {
 
 export default function EmailRecipientsPage() {
   const { hasPermission } = useAuthStore();
-  const [items, setItems] = useState<Recipient[]>([]);
+  const [rawItems, setRawItems] = useState<Recipient[]>([]);
   const [options, setOptions] = useState<Options>({ document_types: [], triggers: [], fields: [], users: [], roles: [], depots: [] });
   const [search, setSearch] = useState('');
   const [documentType, setDocumentType] = useState('');
-  const [fieldFilter, setFieldFilter] = useState('');  const [showCreate, setShowCreate] = useState(false);
+  const [fieldFilter, setFieldFilter] = useState('');
+  const [kodeDepoFilter, setKodeDepoFilter] = useState<string>('');
+  const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<Recipient | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const res = await emailRecipients.list({ search, document_type: documentType || undefined, field: fieldFilter || undefined });      setItems(res.data.data);
+      const res = await emailRecipients.list({
+        search,
+        document_type: documentType || undefined,
+        field: fieldFilter || undefined,
+      });
+      setRawItems(res.data.data);
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal memuat data'), type: 'error' });
     }
   }, [search, documentType, fieldFilter]);
+
+  // Filter klien: search, document_type, field, kode_depo (backend tidak support filter kode_depo).
+  const items = useMemo(() => {
+    return rawItems.filter((r) => {
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const haystack = [
+          r.email,
+          r.label,
+          r.user?.full_name,
+          r.document_type,
+          r.trigger,
+          r.field,
+          r.kode_depo,
+        ].join(' ').toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      if (documentType && r.document_type !== documentType) return false;
+      if (fieldFilter && r.field !== fieldFilter) return false;
+      if (kodeDepoFilter && r.kode_depo !== kodeDepoFilter) return false;
+      return true;
+    });
+  }, [rawItems, search, documentType, fieldFilter, kodeDepoFilter]);
 
   const loadOptions = async () => {
     try {
@@ -236,6 +278,7 @@ export default function EmailRecipientsPage() {
         await emailRecipients.update(editTarget.id, payload);
         setToast({ message: 'Penerima email diperbarui', type: 'success' });
         setShowCreate(false);
+        setRawItems([]);
         load();
         return;
       }
@@ -244,7 +287,7 @@ export default function EmailRecipientsPage() {
       const buildTargets = (field: string, userIds: number[], emailsRaw: string, role: string) => {
         const out: Array<Record<string, unknown>> = [];
         for (const uid of userIds) out.push({ ...base, field, recipient_type: 'user', user_id: uid });
-        for (const e of emailsRaw.split(/[,;\\n]/).map((x) => x.trim()).filter(Boolean)) {
+        for (const e of emailsRaw.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean)) {
           out.push({ ...base, field, recipient_type: 'email', email: e });
         }
         if (role) out.push({ ...base, field, recipient_type: 'role', role_slug: role });
@@ -263,6 +306,7 @@ export default function EmailRecipientsPage() {
       }
       setToast({ message: `${created} penerima email ditambahkan`, type: 'success' });
       setShowCreate(false);
+      setRawItems([]);
       load();
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal menyimpan'), type: 'error' });
@@ -276,6 +320,7 @@ export default function EmailRecipientsPage() {
     try {
       await emailRecipients.delete(deleteTargetId);
       setToast({ message: 'Penerima email dihapus', type: 'success' });
+      setRawItems([]);
       load();
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal menghapus'), type: 'error' });
@@ -296,19 +341,11 @@ export default function EmailRecipientsPage() {
 
   const fieldBadge = (field: string) =>
     field === 'TO'
-      ? 'bg-blue-50 text-blue-700'
-      : 'bg-purple-50 text-purple-700';
+      ? 'bg-blue-50 text-blue-700 border border-blue-100'
+      : 'bg-purple-50 text-purple-700 border border-purple-100';
 
   const docBadge = (type: string): string => {
-    const colors: Record<string, string> = {
-      rencana_kirim: 'bg-sky-50 text-sky-700',
-      sj_ba: 'bg-chip-primary text-accent-text',
-      receiving: 'bg-teal-50 text-teal-700',
-      selisih: 'bg-rose-50 text-rose-700',
-      standarisasi_tumpukan: 'bg-amber-50 text-amber-700',
-      opname_expired: 'bg-indigo-50 text-indigo-700',
-    };
-    return colors[type] || 'bg-gray-100 text-gray-700';
+    return docTypeColors[type] || 'bg-gray-100 text-gray-700';
   };
 
   const recipientInitial = (r: Recipient): string => {
@@ -319,13 +356,45 @@ export default function EmailRecipientsPage() {
   };
 
   const brokenRecipients = items.filter((r) => resolveProblem(r) !== null);
+  const activeRecipients = items.filter((r) => r.is_active);
 
   const hasSearch = search.trim().length > 0 || documentType !== '';
+
+  // --- Audit summary per depo ---
+  const depotsAudit = useMemo(() => {
+    const byDepo = new Map<string | null, { total: number; ok: number; broken: number; to: number; cc: number }>();
+    for (const r of items) {
+      const d = r.kode_depo ?? null;
+      if (!byDepo.has(d)) byDepo.set(d, { total: 0, ok: 0, broken: 0, to: 0, cc: 0 });
+      const s = byDepo.get(d)!;
+      s.total += 1;
+      if (resolveProblem(r) === null) s.ok += 1; else s.broken += 1;
+      if (r.field === 'TO') s.to += 1; else s.cc += 1;
+    }
+    return byDepo;
+  }, [items]);
+
+  const totals = useMemo(() => {
+    let total = 0, ok = 0, broken = 0, to = 0, cc = 0;
+    for (const r of items) {
+      total += 1;
+      if (resolveProblem(r) === null) ok += 1; else broken += 1;
+      if (r.field === 'TO') to += 1; else cc += 1;
+    }
+    return { total, ok, broken, to, cc };
+  }, [items]);
+
+  const depotLabel = (kodeDepo: string | null): string => {
+    if (!kodeDepo) return 'Global (Semua Depo)';
+    const d = options.depots.find((x) => x.kode_depo === kodeDepo);
+    return d ? `${kodeDepo} - ${d.nama_depo}` : kodeDepo;
+  };
 
   return (
     <DashboardLayout>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="space-y-6">
+        {/* Header */}
         <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
@@ -333,31 +402,104 @@ export default function EmailRecipientsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold leading-tight">Penerima Email</h1>
-              <p className="text-ink-fg-muted mt-0.5">Atur siapa yang menerima notifikasi (TO/CC) per jenis dokumen</p>
+              <p className="text-ink-fg-muted mt-0.5">Atur siapa yang menerima notifikasi (TO/CC) per jenis dokumen dan depo</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {brokenRecipients.length > 0 && (
-            <div className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-5 py-4" role="alert">
-              <svg className="h-5 w-5 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-amber-900">{brokenRecipients.length} penerima tidak akan terkirim</p>
-                <ul className="mt-1 space-y-0.5">
-                  {brokenRecipients.slice(0, 5).map((r) => (
-                    <li key={r.id} className="text-xs text-amber-700">
-                      {docTypeLabel[r.document_type] || r.document_type} · {triggerLabel(r.document_type, r.trigger)} ({r.field}) — {resolveProblem(r)}
-                    </li>
-                  ))}
-                  {brokenRecipients.length > 5 && (
-                    <li className="text-xs text-amber-600">+{brokenRecipients.length - 5} lainnya — periksa baris bertanda peringatan di bawah.</li>
-                  )}
-                </ul>
-              </div>
+        {/* Audit ringkasan */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Total Penerima</p>
+            <p className="text-2xl font-bold text-gray-900">{totals.total}</p>
+          </div>
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-blue-100 p-5">
+            <p className="text-xs text-blue-600 uppercase font-bold tracking-wider mb-1">TO</p>
+            <p className="text-2xl font-bold text-blue-700">{totals.to}</p>
+          </div>
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-purple-100 p-5">
+            <p className="text-xs text-purple-600 uppercase font-bold tracking-wider mb-1">CC</p>
+            <p className="text-2xl font-bold text-purple-700">{totals.cc}</p>
+          </div>
+          <div className={`bg-surface-card rounded-2xl shadow-sm p-5 border ${totals.broken > 0 ? 'border-amber-200' : 'border-emerald-200'}`}>
+            <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${totals.broken > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+              Kesehatan Penerima
+            </p>
+            <p className={`text-2xl font-bold ${totals.broken > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+              {totals.ok}/{totals.total} aman
+            </p>
+            {totals.broken > 0 && <p className="text-xs text-amber-600 mt-1">{totals.broken} bermasalah</p>}
+          </div>
+        </div>
+
+        {/* Audit per depo */}
+        {depotsAudit.size > 0 && (
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <svg className="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              Audit Penerima per Depo
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Total</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">TO</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">CC</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Aman</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Bermasalah</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {[...depotsAudit.entries()].map(([kodeDepo, s]) => {
+                    const statusBroken = s.broken > 0;
+                    return (
+                      <tr key={kodeDepo ?? 'global'} className={`group hover:bg-overlay-50 transition-colors ${statusBroken ? 'border-l-2 border-amber-400 bg-amber-50/30' : ''}`}>
+                        <td className="px-4 py-3 font-medium text-gray-900">{depotLabel(kodeDepo)}</td>
+                        <td className="px-4 py-3 text-gray-700">{s.total}</td>
+                        <td className="px-4 py-3 text-gray-700">{s.to}</td>
+                        <td className="px-4 py-3 text-gray-700">{s.cc}</td>
+                        <td className={`px-4 py-3 ${statusBroken ? 'text-amber-700 font-medium' : 'text-emerald-700 font-medium'}`}>{s.ok}</td>
+                        <td className={`px-4 py-3 ${statusBroken ? 'text-amber-700 font-medium' : 'text-gray-400'}`}>{s.broken}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${statusBroken ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {statusBroken ? 'Perlu perbaikan' : 'Sehat'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-          <div className="p-4 border-b border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          </div>
+        )}
+
+        {/* Alert penerima bermasalah */}
+        {brokenRecipients.length > 0 && (
+          <div className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-5 py-4" role="alert">
+            <svg className="h-5 w-5 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-amber-900">{brokenRecipients.length} penerima tidak akan terkirim</p>
+              <ul className="mt-1 space-y-0.5">
+                {brokenRecipients.slice(0, 5).map((r) => (
+                  <li key={r.id} className="text-xs text-amber-700">
+                    {docTypeLabel[r.document_type] || r.document_type} · {triggerLabel(r.document_type, r.trigger)} ({r.field}) — {resolveProblem(r)}
+                  </li>
+                ))}
+                {brokenRecipients.length > 5 && (
+                  <li className="text-xs text-amber-600">+{brokenRecipients.length - 5} lainnya — periksa baris bertanda peringatan di bawah.</li>
+                )}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Kontrol filter + aksi */}
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 min-w-0">
               <SearchInput value={search} onChange={(v) => { setSearch(v); }} placeholder="Cari penerima..." resultCount={items.length} resultLabel="penerima" />
             </div>
@@ -373,6 +515,12 @@ export default function EmailRecipientsPage() {
                 <option value="TO">TO</option>
                 <option value="CC">CC</option>
               </select>
+              <select value={kodeDepoFilter} onChange={(e) => setKodeDepoFilter(e.target.value)} className="select-field text-sm py-2 w-48" aria-label="Filter depo">
+                <option value="">Semua Depo</option>
+                {(options.depots || []).map((d) => (
+                  <option key={d.kode_depo} value={d.kode_depo}>{d.kode_depo} - {d.nama_depo}</option>
+                ))}
+              </select>
             {hasPermission('emails.edit') && (
               <button onClick={openCreate} className="btn-primary whitespace-nowrap">
                 <span className="flex items-center gap-2">
@@ -383,147 +531,140 @@ export default function EmailRecipientsPage() {
             )}
             </div>
           </div>
+        </div>
 
-          {/* Desktop table */}
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[860px]">
-              <caption className="sr-only">Daftar penerima email</caption>
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-surface-raised">
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Dokumen</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Trigger</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Field</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Penerima</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Label</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Aktif</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                {/* Desktop table */}
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[900px]">
+            <caption className="sr-only">Daftar penerima email</caption>
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-surface-raised">
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Dokumen</th>
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Trigger</th>
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Field</th>
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Penerima</th>
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Label</th>
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                <th scope="col" className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-16 text-center">
+                    <div className="flex flex-col items-center gap-3" role="status">
+                      <div className="w-14 h-14 rounded-2xl bg-surface-raised border border-gray-100 flex items-center justify-center">
+                        <svg className="w-7 h-7 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                      </div>
+                      <p className="text-sm text-gray-500">{hasSearch ? 'Tidak ada hasil pencarian' : 'Belum ada penerima email'}</p>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {items.map((r, idx) => (
+              ) : (
+                items.map((r, idx) => (
                   <>
-                    {(idx === 0 || items[idx - 1].field !== r.field) && (
-                      <tr key={`group-${r.field}-${idx}`} className="bg-slate-50">
-                        <td colSpan={9} className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600">
-                          {r.field === 'TO' ? 'Penerima TO' : 'Penerima CC'}
-                        </td>
-                      </tr>
-                    )}
                     <tr key={r.id} className="group hover:bg-overlay-70 transition-colors">
-                    <td className="px-5 py-4 text-sm text-slate-500">{r.id}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${docBadge(r.document_type)}`}>
-                        {docTypeLabel[r.document_type] || r.document_type}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-gray-700">{triggerLabel(r.document_type, r.trigger)}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${fieldBadge(r.field)}`}>{r.field}</span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${r.kode_depo ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
-                        {r.kode_depo ? r.kode_depo : 'Global'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
-                          {recipientInitial(r)}
+                      <td className="px-5 py-4 text-sm text-slate-500">{idx + 1}</td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${docBadge(r.document_type)}`}>
+                          {docTypeLabel[r.document_type] || r.document_type}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-gray-700">{triggerLabel(r.document_type, r.trigger)}</td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${fieldBadge(r.field)}`}>{r.field}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${r.kode_depo ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {r.kode_depo ? r.kode_depo : 'Global'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
+                            {recipientInitial(r)}
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{describe(r)}</span>
+                          {resolveProblem(r) && (
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200" title={resolveProblem(r) || undefined} role="img" aria-label="Peringatan: penerima tidak akan terkirim">
+                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                              Tak terkirim
+                            </span>
+                          )}
                         </div>
-                        <span className="text-sm font-medium text-gray-900">{describe(r)}</span>
-                        {resolveProblem(r) && (
-                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200" title={resolveProblem(r) || undefined} role="img" aria-label="Peringatan: penerima tidak akan terkirim">
-                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                            Tak terkirim
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-gray-500">{r.label || <span className="text-gray-300">-</span>}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${r.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${r.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
-                        {r.is_active ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-1">
-                        {hasPermission('emails.edit') && (
-                        <button onClick={() => openEdit(r)} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200" title="Edit" aria-label="Edit">
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
-                        </button>
-                        )}
-                        {hasPermission('emails.edit') && (
-                        <button onClick={() => { setDeleteTargetId(r.id); setShowDeleteConfirm(true); }} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Hapus" aria-label="Hapus">
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                        </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-gray-500">{r.label || <span className="text-gray-300">-</span>}</td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${r.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${r.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
+                          {r.is_active ? 'Aktif' : 'Nonaktif'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          {hasPermission('emails.edit') && (
+                          <button onClick={() => openEdit(r)} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200" title="Edit" aria-label="Edit">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                          </button>
+                          )}
+                          {hasPermission('emails.edit') && (
+                          <button onClick={() => { setDeleteTargetId(r.id); setShowDeleteConfirm(true); }} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Hapus" aria-label="Hapus">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                          </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   </>
-                ))}
-                {items.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-5 py-16 text-center">
-                      <div className="flex flex-col items-center gap-3" role="status">
-                        <div className="w-14 h-14 rounded-2xl bg-surface-raised border border-gray-100 flex items-center justify-center">
-                          <svg className="w-7 h-7 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
-                        </div>
-                        <p className="text-sm text-gray-500">Belum ada penerima email</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-          {/* Mobile Cards */}
-          <div className="md:hidden space-y-2 p-3">
-            {items.map((r) => (
-              <div key={r.id} className="bg-surface-raised rounded-xl p-4 border border-slate-100">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{docTypeLabel[r.document_type] || r.document_type}</p>
-                    <p className="text-xs text-gray-500">{triggerLabel(r.document_type, r.trigger)}</p>
-                  </div>
-                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${fieldBadge(r.field)}`}>{r.field}</span>
+        {/* Mobile Cards */}
+        <div className="md:hidden space-y-2 p-3">
+          {items.map((r) => (
+            <div key={r.id} className="bg-surface-raised rounded-xl p-4 border border-slate-100">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">{docTypeLabel[r.document_type] || r.document_type}</p>
+                  <p className="text-xs text-gray-500">{triggerLabel(r.document_type, r.trigger)}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <p className="text-slate-500">Trigger: <span className="font-medium text-slate-700">{triggerLabel(r.document_type, r.trigger)}</span></p>
-                  <p className="text-slate-500">Depo: <span className="font-medium text-slate-700">{r.kode_depo || 'Global'}</span></p>
-                  <p className="text-slate-500">Penerima: <span className="font-medium text-slate-700">{describe(r)}</span></p>
-                  <p className="text-slate-500">Aktif: <span className="font-medium text-slate-700">{r.is_active ? 'Aktif' : 'Nonaktif'}</span></p>
-                  {r.label && <p className="text-slate-500 col-span-2">Label: <span className="font-medium text-slate-700">{r.label}</span></p>}
-                </div>
-                {resolveProblem(r) && (
-                  <span className="inline-flex mt-1 items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 ring-1 ring-red-200">
-                    <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                    Tak terkirim
-                  </span>
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${fieldBadge(r.field)}`}>{r.field}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                <p className="text-slate-500">Depo: <span className="font-medium text-slate-700">{r.kode_depo || 'Global'}</span></p>
+                <p className="text-slate-500">Penerima: <span className="font-medium text-slate-700">{describe(r)}</span></p>
+                <p className="text-slate-500">Aktif: <span className="font-medium text-slate-700">{r.is_active ? 'Aktif' : 'Nonaktif'}</span></p>
+                {r.label && <p className="text-slate-500 col-span-2">Label: <span className="font-medium text-slate-700">{r.label}</span></p>}
+              </div>
+              {resolveProblem(r) && (
+                <span className="inline-flex mt-1 items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 ring-1 ring-red-200">
+                  <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                  Tak terkirim
+                </span>
+              )}
+              <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
+                {hasPermission('emails.edit') && (
+                  <button onClick={() => openEdit(r)} className="min-h-9 px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label="Edit">Edit</button>
                 )}
-                <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
-                  {hasPermission('emails.edit') && (
-                    <button onClick={() => openEdit(r)} className="min-h-9 px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label="Edit">Edit</button>
-                  )}
-                  {hasPermission('emails.edit') && (
-                    <button onClick={() => { setDeleteTargetId(r.id); setShowDeleteConfirm(true); }} className="min-h-9 px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label="Hapus">Hapus</button>
-                  )}
-                </div>
+                {hasPermission('emails.edit') && (
+                  <button onClick={() => { setDeleteTargetId(r.id); setShowDeleteConfirm(true); }} className="min-h-9 px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label="Hapus">Hapus</button>
+                )}
               </div>
-            ))}
-            {items.length === 0 && (
-              <div className="flex flex-col items-center gap-3 py-8">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
-                  <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
-                </div>
-                <p className="text-sm font-medium text-slate-500">{hasSearch ? 'Tidak ada hasil pencarian' : 'Belum ada penerima email'}</p>
+            </div>
+          ))}
+          {items.length === 0 && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+                <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
               </div>
-            )}
-          </div>
+              <p className="text-sm font-medium text-slate-500">{hasSearch ? 'Tidak ada hasil pencarian' : 'Belum ada penerima email'}</p>
+            </div>
+          )}
         </div>
       </div>
 
