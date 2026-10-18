@@ -105,6 +105,25 @@ class BiayaThlFlowTest extends TestCase
         $this->assertContains($blankNamaDepo->id, $ids);
     }
 
+    public function test_index_search_escapes_like_wildcards(): void
+    {
+        Sanctum::actingAs($this->user);
+
+        BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => $this->user->id, 'status' => 'pending', 'nominal_biaya' => 100000, 'no_kendaraan' => 'B 1234 XX']);
+        BiayaThl::create(['tanggal_pengajuan' => '2026-09-18', 'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => $this->user->id, 'status' => 'pending', 'nominal_biaya' => 100000, 'no_kendaraan' => 'B 5678 YY']);
+
+        // '%' diperlakukan literal — tak ada nopol memuat '%', jadi hasil kosong
+        // (sebelumnya wildcard sehingga semua baris ikut cocok).
+        $this->getJson('/api/v1/biaya-thl?per_page=50&'.http_build_query(['search' => '%']))
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('summary.total', 0);
+
+        $this->getJson('/api/v1/biaya-thl?per_page=50&'.http_build_query(['search' => '1234']))
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
     public function test_store_uses_assigned_rfah_per_depot_with_global_fallback(): void
     {
         Sanctum::actingAs($this->user);

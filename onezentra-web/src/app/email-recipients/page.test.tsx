@@ -149,10 +149,20 @@ describe('EmailRecipientsPage', () => {
   });
 
   it('menampilkan kontrol paginasi per-depo dan memuat halaman berikutnya', async () => {
-    list.mockResolvedValue(listResponse(
-      [{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }],
-      { last_page: 3, total_groups: 20, total_rows: 40, has_next: true },
-    ));
+    list.mockImplementation((params: { page?: number } = {}) => {
+      const requested = params.page ?? 1;
+      return Promise.resolve(listResponse(
+        [{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }],
+        {
+          page: requested,
+          last_page: 3,
+          total_groups: 20,
+          total_rows: 40,
+          has_prev: requested > 1,
+          has_next: requested < 3,
+        },
+      ));
+    });
 
     render(<EmailRecipientsPage />);
 
@@ -161,6 +171,36 @@ describe('EmailRecipientsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Berikutnya' }));
 
     await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, per_page: 8 })));
+  });
+
+  it('menyelaraskan halaman dengan meta server saat halaman di-clamp', async () => {
+    // Server selalu meng-clamp ke halaman 1 (mis. data menyusut), walau klien
+    // meminta halaman 2.
+    list.mockImplementation(() => Promise.resolve(listResponse(
+      [{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }],
+      { page: 1, last_page: 2, total_groups: 2, total_rows: 2, has_prev: false, has_next: true },
+    )));
+
+    render(<EmailRecipientsPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Berikutnya' }));
+
+    // Permintaan halaman 2 terkirim, lalu state diselaraskan kembali ke 1.
+    await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ page: 2 })));
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 })));
+  });
+
+  it('mengurutkan depo mengikuti urutan code-unit server (strcmp), bukan locale', async () => {
+    options.mockResolvedValue({ data: { ...optionsPayload, depots: [] } });
+    list.mockResolvedValue(listResponse([
+      { ...baseRecipient, id: 1, kode_depo: 'jkt01', field: 'TO' },
+      { ...baseRecipient, id: 2, kode_depo: 'JKT01', field: 'TO' },
+    ]));
+
+    render(<EmailRecipientsPage />);
+
+    const headers = await screen.findAllByText(/^(JKT01|jkt01)$/);
+    expect(headers.map((h) => h.textContent)).toEqual(['JKT01', 'jkt01']);
   });
 
   it('mengirim filter & pencarian ke server (bukan menyaring di klien)', async () => {

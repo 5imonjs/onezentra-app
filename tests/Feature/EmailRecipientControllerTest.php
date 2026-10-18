@@ -185,4 +185,61 @@ class EmailRecipientControllerTest extends TestCase
         $this->getJson('/api/v1/email-recipients?per_page=8&field=CC')
             ->assertOk()->assertJsonCount(1, 'data');
     }
+
+    public function test_index_treats_whitespace_only_depot_as_global_group(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        $this->recipient(['kode_depo' => ' ', 'email' => 'ws@test.com']);
+
+        // Depot berisi spasi harus ikut grup Global, bukan "menghilang" dari
+        // daftar padahal tetap dihitung di ringkasan.
+        $res = $this->getJson('/api/v1/email-recipients?per_page=8')->assertOk();
+
+        $res->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.total_groups', 1)
+            ->assertJsonPath('summary.total', 1)
+            ->assertJsonPath('data.0.email', 'ws@test.com');
+    }
+
+    public function test_index_search_treats_like_wildcards_as_literal_text(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        $this->recipient(['email' => 'plain@test.com']);
+        $this->recipient(['email' => 'p_ain@test.com']);
+        $this->recipient(['email' => 'lit%eral@test.com']);
+
+        // '%' literal: hanya baris yang benar-benar memuat karakter '%'.
+        $this->getJson('/api/v1/email-recipients?'.http_build_query(['per_page' => 8, 'search' => '%']))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.email', 'lit%eral@test.com');
+
+        // '_' literal: `p_ain` tak boleh cocok dengan `plain`.
+        $this->getJson('/api/v1/email-recipients?'.http_build_query(['per_page' => 8, 'search' => 'p_ain']))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.email', 'p_ain@test.com');
+    }
+
+    public function test_index_summary_and_sample_cover_rows_outside_current_page(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        // Depo halaman 1 sehat; baris bermasalah ada di depo halaman 2.
+        $this->recipient(['kode_depo' => 'AAA', 'email' => 'ok@test.com']);
+        $this->recipient(['kode_depo' => 'ZZZ', 'recipient_type' => 'role', 'role_slug' => 'tidak-ada', 'email' => null]);
+
+        $res = $this->getJson('/api/v1/email-recipients?per_page=1&page=1')->assertOk();
+
+        // Halaman 1 hanya memuat depo AAA...
+        $res->assertJsonPath('meta.total_groups', 2)
+            ->assertJsonPath('meta.page', 1)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.kode_depo', 'AAA');
+
+        // ...tapi ringkasan tetap menghitung baris bermasalah di halaman lain.
+        $res->assertJsonPath('summary.total', 2)
+            ->assertJsonPath('summary.broken', 1)
+            ->assertJsonPath('summary.ok', 1)
+            ->assertJsonCount(1, 'summary.broken_sample')
+            ->assertJsonPath('summary.broken_sample.0.role_slug', 'tidak-ada');
+    }
 }

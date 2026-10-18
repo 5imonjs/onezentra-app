@@ -223,8 +223,15 @@ export default function EmailRecipientsPage() {
         search: search || undefined,
       });
       setRawItems(res.data.data);
-      setMeta(res.data.meta ?? null);
+      const nextMeta: PageMeta | null = res.data.meta ?? null;
+      setMeta(nextMeta);
       setSummary(res.data.summary ?? null);
+      // Server meng-clamp halaman di luar jangkauan (mis. setelah penghapusan
+      // item terakhir). Selaraskan state agar label paginasi dan permintaan
+      // berikutnya konsisten.
+      if (nextMeta && nextMeta.page !== page) {
+        setPage(nextMeta.page);
+      }
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal memuat data'), type: 'error' });
     }
@@ -262,10 +269,12 @@ export default function EmailRecipientsPage() {
   const filtered = rawItems;
 
   // Kelompokkan per depo -> { TO, CC }. Global (null) selalu paling atas.
+  // Depot blank (null/''/spasi) dinormalkan ke satu grup Global, dan urutan
+  // depo memakai perbandingan code-unit agar sama dengan `strcmp` di server.
   const depoGroups = useMemo(() => {
     const map = new Map<string | null, { to: Recipient[]; cc: Recipient[] }>();
     for (const r of filtered) {
-      const key = r.kode_depo ?? null;
+      const key = r.kode_depo && r.kode_depo.trim() !== '' ? r.kode_depo : null;
       if (!map.has(key)) map.set(key, { to: [], cc: [] });
       const g = map.get(key)!;
       (r.field === 'CC' ? g.cc : g.to).push(r);
@@ -274,7 +283,7 @@ export default function EmailRecipientsPage() {
       if (a === b) return 0;
       if (a === null) return -1;
       if (b === null) return 1;
-      return a.localeCompare(b);
+      return a < b ? -1 : 1;
     });
     return order.map((k) => [k, map.get(k)!] as const);
   }, [filtered]);

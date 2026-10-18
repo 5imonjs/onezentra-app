@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EmailRecipient;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -16,41 +17,56 @@ class EmailRecipientController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = EmailRecipient::with('user:id,full_name,email')
+        // Filter dipisah sebagai factory agar tiap kebutuhan (ringkasan,
+        // daftar depo, halaman aktif, sampel bermasalah) memakai builder
+        // bersih dan tidak saling mewarisi klausa.
+        $makeQuery = fn (): Builder => EmailRecipient::query()
             ->when($request->filled('document_type'), fn ($q) => $q->where('document_type', $request->document_type))
             ->when($request->filled('trigger'), fn ($q) => $q->where('trigger', $request->trigger))
             ->when($request->filled('field'), fn ($q) => $q->where('field', $request->field))
             ->when($request->filled('kode_depo'), fn ($q) => $q->where('kode_depo', $request->input('kode_depo')))
             ->when($request->filled('search'), function ($q) use ($request) {
-                $term = (string) $request->input('search');
-                $q->where(function ($qq) use ($term) {
-                    // Cermin lapangan yang dicari di klien agar hasil konsisten
-                    // ketika pencarian dipindah ke server (paginasi).
-                    $qq->where('email', 'like', "%{$term}%")
-                        ->orWhere('label', 'like', "%{$term}%")
-                        ->orWhere('role_slug', 'like', "%{$term}%")
-                        ->orWhere('document_type', 'like', "%{$term}%")
-                        ->orWhere('trigger', 'like', "%{$term}%")
-                        ->orWhere('field', 'like', "%{$term}%")
-                        ->orWhere('kode_depo', 'like', "%{$term}%")
-                        ->orWhereHas('user', fn ($u) => $u->where('full_name', 'like', "%{$term}%"));
+                // Cermin lapangan yang dicari di klien agar hasil konsisten
+                // ketika pencarian dipindah ke server (paginasi). Wildcard
+                // LIKE di-escape agar `%`/`_` diperlakukan sebagai teks biasa.
+                $pattern = $this->likeContains((string) $request->input('search'));
+                $q->where(function ($qq) use ($pattern) {
+                    $qq->whereRaw('email LIKE ? ESCAPE ?', [$pattern, '\\']);
+                    foreach (['label', 'role_slug', 'document_type', 'trigger', 'field', 'kode_depo'] as $column) {
+                        $qq->orWhereRaw("{$column} LIKE ? ESCAPE ?", [$pattern, '\\']);
+                    }
+                    $qq->orWhereHas('user', fn ($u) => $u->whereRaw('users.full_name LIKE ? ESCAPE ?', [$pattern, '\\']));
                 });
-            })
+            });
+
+        $orderByRecipient = fn (Builder $query): Builder => $query
             ->orderBy('document_type')
             ->orderBy('trigger')
             ->orderBy('field');
 
         // Klien lama (tanpa parameter paginasi) tetap menerima seluruh baris.
         if (! $request->filled('per_page') && ! $request->filled('page')) {
-            return response()->json(['data' => $this->withResolution($query->get())]);
+            $data = $orderByRecipient($makeQuery()->with('user:id,full_name,email'))->get();
+
+            return response()->json(['data' => $this->withResolution($data)]);
         }
 
-        $all = $this->withResolution($query->get());
+        // Ringkasan dihitung di SQL atas SELURUH baris terfilter, tanpa
+        // menghidrasi tabel hanya untuk keperluan hitungan.
+        $aggregate = $makeQuery()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN field = 'TO' THEN 1 ELSE 0 END) as to_count")
+            ->selectRaw("SUM(CASE WHEN field = 'CC' THEN 1 ELSE 0 END) as cc_count")
+            ->first();
+        $totalRows = (int) ($aggregate->total ?? 0);
+        $toCount = (int) ($aggregate->to_count ?? 0);
+        $ccCount = (int) ($aggregate->cc_count ?? 0);
 
         // UI mengelompokkan penerima per depo. Paginasi dilakukan per DEPO
         // (bukan per baris) agar satu halaman selalu berisi grup depo yang
-        // utuh — tampilan TO/CC per depo tidak pernah terpotong.
-        $depotKeys = $all->pluck('kode_depo')
+        // utuh — tampilan TO/CC per depo tidak pernah terpotong. Depot blank
+        // (null/''/spasi) dinormalkan ke satu grup Global.
+        $depotKeys = $makeQuery()->select('kode_depo')->distinct()->pluck('kode_depo')
             ->map(fn ($kode) => blank($kode) ? null : (string) $kode)
             ->unique()
             ->sort(function ($a, $b): int {
@@ -72,37 +88,114 @@ class EmailRecipientController extends Controller
         $lastPage = max((int) ceil($depotKeys->count() / $perPage), 1);
         $page = min(max($request->integer('page', 1), 1), $lastPage);
         $pageKeys = $depotKeys->slice(($page - 1) * $perPage, $perPage)
-            ->map(fn ($kode) => $kode ?? '')
+            ->map(fn ($kode) => (string) ($kode ?? ''))
+            ->values()
             ->all();
 
-        $rows = $all
-            ->filter(fn (array $row) => in_array($row['kode_depo'] ?? '', $pageKeys, true))
-            ->values();
-        $broken = $all->filter(fn (array $row) => $this->isUnresolved($row))->values();
+        $rows = $this->constrainToDepotKeys(
+            $orderByRecipient($makeQuery()->with('user:id,full_name,email')),
+            $pageKeys,
+        )->get();
+
+        // Baris bermasalah dihitung di SQL (bukan dari koleksi penuh); hanya
+        // sampelnya (maks 5) yang dihidrasi agar `resolved_count` ikut terisi.
+        $brokenQuery = fn (): Builder => $this->unresolvedQuery($makeQuery());
+        $brokenCount = $brokenQuery()->count();
+        $brokenSample = $orderByRecipient($brokenQuery()->with('user:id,full_name,email'))
+            ->limit(5)
+            ->get();
 
         return response()->json([
-            'data' => $rows,
+            'data' => $this->withResolution($rows),
             'meta' => [
                 'group' => 'depo',
                 'page' => $page,
                 'per_page' => $perPage,
                 'last_page' => $lastPage,
                 'total_groups' => $depotKeys->count(),
-                'total_rows' => $all->count(),
+                'total_rows' => $totalRows,
                 'has_prev' => $page > 1,
                 'has_next' => $page < $lastPage,
             ],
             // Ringkasan dihitung dari SELURUH baris terfilter (bukan hanya
             // halaman aktif) supaya kartu audit & alert tetap akurat.
             'summary' => [
-                'total' => $all->count(),
-                'to' => $all->where('field', 'TO')->count(),
-                'cc' => $all->where('field', 'CC')->count(),
-                'ok' => $all->count() - $broken->count(),
-                'broken' => $broken->count(),
-                'broken_sample' => $broken->take(5)->values(),
+                'total' => $totalRows,
+                'to' => $toCount,
+                'cc' => $ccCount,
+                'ok' => max($totalRows - $brokenCount, 0),
+                'broken' => $brokenCount,
+                'broken_sample' => $this->withResolution($brokenSample),
             ],
         ]);
+    }
+
+    /**
+     * Batasi query ke baris pada grup depo halaman aktif. Kunci `''` mewakili
+     * grup Global (kode_depo null / kosong / spasi-putih) — penanganan spasi
+     * harus sama dengan normalisasi `blank()` agar baris tak "menghilang".
+     *
+     * @param  array<int, string>  $pageKeys
+     */
+    private function constrainToDepotKeys(Builder $query, array $pageKeys): Builder
+    {
+        $includeGlobal = in_array('', $pageKeys, true);
+        $codes = array_values(array_filter($pageKeys, fn (string $kode): bool => $kode !== ''));
+
+        if (! $includeGlobal && $codes === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function ($q) use ($includeGlobal, $codes): void {
+            if ($includeGlobal) {
+                $q->where(function ($qq): void {
+                    $qq->whereNull('kode_depo')->orWhereRaw("TRIM(kode_depo) = ''");
+                });
+            }
+            if ($codes !== []) {
+                $q->orWhereIn('kode_depo', $codes);
+            }
+        });
+    }
+
+    /**
+     * Batasi query ke baris aktif yang TIDAK akan terkirim — cermin
+     * `resolveProblem` di web: alamat email kosong, user nonaktif/tanpa
+     * email/dihapus, atau role tanpa user aktif ber-email. Dibuat di SQL agar
+     * hitungan & sampel tidak perlu menghidrasi seluruh tabel.
+     */
+    private function unresolvedQuery(Builder $query): Builder
+    {
+        return $query->where('is_active', true)->where(function ($q): void {
+            $q->where(function ($email): void {
+                $email->whereNotIn('recipient_type', ['role', 'user'])
+                    ->where(fn ($e) => $e->whereNull('email')->orWhere('email', ''));
+            })->orWhere(function ($user): void {
+                $user->where('recipient_type', 'user')
+                    ->where(function ($u): void {
+                        $u->whereNull('user_id')->orWhereNotExists(fn ($sub) => $sub
+                            ->selectRaw('1')
+                            ->from('users')
+                            ->whereColumn('users.id', 'email_recipients.user_id')
+                            ->where('users.status', 'active')
+                            ->whereNotNull('users.email')
+                            ->where('users.email', '<>', ''));
+                    });
+            })->orWhere(function ($role): void {
+                $role->where('recipient_type', 'role')
+                    ->where(function ($r): void {
+                        $r->whereNull('role_slug')->orWhereNotExists(fn ($sub) => $sub
+                            ->selectRaw('1')
+                            ->from('users')
+                            ->join('role_user', 'role_user.user_id', '=', 'users.id')
+                            ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                            ->whereColumn('roles.slug', 'email_recipients.role_slug')
+                            ->where('users.status', 'active')
+                            ->whereNotNull('users.email')
+                            ->where('users.email', '<>', ''));
+                    });
+            });
+        });
     }
 
     public function store(Request $request): JsonResponse
@@ -157,17 +250,6 @@ class EmailRecipientController extends Controller
             'roles' => $roles,
             'depots' => $depots,
         ]);
-    }
-
-    /**
-     * Penerima aktif yang tidak akan terkirim: role yatim, user nonaktif
-     * tanpa email, atau alamat email kosong. Cermin `resolveProblem` di web.
-     *
-     * @param  array<string, mixed>  $row  Baris hasil withResolution().
-     */
-    private function isUnresolved(array $row): bool
-    {
-        return (bool) ($row['is_active'] ?? false) && (int) ($row['resolved_count'] ?? 1) <= 0;
     }
 
     /**

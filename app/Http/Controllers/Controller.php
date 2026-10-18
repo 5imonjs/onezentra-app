@@ -34,4 +34,16 @@ abstract class Controller
     {
         return min(max($request->integer('per_page', $default), 1), 100);
     }
+
+    /**
+     * Pola pencarian `LIKE %term%` dengan wildcard (`\`, `%`, `_`) di-escape
+     * agar dicari sebagai teks biasa, bukan pola. Pakai bersama klausa
+     * `LIKE ? ESCAPE ?` dengan escape char `'\\'` — pola yang sama dengan
+     * ReportController & export lain. Escape char dikirim sebagai bind param
+     * sehingga aman lintas dialek (MySQL & SQLite).
+     */
+    protected function likeContains(string $term): string
+    {
+        return '%'.addcslashes($term, '\\%_').'%';
+    }
 }

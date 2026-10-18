@@ -86,12 +86,12 @@ class BiayaThlController extends Controller
         $user = $request->user();
         $query = $this->scopedExportQuery($user);
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('no_kendaraan', 'like', '%'.$request->search.'%')
-                    ->orWhere('nama_depo', 'like', '%'.$request->search.'%')
-                    ->orWhere('kode_depo', 'like', '%'.$request->search.'%')
-                    ->orWhere('no_surat_jalan', 'like', '%'.$request->search.'%')
-                    ->orWhere('type_kendaraan', 'like', '%'.$request->search.'%');
+            $pattern = $this->likeContains((string) $request->input('search'));
+            $query->where(function ($q) use ($pattern) {
+                $q->whereRaw('no_kendaraan LIKE ? ESCAPE ?', [$pattern, '\\']);
+                foreach (['nama_depo', 'kode_depo', 'no_surat_jalan', 'type_kendaraan'] as $column) {
+                    $q->orWhereRaw("{$column} LIKE ? ESCAPE ?", [$pattern, '\\']);
+                }
             });
         }
         if ($request->filled('status')) {

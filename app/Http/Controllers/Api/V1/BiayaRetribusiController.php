@@ -53,14 +53,16 @@ class BiayaRetribusiController extends Controller
 
         $query = BiayaRetribusi::query()->forUserDepot($request->user());
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->whereHas('details', function ($detailQuery) use ($request) {
-                    $detailQuery->where('nopol_kendaraan', 'like', '%'.$request->search.'%')
-                        ->orWhere('no_surat_jalan', 'like', '%'.$request->search.'%')
-                        ->orWhere('type_kendaraan', 'like', '%'.$request->search.'%');
+            $pattern = $this->likeContains((string) $request->input('search'));
+            $query->where(function ($q) use ($pattern) {
+                $q->whereHas('details', function ($detailQuery) use ($pattern) {
+                    $detailQuery->whereRaw('nopol_kendaraan LIKE ? ESCAPE ?', [$pattern, '\\']);
+                    foreach (['no_surat_jalan', 'type_kendaraan'] as $column) {
+                        $detailQuery->orWhereRaw("{$column} LIKE ? ESCAPE ?", [$pattern, '\\']);
+                    }
                 })
-                    ->orWhere('nama_depo', 'like', '%'.$request->search.'%')
-                    ->orWhere('kode_depo', 'like', '%'.$request->search.'%');
+                    ->orWhereRaw('nama_depo LIKE ? ESCAPE ?', [$pattern, '\\'])
+                    ->orWhereRaw('kode_depo LIKE ? ESCAPE ?', [$pattern, '\\']);
             });
         }
         if ($request->filled('status')) {
