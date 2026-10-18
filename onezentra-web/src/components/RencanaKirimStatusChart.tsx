@@ -208,18 +208,21 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
             <div className="flex items-center gap-4">
               <div className="relative h-20 w-20 shrink-0">
                 <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--oz-gray-200)" strokeWidth="3" />
                   {PIPELINE_STATUSES.map((s, i) => {
                     const pct = total > 0 ? (counts[s.key] / total) * 100 : 0;
                     if (pct <= 0) return null;
                     const offset = PIPELINE_STATUSES.slice(0, i).reduce((a, st) => a + (total > 0 ? (counts[st.key] / total) * 100 : 0), 0);
+                    // Warna segmen donat diambil dari token tema (bukan hex)
+                    // supaya ikut berubah saat tema gelap/terang, sama seperti
+                    // titik status pada kartu di atasnya.
                     const colorMap: Record<string, string> = {
-                      DRAFT: '#94a3b8',
-                      SCHEDULED: '#93c5fd',
-                      CHECKED_IN: '#60a5fa',
-                      VERIFIED: '#3b82f6',
-                      IN_PROGRESS: '#2563eb',
-                      COMPLETED: '#1d4ed8',
+                      DRAFT: 'var(--oz-gray-400)',
+                      SCHEDULED: 'var(--oz-blue-300)',
+                      CHECKED_IN: 'var(--oz-blue-400)',
+                      VERIFIED: 'var(--oz-blue-500)',
+                      IN_PROGRESS: 'var(--oz-blue-600)',
+                      COMPLETED: 'var(--oz-blue-700)',
                     };
                     return (
                       <circle
