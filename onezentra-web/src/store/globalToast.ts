@@ -19,9 +19,15 @@ let nextId = 0;
 export const useGlobalToastStore = create<GlobalToastState>((set) => ({
   toasts: [],
   notify: (message, type = 'error') =>
-    set((state) => ({
-      toasts: [...state.toasts, { id: ++nextId, message, type }],
-    })),
+    set((state) => {
+      // Dedupe: beberapa request paralel bisa gagal dengan pesan identik
+      // (mis. 403 pada dua endpoint sekaligus) — satu toast sudah cukup.
+      // Selama toast identik masih tampil, pesan berikutnya diabaikan.
+      if (state.toasts.some((t) => t.message === message && t.type === type)) {
+        return state;
+      }
+      return { toasts: [...state.toasts, { id: ++nextId, message, type }] };
+    }),
   dismiss: (id) =>
     set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 }));

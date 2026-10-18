@@ -80,7 +80,18 @@ export function getErrorMessage(e: unknown, fallback = 'Terjadi kesalahan'): str
       if (details) return details;
     }
   }
-  return summary || (err.message ?? fallback);
+  // Jangan bocorkan pesan internal ke user. `err.message` bisa berupa pesan
+  // JavaScript mentah ("Cannot read properties of undefined...") atau detail
+  // axios yang tidak informatif dan menyingkap implementasi. Hanya pesan
+  // ringkas dari backend yang ditampilkan; kalau tidak ada, pakai pesan
+  // ramah untuk kegagalan koneksi, atau fallback yang diberikan pemanggil.
+  if (summary) {
+    return summary;
+  }
+  if (axios.isAxiosError(err) && err.response === undefined) {
+    return 'Tidak dapat terhubung ke server. Periksa koneksi Anda lalu coba lagi.';
+  }
+  return fallback;
 }
 
 export const apiClient = axios.create({
@@ -324,7 +335,7 @@ export const auth = {
 };
 
 export const dashboard = {
-  activity: (days = 30, kodeDepo?: string) => apiClient.get('/dashboard/activity', { params: { days, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) } }),
+  activity: (days = 30, kodeDepo?: string, signal?: AbortSignal) => apiClient.get('/dashboard/activity', { params: { days, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }, signal }),
   summary: (kodeDepo?: string) => apiClient.get('/dashboard/summary', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
 };
 

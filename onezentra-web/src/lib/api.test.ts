@@ -122,6 +122,23 @@ describe('getErrorMessage — validasi Laravel (tidak boleh regresi)', () => {
     expect(msg).toContain('timeout');
     expect(msg).not.toContain('timeout of 15000ms exceeded');
   });
+
+  it('tidak membocorkan pesan internal JavaScript — pakai fallback pemanggil', () => {
+    const msg = getErrorMessage(
+      new Error("Cannot read properties of undefined (reading 'email')"),
+      'Simpan gagal',
+    );
+
+    expect(msg).toBe('Simpan gagal');
+    expect(msg).not.toContain('Cannot read');
+  });
+
+  it('kegagalan koneksi (axios tanpa response) memakai pesan yang bisa ditindaklanjuti', () => {
+    const err = new AxiosError('Network Error', AxiosError.ERR_NETWORK, { headers: {} } as never);
+    const msg = getErrorMessage(err, 'Simpan gagal');
+
+    expect(msg).toContain('Tidak dapat terhubung ke server');
+  });
 });
 
 /** Konstruksi `error.response` yang cukup untuk dibaca interceptor. */

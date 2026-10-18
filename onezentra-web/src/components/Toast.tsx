@@ -14,12 +14,18 @@ export default function Toast({ message, type = 'success', onClose, stackIndex =
 
   useEffect(() => {
     setVisible(true);
+    let closeTimer: ReturnType<typeof setTimeout> | undefined;
     const timer = setTimeout(() => {
       setVisible(false);
-      const closeTimer = setTimeout(onClose, 300);
-      return () => clearTimeout(closeTimer);
+      closeTimer = setTimeout(onClose, 300);
     }, 4000);
-    return () => { clearTimeout(timer); };
+    // Bersihkan KEDUA timer saat unmount: timer penutup (300ms) yang dulu
+    // dibuat di dalam callback tidak pernah dibersihkan sehingga onClose
+    // tetap dipanggil setelah komponen hilang.
+    return () => {
+      clearTimeout(timer);
+      if (closeTimer) clearTimeout(closeTimer);
+    };
   }, [onClose]);
 
   const icons = {

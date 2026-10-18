@@ -62,6 +62,16 @@ const EMPTY: SummaryData = {
 const cache = new Map<string, { at: number; data: SummaryData }>();
 const CACHE_TTL_MS = 60_000;
 
+/**
+ * Kosongkan cache ringkasan dashboard. Wajib dipanggil saat login/logout:
+ * cache ini hidup di module scope (bertahan antar-navigasi), jadi tanpa reset
+ * user berikutnya di peramban yang sama bisa melihat ringkasan milik user
+ * sebelumnya selama TTL masih berlaku.
+ */
+export function clearDashboardSummaryCache(): void {
+  cache.clear();
+}
+
 export function useDashboardSummary(kodeDepo?: string): { summary: SummaryData; loading: boolean; failed: boolean; reload: () => void } {
   const [summary, setSummary] = useState<SummaryData>(EMPTY);
   const [loading, setLoading] = useState(true);

@@ -61,12 +61,12 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
         }
       };
     } else {
-      // Hanya restore focus jika modal sebelumnya terbuka dan kini ditutup
+      // Hanya restore focus jika modal sebelumnya terbuka dan kini ditutup.
+      // Penurunan openModalCount TIDAK dilakukan di sini: cleanup effect
+      // (blok `open === true`) sudah menjalankannya tepat sekali saat modal
+      // ditutup. Decrement ganda dulu membuat scroll-lock terlepas padahal
+      // masih ada modal lain yang terbuka.
       if (wasOpenRef.current) {
-        openModalCount = Math.max(0, openModalCount - 1);
-        if (openModalCount === 0) {
-          document.body.style.overflow = '';
-        }
         if (previousFocusRef.current) {
           previousFocusRef.current.focus();
           previousFocusRef.current = null;
