@@ -17,21 +17,92 @@ class EmailRecipientController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = EmailRecipient::with('user:id,full_name,email')
-            ->when($request->document_type, fn ($q) => $q->where('document_type', $request->document_type))
-            ->when($request->trigger, fn ($q) => $q->where('trigger', $request->trigger))
-            ->when($request->field, fn ($q) => $q->where('field', $request->field))
-            ->when($request->search, function ($q) use ($request) {
-                $q->where(function ($qq) use ($request) {
-                    $qq->where('email', 'like', "%{$request->search}%")
-                        ->orWhere('label', 'like', "%{$request->search}%")
-                        ->orWhereHas('user', fn ($u) => $u->where('full_name', 'like', "%{$request->search}%"));
+            ->when($request->filled('document_type'), fn ($q) => $q->where('document_type', $request->document_type))
+            ->when($request->filled('trigger'), fn ($q) => $q->where('trigger', $request->trigger))
+            ->when($request->filled('field'), fn ($q) => $q->where('field', $request->field))
+            ->when($request->filled('kode_depo'), fn ($q) => $q->where('kode_depo', $request->input('kode_depo')))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $term = (string) $request->input('search');
+                $q->where(function ($qq) use ($term) {
+                    // Cermin lapangan yang dicari di klien agar hasil konsisten
+                    // ketika pencarian dipindah ke server (paginasi).
+                    $qq->where('email', 'like', "%{$term}%")
+                        ->orWhere('label', 'like', "%{$term}%")
+                        ->orWhere('role_slug', 'like', "%{$term}%")
+                        ->orWhere('document_type', 'like', "%{$term}%")
+                        ->orWhere('trigger', 'like', "%{$term}%")
+                        ->orWhere('field', 'like', "%{$term}%")
+                        ->orWhere('kode_depo', 'like', "%{$term}%")
+                        ->orWhereHas('user', fn ($u) => $u->where('full_name', 'like', "%{$term}%"));
                 });
             })
             ->orderBy('document_type')
             ->orderBy('trigger')
             ->orderBy('field');
 
-        return response()->json(['data' => $this->withResolution($query->get())]);
+        // Klien lama (tanpa parameter paginasi) tetap menerima seluruh baris.
+        if (! $request->filled('per_page') && ! $request->filled('page')) {
+            return response()->json(['data' => $this->withResolution($query->get())]);
+        }
+
+        $all = $this->withResolution($query->get());
+
+        // UI mengelompokkan penerima per depo. Paginasi dilakukan per DEPO
+        // (bukan per baris) agar satu halaman selalu berisi grup depo yang
+        // utuh — tampilan TO/CC per depo tidak pernah terpotong.
+        $depotKeys = $all->pluck('kode_depo')
+            ->map(fn ($kode) => blank($kode) ? null : (string) $kode)
+            ->unique()
+            ->sort(function ($a, $b): int {
+                if ($a === $b) {
+                    return 0;
+                }
+                if ($a === null) {
+                    return -1;
+                }
+                if ($b === null) {
+                    return 1;
+                }
+
+                return strcmp($a, $b);
+            })
+            ->values();
+
+        $perPage = min(max($request->integer('per_page', 8), 1), 50);
+        $lastPage = max((int) ceil($depotKeys->count() / $perPage), 1);
+        $page = min(max($request->integer('page', 1), 1), $lastPage);
+        $pageKeys = $depotKeys->slice(($page - 1) * $perPage, $perPage)
+            ->map(fn ($kode) => $kode ?? '')
+            ->all();
+
+        $rows = $all
+            ->filter(fn (array $row) => in_array($row['kode_depo'] ?? '', $pageKeys, true))
+            ->values();
+        $broken = $all->filter(fn (array $row) => $this->isUnresolved($row))->values();
+
+        return response()->json([
+            'data' => $rows,
+            'meta' => [
+                'group' => 'depo',
+                'page' => $page,
+                'per_page' => $perPage,
+                'last_page' => $lastPage,
+                'total_groups' => $depotKeys->count(),
+                'total_rows' => $all->count(),
+                'has_prev' => $page > 1,
+                'has_next' => $page < $lastPage,
+            ],
+            // Ringkasan dihitung dari SELURUH baris terfilter (bukan hanya
+            // halaman aktif) supaya kartu audit & alert tetap akurat.
+            'summary' => [
+                'total' => $all->count(),
+                'to' => $all->where('field', 'TO')->count(),
+                'cc' => $all->where('field', 'CC')->count(),
+                'ok' => $all->count() - $broken->count(),
+                'broken' => $broken->count(),
+                'broken_sample' => $broken->take(5)->values(),
+            ],
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -86,6 +157,17 @@ class EmailRecipientController extends Controller
             'roles' => $roles,
             'depots' => $depots,
         ]);
+    }
+
+    /**
+     * Penerima aktif yang tidak akan terkirim: role yatim, user nonaktif
+     * tanpa email, atau alamat email kosong. Cermin `resolveProblem` di web.
+     *
+     * @param  array<string, mixed>  $row  Baris hasil withResolution().
+     */
+    private function isUnresolved(array $row): bool
+    {
+        return (bool) ($row['is_active'] ?? false) && (int) ($row['resolved_count'] ?? 1) <= 0;
     }
 
     /**

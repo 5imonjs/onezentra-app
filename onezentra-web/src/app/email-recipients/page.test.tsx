@@ -49,12 +49,35 @@ const baseRecipient = {
   user: undefined,
 };
 
+/** Bangun respons ber-paginasi ala server, dengan ringkasan dihitung otomatis. */
+const listResponse = (rows: Array<Record<string, unknown>>, meta: Record<string, unknown> = {}) => {
+  const broken = rows.filter((r) => r.is_active !== false && ((r.resolved_count as number) ?? 1) <= 0);
+  return {
+    data: {
+      data: rows,
+      meta: {
+        group: 'depo', page: 1, per_page: 8, last_page: 1,
+        total_groups: rows.length, total_rows: rows.length,
+        has_prev: false, has_next: false, ...meta,
+      },
+      summary: {
+        total: rows.length,
+        to: rows.filter((r) => r.field === 'TO').length,
+        cc: rows.filter((r) => r.field === 'CC').length,
+        ok: rows.length - broken.length,
+        broken: broken.length,
+        broken_sample: broken.slice(0, 5),
+      },
+    },
+  };
+};
+
 describe('EmailRecipientsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hasPermission.mockReturnValue(true);
     options.mockResolvedValue({ data: optionsPayload });
-    list.mockResolvedValue({ data: { data: [] } });
+    list.mockResolvedValue(listResponse([]));
     create.mockResolvedValue({ data: { data: {} } });
     update.mockResolvedValue({ data: { data: {} } });
     remove.mockResolvedValue({ data: {} });
@@ -65,14 +88,10 @@ describe('EmailRecipientsPage', () => {
   });
 
   it('mengelompokkan penerima per depo dengan kolom TO dan CC terpisah', async () => {
-    list.mockResolvedValue({
-      data: {
-        data: [
-          { ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' },
-          { ...baseRecipient, id: 2, kode_depo: null, field: 'CC', recipient_type: 'email', email: 'cc@ext.com', role_slug: null, resolved_count: 1 },
-        ],
-      },
-    });
+    list.mockResolvedValue(listResponse([
+      { ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' },
+      { ...baseRecipient, id: 2, kode_depo: null, field: 'CC', recipient_type: 'email', email: 'cc@ext.com', role_slug: null, resolved_count: 1 },
+    ]));
 
     render(<EmailRecipientsPage />);
 
@@ -87,11 +106,9 @@ describe('EmailRecipientsPage', () => {
   });
 
   it('menandai penerima role tanpa user aktif sebagai "Tak terkirim" beserta alert audit', async () => {
-    list.mockResolvedValue({
-      data: {
-        data: [{ ...baseRecipient, id: 9, kode_depo: 'JKT01', field: 'TO', role_slug: 'ghost', resolved_count: 0 }],
-      },
-    });
+    list.mockResolvedValue(listResponse([
+      { ...baseRecipient, id: 9, kode_depo: 'JKT01', field: 'TO', role_slug: 'ghost', resolved_count: 0 },
+    ]));
 
     render(<EmailRecipientsPage />);
 
@@ -100,9 +117,7 @@ describe('EmailRecipientsPage', () => {
   });
 
   it('tombol Tambah CC inline mengunci depo & field lalu menyimpan payload yang benar', async () => {
-    list.mockResolvedValue({
-      data: { data: [{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }] },
-    });
+    list.mockResolvedValue(listResponse([{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }]));
 
     render(<EmailRecipientsPage />);
 
@@ -122,9 +137,7 @@ describe('EmailRecipientsPage', () => {
   });
 
   it('tombol Tambah Penerima generik mewarisi fokus depo yang aktif', async () => {
-    list.mockResolvedValue({
-      data: { data: [{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }] },
-    });
+    list.mockResolvedValue(listResponse([{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }]));
 
     render(<EmailRecipientsPage />);
 
@@ -133,5 +146,32 @@ describe('EmailRecipientsPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Tambah Penerima TO' })).toBeInTheDocument();
     expect(screen.getByLabelText('Depo')).toHaveValue('JKT01');
+  });
+
+  it('menampilkan kontrol paginasi per-depo dan memuat halaman berikutnya', async () => {
+    list.mockResolvedValue(listResponse(
+      [{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }],
+      { last_page: 3, total_groups: 20, total_rows: 40, has_next: true },
+    ));
+
+    render(<EmailRecipientsPage />);
+
+    expect(await screen.findByRole('button', { name: 'Berikutnya' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Berikutnya' }));
+
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, per_page: 8 })));
+  });
+
+  it('mengirim filter & pencarian ke server (bukan menyaring di klien)', async () => {
+    list.mockResolvedValue(listResponse([]));
+
+    render(<EmailRecipientsPage />);
+
+    fireEvent.change(await screen.findByLabelText('Filter jenis dokumen'), { target: { value: 'rencana_kirim' } });
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ document_type: 'rencana_kirim', page: 1 })));
+
+    fireEvent.change(screen.getByLabelText('Fokus depo'), { target: { value: 'JKT01' } });
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ kode_depo: 'JKT01', page: 1 })));
   });
 });
