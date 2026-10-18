@@ -15,58 +15,35 @@ use Illuminate\Validation\ValidationException;
 
 class EmailRecipientController extends Controller
 {
+    /** Batas aman jumlah baris pada respons gaya lama (tanpa parameter paginasi). */
+    private const LEGACY_ROW_LIMIT = 500;
+
     public function index(Request $request): JsonResponse
     {
-        // Filter dipisah sebagai factory agar tiap kebutuhan (ringkasan,
-        // daftar depo, halaman aktif, sampel bermasalah) memakai builder
-        // bersih dan tidak saling mewarisi klausa.
-        $makeQuery = fn (): Builder => EmailRecipient::query()
-            ->when($request->filled('document_type'), fn ($q) => $q->where('document_type', $request->document_type))
-            ->when($request->filled('trigger'), fn ($q) => $q->where('trigger', $request->trigger))
-            ->when($request->filled('field'), fn ($q) => $q->where('field', $request->field))
-            ->when($request->filled('kode_depo'), fn ($q) => $q->where('kode_depo', $request->input('kode_depo')))
-            ->when($request->filled('search'), function ($q) use ($request) {
-                // Cermin lapangan yang dicari di klien agar hasil konsisten
-                // ketika pencarian dipindah ke server (paginasi). Wildcard
-                // LIKE di-escape agar `%`/`_` diperlakukan sebagai teks biasa.
-                $pattern = $this->likeContains((string) $request->input('search'));
-                $q->where(function ($qq) use ($pattern) {
-                    $qq->whereRaw('email LIKE ? ESCAPE ?', [$pattern, '\\']);
-                    foreach (['label', 'role_slug', 'document_type', 'trigger', 'field', 'kode_depo'] as $column) {
-                        $qq->orWhereRaw("{$column} LIKE ? ESCAPE ?", [$pattern, '\\']);
-                    }
-                    $qq->orWhereHas('user', fn ($u) => $u->whereRaw('users.full_name LIKE ? ESCAPE ?', [$pattern, '\\']));
-                });
-            });
+        // Klien lama (tanpa parameter paginasi) tetap menerima seluruh baris,
+        // tetapi dibatasi agar tabel tak dihidrasi tanpa batas, dan tetap
+        // menyertakan ringkasan agar panel audit di klien ikut akurat.
+        if (! $request->filled('page') && ! $request->filled('per_page') && ! $request->filled('per_page_groups')) {
+            $data = $this->orderRecipients(
+                $this->filteredQuery($request)->with('user:id,full_name,email')
+            )->limit(self::LEGACY_ROW_LIMIT)->get();
 
-        $orderByRecipient = fn (Builder $query): Builder => $query
-            ->orderBy('document_type')
-            ->orderBy('trigger')
-            ->orderBy('field');
-
-        // Klien lama (tanpa parameter paginasi) tetap menerima seluruh baris.
-        if (! $request->filled('per_page') && ! $request->filled('page')) {
-            $data = $orderByRecipient($makeQuery()->with('user:id,full_name,email'))->get();
-
-            return response()->json(['data' => $this->withResolution($data)]);
+            return response()->json([
+                'data' => $this->withResolution($data),
+                'summary' => $this->summaryFor($request),
+            ]);
         }
 
-        // Ringkasan dihitung di SQL atas SELURUH baris terfilter, tanpa
-        // menghidrasi tabel hanya untuk keperluan hitungan.
-        $aggregate = $makeQuery()
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw("SUM(CASE WHEN field = 'TO' THEN 1 ELSE 0 END) as to_count")
-            ->selectRaw("SUM(CASE WHEN field = 'CC' THEN 1 ELSE 0 END) as cc_count")
-            ->first();
-        $totalRows = (int) ($aggregate->total ?? 0);
-        $toCount = (int) ($aggregate->to_count ?? 0);
-        $ccCount = (int) ($aggregate->cc_count ?? 0);
+        // Ringkasan audit atas SELURUH baris terfilter (bukan hanya halaman
+        // aktif) dihitung sekali di SQL agar tak menghidrasi tabel untuk
+        // keperluan hitungan saja.
+        $summary = $this->summaryFor($request);
 
         // UI mengelompokkan penerima per depo. Paginasi dilakukan per DEPO
         // (bukan per baris) agar satu halaman selalu berisi grup depo yang
         // utuh — tampilan TO/CC per depo tidak pernah terpotong. Depot blank
         // (null/''/spasi) dinormalkan ke satu grup Global.
-        $depotKeys = $makeQuery()->select('kode_depo')->distinct()->pluck('kode_depo')
+        $depotKeys = $this->filteredQuery($request)->select('kode_depo')->distinct()->pluck('kode_depo')
             ->map(fn ($kode) => blank($kode) ? null : (string) $kode)
             ->unique()
             ->sort(function ($a, $b): int {
@@ -84,7 +61,7 @@ class EmailRecipientController extends Controller
             })
             ->values();
 
-        $perPage = min(max($request->integer('per_page', 8), 1), 50);
+        $perPage = min(max($request->integer('per_page_groups', $request->integer('per_page', 8)), 1), 50);
         $lastPage = max((int) ceil($depotKeys->count() / $perPage), 1);
         $page = min(max($request->integer('page', 1), 1), $lastPage);
         $pageKeys = $depotKeys->slice(($page - 1) * $perPage, $perPage)
@@ -93,41 +70,90 @@ class EmailRecipientController extends Controller
             ->all();
 
         $rows = $this->constrainToDepotKeys(
-            $orderByRecipient($makeQuery()->with('user:id,full_name,email')),
+            $this->orderRecipients($this->filteredQuery($request)->with('user:id,full_name,email')),
             $pageKeys,
         )->get();
-
-        // Baris bermasalah dihitung di SQL (bukan dari koleksi penuh); hanya
-        // sampelnya (maks 5) yang dihidrasi agar `resolved_count` ikut terisi.
-        $brokenQuery = fn (): Builder => $this->unresolvedQuery($makeQuery());
-        $brokenCount = $brokenQuery()->count();
-        $brokenSample = $orderByRecipient($brokenQuery()->with('user:id,full_name,email'))
-            ->limit(5)
-            ->get();
 
         return response()->json([
             'data' => $this->withResolution($rows),
             'meta' => [
                 'group' => 'depo',
                 'page' => $page,
-                'per_page' => $perPage,
+                // Satuan `per_page_groups` = jumlah grup depo per halaman
+                // (bukan baris) agar tidak ambigu dengan `total_rows`.
+                'per_page_groups' => $perPage,
                 'last_page' => $lastPage,
                 'total_groups' => $depotKeys->count(),
-                'total_rows' => $totalRows,
+                'total_rows' => $summary['total'],
                 'has_prev' => $page > 1,
                 'has_next' => $page < $lastPage,
             ],
-            // Ringkasan dihitung dari SELURUH baris terfilter (bukan hanya
-            // halaman aktif) supaya kartu audit & alert tetap akurat.
-            'summary' => [
-                'total' => $totalRows,
-                'to' => $toCount,
-                'cc' => $ccCount,
-                'ok' => max($totalRows - $brokenCount, 0),
-                'broken' => $brokenCount,
-                'broken_sample' => $this->withResolution($brokenSample),
-            ],
+            'summary' => $summary,
         ]);
+    }
+
+    /**
+     * Query dasar dengan seluruh filter aktif. Dipisah sebagai method agar
+     * tiap kebutuhan (ringkasan, daftar depo, halaman aktif, sampel
+     * bermasalah) memakai builder bersih dan tidak saling mewarisi klausa.
+     */
+    private function filteredQuery(Request $request): Builder
+    {
+        return EmailRecipient::query()
+            ->when($request->filled('document_type'), fn ($q) => $q->where('document_type', $request->document_type))
+            ->when($request->filled('trigger'), fn ($q) => $q->where('trigger', $request->trigger))
+            ->when($request->filled('field'), fn ($q) => $q->where('field', $request->field))
+            ->when($request->filled('kode_depo'), fn ($q) => $q->where('kode_depo', $request->input('kode_depo')))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                // Cermin lapangan yang dicari di klien agar hasil konsisten
+                // ketika pencarian dipindah ke server (paginasi). Wildcard
+                // LIKE di-escape agar `%`/`_` diperlakukan sebagai teks biasa.
+                $pattern = $this->likeContains((string) $request->input('search'));
+                $q->where(function ($qq) use ($pattern) {
+                    $qq->whereRaw('email LIKE ? ESCAPE ?', [$pattern, '\\']);
+                    foreach (['label', 'role_slug', 'document_type', 'trigger', 'field', 'kode_depo'] as $column) {
+                        $qq->orWhereRaw("{$column} LIKE ? ESCAPE ?", [$pattern, '\\']);
+                    }
+                    $qq->orWhereHas('user', fn ($u) => $u->whereRaw('users.full_name LIKE ? ESCAPE ?', [$pattern, '\\']));
+                });
+            });
+    }
+
+    /** Urutan baris yang konsisten antar halaman. */
+    private function orderRecipients(Builder $query): Builder
+    {
+        return $query->orderBy('document_type')->orderBy('trigger')->orderBy('field');
+    }
+
+    /**
+     * Ringkasan audit atas SELURUH baris terfilter (bukan hanya halaman aktif).
+     * Dihitung di SQL agar tak menghidrasi tabel hanya untuk hitungan; hanya
+     * sampel baris bermasalah (maks 5) yang dihidrasi untuk `resolved_count`.
+     *
+     * @return array{total: int, to: int, cc: int, ok: int, broken: int, broken_sample: Collection<int, array>}
+     */
+    private function summaryFor(Request $request): array
+    {
+        $aggregate = $this->filteredQuery($request)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN field = 'TO' THEN 1 ELSE 0 END) as to_count")
+            ->selectRaw("SUM(CASE WHEN field = 'CC' THEN 1 ELSE 0 END) as cc_count")
+            ->first();
+
+        $total = (int) ($aggregate->total ?? 0);
+        $brokenCount = $this->unresolvedQuery($this->filteredQuery($request))->count();
+        $brokenSample = $this->orderRecipients(
+            $this->unresolvedQuery($this->filteredQuery($request))->with('user:id,full_name,email')
+        )->limit(5)->get();
+
+        return [
+            'total' => $total,
+            'to' => (int) ($aggregate->to_count ?? 0),
+            'cc' => (int) ($aggregate->cc_count ?? 0),
+            'ok' => max($total - $brokenCount, 0),
+            'broken' => $brokenCount,
+            'broken_sample' => $this->withResolution($brokenSample),
+        ];
     }
 
     /**
@@ -260,7 +286,7 @@ class EmailRecipientController extends Controller
      * @param  Collection<int, EmailRecipient>  $recipients
      * @return Collection<int, array>
      */
-    private function withResolution($recipients)
+    private function withResolution(Collection $recipients): Collection
     {
         $roleSlugs = $recipients->where('recipient_type', 'role')->pluck('role_slug')->filter()->unique()->values();
         $existingRoles = $roleSlugs->isNotEmpty()

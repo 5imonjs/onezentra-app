@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Api\V1\BiayaRetribusiController;
 use App\Models\BiayaRetribusi;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Biaya\BiayaApprovalPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -82,7 +82,7 @@ class BiayaRetribusiTigaArmadaTest extends TestCase
                 ['title' => 'Mengetahui', 'people' => [['name' => '-', 'role' => 'BAC']]],
                 ['title' => 'Menyetujui', 'people' => [['name' => '-', 'role' => 'RLH']]],
             ],
-            'stamps' => app(BiayaRetribusiController::class)->resolveStamps($biaya),
+            'stamps' => app(BiayaApprovalPresenter::class)->resolveRetribusi($biaya),
         ])->render();
 
         foreach (['SJ-587', 'SJ-589', 'SJ-588', 'KB 9317 D', 'KB 8340 CF', 'B 9614 SCN'] as $token) {

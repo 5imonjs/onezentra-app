@@ -2,6 +2,7 @@
 
 namespace App\Services\Biaya;
 
+use App\Models\ApprovalAssignment;
 use App\Models\BiayaRetribusi;
 use App\Models\BiayaThl;
 use App\Services\ApprovalSectionResolver;
@@ -18,15 +19,21 @@ class BiayaApprovalPresenter
 {
     /**
      * Susunan kotak approval untuk view PDF & respons detail, sudah difilter
-     * agar kotak RFAH* hanya muncul saat pengajuan memang butuh RFAH.
+     * agar kotak RFAH* hanya muncul saat pengajuan memang butuh RFAH. Modul
+     * approval diturunkan dari tipe baris agar tipe & modul tak bisa tak
+     * sinkron (THL selalu modul THL, Retribusi selalu modul Retribusi).
      *
      * @return array<int, array{title: string, people: array<int, array{name: string, role: string}>}>
      */
-    public function approvalSectionsFor(object $row, string $module): array
+    public function approvalSectionsFor(BiayaThl|BiayaRetribusi $row): array
     {
-        $names = $row instanceof BiayaThl
-            ? $this->actorNamesThl($row)
-            : $this->actorNamesRetribusi($row);
+        if ($row instanceof BiayaThl) {
+            $names = $this->actorNamesThl($row);
+            $module = ApprovalAssignment::MODULE_THL;
+        } else {
+            $names = $this->actorNamesRetribusi($row);
+            $module = ApprovalAssignment::MODULE_RETRIBUSI;
+        }
 
         $sections = app(ApprovalSectionResolver::class)->resolve(
             $row->kode_depo ?: '',

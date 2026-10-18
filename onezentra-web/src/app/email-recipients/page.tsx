@@ -38,7 +38,7 @@ interface Options {
 interface PageMeta {
   group: string;
   page: number;
-  per_page: number;
+  per_page_groups: number;
   last_page: number;
   total_groups: number;
   total_rows: number;
@@ -216,7 +216,7 @@ export default function EmailRecipientsPage() {
   const load = useCallback(async () => {
     try {
       const res = await emailRecipients.list({
-        per_page: PER_PAGE,
+        per_page_groups: PER_PAGE,
         page,
         document_type: documentType || undefined,
         kode_depo: kodeDepoFilter || undefined,

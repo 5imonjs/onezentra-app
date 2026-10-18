@@ -547,42 +547,13 @@ class BiayaRetribusiController extends Controller
             $detail->jam_pulang = $detail->jam_pulang ? Carbon::parse($detail->jam_pulang)->format('d M Y H:i') : null;
         }
 
-        $approvalSections = $this->approvalPresenter->approvalSectionsFor($biayaRetribusi, ApprovalAssignment::MODULE_RETRIBUSI);
+        $approvalSections = $this->approvalPresenter->approvalSectionsFor($biayaRetribusi);
 
         return $this->pdfRenderer->render('pdf.biaya_retribusi', [
             'biayaRetribusi' => $biayaRetribusi,
             'approvalSections' => $approvalSections,
-            'stamps' => $this->resolveStamps($biayaRetribusi),
+            'stamps' => $this->approvalPresenter->resolveRetribusi($biayaRetribusi),
         ], $this->pdfRenderer->downloadFilename('Biaya_Retribusi', $biayaRetribusi->tanggal_pengajuan, 'pdf'));
-    }
-
-    /**
-     * Cap audit per kotak approval untuk PDF. Publik agar perilaku penempatan
-     * cap (ikuti peran pelaku) dapat diuji langsung.
-     */
-    public function resolveStamps(BiayaRetribusi $biayaRetribusi): array
-    {
-        return $this->approvalPresenter->resolveRetribusi($biayaRetribusi);
-    }
-
-    /**
-     * Kotak kolom approval tempat cap REVISI/DITOLAK diletakkan mengikuti
-     * peran pelaku aksi: BAC -> Mengetahui, RFAH -> RFAH*, selainnya
-     * (RLH / data lama tanpa level) -> Menyetujui.
-     */
-    public function stampSectionFor(string $level): string
-    {
-        return $this->approvalPresenter->stampSectionFor($level);
-    }
-
-    /**
-     * Nama pelaku per kotak approval. Publik agar dapat diuji langsung.
-     *
-     * @return array{submitter: ?string, checker: ?string, approver: ?string, rfah: ?string}
-     */
-    public function approvalActorNames(BiayaRetribusi $biayaRetribusi): array
-    {
-        return $this->approvalPresenter->actorNamesRetribusi($biayaRetribusi);
     }
 
     public function export(Request $request)

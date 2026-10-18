@@ -482,7 +482,7 @@ class BiayaThlController extends Controller
         $biayaThl->rejected_at = $biayaThl->rejected_at ? Carbon::parse($biayaThl->rejected_at)->format('d M Y') : null;
         $biayaThl->revised_at = $biayaThl->revised_at ? Carbon::parse($biayaThl->revised_at)->format('d M Y') : null;
 
-        $approvalSections = $this->approvalPresenter->approvalSectionsFor($biayaThl, ApprovalAssignment::MODULE_THL);
+        $approvalSections = $this->approvalPresenter->approvalSectionsFor($biayaThl);
 
         $retribusi = new BiayaRetribusi([
             'tanggal_pengajuan' => $biayaThl->tanggal_pengajuan,
@@ -550,39 +550,10 @@ class BiayaThlController extends Controller
         return $this->pdfRenderer->render('pdf.biaya_retribusi_combined', [
             'biayaRetribusi' => $retribusi,
             'approvalSections' => $approvalSections,
-            'stamps' => $this->resolveStamps($biayaThl),
+            'stamps' => $this->approvalPresenter->resolveThl($biayaThl),
             'logoData' => $this->pdfRenderer->logoData(),
             'rfahThreshold' => config('biaya.thl_rfah_threshold', 750000),
         ], $this->pdfRenderer->downloadFilename('Biaya_THL', $biayaThl->tanggal_pengajuan, 'pdf'));
-    }
-
-    /**
-     * Cap audit per kotak approval untuk PDF. Publik agar perilaku penempatan
-     * cap (ikuti peran pelaku) dapat diuji langsung.
-     */
-    public function resolveStamps(BiayaThl $biayaThl): array
-    {
-        return $this->approvalPresenter->resolveThl($biayaThl);
-    }
-
-    /**
-     * Kotak kolom approval tempat cap REVISI/DITOLAK diletakkan mengikuti
-     * peran pelaku aksi: BAC -> Mengetahui, RFAH -> RFAH*, selainnya
-     * (RLH / data lama tanpa level) -> Menyetujui.
-     */
-    public function stampSectionFor(string $level): string
-    {
-        return $this->approvalPresenter->stampSectionFor($level);
-    }
-
-    /**
-     * Nama pelaku per kotak approval. Publik agar dapat diuji langsung.
-     *
-     * @return array{submitter: ?string, checker: ?string, approver: ?string, rfah: ?string}
-     */
-    public function approvalActorNames(BiayaThl $biayaThl): array
-    {
-        return $this->approvalPresenter->actorNamesThl($biayaThl);
     }
 
     public function export(Request $request)

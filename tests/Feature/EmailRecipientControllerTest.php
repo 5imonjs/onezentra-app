@@ -100,7 +100,7 @@ class EmailRecipientControllerTest extends TestCase
         ], $overrides));
     }
 
-    public function test_index_without_pagination_params_keeps_legacy_shape(): void
+    public function test_index_without_pagination_params_returns_capped_legacy_rows_with_summary(): void
     {
         Sanctum::actingAs($this->userWith(['emails.view']));
         $this->recipient(['kode_depo' => 'DPA', 'email' => 'a@test.com']);
@@ -109,7 +109,44 @@ class EmailRecipientControllerTest extends TestCase
 
         $res->assertJsonCount(1, 'data');
         $res->assertJsonMissingPath('meta');
-        $res->assertJsonMissingPath('summary');
+        // Ringkasan tetap disertakan agar panel audit klien gaya lama akurat.
+        $res->assertJsonPath('summary.total', 1);
+    }
+
+    public function test_index_legacy_branch_caps_rows_but_summary_counts_all(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        $rows = [];
+        for ($i = 0; $i < 505; $i++) {
+            $rows[] = [
+                'document_type' => 'rencana_kirim', 'trigger' => 'created',
+                'recipient_type' => 'email', 'field' => 'TO',
+                'email' => "r{$i}@test.com", 'is_active' => true, 'kode_depo' => null,
+            ];
+        }
+        EmailRecipient::insert($rows);
+
+        $res = $this->getJson('/api/v1/email-recipients')->assertOk();
+
+        // Baris dibatasi demi keamanan memori, tetapi total sebenarnya tetap
+        // dilaporkan lewat ringkasan.
+        $res->assertJsonCount(500, 'data');
+        $res->assertJsonPath('summary.total', 505);
+    }
+
+    public function test_index_accepts_per_page_groups_alias_for_depot_pagination(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+        $this->recipient(['kode_depo' => 'DPA', 'email' => 'a@test.com']);
+        $this->recipient(['kode_depo' => 'DPB', 'email' => 'b@test.com']);
+
+        $res = $this->getJson('/api/v1/email-recipients?per_page_groups=1&page=1')->assertOk();
+
+        $res->assertJsonPath('meta.per_page_groups', 1)
+            ->assertJsonPath('meta.total_groups', 2)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_index_paginates_depot_groups_and_returns_summary(): void
@@ -124,7 +161,8 @@ class EmailRecipientControllerTest extends TestCase
 
         // Halaman = grup depo utuh: global dulu, lalu alfabetis.
         $page1 = $this->getJson('/api/v1/email-recipients?per_page=2&page=1')->assertOk();
-        $page1->assertJsonPath('meta.total_groups', 4)
+        $page1->assertJsonPath('meta.per_page_groups', 2)
+            ->assertJsonPath('meta.total_groups', 4)
             ->assertJsonPath('meta.total_rows', 5)
             ->assertJsonPath('meta.last_page', 2)
             ->assertJsonPath('meta.has_prev', false)

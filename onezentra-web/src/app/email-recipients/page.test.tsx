@@ -56,7 +56,7 @@ const listResponse = (rows: Array<Record<string, unknown>>, meta: Record<string,
     data: {
       data: rows,
       meta: {
-        group: 'depo', page: 1, per_page: 8, last_page: 1,
+        group: 'depo', page: 1, per_page_groups: 8, last_page: 1,
         total_groups: rows.length, total_rows: rows.length,
         has_prev: false, has_next: false, ...meta,
       },
@@ -170,7 +170,7 @@ describe('EmailRecipientsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Berikutnya' }));
 
-    await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, per_page: 8 })));
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, per_page_groups: 8 })));
   });
 
   it('menyelaraskan halaman dengan meta server saat halaman di-clamp', async () => {

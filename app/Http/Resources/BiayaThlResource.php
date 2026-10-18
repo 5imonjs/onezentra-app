@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Models\ApprovalAssignment;
 use App\Services\Biaya\BiayaApprovalPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -35,7 +34,7 @@ class BiayaThlResource extends JsonResource
 
         if ($this->withApprovalSections) {
             $data['approval_sections'] = app(BiayaApprovalPresenter::class)
-                ->approvalSectionsFor($this->resource, ApprovalAssignment::MODULE_THL);
+                ->approvalSectionsFor($this->resource);
         }
 
         return $data;

@@ -481,16 +481,18 @@ export function auditDates(data: { submitted_at?: string | null; checked_at?: st
 export function stampFor(section: ApprovalSection, data: RetribusiData, dates: AuditDates): StampSpec | null {
   const { status } = data;
   if (section.title === 'Mengajukan') {
-    // Sejajar server (resolveStamps): cap mengikuti AKSI submit (status),
-    // bukan keberadaan nama — nama bisa kosong pada data lama/API langsung.
+    // Sejajar server (BiayaApprovalPresenter::resolveThl/resolveRetribusi):
+    // cap mengikuti AKSI submit (status), bukan keberadaan nama — nama bisa
+    // kosong pada data lama/API langsung.
     return status && status !== 'draft' && dates.submitted && dates.submitted !== '-'
       ? { text: 'PENGAJUAN', color: STAMP_RED, date: dates.submitted || '' }
       : null;
   }
 
   if (section.title === 'Mengetahui') {
-    // Sejajar server (resolveStamps): cap DIPERIKSA hanya bila aksi periksa
-    // benar terjadi (checked_at ada) — BUKAN karena nama assignee terdaftar.
+    // Sejajar server (BiayaApprovalPresenter::resolveThl/resolveRetribusi):
+    // cap DIPERIKSA hanya bila aksi periksa benar terjadi (checked_at ada) —
+    // BUKAN karena nama assignee terdaftar.
     // Nama pelaku boleh tidak terbawa pada data PDF, tetapi cap audit tetap
     // harus tampil karena timestamp adalah bukti aksinya.
     if (dates.checked && dates.checked !== '-') return { text: 'DIPERIKSA', color: STAMP_RED, date: dates.checked };

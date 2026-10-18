@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Api\V1\BiayaRetribusiController;
-use App\Http\Controllers\Api\V1\BiayaThlController;
 use App\Models\BiayaRetribusi;
 use App\Models\BiayaThl;
 use App\Models\BiayaThlDetail;
 use App\Models\User;
+use App\Services\Biaya\BiayaApprovalPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -45,7 +44,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revisi_reason' => 'Foto belum lengkap',
         ])->load('submittedBy', 'revisedBy');
 
-        $stamps = app(BiayaThlController::class)->resolveStamps($biaya);
+        $stamps = app(BiayaApprovalPresenter::class)->resolveThl($biaya);
 
         $this->assertSame('PENGAJUAN', $stamps['Mengajukan']['text']);
         $this->assertSame('REVISI', $stamps['Mengetahui']['text']);
@@ -71,7 +70,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revised_by' => $rlh->id,
         ])->load('submittedBy', 'checkedBy', 'revisedBy');
 
-        $stamps = app(BiayaThlController::class)->resolveStamps($biaya);
+        $stamps = app(BiayaApprovalPresenter::class)->resolveThl($biaya);
 
         $this->assertSame('PENGAJUAN', $stamps['Mengajukan']['text']);
         $this->assertSame('DIPERIKSA', $stamps['Mengetahui']['text']);
@@ -102,7 +101,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revised_by' => $rfah->id,
         ])->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'revisedBy');
 
-        $stamps = app(BiayaThlController::class)->resolveStamps($biaya);
+        $stamps = app(BiayaApprovalPresenter::class)->resolveThl($biaya);
 
         $this->assertSame('PENGAJUAN', $stamps['Mengajukan']['text']);
         $this->assertSame('DIPERIKSA', $stamps['Mengetahui']['text']);
@@ -134,7 +133,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'rejection_reason' => 'Nominal melebihi batas',
         ])->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'rejectedBy');
 
-        $stamps = app(BiayaThlController::class)->resolveStamps($biaya);
+        $stamps = app(BiayaApprovalPresenter::class)->resolveThl($biaya);
 
         $this->assertSame('DITOLAK', $stamps['RFAH*']['text']);
         $this->assertSame('DISETUJUI RLH', $stamps['Menyetujui']['text']);
@@ -157,7 +156,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revisi_reason' => 'Dokumen belum lengkap',
         ])->load('submittedBy', 'revisedBy');
 
-        $stamps = app(BiayaRetribusiController::class)->resolveStamps($biaya);
+        $stamps = app(BiayaApprovalPresenter::class)->resolveRetribusi($biaya);
 
         $this->assertSame('PENGAJUAN', $stamps['Mengajukan']['text']);
         $this->assertSame('REVISI', $stamps['Mengetahui']['text']);
@@ -181,7 +180,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revised_by' => $rfah->id,
         ])->load('submittedBy', 'revisedBy');
 
-        $stamps = app(BiayaRetribusiController::class)->resolveStamps($biaya);
+        $stamps = app(BiayaApprovalPresenter::class)->resolveRetribusi($biaya);
 
         $this->assertSame('REVISI', $stamps['RFAH*']['text']);
         $this->assertArrayNotHasKey('Menyetujui', $stamps);
@@ -211,7 +210,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revised_by' => $rfah->id,
         ])->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'revisedBy');
 
-        $stamps = app(BiayaRetribusiController::class)->resolveStamps($biaya);
+        $stamps = app(BiayaApprovalPresenter::class)->resolveRetribusi($biaya);
 
         $this->assertSame('REVISI', $stamps['RFAH*']['text']);
         $this->assertSame('DISETUJUI RLH', $stamps['Menyetujui']['text']);
@@ -372,7 +371,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revised_by' => $rfah->id,
         ])->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $names = app(BiayaThlController::class)->approvalActorNames($biaya);
+        $names = app(BiayaApprovalPresenter::class)->actorNamesThl($biaya);
 
         $this->assertSame('Rlh User', $names['submitter']);
         $this->assertSame('Rlh User', $names['checker']);
@@ -403,7 +402,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'approved_by' => $rfah->id,
         ])->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $names = app(BiayaThlController::class)->approvalActorNames($biaya);
+        $names = app(BiayaApprovalPresenter::class)->actorNamesThl($biaya);
 
         $this->assertSame('Rlh User', $names['submitter']);
         $this->assertSame('Rlh User', $names['approver']);
@@ -426,7 +425,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revised_by' => $bac->id,
         ])->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $names = app(BiayaThlController::class)->approvalActorNames($biaya);
+        $names = app(BiayaApprovalPresenter::class)->actorNamesThl($biaya);
 
         $this->assertSame('Bac User', $names['submitter']);
         $this->assertSame('Bac User', $names['checker']);
@@ -453,7 +452,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'rejection_reason' => 'Nominal tidak sesuai',
         ])->load('submittedBy', 'checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $names = app(BiayaThlController::class)->approvalActorNames($biaya);
+        $names = app(BiayaApprovalPresenter::class)->actorNamesThl($biaya);
 
         $this->assertSame('Rlh User', $names['approver']);
         $this->assertSame('Rlh User', $names['checker']);
@@ -484,7 +483,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'approved_by' => $rfah->id,
         ])->load('checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $names = app(BiayaRetribusiController::class)->approvalActorNames($biaya);
+        $names = app(BiayaApprovalPresenter::class)->actorNamesRetribusi($biaya);
 
         $this->assertSame('Pengaju Depo', $names['submitter']);
         $this->assertSame('Bac Retribusi', $names['checker']);
@@ -509,7 +508,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'revised_by' => $bac->id,
         ])->load('checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $names = app(BiayaRetribusiController::class)->approvalActorNames($biaya);
+        $names = app(BiayaApprovalPresenter::class)->actorNamesRetribusi($biaya);
 
         $this->assertSame('Pengaju Depo', $names['submitter']);
         $this->assertSame('Bac Retribusi', $names['checker']);
@@ -539,7 +538,7 @@ class BiayaPdfStampPlacementTest extends TestCase
             'rlh_approved_by' => $rlh->id,
         ])->load('checkedBy', 'rlhApprovedBy', 'approvedBy', 'rejectedBy', 'revisedBy');
 
-        $names = app(BiayaRetribusiController::class)->approvalActorNames($biaya);
+        $names = app(BiayaApprovalPresenter::class)->actorNamesRetribusi($biaya);
 
         $this->assertSame('Rlh Retribusi', $names['approver']);
         $this->assertNull($names['rfah']);

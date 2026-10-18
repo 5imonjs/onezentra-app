@@ -58,7 +58,7 @@ class BiayaApprovalSectionsTest extends TestCase
         ]);
 
         $sections = collect(app(BiayaApprovalPresenter::class)
-            ->approvalSectionsFor($biaya, ApprovalAssignment::MODULE_RETRIBUSI))
+            ->approvalSectionsFor($biaya))
             ->keyBy('title');
 
         $this->assertSame('Pengaju Retribusi', $sections['Mengajukan']['people'][0]['name']);
@@ -80,7 +80,7 @@ class BiayaApprovalSectionsTest extends TestCase
         ]);
 
         $sections = collect(app(BiayaApprovalPresenter::class)
-            ->approvalSectionsFor($biaya, ApprovalAssignment::MODULE_THL))
+            ->approvalSectionsFor($biaya))
             ->keyBy('title');
 
         $this->assertSame('Pengaju THL', $sections['Mengajukan']['people'][0]['name']);
@@ -100,7 +100,7 @@ class BiayaApprovalSectionsTest extends TestCase
         ]);
 
         $titles = collect(app(BiayaApprovalPresenter::class)
-            ->approvalSectionsFor($biaya, ApprovalAssignment::MODULE_RETRIBUSI))
+            ->approvalSectionsFor($biaya))
             ->pluck('title')
             ->all();
 
@@ -109,7 +109,7 @@ class BiayaApprovalSectionsTest extends TestCase
         $biaya->update(['is_rfah_required' => true]);
 
         $titles = collect(app(BiayaApprovalPresenter::class)
-            ->approvalSectionsFor($biaya->fresh(), ApprovalAssignment::MODULE_RETRIBUSI))
+            ->approvalSectionsFor($biaya->fresh()))
             ->pluck('title')
             ->all();
 
