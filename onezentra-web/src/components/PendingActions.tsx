@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { biayaRetribusi, biayaThl, gateTransactions, rencanaKirim, sjValidations, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import DashboardPanel from '@/components/DashboardPanel';
 
 type Tone = 'amber' | 'blue' | 'sky' | 'violet';
 
@@ -267,32 +268,24 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
   const totalItems = groups.reduce((sum, g) => sum + g.total, 0);
 
   return (
-    <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Item yang memerlukan tindakan Anda">
+    <DashboardPanel
+      ariaLabel="Item yang memerlukan tindakan Anda"
+      title="Perlu Tindakan"
+      subtitle="Item yang menunggu aksi Anda hari ini"
+      icon={<path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />}
+      badge={
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold tabular-nums text-red-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
+          {totalItems} item
+        </span>
+      }
+    >
       {failedCount > 0 && (
         <div className="mx-5 mt-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700" role="alert">
           <span>Sebagian data gagal dimuat — daftar mungkin belum lengkap.</span>
           <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
         </div>
       )}
-
-      {/* Header ramping: ikon kecil + judul, badge jumlah di kanan. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card px-5 py-3.5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-wash text-accent-text" aria-hidden="true">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </span>
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-gray-900">Perlu Tindakan</h2>
-            <p className="truncate text-xs text-gray-500">Item yang menunggu aksi Anda hari ini</p>
-          </div>
-        </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold tabular-nums text-red-700">
-          <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
-          {totalItems} item
-        </span>
-      </div>
 
       <div className="divide-y divide-gray-100">
         {groups.map((group) => {
@@ -330,6 +323,6 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
           );
         })}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
