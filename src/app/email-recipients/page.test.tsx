@@ -25,8 +25,12 @@ vi.mock('@/lib/api', () => ({
 }));
 
 const optionsPayload = {
-  document_types: ['rencana_kirim'],
-  triggers: ['created'],
+  document_types: ['rencana_kirim', 'standarisasi_tumpukan'],
+  triggers: ['created', 'submitted'],
+  document_type_triggers: {
+    rencana_kirim: ['created', 'cancelled'],
+    standarisasi_tumpukan: ['submitted', 'approved', 'rejected'],
+  },
   fields: ['TO', 'CC'],
   users: [],
   roles: [
@@ -201,6 +205,21 @@ describe('EmailRecipientsPage', () => {
 
     const headers = await screen.findAllByText(/^(JKT01|jkt01)$/);
     expect(headers.map((h) => h.textContent)).toEqual(['JKT01', 'jkt01']);
+  });
+
+  it('menampilkan trigger "Standarisasi Tumpukan diajukan" (submitted) dari opsi backend', async () => {
+    list.mockResolvedValue(listResponse([{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }]));
+
+    render(<EmailRecipientsPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tambah Penerima' }));
+    await screen.findByRole('heading', { name: 'Tambah Penerima TO' });
+
+    fireEvent.change(screen.getByLabelText('Jenis Dokumen'), { target: { value: 'standarisasi_tumpukan' } });
+
+    const trigger = screen.getByLabelText('Trigger') as HTMLSelectElement;
+    expect(Array.from(trigger.options).map((o) => o.value)).toEqual(['submitted', 'approved', 'rejected']);
+    expect(screen.getByRole('option', { name: 'Standarisasi Tumpukan diajukan' })).toBeInTheDocument();
   });
 
   it('mengirim filter & pencarian ke server (bukan menyaring di klien)', async () => {
