@@ -139,7 +139,7 @@ export default function OpnameExpiredReportPage() {
   }, [pagination]);
 
   const load = useCallback(async () => {
-    if (!hasPermission('reports.view')) return;
+    if (!hasPermission('reports.view') || !hasPermission('opname.view')) return;
     const reqId = ++reqIdRef.current;
     setLoading(true);
     setError('');
@@ -305,7 +305,9 @@ export default function OpnameExpiredReportPage() {
     );
   };
 
-  if (!hasPermission('reports.view')) {
+  // Data laporan ini disajikan endpoint opname (`opname.view`); izin laporan
+  // saja tidak cukup — tanpa keduanya halaman akan memuat lalu kena 403.
+  if (!hasPermission('reports.view') || !hasPermission('opname.view')) {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
