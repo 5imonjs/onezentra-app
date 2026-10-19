@@ -7,6 +7,9 @@
 - Why: SQLite (tests) has no default backslash escape, so a bare
   `->where('col', 'like', $like)` silently behaves differently from MySQL.
   A raw `'%'.$term.'%'` also lets user input `%`/`_` act as wildcards.
+- Enforced by `Tests\Unit\LikeEscapingGuardTest`, which fails the build on
+  `addcslashes()` outside the helper, `'%'.…` concatenation, a dynamic `'like'`
+  builder call, or `LIKE ?` without `ESCAPE`.
 
 ## Time & operational dates
 - The app timezone comes from `APP_TIMEZONE` (`config('app.timezone')`), set to
