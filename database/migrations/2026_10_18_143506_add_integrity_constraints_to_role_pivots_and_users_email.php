@@ -60,21 +60,34 @@ return new class extends Migration
         $this->deleteOrphans('role_permission', 'role_id', 'roles');
         $this->deleteOrphans('role_permission', 'permission_id', 'permissions');
 
-        Schema::table('role_user', function (Blueprint $table): void {
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->foreign('role_id')->references('id')->on('roles')->cascadeOnDelete();
-        });
-
-        Schema::table('role_permission', function (Blueprint $table): void {
-            $table->foreign('role_id')->references('id')->on('roles')->cascadeOnDelete();
-            $table->foreign('permission_id')->references('id')->on('permissions')->cascadeOnDelete();
-        });
+        if (! Schema::hasForeignKey('role_user', 'role_user_user_id_foreign')) {
+            Schema::table('role_user', function (Blueprint $table): void {
+                $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            });
+        }
+        if (! Schema::hasForeignKey('role_user', 'role_user_role_id_foreign')) {
+            Schema::table('role_user', function (Blueprint $table): void {
+                $table->foreign('role_id')->references('id')->on('roles')->cascadeOnDelete();
+            });
+        }
+        if (! Schema::hasForeignKey('role_permission', 'role_permission_role_id_foreign')) {
+            Schema::table('role_permission', function (Blueprint $table): void {
+                $table->foreign('role_id')->references('id')->on('roles')->cascadeOnDelete();
+            });
+        }
+        if (! Schema::hasForeignKey('role_permission', 'role_permission_permission_id_foreign')) {
+            Schema::table('role_permission', function (Blueprint $table): void {
+                $table->foreign('permission_id')->references('id')->on('permissions')->cascadeOnDelete();
+            });
+        }
 
         $this->deduplicateUserEmails();
 
-        Schema::table('users', function (Blueprint $table): void {
-            $table->unique('email');
-        });
+        if (! Schema::hasIndex('users', 'users_email_unique')) {
+            Schema::table('users', function (Blueprint $table): void {
+                $table->unique('email');
+            });
+        }
     }
 
     public function down(): void
