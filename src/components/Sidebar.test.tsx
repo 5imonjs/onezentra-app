@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Sidebar from './Sidebar';
 
 const nav = vi.hoisted(() => ({ pathname: '/email-recipients' }));
+const auth = vi.hoisted(() => ({ can: (_permission: string): boolean => true }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -15,7 +16,7 @@ vi.mock('next/image', () => ({
 
 vi.mock('@/store/auth', () => ({
   useAuthStore: () => ({
-    hasPermission: () => true,
+    hasPermission: (permission: string) => auth.can(permission),
     user: { full_name: 'Budi Santoso', roles: [], level: 'admin' },
     logout: vi.fn(),
   }),
@@ -31,6 +32,7 @@ describe('Sidebar — ikon menu', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     nav.pathname = '/email-recipients';
+    auth.can = () => true;
   });
 
   afterEach(cleanup);
@@ -77,5 +79,14 @@ describe('Sidebar — ikon menu', () => {
     expect(batchExpired).toBeTruthy();
     expect(sesiOpname).toBeTruthy();
     expect(batchExpired).not.toEqual(sesiOpname);
+  });
+
+  it('menyembunyikan "Sesi Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {
+    nav.pathname = '/opname-expired';
+    auth.can = (permission: string) => permission !== 'opname.session.view';
+    renderSidebar();
+
+    expect(screen.getByText('Batch Expired')).toBeInTheDocument();
+    expect(screen.queryByText('Sesi Opname')).not.toBeInTheDocument();
   });
 });
