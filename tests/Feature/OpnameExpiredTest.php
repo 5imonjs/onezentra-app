@@ -933,6 +933,40 @@ class OpnameExpiredTest extends TestCase
         $this->assertSame(1, $res->json('data.pending_count'));
     }
 
+    public function test_progress_does_not_mark_depot_submitted_when_only_partial_waves_validated(): void
+    {
+        // Dua wave di depo yang sama; baru satu wave tervalidasi. Depo belum
+        // "sudah kirim". Dulu cek "ada sesi COMPLETED" membuat depo langsung
+        // dianggap terkirim walau wave lain belum divalidasi.
+        $this->receipt('B-PRG-P1', 'Produk Partial 1', 4, '2027-02-01', '2026-09-09');
+        $this->receipt('B-PRG-P2', 'Produk Partial 2', 4, '2027-03-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+
+        $waves = OpnameExpiredWave::where('week_start', '2026-09-07')->get();
+        $this->assertCount(2, $waves);
+
+        // Sesi COMPLETED untuk depo tersebut, tapi hanya sebagian wave
+        // tervalidasi (satu wave).
+        OpnameExpiredSession::create([
+            'week_start' => '2026-09-07',
+            'week_end' => '2026-09-13',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->user->id,
+            'created_by' => $this->user->id,
+            'status' => OpnameExpiredSession::STATUS_COMPLETED,
+        ]);
+
+        $waves->first()->update(['validated_by' => $this->user->id, 'validated_at' => now()]);
+
+        $res = $this->getJson('/api/v1/opname-expired/progress?week_start=2026-09-07')->assertOk();
+        $depot = collect($res->json('data.depots'))->firstWhere('kode_depo', 'DPO');
+
+        $this->assertFalse((bool) $depot['submitted']);
+        $this->assertSame(0, $res->json('data.submitted_count'));
+        $this->assertSame(1, $res->json('data.pending_count'));
+    }
+
     public function test_remind_sends_email_to_pending_depots_only(): void
     {
         Mail::fake();

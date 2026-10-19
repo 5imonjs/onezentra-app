@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\ReceivingImport;
 use App\Imports\ReceivingImportFailed;
 use App\Mail\ReceivingCompleted;
+use App\Models\Batch;
 use App\Models\Dock;
 use App\Models\GateTransaction;
 use App\Models\Npn;
@@ -172,6 +173,14 @@ class ReceivingController extends Controller
                 }
             }
 
+            // Aturan baku: tiap baris ledger wajib tepat satu batch. Baris hasil
+            // salin validasi sudah punya batch (dibuat saat scan SJ) dan
+            // issueForReceivingItem idempoten; baris fallback tanpa validasi
+            // belum berlabel, jadi diterbitkan di sini.
+            $receiving->items()->get()->each(
+                fn (ReceivingItem $item) => Batch::issueForReceivingItem($item)
+            );
+
             // Total header dihitung ulang dari baris yang benar-benar
             // tersalin: jalur penyalinan validasi memakai actual_qty (bisa
             // beda dari expected), jadi nilai awal dari rencana kirim tidak
@@ -320,6 +329,7 @@ class ReceivingController extends Controller
             'nama_barang' => 'nullable|string|max:200',
             'actual_qty' => 'required|numeric|min:0|max:999999',
             'satuan' => 'nullable|string|max:20',
+            'expired_date' => 'nullable|date',
             'condition' => 'nullable|string|in:GOOD,DAMAGED,MISSING,FISIK_BAGUS,FISIK_RUSAK,QTY_KURANG,ISI_KEMASAN_KURANG,EXPIRED_TIDAK_STANDAR,LAINNYA',
             'notes' => 'nullable|string|max:2000',
             'rencana_kirim_item_id' => 'nullable|exists:rencana_kirim_items,id',
@@ -364,6 +374,11 @@ class ReceivingController extends Controller
                 'scanned_by' => request()->user()->id,
                 'scan_time' => now(),
             ]));
+
+            // Aturan baku: tiap baris ledger wajib satu batch (konsisten dengan
+            // store manual/import). Baris hasil scan inilah satu-satunya titik
+            // penangkapan expired_date saat tidak ada validasi SJ.
+            Batch::issueForReceivingItem($item);
 
             if (! empty($validated['rencana_kirim_item_id'])) {
                 RencanaKirimItem::where('id', $validated['rencana_kirim_item_id'])

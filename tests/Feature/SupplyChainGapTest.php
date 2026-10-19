@@ -290,4 +290,62 @@ class SupplyChainGapTest extends TestCase
             'received_qty harus kembali 0 setelah receiving dibatalkan (scan-nya ikut batal)'
         );
     }
+
+    /**
+     * Celah 7: scan receiving (jalur tanpa validasi SJ) harus menangkap
+     * expired_date dan menerbitkan satu batch untuk baris ledger-nya. Tanpa
+     * expired_date, baris hasil scan tidak pernah masuk kandidat opname
+     * (OpnameExpiredService menyaring whereNotNull('expired_date')); tanpa
+     * batch, baris tidak punya label audit.
+     */
+    public function test_scan_receiving_captures_expiry_and_issues_batch(): void
+    {
+        $user = $this->userWithPermissions(['receiving.create', 'receiving.view', 'receiving.edit']);
+        $rk = $this->scheduledRencana($user, 'PO-GAP-007');
+        $rk->update(['status' => 'VERIFIED']);
+        $rkItemId = RencanaKirimItem::where('rencana_kirim_id', $rk->id)->first()->id;
+
+        $receivingId = $this->postJson('/api/v1/receivings', ['rencana_kirim_id' => $rk->id])
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->postJson("/api/v1/receivings/{$receivingId}/start")->assertOk();
+        $this->postJson("/api/v1/receivings/{$receivingId}/scan", [
+            'kode_barang' => 'SKU-GAP-1',
+            'actual_qty' => 5,
+            'expired_date' => '2027-02-01',
+            'rencana_kirim_item_id' => $rkItemId,
+        ])->assertCreated();
+
+        $item = ReceivingItem::where('receiving_id', $receivingId)
+            ->where('kode_barang', 'SKU-GAP-1')
+            ->whereNotNull('scan_time')
+            ->firstOrFail();
+
+        $this->assertSame('2027-02-01', $item->expired_date?->toDateString());
+        $this->assertDatabaseHas('batches', ['receiving_item_id' => $item->id]);
+    }
+
+    /**
+     * Celah 8: baris fallback di ReceivingController::store (tanpa validasi
+     * SJ) belum berlabel; store harus tetap menerbitkan satu batch agar
+     * aturan "tiap baris ledger tepat satu batch" tidak bocor.
+     */
+    public function test_store_issues_batch_for_fallback_items(): void
+    {
+        $user = $this->userWithPermissions(['receiving.create', 'receiving.view']);
+        $rk = $this->scheduledRencana($user, 'PO-GAP-008');
+        $rk->update(['status' => 'VERIFIED']);
+        $rkItemId = RencanaKirimItem::where('rencana_kirim_id', $rk->id)->first()->id;
+
+        $receivingId = $this->postJson('/api/v1/receivings', ['rencana_kirim_id' => $rk->id])
+            ->assertCreated()
+            ->json('data.id');
+
+        $item = ReceivingItem::where('receiving_id', $receivingId)
+            ->where('rencana_kirim_item_id', $rkItemId)
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('batches', ['receiving_item_id' => $item->id]);
+    }
 }

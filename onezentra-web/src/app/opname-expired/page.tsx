@@ -1280,9 +1280,9 @@ export default function OpnameExpiredPage() {
             <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa &lt; threshold AMAN → status <span className="text-amber-600 font-medium">Perhatian</span></p>
           </div>
           <div>
-            <label htmlFor="threshold-kritis" className="block text-xs font-medium text-gray-500 mb-1">Threshold KRITIS (hari)</label>
+            <label htmlFor="threshold-kritis" className="block text-xs font-medium text-gray-500 mb-1">Threshold KRITIS — ambang &ldquo;SEGERA&rdquo; (hari)</label>
             <input id="threshold-kritis" type="number" min={0} step={1} value={thresholdForm.threshold_kritis} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa &lt; threshold PERHATIAN → status <span className="text-red-600 font-medium">Kritis/Expired</span></p>
+            <p className="text-[11px] text-slate-400 mt-1">Batch berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Tidak menggeser batas status (batas Kritis = threshold PERHATIAN).</p>
           </div>
         </div>
       </Modal>

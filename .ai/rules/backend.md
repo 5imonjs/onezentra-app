@@ -46,5 +46,14 @@
 - Deleting an `opname_expired_wave` cascades its `opname_expired_session_items`
   (photos, koreksi, verifier). `OpnameExpiredController::destroy()` refuses waves
   that are already in a session or validated; keep that guard.
+- Every `receiving_items` ledger row should carry exactly one `Batch`
+  (`Batch::issueForReceivingItem`, idempotent). `ReceivingController::store()`
+  and `scanItem()` must issue one for rows they create — the scan path is the
+  only place `expired_date` is captured when there is no SJ validation, and
+  `OpnameExpiredService` only sees rows with a non-null `expired_date`.
+- Opname progress "sudah kirim" is per-wave, not per-session:
+  `submitted = seluruh wave depo tervalidasi`. Never mark a whole depot
+  submitted just because one `COMPLETED` session exists — that session may
+  cover only some waves.
 - Logout revokes only the current token (`currentAccessToken()->delete()`), never
   `$user->tokens()->delete()`, to stay multi-device safe.

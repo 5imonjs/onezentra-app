@@ -186,7 +186,9 @@ class OpnameExpiredController extends Controller
 
     /**
      * Progres kirim per depo untuk satu minggu: sudah vs belum kirim.
-     * "Sudah" = ada sesi COMPLETED, atau seluruh wave tervalidasi.
+     * "Sudah" = seluruh wave depo tervalidasi. Sesi COMPLETED memang menandai
+     * semua wave yang dicakupnya tervalidasi, tapi sesi parsial tidak boleh
+     * menandai seluruh depo "sudah" — karena itu cek per-wave yang jadi penentu.
      */
     public function progress(Request $request): JsonResponse
     {
@@ -233,7 +235,7 @@ class OpnameExpiredController extends Controller
                 'total' => $total,
                 'validated' => $validated,
                 'has_session' => isset($openSessions[$depo]) || isset($completedSessions[$depo]),
-                'submitted' => isset($completedSessions[$depo]) || ($total > 0 && $validated === $total),
+                'submitted' => $total > 0 && $validated === $total,
             ];
         }
 
