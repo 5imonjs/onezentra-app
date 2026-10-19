@@ -40,10 +40,14 @@ export default function ApprovalSettingsPage() {
       ? kodeDepo
       : depots[0]?.kode_depo ?? '');
   const load = useCallback(async () => {
-    if (!effectiveDepot) return;
     setLoading(true);
     try {
-      const response = await approvalAssignments.get(effectiveDepot, module) as { data: { data: Record<string, Assignment>; users: Approver[]; depots?: Depot[] } };
+      // Saat daftar depo belum ada, panggil TANPA kode_depo: backend memakai
+      // depo user sebagai default sekaligus mengirim daftar depo. Tanpa ini
+      // halaman deadlock — `effectiveDepot` butuh `depots`, sementara `depots`
+      // hanya diisi dari respons ini, sehingga fetch tak pernah berjalan dan
+      // area data selamanya kosong.
+      const response = await approvalAssignments.get(effectiveDepot || undefined, module) as { data: { data: Record<string, Assignment>; users: Approver[]; depots?: Depot[] } };
       setApprovers(response.data.users);
       if (response.data.depots) setDepots(response.data.depots);
       setAssignments(response.data.data || {});
@@ -121,29 +125,41 @@ export default function ApprovalSettingsPage() {
             </label>
             {(() => {
               // Setting tersimpan bisa menunjuk user yang levelnya berubah /
-              // nonaktif sehingga tak masuk daftar dropdown — tampilkan
-              // peringatan, bukan kolom kosong yang terlihat seperti "berubah".
+              // nonaktif / beda depo sehingga tak masuk daftar dropdown —
+              // tampilkan peringatan, bukan kolom kosong yang terlihat seperti
+              // "berubah".
               const stale = LEVELS.filter(({ key }) => {
                 const id = selected[key];
                 if (!id) return false;
-                return !approvers.some((a) => String(a.id) === id);
+                const depotScoped = key === 'BLC' || key === 'BAC';
+                return !approvers.some((a) =>
+                  String(a.id) === id
+                  && a.level.toLowerCase() === key.toLowerCase()
+                  && (!depotScoped || a.kode_depo === effectiveDepot)
+                );
               });
               if (stale.length === 0) return null;
               return (
                 <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                  Penetapan tersimpan menunjuk user yang sudah tidak valid ({stale.map(({ key }) => key).join(', ')}: level berubah / nonaktif). Pilih ulang lalu Simpan Pengaturan.
+                  Penetapan tersimpan menunjuk user yang sudah tidak valid ({stale.map(({ key }) => key).join(', ')}: level berubah / nonaktif / beda depo). Pilih ulang lalu Simpan Pengaturan.
                 </div>
               );
             })()}
             {loading ? <div className="h-32 animate-pulse rounded-xl bg-slate-100" /> : LEVELS.map(({ key, title, description }) => {
               const matchingLevel = key.toLowerCase();
-              const levelApprovers = approvers.filter((approver) => approver.level.toLowerCase() === matchingLevel);
+              // BLC/BAC hanya boleh dari depo terpilih; RLH/RFAH bersifat
+              // global (lintas depo), jadi opsinya tidak dibatasi depo.
+              const depotScoped = key === 'BLC' || key === 'BAC';
+              const levelApprovers = approvers.filter((approver) =>
+                approver.level.toLowerCase() === matchingLevel
+                && (!depotScoped || approver.kode_depo === effectiveDepot)
+              );
               // User tersimpan yang tak masuk filter tetap ditampilkan agar
               // tidak terlihat kosong.
               const savedId = selected[key] || '';
               const savedUser = assignments[key]?.user;
               const options = savedId && savedUser && !levelApprovers.some((a) => String(a.id) === savedId)
-                ? [...levelApprovers, { ...savedUser, full_name: `${savedUser.full_name} (level berubah/nonaktif)` }]
+                ? [...levelApprovers, { ...savedUser, full_name: `${savedUser.full_name} (level/depo tidak sesuai)` }]
                 : levelApprovers;
 
               return (

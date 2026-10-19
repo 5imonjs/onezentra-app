@@ -6,6 +6,7 @@ use App\Models\ApprovalAssignment;
 use App\Models\BiayaThl;
 use App\Models\BiayaThlDetail;
 use App\Models\BiayaThlPhoto;
+use App\Models\DepotSetting;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -24,6 +25,29 @@ class ApprovalAssignmentTest extends TestCase
             ->get()
             ->keyBy('slug')
             ->all();
+    }
+
+    /**
+     * Admin lintas-depo (punya `depot.view_all` + `approval.manage`) untuk
+     * menguji daftar depo dan penetapan lintas depo.
+     */
+    private function nonScopedAdmin(): User
+    {
+        $manage = $this->approvalPermissions()['approval.manage'];
+        $viewAll = Permission::firstOrCreate(
+            ['slug' => 'depot.view_all'],
+            ['name' => 'Lihat Semua Depo', 'menu_group' => 'Sistem']
+        );
+        $role = Role::create(['slug' => 'super_'.uniqid(), 'name' => 'Super Admin']);
+        $role->permissions()->attach([$manage->id, $viewAll->id]);
+        $admin = User::create([
+            'email' => 'super-'.uniqid().'@test.com', 'password' => 'password', 'full_name' => 'Super Admin',
+            'kode_depo' => 'ADMIN', 'nama_depo' => 'Kantor Pusat', 'level' => 'admin_master',
+            'status' => 'active', 'role_id' => $role->id,
+        ]);
+        $role->users()->attach($admin->id);
+
+        return $admin;
     }
 
     public function test_admin_can_assign_active_users_for_each_approval_level(): void
@@ -315,5 +339,85 @@ class ApprovalAssignmentTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('biaya_thls', ['id' => $biaya->id, 'status' => 'pending']);
+    }
+
+    public function test_index_memakai_daftar_depo_dari_depot_settings(): void
+    {
+        DepotSetting::create(['kode_depo' => '0127', 'nama_depo' => 'Singkawang', 'is_active' => true]);
+        // Akun peran dengan kode_depo pseudo tidak boleh muncul sebagai depo.
+        User::create([
+            'email' => 'pseudo-blc@test.com', 'password' => 'password', 'full_name' => 'Pseudo BLC',
+            'kode_depo' => 'BLC-01', 'nama_depo' => 'Depo BLC', 'level' => 'blc', 'status' => 'active',
+        ]);
+        $admin = $this->nonScopedAdmin();
+
+        Sanctum::actingAs($admin);
+        $kodeDepos = collect($this->getJson('/api/v1/approval-assignments?module=biaya_thl')->assertOk()->json('depots'))
+            ->pluck('kode_depo')
+            ->all();
+
+        $this->assertContains('0127', $kodeDepos);
+        $this->assertNotContains('BLC-01', $kodeDepos);
+        $this->assertNotContains('ADMIN', $kodeDepos);
+    }
+
+    public function test_index_fallback_depo_saat_depot_settings_kosong_hanya_depo_nyata(): void
+    {
+        $admin = $this->nonScopedAdmin();
+        // Depo nyata: punya BLC & BAC aktif.
+        foreach (['blc', 'bac'] as $level) {
+            User::create([
+                'email' => "{$level}-0127@test.com", 'password' => 'password', 'full_name' => strtoupper($level).' 0127',
+                'kode_depo' => '0127', 'nama_depo' => 'Singkawang', 'level' => $level, 'status' => 'active',
+            ]);
+        }
+        // Akun peran: hanya BLC, bukan depo nyata.
+        User::create([
+            'email' => 'blc-role@test.com', 'password' => 'password', 'full_name' => 'BLC Role',
+            'kode_depo' => 'BLC-01', 'nama_depo' => 'Depo BLC', 'level' => 'blc', 'status' => 'active',
+        ]);
+
+        Sanctum::actingAs($admin);
+        $kodeDepos = collect($this->getJson('/api/v1/approval-assignments?module=biaya_thl')->assertOk()->json('depots'))
+            ->pluck('kode_depo')
+            ->all();
+
+        $this->assertSame(['0127'], $kodeDepos);
+    }
+
+    public function test_index_hanya_menghormati_admin_untuk_approver_final(): void
+    {
+        $admin = $this->nonScopedAdmin();
+        $user = User::create([
+            'email' => 'assignee@test.com', 'password' => 'password', 'full_name' => 'Assignee',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active',
+        ]);
+        ApprovalAssignment::create(['module' => ApprovalAssignment::MODULE_THL, 'kode_depo' => 'ADMIN', 'approval_level' => 'BAC', 'user_id' => $user->id]);
+        ApprovalAssignment::create(['module' => ApprovalAssignment::MODULE_THL, 'kode_depo' => 'ADMIN', 'approval_level' => 'RLH', 'user_id' => $user->id]);
+
+        Sanctum::actingAs($admin);
+        $data = $this->getJson('/api/v1/approval-assignments?kode_depo=DPT-A&module=biaya_thl')->assertOk()->json('data');
+
+        // Penetapan ADMIN untuk BLC/BAC tidak berlaku (selaras ensureApprover()).
+        $this->assertArrayNotHasKey('BAC', $data);
+        $this->assertArrayHasKey('RLH', $data);
+    }
+
+    public function test_upsert_response_mencerminkan_depo_yang_disimpan(): void
+    {
+        $admin = $this->nonScopedAdmin();
+        $approver = User::create([
+            'email' => 'resp-bac@test.com', 'password' => 'password', 'full_name' => 'Resp BAC',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'bac', 'status' => 'active',
+        ]);
+
+        Sanctum::actingAs($admin);
+        $this->postJson('/api/v1/approval-assignments', [
+            'kode_depo' => 'DPT-A',
+            'module' => ApprovalAssignment::MODULE_THL,
+            'assignments' => [['approval_level' => 'BAC', 'user_id' => $approver->id]],
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.BAC.user.id', $approver->id);
     }
 }

@@ -21,3 +21,9 @@
   stored, show it as `(tidak didukung)` rather than silently changing it.
 - Password is never prefilled into state/DOM; `handleSave` omits a blank
   password so an untouched field does not overwrite the stored secret.
+- Never gate a page's FIRST fetch on a value derived from the response of that
+  same fetch (deadlock). In `approval-settings`, `effectiveDepot` needed
+  `depots`, but `depots` was only set by `load()` — so `load()` early-returned
+  forever and the data area stayed an empty skeleton. Bootstrap the option list
+  with an unconditional request (omit the param; the backend falls back to the
+  user's depot) and only then request the resolved depot.

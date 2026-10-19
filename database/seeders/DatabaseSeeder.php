@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             SingkawangDepotSeeder::class,
             EmailNotificationSeeder::class,
             DepotSettingSeeder::class,
+            ApprovalAssignmentSeeder::class,
         ]);
     }
 }

@@ -100,3 +100,20 @@
   `EmailRecipientController::withResolution()` and the web "Tak terkirim" label.
   Before this was fixed the UI reported such a row as undeliverable while the
   service still emailed it.
+- `approval_assignments` is not optional data: `BiayaApprovalService::ensureApprover()`
+  requires an active assignment per level, so an empty table **403s every**
+  check/approve/rfah/reject/revise for biaya THL & retribusi (even for
+  `admin_master`, by separation of duties). `ApprovalAssignmentSeeder` fills
+  BLC/BAC per real depot + RLH/RFAH at `kode_depo='ADMIN'`, via `firstOrCreate`
+  so it never overwrites a manual admin choice.
+- `kode_depo='ADMIN'` assignments are honored ONLY for the final approvers
+  (RLH/RFAH). Keep read (`ApprovalAssignmentController::index`) and use
+  (`ensureApprover()`/`approverName()`) aligned — never resolve ADMIN for
+  BLC/BAC, or the settings page shows an assignment that has no effect.
+- Depot options for the approval settings come from `depot_settings` (real
+  depots), NOT `users.kode_depo` — the latter contains role accounts
+  (`ADMIN`, `BLC-01`, `RLH-01`, …). Fallback (when `depot_settings` is empty)
+  excludes `ADMIN` so the page never defaults to a pseudo-depot.
+- `ApprovalAssignmentController::index()` reads `kode_depo`/`module` via
+  `$request->input()`, not `query()`, so the `upsert()` response (which passes
+  them in the JSON body) reflects the depot just saved.
