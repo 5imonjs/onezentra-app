@@ -60,6 +60,18 @@ class StandarUmurProdukTest extends TestCase
         $this->getJson('/api/v1/standar-umur-produk?search=Alpha')->assertOk()->assertJsonCount(1, 'data');
     }
 
+    public function test_index_search_escapes_like_wildcards(): void
+    {
+        StandarUmurProduk::create(['material' => 'MAT-%X', 'material_description' => 'Produk Persen']);
+        StandarUmurProduk::create(['material' => 'MAT-XX', 'material_description' => 'Produk Biasa']);
+
+        // '%' diperlakukan literal: hanya baris yang benar-benar memuat '%'.
+        // Tanpa escape, '%' adalah wildcard dan mengembalikan kedua baris.
+        $this->getJson('/api/v1/standar-umur-produk?search='.urlencode('%'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
     public function test_store_creates_product(): void
     {
         $this->postJson('/api/v1/standar-umur-produk', [

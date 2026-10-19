@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\ExportGuard;
+use App\Support\LikePattern;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -17,7 +18,7 @@ class RoleController extends Controller
         $query = Role::query();
         if ($request->filled('search')) {
             // Escape wildcard LIKE (% _) agar input dianggap literal.
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('name LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('slug LIKE ? ESCAPE ?', [$like, '\\']);

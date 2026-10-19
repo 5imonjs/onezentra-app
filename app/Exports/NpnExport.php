@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Npn;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -54,7 +55,7 @@ class NpnExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping,
         }
 
         if ($this->search) {
-            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $like = LikePattern::contains($this->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])

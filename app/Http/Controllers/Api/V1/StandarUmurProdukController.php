@@ -71,11 +71,12 @@ class StandarUmurProdukController extends Controller
     {
         $query = StandarUmurProduk::query();
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('material', 'like', '%'.$request->search.'%')
-                    ->orWhere('material_description', 'like', '%'.$request->search.'%')
-                    ->orWhere('product_id', 'like', '%'.$request->search.'%')
-                    ->orWhere('nickname', 'like', '%'.$request->search.'%');
+            $like = $this->likeContains((string) $request->search);
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw('material LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('material_description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('product_id LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('nickname LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
         if ($request->filled('brand')) {

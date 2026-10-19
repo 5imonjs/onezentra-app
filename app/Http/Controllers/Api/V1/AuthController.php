@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -65,8 +66,13 @@ class AuthController extends Controller
         }
 
         if ($user->status !== 'active') {
+            // Pesan disamakan persis dengan kredensial salah agar status akun
+            // tidak bisa di-enumerasi dari respons login. Alasan sebenarnya
+            // tetap dicatat agar admin bisa mendiagnosa akun yang dinonaktifkan.
+            Log::notice('Login ditolak: akun tidak aktif.', ['user_id' => $user->id]);
+
             throw ValidationException::withMessages([
-                'email' => ['Your account is inactive.'],
+                'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
@@ -132,8 +138,13 @@ class AuthController extends Controller
         }
 
         if ($user->status !== 'active') {
+            // Pesan disamakan persis dengan kredensial salah agar status akun
+            // tidak bisa di-enumerasi dari respons login. Alasan sebenarnya
+            // tetap dicatat agar admin bisa mendiagnosa akun yang dinonaktifkan.
+            Log::notice('Login ditolak: akun tidak aktif.', ['user_id' => $user->id]);
+
             throw ValidationException::withMessages([
-                'email' => ['Your account is inactive.'],
+                'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 

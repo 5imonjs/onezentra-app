@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\StandarisasiTumpukan;
 use App\Models\User;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -47,7 +48,7 @@ class StandarisasiTumpukanExport implements FromQuery, ShouldAutoSize, WithHeadi
         }
 
         if ($this->search) {
-            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $like = LikePattern::contains($this->search);
             $query->whereHas('npn', fn ($q) => $q
                 ->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\']));

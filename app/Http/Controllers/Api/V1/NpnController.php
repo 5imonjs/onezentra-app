@@ -8,6 +8,7 @@ use App\Imports\NpnImport;
 use App\Models\Npn;
 use App\Models\StandarUmurProduk;
 use App\Services\ExportGuard;
+use App\Support\LikePattern;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ class NpnController extends Controller
     {
         $query = Npn::query();
         if ($request->filled('search')) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])
@@ -237,7 +238,7 @@ class NpnController extends Controller
     {
         $request->validate(['q' => 'required|string|min:1']);
 
-        $like = '%'.addcslashes($request->q, '\\%_').'%';
+        $like = LikePattern::contains($request->q);
         $query = Npn::select('id', 'BOSnetszProductId', 'SAPszProductId', 'SAPszUomId', 'SAPdecUom', 'decVolume', 'szNickName', 'szNickNameNew', 'szShortDescription', 'decUomConversion1', 'BOSnetdecUom')
             // Ikut mencari szShortDescription/SAP ID/barcode karena itulah teks yang
             // benar-benar tampil pada picker, bukan hanya nickname produk.

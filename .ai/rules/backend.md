@@ -1,0 +1,36 @@
+# Backend rules (`app/**`, `routes/**`, `database/**`)
+
+## Search / LIKE
+- Never build a LIKE pattern by hand. Use `App\Support\LikePattern::contains()`
+  (controllers: `$this->likeContains()`), and always pair it with an explicit
+  escape clause: `whereRaw('col LIKE ? ESCAPE ?', [$like, '\\'])`.
+- Why: SQLite (tests) has no default backslash escape, so a bare
+  `->where('col', 'like', $like)` silently behaves differently from MySQL.
+  A raw `'%'.$term.'%'` also lets user input `%`/`_` act as wildcards.
+
+## Time & operational dates
+- The app timezone comes from `APP_TIMEZONE` (`config('app.timezone')`), set to
+  `Asia/Jakarta` in `.env.example`. Never hardcode `UTC`; day boundaries
+  (`now()->toDateString()`, `startOfWeek` for opname) must use the WIB zone.
+- `phpunit.xml` pins `APP_TIMEZONE=UTC` so tests stay deterministic.
+
+## Eloquent
+- `AppServiceProvider::boot()` calls `Model::preventLazyLoading()` outside
+  production. Eager-load relations (`with(...)`) instead of relying on lazy
+  access, or tests/dev will throw `LazyLoadingViolationException`.
+
+## Auth & authorization
+- Route middleware carries the permission (`permission:...`) and depo scoping
+  uses `forUserDepot()`; never trust a client-supplied depot.
+- Login responses must not reveal account existence or status: an inactive
+  account returns the exact same message as a wrong password. Log the real
+  reason with `Log::notice` for admins.
+
+## Domain conventions
+- Approval modules (stamp/actor/section) are derived from the model type via
+  `BiayaApprovalPresenter`; do not duplicate THL/Retribusi logic in controllers.
+- Destructive admin operations must keep the allowlist + typed confirmation
+  (`HAPUS`) + dry-run in `AdminDatabaseController`.
+- Exports are row-capped through `ExportGuard`; keep the cheap `COUNT` pre-check.
+- Logout revokes only the current token (`currentAccessToken()->delete()`), never
+  `$user->tokens()->delete()`, to stay multi-device safe.

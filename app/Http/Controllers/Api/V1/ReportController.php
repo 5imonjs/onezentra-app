@@ -15,6 +15,7 @@ use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Services\ExportGuard;
 use App\Services\PenerimaanExpiredReportService;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class ReportController extends Controller
      */
     private static function likePattern(string $search): string
     {
-        return '%'.addcslashes($search, '\\%_').'%';
+        return LikePattern::contains($search);
     }
 
     public function selisihQty(Request $request): JsonResponse

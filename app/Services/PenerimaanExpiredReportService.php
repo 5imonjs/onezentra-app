@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ReceivingItem;
 use App\Models\StandarUmurProduk;
 use App\Models\User;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
@@ -143,12 +144,12 @@ class PenerimaanExpiredReportService
         }
 
         if (! empty($filters['search'])) {
-            $like = '%'.$filters['search'].'%';
+            $like = LikePattern::contains((string) $filters['search']);
             $query->where(fn ($q) => $q
-                ->where('receiving_items.kode_barang', 'like', $like)
-                ->orWhere('receiving_items.nama_barang', 'like', $like)
-                ->orWhere('receiving_items.sumber_material', 'like', $like)
-                ->orWhere('sup.cluster', 'like', $like));
+                ->whereRaw('receiving_items.kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('receiving_items.nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('receiving_items.sumber_material LIKE ? ESCAPE ?', [$like, '\\'])
+                ->orWhereRaw('sup.cluster LIKE ? ESCAPE ?', [$like, '\\']));
         }
 
         // Urutan laporan: cluster dulu (itu kunci pengelompokan), lalu

@@ -11,6 +11,7 @@ use App\Models\OpnameSetting;
 use App\Services\EmailNotificationService;
 use App\Services\ExportGuard;
 use App\Services\OpnameExpiredService;
+use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -79,7 +80,7 @@ class OpnameExpiredController extends Controller
         }
 
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('opname_expired_waves.kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('opname_expired_waves.nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
@@ -439,7 +440,7 @@ class OpnameExpiredController extends Controller
         }
 
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])

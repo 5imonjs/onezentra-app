@@ -6,6 +6,8 @@ use App\Models\ApprovalAssignment;
 use App\Models\BiayaThl;
 use App\Models\BiayaThlPhoto;
 use App\Models\Permission;
+use App\Models\Receiving;
+use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -122,6 +124,29 @@ class BiayaThlFlowTest extends TestCase
         $this->getJson('/api/v1/biaya-thl?per_page=50&'.http_build_query(['search' => '1234']))
             ->assertOk()
             ->assertJsonCount(1, 'data');
+    }
+
+    public function test_candidates_nopol_filter_escapes_like_wildcards(): void
+    {
+        Sanctum::actingAs($this->user);
+
+        $withPercent = RencanaKirim::create([
+            'rkh_date' => '2026-09-18', 'nopol' => 'KB 1 %X', 'jenis_kendaraan' => 'CDD',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => $this->user->id, 'status' => 'COMPLETED',
+        ]);
+        $plain = RencanaKirim::create([
+            'rkh_date' => '2026-09-18', 'nopol' => 'KB 2 YY', 'jenis_kendaraan' => 'CDD',
+            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'created_by' => $this->user->id, 'status' => 'COMPLETED',
+        ]);
+        Receiving::create(['rencana_kirim_id' => $withPercent->id, 'status' => 'COMPLETED', 'checked_by' => $this->user->id]);
+        Receiving::create(['rencana_kirim_id' => $plain->id, 'status' => 'COMPLETED', 'checked_by' => $this->user->id]);
+
+        // Tanpa escape '%' cocok semua nopol; dengan escape hanya nopol yang
+        // benar-benar memuat karakter '%'.
+        $res = $this->getJson('/api/v1/biaya-thl/candidates?'.http_build_query(['nopol_kendaraan' => '%']))->assertOk();
+
+        $this->assertCount(1, $res->json());
+        $this->assertSame('KB 1 %X', $res->json('0.nopol_kendaraan'));
     }
 
     public function test_store_uses_assigned_rfah_per_depot_with_global_fallback(): void

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\ClusterPrincipalImport;
 use App\Models\ClusterPrincipal;
 use App\Services\ExportGuard;
+use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -69,7 +70,7 @@ class ClusterPrincipalController extends Controller
         $query = ClusterPrincipal::with('creator:id,full_name');
 
         if ($request->filled('search')) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('product_sku LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('principal_1 LIKE ? ESCAPE ?', [$like, '\\'])

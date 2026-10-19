@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\StandarUmurProduk;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -49,7 +50,7 @@ class StandarUmurProdukExport implements FromQuery, ShouldAutoSize, WithHeadings
         $query = StandarUmurProduk::query();
 
         if ($this->search) {
-            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $like = LikePattern::contains($this->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('material LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('material_description LIKE ? ESCAPE ?', [$like, '\\']);

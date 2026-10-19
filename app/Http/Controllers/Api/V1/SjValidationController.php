@@ -17,6 +17,7 @@ use App\Models\StandarisasiTumpukan;
 use App\Models\StandarUmurProduk;
 use App\Models\User;
 use App\Services\EmailNotificationService;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -39,7 +40,7 @@ class SjValidationController extends Controller
             ->when($request->date_from, fn ($q) => $q->whereDate('created_at', '>=', $request->date_from))
             ->when($request->date_to, fn ($q) => $q->whereDate('created_at', '<=', $request->date_to))
             ->when($request->search, function ($q) use ($request) {
-                $like = '%'.addcslashes($request->search, '\\%_').'%';
+                $like = LikePattern::contains($request->search);
                 $q->where(function ($qq) use ($like) {
                     $qq->whereHas('rencanaKirim', fn ($s) => $s->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\']));
                 });

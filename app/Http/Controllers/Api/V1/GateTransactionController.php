@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\GateTransaction;
 use App\Models\RencanaKirim;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,7 +42,7 @@ class GateTransactionController extends Controller
         }
 
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('nopol LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])

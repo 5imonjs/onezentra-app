@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\RencanaKirim;
 use App\Models\User;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -59,7 +60,7 @@ class RencanaKirimReportExport implements FromQuery, ShouldAutoSize, WithHeading
         }
 
         if ($search) {
-            $like = '%'.addcslashes($search, '\\%_').'%';
+            $like = LikePattern::contains($search);
             $query->where(fn ($q) => $q
                 ->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])

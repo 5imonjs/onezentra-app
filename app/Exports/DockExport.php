@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Dock;
 use App\Models\User;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -45,7 +46,7 @@ class DockExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping
         }
 
         if ($this->search) {
-            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $like = LikePattern::contains($this->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('name LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('code LIKE ? ESCAPE ?', [$like, '\\']);

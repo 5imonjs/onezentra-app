@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Models\Penerimaan;
+use App\Support\LikePattern;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ class PenerimaanController extends Controller
     {
         $query = Penerimaan::query()->forUserDepot($request->user());
         if ($request->filled('search')) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('no_shipment LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('No_Container LIKE ? ESCAPE ?', [$like, '\\'])

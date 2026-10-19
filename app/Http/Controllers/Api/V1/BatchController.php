@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
+use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,7 +27,7 @@ class BatchController extends Controller
         }
 
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->whereRaw('batch_number LIKE ? ESCAPE ?', [$like, '\\']);
         }
 

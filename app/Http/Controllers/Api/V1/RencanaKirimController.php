@@ -16,6 +16,7 @@ use App\Models\RencanaKirimItem;
 use App\Models\SjValidation;
 use App\Models\StandarUmurProduk;
 use App\Services\EmailNotificationService;
+use App\Support\LikePattern;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -93,7 +94,7 @@ class RencanaKirimController extends Controller
         $query = RencanaKirim::with(['items.npn', 'creator'])->forUserDepot($request->user());
 
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\'])

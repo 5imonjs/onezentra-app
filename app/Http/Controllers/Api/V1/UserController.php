@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\UpdateUserRequest;
 use App\Imports\UserImport;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\LikePattern;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class UserController extends Controller
         $baseQuery = clone $query;
         if ($request->filled('search')) {
             // Escape wildcard LIKE (% _) agar input dianggap literal.
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('full_name LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('email LIKE ? ESCAPE ?', [$like, '\\'])

@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Receiving;
 use App\Models\User;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
@@ -45,7 +46,7 @@ class ReceivingExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMa
         }
 
         if ($this->search) {
-            $like = '%'.addcslashes($this->search, '\\%_').'%';
+            $like = LikePattern::contains($this->search);
             $query->whereHas('rencanaKirim', fn ($q) => $q->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\']));
         }
         if ($this->status) {

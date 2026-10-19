@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
 use App\Models\User;
+use App\Support\LikePattern;
 use Illuminate\Http\Request;
 
 class PermissionController extends Controller
@@ -13,7 +14,7 @@ class PermissionController extends Controller
     {
         $query = Permission::query();
         if ($request->filled('search')) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('name LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('slug LIKE ? ESCAPE ?', [$like, '\\']);

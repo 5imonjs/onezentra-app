@@ -409,6 +409,18 @@ class PenerimaanExpiredReportTest extends TestCase
             ->assertJsonPath('summary.total_item', 2);
     }
 
+    public function test_search_escapes_like_wildcards(): void
+    {
+        $this->makeItem('BRG-A');
+        $this->makeItem('BRG-A%X');
+
+        // '%' diperlakukan literal: hanya baris yang benar-benar memuat '%'.
+        $this->getJson('/api/v1/reports/penerimaan-batch-expired?search='.urlencode('%'))
+            ->assertOk()
+            ->assertJsonPath('summary.total_item', 1)
+            ->assertJsonPath('data.0.kode_barang', 'BRG-A%X');
+    }
+
     public function test_rows_without_master_still_appear_with_fallback_cluster(): void
     {
         // Tidak ada master NPN/standar umur untuk kode ini.

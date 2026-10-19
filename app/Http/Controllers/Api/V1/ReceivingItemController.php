@@ -9,6 +9,7 @@ use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\ReceivingItem;
+use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,7 @@ class ReceivingItemController extends Controller
         }
 
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->where(fn ($q) => $q
                 ->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
@@ -82,7 +83,7 @@ class ReceivingItemController extends Controller
         }
 
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $base->where(fn ($q) => $q
                 ->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
@@ -197,7 +198,7 @@ class ReceivingItemController extends Controller
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($request->user())));
         }
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $itemsQuery->where(fn ($q) => $q
                 ->whereRaw('kode_barang LIKE ? ESCAPE ?', [$like, '\\'])
                 ->orWhereRaw('nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
@@ -539,7 +540,7 @@ class ReceivingItemController extends Controller
             'q' => 'required|string|min:2',
         ]);
 
-        $like = '%'.addcslashes($request->q, '\\%_').'%';
+        $like = LikePattern::contains($request->q);
 
         $npnResults = Npn::select(
             'id',

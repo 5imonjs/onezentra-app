@@ -19,6 +19,7 @@ use App\Models\RencanaKirimItem;
 use App\Models\SjValidation;
 use App\Services\EmailNotificationService;
 use App\Services\ExportGuard;
+use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -55,7 +56,7 @@ class ReceivingController extends Controller
         }
 
         if ($request->search) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = LikePattern::contains($request->search);
             $query->whereHas('rencanaKirim', function ($q) use ($like) {
                 $q->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\']);

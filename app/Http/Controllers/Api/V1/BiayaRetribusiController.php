@@ -127,7 +127,8 @@ class BiayaRetribusiController extends Controller
             $query->whereHas('rencanaKirim', fn ($q) => $q->whereIn('jenis_kendaraan', $allowedTypes));
         }
         if ($request->filled('nopol_kendaraan')) {
-            $query->whereHas('rencanaKirim', fn ($q) => $q->where('nopol', 'like', '%'.$request->nopol_kendaraan.'%'));
+            $like = $this->likeContains((string) $request->nopol_kendaraan);
+            $query->whereHas('rencanaKirim', fn ($q) => $q->whereRaw('nopol LIKE ? ESCAPE ?', [$like, '\\']));
         }
         if ($request->filled('kode_depo')) {
             $query->whereHas('rencanaKirim', function ($q) use ($request) {

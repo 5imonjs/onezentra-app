@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\LikePattern;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
@@ -44,6 +45,6 @@ abstract class Controller
      */
     protected function likeContains(string $term): string
     {
-        return '%'.addcslashes($term, '\\%_').'%';
+        return LikePattern::contains($term);
     }
 }
