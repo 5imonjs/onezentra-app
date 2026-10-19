@@ -127,6 +127,52 @@ class EmailRecipientControllerTest extends TestCase
         ]))->assertCreated();
     }
 
+    public function test_store_role_recipient_requires_existing_role(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+
+        $this->postJson('/api/v1/email-recipients', $this->payload([
+            'recipient_type' => 'role',
+            'role_slug' => 'tidak-ada',
+        ]))->assertJsonValidationErrors(['role_slug']);
+    }
+
+    public function test_store_role_recipient_without_role_slug_is_rejected(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+
+        $this->postJson('/api/v1/email-recipients', $this->payload([
+            'recipient_type' => 'role',
+        ]))->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Role wajib dipilih untuk recipient type role.']);
+    }
+
+    public function test_store_user_recipient_requires_existing_user(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+
+        $this->postJson('/api/v1/email-recipients', $this->payload([
+            'recipient_type' => 'user',
+            'user_id' => 999999,
+        ]))->assertJsonValidationErrors(['user_id']);
+    }
+
+    public function test_options_requires_view_permission(): void
+    {
+        Sanctum::actingAs($this->userWith([]));
+
+        $this->getJson('/api/v1/email-recipients/options')->assertForbidden();
+    }
+
+    public function test_destroy_requires_edit_permission(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+        $recipient = $this->recipient();
+
+        $this->deleteJson("/api/v1/email-recipients/{$recipient->id}")->assertForbidden();
+        $this->assertDatabaseHas('email_recipients', ['id' => $recipient->id]);
+    }
+
     private function recipient(array $overrides = []): EmailRecipient
     {
         return EmailRecipient::create(array_merge([

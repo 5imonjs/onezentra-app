@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\EmailNotificationLog;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -64,5 +65,24 @@ class EmailNotificationLogTest extends TestCase
         $res = $this->getJson('/api/v1/email-settings/notification-logs')->assertOk();
 
         $this->assertSame('skipped', $res->json('data.data.0.status'));
+    }
+
+    public function test_failed_log_can_be_filtered_by_status(): void
+    {
+        EmailNotificationLog::create([
+            'document_type' => 'receiving', 'trigger' => 'completed',
+            'context_id' => 1, 'status' => 'failed', 'error' => 'SMTP down',
+        ]);
+        EmailNotificationLog::create([
+            'document_type' => 'receiving', 'trigger' => 'completed',
+            'context_id' => 2, 'status' => 'skipped',
+        ]);
+
+        Sanctum::actingAs($this->admin());
+        $res = $this->getJson('/api/v1/email-settings/notification-logs?status=failed')->assertOk();
+
+        $this->assertSame(1, $res->json('data.total'));
+        $this->assertSame('failed', $res->json('data.data.0.status'));
+        $this->assertSame('SMTP down', $res->json('data.data.0.error'));
     }
 }

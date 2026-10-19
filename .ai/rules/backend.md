@@ -87,3 +87,12 @@
   `EmailNotificationService::send()` call, update this constant — the frontend map
   is not authoritative and already drifted once (`standarisasi_tumpukan.submitted`
   was missing from the UI while the controller kept sending it).
+- Email recipient resolution contract (`EmailRecipient` + `EmailNotificationService`):
+  a depot-specific recipient wins over the global row (global is fallback only, no
+  double send), role recipients resolve to **active** users scoped to the trigger's
+  depot, inactive recipients are never sent, and addresses are deduplicated.
+  `EmailRecipient::resolveEmail()` must return null for a `user` recipient whose
+  user is not `active`/has no email — it mirrors
+  `EmailRecipientController::withResolution()` and the web "Tak terkirim" label.
+  Before this was fixed the UI reported such a row as undeliverable while the
+  service still emailed it.

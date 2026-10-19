@@ -6,6 +6,7 @@ use App\Models\EmailSetting;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\EmailNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -81,5 +82,84 @@ class EmailSettingControllerTest extends TestCase
         Sanctum::actingAs($this->userWith(['emails.edit']));
 
         $this->postJson('/api/v1/email-settings/test', ['to' => 'tujuan@test.com'])->assertOk();
+    }
+
+    public function test_apply_smtp_settings_uses_stored_credentials_when_not_from_env(): void
+    {
+        EmailSetting::create([
+            'mailer' => 'smtp', 'host' => 'stored.smtp.test', 'port' => 2525,
+            'username' => 'u', 'password' => 'p', 'encryption' => 'tls',
+            'from_system_env' => false, 'is_active' => true,
+        ]);
+        config(['mail.mailers.smtp.host' => 'env-host', 'mail.mailers.smtp.port' => 587]);
+
+        app(EmailNotificationService::class)->applySmtpSettings();
+
+        $this->assertSame('stored.smtp.test', config('mail.mailers.smtp.host'));
+        $this->assertSame(2525, config('mail.mailers.smtp.port'));
+    }
+
+    public function test_apply_smtp_settings_keeps_env_credentials_when_from_system_env(): void
+    {
+        EmailSetting::create([
+            'mailer' => 'smtp', 'host' => 'stored.smtp.test', 'port' => 2525,
+            'from_system_env' => true, 'is_active' => true,
+        ]);
+        config(['mail.mailers.smtp.host' => 'env-host', 'mail.mailers.smtp.port' => 587]);
+
+        app(EmailNotificationService::class)->applySmtpSettings();
+
+        $this->assertSame('env-host', config('mail.mailers.smtp.host'));
+        $this->assertSame(587, config('mail.mailers.smtp.port'));
+    }
+
+    public function test_apply_smtp_settings_ignores_inactive_setting(): void
+    {
+        EmailSetting::create([
+            'mailer' => 'smtp', 'host' => 'stored.smtp.test', 'port' => 2525,
+            'from_system_env' => false, 'is_active' => false,
+        ]);
+        config(['mail.mailers.smtp.host' => 'env-host']);
+
+        app(EmailNotificationService::class)->applySmtpSettings();
+
+        $this->assertSame('env-host', config('mail.mailers.smtp.host'));
+    }
+
+    public function test_apply_smtp_settings_whitelists_mailer(): void
+    {
+        EmailSetting::create(['mailer' => 'log', 'from_system_env' => true, 'is_active' => true]);
+        app(EmailNotificationService::class)->applySmtpSettings();
+        $this->assertSame('log', config('mail.default'));
+
+        // Mailer tak dikenal jatuh aman ke smtp.
+        EmailSetting::create(['mailer' => 'garbage', 'from_system_env' => true, 'is_active' => true]);
+        app(EmailNotificationService::class)->applySmtpSettings();
+        $this->assertSame('smtp', config('mail.default'));
+    }
+
+    public function test_update_blank_password_keeps_stored_password(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+        EmailSetting::create([
+            'mailer' => 'smtp', 'host' => 'old.smtp.test', 'password' => 'rahasia-lama', 'is_active' => true,
+        ]);
+
+        $this->putJson('/api/v1/email-settings', ['host' => 'new.smtp.test', 'password' => ''])->assertOk();
+
+        $setting = EmailSetting::latest('id')->first();
+        $this->assertSame('new.smtp.test', $setting->host);
+        $this->assertSame('rahasia-lama', $setting->password);
+    }
+
+    public function test_update_null_encryption_becomes_empty_string(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+
+        $this->putJson('/api/v1/email-settings', ['encryption' => null])->assertOk();
+
+        // Null dikirim klien (mis. auth tanpa TLS) harus jadi '' bukan crash,
+        // agar koneksi tanpa enkripsi tetap bisa dikonfigurasi.
+        $this->assertSame('', EmailSetting::latest('id')->first()->encryption);
     }
 }

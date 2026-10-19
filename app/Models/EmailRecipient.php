@@ -26,12 +26,21 @@ class EmailRecipient extends Model
 
     public function resolveEmail(): ?string
     {
-        if ($this->recipient_type === 'email' && $this->email) {
-            return $this->email;
+        if ($this->recipient_type === 'email') {
+            return $this->email ?: null;
         }
+
         if ($this->recipient_type === 'user' && $this->user_id) {
-            return $this->user?->email;
+            // Cermin `EmailRecipientController::withResolution()` + label UI
+            // ("User tidak aktif ... email tidak akan terkirim"). Sebelumnya
+            // email user nonaktif tetap dikirim walau UI menandainya gagal.
+            $user = $this->user;
+
+            return ($user && $user->status === 'active' && filled($user->email))
+                ? $user->email
+                : null;
         }
+
         if ($this->recipient_type === 'role' && $this->role_slug) {
             return null; // resolved per shipment via role members
         }
