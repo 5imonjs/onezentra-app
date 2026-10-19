@@ -28,6 +28,7 @@ interface Recipient {
 interface Options {
   document_types: string[];
   triggers: string[];
+  document_type_triggers?: Record<string, string[]>;
   fields: string[];
   users: { id: number; full_name: string; email: string }[];
   roles: { id: number; name: string; slug: string }[];
@@ -137,6 +138,7 @@ const triggerOptions: Record<string, { value: string; label: string; description
     { value: 'selisih_qty', label: 'Selisih Qty ditemukan', description: 'Terpicu saat validasi menemukan selisih qty ≠ 0 (pemroses: modul Validasi Dokumen).' },
   ],
   standarisasi_tumpukan: [
+    { value: 'submitted', label: 'Standarisasi Tumpukan diajukan', description: 'Terpicu saat pengajuan Standarisasi Tumpukan dibuat atau diubah sehingga butuh approval ulang (pemroses: modul Standarisasi).' },
     { value: 'approved', label: 'Standarisasi Tumpukan disetujui', description: 'Terpicu saat pengajuan Standarisasi Tumpukan disetujui (pemroses: modul Standarisasi).' },
     { value: 'rejected', label: 'Standarisasi Tumpukan ditolak', description: 'Terpicu saat pengajuan Standarisasi Tumpukan ditolak (pemroses: modul Standarisasi).' },
   ],
@@ -167,6 +169,17 @@ const triggerLabel = (documentType: string, trigger: string): string =>
 
 const triggerDescription = (documentType: string, trigger: string): string | undefined =>
   triggerOptions[documentType]?.find((t) => t.value === trigger)?.description;
+
+// Sumber kebenaran daftar trigger = backend (`options.document_type_triggers`).
+// Peta lokal hanya menyuplai label/deskripsi; nilai dari backend didahulukan
+// agar trigger baru langsung muncul (label jatuh ke slug bila belum ada
+// terjemahan). Peta lokal pernah ketinggalan `standarisasi_tumpukan.submitted`
+// sehingga opsi itu tak bisa dipilih sama sekali.
+const triggerValuesFor = (apiMap: Record<string, string[]> | undefined, documentType: string): string[] => {
+  const fromApi = apiMap?.[documentType] ?? [];
+  const fromLocal = (triggerOptions[documentType] ?? []).map((t) => t.value);
+  return Array.from(new Set([...fromApi, ...fromLocal]));
+};
 
 // Alasan penerima aktif tidak akan terkirim (null = sehat).
 const resolveProblem = (r: Recipient): string | null => {
@@ -326,7 +339,7 @@ export default function EmailRecipientsPage() {
     setCreateForm({
       ...emptyCreate,
       document_type: documentType || 'rencana_kirim',
-      trigger: triggerOptions[documentType || 'rencana_kirim']?.[0]?.value ?? 'created',
+      trigger: triggerValuesFor(options.document_type_triggers, documentType || 'rencana_kirim')[0] ?? 'created',
       kode_depo: kodeDepoFilter || null,
       field: 'TO',
     });
@@ -341,7 +354,7 @@ export default function EmailRecipientsPage() {
     setCreateForm({
       ...emptyCreate,
       document_type: doc,
-      trigger: triggerOptions[doc]?.[0]?.value ?? 'created',
+      trigger: triggerValuesFor(options.document_type_triggers, doc)[0] ?? 'created',
       kode_depo: depo,
       field,
     });
@@ -705,7 +718,7 @@ export default function EmailRecipientsPage() {
                 <select id="ef-doc" value={editForm.document_type}
                   onChange={(e) => {
                     const doc = e.target.value;
-                    setEditForm({ ...editForm, document_type: doc, trigger: triggerOptions[doc]?.[0]?.value ?? 'created' });
+                    setEditForm({ ...editForm, document_type: doc, trigger: triggerValuesFor(options.document_type_triggers, doc)[0] ?? 'created' });
                   }}
                   className="select-field">
                   {options.document_types.map((t) => <option key={t} value={t}>{docTypeLabel[t] || t}</option>)}
@@ -714,7 +727,9 @@ export default function EmailRecipientsPage() {
               <div>
                 <label htmlFor="ef-trigger" className="block text-xs font-medium text-gray-500 mb-1">Trigger</label>
                 <select id="ef-trigger" value={editForm.trigger} onChange={(e) => setEditForm({ ...editForm, trigger: e.target.value })} className="select-field">
-                  {triggerOptions[editForm.document_type]?.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {triggerValuesFor(options.document_type_triggers, editForm.document_type).map((v) => (
+                    <option key={v} value={v}>{triggerLabel(editForm.document_type, v)}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -796,7 +811,7 @@ export default function EmailRecipientsPage() {
                 <select id="cf-doc" value={createForm.document_type}
                   onChange={(e) => {
                     const doc = e.target.value;
-                    setCreateForm({ ...createForm, document_type: doc, trigger: triggerOptions[doc]?.[0]?.value ?? 'created' });
+                    setCreateForm({ ...createForm, document_type: doc, trigger: triggerValuesFor(options.document_type_triggers, doc)[0] ?? 'created' });
                   }}
                   className="select-field">
                   {options.document_types.map((t) => <option key={t} value={t}>{docTypeLabel[t] || t}</option>)}
@@ -805,7 +820,9 @@ export default function EmailRecipientsPage() {
               <div>
                 <label htmlFor="cf-trigger" className="block text-xs font-medium text-gray-500 mb-1">Trigger</label>
                 <select id="cf-trigger" value={createForm.trigger} onChange={(e) => setCreateForm({ ...createForm, trigger: e.target.value })} className="select-field">
-                  {triggerOptions[createForm.document_type]?.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {triggerValuesFor(options.document_type_triggers, createForm.document_type).map((v) => (
+                    <option key={v} value={v}>{triggerLabel(createForm.document_type, v)}</option>
+                  ))}
                 </select>
                 {triggerDescription(createForm.document_type, createForm.trigger) && (
                   <p className="mt-1.5 text-xs text-gray-400">{triggerDescription(createForm.document_type, createForm.trigger)}</p>

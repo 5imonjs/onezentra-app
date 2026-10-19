@@ -88,6 +88,45 @@ class EmailRecipientControllerTest extends TestCase
         $this->assertContains('selisih_qty', $res->json('triggers'));
     }
 
+    public function test_options_expose_document_type_triggers_map(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        $res = $this->getJson('/api/v1/email-recipients/options')->assertOk();
+
+        // Peta dokumen → trigger adalah sumber dropdown UI; `submitted` untuk
+        // Standarisasi Tumpukan pernah hilang dari peta frontend sehingga tak
+        // bisa dipilih, padahal controller tetap mengirimnya.
+        $this->assertSame(
+            ['submitted', 'approved', 'rejected'],
+            $res->json('document_type_triggers.standarisasi_tumpukan'),
+        );
+        $this->assertSame(
+            ['created', 'cancelled'],
+            $res->json('document_type_triggers.rencana_kirim'),
+        );
+    }
+
+    public function test_store_rejects_trigger_not_valid_for_document_type(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+
+        $this->postJson('/api/v1/email-recipients', $this->payload([
+            'document_type' => 'receiving',
+            'trigger' => 'reminder',
+        ]))->assertStatus(422)->assertJsonValidationErrors(['trigger']);
+    }
+
+    public function test_store_accepts_standarisasi_submitted_trigger(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        $this->postJson('/api/v1/email-recipients', $this->payload([
+            'document_type' => 'standarisasi_tumpukan',
+            'trigger' => 'submitted',
+        ]))->assertCreated();
+    }
+
     private function recipient(array $overrides = []): EmailRecipient
     {
         return EmailRecipient::create(array_merge([

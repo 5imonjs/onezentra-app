@@ -18,6 +18,25 @@ class EmailRecipientController extends Controller
     /** Batas aman jumlah baris pada respons gaya lama (tanpa parameter paginasi). */
     private const LEGACY_ROW_LIMIT = 500;
 
+    /**
+     * Satu-satunya sumber kebenaran pasangan dokumen → trigger yang benar-benar
+     * dipakai aplikasi. `options()` mengirimkannya ke UI (supaya dropdown tak
+     * mungkin ketinggalan opsi) dan `validateRecipient()` memakainya untuk
+     * menolak kombinasi mustahil (mis. `receiving` + `reminder`).
+     *
+     * @var array<string, list<string>>
+     */
+    private const DOCUMENT_TRIGGERS = [
+        'rencana_kirim' => ['created', 'cancelled'],
+        'sj_ba' => ['validated'],
+        'receiving' => ['completed'],
+        'selisih' => ['selisih_qty'],
+        'standarisasi_tumpukan' => ['submitted', 'approved', 'rejected'],
+        'biaya_thl' => ['submitted', 'checked', 'approved', 'rlh_approved', 'rejected', 'revisi'],
+        'biaya_retribusi' => ['submitted', 'checked', 'approved', 'rlh_approved', 'rejected', 'revisi'],
+        'opname_expired' => ['completed', 'reminder'],
+    ];
+
     public function index(Request $request): JsonResponse
     {
         // Klien lama (tanpa parameter paginasi) tetap menerima seluruh baris,
@@ -264,13 +283,14 @@ class EmailRecipientController extends Controller
             ->distinct()
             ->orderBy('kode_depo')
             ->get();
-        $types = ['rencana_kirim', 'sj_ba', 'receiving', 'selisih', 'standarisasi_tumpukan', 'biaya_thl', 'biaya_retribusi', 'opname_expired'];
-        $triggers = ['created', 'cancelled', 'validated', 'completed', 'selisih_qty', 'approved', 'rejected', 'submitted', 'checked', 'rlh_approved', 'revisi', 'reminder'];
+        $types = array_keys(self::DOCUMENT_TRIGGERS);
+        $triggers = array_values(array_unique(array_merge(...array_values(self::DOCUMENT_TRIGGERS))));
         $fields = ['TO', 'CC'];
 
         return response()->json([
             'document_types' => $types,
             'triggers' => $triggers,
+            'document_type_triggers' => self::DOCUMENT_TRIGGERS,
             'fields' => $fields,
             'users' => $users,
             'roles' => $roles,
@@ -324,9 +344,12 @@ class EmailRecipientController extends Controller
 
     private function validateRecipient(Request $request, ?int $ignoreId = null): array
     {
+        $documentTypes = array_keys(self::DOCUMENT_TRIGGERS);
+        $allTriggers = array_values(array_unique(array_merge(...array_values(self::DOCUMENT_TRIGGERS))));
+
         $data = $request->validate([
-            'document_type' => 'required|string|in:rencana_kirim,sj_ba,receiving,selisih,standarisasi_tumpukan,biaya_thl,biaya_retribusi,opname_expired',
-            'trigger' => 'required|string|in:created,cancelled,validated,completed,selisih_qty,approved,rejected,submitted,checked,rlh_approved,revisi,reminder',
+            'document_type' => 'required|string|in:'.implode(',', $documentTypes),
+            'trigger' => 'required|string|in:'.implode(',', $allTriggers),
             'recipient_type' => 'required|string|in:email,user,role',
             'field' => 'required|string|in:TO,CC',
             'kode_depo' => 'nullable|string|max:10',
@@ -336,6 +359,15 @@ class EmailRecipientController extends Controller
             'label' => 'nullable|string|max:100',
             'is_active' => 'nullable|boolean',
         ]);
+
+        // Trigger harus masuk akal untuk dokumennya: dropdown UI hanya
+        // menyajikan pasangan yang sah, tetapi API bisa dipanggil langsung —
+        // tolak kombinasi mustahil (mis. `receiving` + `reminder`).
+        if (! in_array($data['trigger'], self::DOCUMENT_TRIGGERS[$data['document_type']] ?? [], true)) {
+            throw ValidationException::withMessages([
+                'trigger' => ["Trigger {$data['trigger']} tidak berlaku untuk dokumen {$data['document_type']}."],
+            ]);
+        }
 
         $errors = match ($data['recipient_type']) {
             'email' => blank($data['email'] ?? null) ? ['email' => ['Email wajib diisi untuk recipient type email.']] : [],

@@ -79,3 +79,11 @@
   relinquishes `opname.session.edit` alongside `opname.edit`.
 - Logout revokes only the current token (`currentAccessToken()->delete()`), never
   `$user->tokens()->delete()`, to stay multi-device safe.
+- Email recipient triggers have one source of truth: `EmailRecipientController::DOCUMENT_TRIGGERS`
+  (document_type → valid triggers). `options()` returns it as
+  `document_type_triggers` (the web dropdown renders from it; the local TS map
+  only supplies labels/descriptions) and `validateRecipient()` rejects impossible
+  pairs (e.g. `receiving` + `reminder`). When adding/removing a trigger in any
+  `EmailNotificationService::send()` call, update this constant — the frontend map
+  is not authoritative and already drifted once (`standarisasi_tumpukan.submitted`
+  was missing from the UI while the controller kept sending it).
