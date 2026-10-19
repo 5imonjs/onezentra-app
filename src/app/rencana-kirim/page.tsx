@@ -1880,7 +1880,7 @@ export default function RencanaKirimPage() {
               <span className="text-sm font-black">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
             </div>
             {createItems.some(i => i.kode_barang && i.umur == null) && (
-              <p className="px-1 text-[11px] leading-relaxed text-gray-400">Umur produk diambil dari master Standar Umur Produk. Produk tanpa umur tidak dapat dianalisa di Opname Expired — hubungi administrator untuk melengkapi master.</p>
+              <p className="px-1 text-[11px] leading-relaxed text-gray-400">Umur produk diambil dari master Standar Umur Produk dan dipakai untuk pemeriksaan sisa umur di Validasi SJ. Produk tanpa umur tidak dapat diperiksa sisa umurnya — hubungi administrator untuk melengkapi master.</p>
             )}
           </div>
         </div>
