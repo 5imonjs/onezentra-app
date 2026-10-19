@@ -7,7 +7,6 @@ import DashboardAlerts from '@/components/DashboardAlerts';
 import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
 import DashboardOpnameChart from '@/components/DashboardOpnameChart';
 import DashboardRecent from '@/components/DashboardRecent';
-import DashboardStatCards from '@/components/DashboardStatCards';
 import PendingActions from '@/components/PendingActions';
 import RencanaKirimStatusChart from '@/components/RencanaKirimStatusChart';
 import { visibleDashboardBlocks, type DashboardBlockKey } from './dashboardBlocks';
@@ -77,8 +76,6 @@ export default function DashboardPage() {
         return <PendingActions key={key} kodeDepo={kodeDepo || undefined} />;
       case 'alerts':
         return <DashboardAlerts key={key} kodeDepo={kodeDepo || undefined} />;
-      case 'statCards':
-        return <DashboardStatCards key={key} kodeDepo={kodeDepo || undefined} />;
       case 'charts':
         return (
           <div key={key} className={`grid grid-cols-1 gap-5 ${bothCharts ? 'xl:grid-cols-2' : ''}`}>
