@@ -19,7 +19,6 @@ use App\Http\Controllers\Api\V1\GateTransactionController;
 use App\Http\Controllers\Api\V1\NpnController;
 use App\Http\Controllers\Api\V1\OpnameExpiredController;
 use App\Http\Controllers\Api\V1\OpnameExpiredSessionController;
-use App\Http\Controllers\Api\V1\PenerimaanController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ReceivingController;
 use App\Http\Controllers\Api\V1\ReceivingItemController;
@@ -113,14 +112,6 @@ Route::prefix('v1')->group(function () {
         Route::delete('/{npn}', [NpnController::class, 'destroy'])->middleware('permission:npn.delete');
         Route::post('/bulk-delete', [NpnController::class, 'bulkDestroy'])->middleware(['permission:npn.delete', 'throttle:20,1,heavy-write']);
         Route::post('/import', [NpnController::class, 'import'])->middleware(['permission:npn.create', 'throttle:20,1,heavy-write']);
-    });
-
-    Route::prefix('penerimaan')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
-        Route::get('/', [PenerimaanController::class, 'index'])->middleware('permission:penerimaan.view');
-        Route::post('/', [PenerimaanController::class, 'store'])->middleware('permission:penerimaan.create');
-        Route::get('/{penerimaan}', [PenerimaanController::class, 'show'])->middleware('permission:penerimaan.view');
-        Route::put('/{penerimaan}', [PenerimaanController::class, 'update'])->middleware('permission:penerimaan.edit');
-        Route::delete('/{penerimaan}', [PenerimaanController::class, 'destroy'])->middleware('permission:penerimaan.delete');
     });
 
     Route::prefix('cluster-principal')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {

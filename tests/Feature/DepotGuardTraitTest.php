@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Batch;
-use App\Models\Penerimaan;
 use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\RencanaKirim;
@@ -165,44 +164,23 @@ class DepotGuardTraitTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Penerimaan
+    // RencanaKirim (update guard)
     // ------------------------------------------------------------------
 
     /**
-     * Kolom yang dipakai di sini diverifikasi dari skema: `penerimaan` tidak
-     * punya `nama_penerima` maupun `no_po`. Menulis test dengan mengira
-     * hanya menghasilkan baris kosong yang assertion-nya tidak pernah benar.
+     * Guard pada jalur update: user depo lain harus ditolak SEBELUM ada
+     * perubahan tersimpan. Destroy sudah dicakup test di atas; jalur update
+     * memakai `authorizeDepot()` yang sama tetapi validasi isi body bisa
+     * menutupinya dengan 422 kalau urutannya salah.
      */
-    private function penerimaan(string $kodeDepo, string $noShipment): Penerimaan
+    public function test_rencana_kirim_update_menolak_depo_lain(): void
     {
-        return Penerimaan::create([
-            'kode_depo' => $kodeDepo,
-            'nama_depo' => 'Depo '.$kodeDepo,
-            'no_shipment' => $noShipment,
-            'tanggal_penerimaan' => now()->toDateString(),
-            'status' => 'PENDING',
-        ]);
-    }
+        Sanctum::actingAs($this->depotUser('AA', ['rencana_kirim.edit']));
+        $rk = $this->rencana('BB', 'PO-RK-3');
 
-    public function test_penerimaan_update_menolak_depo_lain(): void
-    {
-        Sanctum::actingAs($this->depotUser('AA', ['penerimaan.edit']));
-        $row = $this->penerimaan('BB', 'SH-001');
+        $this->putJson("/api/v1/rencana-kirim/{$rk->id}", ['po_transporter' => 'PO-DIUBAH'])->assertStatus(403);
 
-        $this->putJson("/api/v1/penerimaan/{$row->id}", ['no_shipment' => 'SH-DIUBAH'])->assertStatus(403);
-
-        // Guard harus membatalkan SEBELUM ada perubahan tersimpan.
-        $this->assertDatabaseHas('penerimaan', ['id' => $row->id, 'no_shipment' => 'SH-001']);
-    }
-
-    public function test_penerimaan_destroy_mengizinkan_depo_sendiri(): void
-    {
-        Sanctum::actingAs($this->depotUser('AA', ['penerimaan.delete']));
-        $row = $this->penerimaan('AA', 'PO-PN-2');
-
-        $this->deleteJson("/api/v1/penerimaan/{$row->id}")->assertOk();
-
-        $this->assertDatabaseMissing('penerimaan', ['id' => $row->id]);
+        $this->assertDatabaseHas('rencana_kirim', ['id' => $rk->id, 'po_transporter' => 'PO-RK-3']);
     }
 
     // ------------------------------------------------------------------

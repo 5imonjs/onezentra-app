@@ -52,7 +52,7 @@ class BugHuntTest extends TestCase
     {
         // Tanpa actingAs harus 401
         $this->getJson('/api/v1/rencana-kirim')->assertUnauthorized();
-        $this->getJson('/api/v1/penerimaan')->assertUnauthorized();
+        $this->getJson('/api/v1/npn')->assertUnauthorized();
         $this->getJson('/api/v1/users')->assertUnauthorized();
         $this->postJson('/api/v1/rencana-kirim', [])->assertUnauthorized();
     }
@@ -116,8 +116,6 @@ class BugHuntTest extends TestCase
         ])->assertStatus(422);
         // email test tanpa to
         $this->postJson('/api/v1/email-settings/test', ['to' => 'not-email'])->assertStatus(422);
-        // penerimaan tanpa auth sudah 401, tapi dengan auth validasi numeric
-        $this->postJson('/api/v1/penerimaan', ['DO_QTY' => 'not-numeric'])->assertStatus(422);
     }
 
     public function test_mass_assign_tidak_bisa_inject_status(): void

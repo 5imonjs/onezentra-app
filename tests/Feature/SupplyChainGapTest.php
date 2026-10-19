@@ -11,6 +11,7 @@ use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\OpnameExpiredService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -347,5 +348,40 @@ class SupplyChainGapTest extends TestCase
             ->firstOrFail();
 
         $this->assertDatabaseHas('batches', ['receiving_item_id' => $item->id]);
+    }
+
+    /**
+     * Celah 9: baris fallback receiving (tanpa validasi SJ) tidak punya
+     * expired_date sehingga tak terlihat opname. Sesuai keputusan, baris
+     * tetap dibuat sebagai placeholder, dan operator melengkapi expired-nya
+     * lewat Edit Inbound — setelah itu baris WAJIB terlihat sebagai kandidat
+     * opname (sumber kebenaran tetap receiving_items).
+     */
+    public function test_fallback_receiving_item_becomes_opname_eligible_after_expiry_edit(): void
+    {
+        $user = $this->userWithPermissions([
+            'receiving.create', 'receiving.view', 'receiving.edit', 'penerimaan.edit',
+        ]);
+        $rk = $this->scheduledRencana($user, 'PO-GAP-009');
+        $rk->update(['status' => 'VERIFIED']);
+        $rkItemId = RencanaKirimItem::where('rencana_kirim_id', $rk->id)->first()->id;
+
+        $receivingId = $this->postJson('/api/v1/receivings', ['rencana_kirim_id' => $rk->id])
+            ->assertCreated()
+            ->json('data.id');
+
+        $item = ReceivingItem::where('receiving_id', $receivingId)
+            ->where('rencana_kirim_item_id', $rkItemId)
+            ->firstOrFail();
+
+        // Placeholder tanpa expired: belum kandidat opname.
+        $this->assertNull($item->expired_date);
+        $this->assertSame(0, app(OpnameExpiredService::class)->pendingSummary(now(), $user)['pending']['total']);
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", ['expired_date' => '2027-02-01'])->assertOk();
+
+        $this->assertSame('2027-02-01', $item->fresh()->expired_date?->toDateString());
+        // Setelah expired diisi lewat Edit Inbound, baris terlihat opname.
+        $this->assertSame(1, app(OpnameExpiredService::class)->pendingSummary(now(), $user)['pending']['total']);
     }
 }

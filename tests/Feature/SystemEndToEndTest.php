@@ -7,7 +7,6 @@ use App\Mail\SelisihQtyNotification;
 use App\Mail\StandarisasiStatusNotification;
 use App\Models\Npn;
 use App\Models\OpnameExpiredWave;
-use App\Models\Penerimaan;
 use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\ReceivingItem;
@@ -255,52 +254,7 @@ class SystemEndToEndTest extends TestCase
     }
 
     // ============================================================
-    // 4. PENERIMAAN  (PenerimaanController.php:11) - master data stok NPN per depo
-    // ============================================================
-    public function test_penerimaan_crud_dan_depot_scope(): void
-    {
-        // create draft (PenerimaanController.php:41)
-        $res = $this->postJson('/api/v1/penerimaan', [
-            'BOSnetszProductId' => 'B-PIM-01',
-            'szNickName' => 'Penerimaan Produk A',
-            'DO_QTY' => 100,
-            'tanggal_penerimaan' => '2026-09-10',
-            'kode_depo' => 'ADMIN',
-            'nama_depo' => 'Kantor Pusat',
-        ])->assertCreated()->assertJsonPath('data.BOSnetszProductId', 'B-PIM-01');
-        $id = $res->json('data.id');
-        $this->assertDatabaseHas('penerimaan', ['id' => $id, 'status' => 'draft']);
-
-        // index + search + filter status
-        $this->getJson('/api/v1/penerimaan?search=Penerimaan Produk A')->assertOk()->assertJsonCount(1, 'data');
-        $this->getJson('/api/v1/penerimaan?status=draft')->assertOk();
-        $this->getJson('/api/v1/penerimaan?tanggal_from=2026-09-01&tanggal_to=2026-09-30')->assertOk();
-
-        // show
-        $this->getJson("/api/v1/penerimaan/{$id}")->assertOk()->assertJsonPath('data.szNickName', 'Penerimaan Produk A');
-
-        // update -> completed (PenerimaanController.php:115 sets completed_at) - DO_QTY cast decimal:2 jadi 120.00
-        $this->putJson("/api/v1/penerimaan/{$id}", ['status' => 'completed', 'DO_QTY' => 120])->assertOk();
-        $this->assertEquals(120, (float) Penerimaan::find($id)->DO_QTY);
-        $this->assertNotNull(Penerimaan::find($id)->completed_at);
-
-        // depot scoping: user depo lain tidak bisa akses detail
-        $otherRole = Role::firstOrCreate(['slug' => 'cheker_pim'], ['name' => 'Cheker PIM']);
-        $perm = Permission::where('slug', 'penerimaan.view')->first();
-        $otherRole->permissions()->syncWithoutDetaching([$perm->id]);
-        $otherUser = User::create(['email' => 'other@pim.test', 'password' => 'password', 'full_name' => 'Other', 'kode_depo' => 'DEPO-X', 'nama_depo' => 'Depo X', 'level' => 'operator', 'status' => 'active', 'role_id' => $otherRole->id]);
-        $otherRole->users()->attach($otherUser->id);
-        Sanctum::actingAs($otherUser);
-        $this->getJson("/api/v1/penerimaan/{$id}")->assertForbidden();
-
-        Sanctum::actingAs($this->admin);
-        // delete
-        $this->deleteJson("/api/v1/penerimaan/{$id}")->assertOk();
-        $this->assertDatabaseMissing('penerimaan', ['id' => $id]);
-    }
-
-    // ============================================================
-    // 5. OPNAME EXPIRED  (OpnameExpiredController.php:16)
+    // 4. OPNAME EXPIRED  (OpnameExpiredController.php:16)
     // ============================================================
     public function test_opname_expired_full_flow(): void
     {

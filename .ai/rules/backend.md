@@ -55,5 +55,19 @@
   `submitted = seluruh wave depo tervalidasi`. Never mark a whole depot
   submitted just because one `COMPLETED` session exists — that session may
   cover only some waves.
+- `receiving_items` is the single ledger source of truth. The legacy
+  `/api/v1/penerimaan` CRUD (`PenerimaanController`, `App\Models\Penerimaan`)
+  was removed — no UI ever consumed it (web Inbound = `/receiving-items`,
+  mobile Inbound = `/receivings`). The `penerimaan` table and its
+  `AdminDatabaseController` reset entry stay (no data loss), but no app code
+  reads it; do not add a second receptacle ledger.
+- `standar_umur_produk.umur` (months) feeds the shelf-life check in Validasi SJ
+  (`SjValidationController::attachUmurStandar`), NOT opname. `OpnameExpiredService`
+  classifies strictly by `sisa_hari` vs thresholds; don't promise umur-based
+  opname analysis in UI copy.
+- `ReceivingController::store()` fallback rows (no completed SJ validation) are
+  intentionally created without `expired_date` — the data does not exist yet.
+  They become opname-eligible once the operator fills expiry via Edit Inbound
+  (`PUT /receiving-items/{id}` must keep accepting `expired_date`).
 - Logout revokes only the current token (`currentAccessToken()->delete()`), never
   `$user->tokens()->delete()`, to stay multi-device safe.

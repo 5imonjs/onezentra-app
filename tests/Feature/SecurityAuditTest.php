@@ -206,7 +206,6 @@ class SecurityAuditTest extends TestCase
             ['POST', '/api/v1/biaya-retribusi'],
             ['POST', '/api/v1/docks'],
             ['POST', '/api/v1/gate-transactions'],
-            ['POST', '/api/v1/penerimaan'],
             ['POST', '/api/v1/standarisasi-tumpukan'],
         ];
 
