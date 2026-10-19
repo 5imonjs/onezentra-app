@@ -18,6 +18,7 @@ const MENU_FALLBACK: [string, string][] = [
   ['/receiving', 'receiving.view'],
   ['/penerimaan', 'penerimaan.view'],
   ['/opname-expired', 'opname.view'],
+  ['/opname-sessions', 'opname.view'],
   ['/npn', 'npn.view'],
   ['/standar-umur', 'standar_umur.view'],
   ['/standarisasi', 'standarisasi.view'],

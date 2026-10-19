@@ -2,9 +2,11 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Sidebar from './Sidebar';
 
+const nav = vi.hoisted(() => ({ pathname: '/email-recipients' }));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => '/email-recipients',
+  usePathname: () => nav.pathname,
 }));
 
 vi.mock('next/image', () => ({
@@ -28,6 +30,7 @@ function renderSidebar() {
 describe('Sidebar — ikon menu', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    nav.pathname = '/email-recipients';
   });
 
   afterEach(cleanup);
@@ -62,5 +65,17 @@ describe('Sidebar — ikon menu', () => {
     expect(setting).toBeTruthy();
     expect(penerima).toBeTruthy();
     expect(setting).not.toEqual(penerima);
+  });
+
+  it('membedakan ikon menu "Batch Expired" dan "Sesi Opname" (grup Opname)', () => {
+    nav.pathname = '/opname-sessions';
+    renderSidebar();
+
+    const batchExpired = screen.getByText('Batch Expired').closest('a')?.querySelector('path')?.getAttribute('d');
+    const sesiOpname = screen.getByText('Sesi Opname').closest('a')?.querySelector('path')?.getAttribute('d');
+
+    expect(batchExpired).toBeTruthy();
+    expect(sesiOpname).toBeTruthy();
+    expect(batchExpired).not.toEqual(sesiOpname);
   });
 });

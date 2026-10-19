@@ -16,8 +16,15 @@ const operasionalMenus = [
   { name: 'Validasi Dokumen', path: '/validasi-sj', icon: 'check', permission: 'sj_validation.view' },
   { name: 'Check Out Point', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
   { name: 'Inbound (SJ)', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
+];
+
+// Opname dapat grup sendiri. Alur inbound (fisik) berakhir di "Inbound (SJ)",
+// sedangkan opname adalah stock-take terjadwal: monitoring wave (Batch Expired)
+// lalu verifikasi lapangan (Sesi Opname). Menaruh keduanya di dalam "Inventory"
+// membuatnya tampak sebagai lanjutan alur inbound yang sama.
+const opnameMenus = [
   { name: 'Batch Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
-  { name: 'Sesi Opname', path: '/opname-sessions', icon: 'clipboard', permission: 'opname.view' },
+  { name: 'Sesi Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.view' },
 ];
 
 const masterDataMenus = [
@@ -58,6 +65,8 @@ const Icon = ({ name, className = '' }: { name: string; className?: string }) =>
   const icons: { [key: string]: React.ReactNode } = {
     home: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>,
     clipboard: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" /></svg>,
+    'clipboard-check': <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0118 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3l1.5 1.5 3-3.75" /></svg>,
+    'user-group': <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg>,
     'building-office': <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>,
     package: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>,
     layers: <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>,
@@ -271,6 +280,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
   const sectionKeyOf = useCallback((path: string) => {
     const groups: { key: string; items: GroupItem[] }[] = [
       { key: 'operasional', items: operasionalMenus },
+      { key: 'opname', items: opnameMenus },
       { key: 'master-data', items: masterDataMenus },
       { key: 'keuangan', items: biayaMenus },
       { key: 'laporan', items: reportItems },
@@ -395,6 +405,20 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             hasPermission={hasPermission}
             open={openSection === 'operasional'}
             onToggle={() => setOpenSection(openSection === 'operasional' ? null : 'operasional')}
+            onExpandRequest={onToggle}
+          />
+
+          <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-gray-300/60 to-transparent" />
+
+          <CollapsibleGroup
+            title="Opname"
+            icon="clipboard-check"
+            items={opnameMenus}
+            isExpanded={isExpanded}
+            pathname={pathname}
+            hasPermission={hasPermission}
+            open={openSection === 'opname'}
+            onToggle={() => setOpenSection(openSection === 'opname' ? null : 'opname')}
             onExpandRequest={onToggle}
           />
 
