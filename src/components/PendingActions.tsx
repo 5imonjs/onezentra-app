@@ -89,6 +89,10 @@ type GateItem = { id: number; po_transporter?: string; nopol?: string };
  * per modul dan mengikuti filter depo dashboard. Hanya memuat modul yang
  * izinnya dimiliki user; jika semua kosong, section tidak dirender sama sekali
  * (bukan menampilkan kartu kosong).
+ *
+ * Tata letak dibuat ringkas: header ramping + baris item satu-lapis yang
+ * tersusun dua kolom di layar lebar, supaya section tidak memakan tinggi
+ * dashboard.
  */
 export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
   const { hasPermission } = useAuthStore();
@@ -223,10 +227,10 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
   if (loading) {
     return (
       <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5" aria-busy="true">
-        <div className="h-5 w-40 bg-gray-100 rounded animate-pulse mb-4" />
-        <div className="space-y-2">
-          <div className="h-14 bg-surface-raised rounded-xl animate-pulse" />
-          <div className="h-14 bg-surface-raised rounded-xl animate-pulse" />
+        <div className="mb-3 h-4 w-36 rounded bg-gray-100 animate-pulse" />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="h-9 rounded-lg bg-surface-raised animate-pulse" />
+          <div className="h-9 rounded-lg bg-surface-raised animate-pulse" />
         </div>
       </section>
     );
@@ -260,62 +264,67 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
     );
   }
 
+  const totalItems = groups.reduce((sum, g) => sum + g.total, 0);
+
   return (
     <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden" aria-label="Item yang memerlukan tindakan Anda">
       {failedCount > 0 && (
-        <div className="mx-5 mt-5 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700" role="alert">
+        <div className="mx-5 mt-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700" role="alert">
           <span>Sebagian data gagal dimuat — daftar mungkin belum lengkap.</span>
           <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-wash text-accent-text" aria-hidden="true">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+
+      {/* Header ramping: ikon kecil + judul, badge jumlah di kanan. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card px-5 py-3.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-wash text-accent-text" aria-hidden="true">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </span>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-gray-900">Perlu Tindakan</h2>
+            <h2 className="truncate text-sm font-semibold text-gray-900">Perlu Tindakan</h2>
             <p className="truncate text-xs text-gray-500">Item yang menunggu aksi Anda hari ini</p>
           </div>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold tabular-nums text-red-700">
           <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
-          {groups.reduce((sum, g) => sum + g.total, 0)} item
+          {totalItems} item
         </span>
       </div>
+
       <div className="divide-y divide-gray-100">
         {groups.map((group) => {
           const tone = TONE_STYLES[group.tone];
           return (
-            <div key={group.key} className="px-5 py-4">
-              <div className="mb-2.5 flex items-center gap-2">
-                <h3 className={`truncate text-sm font-semibold ${tone.label}`}>{group.label}</h3>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${tone.chip}`}>{group.total}</span>
+            <div key={group.key} className="px-5 py-3">
+              <div className="mb-1.5 flex items-center gap-2">
+                <h3 className={`truncate text-xs font-semibold ${tone.label}`}>{group.label}</h3>
+                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${tone.chip}`}>{group.total}</span>
                 <Link href={group.href} className="ml-auto shrink-0 text-xs font-semibold text-gray-400 transition-colors hover:text-gray-700">
                   Lihat semua →
                 </Link>
               </div>
-              <ul className="space-y-1.5">
+              <ul className="grid grid-cols-1 gap-0.5 sm:grid-cols-2">
                 {group.items.map((item) => (
                   <li key={item.id}>
                     <Link
                       href={item.href}
-                      className="group flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2.5 transition-colors hover:border-gray-200 hover:bg-surface-raised"
+                      className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-raised"
                     >
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${tone.dot}`} aria-hidden="true" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-gray-900">{item.primary}</span>
-                        <span className="block truncate text-xs text-gray-400">{item.secondary}</span>
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone.dot}`} aria-hidden="true" />
+                      <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.primary}</span>
+                        <span className="min-w-0 truncate text-xs text-gray-400">{item.secondary}</span>
                       </span>
-                      <svg className="h-4 w-4 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                      <svg className="h-3.5 w-3.5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </Link>
                   </li>
                 ))}
               </ul>
               {group.moreCount > 0 && (
-                <p className="mt-1.5 px-1 text-xs text-gray-400">+{group.moreCount} lainnya — lihat semua di halaman modul</p>
+                <p className="mt-1 px-1 text-xs text-gray-400">+{group.moreCount} lainnya — lihat semua di halaman modul</p>
               )}
             </div>
           );
