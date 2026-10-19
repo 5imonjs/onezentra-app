@@ -82,15 +82,15 @@ class StandarisasiTumpukanController extends Controller
     public function searchProduct(Request $request): JsonResponse
     {
         $validated = $request->validate(['q' => 'required|string|min:1']);
-        $term = '%'.$validated['q'].'%';
+        $like = $this->likeContains($validated['q']);
 
         $products = Npn::query()
             ->select(['id', 'BOSnetszProductId', 'SAPszProductId', 'szNickName', 'szNickNameNew', 'szShortDescription', 'szBarcode'])
-            ->where(function ($query) use ($term) {
+            ->where(function ($query) use ($like) {
                 foreach (self::NPN_SEARCH_COLUMNS as $index => $column) {
                     $index === 0
-                        ? $query->where($column, 'like', $term)
-                        : $query->orWhere($column, 'like', $term);
+                        ? $query->whereRaw("{$column} LIKE ? ESCAPE ?", [$like, '\\'])
+                        : $query->orWhereRaw("{$column} LIKE ? ESCAPE ?", [$like, '\\']);
                 }
             })
             ->where('szStatus', 'EXISTING')
@@ -286,7 +286,7 @@ class StandarisasiTumpukanController extends Controller
         }
 
         if ($withSearch && $request->filled('search')) {
-            $like = '%'.addcslashes($request->search, '\\%_').'%';
+            $like = $this->likeContains((string) $request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereHas('npn', function ($npn) use ($like) {
                     foreach (self::NPN_SEARCH_COLUMNS as $index => $column) {

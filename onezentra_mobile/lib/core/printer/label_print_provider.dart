@@ -12,10 +12,11 @@ import 'package:onezentra_mobile/core/printer/thermal_label.dart';
 /// UI tinggal menampilkan, dan supaya alurnya bisa diuji memakai [LabelPrinter]
 /// palsu tanpa radio bluetooth sungguhan.
 class LabelPrintProvider extends ChangeNotifier {
-  LabelPrintProvider({LabelPrinter? printer, BluetoothPermissionRequest? requestPermissions})
-    : _printer = printer ?? BluetoothLabelPrinter(),
-      _requestPermissions =
-          requestPermissions ?? BluetoothPermissions.request;
+  LabelPrintProvider({
+    LabelPrinter? printer,
+    BluetoothPermissionRequest? requestPermissions,
+  }) : _printer = printer ?? BluetoothLabelPrinter(),
+       _requestPermissions = requestPermissions ?? BluetoothPermissions.request;
 
   final LabelPrinter _printer;
   final BluetoothPermissionRequest _requestPermissions;
@@ -162,22 +163,20 @@ class LabelPrintProvider extends ChangeNotifier {
         return;
       }
       await _discoverySub?.cancel();
-      _discoverySub = _printer
-          .discover()
-          .listen(
-            (device) {
-              if (_discovered.any((d) => d.address == device.address)) {
-                return;
-              }
-              _discovered = [..._discovered, device];
-              notifyListeners();
-            },
-            onError: (_) {
-              _error = 'Pencarian terhenti. Coba lagi.';
-              _notifyDiscoveryDone();
-            },
-            onDone: _notifyDiscoveryDone,
-          );
+      _discoverySub = _printer.discover().listen(
+        (device) {
+          if (_discovered.any((d) => d.address == device.address)) {
+            return;
+          }
+          _discovered = [..._discovered, device];
+          notifyListeners();
+        },
+        onError: (_) {
+          _error = 'Pencarian terhenti. Coba lagi.';
+          _notifyDiscoveryDone();
+        },
+        onDone: _notifyDiscoveryDone,
+      );
     } catch (_) {
       _error = 'Pencarian gagal dimulai. Pastikan Bluetooth menyala.';
       _notifyDiscoveryDone();

@@ -206,19 +206,22 @@ void main() {
       expect(provider.error, isNull);
     });
 
-    test('izin bluetooth ditolak: scan dibatalkan dengan pesan jelas', () async {
-      var fake = _DenyCountingPrinter(available: [printerA]);
-      var provider = LabelPrintProvider(
-        printer: fake,
-        requestPermissions: () async => false,
-      );
-      await provider.scan();
+    test(
+      'izin bluetooth ditolak: scan dibatalkan dengan pesan jelas',
+      () async {
+        var fake = _DenyCountingPrinter(available: [printerA]);
+        var provider = LabelPrintProvider(
+          printer: fake,
+          requestPermissions: () async => false,
+        );
+        await provider.scan();
 
-      expect(fake.scanCalls, 0);
-      expect(provider.available, isEmpty);
-      expect(provider.error, contains('Izin Bluetooth ditolak'));
-      expect(provider.scanning, isFalse);
-    });
+        expect(fake.scanCalls, 0);
+        expect(provider.available, isEmpty);
+        expect(provider.error, contains('Izin Bluetooth ditolak'));
+        expect(provider.scanning, isFalse);
+      },
+    );
 
     test('izin bluetooth diberikan: scan berjalan normal', () async {
       var fake = _FakeLabelPrinter(available: [printerA, printerB]);
@@ -234,7 +237,8 @@ void main() {
 
     test('discovery mengisi perangkat tanpa duplikat lalu berhenti', () async {
       var fake = _FakeLabelPrinter();
-      fake.discoverFn = () => Stream.fromIterable([printerA, printerA, printerB]);
+      fake.discoverFn = () =>
+          Stream.fromIterable([printerA, printerA, printerB]);
       var provider = LabelPrintProvider(
         printer: fake,
         requestPermissions: () async => true,
@@ -243,10 +247,10 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(provider.discovering, isFalse);
-      expect(
-        provider.discovered.map((d) => d.address),
-        ['AA:BB:CC:DD:EE:01', 'AA:BB:CC:DD:EE:02'],
-      );
+      expect(provider.discovered.map((d) => d.address), [
+        'AA:BB:CC:DD:EE:01',
+        'AA:BB:CC:DD:EE:02',
+      ]);
     });
 
     test('izin ditolak: discovery tidak dimulai', () async {
@@ -262,19 +266,22 @@ void main() {
       expect(provider.error, contains('Izin Bluetooth ditolak'));
     });
 
-    test('bond berhasil: daftar bonded dimuat ulang + pesan terhubung', () async {
-      var fake = _FakeLabelPrinter(available: [printerA]);
-      var provider = LabelPrintProvider(
-        printer: fake,
-        requestPermissions: () async => true,
-      );
-      var ok = await provider.bond(printerB);
+    test(
+      'bond berhasil: daftar bonded dimuat ulang + pesan terhubung',
+      () async {
+        var fake = _FakeLabelPrinter(available: [printerA]);
+        var provider = LabelPrintProvider(
+          printer: fake,
+          requestPermissions: () async => true,
+        );
+        var ok = await provider.bond(printerB);
 
-      expect(ok, isTrue);
-      expect(fake.bondCalls, [printerB]);
-      expect(provider.available, [printerA]);
-      expect(provider.success, contains('Terhubung'));
-    });
+        expect(ok, isTrue);
+        expect(fake.bondCalls, [printerB]);
+        expect(provider.available, [printerA]);
+        expect(provider.success, contains('Terhubung'));
+      },
+    );
 
     test('bond gagal: pesan jelas, bonded tidak berubah', () async {
       var fake = _FakeLabelPrinter(available: [printerA]);

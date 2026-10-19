@@ -625,8 +625,7 @@ void main() {
       (widget) =>
           widget is Container &&
           widget.decoration is BoxDecoration &&
-          (widget.decoration! as BoxDecoration).color ==
-              AppTheme.dangerWell,
+          (widget.decoration! as BoxDecoration).color == AppTheme.dangerWell,
     );
     expect(banner, findsOneWidget);
   });
@@ -688,52 +687,52 @@ void main() {
     ],
   );
 
-  testWidgets('item tervalidasi yang labelnya belum dilaporkan mengunci Selesaikan', (
-    tester,
-  ) async {
-    var repository = _FakeValidationRepository(
-      sessionToOpen: unprintedSession(),
-    );
-    var auth = await _loginAuth();
+  testWidgets(
+    'item tervalidasi yang labelnya belum dilaporkan mengunci Selesaikan',
+    (tester) async {
+      var repository = _FakeValidationRepository(
+        sessionToOpen: unprintedSession(),
+      );
+      var auth = await _loginAuth();
 
-    await _pumpValidationPage(tester, auth, repository);
+      await _pumpValidationPage(tester, auth, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
-    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
-    await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+      await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Cetak 1 label dulu'), findsOneWidget);
-    expect(find.text('Selesaikan Validasi ✓'), findsNothing);
-    expect(find.text('Tercetak'), findsNothing);
-  });
+      expect(find.text('Cetak 1 label dulu'), findsOneWidget);
+      expect(find.text('Selesaikan Validasi ✓'), findsNothing);
+      expect(find.text('Tercetak'), findsNothing);
+    },
+  );
 
-  testWidgets('item yang labelnya sudah dilaporkan membuka Selesaikan + badge', (
-    tester,
-  ) async {
-    var repository = _FakeValidationRepository(
-      sessionToOpen: printedSession(),
-    );
-    var auth = await _loginAuth();
+  testWidgets(
+    'item yang labelnya sudah dilaporkan membuka Selesaikan + badge',
+    (tester) async {
+      var repository = _FakeValidationRepository(
+        sessionToOpen: printedSession(),
+      );
+      var auth = await _loginAuth();
 
-    await _pumpValidationPage(tester, auth, repository);
+      await _pumpValidationPage(tester, auth, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
-    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
-    await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+      await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Selesaikan Validasi ✓'), findsOneWidget);
-    expect(find.text('Tercetak'), findsOneWidget);
-    expect(find.text('Cetak Ulang'), findsOneWidget);
-  });
+      expect(find.text('Selesaikan Validasi ✓'), findsOneWidget);
+      expect(find.text('Tercetak'), findsOneWidget);
+      expect(find.text('Cetak Ulang'), findsOneWidget);
+    },
+  );
 
   testWidgets('tile item tidak overflow di layar sempit', (tester) async {
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
-    var repository = _FakeValidationRepository(
-      sessionToOpen: printedSession(),
-    );
+    var repository = _FakeValidationRepository(sessionToOpen: printedSession());
     var auth = await _loginAuth();
 
     await _pumpValidationPage(tester, auth, repository);

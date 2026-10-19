@@ -541,8 +541,7 @@ void main() {
       (widget) =>
           widget is Container &&
           widget.decoration is BoxDecoration &&
-          (widget.decoration! as BoxDecoration).color ==
-              AppTheme.dangerWell,
+          (widget.decoration! as BoxDecoration).color == AppTheme.dangerWell,
     );
     expect(banner, findsOneWidget);
   });

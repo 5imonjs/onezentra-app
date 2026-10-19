@@ -713,9 +713,7 @@ class _ValidationPageState extends State<ValidationPage> {
                 children: [
                   if (item.isPending && canValidate && item.canValidate)
                     _quickOkButton(item, validation)
-                  else if (item.isPending &&
-                      canValidate &&
-                      !item.canValidate)
+                  else if (item.isPending && canValidate && !item.canValidate)
                     _standarisasiButton(
                       item,
                       validation,
@@ -769,7 +767,9 @@ class _ValidationPageState extends State<ValidationPage> {
         ),
       ),
       icon: const Icon(Icons.print_rounded, size: 16),
-      label: Text(item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label'),
+      label: Text(
+        item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
+      ),
     ),
   );
 
@@ -801,9 +801,9 @@ class _ValidationPageState extends State<ValidationPage> {
       var reported = true;
       String? reportWarning;
       if (batch != null && batch.id > 0) {
-        reported = await context
-            .read<ValidationProvider>()
-            .markLabelPrinted(batch.id);
+        reported = await context.read<ValidationProvider>().markLabelPrinted(
+          batch.id,
+        );
         if (!mounted) {
           return;
         }

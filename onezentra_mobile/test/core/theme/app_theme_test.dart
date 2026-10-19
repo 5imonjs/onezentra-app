@@ -42,7 +42,9 @@ void main() {
       );
     });
 
-    testWidgets('teks dialog/snackBar aplikasi terbaca di permukaan gelap', (tester) async {
+    testWidgets('teks dialog/snackBar aplikasi terbaca di permukaan gelap', (
+      tester,
+    ) async {
       var dialogBg = dark().dialogTheme.backgroundColor!;
       var titleColor = AppTheme.textTheme.headlineSmall?.color;
       var snackBg = dark().snackBarTheme.backgroundColor!;

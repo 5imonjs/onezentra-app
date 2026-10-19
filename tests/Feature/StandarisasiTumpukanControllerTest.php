@@ -122,4 +122,50 @@ class StandarisasiTumpukanControllerTest extends TestCase
         $this->deleteJson("/api/v1/standarisasi-tumpukan/{$row->id}")->assertForbidden();
         $this->assertModelExists($row);
     }
+
+    public function test_index_search_escapes_like_wildcards(): void
+    {
+        $user = $this->userWith(['standarisasi.view']);
+        Sanctum::actingAs($user);
+
+        $percent = Npn::create([
+            'szNickName' => 'Diskon 50% Spesial', 'BOSnetszProductId' => 'B-PCT',
+            'SAPszProductId' => 'SAP-PCT', 'szBarcode' => 'BC-PCT', 'szStatus' => 'EXISTING',
+        ]);
+        $plain = Npn::create([
+            'szNickName' => 'Diskon 5000 Biasa', 'BOSnetszProductId' => 'B-PLAIN',
+            'SAPszProductId' => 'SAP-PLAIN', 'szBarcode' => 'BC-PLAIN', 'szStatus' => 'EXISTING',
+        ]);
+        foreach ([$percent, $plain] as $npn) {
+            StandarisasiTumpukan::create([
+                'npn_id' => $npn->id, 'tier' => 2, 'tinggi_tumpukan' => 2,
+                'status' => 'pending', 'requested_by' => $user->id,
+                'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A',
+            ]);
+        }
+
+        // Tanpa escape `%` mencocokkan SEMUA baris; dengan escape hanya baris
+        // yang benar-benar memuat karakter `%`.
+        $this->getJson('/api/v1/standarisasi-tumpukan?search='.urlencode('%'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_search_product_escapes_like_wildcards(): void
+    {
+        Sanctum::actingAs($this->userWith(['standarisasi.view']));
+
+        Npn::create([
+            'szNickName' => 'Diskon 50% Spesial', 'BOSnetszProductId' => 'B-PCT',
+            'SAPszProductId' => 'SAP-PCT', 'szBarcode' => 'BC-PCT', 'szStatus' => 'EXISTING',
+        ]);
+        Npn::create([
+            'szNickName' => 'Diskon 5000 Biasa', 'BOSnetszProductId' => 'B-PLAIN',
+            'SAPszProductId' => 'SAP-PLAIN', 'szBarcode' => 'BC-PLAIN', 'szStatus' => 'EXISTING',
+        ]);
+
+        $this->getJson('/api/v1/standarisasi-tumpukan/search-product?q='.urlencode('%'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
 }

@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\V1\ApprovalAssignmentController;
 use App\Http\Controllers\Api\V1\AdminDatabaseController;
+use App\Http\Controllers\Api\V1\ApprovalAssignmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BatchController;
 use App\Http\Controllers\Api\V1\BiayaConfigController;

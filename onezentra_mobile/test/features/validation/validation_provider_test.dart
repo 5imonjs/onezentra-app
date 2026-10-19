@@ -71,9 +71,7 @@ void main() {
 
   test('notify setelah dispose tidak melempar', () async {
     var pending = Completer<SjValidation>();
-    var repository = _ScriptedValidationRepository([
-      () => pending.future,
-    ]);
+    var repository = _ScriptedValidationRepository([() => pending.future]);
     var provider = ValidationProvider(repository: repository);
 
     var started = provider.start('PO-A');

@@ -40,20 +40,23 @@ void main() {
       expect(ApiClient().usesCustomBaseUrl, isFalse);
     });
 
-    test('setBaseUrl tersimpan dan dipakai, reset kembali ke default', () async {
-      var client = ApiClient();
-      var effective = await client.setBaseUrl('api.onezentra.sbs');
-      expect(effective, 'https://api.onezentra.sbs/api/v1');
-      expect(client.baseUrl, 'https://api.onezentra.sbs/api/v1');
-      expect(client.usesCustomBaseUrl, isTrue);
+    test(
+      'setBaseUrl tersimpan dan dipakai, reset kembali ke default',
+      () async {
+        var client = ApiClient();
+        var effective = await client.setBaseUrl('api.onezentra.sbs');
+        expect(effective, 'https://api.onezentra.sbs/api/v1');
+        expect(client.baseUrl, 'https://api.onezentra.sbs/api/v1');
+        expect(client.usesCustomBaseUrl, isTrue);
 
-      // Sesi lama ikut dibuang saat server diganti.
-      expect(client.token, isNull);
+        // Sesi lama ikut dibuang saat server diganti.
+        expect(client.token, isNull);
 
-      await client.setBaseUrl('');
-      expect(client.usesCustomBaseUrl, isFalse);
-      expect(client.baseUrl, ApiClient.resolvedBaseUrl);
-    });
+        await client.setBaseUrl('');
+        expect(client.usesCustomBaseUrl, isFalse);
+        expect(client.baseUrl, ApiClient.resolvedBaseUrl);
+      },
+    );
 
     test('setBaseUrl menolak input tidak valid', () async {
       expect(

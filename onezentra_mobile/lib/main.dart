@@ -95,7 +95,7 @@ class _OneZentraAppState extends State<OneZentraApp>
           // kept painting hardcoded dark colours. ThemeMode.light is never
           // correct here — the login card and every Material surface would
           // go light while the pages stay dark (guarded by theme_guard_test).
-          themeMode: ThemeMode.light,
+          themeMode: ThemeMode.dark,
           routerConfig: widget.router,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
@@ -142,8 +142,7 @@ GoRouter buildRouter(
     GoRoute(
       path: '/gate/riwayat',
       name: 'gate_riwayat',
-      builder: (context, state) =>
-          GateHistoryPage(repository: gateRepository),
+      builder: (context, state) => GateHistoryPage(repository: gateRepository),
     ),
     GoRoute(
       path: '/validasi-sj',
