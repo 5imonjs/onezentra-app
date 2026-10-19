@@ -63,4 +63,21 @@ describe('DashboardPage — tata letak chart', () => {
     const rencana = screen.getByTestId('rencana-chart');
     expect(rencana.parentElement?.className).not.toContain('xl:grid-cols-2');
   });
+
+  it('hero menampilkan sapaan dengan nama depan user', () => {
+    render(<DashboardPage />);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Budi');
+  });
+
+  it('filter depo hanya tampil bagi pemegang izin depot.view_all', () => {
+    const { unmount } = render(<DashboardPage />);
+    expect(screen.getByLabelText('Filter depo dashboard')).toBeInTheDocument();
+    unmount();
+
+    hasPermission.mockImplementation((perm: string) => perm !== 'depot.view_all');
+    render(<DashboardPage />);
+
+    expect(screen.queryByLabelText('Filter depo dashboard')).not.toBeInTheDocument();
+  });
 });
