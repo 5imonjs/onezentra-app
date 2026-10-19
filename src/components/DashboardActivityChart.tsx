@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { dashboard, getErrorMessage } from '@/lib/api';
 import { useDashboardSummary } from '@/lib/dashboardSummary';
 import { useAuthStore } from '@/store/auth';
+import DashboardPanel from '@/components/DashboardPanel';
+
+const ACTIVITY_ICON = <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />;
 
 type UsageDay = { date: string; requests: number; active_users: number };
 type TopUser = { id: number; name: string; level: string; requests: number };
@@ -94,28 +97,29 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
   const trendBaru = !summaryLoading && trendPrev === 0 && trendNow > 0;
 
   return (
-    <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Mobilitas Penggunaan Sistem</h2>
-          <p className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-            <span>{usage ? `${formatDate(usage.from)} - ${formatDate(usage.to)}` : `${periodDays} hari terakhir`}</span>
-            {trendPct !== null && (
-              <span
-                aria-label={`Aktivitas 7 hari terakhir ${trendPct >= 0 ? 'naik' : 'turun'} ${Math.abs(trendPct)} persen dibanding minggu sebelumnya`}
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${trendPct >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}
-              >
-                {trendPct >= 0 ? '▲' : '▼'} {Math.abs(trendPct)}% vs minggu lalu
-              </span>
-            )}
-            {trendBaru && (
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-                Baru minggu ini
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <DashboardPanel
+      title="Mobilitas Penggunaan Sistem"
+      icon={ACTIVITY_ICON}
+      subtitle={
+        <>
+          <span>{usage ? `${formatDate(usage.from)} - ${formatDate(usage.to)}` : `${periodDays} hari terakhir`}</span>
+          {trendPct !== null && (
+            <span
+              aria-label={`Aktivitas 7 hari terakhir ${trendPct >= 0 ? 'naik' : 'turun'} ${Math.abs(trendPct)} persen dibanding minggu sebelumnya`}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${trendPct >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}
+            >
+              {trendPct >= 0 ? '▲' : '▼'} {Math.abs(trendPct)}% vs minggu lalu
+            </span>
+          )}
+          {trendBaru && (
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+              Baru minggu ini
+            </span>
+          )}
+        </>
+      }
+      actions={
+        <>
           <div role="group" aria-label="Pilih periode" className="flex rounded-lg border border-gray-300 bg-surface-card p-0.5">
             {PERIODS.map((p) => (
               <button
@@ -134,9 +138,9 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
           <button type="button" onClick={() => load(periodDays, kodeDepo)} disabled={loading} aria-label="Muat ulang penggunaan sistem" className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 min-w-11 min-h-11 flex items-center justify-center">
             <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
           </button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <div className="p-6">
         {loading && (
           <div className="space-y-4">
@@ -229,6 +233,6 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
           </>
         )}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
