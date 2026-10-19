@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -66,13 +65,12 @@ class AuthController extends Controller
         }
 
         if ($user->status !== 'active') {
-            // Pesan disamakan persis dengan kredensial salah agar status akun
-            // tidak bisa di-enumerasi dari respons login. Alasan sebenarnya
-            // tetap dicatat agar admin bisa mendiagnosa akun yang dinonaktifkan.
-            Log::notice('Login ditolak: akun tidak aktif.', ['user_id' => $user->id]);
-
+            // Cabang ini hanya tercapai setelah password diverifikasi BENAR,
+            // jadi status akun tidak bisa di-enumerasi tanpa kredensial yang
+            // valid. Staf yang dinonaktifkan diberi pesan jelas agar tahu harus
+            // menghubungi admin (pesan dipetakan ke bahasa Indonesia di klien).
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['Your account is inactive.'],
             ]);
         }
 
@@ -138,13 +136,12 @@ class AuthController extends Controller
         }
 
         if ($user->status !== 'active') {
-            // Pesan disamakan persis dengan kredensial salah agar status akun
-            // tidak bisa di-enumerasi dari respons login. Alasan sebenarnya
-            // tetap dicatat agar admin bisa mendiagnosa akun yang dinonaktifkan.
-            Log::notice('Login ditolak: akun tidak aktif.', ['user_id' => $user->id]);
-
+            // Cabang ini hanya tercapai setelah password diverifikasi BENAR,
+            // jadi status akun tidak bisa di-enumerasi tanpa kredensial yang
+            // valid. Staf yang dinonaktifkan diberi pesan jelas agar tahu harus
+            // menghubungi admin (pesan dipetakan ke bahasa Indonesia di klien).
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['Your account is inactive.'],
             ]);
         }
 

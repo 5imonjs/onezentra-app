@@ -42,32 +42,26 @@ class AuthTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
-    public function test_login_inactive_account_is_indistinguishable_from_wrong_password(): void
+    public function test_login_inactive_account_gets_distinct_message_only_after_correct_password(): void
     {
         User::factory()->create([
-            'email' => 'enum-active@example.com',
-            'password' => 'secret-123',
-            'status' => 'active',
-        ]);
-        User::factory()->create([
-            'email' => 'enum-inactive@example.com',
+            'email' => 'inactive-login@example.com',
             'password' => 'secret-123',
             'status' => 'inactive',
         ]);
 
-        $wrongPassword = $this->postJson('/api/v1/login', [
-            'email' => 'enum-active@example.com',
-            'password' => 'salah',
-        ]);
-        $inactive = $this->postJson('/api/v1/login', [
-            'email' => 'enum-inactive@example.com',
+        // Password BENAR + akun nonaktif -> pesan jelas untuk staf.
+        $this->postJson('/api/v1/login', [
+            'email' => 'inactive-login@example.com',
             'password' => 'secret-123',
-        ]);
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Your account is inactive.');
 
-        // Pesan harus identik: status akun tidak boleh bisa di-enumerasi dari
-        // respons login (akun nonaktif = kredensial salah).
-        $wrongPassword->assertStatus(422);
-        $inactive->assertStatus(422);
-        $this->assertSame($wrongPassword->json('errors.email'), $inactive->json('errors.email'));
+        // Password SALAH -> pesan generik, tidak membocorkan status akun.
+        $this->postJson('/api/v1/login', [
+            'email' => 'inactive-login@example.com',
+            'password' => 'salah',
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'The provided credentials are incorrect.');
     }
 }

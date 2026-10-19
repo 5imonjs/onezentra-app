@@ -147,32 +147,29 @@ class MobileAuthTest extends TestCase
         ])->assertOk()->assertJsonPath('token_type', 'Bearer');
     }
 
-    public function test_mobile_login_inactive_account_is_indistinguishable_from_wrong_password(): void
+    public function test_mobile_login_inactive_account_gets_distinct_message_only_after_correct_password(): void
     {
         User::factory()->create([
-            'email' => 'mobile-enum-active@onezentra.com',
-            'password' => 'secret-123',
-            'status' => 'active',
-        ]);
-        User::factory()->create([
-            'email' => 'mobile-enum-inactive@onezentra.com',
+            'email' => 'mobile-inactive-login@onezentra.com',
             'password' => 'secret-123',
             'status' => 'inactive',
         ]);
 
-        $wrongPassword = $this->postJson('/api/v1/mobile/login', [
-            'email' => 'mobile-enum-active@onezentra.com',
-            'password' => 'salah',
-        ]);
-        $inactive = $this->postJson('/api/v1/mobile/login', [
-            'email' => 'mobile-enum-inactive@onezentra.com',
+        // Password BENAR + akun nonaktif -> pesan jelas (dipetakan ke Indonesia
+        // oleh auth_repository.dart di klien mobile).
+        $this->postJson('/api/v1/mobile/login', [
+            'email' => 'mobile-inactive-login@onezentra.com',
             'password' => 'secret-123',
-        ]);
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Your account is inactive.');
 
-        // Pesan identik: status akun tidak bisa di-enumerasi lewat login mobile.
-        $wrongPassword->assertStatus(422);
-        $inactive->assertStatus(422);
-        $this->assertSame($wrongPassword->json('errors.email'), $inactive->json('errors.email'));
+        // Password SALAH -> pesan generik, tidak membocorkan status akun.
+        $this->postJson('/api/v1/mobile/login', [
+            'email' => 'mobile-inactive-login@onezentra.com',
+            'password' => 'salah',
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'The provided credentials are incorrect.');
+
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 }

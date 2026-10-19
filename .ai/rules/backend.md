@@ -22,9 +22,11 @@
 ## Auth & authorization
 - Route middleware carries the permission (`permission:...`) and depo scoping
   uses `forUserDepot()`; never trust a client-supplied depot.
-- Login responses must not reveal account existence or status: an inactive
-  account returns the exact same message as a wrong password. Log the real
-  reason with `Log::notice` for admins.
+- Login must not reveal whether an email exists: a wrong password and an unknown
+  email return the same generic message. The distinct "Your account is inactive."
+  message is allowed, but only after the password is verified correct (so it can
+  never be used to enumerate accounts) — the mobile client maps it to Indonesian
+  in `lib/features/auth/repositories/auth_repository.dart`.
 
 ## Domain conventions
 - Approval modules (stamp/actor/section) are derived from the model type via
