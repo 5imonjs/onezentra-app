@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import EmailRecipientsPage from './page';
 
 const { hasPermission, list, create, update, remove, options } = vi.hoisted(() => ({
-  hasPermission: vi.fn(() => true),
+  hasPermission: vi.fn((_permission: string): boolean => true),
   list: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
@@ -232,5 +232,27 @@ describe('EmailRecipientsPage', () => {
 
     fireEvent.change(screen.getByLabelText('Fokus depo'), { target: { value: 'JKT01' } });
     await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ kode_depo: 'JKT01', page: 1 })));
+  });
+
+  it('menjelaskan alasan tak terkirim untuk user nonaktif dan email kosong', async () => {
+    list.mockResolvedValue(listResponse([
+      { ...baseRecipient, id: 3, kode_depo: 'JKT01', field: 'TO', recipient_type: 'user', user_id: 7, role_slug: null, resolved_count: 0 },
+      { ...baseRecipient, id: 4, kode_depo: 'JKT01', field: 'CC', recipient_type: 'email', email: '', role_slug: null, resolved_count: 0 },
+    ]));
+
+    render(<EmailRecipientsPage />);
+
+    expect((await screen.findAllByText(/User tidak aktif, dihapus, atau tanpa email/)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Alamat email kosong/).length).toBeGreaterThan(0);
+  });
+
+  it('menampilkan pesan izin dan tidak memuat data tanpa emails.view', async () => {
+    hasPermission.mockImplementation((permission: string) => permission !== 'emails.view');
+
+    render(<EmailRecipientsPage />);
+
+    expect(await screen.findByText('Anda tidak memiliki izin untuk melihat Penerima Email.')).toBeInTheDocument();
+    expect(list).not.toHaveBeenCalled();
+    expect(options).not.toHaveBeenCalled();
   });
 });
