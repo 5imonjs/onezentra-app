@@ -22,7 +22,6 @@ vi.mock('@/components/DashboardAlerts', () => ({ default: () => null }));
 vi.mock('@/components/DashboardBiayaQueue', () => ({ default: () => null }));
 vi.mock('@/components/DashboardOpnameChart', () => ({ default: () => null }));
 vi.mock('@/components/DashboardRecent', () => ({ default: () => null }));
-vi.mock('@/components/DashboardStatCards', () => ({ default: () => null }));
 vi.mock('@/components/PendingActions', () => ({ default: () => null }));
 
 describe('DashboardPage — tata letak chart', () => {
@@ -68,6 +67,13 @@ describe('DashboardPage — tata letak chart', () => {
     render(<DashboardPage />);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Budi');
+  });
+
+  it('tidak lagi menampilkan kartu ringkasan modul agar dashboard tidak ramai', () => {
+    render(<DashboardPage />);
+
+    expect(screen.queryByText('Modul Operasional')).not.toBeInTheDocument();
+    expect(screen.queryByText('Data Master')).not.toBeInTheDocument();
   });
 
   it('filter depo hanya tampil bagi pemegang izin depot.view_all', () => {
