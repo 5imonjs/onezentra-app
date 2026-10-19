@@ -213,14 +213,26 @@ class OpnameExpiredService
         // tercetak tapi tidak berlaku, jadi stoknya tidak boleh masuk opname:
         // operator akan melihat rekomendasi kirim/retur untuk label mati.
         //
-        // Batch relating ke Receiving lewat `receiving_id` (level dokumen), bukan
-        // per item. Jadi satu batch CANCELLED mengeluarkan semua item pada
-        // receiving tersebut dari opname — conservative dan sesuai makna "seluruh
-        // batch label ikut dibatalkan" saat pembatalan sesi.
-        $cancelledItemIds = ReceivingItem::whereIn(
-            'receiving_id',
-            Batch::query()->where('status', 'CANCELLED')->whereNotNull('receiving_id')->pluck('receiving_id')
-        )->pluck('id');
+        // Batch menempel ke baris ledger lewat tiga jalur yang berbeda:
+        // - `receiving_id`         → batch dokumen (level receiving), satu batch
+        //                            CANCELLED mengeluarkan SEMUA item receiving itu.
+        // - `sj_validation_item_id`→ batch hasil scan Validasi SJ (tanpa receiving).
+        // - `receiving_item_id`    → batch hasil import manual / verifikasi sesi.
+        // Ketiganya wajib diperiksa: pada batch SJ/sesi/import jalur `receiving_id`
+        // selalu null, jadi mengeceknya sendirian membuat label mati tetap
+        // terhitung di opname.
+        $cancelledBatches = Batch::query()->where('status', 'CANCELLED');
+
+        $cancelledReceivingIds = (clone $cancelledBatches)->whereNotNull('receiving_id')->pluck('receiving_id');
+        $cancelledValidationItemIds = (clone $cancelledBatches)->whereNotNull('sj_validation_item_id')->pluck('sj_validation_item_id');
+        $cancelledLedgerItemIds = (clone $cancelledBatches)->whereNotNull('receiving_item_id')->pluck('receiving_item_id');
+
+        $cancelledItemIds = ReceivingItem::query()
+            ->where(fn ($query) => $query
+                ->whereIn('receiving_id', $cancelledReceivingIds)
+                ->orWhereIn('sj_validation_item_id', $cancelledValidationItemIds)
+                ->orWhereIn('id', $cancelledLedgerItemIds))
+            ->pluck('id');
 
         return ReceivingItem::with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
             ->whereNotNull('expired_date')

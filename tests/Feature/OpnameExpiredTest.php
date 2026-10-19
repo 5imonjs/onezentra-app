@@ -15,7 +15,10 @@ use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
+use App\Models\RencanaKirimItem;
 use App\Models\Role;
+use App\Models\SjValidation;
+use App\Models\SjValidationItem;
 use App\Models\User;
 use App\Services\OpnameExpiredService;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -39,7 +42,7 @@ class OpnameExpiredTest extends TestCase
         $this->travelTo('2026-09-09 10:00:00');
 
         $role = Role::firstOrCreate(['slug' => 'opname_test'], ['name' => 'Opname Test']);
-        foreach (['penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete', 'opname.view', 'opname.create', 'opname.edit'] as $slug) {
+        foreach (['penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }
@@ -556,6 +559,111 @@ class OpnameExpiredTest extends TestCase
         $this->assertDatabaseMissing('opname_expired_waves', [
             'kode_barang' => 'B-CANCEL-01',
         ]);
+    }
+
+    public function test_cancelled_sj_batch_without_receiving_is_excluded_from_opname(): void
+    {
+        // Batch hasil scan Validasi SJ dibuat hanya dengan `sj_validation_item_id`
+        // (tanpa `receiving_id` / `receiving_item_id`). Eksklusi yang hanya
+        // memeriksa `receiving_id` membuat label mati dari SJ tetap terhitung.
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-CANCEL-SJ',
+            'status' => 'COMPLETED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $rkItem = RencanaKirimItem::create([
+            'rencana_kirim_id' => $rk->id,
+            'item_number' => 1,
+            'kode_barang' => 'B-CANCEL-SJ',
+            'nama_barang' => 'Produk SJ Dibatalkan',
+            'jumlah' => 7,
+            'satuan' => 'CRT',
+        ]);
+
+        $validation = SjValidation::create([
+            'rencana_kirim_id' => $rk->id,
+            'scan_code' => $rk->po_transporter,
+            'status' => 'COMPLETED',
+            'validated_by' => $this->user->id,
+            'started_at' => now(),
+            'completed_at' => now(),
+        ]);
+
+        $sjItem = SjValidationItem::create([
+            'sj_validation_id' => $validation->id,
+            'rencana_kirim_item_id' => $rkItem->id,
+            'kode_barang' => 'B-CANCEL-SJ',
+            'nama_barang' => 'Produk SJ Dibatalkan',
+            'expected_qty' => 7,
+            'actual_qty' => 7,
+            'satuan' => 'CRT',
+            'expired_date' => '2027-01-01',
+            'condition' => 'FISIK_BAGUS',
+            'status' => 'VALIDATED',
+        ]);
+
+        $item = $this->receipt('B-CANCEL-SJ', 'Produk SJ Dibatalkan', 7, '2027-01-01', '2026-09-09', null, 'VALIDASI_SJ');
+        $item->update(['sj_validation_item_id' => $sjItem->id]);
+
+        $batch = Batch::create([
+            'batch_number' => 'BATCH-SJ-CANCEL',
+            'barcode_label' => 'LBL-SJ-CANCEL',
+            'sj_validation_item_id' => $sjItem->id,
+            'status' => 'ACTIVE',
+        ]);
+
+        app(OpnameExpiredService::class)->generate();
+        $this->assertDatabaseHas('opname_expired_waves', [
+            'kode_barang' => 'B-CANCEL-SJ',
+            'qty_ini_crt' => 7,
+        ]);
+
+        // Sesi validasi dibatalkan → label SJ tidak berlaku lagi.
+        $batch->update(['status' => 'CANCELLED']);
+        OpnameExpiredWave::query()->delete();
+
+        app(OpnameExpiredService::class)->generate();
+
+        $this->assertDatabaseMissing('opname_expired_waves', [
+            'kode_barang' => 'B-CANCEL-SJ',
+        ]);
+    }
+
+    public function test_wave_delete_is_refused_once_used_by_a_session(): void
+    {
+        // Wave polos (belum tersentuh sesi) tetap boleh dihapus untuk regenerasi.
+        $this->receipt('B-DEL-WAVE', 'Produk Hapus', 4, '2027-01-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+        $plain = OpnameExpiredWave::where('kode_barang', 'B-DEL-WAVE')->firstOrFail();
+
+        $this->deleteJson("/api/v1/opname-expired/{$plain->id}")->assertOk();
+        $this->assertDatabaseMissing('opname_expired_waves', ['id' => $plain->id]);
+
+        // Wave yang sudah dipakai sesi membawa bukti audit (foto/koreksi) dan
+        // direferensikan dengan cascadeOnDelete → hapus harus ditolak.
+        $this->receipt('B-DEL-WAVE2', 'Produk Hapus 2', 4, '2027-01-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+        $used = OpnameExpiredWave::where('kode_barang', 'B-DEL-WAVE2')->firstOrFail();
+
+        OpnameExpiredSessionItem::create([
+            'session_id' => OpnameExpiredSession::create([
+                'week_start' => '2026-09-07',
+                'week_end' => '2026-09-13',
+                'kode_depo' => 'DPO',
+                'assigned_to' => $this->user->id,
+                'status' => 'IN_PROGRESS',
+                'created_by' => $this->user->id,
+            ])->id,
+            'wave_id' => $used->id,
+            'batch_id' => null,
+            'qty_fisik_crt' => 4,
+            'verified_at' => now(),
+            'verified_by' => $this->user->id,
+        ]);
+
+        $this->deleteJson("/api/v1/opname-expired/{$used->id}")->assertStatus(422);
+        $this->assertDatabaseHas('opname_expired_waves', ['id' => $used->id]);
     }
 
     public function test_pending_reports_eligible_split_by_source_before_generate(): void

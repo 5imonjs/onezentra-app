@@ -14,6 +14,7 @@ use App\Services\OpnameExpiredService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -130,22 +131,23 @@ class OpnameExpiredSessionController extends Controller
                 422,
                 'Semua wave harus satu minggu dan satu depo dengan sesi.'
             );
-
-            // Kunci wave: yang sudah masuk sesi berjalan tidak boleh
-            // ditugaskan lagi — verifikasi ganda = koreksi ganda.
-            $lockedWave = OpnameExpiredSessionItem::where('wave_id', $wave->id)
-                ->whereHas('session', fn ($q) => $q->whereIn('status', [
-                    OpnameExpiredSession::STATUS_OPEN,
-                    OpnameExpiredSession::STATUS_IN_PROGRESS,
-                ]))
-                ->exists();
-            abort_if($lockedWave, 422, "Wave {$wave->kode_barang} sedang berjalan di sesi lain.");
         }
+
+        // Kunci wave: yang sudah masuk sesi berjalan tidak boleh ditugaskan
+        // lagi — verifikasi ganda = koreksi ganda. Di luar transaksi ini hanya
+        // fail-fast; pengecekan final diulang di dalam transaksi setelah lock.
+        $this->assertWavesUnlocked($waves);
 
         // Pembuatan sesi + ekspansi item atomik: double-submit tidak boleh
         // menggandakan sesi atas wave yang sama.
         $service = app(OpnameExpiredService::class);
         [$session, $itemCount] = DB::transaction(function () use ($validated, $weekStart, $user, $waves, $service): array {
+            // Kunci baris wave lalu cek ulang di dalam transaksi: cek di luar
+            // transaksi bisa dilewati dua request bersamaan sebelum salah satu
+            // menulis item sesi.
+            OpnameExpiredWave::whereIn('id', $waves->pluck('id'))->lockForUpdate()->get();
+            $this->assertWavesUnlocked($waves);
+
             $session = OpnameExpiredSession::create([
                 'week_start' => $weekStart->toDateString(),
                 'week_end' => $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
@@ -387,6 +389,17 @@ class OpnameExpiredSessionController extends Controller
         $added = 0;
 
         DB::transaction(function () use ($user, $session, $waves, $service, &$added): void {
+            // Kunci sesi + cek ulang status di dalam transaksi: complete/cancel
+            // bersamaan tidak boleh menyisipkan item ke sesi yang sudah tutup.
+            $lockedSession = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
+            abort_unless($lockedSession->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
+
+            // Kunci baris wave lalu cek ulang: dua penambahan bersamaan atas
+            // wave yang sama terserialisasi sehingga cek "sedang berjalan"
+            // tidak bisa dilewati.
+            OpnameExpiredWave::whereIn('id', $waves->pluck('id'))->lockForUpdate()->get();
+            $this->assertWavesUnlocked($waves);
+
             foreach ($waves as $wave) {
                 abort_unless(
                     Carbon::parse($wave->week_start)->toDateString() === Carbon::parse($session->week_start)->toDateString()
@@ -395,14 +408,6 @@ class OpnameExpiredSessionController extends Controller
                     422,
                     "Wave {$wave->kode_barang} tidak satu minggu/depo dengan sesi."
                 );
-
-                $lockedWave = OpnameExpiredSessionItem::where('wave_id', $wave->id)
-                    ->whereHas('session', fn ($q) => $q->whereIn('status', [
-                        OpnameExpiredSession::STATUS_OPEN,
-                        OpnameExpiredSession::STATUS_IN_PROGRESS,
-                    ]))
-                    ->exists();
-                abort_if($lockedWave, 422, "Wave {$wave->kode_barang} sedang berjalan di sesi lain.");
 
                 $sources = $service->waveSourceItems($wave);
 
@@ -433,6 +438,29 @@ class OpnameExpiredSessionController extends Controller
             'message' => "Ditambahkan {$added} verifikasi ke sesi.",
             'data' => $session->fresh()->load(['items.wave', 'items.batch']),
         ]);
+    }
+
+    /**
+     * Pastikan tidak ada wave yang sedang berjalan di sesi lain (OPEN /
+     * IN_PROGRESS). Dipanggil dua kali: di luar transaksi sebagai fail-fast dan
+     * di dalam transaksi setelah baris wave dikunci, supaya dua request
+     * bersamaan tidak sama-sama lolos (TOCTOU) dan menugaskan wave yang sama
+     * dua kali — verifikasi ganda = koreksi ganda.
+     *
+     * @param  Collection<int, OpnameExpiredWave>  $waves
+     */
+    private function assertWavesUnlocked(Collection $waves): void
+    {
+        foreach ($waves as $wave) {
+            $lockedWave = OpnameExpiredSessionItem::where('wave_id', $wave->id)
+                ->whereHas('session', fn ($q) => $q->whereIn('status', [
+                    OpnameExpiredSession::STATUS_OPEN,
+                    OpnameExpiredSession::STATUS_IN_PROGRESS,
+                ]))
+                ->exists();
+
+            abort_if($lockedWave, 422, "Wave {$wave->kode_barang} sedang berjalan di sesi lain.");
+        }
     }
 
     private function authorizeSession(Request $request, OpnameExpiredSession $session): void

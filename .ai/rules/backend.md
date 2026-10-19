@@ -37,5 +37,14 @@
 - Destructive admin operations must keep the allowlist + typed confirmation
   (`HAPUS`) + dry-run in `AdminDatabaseController`.
 - Exports are row-capped through `ExportGuard`; keep the cheap `COUNT` pre-check.
+- A `Batch` links to its ledger row (`receiving_items`) through three nullable
+  columns: `receiving_id` (document level), `sj_validation_item_id` (SJ scan) and
+  `receiving_item_id` (import / opname session). Any cancellation or eligibility
+  rule must check all three — `OpnameExpiredService::eligibleItems()` once
+  excluded cancelled labels by `receiving_id` alone and silently kept cancelled
+  SJ/session/import batches in "Batch Expired".
+- Deleting an `opname_expired_wave` cascades its `opname_expired_session_items`
+  (photos, koreksi, verifier). `OpnameExpiredController::destroy()` refuses waves
+  that are already in a session or validated; keep that guard.
 - Logout revokes only the current token (`currentAccessToken()->delete()`), never
   `$user->tokens()->delete()`, to stay multi-device safe.

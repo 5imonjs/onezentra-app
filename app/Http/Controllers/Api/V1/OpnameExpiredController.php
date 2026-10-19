@@ -6,6 +6,7 @@ use App\Exports\OpnameExpiredExport;
 use App\Http\Controllers\Controller;
 use App\Mail\OpnameExpiredNotification;
 use App\Models\OpnameExpiredSession;
+use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\OpnameSetting;
 use App\Services\EmailNotificationService;
@@ -495,6 +496,19 @@ class OpnameExpiredController extends Controller
             $request->user()->canAccessDepotRow($wave->kode_depo, $wave->nama_depo),
             403,
             'Anda tidak memiliki akses ke data ini.'
+        );
+
+        // Wave yang sudah masuk sesi opname / sudah divalidasi membawa bukti
+        // audit lapangan (foto, koreksi, identitas verifikator). Relasi
+        // opname_expired_session_items memakai cascadeOnDelete, jadi menghapus
+        // wave akan diam-diam ikut menghapus bukti tersebut. Tolak lebih aman
+        // (sejajar ReceivingItemController yang menolak hapus baris terverifikasi).
+        abort_if(
+            $wave->validated_by !== null
+                || $wave->koreksi_by !== null
+                || OpnameExpiredSessionItem::where('wave_id', $wave->id)->exists(),
+            422,
+            'Wave sudah dipakai pada sesi opname atau sudah divalidasi, sehingga tidak dapat dihapus.'
         );
 
         $wave->delete();
