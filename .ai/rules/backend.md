@@ -100,6 +100,29 @@
   `EmailRecipientController::withResolution()` and the web "Tak terkirim" label.
   Before this was fixed the UI reported such a row as undeliverable while the
   service still emailed it.
+- The **global fallback must keep the document's depot for role scoping**:
+  `resolveRecipients()` selects `kode_depo = null` rows but resolves their role
+  members with the document's `kodeDepo`. Passing `null` down to
+  `resolveRoleEmailsByDepot()` emailed every depot's members for one document
+  (the reported "Singkawang still gets reminders" leak).
+- "Empty depot" is not "no email": an empty depot inherits the global rows. The
+  explicit off-switch is `email_depot_settings` (unique `kode_depo`,
+  `is_enabled`). `EmailNotificationService::isDepotEnabled()` treats an absent
+  row as enabled, so old installs are unaffected; a disabled depot returns `[]`
+  from `resolveRecipients()` even when global rows exist, and `send()` logs the
+  skip with `"Email dinonaktifkan untuk depo {kode}."`. Managed via
+  `PUT /api/v1/email-recipients/depot-settings/{kodeDepo}` (`emails.edit`).
+- Successful sends are recorded in `email_notification_logs` with
+  `status = sent` (plus recipients), not just `skipped`/`failed` — otherwise
+  sent mail leaves no audit trail even though the setting page shows a log
+  panel.
+- `EmailNotificationSeeder` keys `updateOrCreate` on `kode_depo` too; without it
+  the seeder matched (and could overwrite) depot-specific rows while creating the
+  global defaults.
+- Depot options for the approval settings AND the email recipients both come from
+  `depot_settings` (real depots), NOT `users.kode_depo` — the latter contains role
+  accounts (`ADMIN`, `BLC-01`, `RLH-01`, …). Fallback (when `depot_settings` is
+  empty) excludes `ADMIN` so the page never defaults to a pseudo-depot.
 - `approval_assignments` is not optional data: `BiayaApprovalService::ensureApprover()`
   requires an active assignment per level, so an empty table **403s every**
   check/approve/rfah/reject/revise for biaya THL & retribusi (even for
@@ -110,10 +133,6 @@
   (RLH/RFAH). Keep read (`ApprovalAssignmentController::index`) and use
   (`ensureApprover()`/`approverName()`) aligned — never resolve ADMIN for
   BLC/BAC, or the settings page shows an assignment that has no effect.
-- Depot options for the approval settings come from `depot_settings` (real
-  depots), NOT `users.kode_depo` — the latter contains role accounts
-  (`ADMIN`, `BLC-01`, `RLH-01`, …). Fallback (when `depot_settings` is empty)
-  excludes `ADMIN` so the page never defaults to a pseudo-depot.
 - `ApprovalAssignmentController::index()` reads `kode_depo`/`module` via
   `$request->input()`, not `query()`, so the `upsert()` response (which passes
   them in the JSON body) reflects the depot just saved.

@@ -27,3 +27,11 @@
   forever and the data area stayed an empty skeleton. Bootstrap the option list
   with an unconditional request (omit the param; the backend falls back to the
   user's depot) and only then request the resolved depot.
+- `email-recipients` must let admins express "depot intentionally empty". The
+  per-depot switch (options `depots[].is_enabled`, `PUT
+  /email-recipients/depot-settings/{kode}`) is rendered as its own "Status Email
+  per Depo" panel, because a depot with no rows has no group header to host a
+  toggle. It must be reachable for depots that have zero recipients — a
+  header-only toggle would be invisible exactly where it is needed. Off = no
+  mail even when Global rows exist; a disabled depot's group shows "Email
+  nonaktif".

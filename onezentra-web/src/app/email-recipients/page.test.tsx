@@ -2,13 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import EmailRecipientsPage from './page';
 
-const { hasPermission, list, create, update, remove, options } = vi.hoisted(() => ({
+const { hasPermission, list, create, update, remove, options, updateDepotSetting } = vi.hoisted(() => ({
   hasPermission: vi.fn((_permission: string): boolean => true),
   list: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
   options: vi.fn(),
+  updateDepotSetting: vi.fn(),
 }));
 
 vi.mock('@/app/dashboard/layout', () => ({
@@ -20,7 +21,7 @@ vi.mock('@/store/auth', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  emailRecipients: { list, create, update, delete: remove, options },
+  emailRecipients: { list, create, update, delete: remove, options, updateDepotSetting },
   getErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
 
@@ -85,6 +86,7 @@ describe('EmailRecipientsPage', () => {
     create.mockResolvedValue({ data: { data: {} } });
     update.mockResolvedValue({ data: { data: {} } });
     remove.mockResolvedValue({ data: {} });
+    updateDepotSetting.mockResolvedValue({ data: {} });
   });
 
   afterEach(() => {
@@ -254,5 +256,32 @@ describe('EmailRecipientsPage', () => {
     expect(await screen.findByText('Anda tidak memiliki izin untuk melihat Penerima Email.')).toBeInTheDocument();
     expect(list).not.toHaveBeenCalled();
     expect(options).not.toHaveBeenCalled();
+  });
+
+  it('saklar per depo memanggil API dan menandai depo nonaktif', async () => {
+    list.mockResolvedValue(listResponse([{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }]));
+
+    render(<EmailRecipientsPage />);
+
+    const toggle = await screen.findByLabelText('Kirim email untuk depo JKT01');
+    expect(toggle).toBeChecked();
+
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(updateDepotSetting).toHaveBeenCalledWith('JKT01', false));
+    // Badge di header grup menunjukkan kiriman depo ini dimatikan.
+    expect(await screen.findByText('Email nonaktif')).toBeInTheDocument();
+  });
+
+  it('membaca status nonaktif depo dari opsi backend', async () => {
+    options.mockResolvedValue({
+      data: { ...optionsPayload, depots: [{ kode_depo: 'JKT01', nama_depo: 'Jakarta', is_enabled: false }] },
+    });
+    list.mockResolvedValue(listResponse([{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }]));
+
+    render(<EmailRecipientsPage />);
+
+    expect(await screen.findByText('Email nonaktif')).toBeInTheDocument();
+    expect(screen.getByLabelText('Kirim email untuk depo JKT01')).not.toBeChecked();
   });
 });

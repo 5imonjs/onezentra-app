@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\DepotSetting;
+use App\Models\EmailDepotSetting;
 use App\Models\EmailRecipient;
 use App\Models\Role;
 use App\Models\User;
@@ -278,11 +280,12 @@ class EmailRecipientController extends Controller
     {
         $users = User::where('status', 'active')->select('id', 'full_name', 'email')->orderBy('full_name')->get();
         $roles = Role::select('id', 'name', 'slug')->orderBy('name')->get();
-        $depots = User::whereNotNull('kode_depo')
-            ->select('kode_depo', 'nama_depo')
-            ->distinct()
-            ->orderBy('kode_depo')
-            ->get();
+        $flags = EmailDepotSetting::pluck('is_enabled', 'kode_depo');
+        $depots = $this->depotOptions()
+            ->map(fn (array $depot): array => $depot + [
+                'is_enabled' => (bool) ($flags[$depot['kode_depo']] ?? true),
+            ])
+            ->values();
         $types = array_keys(self::DOCUMENT_TRIGGERS);
         $triggers = array_values(array_unique(array_merge(...array_values(self::DOCUMENT_TRIGGERS))));
         $fields = ['TO', 'CC'];
@@ -295,6 +298,82 @@ class EmailRecipientController extends Controller
             'users' => $users,
             'roles' => $roles,
             'depots' => $depots,
+        ]);
+    }
+
+    /**
+     * Depo nyata untuk dropdown & saklar email.
+     *
+     * Sumber utama `depot_settings` (bukan `users.kode_depo` yang memuat akun
+     * role seperti `ADMIN`/`BLC-01`), dengan fallback ke user bila tabel
+     * setting depo belum diisi — sama seperti Pengaturan Approval.
+     *
+     * @return Collection<int, array{kode_depo: string, nama_depo: string}>
+     */
+    private function depotOptions(): Collection
+    {
+        $depots = DepotSetting::query()
+            ->where('is_active', true)
+            ->orderBy('kode_depo')
+            ->get(['kode_depo', 'nama_depo'])
+            ->map(fn (DepotSetting $depot): array => [
+                'kode_depo' => (string) $depot->kode_depo,
+                'nama_depo' => (string) $depot->nama_depo,
+            ]);
+
+        if ($depots->isNotEmpty()) {
+            return $depots->values();
+        }
+
+        return User::query()
+            ->whereNotNull('kode_depo')
+            ->whereNotIn('kode_depo', ['', 'ADMIN'])
+            ->select(['kode_depo', 'nama_depo'])
+            ->orderBy('kode_depo')
+            ->get()
+            ->unique('kode_depo')
+            ->filter(fn (User $depot): bool => User::query()
+                ->where('kode_depo', $depot->kode_depo)
+                ->where('status', 'active')
+                ->whereIn('level', ['blc', 'bac'])
+                ->distinct()
+                ->count('level') === 2)
+            ->map(fn (User $depot): array => [
+                'kode_depo' => (string) $depot->kode_depo,
+                'nama_depo' => (string) $depot->nama_depo,
+            ])
+            ->values();
+    }
+
+    /**
+     * Saklar "email aktif/nonaktif" per depo. Depo yang dinonaktifkan tidak
+     * menerima notifikasi apa pun, walau baris Global terkonfigurasi — inilah
+     * cara mengekspresikan "depo sengaja dikosongkan".
+     */
+    public function updateDepotSetting(Request $request, string $kodeDepo): JsonResponse
+    {
+        $kodeDepo = trim($kodeDepo);
+        if ($kodeDepo === '' || mb_strlen($kodeDepo) > 20) {
+            throw ValidationException::withMessages(['kode_depo' => ['Kode depo tidak valid.']]);
+        }
+
+        $validated = $request->validate([
+            'is_enabled' => ['required', 'boolean'],
+        ]);
+
+        $setting = EmailDepotSetting::updateOrCreate(
+            ['kode_depo' => $kodeDepo],
+            ['is_enabled' => $validated['is_enabled']],
+        );
+
+        return response()->json([
+            'message' => $setting->is_enabled
+                ? "Email untuk depo {$kodeDepo} diaktifkan."
+                : "Email untuk depo {$kodeDepo} dinonaktifkan.",
+            'data' => [
+                'kode_depo' => $setting->kode_depo,
+                'is_enabled' => $setting->is_enabled,
+            ],
         ]);
     }
 

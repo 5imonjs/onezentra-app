@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\EmailDepotSetting;
 use App\Models\EmailRecipient;
 use App\Models\Role;
 use App\Models\User;
@@ -141,6 +142,78 @@ class EmailRecipientResolutionTest extends TestCase
         $this->assertSame(
             ['dup@example.com'],
             $this->service()->resolveRecipients('rencana_kirim', 'created', 'TO', 'DPO'),
+        );
+    }
+
+    public function test_disabled_depot_sends_nothing_even_with_global_recipients(): void
+    {
+        // Inti keluhan: depo sengaja dikosongkan tetap menerima karena baris
+        // Global. Saklar depo harus mematikan kiriman itu.
+        $this->recipient(['kode_depo' => null, 'email' => 'global@example.com']);
+        EmailDepotSetting::create(['kode_depo' => 'DPO', 'is_enabled' => false]);
+
+        $service = $this->service();
+
+        $this->assertFalse($service->isDepotEnabled('DPO'));
+        $this->assertTrue($service->isDepotEnabled('DPB')); // absen baris = aktif
+        $this->assertSame([], $service->resolveRecipients('rencana_kirim', 'created', 'TO', 'DPO'));
+    }
+
+    public function test_reenabled_depot_resolves_recipients_again(): void
+    {
+        $this->recipient(['kode_depo' => 'DPO', 'email' => 'depo@example.com']);
+        $setting = EmailDepotSetting::create(['kode_depo' => 'DPO', 'is_enabled' => false]);
+
+        $this->assertSame([], $this->service()->resolveRecipients('rencana_kirim', 'created', 'TO', 'DPO'));
+
+        $setting->update(['is_enabled' => true]);
+
+        $this->assertSame(
+            ['depo@example.com'],
+            $this->service()->resolveRecipients('rencana_kirim', 'created', 'TO', 'DPO'),
+        );
+    }
+
+    public function test_global_role_recipient_is_scoped_to_the_document_depot(): void
+    {
+        // Sebelum ini fallback global me-resolve role TANPA filter depo
+        // sehingga user depo lain ikut menerima email dokumen ini.
+        $role = Role::create(['slug' => 'rk_global', 'name' => 'RK Global']);
+        $this->recipient([
+            'kode_depo' => null,
+            'recipient_type' => 'role',
+            'role_slug' => 'rk_global',
+            'email' => null,
+        ]);
+
+        $this->user('depo-a@example.com', 'DPO', 'active', $role);
+        $this->user('depo-b@example.com', 'DPB', 'active', $role);
+        $this->user('depo-c-off@example.com', 'DPO', 'inactive', $role);
+
+        $this->assertSame(
+            ['depo-a@example.com'],
+            $this->service()->resolveRecipients('rencana_kirim', 'created', 'TO', 'DPO'),
+        );
+    }
+
+    public function test_global_role_without_document_depot_reaches_all_depots(): void
+    {
+        $role = Role::create(['slug' => 'rk_global_all', 'name' => 'RK Global All']);
+        $this->recipient([
+            'kode_depo' => null,
+            'recipient_type' => 'role',
+            'role_slug' => 'rk_global_all',
+            'email' => null,
+        ]);
+
+        $this->user('depo-a@example.com', 'DPO', 'active', $role);
+        $this->user('depo-b@example.com', 'DPB', 'active', $role);
+
+        $resolved = $this->service()->resolveRecipients('rencana_kirim', 'created', 'TO', null);
+
+        $this->assertEqualsCanonicalizing(
+            ['depo-a@example.com', 'depo-b@example.com'],
+            $resolved,
         );
     }
 }

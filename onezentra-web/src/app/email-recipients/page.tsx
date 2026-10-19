@@ -32,7 +32,7 @@ interface Options {
   fields: string[];
   users: { id: number; full_name: string; email: string }[];
   roles: { id: number; name: string; slug: string }[];
-  depots: { kode_depo: string; nama_depo: string }[];
+  depots: { kode_depo: string; nama_depo: string; is_enabled?: boolean }[];
 }
 
 /** Meta paginasi per-depo dari server. */
@@ -220,6 +220,7 @@ export default function EmailRecipientsPage() {
   const [depoLocked, setDepoLocked] = useState(false);
   const [fieldLocked, setFieldLocked] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [depotSaving, setDepotSaving] = useState<string | null>(null);
 
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -323,6 +324,37 @@ export default function EmailRecipientsPage() {
     if (!kodeDepo) return 'Global (Semua Depo)';
     const d = options.depots.find((x) => x.kode_depo === kodeDepo);
     return d ? `${kodeDepo} — ${d.nama_depo}` : kodeDepo;
+  };
+
+  // Depo tanpa baris status = aktif (default). Saklar ini yang membedakan
+  // "belum diatur" (warisi Global) dari "sengaja dikosongkan" (tidak kirim).
+  const isDepotEnabled = (kodeDepo: string | null): boolean => {
+    if (!kodeDepo) return true;
+    return options.depots.find((x) => x.kode_depo === kodeDepo)?.is_enabled !== false;
+  };
+
+  const toggleDepot = async (kodeDepo: string, next: boolean) => {
+    setDepotSaving(kodeDepo);
+    const apply = (value: boolean) =>
+      setOptions((prev) => ({
+        ...prev,
+        depots: prev.depots.map((d) => (d.kode_depo === kodeDepo ? { ...d, is_enabled: value } : d)),
+      }));
+    apply(next);
+    try {
+      await emailRecipients.updateDepotSetting(kodeDepo, next);
+      setToast({
+        message: next
+          ? `Email untuk depo ${kodeDepo} diaktifkan`
+          : `Email untuk depo ${kodeDepo} dinonaktifkan`,
+        type: 'success',
+      });
+    } catch (e) {
+      apply(!next);
+      setToast({ message: getErrorMessage(e, 'Gagal mengubah status email depo'), type: 'error' });
+    } finally {
+      setDepotSaving(null);
+    }
   };
 
   const describe = (r: Recipient): string => {
@@ -530,7 +562,11 @@ export default function EmailRecipientsPage() {
         )}
       </div>
       {list.length === 0 ? (
-        <p className="px-1 py-3 text-xs text-gray-400">Belum ada penerima {field} untuk depo ini.</p>
+        <p className="px-1 py-3 text-xs text-gray-400">
+          {depoKey === null
+            ? 'Belum ada penerima Global. Depo tanpa penerima sendiri tidak dikirimi email.'
+            : `Belum ada penerima ${field} khusus depo ini — email memakai penerima Global (bila ada).`}
+        </p>
       ) : (
         <div className="space-y-2">{list.map(renderRow)}</div>
       )}
@@ -633,6 +669,41 @@ export default function EmailRecipientsPage() {
           )}
         </div>
 
+        {/* Saklar email per depo */}
+        {options.depots.length > 0 && (
+          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="mb-3">
+              <p className="text-sm font-bold text-gray-900">Status Email per Depo</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Depo <strong>nonaktif</strong> tidak menerima email apa pun, walau penerima Global terisi. Depo tanpa baris
+                penerima sendiri tetap memakai Global selama statusnya aktif.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {options.depots.map((d) => {
+                const enabled = d.is_enabled !== false;
+                return (
+                  <label
+                    key={d.kode_depo}
+                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      disabled={!canEdit || depotSaving === d.kode_depo}
+                      onChange={(e) => toggleDepot(d.kode_depo, e.target.checked)}
+                      className="w-4 h-4 accent-primary-600"
+                      aria-label={`Kirim email untuk depo ${d.kode_depo}`}
+                    />
+                    <span>{d.kode_depo} — {d.nama_depo}</span>
+                    <span className="opacity-70">{enabled ? 'Aktif' : 'Nonaktif'}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Paginasi per depo */}
         {meta && meta.last_page > 1 && (
           <nav className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-surface-card px-5 py-3" aria-label="Paginasi depo">
@@ -680,8 +751,9 @@ export default function EmailRecipientsPage() {
               const broken = g.to.filter((r) => resolveProblem(r) !== null).length + g.cc.filter((r) => resolveProblem(r) !== null).length;
               const total = g.to.length + g.cc.length;
               const global = depoKey === null;
+              const depotOff = !global && !isDepotEnabled(depoKey);
               return (
-                <section key={depoKey ?? 'global'} className={`rounded-2xl shadow-sm border overflow-hidden ${broken > 0 ? 'border-amber-200' : 'border-gray-100'} ${global ? 'ring-1 ring-amber-100' : ''}`}>
+                <section key={depoKey ?? 'global'} className={`rounded-2xl shadow-sm border overflow-hidden ${broken > 0 || depotOff ? 'border-amber-200' : 'border-gray-100'} ${global ? 'ring-1 ring-amber-100' : ''}`}>
                   <header className={`flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 ${global ? 'bg-amber-50' : 'bg-surface-raised'}`}>
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${global ? 'bg-amber-100 text-amber-700' : 'bg-primary-500/10 text-accent-text'}`}>
@@ -692,9 +764,17 @@ export default function EmailRecipientsPage() {
                         <p className="text-xs text-gray-500">{total} penerima · TO {g.to.length} · CC {g.cc.length}</p>
                       </div>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${broken > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                      {broken > 0 ? `${broken} perlu perbaikan` : 'Sehat'}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {depotOff && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700" title="Email untuk depo ini dinonaktifkan">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                          Email nonaktif
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${broken > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {broken > 0 ? `${broken} perlu perbaikan` : 'Sehat'}
+                      </span>
+                    </div>
                   </header>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-4 bg-surface-card">
                     {renderColumn(depoKey, 'TO', g.to)}

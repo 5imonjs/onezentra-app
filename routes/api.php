@@ -339,6 +339,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/', [EmailRecipientController::class, 'store'])->middleware('permission:emails.edit');
         // Rute statis wajib sebelum {emailRecipient} agar tidak dibayangi binding model.
         Route::get('/options', [EmailRecipientController::class, 'options'])->middleware('permission:emails.view');
+        Route::put('/depot-settings/{kodeDepo}', [EmailRecipientController::class, 'updateDepotSetting'])->middleware('permission:emails.edit');
         Route::put('/{emailRecipient}', [EmailRecipientController::class, 'update'])->middleware('permission:emails.edit');
         Route::delete('/{emailRecipient}', [EmailRecipientController::class, 'destroy'])->middleware('permission:emails.edit');
     });

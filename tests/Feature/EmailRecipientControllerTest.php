@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\DepotSetting;
+use App\Models\EmailDepotSetting;
 use App\Models\EmailRecipient;
 use App\Models\Permission;
 use App\Models\Role;
@@ -183,6 +185,84 @@ class EmailRecipientControllerTest extends TestCase
             'email' => 'default@test.com',
             'is_active' => true,
         ], $overrides));
+    }
+
+    private function userAt(string $kodeDepo, string $level): User
+    {
+        return User::create([
+            'email' => 'u-'.uniqid().'@test.com',
+            'password' => 'password',
+            'full_name' => 'User '.$kodeDepo,
+            'kode_depo' => $kodeDepo,
+            'nama_depo' => 'Depo '.$kodeDepo,
+            'level' => $level,
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_options_depots_come_from_depot_settings_with_status(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        DepotSetting::create(['kode_depo' => '0127', 'nama_depo' => 'Singkawang', 'is_active' => true]);
+        DepotSetting::create(['kode_depo' => '000', 'nama_depo' => 'Pusat', 'is_active' => true]);
+        EmailDepotSetting::create(['kode_depo' => '000', 'is_enabled' => false]);
+
+        $res = $this->getJson('/api/v1/email-recipients/options')->assertOk();
+
+        $depots = collect($res->json('depots'))->keyBy('kode_depo');
+        $this->assertSame('Singkawang', $depots['0127']['nama_depo']);
+        $this->assertTrue($depots['0127']['is_enabled']);
+        $this->assertFalse($depots['000']['is_enabled']);
+    }
+
+    public function test_options_depot_fallback_keeps_only_real_depots(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        // depot_settings kosong → fallback ke user; hanya depo dengan BLC dan
+        // BAC aktif yang dianggap depo nyata (akun role seperti ADMIN keluar).
+        $this->userAt('0127', 'blc');
+        $this->userAt('0127', 'bac');
+        $this->userAt('ADMIN', 'blc');
+        $this->userAt('9999', 'blc');
+
+        $codes = collect($this->getJson('/api/v1/email-recipients/options')->assertOk()->json('depots'))
+            ->pluck('kode_depo')->all();
+
+        $this->assertContains('0127', $codes);
+        $this->assertNotContains('ADMIN', $codes);
+        $this->assertNotContains('9999', $codes);
+    }
+
+    public function test_update_depot_setting_requires_edit_permission(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        $this->putJson('/api/v1/email-recipients/depot-settings/0127', ['is_enabled' => false])
+            ->assertForbidden();
+    }
+
+    public function test_update_depot_setting_persists_and_toggles(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        $this->putJson('/api/v1/email-recipients/depot-settings/0127', ['is_enabled' => false])
+            ->assertOk()->assertJsonPath('data.is_enabled', false);
+        $this->assertDatabaseHas('email_depot_settings', ['kode_depo' => '0127', 'is_enabled' => false]);
+
+        $this->putJson('/api/v1/email-recipients/depot-settings/0127', ['is_enabled' => true])
+            ->assertOk()->assertJsonPath('data.is_enabled', true);
+        $this->assertDatabaseHas('email_depot_settings', ['kode_depo' => '0127', 'is_enabled' => true]);
+        $this->assertDatabaseCount('email_depot_settings', 1);
+    }
+
+    public function test_update_depot_setting_validates_boolean(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+
+        $this->putJson('/api/v1/email-recipients/depot-settings/0127', ['is_enabled' => 'mungkin'])
+            ->assertStatus(422)->assertJsonValidationErrors(['is_enabled']);
     }
 
     public function test_index_without_pagination_params_returns_capped_legacy_rows_with_summary(): void

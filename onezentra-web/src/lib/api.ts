@@ -603,6 +603,8 @@ export const emailRecipients = {
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/email-recipients/${id}`, data),
   delete: (id: number) => apiClient.delete(`/email-recipients/${id}`),
   options: () => apiClient.get('/email-recipients/options'),
+  updateDepotSetting: (kodeDepo: string, isEnabled: boolean) =>
+    apiClient.put(`/email-recipients/depot-settings/${encodeURIComponent(kodeDepo)}`, { is_enabled: isEnabled }),
 };
 
 export const batches = {

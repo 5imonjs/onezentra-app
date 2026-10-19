@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\EmailDepotSetting;
 use App\Models\EmailNotificationLog;
 use App\Models\EmailRecipient;
 use App\Models\EmailSetting;
@@ -41,32 +42,59 @@ class EmailNotificationService
     }
 
     /**
+     * Apakah kiriman email diizinkan untuk depo ini?
+     *
+     * Absennya baris `email_depot_settings` berarti aktif (default), sehingga
+     * instalasi lama tidak berubah perilaku sampai admin mematikan depo.
+     */
+    public function isDepotEnabled(?string $kodeDepo): bool
+    {
+        if (blank($kodeDepo)) {
+            return true;
+        }
+
+        $setting = EmailDepotSetting::where('kode_depo', $kodeDepo)->first();
+
+        return $setting === null || $setting->is_enabled;
+    }
+
+    /**
      * Resolve recipient emails for a trigger (document_type + trigger + field).
      *
      * Priority:
-     * 1. Depot-specific recipients (kode_depo matches)
-     * 2. Global default recipients (kode_depo = null)
+     * 1. Saklar depo: depo yang dinonaktifkan tidak menerima email sama sekali.
+     * 2. Depot-specific recipients (kode_depo matches)
+     * 3. Global default recipients (kode_depo = null)
      *
      * @return string[]
      */
     public function resolveRecipients(string $documentType, string $trigger, string $field, ?string $kodeDepo = null): array
     {
+        if (! $this->isDepotEnabled($kodeDepo)) {
+            return [];
+        }
+
         // 1. Try depot-specific recipients first
         if ($kodeDepo) {
-            $emails = $this->resolveByDepot($documentType, $trigger, $field, $kodeDepo);
+            $emails = $this->resolveByDepot($documentType, $trigger, $field, $kodeDepo, $kodeDepo);
             if (! empty($emails)) {
                 return array_values(array_unique(array_filter($emails)));
             }
         }
 
-        // 2. Fallback to global default (kode_depo = null)
-        return $this->resolveByDepot($documentType, $trigger, $field, null);
+        // 2. Fallback ke Global (kode_depo = null). Baris Global tetap
+        //    di-resolve dengan depo dokumen agar anggota role TIDAK bocor
+        //    lintas depo (sebelumnya `null` membuat semua depo menerima).
+        return $this->resolveByDepot($documentType, $trigger, $field, null, $kodeDepo);
     }
 
     /**
      * Resolve recipients by specific depot (or global if kodeDepo is null).
+     *
+     * @param  ?string  $rowDepot  Filter baris konfigurasi (null = Global).
+     * @param  ?string  $roleDepot  Depo dokumen untuk scoping anggota role.
      */
-    private function resolveByDepot(string $documentType, string $trigger, string $field, ?string $kodeDepo): array
+    private function resolveByDepot(string $documentType, string $trigger, string $field, ?string $rowDepot, ?string $roleDepot): array
     {
         $emails = [];
 
@@ -75,8 +103,8 @@ class EmailNotificationService
             ->where('field', $field)
             ->where('is_active', true);
 
-        if ($kodeDepo) {
-            $query->where('kode_depo', $kodeDepo);
+        if ($rowDepot) {
+            $query->where('kode_depo', $rowDepot);
         } else {
             $query->whereNull('kode_depo');
         }
@@ -85,7 +113,7 @@ class EmailNotificationService
 
         foreach ($recipients as $recipient) {
             if ($recipient->recipient_type === 'role') {
-                foreach ($recipient->resolveRoleEmailsByDepot($kodeDepo) as $email) {
+                foreach ($recipient->resolveRoleEmailsByDepot($roleDepot) as $email) {
                     $emails[] = $email;
                 }
             } else {
@@ -110,6 +138,8 @@ class EmailNotificationService
         object $mailable,
         ?string $kodeDepo = null
     ): void {
+        $contextId = method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null);
+
         try {
             $this->applySmtpSettings();
 
@@ -117,17 +147,21 @@ class EmailNotificationService
             $cc = $this->resolveRecipients($documentType, $trigger, 'CC', $kodeDepo);
 
             if (empty($to) && empty($cc)) {
-                Log::warning('Email notification skipped: no recipients configured.', [
+                $reason = ! $this->isDepotEnabled($kodeDepo)
+                    ? "Email dinonaktifkan untuk depo {$kodeDepo}."
+                    : 'Tidak ada penerima terkonfigurasi.';
+
+                Log::warning('Email notification skipped: '.$reason, [
                     'document_type' => $documentType,
                     'trigger' => $trigger,
-                    'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+                    'context_id' => $contextId,
                 ]);
                 EmailNotificationLog::create([
                     'document_type' => $documentType,
                     'trigger' => $trigger,
-                    'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+                    'context_id' => $contextId,
                     'status' => EmailNotificationLog::STATUS_SKIPPED,
-                    'error' => 'Tidak ada penerima terkonfigurasi.',
+                    'error' => $reason,
                 ]);
 
                 return;
@@ -138,24 +172,30 @@ class EmailNotificationService
                 $mailable->cc($cc);
             }
 
+            // Konteks log dipakai bersama oleh jalur sukses & gagal agar
+            // "email apa terkirim ke siapa" punya jejak audit, bukan hanya
+            // skip/gagal yang terlihat.
+            $logContext = [
+                'document_type' => $documentType,
+                'trigger' => $trigger,
+                'context_id' => $contextId,
+                'recipients' => implode(', ', array_merge($to, $cc)) ?: null,
+            ];
+
             // Queue jika mailer mendukung queue, fallback ke send sync (testing/log)
             if (method_exists($mailable, 'queue') && config('queue.default') !== 'sync' && app()->environment('production')) {
                 Mail::queue($mailable);
+                EmailNotificationLog::create($logContext + ['status' => EmailNotificationLog::STATUS_SENT]);
             } else {
                 // afterResponse agar tidak tambah latency walau sync driver; testing mengirim sync agar assertSent berfungsi
                 if (function_exists('dispatch') && ! app()->environment('testing')) {
                     // Closure afterResponse jalan DI LUAR try/catch di atas —
-                    // bungkus sendiri agar gagal SMTP tercatat FAILED + retry
-                    // manual terlihat di notification-logs, bukan hilang diam.
-                    $logContext = [
-                        'document_type' => $documentType,
-                        'trigger' => $trigger,
-                        'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
-                        'recipients' => implode(', ', array_merge((array) ($to ?? []), (array) ($cc ?? []))) ?: null,
-                    ];
+                    // bungkus sendiri agar gagal SMTP tercatat FAILED dan
+                    // kiriman sukses terekam SENT, bukan hilang diam.
                     dispatch(function () use ($mailable, $logContext): void {
                         try {
                             Mail::send($mailable);
+                            EmailNotificationLog::create($logContext + ['status' => EmailNotificationLog::STATUS_SENT]);
                         } catch (\Throwable $e) {
                             Log::error('Email notification failed (afterResponse): '.$e->getMessage(), $logContext);
                             EmailNotificationLog::create($logContext + [
@@ -166,18 +206,19 @@ class EmailNotificationService
                     })->afterResponse();
                 } else {
                     Mail::send($mailable);
+                    EmailNotificationLog::create($logContext + ['status' => EmailNotificationLog::STATUS_SENT]);
                 }
             }
         } catch (\Throwable $e) {
             Log::error('Email notification failed: '.$e->getMessage(), [
                 'document_type' => $documentType,
                 'trigger' => $trigger,
-                'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+                'context_id' => $contextId,
             ]);
             EmailNotificationLog::create([
                 'document_type' => $documentType,
                 'trigger' => $trigger,
-                'context_id' => method_exists($context, 'getKey') ? $context->getKey() : ($context->id ?? null),
+                'context_id' => $contextId,
                 'recipients' => implode(', ', array_merge((array) ($to ?? []), (array) ($cc ?? []))) ?: null,
                 'status' => EmailNotificationLog::STATUS_FAILED,
                 'error' => $e->getMessage(),
