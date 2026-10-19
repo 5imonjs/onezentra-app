@@ -24,7 +24,7 @@ const operasionalMenus = [
 // membuatnya tampak sebagai lanjutan alur inbound yang sama.
 const opnameMenus = [
   { name: 'Batch Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
-  { name: 'Sesi Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.view' },
+  { name: 'Sesi Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
 ];
 
 const masterDataMenus = [
@@ -47,7 +47,7 @@ const reportItems = [
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.view' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
-  { name: 'Monitoring Batch Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
+  { name: 'Laporan Batch Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
 ];
 
 const systemItems = [

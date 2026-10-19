@@ -89,7 +89,7 @@ export default function OpnameSessionsPage() {
     return { done: detail.items.filter((i) => i.verified_at).length, total: detail.items.length };
   }, [detail]);
 
-  if (!hasPermission('opname.view')) {
+  if (!hasPermission('opname.session.view')) {
     return (
       <DashboardLayout>
         <div className="p-6 text-sm text-gray-500">Anda tidak memiliki izin untuk melihat sesi opname.</div>
@@ -105,7 +105,7 @@ export default function OpnameSessionsPage() {
             <h1 className="text-2xl font-bold leading-tight">Sesi Opname</h1>
             <p className="text-ink-fg-muted mt-0.5 text-sm">Penugasan verifikasi lapangan per minggu + depo — label batch terbit saat baris diverifikasi</p>
           </div>
-          {hasPermission('opname.create') && (
+          {hasPermission('opname.session.create') && (
             <button onClick={() => setShowCreate(true)} className="btn-primary">+ Buat Sesi</button>
           )}
         </div>
@@ -232,8 +232,8 @@ export default function OpnameSessionsPage() {
             detail={detail}
             detailLoading={detailLoading}
             progress={progress}
-            canEdit={hasPermission('opname.edit')}
-            canAdd={hasPermission('opname.create')}
+            canEdit={hasPermission('opname.session.edit')}
+            canAdd={hasPermission('opname.session.create')}
             onClose={() => { setSelectedId(null); setDetail(null); }}
             onChanged={async () => { await loadDetail(selectedId); load(); }}
           />

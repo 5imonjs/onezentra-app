@@ -69,5 +69,13 @@
   intentionally created without `expired_date` — the data does not exist yet.
   They become opname-eligible once the operator fills expiry via Edit Inbound
   (`PUT /receiving-items/{id}` must keep accepting `expired_date`).
+- Sesi opname has its own permissions (`opname.session.view/create/edit`), not the
+  generic `opname.*` slugs that also drive wave monitoring (generate/threshold).
+  The seeder derives them: `session.create/edit` follow `opname.create/edit`, and
+  `session.view` follows the union of the two — so pure viewers (`opname.view`
+  only) do NOT see the field-session menu. Routes (`opname-sessions/*`), the web
+  menu/page gates, the seeder derived loop, and
+  `add_opname_session_permissions` migration must stay in sync; `operator`
+  relinquishes `opname.session.edit` alongside `opname.edit`.
 - Logout revokes only the current token (`currentAccessToken()->delete()`), never
   `$user->tokens()->delete()`, to stay multi-device safe.

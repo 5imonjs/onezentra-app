@@ -132,7 +132,7 @@ class SeederRoleVerificationTest extends TestCase
         // operator operasional depo, bukan checker.
         $operatorExcluded = [
             'approval.submit', 'retribusi_rates.manage', 'sj_validation.edit_completed',
-            'opname.edit', 'penerimaan.delete',
+            'opname.edit', 'opname.session.edit', 'penerimaan.delete',
         ];
         $expectedOperator = array_values(array_diff($cheker, $operatorExcluded));
         sort($expectedOperator);
@@ -228,6 +228,39 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertContains('ga', $progressHolders);
     }
 
+    public function test_sesi_opname_hanya_untuk_yang_menjalankan_bukan_viewer(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        $sessionView = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'opname.session.view'))
+            ->pluck('slug')
+            ->sort()
+            ->values()
+            ->all();
+
+        // Sesi opname = fitur lapangan: hanya role yang bisa membuat/verifikasi.
+        $this->assertContains('staff_logistic', $sessionView);
+        $this->assertContains('cheker', $sessionView);
+        $this->assertContains('operator', $sessionView);
+        $this->assertContains('admin_planner', $sessionView);
+
+        // Viewer murni (opname.view saja) tidak boleh melihat menu lapangan.
+        foreach (['rlh', 'rfah', 'rh', 'bac', 'ga'] as $viewer) {
+            $this->assertNotContains($viewer, $sessionView, "role {$viewer} viewer murni tidak boleh melihat sesi opname");
+        }
+
+        // Verifikasi mengikuti `opname.edit`: operator (tanpa opname.edit) tidak ikut.
+        $sessionEdit = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'opname.session.edit'))
+            ->pluck('slug')
+            ->values()
+            ->all();
+        $this->assertContains('cheker', $sessionEdit);
+        $this->assertContains('staff_logistic', $sessionEdit);
+        $this->assertNotContains('operator', $sessionEdit);
+        $this->assertNotContains('admin_planner', $sessionEdit);
+    }
+
     public function test_ga_viewer_luas_dan_bh_mirror_admin_planner(): void
     {
         $this->seedRoles();
@@ -265,13 +298,11 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertNotEmpty($bh, 'Role bh tidak boleh nol permission (lockout)');
         $this->assertSame($adminPlanner, $bh);
 
-        // Total sistem tetap konsisten: 12 role lama + ga + bh, 99 permission
-        // (97 lama + database.purge + depot_settings.manage, keduanya khusus
-        // admin_master), grant 512 + 1 (depot_settings.manage ke admin_master)
-        // menjadi 513.
+        // Total sistem tetap konsisten: 12 role lama + ga + bh, 102 permission
+        // (99 lama + 3 sesi opname), dan grant hasil turunan.
         $this->assertSame(14, Role::count());
-        $this->assertSame(99, Permission::count());
-        $this->assertSame(513, DB::table('role_permission')->count());
+        $this->assertSame(102, Permission::count());
+        $this->assertSame(534, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void

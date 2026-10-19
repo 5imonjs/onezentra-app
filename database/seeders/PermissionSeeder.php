@@ -117,6 +117,9 @@ class PermissionSeeder extends Seeder
             ['name' => 'Gate Delete', 'slug' => 'gate.delete', 'menu_group' => 'Gate Check', 'icon' => 'trash', 'route' => 'gate.destroy', 'sort_order' => 92],
             ['name' => 'Opname Expired Delete', 'slug' => 'opname.delete', 'menu_group' => 'Opname', 'icon' => 'trash', 'route' => 'opname_expired.destroy', 'sort_order' => 471],
             ['name' => 'Opname Progres Semua Depo', 'slug' => 'opname.progress_all', 'menu_group' => 'Opname', 'icon' => 'chart', 'route' => 'opname_expired.progress', 'sort_order' => 472],
+            ['name' => 'Opname Sesi View', 'slug' => 'opname.session.view', 'menu_group' => 'Opname', 'icon' => 'clipboard', 'route' => 'opname_sessions.index', 'sort_order' => 473],
+            ['name' => 'Opname Sesi Buat', 'slug' => 'opname.session.create', 'menu_group' => 'Opname', 'icon' => 'plus', 'route' => 'opname_sessions.store', 'sort_order' => 474],
+            ['name' => 'Opname Sesi Verifikasi', 'slug' => 'opname.session.edit', 'menu_group' => 'Opname', 'icon' => 'edit', 'route' => 'opname_sessions.start', 'sort_order' => 475],
         ];
 
         foreach ($permissions as $perm) {
@@ -311,6 +314,27 @@ class PermissionSeeder extends Seeder
             }
         }
 
+        // Sesi opname (penugasan + verifikasi lapangan) awalnya menumpang slug
+        // generik `opname.create/edit` yang juga menggerakkan monitoring wave
+        // (generate, threshold). Dipisah supaya bisa dicabut independen, dan
+        // hanya untuk role yang benar-benar menjalankan sesi — viewer murni
+        // (`opname.view` saja) tidak melihat menu lapangan. Diturunkan dari grant
+        // yang ada agar tidak drift; role baru cukup dicentang lewat UI.
+        foreach (array_keys($rolePermMap) as $roleSlug) {
+            $canCreate = in_array('opname.create', $rolePermMap[$roleSlug], true);
+            $canVerify = in_array('opname.edit', $rolePermMap[$roleSlug], true);
+
+            if (($canCreate || $canVerify) && ! in_array('opname.session.view', $rolePermMap[$roleSlug], true)) {
+                $rolePermMap[$roleSlug][] = 'opname.session.view';
+            }
+            if ($canCreate && ! in_array('opname.session.create', $rolePermMap[$roleSlug], true)) {
+                $rolePermMap[$roleSlug][] = 'opname.session.create';
+            }
+            if ($canVerify && ! in_array('opname.session.edit', $rolePermMap[$roleSlug], true)) {
+                $rolePermMap[$roleSlug][] = 'opname.session.edit';
+            }
+        }
+
         foreach ($rolePermMap as $roleSlug => $permSlugs) {
             $role = Role::where('slug', $roleSlug)->first();
             if (! $role) {
@@ -344,6 +368,7 @@ class PermissionSeeder extends Seeder
                 'retribusi_rates.manage',
                 'sj_validation.edit_completed',
                 'opname.edit',
+                'opname.session.edit',
                 'penerimaan.delete',
             ])->pluck('id')->all();
             $operator->permissions()->detach($operatorExcludedIds);

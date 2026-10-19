@@ -43,6 +43,7 @@ class OpnameEndToEndTest extends TestCase
             'sj_validation.view', 'sj_validation.create', 'sj_validation.validate', 'sj_validation.complete',
             'receiving.view', 'receiving.create', 'receiving.edit',
             'opname.view', 'opname.create', 'opname.edit',
+            'opname.session.view', 'opname.session.create', 'opname.session.edit',
             'npn.view',
         ] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);

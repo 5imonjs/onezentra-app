@@ -304,16 +304,16 @@ Route::prefix('v1')->group(function () {
     // verifikasi fisik. POST dipakai untuk verify agar upload foto bisa
     // multipart (PUT + FormData tidak andal di semua client).
     Route::prefix('opname-sessions')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
-        Route::get('/', [OpnameExpiredSessionController::class, 'index'])->middleware('permission:opname.view');
+        Route::get('/', [OpnameExpiredSessionController::class, 'index'])->middleware('permission:opname.session.view');
         // Didaftarkan sebelum /{session} agar tidak tertangkap route model binding.
-        Route::get('/officers', [OpnameExpiredSessionController::class, 'officers'])->middleware('permission:opname.create');
-        Route::post('/', [OpnameExpiredSessionController::class, 'store'])->middleware('permission:opname.create');
-        Route::get('/{session}', [OpnameExpiredSessionController::class, 'show'])->middleware('permission:opname.view');
-        Route::post('/{session}/start', [OpnameExpiredSessionController::class, 'start'])->middleware('permission:opname.edit');
-        Route::post('/{session}/waves', [OpnameExpiredSessionController::class, 'addWaves'])->middleware('permission:opname.create');
-        Route::post('/{session}/items/{item}', [OpnameExpiredSessionController::class, 'verifyItem'])->middleware('permission:opname.edit');
-        Route::post('/{session}/complete', [OpnameExpiredSessionController::class, 'complete'])->middleware('permission:opname.edit');
-        Route::post('/{session}/cancel', [OpnameExpiredSessionController::class, 'cancel'])->middleware('permission:opname.edit');
+        Route::get('/officers', [OpnameExpiredSessionController::class, 'officers'])->middleware('permission:opname.session.create');
+        Route::post('/', [OpnameExpiredSessionController::class, 'store'])->middleware('permission:opname.session.create');
+        Route::get('/{session}', [OpnameExpiredSessionController::class, 'show'])->middleware('permission:opname.session.view');
+        Route::post('/{session}/start', [OpnameExpiredSessionController::class, 'start'])->middleware('permission:opname.session.edit');
+        Route::post('/{session}/waves', [OpnameExpiredSessionController::class, 'addWaves'])->middleware('permission:opname.session.create');
+        Route::post('/{session}/items/{item}', [OpnameExpiredSessionController::class, 'verifyItem'])->middleware('permission:opname.session.edit');
+        Route::post('/{session}/complete', [OpnameExpiredSessionController::class, 'complete'])->middleware('permission:opname.session.edit');
+        Route::post('/{session}/cancel', [OpnameExpiredSessionController::class, 'cancel'])->middleware('permission:opname.session.edit');
     });
 
     Route::prefix('batches')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {

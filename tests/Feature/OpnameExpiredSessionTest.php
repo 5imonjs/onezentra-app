@@ -39,7 +39,7 @@ class OpnameExpiredSessionTest extends TestCase
         $this->travelTo('2026-09-09 10:00:00');
 
         $role = Role::firstOrCreate(['slug' => 'opname_session_test'], ['name' => 'Opname Session Test']);
-        foreach (['opname.view', 'opname.create', 'opname.edit'] as $slug) {
+        foreach (['opname.view', 'opname.create', 'opname.edit', 'opname.session.view', 'opname.session.create', 'opname.session.edit'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }
@@ -142,7 +142,7 @@ class OpnameExpiredSessionTest extends TestCase
         $this->getJson('/api/v1/opname-sessions/officers?kode_depo=LNY')->assertForbidden();
     }
 
-    public function test_officers_endpoint_requires_opname_create_permission(): void
+    public function test_officers_endpoint_requires_opname_session_create_permission(): void
     {
         $viewer = User::create([
             'email' => 'opname-viewer@test.com',

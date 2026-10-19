@@ -311,7 +311,7 @@ export default function OpnameExpiredReportPage() {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Anda tidak memiliki izin untuk melihat Monitoring Batch Expired.
+          Anda tidak memiliki izin untuk melihat Laporan Batch Expired.
         </div>
       </DashboardLayout>
     );
@@ -328,7 +328,7 @@ export default function OpnameExpiredReportPage() {
             </div>
             <div className="min-w-0">
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan operasional · read-only</p>
-              <h1 className="text-2xl font-bold leading-tight tracking-tight">Monitoring Batch Expired</h1>
+              <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Batch Expired</h1>
               <p className="text-ink-fg-muted mt-0.5 text-sm">Ringkasan mingguan kedaluwarsa batch per status & depo</p>
             </div>
           </div>
