@@ -200,6 +200,7 @@ const fieldBadge = (field: string): string =>
 
 export default function EmailRecipientsPage() {
   const { hasPermission } = useAuthStore();
+  const canView = hasPermission('emails.view');
   const canEdit = hasPermission('emails.edit');
 
   const [rawItems, setRawItems] = useState<Recipient[]>([]);
@@ -259,8 +260,8 @@ export default function EmailRecipientsPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { loadOptions(); }, [loadOptions]);
+  useEffect(() => { if (canView) load(); }, [load, canView]);
+  useEffect(() => { if (canView) loadOptions(); }, [loadOptions, canView]);
 
   // Debounce pencarian lalu reset ke halaman pertama.
   useEffect(() => {
@@ -307,6 +308,16 @@ export default function EmailRecipientsPage() {
   );
 
   const brokenRecipients = summary?.broken_sample ?? [];
+
+  // Halaman ini hanya untuk pengguna dengan izin `emails.view`; tanpa itu
+  // jangan menembak API (403) dan tampilkan pesan sejelas halaman lain.
+  if (!canView) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm text-gray-500">Anda tidak memiliki izin untuk melihat Penerima Email.</div>
+      </DashboardLayout>
+    );
+  }
 
   const depotLabel = (kodeDepo: string | null): string => {
     if (!kodeDepo) return 'Global (Semua Depo)';

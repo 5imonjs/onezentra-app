@@ -102,6 +102,7 @@ function NotificationLogPanel() {
 
 export default function EmailSettingsPage() {
   const { hasPermission } = useAuthStore();
+  const canView = hasPermission('emails.view');
   const [form, setForm] = useState<EmailSetting>({ ...emptyForm });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -135,7 +136,17 @@ export default function EmailSettingsPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (canView) load(); }, [canView]);
+
+  // Halaman ini hanya untuk pengguna dengan izin `emails.view`; tanpa itu
+  // jangan menembak API (403) dan tampilkan pesan sejelas halaman lain.
+  if (!canView) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 text-sm text-gray-500">Anda tidak memiliki izin untuk melihat Setting Email.</div>
+      </DashboardLayout>
+    );
+  }
 
   const handleSave = async () => {
     setSaving(true);
@@ -204,11 +215,14 @@ export default function EmailSettingsPage() {
                       <label htmlFor="mailer" className="block text-xs font-medium text-gray-500 mb-1">Mailer</label>
                       <select id="mailer" value={form.mailer} onChange={(e) => input('mailer', e.target.value)} className="select-field">
                         <option value="smtp">SMTP</option>
-                        <option value="mailgun">Mailgun</option>
-                        <option value="ses">SES</option>
-                        <option value="postmark">Postmark</option>
                         <option value="log">Log (debug)</option>
+                        {/* Nilai lama yang tidak lagi didukung tetap ditampilkan agar
+                            tidak berubah diam-diam saat disimpan. */}
+                        {form.mailer !== 'smtp' && form.mailer !== 'log' && (
+                          <option value={form.mailer}>{form.mailer} (tidak didukung)</option>
+                        )}
                       </select>
+                      <p className="mt-1 text-[11px] text-gray-400">Hanya SMTP untuk pengiriman nyata; Log untuk uji lokal.</p>
                     </div>
                     <div>
                       <label htmlFor="host" className="block text-xs font-medium text-gray-500 mb-1">Host</label>

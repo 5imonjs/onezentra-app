@@ -11,3 +11,4 @@ edit any file, read every rule file whose glob covers it. Run
 | `database/**` | `backend.md` |
 | `tests/**` | `testing.md` |
 | `onezentra_mobile/**` | `mobile.md` |
+| `onezentra-web/**` | `web.md` |
