@@ -86,7 +86,11 @@
   pairs (e.g. `receiving` + `reminder`). When adding/removing a trigger in any
   `EmailNotificationService::send()` call, update this constant — the frontend map
   is not authoritative and already drifted once (`standarisasi_tumpukan.submitted`
-  was missing from the UI while the controller kept sending it).
+  was missing from the UI while the controller kept sending it). `EmailTriggerRegistryTest`
+  enforces this: it scans every `->send('doc','trigger')` call site in `app/` plus the
+  dynamic call sites (`BiayaApprovalService`, `StandarisasiTumpukanController`) and
+  fails when a used pair is missing from the constant. If a dynamic call site moves,
+  update the map in that test.
 - Email recipient resolution contract (`EmailRecipient` + `EmailNotificationService`):
   a depot-specific recipient wins over the global row (global is fallback only, no
   double send), role recipients resolve to **active** users scoped to the trigger's
