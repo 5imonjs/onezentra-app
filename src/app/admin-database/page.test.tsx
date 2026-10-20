@@ -2,10 +2,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminDatabasePage from './page';
 
-const { hasPermission, summary, purge, backfillDepot, notifyGlobal } = vi.hoisted(() => ({
+const { hasPermission, summary, documents, purge, purgeItems, backfillDepot, notifyGlobal } = vi.hoisted(() => ({
   hasPermission: vi.fn((_permission: string): boolean => true),
   summary: vi.fn(),
+  documents: vi.fn(),
   purge: vi.fn(),
+  purgeItems: vi.fn(),
   backfillDepot: vi.fn(),
   notifyGlobal: vi.fn(),
 }));
@@ -19,7 +21,7 @@ vi.mock('@/store/auth', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  adminDatabase: { summary, purge, backfillDepot },
+  adminDatabase: { summary, documents, purge, purgeItems, backfillDepot },
 }));
 
 vi.mock('@/store/globalToast', () => ({ notifyGlobal }));
@@ -73,6 +75,11 @@ const legacyPreview = {
   applied: {},
 };
 
+const documentRows = [
+  { id: 1, label: 'PO-A', subtitle: 'B 1234 XX · PO: PO-A', date: '2026-10-01', status: 'DRAFT' },
+  { id: 2, label: 'PO-B', subtitle: 'B 5678 YY', date: '2026-10-02', status: 'SCHEDULED' },
+];
+
 const depotSelect = (): HTMLSelectElement =>
   screen.getByLabelText('Depo yang direset') as HTMLSelectElement;
 
@@ -81,13 +88,21 @@ describe('AdminDatabasePage', () => {
     vi.clearAllMocks();
     hasPermission.mockReturnValue(true);
     summary.mockImplementation(summaryImplementation);
+    documents.mockResolvedValue({ data: { data: documentRows } });
     purge.mockResolvedValue({ data: { message: 'Data modul terpilih berhasil dikosongkan.', data: { counts: { rencana_kirim: 2 } } } });
+    purgeItems.mockResolvedValue({ data: { message: 'Dokumen terpilih berhasil dihapus.', data: { counts: { rencana_kirim: 1 } } } });
     backfillDepot.mockResolvedValue({ data: { message: 'Pratinjau backfill: tidak ada data yang diubah.', data: emptyBackfill } });
   });
 
   afterEach(() => {
     cleanup();
   });
+
+  const openDocumentMode = async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Pilih Dokumen' }));
+    await waitFor(() => expect(documents).toHaveBeenCalled());
+    await screen.findByText('PO-A');
+  };
 
   it('memuat daftar depo dan ringkasan modul untuk depo default', async () => {
     render(<AdminDatabasePage />);
@@ -199,12 +214,105 @@ describe('AdminDatabasePage', () => {
     expect(await screen.findByText('Tidak ada data legacy tanpa kode depo.')).toBeInTheDocument();
   });
 
+  it('mode pilih dokumen memuat dokumen depo terpilih', async () => {
+    render(<AdminDatabasePage />);
+    await waitFor(() => expect(summary).toHaveBeenCalled());
+    await openDocumentMode();
+
+    expect(documents).toHaveBeenCalledWith({
+      kode_depo: '0127',
+      module: 'rencana_kirim',
+      search: undefined,
+    });
+    expect(screen.getByText('PO-A')).toBeInTheDocument();
+    expect(screen.getByText(/0 dokumen dipilih/)).toBeInTheDocument();
+  });
+
+  it('pencarian dokumen mengirim kata kunci dan mengosongkan pilihan', async () => {
+    render(<AdminDatabasePage />);
+    await waitFor(() => expect(summary).toHaveBeenCalled());
+    await openDocumentMode();
+
+    fireEvent.click(screen.getAllByRole('checkbox')[0]);
+    expect(screen.getByText(/1 dokumen dipilih/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Cari nomor PO / SJ / dokumen'), { target: { value: 'PO-B' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cari' }));
+
+    await waitFor(() => expect(documents).toHaveBeenLastCalledWith({
+      kode_depo: '0127',
+      module: 'rencana_kirim',
+      search: 'PO-B',
+    }));
+    expect(screen.getByText(/0 dokumen dipilih/)).toBeInTheDocument();
+  });
+
+  it('dry-run dokumen mengirim ID terpilih dan menampilkan pratinjau', async () => {
+    render(<AdminDatabasePage />);
+    await waitFor(() => expect(summary).toHaveBeenCalled());
+    await openDocumentMode();
+
+    fireEvent.click(screen.getAllByRole('checkbox')[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Pratinjau' }));
+
+    await waitFor(() => expect(purgeItems).toHaveBeenCalledWith({
+      module: 'rencana_kirim',
+      ids: [1],
+      kode_depo: '0127',
+      confirm: 'HAPUS',
+      dry_run: true,
+    }));
+    expect(await screen.findByRole('status')).toHaveTextContent('rencana_kirim: 1');
+  });
+
+  it('eksekusi dokumen terpilih membutuhkan HAPUS dan memuat ulang data', async () => {
+    render(<AdminDatabasePage />);
+    await waitFor(() => expect(summary).toHaveBeenCalled());
+    await openDocumentMode();
+
+    fireEvent.click(screen.getAllByRole('checkbox')[1]);
+    const deleteButton = screen.getByRole('button', { name: 'Hapus Dokumen Terpilih' });
+    expect(deleteButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Konfirmasi ketik HAPUS'), { target: { value: 'HAPUS' } });
+    expect(deleteButton).not.toBeDisabled();
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => expect(purgeItems).toHaveBeenCalledWith({
+      module: 'rencana_kirim',
+      ids: [2],
+      kode_depo: '0127',
+      confirm: 'HAPUS',
+      dry_run: false,
+    }));
+    expect(notifyGlobal).toHaveBeenCalledWith('Dokumen terpilih berhasil dihapus.', 'success');
+    await waitFor(() => expect(documents.mock.calls.length).toBeGreaterThanOrEqual(2));
+  });
+
+  it('mengganti jenis dokumen memuat modul baru dan mengosongkan pilihan', async () => {
+    render(<AdminDatabasePage />);
+    await waitFor(() => expect(summary).toHaveBeenCalled());
+    await openDocumentMode();
+
+    fireEvent.click(screen.getAllByRole('checkbox')[0]);
+    fireEvent.change(screen.getByLabelText('Jenis dokumen'), { target: { value: 'biaya-thl' } });
+
+    await waitFor(() => expect(documents).toHaveBeenLastCalledWith({
+      kode_depo: '0127',
+      module: 'biaya-thl',
+      search: undefined,
+    }));
+    expect(screen.getByText(/0 dokumen dipilih/)).toBeInTheDocument();
+  });
+
   it('tanpa permission database.purge tidak memanggil API', async () => {
     hasPermission.mockReturnValue(false);
     render(<AdminDatabasePage />);
 
     expect(await screen.findByText('Hanya akun level admin master yang boleh membuka halaman ini.')).toBeInTheDocument();
     expect(summary).not.toHaveBeenCalled();
+    expect(documents).not.toHaveBeenCalled();
+    expect(purgeItems).not.toHaveBeenCalled();
     expect(backfillDepot).not.toHaveBeenCalled();
   });
 });
