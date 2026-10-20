@@ -136,3 +136,30 @@
 - `ApprovalAssignmentController::index()` reads `kode_depo`/`module` via
   `$request->input()`, not `query()`, so the `upsert()` response (which passes
   them in the JSON body) reflects the depot just saved.
+
+## Reset data operasional
+- Reset Data (`AdminDatabaseController`) is **per depot**, never global. `kode_depo`
+  is required on both `summary` and `purge`, validated against active
+  `depot_settings` (fallback: real depots that have active BLC + BAC, never
+  `ADMIN`). Every delete must go through the scoped-ID helpers; a bare
+  `DB::table(...)->delete()` would wipe other depots.
+- The module allowlist must cover every operational module — `rencana_kirim`,
+  `gate`, `validasi-sj`, `receiving`, `penerimaan`, `opname-session`,
+  `opname-wave`, `standarisasi`, `biaya-thl`, `biaya-retribusi`. Adding a new
+  operational table means adding it here and to the web `MODULES` list; settings
+  (`depot_settings`, `approval_assignments`, `retribusi_rates`, email/PDF
+  settings) and audit logs (`email_notification_logs`, `user_activity_logs`)
+  must NOT be reset.
+- `opname_expired_waves` is roll-forward reference data: resetting
+  `receiving`/`penerimaan` without `opname-wave` leaves stale qty carried into
+  the next generate. The wave module cascades `opname_expired_session_items`
+  (and their photos); keep the UI warning.
+- Batch deletion is depot-scoped and must not delete a batch still attached to a
+  surviving receiving/receiving-item of another depot. Only validation-only
+  batches (`receiving_id`/`receiving_item_id` null) are removed with
+  `validasi-sj`.
+- Storage files are deleted only AFTER the DB commit and only when no surviving
+  row references the path (`sj_validation_items.photo` is copied into
+  `receiving_items.photo`). Never delete files inside the transaction.
+- Rows with `kode_depo = null` (legacy biaya/penerimaan) are intentionally left
+  alone because they cannot be attributed to a depot; the UI says so.

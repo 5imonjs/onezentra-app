@@ -35,3 +35,7 @@
   header-only toggle would be invisible exactly where it is needed. Off = no
   mail even when Global rows exist; a disabled depot's group shows "Email
   nonaktif".
+- Reset Data is per depot. `/admin-database` must render a depot selector
+  (options from `depots` in the summary response), send `kode_depo` on dry-run
+  AND purge, and disable execution when no depot is available. Do not offer a
+  global/“all depots” button — the backend requires `kode_depo`.

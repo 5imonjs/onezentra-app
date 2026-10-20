@@ -748,8 +748,8 @@ export const approvalAssignments = {
 };
 
 export const adminDatabase = {
-  summary: () => apiClient.get('/admin/database/summary'),
-  purge: (data: { modules: string[]; confirm: string; dry_run?: boolean }) => apiClient.post('/admin/database/purge', data),
+  summary: (kodeDepo?: string) => apiClient.get('/admin/database/summary', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
+  purge: (data: { modules: string[]; kode_depo: string; confirm: string; dry_run?: boolean }) => apiClient.post('/admin/database/purge', data),
 };
 
 export default apiClient;
