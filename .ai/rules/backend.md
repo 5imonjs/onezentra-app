@@ -22,6 +22,14 @@
   production. Eager-load relations (`with(...)`) instead of relying on lazy
   access, or tests/dev will throw `LazyLoadingViolationException`.
 
+## Deploy & route cache
+- Production runs `php artisan route:cache`, so a freshly added route (for
+  example `admin/database/documents`, `admin/database/purge-items`,
+  `admin/database/backfill-depot`) stays **404** until the deploy runs
+  `php artisan route:clear && php artisan route:cache` (plus `config:cache`)
+  and PHP-FPM is restarted. A route that exists but is unauthenticated returns
+  **401**, not 404 — use that to tell a stale cache apart from a missing route.
+
 ## Auth & authorization
 - Route middleware carries the permission (`permission:...`) and depo scoping
   uses `forUserDepot()`; never trust a client-supplied depot.
