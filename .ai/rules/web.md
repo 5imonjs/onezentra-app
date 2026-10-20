@@ -39,3 +39,8 @@
   (options from `depots` in the summary response), send `kode_depo` on dry-run
   AND purge, and disable execution when no depot is available. Do not offer a
   global/“all depots” button — the backend requires `kode_depo`.
+- Legacy rows without `kode_depo` are handled by a separate "Data Legacy Tanpa
+  Depo" panel: load a dry-run preview on mount (safe), show per-table
+  total/resolved/manual counts plus samples, and require typing `BACKFILL`
+  before `adminDatabase.backfillDepot({ dry_run: false, confirm: 'BACKFILL' })`.
+  Never present the backfill as a reset or as a “Tanpa Depo” purge.

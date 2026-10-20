@@ -8,12 +8,14 @@ use App\Models\BiayaThl;
 use App\Models\DepotSetting;
 use App\Models\StandarisasiTumpukan;
 use App\Models\User;
+use App\Services\LegacyDepotBackfillService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Kosongkan data operasional satu depo — HANYA level admin_master.
@@ -193,6 +195,38 @@ class AdminDatabaseController extends Controller
                 'deleted' => $deleted,
                 'before' => $counts,
             ],
+        ]);
+    }
+
+    /**
+     * Isi `kode_depo` baris legacy yang masih kosong agar ikut tercakup reset
+     * per depo. Default aman: tanpa `dry_run` eksplisit, aksi hanya pratinjau.
+     * Eksekusi wajib konfirmasi teks `BACKFILL`.
+     */
+    public function backfillDepot(Request $request, LegacyDepotBackfillService $service): JsonResponse
+    {
+        $this->ensureMaster($request);
+
+        $validated = $request->validate([
+            'dry_run' => ['nullable', 'boolean'],
+            'confirm' => ['nullable', 'string'],
+        ]);
+
+        $dryRun = $request->boolean('dry_run', true);
+
+        if (! $dryRun && ($validated['confirm'] ?? null) !== 'BACKFILL') {
+            throw ValidationException::withMessages([
+                'confirm' => 'Ketik BACKFILL untuk menjalankan backfill.',
+            ]);
+        }
+
+        $result = $service->run($dryRun);
+
+        return response()->json([
+            'message' => $dryRun
+                ? 'Pratinjau backfill: tidak ada data yang diubah.'
+                : 'Backfill kode depo selesai.',
+            'data' => $result,
         ]);
     }
 

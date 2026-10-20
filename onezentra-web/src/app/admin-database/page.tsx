@@ -25,6 +25,44 @@ const MODULES = [
 
 type Depot = { kode_depo: string; nama_depo: string | null };
 
+type BackfillSample = {
+  id: number;
+  nama_depo: string | null;
+  kode_depo: string;
+  sumber: string;
+};
+
+type BackfillUnresolvedSample = {
+  id: number;
+  nama_depo: string | null;
+  alasan: string;
+};
+
+type BackfillTable = {
+  total: number;
+  resolved: number;
+  unresolved: number;
+  samples: BackfillSample[];
+  unresolved_samples: BackfillUnresolvedSample[];
+};
+
+type BackfillData = {
+  dry_run: boolean;
+  candidates: Record<string, BackfillTable>;
+  applied: Record<string, number>;
+};
+
+const LEGACY_TABLE_LABELS: Record<string, string> = {
+  rencana_kirim: 'Replenishment',
+  receiving_items: 'Item Check Out',
+  penerimaan: 'Inbound (SJ)',
+  opname_expired_sessions: 'Sesi Opname',
+  opname_expired_waves: 'Batch Expired',
+  standarisasi_tumpukan: 'Standarisasi',
+  biaya_thls: 'Biaya THL',
+  biaya_retribusis: 'Biaya Retribusi',
+};
+
 export default function AdminDatabasePage() {
   const { user, hasPermission } = useAuthStore();
   const allowed = hasPermission('database.purge');
@@ -37,6 +75,11 @@ export default function AdminDatabasePage() {
   const [preview, setPreview] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [legacy, setLegacy] = useState<BackfillData | null>(null);
+  const [legacyLoading, setLegacyLoading] = useState(true);
+  const [legacyWorking, setLegacyWorking] = useState(false);
+  const [legacyConfirm, setLegacyConfirm] = useState('');
+  const [legacyError, setLegacyError] = useState(false);
 
   // Satu sumber kebenaran depo aktif: dropdown yang terlihat HARUS sama dengan
   // depo yang dihitung dan direset.
@@ -69,7 +112,28 @@ export default function AdminDatabasePage() {
     }
   }, [allowed, effectiveDepot, selectedDepot]);
 
+  const loadLegacy = useCallback(async () => {
+    if (!allowed) {
+      setLegacyLoading(false);
+      return;
+    }
+    setLegacyLoading(true);
+    setLegacyError(false);
+    try {
+      // Default backend adalah dry-run: aman dipanggil saat halaman dibuka.
+      const response = await adminDatabase.backfillDepot({ dry_run: true }) as {
+        data: { data: BackfillData };
+      };
+      setLegacy(response.data.data);
+    } catch {
+      setLegacyError(true);
+    } finally {
+      setLegacyLoading(false);
+    }
+  }, [allowed]);
+
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void loadLegacy(); }, [loadLegacy]);
 
   const changeDepot = (value: string) => {
     setSelectedDepot(value);
@@ -120,6 +184,44 @@ export default function AdminDatabasePage() {
     }
   };
 
+  const runBackfill = async () => {
+    if (legacyConfirm.trim() !== 'BACKFILL') {
+      notifyGlobal('Ketik BACKFILL untuk konfirmasi backfill', 'error');
+      return;
+    }
+    setLegacyWorking(true);
+    try {
+      const response = await adminDatabase.backfillDepot({
+        dry_run: false,
+        confirm: 'BACKFILL',
+      }) as { data: { message: string; data: BackfillData } };
+      notifyGlobal(response.data.message || 'Backfill kode depo selesai', 'success');
+      setLegacyConfirm('');
+      await Promise.all([load(), loadLegacy()]);
+    } catch {
+      notifyGlobal('Gagal menjalankan backfill', 'error');
+    } finally {
+      setLegacyWorking(false);
+    }
+  };
+
+  const legacyTotals = Object.values(legacy?.candidates ?? {}).reduce(
+    (total, table) => ({
+      total: total.total + table.total,
+      resolved: total.resolved + table.resolved,
+      unresolved: total.unresolved + table.unresolved,
+    }),
+    { total: 0, resolved: 0, unresolved: 0 },
+  );
+
+  const legacyTables = Object.entries(legacy?.candidates ?? {});
+  const legacyResolvedSamples = legacyTables.flatMap(([table, stat]) =>
+    stat.samples.slice(0, 3).map((sample) => ({ table, ...sample })),
+  );
+  const legacyUnresolvedSamples = legacyTables.flatMap(([table, stat]) =>
+    stat.unresolved_samples.slice(0, 3).map((sample) => ({ table, ...sample })),
+  );
+
   const selectedName = depots.find((d) => d.kode_depo === effectiveDepot)?.nama_depo || effectiveDepot;
 
   return (
@@ -142,6 +244,7 @@ export default function AdminDatabasePage() {
             Hanya akun level admin master yang boleh membuka halaman ini.
           </section>
         ) : (
+          <>
           <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
             <div className="border-b border-gray-100 px-5 py-4">
               <label htmlFor="reset-depot" className="text-sm font-semibold text-slate-800">Depo yang direset</label>
@@ -219,6 +322,115 @@ export default function AdminDatabasePage() {
               </div>
             </div>
           </section>
+
+          <section aria-label="Data legacy tanpa depo" className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+            <div className="border-b border-gray-100 px-5 py-4">
+              <h2 className="text-sm font-semibold text-slate-800">Data Legacy Tanpa Depo</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Baris lama dengan kode depo kosong tidak ikut reset per depo. Backfill hanya mengisi baris kosong dari relasi dokumen atau nama depo yang cocok unik; kode yang sudah terisi tidak pernah ditimpa.
+              </p>
+            </div>
+            <div className="space-y-4 p-5">
+              {legacyLoading ? (
+                <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+              ) : legacyError ? (
+                <p className="text-sm text-red-600">Gagal memuat pratinjau data legacy.</p>
+              ) : legacy === null || legacyTotals.total === 0 ? (
+                <p className="text-sm text-slate-600">Tidak ada data legacy tanpa kode depo.</p>
+              ) : (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-gray-100 px-4 py-3">
+                      <p className="text-xs text-slate-500">Baris tanpa depo</p>
+                      <p className="text-xl font-bold text-slate-800">{legacyTotals.total}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 px-4 py-3">
+                      <p className="text-xs text-slate-500">Bisa diisi otomatis</p>
+                      <p className="text-xl font-bold text-emerald-700">{legacyTotals.resolved}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 px-4 py-3">
+                      <p className="text-xs text-slate-500">Perlu dicek manual</p>
+                      <p className="text-xl font-bold text-amber-700">{legacyTotals.unresolved}</p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-xs uppercase text-slate-500">
+                          <th className="py-2 pr-4">Modul</th>
+                          <th className="py-2 pr-4">Total</th>
+                          <th className="py-2 pr-4">Bisa diisi</th>
+                          <th className="py-2">Perlu manual</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {legacyTables.map(([table, stat]) => (
+                          <tr key={table} className="border-b border-gray-50">
+                            <td className="py-2 pr-4 font-medium text-slate-700">{LEGACY_TABLE_LABELS[table] ?? table}</td>
+                            <td className="py-2 pr-4">{stat.total}</td>
+                            <td className="py-2 pr-4 text-emerald-700">{stat.resolved}</td>
+                            <td className="py-2 text-amber-700">{stat.unresolved}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {legacyResolvedSamples.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-slate-500">Contoh yang akan diisi</p>
+                      <ul className="mt-1 space-y-1 text-xs text-slate-600">
+                        {legacyResolvedSamples.map((sample) => (
+                          <li key={`${sample.table}-${sample.id}`}>
+                            {LEGACY_TABLE_LABELS[sample.table] ?? sample.table} #{sample.id}
+                            {sample.nama_depo ? ` (${sample.nama_depo})` : ''} → <strong>{sample.kode_depo}</strong> dari {sample.sumber}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {legacyUnresolvedSamples.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-slate-500">Tidak diisi — perlu dicek manual</p>
+                      <ul className="mt-1 space-y-1 text-xs text-amber-700">
+                        {legacyUnresolvedSamples.map((sample) => (
+                          <li key={`${sample.table}-${sample.id}`}>
+                            {LEGACY_TABLE_LABELS[sample.table] ?? sample.table} #{sample.id}
+                            {sample.nama_depo ? ` (${sample.nama_depo})` : ''}: {sample.alasan}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {legacyTotals.resolved > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
+                      <input
+                        value={legacyConfirm}
+                        onChange={(event) => setLegacyConfirm(event.target.value)}
+                        placeholder="Ketik BACKFILL"
+                        aria-label="Konfirmasi ketik BACKFILL"
+                        disabled={legacyWorking}
+                        className="select-field-sm w-44"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void runBackfill()}
+                        disabled={legacyWorking || legacyConfirm.trim() !== 'BACKFILL'}
+                        className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {legacyWorking ? 'Memproses…' : 'Backfill Kode Depo'}
+                      </button>
+                      <span className="text-xs text-slate-500">Hanya mengisi baris kosong; kode yang sudah ada tidak berubah.</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+          </>
         )}
       </div>
     </DashboardLayout>

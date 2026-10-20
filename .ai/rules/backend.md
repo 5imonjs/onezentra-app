@@ -161,5 +161,13 @@
 - Storage files are deleted only AFTER the DB commit and only when no surviving
   row references the path (`sj_validation_items.photo` is copied into
   `receiving_items.photo`). Never delete files inside the transaction.
-- Rows with `kode_depo = null` (legacy biaya/penerimaan) are intentionally left
-  alone because they cannot be attributed to a depot; the UI says so.
+- Rows with `kode_depo = null` (legacy biaya/penerimaan) are not reset because
+  they cannot be attributed to a depot. They can be repaired deliberately via
+  `POST /api/v1/admin/database/backfill-depot` (`LegacyDepotBackfillService`):
+  default is dry-run; apply needs `confirm=BACKFILL`; only active
+  `depot_settings` codes are used; only relation-derived codes (receiving →
+  rencana, THL ↔ detail retribusi, retribusi → receiving, standarisasi → NPN)
+  or an exact normalized `nama_depo`/kode match are accepted; existing
+  `kode_depo` is never overwritten; ambiguous names and conflicting sources
+  stay null and are reported for manual review. Do not add a global "Tanpa
+  Depo" reset — repair the attribution first, then reset per depot.

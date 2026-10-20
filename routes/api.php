@@ -350,6 +350,7 @@ Route::prefix('v1')->group(function () {
     Route::prefix('admin/database')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
         Route::get('/summary', [AdminDatabaseController::class, 'summary'])->middleware('permission:database.purge');
         Route::post('/purge', [AdminDatabaseController::class, 'purge'])->middleware(['permission:database.purge', 'throttle:10,1,heavy-write']);
+        Route::post('/backfill-depot', [AdminDatabaseController::class, 'backfillDepot'])->middleware(['permission:database.purge', 'throttle:10,1,heavy-write']);
     });
 
     Route::prefix('sj-validations')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
