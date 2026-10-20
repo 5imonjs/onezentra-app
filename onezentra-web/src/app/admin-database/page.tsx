@@ -25,6 +25,16 @@ const MODULES = [
 
 type Depot = { kode_depo: string; nama_depo: string | null };
 
+type AdminDocument = {
+  id: number;
+  label: string;
+  subtitle: string | null;
+  date: string | null;
+  status: string | null;
+};
+
+type ModuleKey = (typeof MODULES)[number]['key'];
+
 type BackfillSample = {
   id: number;
   nama_depo: string | null;
@@ -75,6 +85,14 @@ export default function AdminDatabasePage() {
   const [preview, setPreview] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [mode, setMode] = useState<'depot' | 'documents'>('depot');
+  const [docModule, setDocModule] = useState<ModuleKey>('rencana_kirim');
+  const [docSearchInput, setDocSearchInput] = useState('');
+  const [docSearch, setDocSearch] = useState('');
+  const [documents, setDocuments] = useState<AdminDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [docChecked, setDocChecked] = useState<number[]>([]);
+  const [docPreview, setDocPreview] = useState<Record<string, number> | null>(null);
   const [legacy, setLegacy] = useState<BackfillData | null>(null);
   const [legacyLoading, setLegacyLoading] = useState(true);
   const [legacyWorking, setLegacyWorking] = useState(false);
@@ -132,14 +150,69 @@ export default function AdminDatabasePage() {
     }
   }, [allowed]);
 
+  const loadDocuments = useCallback(async () => {
+    if (!allowed || mode !== 'documents' || !effectiveDepot) {
+      setDocuments([]);
+      return;
+    }
+    setDocumentsLoading(true);
+    try {
+      const response = await adminDatabase.documents({
+        kode_depo: effectiveDepot,
+        module: docModule,
+        search: docSearch || undefined,
+      }) as { data: { data?: AdminDocument[] } };
+      setDocuments(response.data.data || []);
+    } catch {
+      notifyGlobal('Gagal memuat daftar dokumen', 'error');
+      setDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, [allowed, mode, effectiveDepot, docModule, docSearch]);
+
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { void loadLegacy(); }, [loadLegacy]);
+  useEffect(() => { void loadDocuments(); }, [loadDocuments]);
 
   const changeDepot = (value: string) => {
     setSelectedDepot(value);
     setChecked([]);
     setConfirm('');
     setPreview(null);
+    setDocChecked([]);
+    setDocPreview(null);
+    setDocSearch('');
+    setDocSearchInput('');
+  };
+
+  const changeMode = (next: 'depot' | 'documents') => {
+    setMode(next);
+    setConfirm('');
+    setPreview(null);
+    setDocPreview(null);
+    setDocChecked([]);
+    setDocSearch('');
+    setDocSearchInput('');
+  };
+
+  const changeDocModule = (value: ModuleKey) => {
+    setDocModule(value);
+    setDocChecked([]);
+    setDocPreview(null);
+    setDocSearch('');
+    setDocSearchInput('');
+  };
+
+  const submitDocSearch = () => {
+    setDocSearch(docSearchInput.trim());
+    setDocChecked([]);
+    setDocPreview(null);
+  };
+
+  const toggleDoc = (id: number) => {
+    setDocChecked((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
+    setDocPreview(null);
   };
 
   const toggle = (key: string) => {
@@ -179,6 +252,44 @@ export default function AdminDatabasePage() {
       }
     } catch {
       notifyGlobal(dryRun ? 'Gagal mempratinjau' : 'Gagal mengosongkan data', 'error');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const runItemPurge = async (dryRun: boolean) => {
+    if (!effectiveDepot) {
+      notifyGlobal('Pilih depo terlebih dahulu', 'error');
+      return;
+    }
+    if (docChecked.length === 0) {
+      notifyGlobal('Pilih minimal satu dokumen', 'error');
+      return;
+    }
+    if (!dryRun && confirm.trim() !== 'HAPUS') {
+      notifyGlobal('Ketik HAPUS untuk konfirmasi', 'error');
+      return;
+    }
+    setWorking(true);
+    try {
+      const response = await adminDatabase.purgeItems({
+        module: docModule,
+        ids: docChecked,
+        kode_depo: effectiveDepot,
+        confirm: 'HAPUS',
+        dry_run: dryRun,
+      }) as { data: { message: string; data: { counts?: Record<string, number> } } };
+      if (dryRun) {
+        setDocPreview(response.data.data.counts || {});
+      } else {
+        notifyGlobal(response.data.message || 'Dokumen terpilih berhasil dihapus', 'success');
+        setDocChecked([]);
+        setConfirm('');
+        setDocPreview(null);
+        await Promise.all([load(), loadDocuments()]);
+      }
+    } catch {
+      notifyGlobal(dryRun ? 'Gagal mempratinjau dokumen' : 'Gagal menghapus dokumen', 'error');
     } finally {
       setWorking(false);
     }
@@ -270,57 +381,176 @@ export default function AdminDatabasePage() {
               <p className="mt-2 text-xs text-slate-500">
                 Reset bersifat per depo: baris depo lain tidak tersentuh. Baris lama tanpa kode depo tidak ikut terhapus.
               </p>
-            </div>
-            <div className="border-b border-gray-100 px-5 py-4">
-              <p className="text-sm font-semibold text-slate-800">Pilih modul yang akan dikosongkan</p>
-              <p className="mt-1 text-xs text-slate-500">Angka = jumlah baris depo ini saat ini. Pratinjau dulu (dry-run), lalu ketik HAPUS untuk eksekusi.</p>
-            </div>
-            <div className="space-y-3 p-5">
-              {loading ? (
-                <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
-              ) : (
-                MODULES.map((module) => (
-                  <label key={module.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-100 px-4 py-3 hover:border-gray-200">
-                    <input
-                      type="checkbox"
-                      checked={checked.includes(module.key)}
-                      onChange={() => toggle(module.key)}
-                      disabled={working}
-                      className="mt-1 h-4 w-4 accent-red-600"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-slate-800">
-                        {module.label}
-                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">{counts[module.key] ?? 0} baris</span>
-                      </span>
-                      <span className="text-xs text-slate-500">{module.note}</span>
-                    </span>
-                  </label>
-                ))
-              )}
-              {preview && (
-                <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                  Pratinjau {selectedName} (tidak ada yang dihapus): {Object.entries(preview).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                  {preview.klaim_biaya_terdampak ? ` — ${preview.klaim_biaya_terdampak} baris biaya ikut longgar (referensi di-set null, tidak dihapus).` : ''}
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <p className="text-sm font-semibold text-slate-800">Mode reset</p>
+                <div className="mt-2 inline-flex rounded-lg border border-gray-200 bg-slate-50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => changeMode('depot')}
+                    aria-pressed={mode === 'depot'}
+                    disabled={working}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'depot' ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    Per Depo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changeMode('documents')}
+                    aria-pressed={mode === 'documents'}
+                    disabled={working}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'documents' ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    Pilih Dokumen
+                  </button>
                 </div>
-              )}
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <button type="button" onClick={() => void runPurge(true)} disabled={working || checked.length === 0 || !effectiveDepot} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
-                  Pratinjau
-                </button>
-                <input
-                  value={confirm}
-                  onChange={(event) => setConfirm(event.target.value)}
-                  placeholder="Ketik HAPUS"
-                  aria-label="Konfirmasi ketik HAPUS"
-                  disabled={working || !effectiveDepot}
-                  className="select-field-sm w-40"
-                />
-                <button type="button" onClick={() => void runPurge(false)} disabled={working || checked.length === 0 || confirm.trim() !== 'HAPUS' || !effectiveDepot} className="btn-danger inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
-                  {working ? 'Memproses…' : `Kosongkan ${selectedName || 'Depo'}`}
-                </button>
+                <p className="mt-2 text-xs text-slate-500">
+                  {mode === 'depot'
+                    ? 'Kosongkan seluruh modul terpilih untuk depo ini.'
+                    : 'Cari dan centang dokumen tertentu saja. Turunan dokumen yang dipilih ikut terhapus; dokumen lain tidak tersentuh.'}
+                </p>
               </div>
             </div>
+            {mode === 'depot' ? (
+              <>
+                <div className="border-b border-gray-100 px-5 py-4">
+                  <p className="text-sm font-semibold text-slate-800">Pilih modul yang akan dikosongkan</p>
+                  <p className="mt-1 text-xs text-slate-500">Angka = jumlah baris depo ini saat ini. Pratinjau dulu (dry-run), lalu ketik HAPUS untuk eksekusi.</p>
+                </div>
+                <div className="space-y-3 p-5">
+                  {loading ? (
+                    <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
+                  ) : (
+                    MODULES.map((module) => (
+                      <label key={module.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-100 px-4 py-3 hover:border-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={checked.includes(module.key)}
+                          onChange={() => toggle(module.key)}
+                          disabled={working}
+                          className="mt-1 h-4 w-4 accent-red-600"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-slate-800">
+                            {module.label}
+                            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">{counts[module.key] ?? 0} baris</span>
+                          </span>
+                          <span className="text-xs text-slate-500">{module.note}</span>
+                        </span>
+                      </label>
+                    ))
+                  )}
+                  {preview && (
+                    <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                      Pratinjau {selectedName} (tidak ada yang dihapus): {Object.entries(preview).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                      {preview.klaim_biaya_terdampak ? ` — ${preview.klaim_biaya_terdampak} baris biaya ikut longgar (referensi di-set null, tidak dihapus).` : ''}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <button type="button" onClick={() => void runPurge(true)} disabled={working || checked.length === 0 || !effectiveDepot} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
+                      Pratinjau
+                    </button>
+                    <input
+                      value={confirm}
+                      onChange={(event) => setConfirm(event.target.value)}
+                      placeholder="Ketik HAPUS"
+                      aria-label="Konfirmasi ketik HAPUS"
+                      disabled={working || !effectiveDepot}
+                      className="select-field-sm w-40"
+                    />
+                    <button type="button" onClick={() => void runPurge(false)} disabled={working || checked.length === 0 || confirm.trim() !== 'HAPUS' || !effectiveDepot} className="btn-danger inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
+                      {working ? 'Memproses…' : `Kosongkan ${selectedName || 'Depo'}`}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="border-b border-gray-100 px-5 py-4">
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_1fr]">
+                    <div>
+                      <label htmlFor="document-module" className="text-sm font-semibold text-slate-800">Jenis dokumen</label>
+                      <select
+                        id="document-module"
+                        value={docModule}
+                        onChange={(event) => changeDocModule(event.target.value as ModuleKey)}
+                        disabled={working}
+                        className="select-field-sm mt-2 w-full"
+                      >
+                        {MODULES.map((module) => (
+                          <option key={module.key} value={module.key}>{module.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <form onSubmit={(event) => { event.preventDefault(); submitDocSearch(); }} className="flex items-end gap-2">
+                      <div className="min-w-0 flex-1">
+                        <label htmlFor="document-search" className="text-sm font-semibold text-slate-800">Cari nomor PO / SJ / dokumen</label>
+                        <input
+                          id="document-search"
+                          value={docSearchInput}
+                          onChange={(event) => setDocSearchInput(event.target.value)}
+                          placeholder="Contoh: 0127-26-00001"
+                          disabled={working}
+                          className="select-field-sm mt-2 w-full"
+                        />
+                      </div>
+                      <button type="submit" disabled={working} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        Cari
+                      </button>
+                    </form>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">Pilih satu atau beberapa dokumen. Reset hanya menghapus dokumen yang dicentang beserta turunannya.</p>
+                </div>
+                <div className="space-y-3 p-5">
+                  {documentsLoading ? (
+                    <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
+                  ) : documents.length === 0 ? (
+                    <p className="text-sm text-slate-600">Tidak ada dokumen yang cocok untuk depo dan modul ini.</p>
+                  ) : (
+                    <div className="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-100">
+                      {documents.map((document) => (
+                        <label key={document.id} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-slate-50">
+                          <input
+                            type="checkbox"
+                            checked={docChecked.includes(document.id)}
+                            onChange={() => toggleDoc(document.id)}
+                            disabled={working}
+                            className="mt-1 h-4 w-4 accent-red-600"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-mono text-sm font-semibold text-slate-800">{document.label}</span>
+                            {document.subtitle && <span className="block text-xs text-slate-500">{document.subtitle}</span>}
+                            <span className="block text-xs text-slate-400">{[document.date, document.status].filter(Boolean).join(' · ') || '—'}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500">{docChecked.length} dokumen dipilih.</p>
+                  {docPreview && (
+                    <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                      Pratinjau dokumen terpilih (tidak ada yang dihapus): {Object.entries(docPreview).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                      {docPreview.klaim_biaya_terdampak ? ` — ${docPreview.klaim_biaya_terdampak} baris biaya ikut longgar (referensi di-set null, tidak dihapus).` : ''}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <button type="button" onClick={() => void runItemPurge(true)} disabled={working || docChecked.length === 0 || !effectiveDepot} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
+                      Pratinjau
+                    </button>
+                    <input
+                      value={confirm}
+                      onChange={(event) => setConfirm(event.target.value)}
+                      placeholder="Ketik HAPUS"
+                      aria-label="Konfirmasi ketik HAPUS"
+                      disabled={working || !effectiveDepot}
+                      className="select-field-sm w-40"
+                    />
+                    <button type="button" onClick={() => void runItemPurge(false)} disabled={working || docChecked.length === 0 || confirm.trim() !== 'HAPUS' || !effectiveDepot} className="btn-danger inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
+                      {working ? 'Memproses…' : 'Hapus Dokumen Terpilih'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </section>
 
           <section aria-label="Data legacy tanpa depo" className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">

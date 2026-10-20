@@ -161,6 +161,18 @@
 - Storage files are deleted only AFTER the DB commit and only when no surviving
   row references the path (`sj_validation_items.photo` is copied into
   `receiving_items.photo`). Never delete files inside the transaction.
+- Per-document reset (`POST /admin/database/purge-items`) is the selected-row
+  counterpart to depot purge. It takes `module` + `ids` + `kode_depo`; every
+  root ID must belong to that depot or the whole request is rejected (422)
+  without deleting anything. Never accept IDs from a different depot.
+- `GET /admin/database/documents` feeds the picker and is also depot-scoped.
+  Search must cover the document's own numbers (PO/SJ/kendaraan) and related
+  PO where a real relation exists; do not show rows from another depot.
+- Selected-root deletion deletes only that root and its descendants. Resetting
+  a `receiving` must not delete its parent `rencana_kirim`; resetting a `gate`
+  transaction must not delete sibling gates. This is why gate/penerimaan use
+  explicit `gate_ids`/`penerimaan_ids` — never re-delete them by depot or by
+  parent rencana after a per-document selection.
 - Rows with `kode_depo = null` (legacy biaya/penerimaan) are not reset because
   they cannot be attributed to a depot. They can be repaired deliberately via
   `POST /api/v1/admin/database/backfill-depot` (`LegacyDepotBackfillService`):

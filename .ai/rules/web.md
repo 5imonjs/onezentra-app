@@ -39,6 +39,15 @@
   (options from `depots` in the summary response), send `kode_depo` on dry-run
   AND purge, and disable execution when no depot is available. Do not offer a
   global/“all depots” button — the backend requires `kode_depo`.
+- The reset page has two modes: **Per Depo** (whole modules, existing flow) and
+  **Pilih Dokumen** (`adminDatabase.documents` + `purgeItems`). Document mode
+  must load the list for the selected depot/module, search by PO/SJ/document
+  number, let the admin check one or more rows, and send only those IDs. Keep
+  the document list cleared when the depot or module changes.
+- Selected-document execution still requires dry-run preview and typing
+  `HAPUS`; send `kode_depo`, `module`, `ids`, `confirm: 'HAPUS'`, and
+  `dry_run`. Never infer IDs from the visible list without sending them back to
+  the backend — the backend re-validates every ID against the depot.
 - Legacy rows without `kode_depo` are handled by a separate "Data Legacy Tanpa
   Depo" panel: load a dry-run preview on mount (safe), show per-table
   total/resolved/manual counts plus samples, and require typing `BACKFILL`
