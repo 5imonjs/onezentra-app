@@ -6,27 +6,45 @@ import { adminDatabase } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { notifyGlobal } from '@/store/globalToast';
 
-// Modul yang boleh dikosongkan master. Urutan hapus di backend anak-dulu agar
-// FK tidak meledak; baris biaya retribusi yang mengklaim receiving TIDAK ikut
-// dihapus (referensinya di-set null) dan jumlahnya dilaporkan.
+// Modul yang boleh dikosongkan master. SEMUA modul operasional harus ada di
+// sini — reset yang hanya mencakup sebagian modul meninggalkan data yatim
+// (mis. wave Batch Expired yang masih membawa qty lama setelah receiving
+// direset). Urutan hapus di backend anak-dulu agar FK tidak meledak.
 const MODULES = [
   { key: 'rencana_kirim', label: 'Replenishment', note: 'Rencana + item, gate, receiving, dan validasi ikut terhapus via relasi' },
   { key: 'gate', label: 'Check In Point', note: 'Transaksi gate (receiving yang menunjuk ikut longgar, tidak hilang)' },
   { key: 'validasi-sj', label: 'Validasi Dokumen', note: 'Sesi validasi + item + label batch validasi' },
   { key: 'receiving', label: 'Check Out Point', note: 'Receiving + item (+batch receiving via cascade)' },
-  { key: 'penerimaan', label: 'Inbound (SJ)', note: 'Tabel penerimaan (mandiri)' },
-  { key: 'opname-session', label: 'Sesi Opname', note: 'Sesi opname + item (waves dibiarkan sebagai referensi)' },
+  { key: 'penerimaan', label: 'Inbound (SJ)', note: 'Tabel penerimaan legacy (tidak dibaca UI, tetap dibersihkan)' },
+  { key: 'opname-session', label: 'Sesi Opname', note: 'Sesi opname + item (wave dibiarkan sebagai referensi)' },
+  { key: 'opname-wave', label: 'Batch Expired', note: 'Wave monitoring + item sesi yang menunjuk wave tersebut (sesi induk tetap ada)' },
+  { key: 'standarisasi', label: 'Standarisasi', note: 'Pengajuan standarisasi tumpukan depo terpilih' },
+  { key: 'biaya-thl', label: 'Biaya THL', note: 'Pengajuan THL + detail, kendaraan, foto, dan riwayat approval' },
+  { key: 'biaya-retribusi', label: 'Biaya Retribusi', note: 'Pengajuan retribusi + detail, dokumen, riwayat approval (THL turunan ikut terhapus)' },
 ] as const;
 
+type Depot = { kode_depo: string; nama_depo: string | null };
+
 export default function AdminDatabasePage() {
-  const { hasPermission } = useAuthStore();
+  const { user, hasPermission } = useAuthStore();
   const allowed = hasPermission('database.purge');
+  const kodeDepo = user?.kode_depo;
+  const [depots, setDepots] = useState<Depot[]>([]);
+  const [selectedDepot, setSelectedDepot] = useState('');
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [checked, setChecked] = useState<string[]>([]);
   const [confirm, setConfirm] = useState('');
   const [preview, setPreview] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+
+  // Satu sumber kebenaran depo aktif: dropdown yang terlihat HARUS sama dengan
+  // depo yang dihitung dan direset.
+  const effectiveDepot =
+    selectedDepot ||
+    (kodeDepo && depots.some((d) => d.kode_depo === kodeDepo)
+      ? kodeDepo
+      : depots[0]?.kode_depo ?? '');
 
   const load = useCallback(async () => {
     if (!allowed) {
@@ -35,16 +53,30 @@ export default function AdminDatabasePage() {
     }
     setLoading(true);
     try {
-      const response = await adminDatabase.summary() as { data: { data: Record<string, number> } };
+      // Panggilan pertama tanpa kode_depo: backend mengembalikan daftar depo
+      // sekaligus depo default. Tanpa ini halaman deadlock karena dropdown
+      // butuh depo yang hanya datang dari respons ini.
+      const response = await adminDatabase.summary(effectiveDepot || undefined) as {
+        data: { data: Record<string, number>; depots?: Depot[]; kode_depo?: string | null };
+      };
+      if (response.data.depots) setDepots(response.data.depots);
+      if (!selectedDepot && response.data.kode_depo) setSelectedDepot(response.data.kode_depo);
       setCounts(response.data.data || {});
     } catch {
       notifyGlobal('Gagal memuat ringkasan data', 'error');
     } finally {
       setLoading(false);
     }
-  }, [allowed]);
+  }, [allowed, effectiveDepot, selectedDepot]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const changeDepot = (value: string) => {
+    setSelectedDepot(value);
+    setChecked([]);
+    setConfirm('');
+    setPreview(null);
+  };
 
   const toggle = (key: string) => {
     setChecked((current) => (current.includes(key) ? current.filter((k) => k !== key) : [...current, key]));
@@ -52,6 +84,10 @@ export default function AdminDatabasePage() {
   };
 
   const runPurge = async (dryRun: boolean) => {
+    if (!effectiveDepot) {
+      notifyGlobal('Pilih depo terlebih dahulu', 'error');
+      return;
+    }
     if (checked.length === 0) {
       notifyGlobal('Pilih minimal satu modul', 'error');
       return;
@@ -62,7 +98,12 @@ export default function AdminDatabasePage() {
     }
     setWorking(true);
     try {
-      const response = await adminDatabase.purge({ modules: checked, confirm: 'HAPUS', dry_run: dryRun }) as { data: { message: string; data: { counts?: Record<string, number> } } };
+      const response = await adminDatabase.purge({
+        modules: checked,
+        kode_depo: effectiveDepot,
+        confirm: 'HAPUS',
+        dry_run: dryRun,
+      }) as { data: { message: string; data: { counts?: Record<string, number> } } };
       if (dryRun) {
         setPreview(response.data.data.counts || {});
       } else {
@@ -79,6 +120,8 @@ export default function AdminDatabasePage() {
     }
   };
 
+  const selectedName = depots.find((d) => d.kode_depo === effectiveDepot)?.nama_depo || effectiveDepot;
+
   return (
     <DashboardLayout>
       <div className="space-y-5">
@@ -89,7 +132,7 @@ export default function AdminDatabasePage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-bold leading-tight">Reset Data Operasional</h1>
-              <p className="mt-0.5 text-ink-fg-muted">Khusus level master — kosongkan isi database per modul. Tidak bisa dibatalkan.</p>
+              <p className="mt-0.5 text-ink-fg-muted">Khusus level master — kosongkan data operasional satu depo. Tidak bisa dibatalkan.</p>
             </div>
           </div>
         </header>
@@ -101,8 +144,33 @@ export default function AdminDatabasePage() {
         ) : (
           <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
             <div className="border-b border-gray-100 px-5 py-4">
+              <label htmlFor="reset-depot" className="text-sm font-semibold text-slate-800">Depo yang direset</label>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <select
+                  id="reset-depot"
+                  value={effectiveDepot}
+                  onChange={(event) => changeDepot(event.target.value)}
+                  disabled={working || depots.length === 0}
+                  className="select-field-sm w-full max-w-xs"
+                >
+                  {depots.length === 0 ? <option value="">Belum ada depo aktif</option> : null}
+                  {depots.map((depot) => (
+                    <option key={depot.kode_depo} value={depot.kode_depo}>
+                      {depot.nama_depo || depot.kode_depo} ({depot.kode_depo})
+                    </option>
+                  ))}
+                </select>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                  {effectiveDepot ? `Hanya data ${selectedName}` : 'Pilih depo'}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Reset bersifat per depo: baris depo lain tidak tersentuh. Baris lama tanpa kode depo tidak ikut terhapus.
+              </p>
+            </div>
+            <div className="border-b border-gray-100 px-5 py-4">
               <p className="text-sm font-semibold text-slate-800">Pilih modul yang akan dikosongkan</p>
-              <p className="mt-1 text-xs text-slate-500">Angka = jumlah baris saat ini. Pratinjau dulu (dry-run), lalu ketik HAPUS untuk eksekusi.</p>
+              <p className="mt-1 text-xs text-slate-500">Angka = jumlah baris depo ini saat ini. Pratinjau dulu (dry-run), lalu ketik HAPUS untuk eksekusi.</p>
             </div>
             <div className="space-y-3 p-5">
               {loading ? (
@@ -114,6 +182,7 @@ export default function AdminDatabasePage() {
                       type="checkbox"
                       checked={checked.includes(module.key)}
                       onChange={() => toggle(module.key)}
+                      disabled={working}
                       className="mt-1 h-4 w-4 accent-red-600"
                     />
                     <span className="min-w-0 flex-1">
@@ -128,12 +197,12 @@ export default function AdminDatabasePage() {
               )}
               {preview && (
                 <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                  Pratinjau (tidak ada yang dihapus): {Object.entries(preview).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                  Pratinjau {selectedName} (tidak ada yang dihapus): {Object.entries(preview).map(([k, v]) => `${k}: ${v}`).join(' · ')}
                   {preview.klaim_biaya_terdampak ? ` — ${preview.klaim_biaya_terdampak} baris biaya ikut longgar (referensi di-set null, tidak dihapus).` : ''}
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                <button type="button" onClick={() => void runPurge(true)} disabled={working || checked.length === 0} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
+                <button type="button" onClick={() => void runPurge(true)} disabled={working || checked.length === 0 || !effectiveDepot} className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
                   Pratinjau
                 </button>
                 <input
@@ -141,10 +210,11 @@ export default function AdminDatabasePage() {
                   onChange={(event) => setConfirm(event.target.value)}
                   placeholder="Ketik HAPUS"
                   aria-label="Konfirmasi ketik HAPUS"
+                  disabled={working || !effectiveDepot}
                   className="select-field-sm w-40"
                 />
-                <button type="button" onClick={() => void runPurge(false)} disabled={working || checked.length === 0 || confirm.trim() !== 'HAPUS'} className="btn-danger inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
-                  {working ? 'Memproses…' : 'Kosongkan Sekarang'}
+                <button type="button" onClick={() => void runPurge(false)} disabled={working || checked.length === 0 || confirm.trim() !== 'HAPUS' || !effectiveDepot} className="btn-danger inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
+                  {working ? 'Memproses…' : `Kosongkan ${selectedName || 'Depo'}`}
                 </button>
               </div>
             </div>
