@@ -571,8 +571,14 @@ export default function OpnameExpiredPage() {
       try {
         await opnameExpired.delete(id);
         ok++;
-      } catch {
-        fail++;
+      } catch (e) {
+        const status = (e as { response?: { status?: number } })?.response?.status;
+        // 404 = wave sudah tidak ada (mis. terhapus sebelumnya) → anggap berhasil
+        if (status === 404) {
+          ok++;
+        } else {
+          fail++;
+        }
       }
     }
     setBulkDeleting(false);
