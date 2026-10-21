@@ -211,8 +211,8 @@ export default function EmailRecipientsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [documentType, setDocumentType] = useState('');
+  const [triggerFilter, setTriggerFilter] = useState<string>('');
   const [kodeDepoFilter, setKodeDepoFilter] = useState<string>('');
-
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Recipient | null>(null);
   const [createForm, setCreateForm] = useState<CreateForm>(emptyCreate);
@@ -224,6 +224,7 @@ export default function EmailRecipientsPage() {
 
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Filter & pencarian dilakukan di server; paginasi per DEPO (bukan per
@@ -234,6 +235,7 @@ export default function EmailRecipientsPage() {
         per_page_groups: PER_PAGE,
         page,
         document_type: documentType || undefined,
+        trigger: triggerFilter || undefined,
         kode_depo: kodeDepoFilter || undefined,
         search: search || undefined,
       });
@@ -250,7 +252,7 @@ export default function EmailRecipientsPage() {
     } catch (e) {
       setToast({ message: getErrorMessage(e, 'Gagal memuat data'), type: 'error' });
     }
-  }, [page, documentType, kodeDepoFilter, search]);
+  }, [page, documentType, triggerFilter, kodeDepoFilter, search]);
 
   const loadOptions = useCallback(async () => {
     try {
@@ -640,10 +642,16 @@ export default function EmailRecipientsPage() {
               <SearchInput value={searchInput} onChange={(v) => setSearchInput(v)} placeholder="Cari email, nama, role, atau kode depo..." resultCount={totals.total} resultLabel="penerima" />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <select value={documentType} onChange={(e) => { setDocumentType(e.target.value); setPage(1); }} className="select-field text-sm py-2" aria-label="Filter jenis dokumen">
+              <select value={documentType} onChange={(e) => { setDocumentType(e.target.value); setTriggerFilter(''); setPage(1); }} className="select-field text-sm py-2" aria-label="Filter jenis dokumen">
                 <option value="">Semua Dokumen</option>
                 {(options.document_types || []).map((t) => (
                   <option key={t} value={t}>{docTypeLabel[t] || t}</option>
+                ))}
+              </select>
+              <select value={triggerFilter} onChange={(e) => { setTriggerFilter(e.target.value); setPage(1); }} className="select-field text-sm py-2" aria-label="Filter trigger">
+                <option value="">Semua Trigger</option>
+                {(documentType ? (options.document_type_triggers?.[documentType] || []) : (options.triggers || [])).map((t) => (
+                  <option key={t} value={t}>{triggerLabel(documentType || '', t) || t}</option>
                 ))}
               </select>
               <select value={kodeDepoFilter} onChange={(e) => { setKodeDepoFilter(e.target.value); setPage(1); }} className="select-field text-sm py-2 lg:w-52" aria-label="Fokus depo">
@@ -896,6 +904,9 @@ export default function EmailRecipientsPage() {
               </div>
             </div>
 
+            <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+              Panduan: satu baris = satu penerima. Pilih jenis dokumen &amp; trigger, lalu tambahkan banyak user/email/role ke field TO atau CC sekaligus. Depo kosong = berlaku global.
+            </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="cf-doc" className="block text-xs font-medium text-gray-500 mb-1">Jenis Dokumen</label>

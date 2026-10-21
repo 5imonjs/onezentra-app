@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class EmailRecipientController extends Controller
 {
@@ -446,6 +447,16 @@ class EmailRecipientController extends Controller
             throw ValidationException::withMessages([
                 'trigger' => ["Trigger {$data['trigger']} tidak berlaku untuk dokumen {$data['document_type']}."],
             ]);
+        }
+
+        // Whitelist kode_depo terhadap daftar depo yang dikenal (dari users).
+        if (! blank($data['kode_depo'] ?? null)) {
+            $knownDepots = User::whereNotNull('kode_depo')->distinct()->pluck('kode_depo')->all();
+            if (! in_array($data['kode_depo'], $knownDepots, true)) {
+                throw ValidationException::withMessages([
+                    'kode_depo' => ['Kode depo tidak dikenal. Pilih dari daftar yang tersedia.'],
+                ]);
+            }
         }
 
         $errors = match ($data['recipient_type']) {
