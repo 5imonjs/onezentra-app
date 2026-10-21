@@ -500,18 +500,18 @@ class OpnameExpiredController extends Controller
             'Anda tidak memiliki akses ke data ini.'
         );
 
-        // Wave yang sudah masuk sesi opname / sudah divalidasi membawa bukti
-        // audit lapangan (foto, koreksi, identitas verifikator). Relasi
-        // opname_expired_session_items memakai cascadeOnDelete, jadi menghapus
-        // wave akan diam-diam ikut menghapus bukti tersebut. Tolak lebih aman
-        // (sejajar ReceivingItemController yang menolak hapus baris terverifikasi).
-        abort_if(
-            $wave->validated_by !== null
-                || $wave->koreksi_by !== null
-                || OpnameExpiredSessionItem::where('wave_id', $wave->id)->exists(),
-            422,
-            'Wave sudah dipakai pada sesi opname atau sudah divalidasi, sehingga tidak dapat dihapus.'
-        );
+        // Level master boleh menghapus wave apa pun (termasuk yang sudah
+        // divalidasi/terpakai) atas tanggung jawabnya sendiri. Level lain
+        // tetap ditolak untuk menjaga bukti audit.
+        if ($request->user()->level !== 'admin_master') {
+            abort_if(
+                $wave->validated_by !== null
+                    || $wave->koreksi_by !== null
+                    || OpnameExpiredSessionItem::where('wave_id', $wave->id)->exists(),
+                422,
+                'Wave sudah dipakai pada sesi opname atau sudah divalidasi, sehingga tidak dapat dihapus.'
+            );
+        }
 
         $wave->delete();
 
