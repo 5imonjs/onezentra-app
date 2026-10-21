@@ -600,6 +600,8 @@ export const emailSettings = {
 export const emailRecipients = {
   list: (params?: Record<string, unknown>) => apiClient.get('/email-recipients', { params }),
   create: (data: Record<string, unknown>) => apiClient.post('/email-recipients', data),
+  // Satu form "Tambah Penerima" → satu permintaan atomik (banyak target).
+  bulk: (targets: Record<string, unknown>[]) => apiClient.post('/email-recipients/bulk', { targets }),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/email-recipients/${id}`, data),
   delete: (id: number) => apiClient.delete(`/email-recipients/${id}`),
   options: () => apiClient.get('/email-recipients/options'),

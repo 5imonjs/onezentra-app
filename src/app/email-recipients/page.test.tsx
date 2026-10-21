@@ -2,10 +2,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import EmailRecipientsPage from './page';
 
-const { hasPermission, list, create, update, remove, options, updateDepotSetting } = vi.hoisted(() => ({
+const { hasPermission, list, create, bulk, update, remove, options, updateDepotSetting } = vi.hoisted(() => ({
   hasPermission: vi.fn((_permission: string): boolean => true),
   list: vi.fn(),
   create: vi.fn(),
+  bulk: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
   options: vi.fn(),
@@ -21,7 +22,7 @@ vi.mock('@/store/auth', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  emailRecipients: { list, create, update, delete: remove, options, updateDepotSetting },
+  emailRecipients: { list, create, bulk, update, delete: remove, options, updateDepotSetting },
   getErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
 
@@ -122,7 +123,7 @@ describe('EmailRecipientsPage', () => {
     expect(screen.getByText('Tak terkirim')).toBeInTheDocument();
   });
 
-  it('tombol Tambah CC inline mengunci depo & field lalu menyimpan payload yang benar', async () => {
+  it('tombol Tambah CC inline mengunci depo & field lalu mengirim satu permintaan atomik', async () => {
     list.mockResolvedValue(listResponse([{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }]));
 
     render(<EmailRecipientsPage />);
@@ -134,12 +135,28 @@ describe('EmailRecipientsPage', () => {
     fireEvent.change(screen.getByLabelText('Role (semua anggota)'), { target: { value: 'rfah' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
 
-    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(bulk).toHaveBeenCalledWith([expect.objectContaining({
       field: 'CC',
       kode_depo: 'JKT01',
       recipient_type: 'role',
       role_slug: 'rfah',
-    })));
+    })]));
+    // Satu form = satu request; loop per penerima (create) sudah tidak dipakai.
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('saat bulk gagal, form tetap terbuka dan toast error muncul', async () => {
+    list.mockResolvedValue(listResponse([{ ...baseRecipient, id: 1, kode_depo: 'JKT01', field: 'TO' }]));
+    bulk.mockRejectedValue(new Error('targets.1.email: Email wajib diisi'));
+
+    render(<EmailRecipientsPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Tambah penerima CC untuk JKT01 — Jakarta' }));
+    fireEvent.change(screen.getByLabelText('Role (semua anggota)'), { target: { value: 'rfah' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
+
+    expect(await screen.findByText('Gagal menyimpan')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Tambah Penerima CC' })).toBeInTheDocument();
   });
 
   it('tombol Tambah Penerima generik mewarisi fokus depo yang aktif', async () => {
