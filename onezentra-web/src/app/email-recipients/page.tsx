@@ -445,16 +445,16 @@ export default function EmailRecipientsPage() {
 
       if (targets.length === 0) throw new Error('Pilih minimal satu penerima (pengguna, email, atau role).');
 
-      let created = 0;
-      for (const t of targets) {
-        await emailRecipients.create(t);
-        created += 1;
-      }
-      setToast({ message: `${created} penerima ${createForm.field} ditambahkan ke ${depotLabel(createForm.kode_depo)}`, type: 'success' });
+      // Satu permintaan atomik: bila satu target tidak valid, backend tidak
+      // menyimpan apa pun — tidak ada penerima setengah jadi dari satu form.
+      await emailRecipients.bulk(targets);
+      setToast({ message: `${targets.length} penerima ${createForm.field} ditambahkan ke ${depotLabel(createForm.kode_depo)}`, type: 'success' });
       setShowForm(false);
       load();
     } catch (e) {
-      setToast({ message: getErrorMessage(e, 'Gagal menyimpan'), type: 'error' });
+      // Kunci error bulk berbentuk `targets.1.email` — buang prefiks indeksnya
+      // supaya pesan yang tampil menunjuk kolom, bukan struktur request.
+      setToast({ message: getErrorMessage(e, 'Gagal menyimpan').replace(/targets\.\d+\./g, ''), type: 'error' });
     } finally {
       setSaving(false);
     }

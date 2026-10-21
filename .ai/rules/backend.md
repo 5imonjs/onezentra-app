@@ -131,6 +131,25 @@
   `depot_settings` (real depots), NOT `users.kode_depo` — the latter contains role
   accounts (`ADMIN`, `BLC-01`, `RLH-01`, …). Fallback (when `depot_settings` is
   empty) excludes `ADMIN` so the page never defaults to a pseudo-depot.
+- That same source applies to the `kode_depo` whitelist in
+  `EmailRecipientController::validateRecipient()` — it must use
+  `depotOptions()`, the exact list the dropdown renders. Validating against
+  `users.kode_depo` rejected every real depot without a user account (`000`,
+  `0126`) with 422 "Kode depo tidak dikenal." while the form only offers
+  depot_settings codes, and it accepted pseudo-codes like `ADMIN`. An `update`
+  keeps the row's existing code so legacy rows whose depot vanished from
+  settings stay editable. `EmailRecipientControllerTest` locks all three cases;
+  keep `max:20` aligned with `updateDepotSetting()`.
+- `PUT /email-recipients/depot-settings/{kodeDepo}` carries the same whitelist
+  (an existing `email_depot_settings` row is always allowed) so a direct call
+  cannot create an orphan on/off switch that the UI never renders.
+- Saving many recipients is ONE atomic request: `POST /email-recipients/bulk`
+  takes `targets[]`, validates each through the shared `recipientRules()` +
+  `assertRecipientData()` (rules live in one method so `store`/`storeBulk`/
+  `update` can never diverge) and wraps them in `DB::transaction` — one bad
+  target saves nothing. Errors are re-keyed `targets.{i}.{field}` so the client
+  knows which row failed. Never reintroduce a per-target create loop: it left
+  half-saved rows behind when a later target failed validation.
 - `approval_assignments` is not optional data: `BiayaApprovalService::ensureApprover()`
   requires an active assignment per level, so an empty table **403s every**
   check/approve/rfah/reject/revise for biaya THL & retribusi (even for

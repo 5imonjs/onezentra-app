@@ -13,8 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Validation\Rule;
 
 class EmailRecipientController extends Controller
 {
@@ -258,6 +258,51 @@ class EmailRecipientController extends Controller
         ], 201);
     }
 
+    /**
+     * Simpan banyak penerima dalam SATU permintaan dan atomik. Form "Tambah
+     * Penerima" mengirim user/email/role sekaligus; dengan loop di klien, satu
+     * target yang gagal menyisakan baris 1..n-1 yang tersimpan tanpa bisa
+     * dibatalkan. Di sini satu target tidak valid berarti TIDAK ADA baris yang
+     * tersimpan, dan error menunjuk indeks target yang bermasalah.
+     */
+    public function storeBulk(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'targets' => ['required', 'array', 'min:1', 'max:100'],
+            'targets.*' => ['array'],
+        ]);
+
+        $created = DB::transaction(function () use ($validated) {
+            $rows = [];
+
+            foreach (array_values($validated['targets']) as $index => $target) {
+                try {
+                    $data = $this->assertRecipientData(
+                        Validator::make($target, $this->recipientRules())->validate()
+                    );
+                } catch (ValidationException $e) {
+                    throw ValidationException::withMessages(
+                        collect($e->errors())
+                            ->mapWithKeys(fn (array $messages, string $field): array => ["targets.{$index}.{$field}" => $messages])
+                            ->all()
+                    );
+                }
+
+                $rows[] = EmailRecipient::create($data);
+            }
+
+            return $rows;
+        });
+
+        return response()->json([
+            'message' => 'Email recipients created',
+            'created' => count($created),
+            'data' => $this->withResolution(
+                collect($created)->map(fn (EmailRecipient $row) => $row->load('user:id,full_name,email'))
+            )->all(),
+        ], 201);
+    }
+
     public function update(Request $request, EmailRecipient $emailRecipient): JsonResponse
     {
         $validated = $this->validateRecipient($request, $emailRecipient->id);
@@ -362,6 +407,18 @@ class EmailRecipientController extends Controller
             'is_enabled' => ['required', 'boolean'],
         ]);
 
+        // Whitelist dengan daftar yang sama seperti dropdown (`depotOptions()`):
+        // endpoint ini bisa dipanggil langsung, sehingga kode acak jangan sampai
+        // membuat baris setelan yatim yang tak pernah tampil di UI. Setelan yang
+        // sudah ada tetap boleh diubah walau kodenya keluar dari daftar.
+        $allowed = $this->depotOptions()->pluck('kode_depo')->all();
+        $exists = EmailDepotSetting::query()->where('kode_depo', $kodeDepo)->exists();
+        if (! in_array($kodeDepo, $allowed, true) && ! $exists) {
+            throw ValidationException::withMessages([
+                'kode_depo' => ['Kode depo tidak dikenal. Pilih dari daftar yang tersedia.'],
+            ]);
+        }
+
         $setting = EmailDepotSetting::updateOrCreate(
             ['kode_depo' => $kodeDepo],
             ['is_enabled' => $validated['is_enabled']],
@@ -422,23 +479,47 @@ class EmailRecipientController extends Controller
         });
     }
 
-    private function validateRecipient(Request $request, ?int $ignoreId = null): array
+    /**
+     * Aturan dasar satu baris penerima. Dipakai `store`, `storeBulk` (per
+     * target) dan `update` lewat satu method ini supaya aturannya tidak
+     * pernah terbelah antar endpoint.
+     *
+     * @return array<string, string>
+     */
+    private function recipientRules(): array
     {
-        $documentTypes = array_keys(self::DOCUMENT_TRIGGERS);
-        $allTriggers = array_values(array_unique(array_merge(...array_values(self::DOCUMENT_TRIGGERS))));
-
-        $data = $request->validate([
-            'document_type' => 'required|string|in:'.implode(',', $documentTypes),
-            'trigger' => 'required|string|in:'.implode(',', $allTriggers),
+        return [
+            'document_type' => 'required|string|in:'.implode(',', array_keys(self::DOCUMENT_TRIGGERS)),
+            'trigger' => 'required|string|in:'.implode(',', array_values(array_unique(array_merge(...array_values(self::DOCUMENT_TRIGGERS))))),
             'recipient_type' => 'required|string|in:email,user,role',
             'field' => 'required|string|in:TO,CC',
-            'kode_depo' => 'nullable|string|max:10',
+            // Batas mengikuti `updateDepotSetting()` (maks 20) supaya kode yang
+            // bisa disimpan saklar per-depo juga bisa disimpan di penerima.
+            'kode_depo' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'user_id' => 'nullable|exists:users,id',
             'role_slug' => 'nullable|string|exists:roles,slug|max:50',
             'label' => 'nullable|string|max:100',
             'is_active' => 'nullable|boolean',
-        ]);
+        ];
+    }
+
+    private function validateRecipient(Request $request, ?int $ignoreId = null): array
+    {
+        return $this->assertRecipientData($request->validate($this->recipientRules()), $ignoreId);
+    }
+
+    /**
+     * Aturan lintas-field yang tak bisa dinyatakan sebagai string validasi:
+     * pasangan dokumen↔trigger, whitelist depo, dan kelengkapan per tipe
+     * penerima. `storeBulk()` membungkus ulang error per target dengan prefiks
+     * `targets.{i}.` supaya klien tahu baris mana yang bermasalah.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function assertRecipientData(array $data, ?int $ignoreId = null): array
+    {
 
         // Trigger harus masuk akal untuk dokumennya: dropdown UI hanya
         // menyajikan pasangan yang sah, tetapi API bisa dipanggil langsung —
@@ -449,10 +530,21 @@ class EmailRecipientController extends Controller
             ]);
         }
 
-        // Whitelist kode_depo terhadap daftar depo yang dikenal (dari users).
+        // Whitelist `kode_depo` dengan daftar yang SAMA dengan dropdown UI:
+        // `depotOptions()` — `depot_settings` (depo nyata), fallback ke user
+        // nyata. Sumber `users.kode_depo` salah karena memuat akun role
+        // (ADMIN, BLC-01, RLH-01, …) sekaligus bisa melewatkan depo nyata yang
+        // belum punya akun user (mis. '000' / '0126') — UI menawarkannya lalu
+        // save membalas 422 "Kode depo tidak dikenal."
+        // Baris lama dengan kode yang sudah tak ada di setting depo tetap boleh
+        // disimpan (kodenya dipertahankan) agar admin tidak terkunci.
         if (! blank($data['kode_depo'] ?? null)) {
-            $knownDepots = User::whereNotNull('kode_depo')->distinct()->pluck('kode_depo')->all();
-            if (! in_array($data['kode_depo'], $knownDepots, true)) {
+            $allowed = $this->depotOptions()->pluck('kode_depo')->all();
+            $current = $ignoreId !== null
+                ? EmailRecipient::query()->whereKey($ignoreId)->value('kode_depo')
+                : null;
+
+            if (! in_array($data['kode_depo'], $allowed, true) && $data['kode_depo'] !== $current) {
                 throw ValidationException::withMessages([
                     'kode_depo' => ['Kode depo tidak dikenal. Pilih dari daftar yang tersedia.'],
                 ]);

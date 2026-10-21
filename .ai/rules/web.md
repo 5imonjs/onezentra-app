@@ -35,6 +35,12 @@
   header-only toggle would be invisible exactly where it is needed. Off = no
   mail even when Global rows exist; a disabled depot's group shows "Email
   nonaktif".
+- "Tambah Penerima" submits ALL chosen users/emails/role in ONE call
+  (`emailRecipients.bulk(targets)` → `POST /email-recipients/bulk`); the
+  backend is atomic, so a failed target saves nothing. Do not loop
+  `emailRecipients.create()` per target — that used to leave half-saved rows
+  with no way to undo. Bulk errors arrive keyed `targets.{i}.{field}`; strip
+  that prefix before showing the toast so the message names the column.
 - Reset Data is per depot. `/admin-database` must render a depot selector
   (options from `depots` in the summary response), send `kode_depo` on dry-run
   AND purge, and disable execution when no depot is available. Do not offer a

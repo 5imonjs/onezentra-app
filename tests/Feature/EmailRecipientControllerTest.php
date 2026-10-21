@@ -247,6 +247,8 @@ class EmailRecipientControllerTest extends TestCase
     {
         Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
 
+        DepotSetting::create(['kode_depo' => '0127', 'nama_depo' => 'Singkawang', 'is_active' => true]);
+
         $this->putJson('/api/v1/email-recipients/depot-settings/0127', ['is_enabled' => false])
             ->assertOk()->assertJsonPath('data.is_enabled', false);
         $this->assertDatabaseHas('email_depot_settings', ['kode_depo' => '0127', 'is_enabled' => false]);
@@ -263,6 +265,135 @@ class EmailRecipientControllerTest extends TestCase
 
         $this->putJson('/api/v1/email-recipients/depot-settings/0127', ['is_enabled' => 'mungkin'])
             ->assertStatus(422)->assertJsonValidationErrors(['is_enabled']);
+    }
+
+    /** Saklar per-depo tidak boleh membuat baris setelan yatim dari kode acak. */
+    public function test_update_depot_setting_rejects_unknown_depot(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+
+        DepotSetting::create(['kode_depo' => '0127', 'nama_depo' => 'Singkawang', 'is_active' => true]);
+
+        $this->putJson('/api/v1/email-recipients/depot-settings/9999', ['is_enabled' => false])
+            ->assertStatus(422)->assertJsonValidationErrors(['kode_depo']);
+
+        $this->assertDatabaseCount('email_depot_settings', 0);
+    }
+
+    /** Setelan lama untuk depo yang sudah keluar dari daftar tidak boleh terkunci. */
+    public function test_update_depot_setting_keeps_existing_row_outside_settings(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+
+        EmailDepotSetting::create(['kode_depo' => 'DPA', 'is_enabled' => true]);
+
+        $this->putJson('/api/v1/email-recipients/depot-settings/DPA', ['is_enabled' => false])
+            ->assertOk()->assertJsonPath('data.is_enabled', false);
+    }
+
+    public function test_store_bulk_creates_all_targets_in_one_request(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        DepotSetting::create(['kode_depo' => '0126', 'nama_depo' => 'Pontianak', 'is_active' => true]);
+
+        $res = $this->postJson('/api/v1/email-recipients/bulk', ['targets' => [
+            $this->payload(['kode_depo' => '0126', 'field' => 'CC']),
+            $this->payload(['kode_depo' => '0126', 'field' => 'CC', 'email' => 'kedua@test.com']),
+        ]])->assertCreated()->assertJsonPath('created', 2);
+
+        $this->assertCount(2, $res->json('data'));
+        $this->assertDatabaseCount('email_recipients', 2);
+    }
+
+    /**
+     * Satu target tidak valid berarti TIDAK ADA baris tersimpan — klien tidak
+     * boleh menyisakan penerima setengah jadi dari satu form submit.
+     */
+    public function test_store_bulk_saves_nothing_when_one_target_is_invalid(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        $this->postJson('/api/v1/email-recipients/bulk', ['targets' => [
+            $this->payload(),
+            $this->payload(['kode_depo' => '9999']),
+        ]])->assertStatus(422)->assertJsonValidationErrors(['targets.1.kode_depo']);
+
+        $this->assertDatabaseCount('email_recipients', 0);
+    }
+
+    public function test_store_bulk_requires_edit_permission(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view']));
+
+        $this->postJson('/api/v1/email-recipients/bulk', ['targets' => [$this->payload()]])
+            ->assertForbidden();
+    }
+
+    /**
+     * Sumber whitelist `kode_depo` harus SAMA dengan dropdown UI:
+     * `depot_settings` (fallback user nyata) — bukan `users.kode_depo` yang
+     * memuat akun role dan bisa melewatkan depo nyata tanpa akun user.
+     * Regresi: menyimpan penerima untuk depo '000' (ada di setting, tidak ada
+     * di users) sempat membalas 422 "Kode depo tidak dikenal."
+     */
+    public function test_store_accepts_depot_from_depot_settings_even_without_user_account(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        DepotSetting::create(['kode_depo' => '000', 'nama_depo' => 'Pusat', 'is_active' => true]);
+
+        $this->postJson('/api/v1/email-recipients', $this->payload(['kode_depo' => '000']))
+            ->assertCreated();
+
+        $this->assertDatabaseHas('email_recipients', ['kode_depo' => '000', 'email' => 'tujuan@test.com']);
+    }
+
+    public function test_store_accepts_depot_from_user_fallback_when_settings_empty(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        $this->userAt('0127', 'blc');
+        $this->userAt('0127', 'bac');
+
+        $this->postJson('/api/v1/email-recipients', $this->payload(['kode_depo' => '0127']))
+            ->assertCreated();
+    }
+
+    public function test_store_rejects_depot_missing_from_depot_settings(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        DepotSetting::create(['kode_depo' => '0127', 'nama_depo' => 'Singkawang', 'is_active' => true]);
+
+        $this->postJson('/api/v1/email-recipients', $this->payload(['kode_depo' => '9999']))
+            ->assertStatus(422)->assertJsonValidationErrors(['kode_depo']);
+    }
+
+    public function test_store_rejects_role_account_depot_code(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        DepotSetting::create(['kode_depo' => '0127', 'nama_depo' => 'Singkawang', 'is_active' => true]);
+        $this->userAt('ADMIN', 'admin_master');
+
+        $this->postJson('/api/v1/email-recipients', $this->payload(['kode_depo' => 'ADMIN']))
+            ->assertStatus(422)->assertJsonValidationErrors(['kode_depo']);
+    }
+
+    public function test_update_keeps_depot_code_absent_from_settings(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.view', 'emails.edit']));
+
+        // Baris lama dengan kode depo yang sudah tidak ada di depot_settings
+        // tidak boleh terkunci: kode dipertahankan, perubahan lain tetap tersimpan.
+        $row = $this->recipient(['kode_depo' => 'DPA']);
+
+        $this->putJson('/api/v1/email-recipients/'.$row->id, $this->payload([
+            'kode_depo' => 'DPA', 'is_active' => false,
+        ]))->assertOk();
+
+        $this->assertDatabaseHas('email_recipients', ['id' => $row->id, 'kode_depo' => 'DPA', 'is_active' => false]);
     }
 
     public function test_index_without_pagination_params_returns_capped_legacy_rows_with_summary(): void
