@@ -93,9 +93,8 @@ class StandarisasiTumpukanController extends Controller
                         : $query->orWhereRaw("{$column} LIKE ? ESCAPE ?", [$like, '\\']);
                 }
             })
-            ->where('szStatus', 'EXISTING')
             ->orderBy('szNickName')
-            ->limit(20)
+            ->limit(500)
             ->get();
 
         return response()->json(['data' => $products]);

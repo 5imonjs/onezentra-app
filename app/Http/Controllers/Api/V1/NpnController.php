@@ -252,9 +252,8 @@ class NpnController extends Controller
                     ->orWhereRaw('szBarcodeSekunder LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('szBarcodeTersier LIKE ? ESCAPE ?', [$like, '\\']);
             })
-            ->where('szStatus', 'EXISTING')
             ->orderBy('szNickName')
-            ->limit(20)
+            ->limit(500)
             ->get();
 
         $materials = $query->pluck('SAPszProductId')->filter()->unique()->values();
