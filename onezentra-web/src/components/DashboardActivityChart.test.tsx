@@ -102,6 +102,8 @@ describe('DashboardActivityChart', () => {
     render(<DashboardActivityChart />);
 
     expect(await screen.findByText('Login berhasil')).toBeInTheDocument();
+    expect(screen.getByText('Aksi tercatat, bukan jumlah dokumen')).toBeInTheDocument();
+    expect(screen.getByText('Terbanyak dalam satu hari')).toBeInTheDocument();
     expect(screen.getByText('Login & Logout')).toBeInTheDocument();
     expect(screen.getByText('Rencana Kirim')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();

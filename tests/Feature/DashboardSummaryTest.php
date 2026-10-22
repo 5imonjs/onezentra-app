@@ -189,7 +189,7 @@ class DashboardSummaryTest extends TestCase
         $this->assertSame(2, $res->json('data.sla.rk_checked_in_oldest_days'));
     }
 
-    public function test_summary_activity_trend_excludes_admin_master(): void
+    public function test_summary_activity_trend_includes_admin_master(): void
     {
         $user = $this->userWith('dash-trend@example.com', ['dashboard.view']);
         $master = $this->userWith('dash-trend-master@example.com', ['dashboard.view']);
@@ -212,6 +212,6 @@ class DashboardSummaryTest extends TestCase
 
         $this->getJson('/api/v1/dashboard/summary')
             ->assertOk()
-            ->assertJsonPath('data.activity_trend.current_7d', 1);
+            ->assertJsonPath('data.activity_trend.current_7d', 2);
     }
 }

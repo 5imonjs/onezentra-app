@@ -34,9 +34,6 @@ class DashboardController extends Controller
             return UserActivityLog::query()
                 ->where('occurred_at', '>=', $since)
                 ->whereHas('user', fn ($query) => $query->forUserDepot($request->user())
-                    // Panel mobilitas hanya untuk aktivitas pengguna operasional;
-                    // akun admin_master tidak ditampilkan agar metrik tidak bias.
-                    ->where('level', '!=', 'admin_master')
                     ->when($depot, fn ($q) => $q->where('users.kode_depo', $depot)));
         };
 
@@ -103,6 +100,8 @@ class DashboardController extends Controller
         $topUsers = User::query()
             ->forUserDepot($request->user())
             ->when($depot, fn ($query) => $query->where('users.kode_depo', $depot))
+            // Akun admin_master disembunyikan dari daftar user paling aktif.
+            // Metrik total tetap menghitung seluruh aktivitas sistem.
             ->where('level', '!=', 'admin_master')
             ->where('status', 'active')
             ->whereHas('activityLogs', fn ($query) => $query->where('occurred_at', '>=', $since))
@@ -132,6 +131,57 @@ class DashboardController extends Controller
                     'active_users' => (int) $activityQuery()->distinct()->count('user_id'),
                     'peak_active_users' => (int) $daily->max('active_users'),
                 ],
+            ],
+        ]);
+    }
+
+    /**
+     * Feed aktivitas terbaru untuk panel real-time (dipolling klien).
+     *
+     * `after_id` membuat polling hanya mengambil baris baru. Akun admin_master
+     * selalu disembunyikan dari daftar, sesuai kebutuhan operasional.
+     */
+    public function liveActivity(Request $request): JsonResponse
+    {
+        $limit = min(max($request->integer('limit', 30), 1), 50);
+        $afterId = max($request->integer('after_id', 0), 0);
+        $depotInput = trim((string) $request->input('kode_depo', ''));
+        $depot = $request->user()->isDepotScoped()
+            ? $request->user()->kode_depo
+            : ($depotInput === '' ? null : $depotInput);
+
+        $events = UserActivityLog::query()
+            ->with(['user:id,full_name,email,level,kode_depo,nama_depo'])
+            ->whereHas('user', fn ($query) => $query->forUserDepot($request->user())
+                ->where('level', '!=', 'admin_master')
+                ->when($depot, fn ($q) => $q->where('users.kode_depo', $depot)))
+            ->when($afterId > 0, fn ($query) => $query->where('id', '>', $afterId))
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get(['id', 'user_id', 'method', 'route', 'occurred_at'])
+            ->map(function (UserActivityLog $log): array {
+                $user = $log->user;
+
+                return [
+                    'id' => $log->id,
+                    'user_id' => $log->user_id,
+                    'user_name' => $user->full_name ?: $user->email,
+                    'level' => $user->level,
+                    'kode_depo' => $user->kode_depo,
+                    'nama_depo' => $user->nama_depo,
+                    'method' => $log->method,
+                    'route' => $log->route,
+                    'module' => $this->activityModule($log->route),
+                    'action' => $this->activityAction($log->method, $log->route),
+                    'occurred_at' => $log->occurred_at->toIso8601String(),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'data' => [
+                'events' => $events,
+                'server_time' => now()->toIso8601String(),
             ],
         ]);
     }
@@ -310,9 +360,7 @@ class DashboardController extends Controller
         // Dua window tren dalam satu query: 0-7 hari vs 7-14 hari lalu.
         $activity = UserActivityLog::query()
             ->where('occurred_at', '>=', $week->copy()->subDays(7))
-            ->whereHas('user', fn ($query) => $query->forUserDepot($user)
-                // Samakan dengan panel mobilitas: admin_master tidak dihitung.
-                ->where('level', '!=', 'admin_master'))
+            ->whereHas('user', fn ($query) => $query->forUserDepot($user))
             ->selectRaw(
                 'SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) as current_7d, '
                 .'SUM(CASE WHEN occurred_at < ? THEN 1 ELSE 0 END) as prev_7d',
@@ -461,5 +509,70 @@ class DashboardController extends Controller
         usort($items, fn ($a, $b) => strcmp($b['at'] ?? '', $a['at'] ?? ''));
 
         return array_slice($items, 0, 8);
+    }
+
+    /**
+     * Label modul untuk feed real-time. Urutannya harus sama dengan CASE di
+     * activity() agar angka agregat dan feed memakai istilah yang konsisten.
+     */
+    private function activityModule(?string $route): string
+    {
+        $key = str_replace('-', '_', strtolower((string) $route));
+
+        return match (true) {
+            str_contains($key, 'report') => 'Laporan',
+            str_contains($key, 'rencana') => 'Rencana Kirim',
+            str_contains($key, 'gate') => 'Gate Check',
+            str_contains($key, 'penerimaan') => 'Penerimaan',
+            str_contains($key, 'receiving') => 'Receiving',
+            str_contains($key, 'validasi') || str_contains($key, 'sj_validation') => 'Validasi SJ',
+            str_contains($key, 'npn') => 'NPN',
+            str_contains($key, 'standar_umur') => 'Standar Umur',
+            str_contains($key, 'standarisasi') => 'Standarisasi',
+            str_contains($key, 'opname') => 'Opname Expired',
+            str_contains($key, 'biaya') => 'Biaya',
+            str_contains($key, 'role') => 'Role & Permission',
+            str_contains($key, 'user') => 'Pengguna',
+            str_contains($key, 'dashboard') => 'Dashboard',
+            str_contains($key, 'login') || str_contains($key, 'logout') => 'Login & Logout',
+            default => 'Lainnya',
+        };
+    }
+
+    /**
+     * Ubah method + route menjadi kalimat yang bisa dibaca pengguna, mis.
+     * "Menyetujui Biaya" atau "Check-in Rencana Kirim".
+     */
+    private function activityAction(string $method, ?string $route): string
+    {
+        $method = strtoupper($method);
+        $key = str_replace('-', '_', strtolower((string) $route));
+
+        if ($method === 'LOGIN' || str_contains($key, 'login')) {
+            return 'Login ke sistem';
+        }
+
+        if ($method === 'LOGOUT' || str_contains($key, 'logout')) {
+            return 'Logout dari sistem';
+        }
+
+        $module = $this->activityModule($route);
+
+        return match (true) {
+            str_contains($key, 'checkin') => 'Check-in '.$module,
+            str_contains($key, 'approve') => 'Menyetujui '.$module,
+            str_contains($key, 'reject') => 'Menolak '.$module,
+            str_contains($key, 'submit') => 'Mengirim '.$module,
+            str_contains($key, 'scan') => 'Scan '.$module,
+            str_contains($key, 'generate') => 'Generate '.$module,
+            str_contains($key, 'import') => 'Mengimpor '.$module,
+            str_contains($key, 'export') => 'Mengekspor '.$module,
+            str_contains($key, 'template') => 'Mengunduh template '.$module,
+            str_contains($key, 'print') || str_contains($key, 'label') => 'Mencetak '.$module,
+            $method === 'GET' => 'Melihat '.$module,
+            in_array($method, ['PUT', 'PATCH'], true) => 'Mengubah '.$module,
+            $method === 'DELETE' => 'Menghapus '.$module,
+            default => 'Memproses '.$module,
+        };
     }
 }

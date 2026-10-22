@@ -29,7 +29,11 @@ class TrackUserActivity
             'api/*/mobile/logout',
         );
 
-        if ($user !== null && ! $isAuthEvent && $request->is('api/*') && $request->method() !== 'OPTIONS') {
+        // Polling feed real-time tidak boleh mencatat dirinya sendiri: setiap
+        // 5 detik per penonton akan membanjiri feed dan metrik aktivitas.
+        $isLiveActivityPoll = $request->is('api/*/dashboard/activity/live');
+
+        if ($user !== null && ! $isAuthEvent && ! $isLiveActivityPoll && $request->is('api/*') && $request->method() !== 'OPTIONS') {
             // Queue async agar tidak menambah latency API (fix P-1/S-8).
             // Fallback sync jika queue driver = sync/array (testing).
             dispatch(new LogUserActivity(

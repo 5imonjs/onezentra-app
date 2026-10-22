@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth';
 import DashboardActivityChart from '@/components/DashboardActivityChart';
 import DashboardAlerts from '@/components/DashboardAlerts';
 import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
+import DashboardLiveActivity from '@/components/DashboardLiveActivity';
 import DashboardOpnameChart from '@/components/DashboardOpnameChart';
 import DashboardRecent from '@/components/DashboardRecent';
 import PendingActions from '@/components/PendingActions';
@@ -78,9 +79,12 @@ export default function DashboardPage() {
         return <DashboardAlerts key={key} kodeDepo={kodeDepo || undefined} />;
       case 'charts':
         return (
-          <div key={key} className={`grid grid-cols-1 gap-5 ${bothCharts ? 'xl:grid-cols-2' : ''}`}>
-            {canSeeActivityChart && <DashboardActivityChart kodeDepo={kodeDepo || undefined} />}
-            {canSeeRencanaKirimChart && <RencanaKirimStatusChart kodeDepo={kodeDepo || undefined} />}
+          <div key={key} className="space-y-5">
+            <div className={`grid grid-cols-1 gap-5 ${bothCharts ? 'xl:grid-cols-2' : ''}`}>
+              {canSeeActivityChart && <DashboardActivityChart kodeDepo={kodeDepo || undefined} />}
+              {canSeeRencanaKirimChart && <RencanaKirimStatusChart kodeDepo={kodeDepo || undefined} />}
+            </div>
+            {canSeeActivityChart && <DashboardLiveActivity kodeDepo={kodeDepo || undefined} />}
           </div>
         );
       case 'opname':

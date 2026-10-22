@@ -76,6 +76,10 @@ Route::prefix('v1')->group(function () {
     Route::get('dashboard/activity', [DashboardController::class, 'activity'])
         ->middleware(['auth:sanctum', 'permission:dashboard.view', 'throttle:600,1,api']);
 
+    // Feed real-time untuk pengelola user; admin_master difilter di controller.
+    Route::get('dashboard/activity/live', [DashboardController::class, 'liveActivity'])
+        ->middleware(['auth:sanctum', 'permission:users.view', 'throttle:600,1,api']);
+
     Route::get('dashboard/summary', [DashboardController::class, 'summary'])
         ->middleware(['auth:sanctum', 'permission:dashboard.view', 'throttle:600,1,api']);
 
