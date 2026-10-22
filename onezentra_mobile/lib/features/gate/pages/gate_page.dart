@@ -96,7 +96,9 @@ class _GatePageState extends State<GatePage> {
             icon: const Icon(Icons.history_rounded),
           ),
           IconButton(
-            onPressed: canView && !gate.isLoading ? () => gate.refresh() : null,
+            onPressed: canView && !gate.isLoading && !gate.isLoadingStats
+                ? () => gate.refresh()
+                : null,
             tooltip: 'Muat ulang',
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -108,24 +110,80 @@ class _GatePageState extends State<GatePage> {
             : RefreshIndicator(
                 onRefresh: gate.refresh,
                 color: AppTheme.primary600,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(AppTheme.space4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(gate),
-                      const SizedBox(height: AppTheme.space4),
-                      _buildQuickScan(
-                        gate,
-                        canCreate: canCreate,
-                        canVerify: canVerify,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    var isWide = constraints.maxWidth >= 820;
+                    var horizontalPadding = constraints.maxWidth >= 900
+                        ? AppTheme.space8
+                        : constraints.maxWidth >= 600
+                        ? AppTheme.space6
+                        : AppTheme.space4;
+
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        AppTheme.space4,
+                        horizontalPadding,
+                        AppTheme.space8,
                       ),
-                      const SizedBox(height: AppTheme.space4),
-                      _buildHistoryTeaser(context),
-                      const SizedBox(height: AppTheme.space8),
-                    ],
-                  ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 960),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeader(gate),
+                              SizedBox(
+                                height: isWide
+                                    ? AppTheme.space5
+                                    : AppTheme.space4,
+                              ),
+                              if (isWide)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      flex: 3,
+                                      child: _buildQuickScan(
+                                        gate,
+                                        canCreate: canCreate,
+                                        canVerify: canVerify,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppTheme.space4),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          _buildHistoryTeaser(context),
+                                          const SizedBox(
+                                            height: AppTheme.space4,
+                                          ),
+                                          _buildGuideCard(),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else ...[
+                                _buildQuickScan(
+                                  gate,
+                                  canCreate: canCreate,
+                                  canVerify: canVerify,
+                                ),
+                                const SizedBox(height: AppTheme.space4),
+                                _buildHistoryTeaser(context),
+                              ],
+                              const SizedBox(height: AppTheme.space8),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
       ),
@@ -136,132 +194,187 @@ class _GatePageState extends State<GatePage> {
   // No access
   // ---------------------------------------------------------------------
 
-  Widget _buildNoAccess() => SingleChildScrollView(
-    padding: const EdgeInsets.all(AppTheme.space5),
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.space5),
-      decoration: BoxDecoration(
-        color: AppTheme.warningWell,
-        borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.warningText),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
-          const SizedBox(width: AppTheme.space3),
-          Expanded(
-            child: Text(
-              'Anda tidak memiliki izin untuk melihat Check In Point.',
-              style: GoogleFonts.roboto(
-                fontSize: 13,
-                height: 1.4,
-                color: AppTheme.warningText,
+  Widget _buildNoAccess() => LayoutBuilder(
+    builder: (context, constraints) {
+      var horizontalPadding = constraints.maxWidth >= 900
+          ? AppTheme.space8
+          : constraints.maxWidth >= 600
+          ? AppTheme.space6
+          : AppTheme.space5;
+
+      return SingleChildScrollView(
+        padding: EdgeInsets.all(horizontalPadding),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppTheme.space5),
+              decoration: BoxDecoration(
+                color: AppTheme.warningWell,
+                borderRadius: AppTheme.radiusXl,
+                border: Border.all(color: AppTheme.warningText),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.lock_rounded,
+                    size: 20,
+                    color: AppTheme.warningText,
+                  ),
+                  const SizedBox(width: AppTheme.space3),
+                  Expanded(
+                    child: Text(
+                      'Anda tidak memiliki izin untuk melihat Check In Point.',
+                      style: GoogleFonts.roboto(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: AppTheme.warningText,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 
   // ---------------------------------------------------------------------
   // Dark header with the stats
   // ---------------------------------------------------------------------
 
-  Widget _buildHeader(GateProvider gate) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppTheme.space5),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [AppTheme.ink900, AppTheme.ink800],
+  Widget _buildHeader(GateProvider gate) {
+    var stats = [
+      _StatTile(
+        label: 'Hari ini',
+        value: gate.stats.hariIni,
+        dotColor: Colors.white,
       ),
-      borderRadius: AppTheme.radius2xl,
-      boxShadow: [
-        BoxShadow(
-          color: AppTheme.ink900.withValues(alpha: 0.2),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
+      _StatTile(
+        label: 'Terjadwal',
+        value: gate.stats.terjadwal,
+        dotColor: AppTheme.info,
+      ),
+      _StatTile(
+        label: 'Selesai',
+        value: gate.stats.selesai,
+        dotColor: AppTheme.success,
+      ),
+      _StatTile(
+        label: 'Total',
+        value: gate.stats.total,
+        dotColor: AppTheme.gray300,
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space5),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppTheme.ink900, AppTheme.ink800],
         ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: AppTheme.radiusLg,
+        borderRadius: AppTheme.radius2xl,
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.ink900.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: AppTheme.radiusLg,
+                ),
+                child: const Icon(
+                  Icons.door_front_door_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
-              child: const Icon(
-                Icons.door_front_door_rounded,
-                color: Colors.white,
-                size: 22,
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Check In Point',
+                      style: GoogleFonts.roboto(
+                        fontSize: 18,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Scan PO / Nopol — catat Gate IN • status otomatis',
+                      style: GoogleFonts.roboto(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: AppTheme.gray400,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: AppTheme.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ],
+          ),
+          const SizedBox(height: AppTheme.space5),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 440) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: stats[0]),
+                        const SizedBox(width: AppTheme.space2),
+                        Expanded(child: stats[1]),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space2),
+                    Row(
+                      children: [
+                        Expanded(child: stats[2]),
+                        const SizedBox(width: AppTheme.space2),
+                        Expanded(child: stats[3]),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
                 children: [
-                  Text(
-                    'Check In Point',
-                    style: GoogleFonts.roboto(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Scan PO / Nopol — catat Gate IN • auto status',
-                    style: GoogleFonts.roboto(
-                      fontSize: 12,
-                      color: AppTheme.gray400,
-                    ),
-                  ),
+                  for (var i = 0; i < stats.length; i++) ...[
+                    if (i > 0) const SizedBox(width: AppTheme.space2),
+                    Expanded(child: stats[i]),
+                  ],
                 ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space4),
-        Wrap(
-          spacing: AppTheme.space2,
-          runSpacing: AppTheme.space2,
-          children: [
-            _StatChip(
-              label: 'Hari ini',
-              value: gate.stats.hariIni,
-              dotColor: Colors.white,
-            ),
-            _StatChip(
-              label: 'Terjadwal',
-              value: gate.stats.terjadwal,
-              dotColor: AppTheme.info,
-            ),
-            _StatChip(
-              label: 'Selesai',
-              value: gate.stats.selesai,
-              dotColor: AppTheme.success,
-            ),
-            _StatChip(
-              label: 'Total',
-              value: gate.stats.total,
-              dotColor: AppTheme.gray300,
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   // ---------------------------------------------------------------------
   // Quick scan + lookup result + action banner
@@ -272,13 +385,20 @@ class _GatePageState extends State<GatePage> {
     required bool canCreate,
     required bool canVerify,
   }) => AppCard(
+    key: const ValueKey('gate-quick-scan'),
     padding: const EdgeInsets.all(AppTheme.space5),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _iconBox(36, AppTheme.gray900, Icons.qr_code_scanner_rounded),
+            _iconBox(
+              38,
+              AppTheme.primary50,
+              Icons.qr_code_scanner_rounded,
+              iconColor: AppTheme.primary600,
+            ),
             const SizedBox(width: AppTheme.space3),
             Expanded(
               child: Column(
@@ -287,16 +407,18 @@ class _GatePageState extends State<GatePage> {
                   Text(
                     'Quick Scan',
                     style: GoogleFonts.roboto(
-                      fontSize: 14,
+                      fontSize: 15,
+                      height: 1.25,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.foreground,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     'Scan barcode atau ketik PO / Nopol, lalu Enter',
                     style: GoogleFonts.roboto(
-                      fontSize: 11,
+                      fontSize: 11.5,
+                      height: 1.4,
                       color: AppTheme.gray400,
                     ),
                   ),
@@ -306,33 +428,49 @@ class _GatePageState extends State<GatePage> {
           ],
         ),
         const SizedBox(height: AppTheme.space4),
-        Row(
-          children: [
-            Expanded(
-              child: AppTextField(
-                controller: _scanController,
-                hint: 'PO / Nopol...',
-                prefixIcon: Icons.qr_code_scanner_rounded,
-                suffixIcon: IconButton(
-                  tooltip: 'Pindai dengan kamera',
-                  onPressed: gate.lookupBusy ? null : _openScanner,
-                  icon: const Icon(Icons.photo_camera_rounded),
-                ),
-                textInputAction: TextInputAction.done,
-                onEditingComplete: _submitScan,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            var stacked = constraints.maxWidth < 380;
+            var field = AppTextField(
+              controller: _scanController,
+              hint: 'PO / Nopol...',
+              prefixIcon: Icons.qr_code_scanner_rounded,
+              suffixIcon: IconButton(
+                tooltip: 'Pindai dengan kamera',
+                onPressed: gate.lookupBusy ? null : _openScanner,
+                icon: const Icon(Icons.photo_camera_rounded),
               ),
-            ),
-            const SizedBox(width: AppTheme.space3),
-            // Natural width: a fixed 104px box overflows on narrow
-            // screens once the label outgrows the leftover space.
-            AppPrimaryButton(
+              textInputAction: TextInputAction.done,
+              onEditingComplete: _submitScan,
+            );
+            var searchButton = AppPrimaryButton(
               text: 'Cari',
               height: 48,
-              isFullWidth: false,
+              isFullWidth: stacked,
+              leadingIcon: Icons.search_rounded,
               isLoading: gate.lookupBusy,
               onPressed: gate.lookupBusy ? null : _submitScan,
-            ),
-          ],
+            );
+
+            if (stacked) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  field,
+                  const SizedBox(height: AppTheme.space3),
+                  searchButton,
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(child: field),
+                const SizedBox(width: AppTheme.space3),
+                searchButton,
+              ],
+            );
+          },
         ),
         if (gate.message != null) _buildBanner(gate.message!),
         if (_justCheckedInPo != null) _buildHandoffCard(_justCheckedInPo!),
@@ -442,26 +580,36 @@ class _GatePageState extends State<GatePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  'DOKUMEN DITEMUKAN',
-                  style: GoogleFonts.roboto(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    color: AppTheme.gray400,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DOKUMEN DITEMUKAN',
+                      style: GoogleFonts.roboto(
+                        fontSize: 10,
+                        height: 1.3,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: AppTheme.gray400,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.space2),
+                    AppBadge(
+                      text: GateStatus.label(rk.status),
+                      variant: _statusVariant(rk.status),
+                    ),
+                  ],
                 ),
-              ),
-              AppBadge(
-                text: GateStatus.label(rk.status),
-                variant: _statusVariant(rk.status),
               ),
               IconButton(
                 onPressed: gate.actionBusy ? null : gate.clearFound,
                 tooltip: 'Tutup',
                 visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                padding: EdgeInsets.zero,
                 icon: Icon(
                   Icons.close_rounded,
                   size: 18,
@@ -470,21 +618,38 @@ class _GatePageState extends State<GatePage> {
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.space2),
-          Row(
-            children: [
-              Expanded(
-                child: _darkField('PO Transporter', rk.poTransporter ?? '-'),
-              ),
-              const SizedBox(width: AppTheme.space3),
-              Expanded(
-                child: _darkField(
-                  'No. Polisi',
-                  rk.nopol ?? '-',
-                  highlight: true,
-                ),
-              ),
-            ],
+          const SizedBox(height: AppTheme.space3),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              var poField = _darkField(
+                'PO Transporter',
+                rk.poTransporter ?? '-',
+              );
+              var nopolField = _darkField(
+                'No. Polisi',
+                rk.nopol ?? '-',
+                highlight: true,
+              );
+
+              if (constraints.maxWidth < 380) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    poField,
+                    const SizedBox(height: AppTheme.space2),
+                    nopolField,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: poField),
+                  const SizedBox(width: AppTheme.space3),
+                  Expanded(child: nopolField),
+                ],
+              );
+            },
           ),
           const SizedBox(height: AppTheme.space3),
           _darkField(
@@ -499,7 +664,7 @@ class _GatePageState extends State<GatePage> {
                 ? _darkActionButton(
                     label: 'Gate IN →',
                     background: Colors.white,
-                    foreground: AppTheme.gray900,
+                    foreground: AppTheme.ink900,
                     loading: gate.actionBusy,
                     onPressed: () => _confirmAction(action),
                   )
@@ -535,7 +700,7 @@ class _GatePageState extends State<GatePage> {
         ),
         decoration: highlight
             ? const BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.primary100,
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
@@ -552,7 +717,7 @@ class _GatePageState extends State<GatePage> {
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
                 color: highlight
-                    ? AppTheme.gray50.withValues(alpha: 0.65)
+                    ? AppTheme.primary950.withValues(alpha: 0.65)
                     : AppTheme.gray400,
               ),
             ),
@@ -564,7 +729,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.gray50 : Colors.white,
+                color: highlight ? AppTheme.primary950 : Colors.white,
               ),
             ),
           ],
@@ -634,23 +799,16 @@ class _GatePageState extends State<GatePage> {
     required Color background,
     required Color foreground,
     required VoidCallback onPressed,
-    bool outline = false,
     bool loading = false,
-  }) => Container(
+  }) => SizedBox(
     width: double.infinity,
-    height: 44,
-    decoration: outline
-        ? BoxDecoration(
-            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-            borderRadius: AppTheme.radiusLg,
-          )
-        : null,
     child: FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
         backgroundColor: background,
         foregroundColor: foreground,
         disabledBackgroundColor: background.withValues(alpha: 0.6),
+        minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(
@@ -667,7 +825,7 @@ class _GatePageState extends State<GatePage> {
                 color: foreground,
               ),
             )
-          : Text(label),
+          : Text(label, textAlign: TextAlign.center),
     ),
   );
 
@@ -687,6 +845,11 @@ class _GatePageState extends State<GatePage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppTheme.surfaceCard,
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.space4,
+          vertical: AppTheme.space6,
+        ),
+        scrollable: true,
         title: Text(
           copy.title,
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -733,7 +896,7 @@ class _GatePageState extends State<GatePage> {
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.gray900,
+              backgroundColor: AppTheme.primary600,
               foregroundColor: Colors.white,
               textStyle: GoogleFonts.roboto(
                 fontSize: 13,
@@ -804,25 +967,21 @@ class _GatePageState extends State<GatePage> {
   }
 
   Widget _dialogRow(String label, String value) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Row(
+    padding: const EdgeInsets.only(bottom: AppTheme.space2),
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 110,
-          child: Text(
-            label,
-            style: GoogleFonts.roboto(fontSize: 12, color: AppTheme.gray500),
-          ),
+        Text(
+          label,
+          style: GoogleFonts.roboto(fontSize: 11.5, color: AppTheme.gray500),
         ),
-        Expanded(
-          child: Text(
-            value,
-            style: GoogleFonts.roboto(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.gray800,
-            ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: GoogleFonts.roboto(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.gray800,
           ),
         ),
       ],
@@ -855,13 +1014,111 @@ class _GatePageState extends State<GatePage> {
   );
 
   /// Pintu masuk ke halaman Riwayat Gate tersendiri.
+  /// Wide layouts have room for the secondary rail: history plus a short
+  /// explanation of the gate flow. Phones stay focused on the scan action.
+  Widget _buildGuideCard() => AppCard(
+    key: const ValueKey('gate-guide-card'),
+    padding: const EdgeInsets.all(AppTheme.space5),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _iconBox(
+              38,
+              AppTheme.infoWell,
+              Icons.route_rounded,
+              iconColor: AppTheme.infoText,
+            ),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Text(
+                'Alur Gate',
+                style: GoogleFonts.roboto(
+                  fontSize: 15,
+                  height: 1.25,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.foreground,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space4),
+        _guideStep('1', 'Scan dokumen', 'Cari berdasarkan PO atau nopol.'),
+        const SizedBox(height: AppTheme.space3),
+        _guideStep(
+          '2',
+          'Catat Gate IN',
+          'Dokumen terjadwal bisa langsung check in.',
+        ),
+        const SizedBox(height: AppTheme.space3),
+        _guideStep(
+          '3',
+          'Verifikasi',
+          'Lanjutkan validasi SJ setelah check in.',
+        ),
+      ],
+    ),
+  );
+
+  Widget _guideStep(String number, String title, String description) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        width: 24,
+        height: 24,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          shape: BoxShape.circle,
+        ),
+        child: Text(
+          number,
+          style: GoogleFonts.roboto(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.gray200,
+          ),
+        ),
+      ),
+      const SizedBox(width: AppTheme.space2),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.roboto(
+                fontSize: 12.5,
+                height: 1.3,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.foreground,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              description,
+              style: GoogleFonts.roboto(
+                fontSize: 11.5,
+                height: 1.4,
+                color: AppTheme.gray400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
   Widget _buildHistoryTeaser(BuildContext context) => AppCard(
+    key: const ValueKey('gate-history-teaser'),
     padding: const EdgeInsets.all(AppTheme.space5),
     onTap: () => context.push('/gate/riwayat'),
     child: Row(
       children: [
         _iconBox(
-          36,
+          38,
           AppTheme.primary50,
           Icons.history_rounded,
           iconColor: AppTheme.primary600,
@@ -874,16 +1131,18 @@ class _GatePageState extends State<GatePage> {
               Text(
                 'Riwayat Gate',
                 style: GoogleFonts.roboto(
-                  fontSize: 14,
+                  fontSize: 15,
+                  height: 1.25,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.foreground,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 'Cari + telusuri semua transaksi',
                 style: GoogleFonts.roboto(
-                  fontSize: 11,
+                  fontSize: 11.5,
+                  height: 1.4,
                   color: AppTheme.gray400,
                 ),
               ),
@@ -896,9 +1155,10 @@ class _GatePageState extends State<GatePage> {
   );
 }
 
-/// Small counter chip in the dark header.
-class _StatChip extends StatelessWidget {
-  const _StatChip({
+/// Counter tile in the dark header. Labels stay on one line so the four-tile
+/// row cannot force the header taller than the available width.
+class _StatTile extends StatelessWidget {
+  const _StatTile({
     required this.label,
     required this.value,
     required this.dotColor,
@@ -909,42 +1169,49 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(
-      horizontal: AppTheme.space3,
-      vertical: 6,
-    ),
+    padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.08),
-      borderRadius: AppTheme.radiusFull,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      color: Colors.white.withValues(alpha: 0.07),
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
     ),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray300),
-        ),
-        const SizedBox(width: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
-            borderRadius: AppTheme.radiusFull,
-          ),
-          child: Text(
-            '$value',
-            style: GoogleFonts.roboto(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+        Row(
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
             ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.roboto(
+                  fontSize: 10.5,
+                  height: 1.2,
+                  color: AppTheme.gray400,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '$value',
+          style: GoogleFonts.roboto(
+            fontSize: 22,
+            height: 1.1,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
           ),
         ),
       ],

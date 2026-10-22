@@ -189,7 +189,7 @@ class AppPrimaryButton extends StatelessWidget {
                   Icon(leadingIcon, size: 18),
                   const SizedBox(width: AppTheme.space2),
                 ],
-                Text(text),
+                Flexible(child: Text(text, textAlign: TextAlign.center)),
                 if (trailingIcon != null) ...[
                   const SizedBox(width: AppTheme.space2),
                   Icon(trailingIcon, size: 18),
@@ -263,7 +263,7 @@ class AppSecondaryButton extends StatelessWidget {
                   Icon(leadingIcon, size: 18),
                   const SizedBox(width: AppTheme.space2),
                 ],
-                Text(text),
+                Flexible(child: Text(text, textAlign: TextAlign.center)),
                 if (trailingIcon != null) ...[
                   const SizedBox(width: AppTheme.space2),
                   Icon(trailingIcon, size: 18),

@@ -210,7 +210,7 @@ Future<void> _pumpGatePage(
     ChangeNotifierProvider<AuthProvider>.value(
       value: auth,
       child: MaterialApp(
-        theme: AppTheme.light,
+        theme: AppTheme.dark,
         home: GatePage(repository: repository, openScanner: openScanner),
       ),
     ),
@@ -291,6 +291,87 @@ void main() {
     expect(find.text('1 transaksi tercatat'), findsNothing);
     expect(repository.statsCalls, greaterThan(0));
     expect(repository.listCalls, 0);
+  });
+
+  testWidgets('layout HP sempit menumpuk form dan riwayat', (tester) async {
+    var repository = _FakeGateRepository();
+    var auth = await _loginAuth();
+
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await _pumpGatePage(tester, auth, repository);
+
+    expect(tester.takeException(), isNull);
+
+    var quickScan = tester.getRect(
+      find.byKey(const ValueKey('gate-quick-scan')),
+    );
+    var history = tester.getRect(
+      find.byKey(const ValueKey('gate-history-teaser')),
+    );
+    expect(history.top, greaterThan(quickScan.bottom));
+    expect(find.byKey(const ValueKey('gate-guide-card')), findsNothing);
+
+    var field = tester.getRect(find.byType(TextFormField).first);
+    var search = tester.getRect(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    expect(search.top, greaterThan(field.bottom));
+  });
+
+  testWidgets('layout tablet memakai dua kolom dan form sejajar', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository();
+    var auth = await _loginAuth();
+
+    tester.view.physicalSize = const Size(1024, 768);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await _pumpGatePage(tester, auth, repository);
+
+    expect(tester.takeException(), isNull);
+
+    var quickScan = tester.getRect(
+      find.byKey(const ValueKey('gate-quick-scan')),
+    );
+    var history = tester.getRect(
+      find.byKey(const ValueKey('gate-history-teaser')),
+    );
+    expect(history.left, greaterThan(quickScan.right));
+    expect(history.top, closeTo(quickScan.top, 0.1));
+
+    var guide = tester.getRect(find.byKey(const ValueKey('gate-guide-card')));
+    expect(guide.top, greaterThan(history.bottom));
+    expect(guide.left, closeTo(history.left, 0.1));
+
+    var field = tester.getRect(find.byType(TextFormField).first);
+    var search = tester.getRect(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    expect(search.left, greaterThan(field.right));
+  });
+
+  testWidgets('text scale 2x tetap aman di HP sempit', (tester) async {
+    var repository = _FakeGateRepository(lookupResult: _lookupDocument());
+    var auth = await _loginAuth();
+
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await _pumpGatePage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    var search = find.widgetWithText(AppPrimaryButton, 'Cari');
+    await tester.ensureVisible(search);
+    await tester.tap(search);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('DOKUMEN DITEMUKAN'), findsOneWidget);
+    expect(find.text('Gate IN →'), findsOneWidget);
   });
 
   testWidgets('tombol riwayat membuka halaman riwayat terpisah', (
@@ -521,6 +602,35 @@ void main() {
     expect(validationRepository.startCalls, 1);
     expect(find.textContaining('SESI BERJALAN'), findsOneWidget);
     expect(find.text('Gula 50kg'), findsOneWidget);
+  });
+
+  testWidgets('aksi Gate IN dan dialog tetap kontras di tema gelap', (
+    tester,
+  ) async {
+    var repository = _FakeGateRepository(lookupResult: _lookupDocument());
+    var auth = await _loginAuth();
+
+    await _pumpGatePage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Cari'));
+    await tester.pumpAndSettle();
+
+    var action = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Gate IN →'),
+    );
+    expect(action.style?.backgroundColor?.resolve({}), Colors.white);
+    expect(action.style?.foregroundColor?.resolve({}), AppTheme.ink900);
+
+    var gateIn = find.widgetWithText(FilledButton, 'Gate IN →');
+    await tester.ensureVisible(gateIn);
+    await tester.tap(gateIn);
+    await tester.pumpAndSettle();
+
+    var confirm = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Ya, Catat IN'),
+    );
+    expect(confirm.style?.backgroundColor?.resolve({}), AppTheme.primary600);
   });
 
   testWidgets('banner gagal memakai warna bahaya yang terbaca di tema gelap', (
