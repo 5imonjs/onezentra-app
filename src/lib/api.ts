@@ -336,6 +336,7 @@ export const auth = {
 
 export const dashboard = {
   activity: (days = 30, kodeDepo?: string, signal?: AbortSignal) => apiClient.get('/dashboard/activity', { params: { days, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }, signal }),
+  liveActivity: (afterId = 0, kodeDepo?: string, signal?: AbortSignal) => apiClient.get('/dashboard/activity/live', { params: { after_id: afterId, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }, signal }),
   summary: (kodeDepo?: string) => apiClient.get('/dashboard/summary', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
 };
 

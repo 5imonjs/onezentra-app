@@ -192,18 +192,22 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
               <div className="rounded-xl bg-surface-raised px-4 py-3">
                 <p className="text-xs text-gray-500">Total aktivitas</p>
                 <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">{totalRequests.toLocaleString('id-ID')}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-gray-400">Aksi tercatat, bukan jumlah dokumen</p>
               </div>
               <div className="rounded-xl bg-emerald-50 px-4 py-3">
                 <p className="text-xs text-emerald-700">Login berhasil</p>
                 <p className="mt-1 text-xl font-bold text-emerald-900 tabular-nums">{totalLogins.toLocaleString('id-ID')}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-emerald-700/70">Jumlah login pada periode ini</p>
               </div>
               <div className="rounded-xl bg-cyan-50 px-4 py-3">
                 <p className="text-xs text-cyan-700">Puncak user aktif</p>
                 <p className="mt-1 text-xl font-bold text-cyan-900 tabular-nums">{peakUsers}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-cyan-700/70">Terbanyak dalam satu hari</p>
               </div>
               <div className="rounded-xl bg-amber-50 px-4 py-3">
                 <p className="text-xs text-amber-700">User teratas</p>
                 <p className="mt-1 text-sm font-bold text-amber-900 truncate">{topUsers[0]?.name ?? 'Belum ada data'}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-amber-700/70">Paling banyak aktivitas</p>
               </div>
             </div>
 
@@ -239,7 +243,10 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
 
             {topModules.length > 0 && (
               <div className="mt-6 pt-5 border-t border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-800 mb-3">Aktivitas per modul</h3>
+                <div className="mb-3 flex items-baseline justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-gray-800">Aktivitas per modul</h3>
+                  <span className="text-[11px] text-gray-400">Jumlah aksi</span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                   {topModules.slice(0, 8).map((item) => (
                     <div key={item.module}>
@@ -263,7 +270,10 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
 
             {topUsers.length > 0 && (
               <div className="mt-6 pt-5 border-t border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-800 mb-3">User paling aktif</h3>
+                <div className="mb-3 flex items-baseline justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-gray-800">User paling aktif</h3>
+                  <span className="text-[11px] text-gray-400">Jumlah aksi</span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {topUsers.slice(0, 4).map((user) => (
                     <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised px-3 py-2.5 hover:bg-gray-100 transition-colors">

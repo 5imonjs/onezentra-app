@@ -17,6 +17,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 vi.mock('@/components/DashboardActivityChart', () => ({ default: () => <div data-testid="activity-chart" /> }));
+vi.mock('@/components/DashboardLiveActivity', () => ({ default: () => <div data-testid="live-activity" /> }));
 vi.mock('@/components/RencanaKirimStatusChart', () => ({ default: () => <div data-testid="rencana-chart" /> }));
 vi.mock('@/components/DashboardAlerts', () => ({ default: () => null }));
 vi.mock('@/components/DashboardBiayaQueue', () => ({ default: () => null }));
@@ -59,8 +60,17 @@ describe('DashboardPage — tata letak chart', () => {
     render(<DashboardPage />);
 
     expect(screen.queryByTestId('activity-chart')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('live-activity')).not.toBeInTheDocument();
     const rencana = screen.getByTestId('rencana-chart');
     expect(rencana.parentElement?.className).not.toContain('xl:grid-cols-2');
+  });
+
+  it('menampilkan feed aktivitas real-time di bawah chart untuk pemegang users.view', () => {
+    hasPermission.mockImplementation((perm: string) => perm !== 'depot.view_all');
+
+    render(<DashboardPage />);
+
+    expect(screen.getByTestId('live-activity')).toBeInTheDocument();
   });
 
   it('hero menampilkan sapaan dengan nama depan user', () => {
