@@ -56,6 +56,7 @@ class SystemEndToEndTest extends TestCase
             'emails.view', 'emails.edit',
             'opname.view', 'opname.create', 'opname.edit',
             'reports.view',
+            'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim',
             'dashboard.view',
             'depot.view_all',
             'standarisasi.view', 'standarisasi.create', 'standarisasi.edit', 'standarisasi.approve', 'standarisasi.delete',

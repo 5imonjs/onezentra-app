@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, depo, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { useReportRowDelete } from '@/lib/useReportRowDelete';
+import { ReportDeleteBar, ReportSelectCheckbox } from '@/components/ReportDeleteControls';
 
 interface Wave {
   id: number;
@@ -115,6 +117,7 @@ export default function OpnameExpiredReportPage() {
   const [error, setError] = useState('');
   const [depotError, setDepotError] = useState('');
   const reqIdRef = useRef(0);
+  const canDelete = hasPermission('reports.delete');
 
   const selectedDepo = useMemo(
     () => depots.find((d) => d.kode_depo === kodeDepo) ?? null,
@@ -164,6 +167,8 @@ export default function OpnameExpiredReportPage() {
       if (reqIdRef.current === reqId) setLoading(false);
     }
   }, [weekStart, kodeDepo, statusFilter, page, hasPermission]);
+
+  const { selectedIds, toggle, toggleAll, clear, deleting, removeSelected } = useReportRowDelete('opname_wave', () => load());
 
   const loadDepots = useCallback(async () => {
     try {
@@ -701,6 +706,15 @@ export default function OpnameExpiredReportPage() {
                   <caption className="sr-only">Laporan opname expired</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                      {canDelete && (
+                        <th scope="col" className="table-header w-10 text-center">
+                          <ReportSelectCheckbox
+                            checked={waves.length > 0 && selectedIds.length === waves.length}
+                            onChange={() => toggleAll(waves.map((w) => w.id))}
+                            label="Pilih semua baris laporan"
+                          />
+                        </th>
+                      )}
                       <th scope="col" className="table-header">Status</th>
                       <th scope="col" className="table-header">Produk</th>
                       <th scope="col" className="table-header">Depo</th>
@@ -715,6 +729,15 @@ export default function OpnameExpiredReportPage() {
                       const meta = STATUS_META[w.status_ini];
                       return (
                         <tr key={w.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
+                          {canDelete && (
+                            <td className="table-cell text-center">
+                              <ReportSelectCheckbox
+                                checked={selectedIds.includes(w.id)}
+                                onChange={() => toggle(w.id)}
+                                label={`Pilih ${w.kode_barang}`}
+                              />
+                            </td>
+                          )}
                           <td className="table-cell whitespace-nowrap">{badge(w.status_ini)}</td>
                           <td className="table-cell min-w-50 max-w-75">
                             <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
@@ -744,6 +767,13 @@ export default function OpnameExpiredReportPage() {
                   return (
                     <article key={w.id} className="p-4 flex flex-col gap-3">
                       <div className="flex items-start justify-between gap-2">
+                        {canDelete && (
+                          <ReportSelectCheckbox
+                            checked={selectedIds.includes(w.id)}
+                            onChange={() => toggle(w.id)}
+                            label={`Pilih ${w.kode_barang}`}
+                          />
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-900 truncate" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
                           <p className="text-xs font-mono text-slate-500 mt-0.5 truncate">{w.kode_barang}</p>
@@ -819,6 +849,10 @@ export default function OpnameExpiredReportPage() {
           )}
         </div>
       </div>
+
+      {canDelete && (
+        <ReportDeleteBar count={selectedIds.length} deleting={deleting} onDelete={removeSelected} onClear={clear} />
+      )}
     </DashboardLayout>
   );
 }

@@ -82,6 +82,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'Laporan Penerimaan & Expired View', 'slug' => 'reports.penerimaan_batch_expired', 'menu_group' => 'Laporan', 'icon' => 'clipboard', 'route' => 'reports.penerimaan_batch_expired', 'sort_order' => 442],
             ['name' => 'Laporan Rencana Kirim View', 'slug' => 'reports.rencana_kirim', 'menu_group' => 'Laporan', 'icon' => 'truck', 'route' => 'reports.rencana_kirim', 'sort_order' => 443],
             ['name' => 'Laporan View', 'slug' => 'reports.view', 'menu_group' => 'Laporan', 'icon' => 'chart', 'route' => 'reports.index', 'sort_order' => 439],
+            ['name' => 'Hapus Baris Laporan', 'slug' => 'reports.delete', 'menu_group' => 'Laporan', 'icon' => 'trash', 'route' => 'reports.delete', 'sort_order' => 438],
             ['name' => 'Laporan Biaya THL View', 'slug' => 'reports.biaya_thl', 'menu_group' => 'Laporan', 'icon' => 'coins', 'route' => 'reports.biaya_thl', 'sort_order' => 441],
             ['name' => 'Laporan Biaya Retribusi View', 'slug' => 'reports.biaya_retribusi', 'menu_group' => 'Laporan', 'icon' => 'file-dollar', 'route' => 'reports.biaya_retribusi', 'sort_order' => 442],
             ['name' => 'Opname Expired View', 'slug' => 'opname.view', 'menu_group' => 'Opname', 'icon' => 'clock', 'route' => 'opname_expired.index', 'sort_order' => 450],

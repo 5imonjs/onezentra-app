@@ -301,8 +301,8 @@ class SeederRoleVerificationTest extends TestCase
         // Total sistem tetap konsisten: 12 role lama + ga + bh, 102 permission
         // (99 lama + 3 sesi opname), dan grant hasil turunan.
         $this->assertSame(14, Role::count());
-        $this->assertSame(106, Permission::count());
-        $this->assertSame(568, DB::table('role_permission')->count());
+        $this->assertSame(107, Permission::count());
+        $this->assertSame(569, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void

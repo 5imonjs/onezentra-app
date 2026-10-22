@@ -9,8 +9,11 @@ use App\Exports\PenerimaanExport;
 use App\Exports\RencanaKirimReportExport;
 use App\Exports\SelisihQtyExport;
 use App\Http\Controllers\Controller;
+use App\Models\Batch;
 use App\Models\BiayaRetribusiDetail;
 use App\Models\BiayaThlDetail;
+use App\Models\OpnameExpiredSessionItem;
+use App\Models\OpnameExpiredWave;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Services\ExportGuard;
@@ -658,5 +661,87 @@ class ReportController extends Controller
             'notes' => $item->notes ?? '-',
             'sumber' => $item->source,
         ];
+    }
+
+    /**
+     * Hapus permanen baris laporan terpilih. Hanya level admin_master yang
+     * diizinkan; datanya adalah record sumber, bukan sekadar disembunyikan.
+     */
+    public function destroyRows(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->level === 'admin_master', 403, 'Hanya level master yang boleh menghapus data laporan.');
+
+        $validated = $request->validate([
+            'type' => 'required|string|in:rencana_kirim,receiving_item,opname_wave,biaya_thl_detail,biaya_retribusi_detail',
+            'ids' => 'required|array|min:1|max:500',
+            'ids.*' => 'integer',
+        ]);
+
+        $deleted = DB::transaction(function () use ($validated): int {
+            $ids = $validated['ids'];
+
+            return match ($validated['type']) {
+                'rencana_kirim' => $this->deleteRencanaKirimRows($ids),
+                'receiving_item' => $this->deleteReceivingItemRows($ids),
+                'opname_wave' => OpnameExpiredWave::whereIn('id', $ids)->delete(),
+                'biaya_thl_detail' => BiayaThlDetail::whereIn('id', $ids)->delete(),
+                'biaya_retribusi_detail' => BiayaRetribusiDetail::whereIn('id', $ids)->delete(),
+            };
+        });
+
+        return response()->json(['message' => "{$deleted} baris laporan dihapus permanen.", 'deleted' => $deleted]);
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     */
+    private function deleteRencanaKirimRows(array $ids): int
+    {
+        $rows = RencanaKirim::whereIn('id', $ids)->get();
+        if ($rows->isEmpty()) {
+            return 0;
+        }
+
+        foreach ($rows as $row) {
+            $validationIds = DB::table('sj_validations')->where('rencana_kirim_id', $row->id)->pluck('id');
+
+            if ($validationIds->isNotEmpty()) {
+                Batch::whereHas('validationItem', fn ($q) => $q->whereIn('sj_validation_id', $validationIds))->delete();
+                DB::table('sj_validation_items')->whereIn('sj_validation_id', $validationIds)->delete();
+                DB::table('sj_validations')->whereIn('id', $validationIds)->delete();
+            }
+
+            $receivingIds = DB::table('receivings')->where('rencana_kirim_id', $row->id)->pluck('id');
+
+            if ($receivingIds->isNotEmpty()) {
+                $itemIds = ReceivingItem::whereIn('receiving_id', $receivingIds)->pluck('id')->all();
+                if ($itemIds !== []) {
+                    $this->deleteReceivingItemRows($itemIds);
+                }
+                DB::table('receivings')->whereIn('id', $receivingIds)->delete();
+            }
+
+            DB::table('gate_transactions')->where('rencana_kirim_id', $row->id)->delete();
+            DB::table('rencana_kirim_items')->where('rencana_kirim_id', $row->id)->delete();
+        }
+
+        return RencanaKirim::whereIn('id', $rows->pluck('id'))->delete();
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     */
+    private function deleteReceivingItemRows(array $ids): int
+    {
+        $batchIds = Batch::whereIn('receiving_item_id', $ids)->pluck('id');
+
+        if ($batchIds->isNotEmpty()) {
+            // Label yang masih dirujuk sesi opname dilepas dulu agar FK tidak
+            // menahan penghapusan; baris laporan tetap dihapus permanen.
+            OpnameExpiredSessionItem::whereIn('batch_id', $batchIds)->update(['batch_id' => null]);
+            Batch::whereIn('id', $batchIds)->delete();
+        }
+
+        return ReceivingItem::whereIn('id', $ids)->delete();
     }
 }
