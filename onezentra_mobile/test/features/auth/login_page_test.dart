@@ -209,7 +209,7 @@ void main() {
 
       // No format error: the user reached the home menu.
       expect(find.text('Format email tidak valid'), findsNothing);
-      expect(find.text('Pilih pekerjaan'), findsOneWidget);
+      expect(find.text('Halo,'), findsOneWidget);
     });
 
     testWidgets('menampilkan error server tanpa meninggalkan halaman login', (
@@ -247,7 +247,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Pilih pekerjaan'), findsOneWidget);
+      expect(find.text('Halo,'), findsOneWidget);
       expect(find.text('Selamat datang kembali'), findsNothing);
     });
 

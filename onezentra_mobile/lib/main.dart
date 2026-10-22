@@ -7,11 +7,10 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
-import 'package:onezentra_mobile/features/gate/pages/gate_history_page.dart';
 import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
 import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
+import 'package:onezentra_mobile/features/history/pages/history_page.dart';
 import 'package:onezentra_mobile/features/home/pages/home_page.dart';
-import 'package:onezentra_mobile/features/inbound/pages/inbound_page.dart';
 import 'package:onezentra_mobile/features/inbound/repositories/inbound_repository.dart';
 import 'package:onezentra_mobile/features/unload/pages/unload_page.dart';
 import 'package:onezentra_mobile/features/unload/repositories/unload_repository.dart';
@@ -108,12 +107,19 @@ class _OneZentraAppState extends State<OneZentraApp>
 /// route, or a permission revoked on web could still open the page. Guarding
 /// here keeps the route and the menu in sync; the API remains the real
 /// authority for data access.
-const Map<String, String> _routePermissions = {
-  '/gate': 'gate.view',
-  '/gate/riwayat': 'gate.view',
-  '/validasi-sj': 'sj_validation.view',
-  '/bongkar': 'receiving.view',
-  '/hasil-penerimaan': 'receiving.view',
+const List<String> _historyViewPermissions = [
+  'gate.view',
+  'sj_validation.view',
+  'receiving.view',
+];
+
+const Map<String, List<String>> _routePermissions = {
+  '/gate': ['gate.view'],
+  '/gate/riwayat': _historyViewPermissions,
+  '/validasi-sj': ['sj_validation.view'],
+  '/bongkar': ['receiving.view'],
+  '/hasil-penerimaan': _historyViewPermissions,
+  '/riwayat': _historyViewPermissions,
 };
 
 /// App Router Configuration — home menus plus their detail routes.
@@ -146,11 +152,7 @@ GoRouter buildRouter(
       name: 'gate',
       builder: (context, state) => GatePage(repository: gateRepository),
     ),
-    GoRoute(
-      path: '/gate/riwayat',
-      name: 'gate_riwayat',
-      builder: (context, state) => GateHistoryPage(repository: gateRepository),
-    ),
+    GoRoute(path: '/gate/riwayat', redirect: (context, state) => '/riwayat'),
     GoRoute(
       path: '/validasi-sj',
       name: 'validasi_sj',
@@ -161,13 +163,21 @@ GoRouter buildRouter(
     ),
     GoRoute(
       path: '/hasil-penerimaan',
-      name: 'hasil_penerimaan',
-      builder: (context, state) => InboundPage(repository: inboundRepository),
+      redirect: (context, state) => '/riwayat',
     ),
     GoRoute(
       path: '/bongkar',
       name: 'bongkar',
       builder: (context, state) => UnloadPage(repository: unloadRepository),
+    ),
+    GoRoute(
+      path: '/riwayat',
+      name: 'riwayat',
+      builder: (context, state) => HistoryPage(
+        gateRepository: gateRepository,
+        validationRepository: validationRepository,
+        inboundRepository: inboundRepository,
+      ),
     ),
   ],
   redirect: (context, state) {
@@ -184,9 +194,11 @@ GoRouter buildRouter(
       return '/home';
     }
 
-    var requiredPermission = _routePermissions[state.matchedLocation];
-    if (requiredPermission != null &&
-        !(authProvider.user?.hasPermission(requiredPermission) ?? false)) {
+    var requiredPermissions = _routePermissions[state.matchedLocation];
+    if (requiredPermissions != null &&
+        !requiredPermissions.any(
+          (permission) => authProvider.user?.hasPermission(permission) ?? false,
+        )) {
       return '/home';
     }
 

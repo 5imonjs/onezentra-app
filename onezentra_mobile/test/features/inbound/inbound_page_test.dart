@@ -157,7 +157,7 @@ void main() {
     await _pumpInboundPage(tester, auth, repository);
 
     expect(
-      find.text('Anda tidak memiliki izin untuk melihat Hasil Penerimaan.'),
+      find.text('Anda tidak memiliki izin untuk melihat Penerimaan.'),
       findsOneWidget,
     );
     expect(repository.listCalls, 0);
@@ -169,7 +169,7 @@ void main() {
 
     await _pumpInboundPage(tester, auth, repository);
 
-    expect(find.text('Hasil Penerimaan'), findsWidgets);
+    expect(find.text('Penerimaan'), findsWidgets);
     expect(find.text('1 penerimaan tercatat'), findsOneWidget);
     expect(find.text('PO-042'), findsOneWidget);
     expect(find.text('B 9999 ZZ • Andi'), findsOneWidget);

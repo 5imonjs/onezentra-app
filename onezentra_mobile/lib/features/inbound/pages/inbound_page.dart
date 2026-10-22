@@ -10,15 +10,20 @@ import 'package:onezentra_mobile/features/inbound/repositories/inbound_repositor
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
-/// Hasil Penerimaan — read-only inbound history from `GET /receivings`.
+/// Penerimaan — read-only inbound history from `GET /receivings`.
 ///
 /// Searchable, paginated list; tapping a row opens the record with its
-/// received lines (expected vs actual per product).
+/// received lines (expected vs actual per product). It can stand alone or be
+/// embedded as a tab on the unified Riwayat page.
 class InboundPage extends StatefulWidget {
-  const InboundPage({super.key, this.repository});
+  const InboundPage({super.key, this.repository, this.embedded = false});
 
   /// Injectable so tests can run the screen against a fake repository.
   final InboundRepository? repository;
+
+  /// When true the page returns only its body, without its own AppBar, so it
+  /// can live inside the unified Riwayat tabs.
+  final bool embedded;
 
   @override
   State<InboundPage> createState() => _InboundPageState();
@@ -65,10 +70,37 @@ class _InboundPageState extends State<InboundPage> {
     var canView = user?.hasPermission('receiving.view') ?? false;
     var inbound = context.watch<InboundProvider>();
 
+    Widget content = !canView
+        ? _buildNoAccess()
+        : RefreshIndicator(
+            onRefresh: inbound.loadItems,
+            color: AppTheme.primary600,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppTheme.space4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(inbound),
+                  const SizedBox(height: AppTheme.space4),
+                  if (inbound.open != null || inbound.detailError != null)
+                    _buildDetailCard(inbound)
+                  else
+                    _buildHistory(inbound),
+                  const SizedBox(height: AppTheme.space8),
+                ],
+              ),
+            ),
+          );
+
+    if (widget.embedded) {
+      return content;
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Hasil Penerimaan'),
+        title: const Text('Penerimaan'),
         elevation: 0,
         actions: [
           IconButton(
@@ -80,30 +112,7 @@ class _InboundPageState extends State<InboundPage> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: !canView
-            ? _buildNoAccess()
-            : RefreshIndicator(
-                onRefresh: inbound.loadItems,
-                color: AppTheme.primary600,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(AppTheme.space4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(inbound),
-                      const SizedBox(height: AppTheme.space4),
-                      if (inbound.open != null || inbound.detailError != null)
-                        _buildDetailCard(inbound)
-                      else
-                        _buildHistory(inbound),
-                      const SizedBox(height: AppTheme.space8),
-                    ],
-                  ),
-                ),
-              ),
-      ),
+      body: SafeArea(child: content),
     );
   }
 
@@ -124,7 +133,7 @@ class _InboundPageState extends State<InboundPage> {
           const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
-              'Anda tidak memiliki izin untuk melihat Hasil Penerimaan.',
+              'Anda tidak memiliki izin untuk melihat Penerimaan.',
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
@@ -176,7 +185,7 @@ class _InboundPageState extends State<InboundPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hasil Penerimaan',
+                'Penerimaan',
                 style: GoogleFonts.roboto(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,

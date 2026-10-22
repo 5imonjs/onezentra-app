@@ -6,7 +6,7 @@ import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/inbound/models/inbound_models.dart';
 import 'package:onezentra_mobile/features/inbound/repositories/inbound_repository.dart';
 
-/// UI state for the Hasil Penerimaan menu: paged inbound history plus the
+/// UI state for the Penerimaan history: paged inbound records plus the
 /// opened record with its received lines.
 class InboundProvider extends ChangeNotifier {
   InboundProvider({InboundRepository? repository})

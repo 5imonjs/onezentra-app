@@ -282,7 +282,7 @@ void main() {
     await _pumpGatePage(tester, auth, repository);
 
     // Halaman Check In Point hanya Scan: statistik + form, tanpa daftar
-    // transaksi maupun pintasan riwayat (pindah ke menu Riwayat Gate).
+    // transaksi maupun pintasan riwayat (pindah ke menu Riwayat).
     expect(find.text('Check In Point'), findsWidgets);
     expect(find.text('Quick Scan'), findsOneWidget);
     expect(find.text('Hari ini'), findsOneWidget);
@@ -364,9 +364,7 @@ void main() {
     expect(find.text('Gate IN →'), findsOneWidget);
   });
 
-  testWidgets('menu Riwayat Gate di home membuka halaman riwayat', (
-    tester,
-  ) async {
+  testWidgets('menu Riwayat di home membuka riwayat terpadu', (tester) async {
     var repository = _FakeGateRepository();
     var auth = await _loginAuth();
     var router = buildRouter(auth, gateRepository: repository);
@@ -374,12 +372,14 @@ void main() {
     await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
     await tester.pumpAndSettle();
 
-    var menu = find.text('Riwayat Gate');
+    var menu = find.text('Riwayat');
     expect(menu, findsOneWidget);
     await tester.ensureVisible(menu);
     await tester.tap(menu);
     await tester.pumpAndSettle();
 
+    // Only the gate tab is available for this role, so the unified page
+    // opens directly on the gate history body.
     expect(find.text('Pencarian'), findsOneWidget);
     expect(find.text('Transaksi'), findsOneWidget);
   });
@@ -541,7 +541,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Quick Scan'), findsNothing);
-    expect(find.text('Pilih pekerjaan'), findsOneWidget);
+    expect(find.text('Alur kerja'), findsOneWidget);
   });
 
   testWidgets('Gate IN → lanjut validasi membawa PO otomatis', (tester) async {

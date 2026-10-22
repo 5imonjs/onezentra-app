@@ -113,7 +113,7 @@ void main() {
           isA<ApiException>().having(
             (e) => e.message,
             'message',
-            contains('Hasil Penerimaan'),
+            contains('Riwayat'),
           ),
         ),
       );

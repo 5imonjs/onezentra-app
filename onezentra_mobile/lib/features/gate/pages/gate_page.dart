@@ -15,8 +15,8 @@ import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 /// Gate IN, and verify the document.
 ///
 /// Mirrors the web app's `/gate` screen, adapted for a phone: the scan input
-/// accepts manual typing or the camera barcode scanner. Gate history lives on
-/// its own `/gate/riwayat` page, reachable from the home menu.
+/// accepts manual typing or the camera barcode scanner. Gate history lives in
+/// the unified Riwayat menu, so this page stays focused on scanning.
 class GatePage extends StatefulWidget {
   const GatePage({super.key, this.repository, this.openScanner});
 
@@ -55,7 +55,7 @@ class _GatePageState extends State<GatePage> {
           context.read<AuthProvider>().user?.hasPermission('gate.view') ??
           false;
       // Halaman ini hanya Scan: cukup statistik header, riwayat dimuat di
-      // halaman Riwayat Gate tersendiri.
+      // halaman Riwayat terpadu.
       if (canView) {
         await _provider.loadStats();
       }

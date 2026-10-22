@@ -11,11 +11,13 @@ import 'package:onezentra_mobile/features/unload/repositories/unload_repository.
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
-/// Bongkar — scan a PO to open its receiving, start the unloading, scan
-/// each unloaded product, then finish.
+/// Check Out Point — scan a PO to open its receiving, start the unloading,
+/// scan each unloaded product, then finish. The web console calls the same
+/// receiving module "Check Out Point"; mobile keeps the field term "bongkar"
+/// on the action buttons.
 ///
 /// Only PENDING / IN_PROGRESS records open here; finished ones belong to
-/// Hasil Penerimaan. The PO lookup demands an exact match (like the web
+/// Riwayat > Penerimaan. The PO lookup demands an exact match (like the web
 /// app) so a mistyped barcode can never finish the wrong unloading.
 class UnloadPage extends StatefulWidget {
   const UnloadPage({super.key, this.repository, this.openScanner});
@@ -60,7 +62,7 @@ class _UnloadPageState extends State<UnloadPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(title: const Text('Bongkar'), elevation: 0),
+      appBar: AppBar(title: const Text('Check Out Point'), elevation: 0),
       body: SafeArea(
         child: !canView
             ? _buildNoAccess()
@@ -107,7 +109,7 @@ class _UnloadPageState extends State<UnloadPage> {
           const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
-              'Anda tidak memiliki izin untuk melihat Bongkar.',
+              'Anda tidak memiliki izin untuk melihat Check Out Point.',
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
@@ -155,7 +157,7 @@ class _UnloadPageState extends State<UnloadPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Bongkar',
+                'Check Out Point',
                 style: GoogleFonts.roboto(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -164,7 +166,7 @@ class _UnloadPageState extends State<UnloadPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                'Scan PO — mulai — pindai produk — selesai',
+                'Scan PO — bongkar — pindai produk — selesai',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   color: AppTheme.gray400,
@@ -282,7 +284,7 @@ class _UnloadPageState extends State<UnloadPage> {
                 subtitle: 'Harus cocok persis — PO yang salah ditolak.',
                 cameraErrorHint:
                     'Kamera tidak dapat dijalankan. Masukkan barcode PO '
-                    'secara manual di halaman Bongkar.',
+                    'secara manual di halaman Check Out Point.',
               ),
             ),
           ));

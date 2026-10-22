@@ -63,12 +63,30 @@ void main() {
     await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pilih pekerjaan'), findsOneWidget);
+    expect(find.text('Alur kerja'), findsOneWidget);
 
     router.go('/bongkar');
     await tester.pumpAndSettle();
 
-    expect(find.text('Pilih pekerjaan'), findsOneWidget);
+    expect(find.text('Alur kerja'), findsOneWidget);
     expect(find.text('Scan Bongkar'), findsNothing);
+  });
+
+  testWidgets('riwayat tanpa izin view dialihkan ke home', (tester) async {
+    var auth = AuthProvider(repository: _FakeAuthRepository(_loginBody([])));
+    expect(await auth.login(email: 'op@onezentra.com', password: 'x'), isTrue);
+
+    var router = buildRouter(auth);
+    await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
+    await tester.pumpAndSettle();
+
+    router.go('/riwayat');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Tidak ada menu untuk peran Anda. Hubungi admin.'),
+      findsOneWidget,
+    );
+    expect(find.text('Riwayat'), findsNothing);
   });
 }

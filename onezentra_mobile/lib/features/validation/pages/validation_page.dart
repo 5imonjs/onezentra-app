@@ -10,6 +10,7 @@ import 'package:onezentra_mobile/features/validation/models/validation_models.da
 import 'package:onezentra_mobile/features/validation/providers/validation_provider.dart';
 import 'package:onezentra_mobile/features/validation/repositories/validation_repository.dart';
 import 'package:onezentra_mobile/features/validation/widgets/label_print_sheet.dart';
+import 'package:onezentra_mobile/features/validation/widgets/validation_history_card.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Validasi SJ — scan barcode PO untuk membuka sesi validasi, validasi
@@ -47,7 +48,6 @@ class _ValidationPageState extends State<ValidationPage> {
     repository: widget.repository,
   );
   final _scanController = TextEditingController();
-  final _searchController = TextEditingController();
   bool _autoStarted = false;
 
   @override
@@ -81,7 +81,6 @@ class _ValidationPageState extends State<ValidationPage> {
   @override
   void dispose() {
     _scanController.dispose();
-    _searchController.dispose();
     _provider.dispose();
     super.dispose();
   }
@@ -156,7 +155,10 @@ class _ValidationPageState extends State<ValidationPage> {
                         ],
                       ],
                     );
-                    var history = _buildHistory(validation);
+                    var history = ValidationHistoryCard(
+                      validation: validation,
+                      onOpen: (session) => validation.openSession(session.id),
+                    );
 
                     return SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -1539,252 +1541,6 @@ class _ValidationPageState extends State<ValidationPage> {
               ),
             )
           : Text(label, textAlign: TextAlign.center),
-    ),
-  );
-
-  // ---------------------------------------------------------------------
-  // History
-  // ---------------------------------------------------------------------
-
-  Widget _buildHistory(ValidationProvider validation) => AppCard(
-    padding: const EdgeInsets.all(AppTheme.space5),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            _iconBox(
-              36,
-              AppTheme.primary50,
-              Icons.history_rounded,
-              iconColor: AppTheme.primary600,
-            ),
-            const SizedBox(width: AppTheme.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Riwayat Validasi',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${validation.total} sesi tercatat',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      color: AppTheme.gray400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space4),
-        AppTextField(
-          controller: _searchController,
-          hint: 'Cari PO...',
-          prefixIcon: Icons.search_rounded,
-          onChanged: validation.setSearch,
-        ),
-        const SizedBox(height: AppTheme.space3),
-        ..._historyBody(validation),
-      ],
-    ),
-  );
-
-  List<Widget> _historyBody(ValidationProvider validation) {
-    var listError = validation.listError;
-    if (listError != null) {
-      return [
-        SizedBox(
-          width: double.infinity,
-          child: AppErrorDisplay(
-            message: listError,
-            onRetry: validation.loadItems,
-          ),
-        ),
-      ];
-    }
-
-    if (validation.isLoading && validation.items.isEmpty) {
-      return [
-        Column(
-          children: List.generate(
-            3,
-            (_) => Container(
-              height: 64,
-              margin: const EdgeInsets.only(bottom: AppTheme.space3),
-              decoration: const BoxDecoration(
-                color: AppTheme.gray100,
-                borderRadius: AppTheme.radiusLg,
-              ),
-            ),
-          ),
-        ),
-      ];
-    }
-
-    if (validation.items.isEmpty) {
-      return [
-        SizedBox(
-          width: double.infinity,
-          child: AppEmptyState(
-            icon: Icons.verified_rounded,
-            title: validation.search.isNotEmpty
-                ? 'Tidak ada hasil'
-                : 'Belum ada sesi validasi',
-            subtitle: validation.search.isNotEmpty
-                ? 'Cari dengan PO lain.'
-                : 'Sesi muncul setelah scan PO pertama.',
-          ),
-        ),
-      ];
-    }
-
-    var items = validation.items;
-    return [
-      Column(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            _historyTile(items[i], validation),
-            if (i != items.length - 1)
-              const Divider(height: 1, color: AppTheme.gray100, indent: 46),
-          ],
-        ],
-      ),
-      if (validation.lastPage > 1)
-        Padding(
-          padding: const EdgeInsets.only(top: AppTheme.space4),
-          child: Column(
-            children: [
-              const Divider(height: 1, color: AppTheme.gray100),
-              const SizedBox(height: AppTheme.space3),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppSecondaryButton(
-                      text: 'Sebelumnya',
-                      height: 42,
-                      isLoading: validation.isLoading,
-                      onPressed: validation.canGoBack && !validation.isLoading
-                          ? () =>
-                                validation.goToPage(validation.currentPage - 1)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.space2),
-                  Text(
-                    'Halaman ${validation.currentPage}/${validation.lastPage}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11.5,
-                      color: AppTheme.gray500,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.space2),
-                  Expanded(
-                    child: AppSecondaryButton(
-                      text: 'Selanjutnya',
-                      height: 42,
-                      isLoading: validation.isLoading,
-                      onPressed:
-                          validation.canGoForward && !validation.isLoading
-                          ? () =>
-                                validation.goToPage(validation.currentPage + 1)
-                          : null,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-    ];
-  }
-
-  Widget _historyTile(
-    SjValidation session,
-    ValidationProvider validation,
-  ) => InkWell(
-    onTap: validation.actionBusy
-        ? null
-        : () => validation.openSession(session.id),
-    borderRadius: AppTheme.radiusLg,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _iconBox(
-            36,
-            AppTheme.gray100,
-            Icons.verified_rounded,
-            iconColor: AppTheme.gray500,
-          ),
-          const SizedBox(width: AppTheme.space3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        session.document?.poTransporter ??
-                            session.scanCode ??
-                            'Sesi #${session.id}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.robotoMono(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.foreground,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.space2),
-                    AppBadge(
-                      text: ValidationStatus.label(session.status),
-                      variant: _statusVariant(session.status),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${session.validatedCount}/${session.totalItemCount} item'
-                  '${session.validatorName != null ? ' • ${session.validatorName}' : ''}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    color: AppTheme.gray500,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  [
-                    if (session.startedAt != null)
-                      _formatDateTime(session.startedAt),
-                    if (session.durationSeconds != null)
-                      'Durasi ${_formatDuration(session.durationSeconds)}',
-                  ].join(' • '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.roboto(
-                    fontSize: 10.5,
-                    color: AppTheme.gray500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     ),
   );
 

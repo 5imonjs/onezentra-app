@@ -1,7 +1,7 @@
 import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/inbound/models/inbound_models.dart';
 
-/// Data access for the Hasil Penerimaan (inbound history) menu.
+/// Data access for the Penerimaan (inbound history) tab.
 ///
 /// Read-only: `GET /receivings` for the paged history and
 /// `GET /receivings/{id}` for one record with its lines.

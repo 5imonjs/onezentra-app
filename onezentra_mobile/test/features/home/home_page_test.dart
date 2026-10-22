@@ -100,24 +100,27 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
-  testWidgets('menampilkan lima menu operasional', (tester) async {
+  testWidgets('menampilkan alur kerja dan satu pintu riwayat', (tester) async {
     var auth = await _loginAuth();
 
     await _pumpHomePage(tester, auth);
 
     expect(find.text('Halo,'), findsOneWidget);
     expect(find.text('Operator'), findsOneWidget);
+    expect(find.text('Alur kerja'), findsOneWidget);
+    expect(find.text('Riwayat'), findsOneWidget);
     expect(find.text('Check In Point'), findsOneWidget);
-    expect(find.text('Riwayat Gate'), findsOneWidget);
-    expect(find.text('Cari & telusuri transaksi gate'), findsOneWidget);
     expect(find.text('Validasi SJ'), findsOneWidget);
-    expect(find.text('Bongkar'), findsOneWidget);
-    expect(find.text('Hasil Penerimaan'), findsOneWidget);
+    expect(find.text('Check Out Point'), findsOneWidget);
+    expect(find.text('Bongkar & selesaikan penerimaan'), findsOneWidget);
     expect(
-      find.text('Riwayat penerimaan barang yang sudah selesai'),
+      find.text('Gate, validasi, dan penerimaan dalam satu tempat'),
       findsOneWidget,
     );
-    expect(find.text('Check Out Point'), findsNothing);
+    // History is one entry, not one menu per stage.
+    expect(find.text('Riwayat Gate'), findsNothing);
+    expect(find.text('Hasil Penerimaan'), findsNothing);
+    expect(find.text('Bongkar'), findsNothing);
     // No bottom nav, no dashboard numbers, no "coming soon".
     expect(find.byType(BottomNavigationBar), findsNothing);
     expect(find.text('Ringkasan'), findsNothing);
@@ -131,17 +134,14 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     expect(tester.widget<Text>(find.text('Operator')).style?.fontSize, 20);
-    expect(
-      tester.widget<Text>(find.text('Pilih pekerjaan')).style?.fontSize,
-      16,
-    );
+    expect(tester.widget<Text>(find.text('Alur kerja')).style?.fontSize, 16);
     expect(
       tester.widget<Text>(find.text('Check In Point')).style?.fontSize,
       15,
     );
     expect(
       tester
-          .widget<Text>(find.text('Scan PO / Nopol — catat Gate IN'))
+          .widget<Text>(find.text('Catat Gate IN — scan PO / Nopol'))
           .style
           ?.fontSize,
       13,
@@ -154,10 +154,10 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     expect(find.text('Check In Point'), findsOneWidget);
-    expect(find.text('Riwayat Gate'), findsOneWidget);
+    expect(find.text('Riwayat'), findsOneWidget);
     expect(find.text('Check Out Point'), findsNothing);
     expect(find.text('Validasi SJ'), findsNothing);
-    // Check Out sudah tidak ada di home page; Bongkar butuh receiving.view.
+    expect(find.text('Riwayat Gate'), findsNothing);
     expect(find.text('Bongkar'), findsNothing);
     expect(find.text('Hasil Penerimaan'), findsNothing);
   });
@@ -200,7 +200,7 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     var phoneCards = find.byType(AppCard);
-    expect(phoneCards, findsNWidgets(5));
+    expect(phoneCards, findsNWidgets(4));
     var phoneFirst = tester.getRect(phoneCards.at(0));
     var phoneSecond = tester.getRect(phoneCards.at(1));
     expect(phoneFirst.left, closeTo(phoneSecond.left, 0.1));
@@ -211,12 +211,13 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     var wideCards = find.byType(AppCard);
-    expect(wideCards, findsNWidgets(5));
-    var rects = [for (var i = 0; i < 5; i++) tester.getRect(wideCards.at(i))];
+    expect(wideCards, findsNWidgets(4));
+    var rects = [for (var i = 0; i < 4; i++) tester.getRect(wideCards.at(i))];
     expect(rects[0].top, closeTo(rects[1].top, 0.1));
     expect(rects[0].top, closeTo(rects[2].top, 0.1));
+    // Riwayat sits below the three workflow steps, full width.
     expect(rects[3].top, greaterThan(rects[0].bottom));
-    expect(rects[4].top, greaterThan(rects[0].bottom));
+    expect(rects[3].width, greaterThan(rects[0].width));
     for (var rect in rects) {
       expect(rect.height, lessThan(200));
     }
@@ -234,7 +235,7 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(AppCard), findsNWidgets(5));
+    expect(find.byType(AppCard), findsNWidgets(4));
   });
 
   testWidgets('banner retry tampil saat refresh izin gagal', (tester) async {

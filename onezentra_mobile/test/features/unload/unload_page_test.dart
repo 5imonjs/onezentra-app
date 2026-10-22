@@ -229,7 +229,7 @@ void main() {
     await _pumpUnloadPage(tester, auth, repository);
 
     expect(
-      find.text('Anda tidak memiliki izin untuk melihat Bongkar.'),
+      find.text('Anda tidak memiliki izin untuk melihat Check Out Point.'),
       findsOneWidget,
     );
     expect(find.text('Scan Bongkar'), findsNothing);
@@ -326,7 +326,6 @@ void main() {
     expect(repository.completeCalls, 1);
     // Receiving-only: a finished session shows no further action.
     expect(find.textContaining('tidak ada aksi tersisa'), findsOneWidget);
-    expect(find.textContaining('Check Out'), findsNothing);
   });
 
   testWidgets('rute /bongkar merender UnloadPage dengan repo tersuntik', (
@@ -343,6 +342,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(UnloadPage), findsOneWidget);
+    expect(find.text('Check Out Point'), findsWidgets);
     expect(find.text('Scan Bongkar'), findsOneWidget);
   });
 }

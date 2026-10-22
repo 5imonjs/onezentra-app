@@ -55,14 +55,14 @@ class UnloadRepository {
 
   /// Finds the receiving behind a PO barcode. Exact match is mandatory —
   /// anything else answers 404 instead of opening the wrong unloading.
-  /// Records that are already finished belong to Hasil Penerimaan.
+  /// Records that are already finished belong to Riwayat > Penerimaan.
   ///
   /// The server search is a LIKE over PO *and* driver name, ordered by
   /// creation date, so a single page can hold a CANCELLED row for this PO
   /// while the live PENDING receiving sits on a later page. Walk every page
   /// and prefer an active (PENDING / IN_PROGRESS) exact match; a finished
-  /// exact match is only kept so the caller gets the "lihat di Hasil
-  /// Penerimaan" message instead of a misleading 404.
+  /// exact match is only kept so the caller gets the "lihat di Riwayat"
+  /// message instead of a misleading 404.
   Future<UnloadSession> findByPo(String po) async {
     var code = po.trim();
     if (code.isEmpty) {
@@ -120,7 +120,7 @@ class UnloadRepository {
     if (session.status != 'PENDING' && session.status != 'IN_PROGRESS') {
       throw ApiException(
         'Dokumen berstatus ${_statusLabel(session.status)} — '
-        'lihat di Hasil Penerimaan.',
+        'lihat di menu Riwayat.',
         422,
       );
     }

@@ -1,4 +1,4 @@
-/// Models for the Hasil Penerimaan (inbound history) menu.
+/// Models for the Penerimaan (inbound history) tab.
 library;
 
 String? _readString(dynamic value) {

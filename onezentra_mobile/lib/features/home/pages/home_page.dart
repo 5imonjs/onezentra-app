@@ -9,9 +9,11 @@ import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Home Page - the only landing after login.
 ///
-/// Operational menus: Check In Point, Riwayat Gate, Validasi SJ, Bongkar,
-/// and Hasil Penerimaan. Each card is hidden when the role lacks its
-/// permission — same rule as the web sidebar.
+/// The main menu follows the field workflow: Check In Point → Validasi SJ →
+/// Check Out Point. All activity history lives behind one Riwayat entry, so
+/// operators never have to guess which history page holds a record. Each card
+/// is hidden when the role lacks its permission — same rule as the web
+/// sidebar.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -41,56 +43,62 @@ class _HomePageState extends State<HomePage> {
     var auth = context.watch<AuthProvider>();
     var user = auth.user;
 
-    var menus = [
+    var workflowMenus = [
       const _HomeMenu(
         'Check In Point',
-        'Scan PO / Nopol — catat Gate IN',
+        'Catat Gate IN — scan PO / Nopol',
         Icons.door_front_door_rounded,
         AppTheme.primary300,
         ['gate.view'],
         '/gate',
-      ),
-      const _HomeMenu(
-        'Riwayat Gate',
-        'Cari & telusuri transaksi gate',
-        Icons.history_rounded,
-        AppTheme.info,
-        ['gate.view'],
-        '/gate/riwayat',
+        step: 1,
       ),
       const _HomeMenu(
         'Validasi SJ',
-        'Scan PO — validasi produk per item',
+        'Validasi qty, expired, dan kondisi barang',
         Icons.verified_rounded,
         AppTheme.success,
         ['sj_validation.view'],
         '/validasi-sj',
+        step: 2,
       ),
       const _HomeMenu(
-        'Bongkar',
-        'Scan PO — bongkar dan pindai produk',
+        'Check Out Point',
+        'Bongkar & selesaikan penerimaan',
         Icons.forklift,
         AppTheme.accent500,
         ['receiving.view'],
         '/bongkar',
-      ),
-      const _HomeMenu(
-        'Hasil Penerimaan',
-        'Riwayat penerimaan barang yang sudah selesai',
-        Icons.inventory_2_rounded,
-        AppTheme.primary400,
-        ['receiving.view'],
-        '/hasil-penerimaan',
+        step: 3,
       ),
     ];
 
-    var visible = menus
+    var historyMenus = [
+      const _HomeMenu(
+        'Riwayat',
+        'Gate, validasi, dan penerimaan dalam satu tempat',
+        Icons.history_rounded,
+        AppTheme.info,
+        ['gate.view', 'sj_validation.view', 'receiving.view'],
+        '/riwayat',
+      ),
+    ];
+
+    var visibleWorkflow = workflowMenus
         .where(
           (menu) =>
               menu.permissions.isEmpty ||
               (user?.hasAnyPermission(menu.permissions) ?? false),
         )
         .toList();
+    var visibleHistory = historyMenus
+        .where(
+          (menu) =>
+              menu.permissions.isEmpty ||
+              (user?.hasAnyPermission(menu.permissions) ?? false),
+        )
+        .toList();
+    var hasMenu = visibleWorkflow.isNotEmpty || visibleHistory.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -181,64 +189,43 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                   const SizedBox(height: AppTheme.space6),
-                  if (auth.refreshFailed && visible.isNotEmpty) ...[
+                  if (auth.refreshFailed && hasMenu) ...[
                     _buildRefreshBanner(theme, auth),
                     const SizedBox(height: AppTheme.space4),
                   ],
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      'Pilih pekerjaan',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontSize: 16,
-                        height: 1.3,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.foreground,
+                  if (!hasMenu)
+                    user != null &&
+                            user.permissions == null &&
+                            !auth.refreshFailed
+                        ? _buildPermissionLoading(theme)
+                        : _buildEmptyMenu(theme, auth)
+                  else ...[
+                    if (visibleWorkflow.isNotEmpty) ...[
+                      _sectionHeader(
+                        theme,
+                        'Alur kerja',
+                        'Kerjakan berurutan dari Gate IN sampai Check Out.',
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.space4),
-                  if (visible.isEmpty &&
-                      user != null &&
-                      user.permissions == null &&
-                      !auth.refreshFailed)
-                    _buildPermissionLoading(theme)
-                  else if (visible.isEmpty)
-                    _buildEmptyMenu(theme, auth)
-                  else
-                    // Let the cards keep their natural height. A fixed grid
-                    // aspect ratio made tablet/desktop cards hundreds of pixels
-                    // tall, with the label stranded at the top and the icon in
-                    // the middle.
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        const gap = AppTheme.space4;
-                        var columns = (constraints.maxWidth / 300)
-                            .floor()
-                            .clamp(1, 4)
-                            .toInt();
-                        var cardWidth =
-                            (constraints.maxWidth - gap * (columns - 1)) /
-                            columns;
-
-                        return Wrap(
-                          spacing: gap,
-                          runSpacing: gap,
-                          children: [
-                            for (var i = 0; i < visible.length; i++)
-                              SizedBox(
-                                width: cardWidth,
-                                child: _menuCard(
-                                  context,
-                                  theme,
-                                  visible[i],
-                                  number: i + 1,
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
+                      const SizedBox(height: AppTheme.space4),
+                      _menuGrid(
+                        context,
+                        theme,
+                        visibleWorkflow,
+                        numbered: true,
+                      ),
+                    ],
+                    if (visibleHistory.isNotEmpty) ...[
+                      if (visibleWorkflow.isNotEmpty)
+                        const SizedBox(height: AppTheme.space6),
+                      _sectionHeader(
+                        theme,
+                        'Catatan aktivitas',
+                        'Riwayat gate, validasi, dan penerimaan dalam satu tempat.',
+                      ),
+                      const SizedBox(height: AppTheme.space4),
+                      _menuCard(context, theme, visibleHistory.first),
+                    ],
+                  ],
                   const SizedBox(height: AppTheme.space8),
                 ],
               ),
@@ -406,25 +393,112 @@ class _HomePageState extends State<HomePage> {
     ),
   );
 
+  Widget _sectionHeader(ThemeData theme, String title, String subtitle) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 16,
+                height: 1.3,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.foreground,
+              ),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 12,
+              height: 1.4,
+              color: AppTheme.gray500,
+            ),
+          ),
+        ],
+      );
+
+  Widget _menuGrid(
+    BuildContext context,
+    ThemeData theme,
+    List<_HomeMenu> menus, {
+    required bool numbered,
+  }) => LayoutBuilder(
+    builder: (context, constraints) {
+      const gap = AppTheme.space4;
+      var columns = (constraints.maxWidth / 300).floor().clamp(1, 4).toInt();
+      var cardWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (var menu in menus)
+            SizedBox(
+              width: cardWidth,
+              child: _menuCard(
+                context,
+                theme,
+                menu,
+                number: numbered ? menu.step : null,
+              ),
+            ),
+        ],
+      );
+    },
+  );
+
   Widget _menuCard(
     BuildContext context,
     ThemeData theme,
     _HomeMenu menu, {
-    required int number,
+    int? number,
   }) => AppCard(
     padding: const EdgeInsets.all(AppTheme.space5),
     border: Border.all(color: AppTheme.gray400),
     onTap: () => context.push(menu.route),
     child: Row(
       children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: menu.color.withValues(alpha: 0.15),
-            borderRadius: AppTheme.radiusXl,
-          ),
-          child: Icon(menu.icon, size: 28, color: menu.color),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: menu.color.withValues(alpha: 0.15),
+                borderRadius: AppTheme.radiusXl,
+              ),
+              child: Icon(menu.icon, size: 28, color: menu.color),
+            ),
+            if (number != null)
+              Positioned(
+                left: -6,
+                top: -6,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: menu.color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.background, width: 2),
+                  ),
+                  child: Text(
+                    '$number',
+                    style: GoogleFonts.roboto(
+                      fontSize: 10,
+                      height: 1,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.ink900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(width: AppTheme.space4),
         Expanded(
@@ -478,13 +552,15 @@ class _HomeMenu {
     this.icon,
     this.color,
     this.permissions,
-    this.route,
-  );
+    this.route, {
+    this.step,
+  });
   final String title;
   final String description;
   final IconData icon;
   final Color color;
   final List<String> permissions;
+  final int? step;
 
   /// Pushed (not `go`) so the system back button returns here.
   final String route;

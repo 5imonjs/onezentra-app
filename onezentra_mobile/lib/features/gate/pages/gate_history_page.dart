@@ -9,15 +9,20 @@ import 'package:onezentra_mobile/features/gate/providers/gate_provider.dart';
 import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
-/// Riwayat Gate — halaman tersendiri, terpisah dari kartu Scan.
+/// Riwayat Gate — daftar transaksi gate yang bisa berdiri sendiri atau
+/// ditanam sebagai tab di halaman Riwayat terpadu.
 ///
-/// Kolom pencarian dan daftar transaksi sengaja di kartu terpisah agar
-/// tata letak lega: kartu "Pencarian" di atas, kartu "Transaksi" di bawah.
+/// Kolom pencarian dan daftar transaksi tetap di kartu terpisah agar tata
+/// letak lega: kartu "Pencarian" di atas, kartu "Transaksi" di bawah.
 class GateHistoryPage extends StatefulWidget {
-  const GateHistoryPage({super.key, this.repository});
+  const GateHistoryPage({super.key, this.repository, this.embedded = false});
 
   /// Injectable so tests can run the screen against a fake repository.
   final GateRepository? repository;
+
+  /// When true the page returns only its body, without its own AppBar, so it
+  /// can live inside the unified Riwayat tabs.
+  final bool embedded;
 
   @override
   State<GateHistoryPage> createState() => _GateHistoryPageState();
@@ -64,6 +69,30 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
     var canView = user?.hasPermission('gate.view') ?? false;
     var gate = context.watch<GateProvider>();
 
+    Widget content = !canView
+        ? _buildNoAccess()
+        : RefreshIndicator(
+            onRefresh: gate.refresh,
+            color: AppTheme.primary600,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppTheme.space4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSearchCard(gate),
+                  const SizedBox(height: AppTheme.space4),
+                  _buildListCard(gate),
+                  const SizedBox(height: AppTheme.space8),
+                ],
+              ),
+            ),
+          );
+
+    if (widget.embedded) {
+      return content;
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -77,27 +106,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: !canView
-            ? _buildNoAccess()
-            : RefreshIndicator(
-                onRefresh: gate.refresh,
-                color: AppTheme.primary600,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(AppTheme.space4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSearchCard(gate),
-                      const SizedBox(height: AppTheme.space4),
-                      _buildListCard(gate),
-                      const SizedBox(height: AppTheme.space8),
-                    ],
-                  ),
-                ),
-              ),
-      ),
+      body: SafeArea(child: content),
     );
   }
 
