@@ -68,9 +68,9 @@ class ValidationItemStatus {
 
 /// Physical condition vocabulary (canonical `FISIK_*` set).
 ///
-/// The server rejects a problem condition without a photo; the mobile app
-/// has no photo picker, so picking one of these surfaces the server message
-/// telling the operator to continue on the web app.
+/// The server rejects a problem condition without photo evidence, so the
+/// validation sheet requires a camera/gallery photo before saving one of
+/// [requiresPhoto].
 class ValidationCondition {
   ValidationCondition._();
 

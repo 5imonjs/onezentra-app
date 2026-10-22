@@ -130,6 +130,64 @@ void main() {
       expect(item.actualQty, 95);
     });
 
+    test('scanItem dengan foto memakai multipart, bukan JSON', () async {
+      String? hitEndpoint;
+      Map<String, String>? hitFields;
+      String? hitFileField;
+      String? hitFilePath;
+      var repository = ValidationRepository(
+        get: (_) async => throw StateError('unexpected GET'),
+        post: (_, _) async => throw StateError('unexpected JSON POST'),
+        postMultipart:
+            (
+              endpoint,
+              fields, {
+              required String fileField,
+              required String filePath,
+            }) async {
+              hitEndpoint = endpoint;
+              hitFields = fields;
+              hitFileField = fileField;
+              hitFilePath = filePath;
+              return {
+                'message': 'Item divalidasi',
+                'data': {
+                  'id': 31,
+                  'sj_validation_id': 9,
+                  'kode_barang': 'BRG-1',
+                  'nama_barang': 'Gula 50kg',
+                  'expected_qty': 100,
+                  'actual_qty': 95,
+                  'satuan': 'zak',
+                  'condition': 'QTY_KURANG',
+                  'photo': 'validation-photos/bukti.jpg',
+                  'status': 'MISMATCH',
+                },
+              };
+            },
+      );
+
+      var item = await repository.scanItem(
+        validationId: 9,
+        itemId: 31,
+        actualQty: 95,
+        condition: 'QTY_KURANG',
+        notes: 'kurang 5',
+        photoPath: '/tmp/bukti.jpg',
+      );
+
+      expect(hitEndpoint, '/sj-validations/9/scan');
+      expect(hitFields, {
+        'sj_validation_item_id': '31',
+        'actual_qty': '95.0',
+        'condition': 'QTY_KURANG',
+        'notes': 'kurang 5',
+      });
+      expect(hitFileField, 'photo');
+      expect(hitFilePath, '/tmp/bukti.jpg');
+      expect(item.hasPhoto, isTrue);
+    });
+
     test('stats tanpa data merosot ke nol, bukan gagal', () async {
       var repository = ValidationRepository(
         get: (_) async => {'unexpected': 'shape'},

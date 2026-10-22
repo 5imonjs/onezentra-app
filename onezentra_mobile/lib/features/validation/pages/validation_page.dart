@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/printer/thermal_label.dart';
@@ -13,6 +17,10 @@ import 'package:onezentra_mobile/features/validation/widgets/label_print_sheet.d
 import 'package:onezentra_mobile/features/validation/widgets/validation_history_card.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
+/// Resolves a photo path; [fromCamera] selects camera vs gallery.
+typedef ValidationPhotoPicker =
+    Future<String?> Function({required bool fromCamera});
+
 /// Validasi SJ — scan barcode PO untuk membuka sesi validasi, validasi
 /// tiap produk (qty aktual, kondisi, expired), lalu selesaikan sesi.
 ///
@@ -25,6 +33,7 @@ class ValidationPage extends StatefulWidget {
     this.repository,
     this.openScanner,
     this.initialScanCode,
+    this.pickPhoto,
   });
 
   /// Injectable so tests can run the screen against a fake repository.
@@ -38,6 +47,10 @@ class ValidationPage extends StatefulWidget {
   /// PO barcode to validate immediately (e.g. handed off from Check In
   /// Point). The session starts automatically once, right after bootstrap.
   final String? initialScanCode;
+
+  /// Injectable photo source so tests never open the camera or gallery.
+  /// Defaults to [ImagePicker] with a compressed 1280px JPEG.
+  final ValidationPhotoPicker? pickPhoto;
 
   @override
   State<ValidationPage> createState() => _ValidationPageState();
@@ -1207,7 +1220,7 @@ class _ValidationPageState extends State<ValidationPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => ChangeNotifierProvider<ValidationProvider>.value(
         value: _provider,
-        child: _ItemValidationSheet(item: item),
+        child: _ItemValidationSheet(item: item, pickPhoto: widget.pickPhoto),
       ),
     );
   }
@@ -1567,8 +1580,9 @@ class _ValidationPageState extends State<ValidationPage> {
 /// The sheet writes through [ValidationProvider] directly and pops `true`
 /// when the line was saved, so the caller can refresh its own state.
 class _ItemValidationSheet extends StatefulWidget {
-  const _ItemValidationSheet({required this.item});
+  const _ItemValidationSheet({required this.item, this.pickPhoto});
   final SjValidationItem item;
+  final ValidationPhotoPicker? pickPhoto;
 
   @override
   State<_ItemValidationSheet> createState() => _ItemValidationSheetState();
@@ -1584,8 +1598,11 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   final _expiredController = TextEditingController();
   String _condition = 'FISIK_BAGUS';
   DateTime? _expiredDate;
+  String? _photoPath;
+  bool _pickingPhoto = false;
   bool _saving = false;
   String? _error;
+  String? _photoError;
 
   static String _initialQty(SjValidationItem item) {
     var value = item.actualQty ?? item.expectedQty;
@@ -1709,30 +1726,8 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                 ),
                 if (ValidationCondition.requiresPhoto.contains(_condition))
                   Padding(
-                    padding: const EdgeInsets.only(top: AppTheme.space2),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          Icons.photo_camera_rounded,
-                          size: 16,
-                          color: AppTheme.warningText,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Kondisi ini wajib foto. Upload foto belum tersedia '
-                            'di aplikasi mobile — pilih kondisi lain atau '
-                            'lanjutkan validasi ini di web.',
-                            style: GoogleFonts.roboto(
-                              fontSize: 11.5,
-                              height: 1.4,
-                              color: AppTheme.warningText,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    padding: const EdgeInsets.only(top: AppTheme.space3),
+                    child: _buildPhotoField(),
                   ),
                 const SizedBox(height: AppTheme.space3),
                 // Required, not hidden in "optional": the server blocks
@@ -1808,7 +1803,11 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   isLoading: _saving,
                   onPressed:
                       _saving ||
-                          ValidationCondition.requiresPhoto.contains(_condition)
+                          _pickingPhoto ||
+                          (ValidationCondition.requiresPhoto.contains(
+                                _condition,
+                              ) &&
+                              _photoPath == null)
                       ? null
                       : _save,
                 ),
@@ -1856,6 +1855,194 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     );
   }
 
+  Widget _buildPhotoField() => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: AppTheme.warningWell,
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: AppTheme.warningText),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.photo_camera_rounded,
+              size: 16,
+              color: AppTheme.warningText,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Foto bukti *',
+                style: GoogleFonts.roboto(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.warningText,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'Kondisi ini wajib foto. Ambil langsung atau pilih dari galeri.',
+          style: GoogleFonts.roboto(
+            fontSize: 11.5,
+            height: 1.4,
+            color: AppTheme.warningText,
+          ),
+        ),
+        const SizedBox(height: AppTheme.space3),
+        if (_photoPath == null)
+          Row(
+            children: [
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Kamera',
+                  height: 44,
+                  leadingIcon: Icons.photo_camera_rounded,
+                  isLoading: _pickingPhoto,
+                  onPressed: _saving || _pickingPhoto
+                      ? null
+                      : () => _pickPhoto(fromCamera: true),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Galeri',
+                  height: 44,
+                  leadingIcon: Icons.photo_library_rounded,
+                  onPressed: _saving || _pickingPhoto
+                      ? null
+                      : () => _pickPhoto(fromCamera: false),
+                ),
+              ),
+            ],
+          )
+        else ...[
+          ClipRRect(
+            borderRadius: AppTheme.radiusLg,
+            child: Image.file(
+              File(_photoPath!),
+              width: double.infinity,
+              height: 160,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: double.infinity,
+                height: 96,
+                alignment: Alignment.center,
+                color: AppTheme.gray100,
+                child: Text(
+                  'Pratinjau tidak tersedia',
+                  style: GoogleFonts.roboto(
+                    fontSize: 12,
+                    color: AppTheme.gray500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Row(
+            children: [
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Ganti',
+                  height: 44,
+                  leadingIcon: Icons.refresh_rounded,
+                  onPressed: _saving || _pickingPhoto
+                      ? null
+                      : () => _pickPhoto(fromCamera: true),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Hapus',
+                  height: 44,
+                  leadingIcon: Icons.delete_outline_rounded,
+                  onPressed: _saving
+                      ? null
+                      : () => setState(() => _photoPath = null),
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (_photoError != null) ...[
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            _photoError!,
+            style: GoogleFonts.roboto(
+              fontSize: 11.5,
+              height: 1.4,
+              color: AppTheme.dangerText,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+
+  Future<void> _pickPhoto({required bool fromCamera}) async {
+    if (_pickingPhoto || _saving) {
+      return;
+    }
+    setState(() {
+      _pickingPhoto = true;
+      _photoError = null;
+    });
+
+    try {
+      String? path;
+      var picker = widget.pickPhoto;
+      if (picker != null) {
+        path = await picker(fromCamera: fromCamera);
+      } else {
+        var file = await ImagePicker().pickImage(
+          source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 1280,
+          imageQuality: 80,
+        );
+        path = file?.path;
+      }
+      if (!mounted) {
+        return;
+      }
+      if (path != null && path.isNotEmpty) {
+        setState(() => _photoPath = path);
+      }
+    } on PlatformException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      var denied =
+          error.code == 'camera_access_denied' ||
+          error.code == 'photo_access_denied';
+      setState(() {
+        _photoError = denied
+            ? 'Izin kamera/galeri ditolak. Aktifkan izin di pengaturan '
+                  'perangkat.'
+            : 'Foto tidak dapat diambil. Coba lagi.';
+      });
+    } catch (error, stack) {
+      debugPrint('ValidationPage._pickPhoto: ${error.runtimeType}: $error');
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      if (!mounted) {
+        return;
+      }
+      setState(() => _photoError = 'Foto tidak dapat diambil. Coba lagi.');
+    } finally {
+      if (mounted) {
+        setState(() => _pickingPhoto = false);
+      }
+    }
+  }
+
   Future<void> _pickDate() async {
     var picked = await showDatePicker(
       context: context,
@@ -1888,11 +2075,12 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
       setState(() => _error = 'Tanggal expired wajib diisi.');
       return;
     }
-    if (ValidationCondition.requiresPhoto.contains(_condition)) {
+    if (ValidationCondition.requiresPhoto.contains(_condition) &&
+        _photoPath == null) {
       setState(
         () => _error =
-            'Kondisi ini wajib foto. Lanjutkan validasi di web karena '
-            'aplikasi mobile belum mendukung upload foto.',
+            'Kondisi ini wajib foto. Ambil foto langsung atau pilih dari '
+            'galeri.',
       );
       return;
     }
@@ -1917,6 +2105,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
+      photoPath: _photoPath,
     );
 
     if (!mounted) {

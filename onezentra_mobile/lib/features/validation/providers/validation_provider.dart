@@ -248,6 +248,7 @@ class ValidationProvider extends ChangeNotifier {
     String? notes,
     int? tier,
     int? tinggiTumpukan,
+    String? photoPath,
   }) async {
     var active = _active;
     if (active == null || _actionBusy) {
@@ -269,6 +270,7 @@ class ValidationProvider extends ChangeNotifier {
         notes: notes,
         tier: tier,
         tinggiTumpukan: tinggiTumpukan,
+        photoPath: photoPath,
       );
       _active = await _repository.show(active.id);
       var updated = _active;

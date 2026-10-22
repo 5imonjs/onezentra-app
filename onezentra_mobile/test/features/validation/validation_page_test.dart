@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,6 +42,7 @@ class _FakeValidationRepository extends ValidationRepository {
   String? lastScanCode;
   double? lastActualQty;
   String? lastCondition;
+  String? lastPhotoPath;
   int? lastNpnId;
   int? lastTier;
   int? lastTinggi;
@@ -91,10 +95,12 @@ class _FakeValidationRepository extends ValidationRepository {
     String? notes,
     int? tier,
     int? tinggiTumpukan,
+    String? photoPath,
   }) async {
     scanCalls++;
     lastActualQty = actualQty;
     lastCondition = condition;
+    lastPhotoPath = photoPath;
     var current = _session().items.firstWhere(
       (item) => item.id == itemId,
       orElse: () => _session().items.first,
@@ -197,13 +203,18 @@ Future<void> _pumpValidationPage(
   AuthProvider auth,
   ValidationRepository repository, {
   Future<String?> Function()? openScanner,
+  ValidationPhotoPicker? pickPhoto,
 }) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<AuthProvider>.value(
       value: auth,
       child: MaterialApp(
         theme: AppTheme.dark,
-        home: ValidationPage(repository: repository, openScanner: openScanner),
+        home: ValidationPage(
+          repository: repository,
+          openScanner: openScanner,
+          pickPhoto: pickPhoto,
+        ),
       ),
     ),
   );
@@ -403,6 +414,76 @@ void main() {
     expect(repository.scanCalls, 1);
     expect(repository.lastActualQty, 100);
     expect(repository.lastCondition, 'FISIK_BAGUS');
+  });
+
+  testWidgets('kondisi wajib foto mengambil kamera lalu mengirim path', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(sessionToOpen: _openSession());
+    var auth = await _loginAuth();
+    late File photo;
+    await tester.runAsync(() async {
+      var tempDir = await Directory.systemTemp.createTemp('validasi-photo');
+      addTearDown(() => tempDir.delete(recursive: true));
+      photo = File('${tempDir.path}/bukti.png');
+      await photo.writeAsBytes(
+        base64Decode(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk'
+          '+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        ),
+      );
+    });
+    bool? pickedFromCamera;
+
+    await _pumpValidationPage(
+      tester,
+      auth,
+      repository,
+      pickPhoto: ({required fromCamera}) async {
+        pickedFromCamera = fromCamera;
+        return photo.path;
+      },
+    );
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Gula 50kg'));
+    await tester.tap(find.text('Gula 50kg'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Qty kurang'));
+    await tester.tap(find.text('Qty kurang'));
+    await tester.pumpAndSettle();
+    expect(find.text('Foto bukti *'), findsOneWidget);
+
+    var save = find.widgetWithText(AppPrimaryButton, 'Simpan Validasi');
+    expect(
+      tester.widget<AppPrimaryButton>(save).onPressed,
+      isNull,
+      reason: 'foto wajib belum dipilih',
+    );
+
+    await tester.ensureVisible(find.text('Kamera'));
+    await tester.tap(find.text('Kamera'));
+    await tester.pumpAndSettle();
+
+    expect(pickedFromCamera, isTrue);
+    expect(find.text('Ganti'), findsOneWidget);
+    expect(
+      tester.widget<AppPrimaryButton>(save).onPressed,
+      isNotNull,
+      reason: 'foto sudah siap diunggah',
+    );
+
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(repository.scanCalls, 1);
+    expect(repository.lastCondition, 'QTY_KURANG');
+    expect(repository.lastPhotoPath, photo.path);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('tombol Sesuai memvalidasi satu ketuk tanpa sheet', (

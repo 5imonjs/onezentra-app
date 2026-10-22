@@ -233,10 +233,13 @@ class ApiClient {
     await prefs.remove(_userKey);
   }
 
-  /// Get headers for authenticated requests
-  Map<String, String> _getHeaders({bool requireAuth = true}) {
+  /// Get headers for authenticated requests.
+  ///
+  /// Multipart requests pass `json: false` so `http` can set the multipart
+  /// boundary itself; sending `application/json` here would corrupt uploads.
+  Map<String, String> _getHeaders({bool requireAuth = true, bool json = true}) {
     var headers = <String, String>{
-      'Content-Type': 'application/json',
+      if (json) 'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
 
@@ -391,6 +394,32 @@ class ApiClient {
     requireAuth: requireAuth,
   );
 
+  /// POST a multipart form with one file field.
+  ///
+  /// Used for evidence photos. Uploads get a longer timeout than a JSON call:
+  /// a warehouse connection can push a few hundred KB far slower than a small
+  /// request, and aborting halfway leaves the operator unsure whether the
+  /// photo reached the server.
+  Future<dynamic> postMultipart(
+    String endpoint,
+    Map<String, String> fields, {
+    required String fileField,
+    required String filePath,
+    bool requireAuth = true,
+  }) => _send(
+    endpoint,
+    () async {
+      var request = http.MultipartRequest('POST', _uri(endpoint))
+        ..headers.addAll(_getHeaders(requireAuth: requireAuth, json: false))
+        ..fields.addAll(fields);
+      request.files.add(await http.MultipartFile.fromPath(fileField, filePath));
+      var streamed = await request.send();
+      return http.Response.fromStream(streamed);
+    },
+    requireAuth: requireAuth,
+    timeout: const Duration(seconds: 60),
+  );
+
   /// PUT request
   Future<dynamic> put(
     String endpoint,
@@ -439,6 +468,7 @@ class ApiClient {
     String endpoint,
     Future<http.Response> Function() request, {
     required bool requireAuth,
+    Duration? timeout,
   }) async {
     if (requireAuth && isExpired) {
       unawaited(_handleUnauthorized());
@@ -447,7 +477,7 @@ class ApiClient {
 
     http.Response response;
     try {
-      response = await request().timeout(requestTimeout);
+      response = await request().timeout(timeout ?? requestTimeout);
     } on Object catch (error) {
       throw mapTransportError(error);
     }

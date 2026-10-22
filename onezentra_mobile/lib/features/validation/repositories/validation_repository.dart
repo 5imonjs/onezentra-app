@@ -8,24 +8,37 @@ typedef ValidationGet = Future<dynamic> Function(String endpoint);
 typedef ValidationPost =
     Future<dynamic> Function(String endpoint, Map<String, dynamic> body);
 
+/// Multipart POST transport for validation lines that carry a photo.
+typedef ValidationPostMultipart =
+    Future<dynamic> Function(
+      String endpoint,
+      Map<String, String> fields, {
+      required String fileField,
+      required String filePath,
+    });
+
 /// Data access for the Validasi SJ menu.
 ///
 /// Mirrors the endpoints behind `/api/v1/sj-validations` used by the web app:
 /// scan a PO barcode (`start-by-code`), validate lines (`{id}/scan`),
 /// then `complete` or `cancel` the session.
 ///
-/// Photo upload is intentionally unsupported: the mobile app has no image
-/// picker dependency, so a problem condition answers with the server's
-/// "Foto wajib diunggah" message telling the operator to continue on web.
+/// Problem conditions require photo evidence, so [scanItem] switches to a
+/// multipart request whenever the caller supplies a [photoPath].
 class ValidationRepository {
-  ValidationRepository({ValidationGet? get, ValidationPost? post})
-    : _get = get ?? _defaultGet,
-      _post = post ?? _defaultPost;
+  ValidationRepository({
+    ValidationGet? get,
+    ValidationPost? post,
+    ValidationPostMultipart? postMultipart,
+  }) : _get = get ?? _defaultGet,
+       _post = post ?? _defaultPost,
+       _postMultipart = postMultipart ?? _defaultPostMultipart;
 
   /// Overrides the transports so widget tests can exercise the flow without
   /// a server. Defaults hit [ApiClient].
   final ValidationGet _get;
   final ValidationPost _post;
+  final ValidationPostMultipart _postMultipart;
 
   static Future<dynamic> _defaultGet(String endpoint) =>
       ApiClient().get(endpoint);
@@ -34,6 +47,18 @@ class ValidationRepository {
     String endpoint,
     Map<String, dynamic> body,
   ) => ApiClient().post(endpoint, body);
+
+  static Future<dynamic> _defaultPostMultipart(
+    String endpoint,
+    Map<String, String> fields, {
+    required String fileField,
+    required String filePath,
+  }) => ApiClient().postMultipart(
+    endpoint,
+    fields,
+    fileField: fileField,
+    filePath: filePath,
+  );
 
   static Map<String, dynamic> _expectObject(dynamic response) {
     if (response is! Map) {
@@ -108,6 +133,9 @@ class ValidationRepository {
 
   /// Validates one line: actual qty, condition, expiry, optional product
   /// barcode and stack measurements. Answers with the updated line.
+  ///
+  /// A [photoPath] turns the request into multipart form data with the file
+  /// under `photo`, matching the web validation form.
   Future<SjValidationItem> scanItem({
     required int validationId,
     required int itemId,
@@ -118,19 +146,30 @@ class ValidationRepository {
     String? notes,
     int? tier,
     int? tinggiTumpukan,
+    String? photoPath,
   }) async {
-    var body = _expectObject(
-      await _post('/sj-validations/$validationId/scan', {
-        'sj_validation_item_id': itemId,
-        'actual_qty': actualQty,
-        if (barcode?.isNotEmpty ?? false) 'barcode': barcode,
-        'condition': condition,
-        if (expiredDate?.isNotEmpty ?? false) 'expired_date': expiredDate,
-        if (notes != null && notes.isNotEmpty) 'notes': notes,
-        'tier': ?tier,
-        'tinggi_tumpukan': ?tinggiTumpukan,
-      }),
-    );
+    var fields = <String, dynamic>{
+      'sj_validation_item_id': itemId,
+      'actual_qty': actualQty,
+      if (barcode?.isNotEmpty ?? false) 'barcode': barcode,
+      'condition': condition,
+      if (expiredDate?.isNotEmpty ?? false) 'expired_date': expiredDate,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+      'tier': ?tier,
+      'tinggi_tumpukan': ?tinggiTumpukan,
+    };
+    var endpoint = '/sj-validations/$validationId/scan';
+    var response = photoPath != null && photoPath.isNotEmpty
+        ? await _postMultipart(
+            endpoint,
+            <String, String>{
+              for (var entry in fields.entries) entry.key: '${entry.value}',
+            },
+            fileField: 'photo',
+            filePath: photoPath,
+          )
+        : await _post(endpoint, fields);
+    var body = _expectObject(response);
     var data = body['data'];
     if (data is! Map) {
       throw const ApiException(

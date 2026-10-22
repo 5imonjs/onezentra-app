@@ -34,7 +34,9 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>ONEZENTRA menggunakan kamera untuk memindai barcode PO / surat jalan di Check In Point.</string>
+	<string>ONEZENTRA menggunakan kamera untuk memindai barcode PO dan mengambil foto bukti kondisi barang.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ONEZENTRA memerlukan akses galeri untuk memilih foto bukti kondisi barang saat validasi.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ONEZENTRA menggunakan jaringan lokal untuk menghubungi server.</string>
 	<key>UIApplicationSceneManifest</key>

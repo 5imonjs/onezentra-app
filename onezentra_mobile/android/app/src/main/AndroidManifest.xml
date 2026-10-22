@@ -3,7 +3,9 @@
          permission into the debug manifest, so without it every API call fails
          silently on a real device. -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Camera for the Check In Point barcode scanner (mobile_scanner). -->
+    <!-- Camera for the Check In Point barcode scanner (mobile_scanner) and
+         validation evidence photos (image_picker). Gallery uses the Android
+         system photo picker, so no storage permission is needed. -->
     <uses-permission android:name="android.permission.CAMERA"/>
 
     <!-- Bluetooth thermal printer (label batch).
