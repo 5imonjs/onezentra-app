@@ -34,6 +34,9 @@ class DashboardController extends Controller
             return UserActivityLog::query()
                 ->where('occurred_at', '>=', $since)
                 ->whereHas('user', fn ($query) => $query->forUserDepot($request->user())
+                    // Panel mobilitas hanya untuk aktivitas pengguna operasional;
+                    // akun admin_master tidak ditampilkan agar metrik tidak bias.
+                    ->where('level', '!=', 'admin_master')
                     ->when($depot, fn ($q) => $q->where('users.kode_depo', $depot)));
         };
 
@@ -100,6 +103,7 @@ class DashboardController extends Controller
         $topUsers = User::query()
             ->forUserDepot($request->user())
             ->when($depot, fn ($query) => $query->where('users.kode_depo', $depot))
+            ->where('level', '!=', 'admin_master')
             ->where('status', 'active')
             ->whereHas('activityLogs', fn ($query) => $query->where('occurred_at', '>=', $since))
             ->withCount(['activityLogs as usage_count' => fn ($query) => $query->where('occurred_at', '>=', $since)])
@@ -306,7 +310,9 @@ class DashboardController extends Controller
         // Dua window tren dalam satu query: 0-7 hari vs 7-14 hari lalu.
         $activity = UserActivityLog::query()
             ->where('occurred_at', '>=', $week->copy()->subDays(7))
-            ->whereHas('user', fn ($query) => $query->forUserDepot($user))
+            ->whereHas('user', fn ($query) => $query->forUserDepot($user)
+                // Samakan dengan panel mobilitas: admin_master tidak dihitung.
+                ->where('level', '!=', 'admin_master'))
             ->selectRaw(
                 'SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) as current_7d, '
                 .'SUM(CASE WHEN occurred_at < ? THEN 1 ELSE 0 END) as prev_7d',

@@ -13,6 +13,7 @@ use App\Models\Role;
 use App\Models\SjValidation;
 use App\Models\StandarisasiTumpukan;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use App\Services\OpnameExpiredService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -186,5 +187,31 @@ class DashboardSummaryTest extends TestCase
         $this->assertSame(1, $res->json('data.inbound_selisih.lebih'));
         $this->assertSame(1, $res->json('data.sla.rk_checked_in_count'));
         $this->assertSame(2, $res->json('data.sla.rk_checked_in_oldest_days'));
+    }
+
+    public function test_summary_activity_trend_excludes_admin_master(): void
+    {
+        $user = $this->userWith('dash-trend@example.com', ['dashboard.view']);
+        $master = $this->userWith('dash-trend-master@example.com', ['dashboard.view']);
+        $master->forceFill(['level' => 'admin_master'])->save();
+
+        UserActivityLog::create([
+            'user_id' => $user->id,
+            'method' => 'GET',
+            'route' => 'api/v1/dashboard',
+            'occurred_at' => now(),
+        ]);
+        UserActivityLog::create([
+            'user_id' => $master->id,
+            'method' => 'POST',
+            'route' => 'api/v1/rencana-kirim',
+            'occurred_at' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/dashboard/summary')
+            ->assertOk()
+            ->assertJsonPath('data.activity_trend.current_7d', 1);
     }
 }
