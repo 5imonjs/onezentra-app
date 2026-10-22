@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreUserRequest;
+use App\Http\Requests\Api\V1\SyncUserDepotsRequest;
 use App\Http\Requests\Api\V1\UpdateUserRequest;
 use App\Imports\UserImport;
+use App\Models\DepotSetting;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\LikePattern;
@@ -216,6 +218,90 @@ class UserController extends Controller
                 'imported' => $import->imported,
                 'updated' => $import->updated,
                 'errors' => $import->errors,
+            ],
+        ]);
+    }
+
+    /**
+     * Get depot assignments for a user.
+     * Returns all depots with assignment status.
+     */
+    public function getDepots(User $user)
+    {
+        $this->authorizeDepot($user);
+
+        // Direct query to avoid ambiguous column issue
+        $assignedCodes = \DB::table('user_depots')
+            ->where('user_id', $user->id)
+            ->pluck('kode_depo')
+            ->toArray();
+
+        $allDepots = DepotSetting::where('is_active', true)
+            ->orderBy('region_id')
+            ->orderBy('kode_depo')
+            ->get(['kode_depo', 'nama_depo', 'region_id']);
+
+        $data = $allDepots->map(function ($depot) use ($assignedCodes) {
+            return [
+                'kode_depo' => $depot->kode_depo,
+                'nama_depo' => $depot->nama_depo,
+                'region_id' => $depot->region_id,
+                'assigned' => in_array($depot->kode_depo, $assignedCodes, true),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'assigned_count' => count($assignedCodes),
+        ]);
+    }
+
+    /**
+     * Sync depot assignments for a user.
+     * Expects array of kode_depo to assign.
+     */
+    public function syncDepots(SyncUserDepotsRequest $request, User $user)
+    {
+        $this->authorizeDepot($user);
+
+        $validated = $request->validated();
+        $depotCodes = $validated['depot_codes'] ?? [];
+
+        // Verify all depots exist and are active
+        $existingDepots = DepotSetting::whereIn('kode_depo', $depotCodes)
+            ->where('is_active', true)
+            ->pluck('kode_depo')
+            ->toArray();
+
+        $invalid = array_diff($depotCodes, $existingDepots);
+        if (! empty($invalid)) {
+            return response()->json([
+                'message' => 'Depot berikut tidak valid atau tidak aktif: '.implode(', ', $invalid),
+            ], 422);
+        }
+
+        // Sync pivot table using direct query (avoid ambiguous column)
+        \DB::table('user_depots')->where('user_id', $user->id)->delete();
+        $syncData = [];
+        foreach ($existingDepots as $kodeDepo) {
+            $syncData[] = [
+                'user_id' => $user->id,
+                'kode_depo' => $kodeDepo,
+                'assigned_at' => now(),
+            ];
+        }
+        if (! empty($syncData)) {
+            \DB::table('user_depots')->insert($syncData);
+        }
+
+        // Clear permission cache since depot_codes changed
+        User::clearPermissionCache($user->id);
+
+        return response()->json([
+            'message' => 'Depot assignments updated',
+            'data' => [
+                'assigned' => $existingDepots,
+                'count' => count($existingDepots),
             ],
         ]);
     }

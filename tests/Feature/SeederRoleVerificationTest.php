@@ -190,7 +190,7 @@ class SeederRoleVerificationTest extends TestCase
         // lintas-depo secara menyeluruh (+ GA viewer luas, keputusan 2026-10-09).
         $globalViewAll = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'depot.view_all'))
             ->pluck('slug')->sort()->values()->all();
-        $this->assertSame(['admin_master', 'admin_planner', 'bh', 'ga', 'staff_logistic'], $globalViewAll);
+        $this->assertSame(['admin_master', 'ga', 'staff_logistic'], $globalViewAll);
         $this->assertFalse(
             Role::where('slug', 'blc')->first()->permissions()->where('slug', 'depot.view_all')->exists(),
             'blc tidak boleh memegang depot.view_all (saklar global)'
@@ -300,9 +300,10 @@ class SeederRoleVerificationTest extends TestCase
 
         // Total sistem tetap konsisten: 12 role lama + ga + bh, 102 permission
         // (99 lama + 3 sesi opname), dan grant hasil turunan.
+        // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
         $this->assertSame(107, Permission::count());
-        $this->assertSame(569, DB::table('role_permission')->count());
+        $this->assertSame(567, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void

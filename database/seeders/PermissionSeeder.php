@@ -242,7 +242,6 @@ class PermissionSeeder extends Seeder
                 'rencana_kirim.create', 'rencana_kirim.edit', 'rencana_kirim.delete',
                 'rencana_kirim.import',
                 'users.view', 'users.import', 'roles.import', 'roles.export', 'roles.template',
-                'depot.view_all',
                 'biaya_thl.view', 'biaya_thl.create', 'biaya_thl.edit',
                 'biaya_thl.import',
                 'biaya_retribusi.view', 'biaya_retribusi.create', 'biaya_retribusi.edit',

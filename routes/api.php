@@ -219,6 +219,10 @@ Route::prefix('v1')->group(function () {
         Route::put('/{user}', [UserController::class, 'update'])->middleware('permission:users.edit');
         Route::delete('/{user}', [UserController::class, 'destroy'])->middleware('permission:users.delete');
         Route::post('/import', [UserController::class, 'import'])->middleware(['permission:users.import|users.create', 'throttle:20,1,heavy-write']);
+
+        // Depot assignments untuk Region Manager (multi-depot via user_depots pivot)
+        Route::get('/{user}/depots', [UserController::class, 'getDepots'])->middleware('permission:users.view');
+        Route::put('/{user}/depots', [UserController::class, 'syncDepots'])->middleware('permission:users.edit');
     });
 
     Route::prefix('rencana-kirim')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {

@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             EmailNotificationSeeder::class,
             DepotSettingSeeder::class,
             ApprovalAssignmentSeeder::class,
+            UserDepotSeeder::class,
         ]);
     }
 }

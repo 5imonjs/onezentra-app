@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -45,43 +46,6 @@ class User extends Authenticatable
         return ! $this->hasPermission('depot.view_all');
     }
 
-    /**
-     * Cek apakah sebuah baris data (dengan kode_depo/nama_depo) boleh diakses user.
-     */
-    public function canAccessDepotRow(?string $rowKodeDepo, ?string $rowNamaDepo = null): bool
-    {
-        if (! $this->isDepotScoped()) {
-            return true;
-        }
-
-        if ($rowKodeDepo !== $this->kode_depo) {
-            return false;
-        }
-
-        return blank($rowNamaDepo) || $rowNamaDepo === $this->nama_depo;
-    }
-
-    /**
-     * Isi kode_depo/nama_depo dari user untuk data baru.
-     * Admin master boleh menentukan sendiri (dijisi default dari depo-nya bila kosong).
-     */
-    public function depotAttributes(array $attributes = []): array
-    {
-        if ($this->isDepotScoped()) {
-            $attributes['kode_depo'] = $this->kode_depo;
-            $attributes['nama_depo'] = $this->nama_depo;
-
-            return $attributes;
-        }
-
-        if (! blank($this->kode_depo)) {
-            $attributes['kode_depo'] ??= $this->kode_depo;
-            $attributes['nama_depo'] ??= $this->nama_depo;
-        }
-
-        return $attributes;
-    }
-
     protected function casts(): array
     {
         return [
@@ -95,6 +59,120 @@ class User extends Authenticatable
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'role_user')->withTimestamps();
+    }
+
+    /**
+     * Depot yang dapat diakses user (pivot table user_depots).
+     * Untuk user depot-scoped: daftar depot yang dikelola.
+     * Untuk user global (depot.view_all): kosong (akses semua lewat permission).
+     */
+    public function depots(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            DepotSetting::class,
+            'user_depots',
+            'user_id',       // FK di pivot ke users.id
+            'kode_depo',     // FK di pivot ke depot_settings.kode_depo
+            'id',            // PK di users
+            'kode_depo'      // PK di depot_settings
+        )
+            ->withTimestamps()
+            ->withPivot('assigned_at');
+    }
+
+    /**
+     * Kode depot yang dapat diakses user (untuk scoping query).
+     * Menggabungkan pivot user_depots + fallback ke kolom legacy kode_depo.
+     */
+    public function getDepotCodesAttribute(): array
+    {
+        // User global (punya depot.view_all) tidak dibatasi depot_codes
+        if (! $this->isDepotScoped()) {
+            return [];
+        }
+
+        // Direct query to avoid ambiguous column issue with BelongsToMany
+        $codes = \DB::table('user_depots')
+            ->where('user_id', $this->id)
+            ->pluck('kode_depo')
+            ->toArray();
+
+        // Fallback ke kolom legacy untuk backward compatibility
+        // (user lama yang belum dimigrasi ke user_depots)
+        if (empty($codes) && ! blank($this->kode_depo)) {
+            $codes = [$this->kode_depo];
+        }
+
+        return array_values(array_unique($codes));
+    }
+
+    /**
+     * Cek apakah sebuah baris data (dengan kode_depo/nama_depo) boleh diakses user.
+     * Mendukung multi-depot via user_depots pivot.
+     */
+    public function canAccessDepotRow(?string $rowKodeDepo, ?string $rowNamaDepo = null): bool
+    {
+        if (! $this->isDepotScoped()) {
+            return true;
+        }
+
+        if (! $rowKodeDepo) {
+            return false;
+        }
+
+        $allowedCodes = $this->depot_codes;
+
+        if (empty($allowedCodes)) {
+            // User scoped tapi tidak punya depot ditugaskan -> tidak bisa akses apa pun
+            return false;
+        }
+
+        if (! in_array($rowKodeDepo, $allowedCodes, true)) {
+            return false;
+        }
+
+        // nama_depo opsional: jika dikirim, cocokkan; jika tidak, lewatkan
+        if (! blank($rowNamaDepo)) {
+            // Cek nama_depo dari depot_settings untuk validasi ketat
+            $depot = DepotSetting::where('kode_depo', $rowKodeDepo)->first();
+            if ($depot && $depot->nama_depo !== $rowNamaDepo) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Isi kode_depo/nama_depo dari user untuk data baru.
+     * - Depot-scoped: gunakan depot pertama dari user_depots (atau legacy kode_depo)
+     * - Global: biarkan seperti sebelumnya (default dari user jika ada)
+     */
+    public function depotAttributes(array $attributes = []): array
+    {
+        if ($this->isDepotScoped()) {
+            $codes = $this->depot_codes;
+            if (! empty($codes)) {
+                $primaryDepot = DepotSetting::where('kode_depo', $codes[0])->first();
+                $attributes['kode_depo'] = $codes[0];
+                // Fallback ke nama_depo dari user jika DepotSetting tidak ditemukan
+                $attributes['nama_depo'] = $primaryDepot?->nama_depo ?? $this->nama_depo ?? $codes[0];
+            } elseif (! blank($this->kode_depo)) {
+                // Fallback legacy: lookup nama_depo dari DepotSetting
+                $legacyDepot = DepotSetting::where('kode_depo', $this->kode_depo)->first();
+                $attributes['kode_depo'] = $this->kode_depo;
+                $attributes['nama_depo'] = $legacyDepot?->nama_depo ?? $this->nama_depo ?? $this->kode_depo;
+            }
+
+            return $attributes;
+        }
+
+        if (! blank($this->kode_depo)) {
+            $attributes['kode_depo'] ??= $this->kode_depo;
+            $attributes['nama_depo'] ??= $this->nama_depo;
+        }
+
+        return $attributes;
     }
 
     /**

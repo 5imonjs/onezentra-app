@@ -20,13 +20,13 @@ trait HasDepotScope
             return $query;
         }
 
-        return $query->where('kode_depo', $user->kode_depo)
-            ->when(! blank($user->nama_depo), function (Builder $q) use ($user): Builder {
-                return $q->where(function (Builder $inner) use ($user): void {
-                    $inner->where('nama_depo', $user->nama_depo)
-                        ->orWhereNull('nama_depo')
-                        ->orWhere('nama_depo', '');
-                });
-            });
+        $codes = $user->depot_codes;
+
+        if (empty($codes)) {
+            // User scoped tapi tidak punya depot ditugaskan -> return empty result
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('kode_depo', $codes);
     }
 }
