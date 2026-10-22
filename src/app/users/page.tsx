@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import React from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { users, getErrorMessage } from '@/lib/api';
+import { users, getErrorMessage, type UserDepot } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
@@ -80,6 +80,9 @@ export default function UsersPage() {
   const [editItem, setEditItem] = useState<UserItem | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [editTab, setEditTab] = useState<'profile' | 'depots'>('profile');
+  const [userDepots, setUserDepots] = useState<UserDepot[]>([]);
+  const [loadingDepots, setLoadingDepots] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -137,6 +140,52 @@ export default function UsersPage() {
       level: item.level || 'staff_logistic',
       status: item.status || 'active',
     });
+    setEditTab('profile');
+    // Fetch depot assignments
+    setLoadingDepots(true);
+    users.getDepots(item.id)
+      .then(res => {
+        setUserDepots(res.data.data);
+      })
+      .catch(() => {
+        setUserDepots([]);
+      })
+      .finally(() => {
+        setLoadingDepots(false);
+      });
+  };
+
+  const handleToggleDepot = async (kodeDepo: string, assigned: boolean) => {
+    if (!editItem) return;
+    const currentAssigned = userDepots.filter(d => d.assigned).map(d => d.kode_depo);
+    const newAssigned = assigned
+      ? [...currentAssigned, kodeDepo]
+      : currentAssigned.filter(k => k !== kodeDepo);
+
+    try {
+      await users.syncDepots(editItem.id, newAssigned);
+      setUserDepots(prev => prev.map(d => d.kode_depo === kodeDepo ? { ...d, assigned } : d));
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengubah akses depot'));
+    }
+  };
+
+  const handleBulkToggleRegion = async (regionId: string, assign: boolean) => {
+    if (!editItem) return;
+    const regionDepots = userDepots.filter(d => d.region_id === regionId);
+    const currentAssigned = userDepots.filter(d => d.assigned).map(d => d.kode_depo);
+    const regionCodes = regionDepots.map(d => d.kode_depo);
+
+    const newAssigned = assign
+      ? [...new Set([...currentAssigned, ...regionCodes])]
+      : currentAssigned.filter(k => !regionCodes.includes(k));
+
+    try {
+      await users.syncDepots(editItem.id, newAssigned);
+      setUserDepots(prev => prev.map(d => d.region_id === regionId ? { ...d, assigned: assign } : d));
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mengubah akses depot per region'));
+    }
   };
 
   const handleSaveEdit = () => {
@@ -658,10 +707,10 @@ export default function UsersPage() {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal open={!!editItem} onClose={() => { setEditItem(null); setEditForm({}); }} title="Edit User" subtitle="Edit data pengguna" size="md"
+      <Modal open={!!editItem} onClose={() => { setEditItem(null); setEditForm({}); setUserDepots([]); setEditTab('profile'); }} title="Edit User" subtitle="Edit data pengguna" size="lg"
         footer={
           <>
-            <button onClick={() => { setEditItem(null); setEditForm({}); }} className="btn-secondary">Batal</button>
+            <button onClick={() => { setEditItem(null); setEditForm({}); setUserDepots([]); setEditTab('profile'); }} className="btn-secondary">Batal</button>
             <button onClick={handleSaveEdit} disabled={saving} className="btn-primary disabled:opacity-50">
               <span className="flex items-center gap-2">
                 {saving ? (
@@ -681,54 +730,181 @@ export default function UsersPage() {
         }
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="full-name-2">Full Name</label>
-              <input id="full-name-2" value={editForm.full_name || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, full_name: e.target.value }))} className="input-field" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="email-2">Email</label>
-              <input id="email-2" type="email" value={editForm.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, email: e.target.value }))} className="input-field" />
-            </div>
+          {/* Tab Navigation */}
+          <div className="border-b border-gray-200">
+            <nav className="flex gap-1" role="tablist" aria-label="Edit user tabs">
+              <button
+                role="tab"
+                aria-selected={editTab === 'profile'}
+                onClick={() => setEditTab('profile')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  editTab === 'profile'
+                    ? 'bg-surface-card text-primary-600 border-b-2 border-primary-600 -mb-px'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Data User
+              </button>
+              <button
+                role="tab"
+                aria-selected={editTab === 'depots'}
+                onClick={() => setEditTab('depots')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  editTab === 'depots'
+                    ? 'bg-surface-card text-primary-600 border-b-2 border-primary-600 -mb-px'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <svg className="w-4 h-4 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21" />
+                </svg>
+                Depot Akses
+              </button>
+            </nav>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password-kosongkan-jika-tidak-diubah">Password (kosongkan jika tidak diubah)</label>
-              <input id="password-kosongkan-jika-tidak-diubah" type="password" value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password-2">Konfirmasi Password</label>
-              <input id="konfirmasi-password-2" type="password" value={editForm.password_confirmation || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-depo-2">Kode Depo</label>
-              <input id="kode-depo-2" value={editForm.kode_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, kode_depo: e.target.value }))} className="input-field" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="nama-depo-2">Nama Depo</label>
-              <input id="nama-depo-2" value={editForm.nama_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, nama_depo: e.target.value }))} className="input-field" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat-2">Alamat</label>
-            <textarea id="alamat-2" value={editForm.alamat || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="level-2">Level</label>
-              <select id="level-2" value={editForm.level || 'staff_logistic'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, level: e.target.value }))} className="select-field">
-                {levels.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="status-2">Status</label>
-              <select id="status-2" value={editForm.status || 'active'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, status: e.target.value }))} className="select-field">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+
+          {/* Tab Panels */}
+          <div className="space-y-4" role="tabpanel">
+            {/* Data User Tab */}
+            {editTab === 'profile' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="full-name-2">Full Name</label>
+                    <input id="full-name-2" value={editForm.full_name || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, full_name: e.target.value }))} className="input-field" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="email-2">Email</label>
+                    <input id="email-2" type="email" value={editForm.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, email: e.target.value }))} className="input-field" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password-kosongkan-jika-tidak-diubah">Password (kosongkan jika tidak diubah)</label>
+                    <input id="password-kosongkan-jika-tidak-diubah" type="password" value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password-2">Konfirmasi Password</label>
+                    <input id="konfirmasi-password-2" type="password" value={editForm.password_confirmation || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-depo-2">Kode Depo</label>
+                    <input id="kode-depo-2" value={editForm.kode_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, kode_depo: e.target.value }))} className="input-field" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="nama-depo-2">Nama Depo</label>
+                    <input id="nama-depo-2" value={editForm.nama_depo || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, nama_depo: e.target.value }))} className="input-field" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat-2">Alamat</label>
+                  <textarea id="alamat-2" value={editForm.alamat || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="level-2">Level</label>
+                    <select id="level-2" value={editForm.level || 'staff_logistic'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, level: e.target.value }))} className="select-field">
+                      {levels.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="status-2">Status</label>
+                    <select id="status-2" value={editForm.status || 'active'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, status: e.target.value }))} className="select-field">
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Depot Akses Tab */}
+            {editTab === 'depots' && (
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                    <div className="text-sm text-amber-800">
+                      <p className="font-medium">Hanya untuk user tanpa permission <code>depot.view_all</code></p>
+                      <p>User dengan permission <code>depot.view_all</code> (Admin Master, Staff Logistic, GA) otomatis memiliki akses ke semua depot.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">Pilih Depot yang Dikelola</h3>
+                  {loadingDepots && <span className="text-xs text-gray-500 animate-pulse">Memuat...</span>}
+                </div>
+
+                {userDepots.length > 0 ? (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {/* Group by Region */}
+                    {Object.entries(userDepots.reduce((groups, depot) => {
+                      const region = depot.region_id || 'Tanpa Region';
+                      groups[region] = groups[region] || [];
+                      groups[region].push(depot);
+                      return groups;
+                    }, {} as Record<string, UserDepot[]>)).map(([regionId, depots]) => (
+                      <div key={regionId} className="border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21M8.25 8.25h.008v.008H8.25V8.25zm0 3.75h.008v.008H8.25V12zm0 3.75h.008v.008H8.25v-.008zm3.75-7.5h.008v.008H12V8.25zm0 3.75h.008v.008H12V12zm0 3.75h.008v.008H12v-.008zM15.75 8.25h.008v.008h-.008V8.25zm0 3.75h.008v.008h-.008V12zm0 3.75h.008v.008h-.008v-.008z" />
+                            </svg>
+                            <span className="font-medium text-gray-900">{regionId}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">{depots.filter(d => d.assigned).length} / {depots.length} depot</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const allAssigned = depots.every(d => d.assigned);
+                                handleBulkToggleRegion(regionId, !allAssigned);
+                              }}
+                              className="text-xs font-medium text-primary-600 hover:text-primary-700"
+                            >
+                              {depots.every(d => d.assigned) ? 'Hapus semua' : 'Pilih semua'}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="divide-y divide-gray-100">
+                          {depots.map(depot => (
+                            <label key={depot.kode_depo} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={depot.assigned}
+                                  onChange={() => handleToggleDepot(depot.kode_depo, !depot.assigned)}
+                                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+                                />
+                                <div>
+                                  <p className="font-mono font-medium text-gray-900">{depot.kode_depo}</p>
+                                  <p className="text-sm text-gray-500">{depot.nama_depo}</p>
+                                </div>
+                              </div>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${depot.assigned ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {depot.assigned ? 'Aktif' : 'Tidak aktif'}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg className="w-12 h-12 mx-auto text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21" />
+                    </svg>
+                    <p className="mt-2">Belum ada data depot</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </Modal>

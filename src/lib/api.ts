@@ -577,6 +577,18 @@ export const receivings = {
   template: () => apiClient.get('/receivings/template', { responseType: 'blob' }),
 };
 
+export interface UserDepot {
+  kode_depo: string;
+  nama_depo: string;
+  region_id: string | null;
+  assigned: boolean;
+}
+
+export interface UserDepotsResponse {
+  data: UserDepot[];
+  assigned_count: number;
+}
+
 export const users = {
   list: (params?: Record<string, unknown>) => apiClient.get('/users', { params }),
   import: (file: File) => {
@@ -589,6 +601,10 @@ export const users = {
   create: (data: Record<string, unknown>) => apiClient.post('/users', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/users/${id}`, data),
   delete: (id: number) => apiClient.delete(`/users/${id}`),
+
+  // Depot assignments for Region Manager
+  getDepots: (userId: number) => apiClient.get<UserDepotsResponse>(`/users/${userId}/depots`),
+  syncDepots: (userId: number, depotCodes: string[]) => apiClient.put(`/users/${userId}/depots`, { depot_codes: depotCodes }),
 };
 
 export const emailSettings = {
