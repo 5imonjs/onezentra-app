@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 
@@ -29,16 +33,25 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _showServer = false;
   bool _savingServer = false;
   String? _serverNotice;
+  String? _serverError;
   final _serverController = TextEditingController();
+  Timer? _cooldownTimer;
+  int _cooldownRemaining = 0;
+  AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
 
-  /// Practical email check: `local@domain.tld`, without the classic `{2,4}` TLD
-  /// length cap that rejected valid addresses such as `user@studio.museum`.
-  static final RegExp _emailPattern = RegExp(
-    r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$',
+  /// Local part accepts the RFC characters the server accepts, but extra
+  /// checks below reject leading/trailing dots, consecutive dots, and domain
+  /// labels that start or end with a hyphen. The previous regex let
+  /// `a..b@example.com` reach Laravel, which then answered with an English
+  /// validation message.
+  static final RegExp _localPartPattern = RegExp(
+    r"^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+$",
   );
+  static final RegExp _domainLabelPattern = RegExp(r'^[A-Za-z0-9-]+$');
+  static final RegExp _tldPattern = RegExp(r'^[A-Za-z]{2,}$');
 
   @override
   void initState() {
@@ -62,6 +75,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _animationController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -71,9 +85,68 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  /// Validates `local@domain.tld` without the classic `{2,4}` TLD cap that
+  /// rejected valid addresses such as `user@studio.museum`, but stricter than
+  /// the old regex so the client and the server agree on obvious mistakes.
+  static bool _isValidEmail(String value) {
+    var email = value.trim();
+    if (email.isEmpty || email.length > 254) {
+      return false;
+    }
+
+    var parts = email.split('@');
+    if (parts.length != 2) {
+      return false;
+    }
+
+    var local = parts[0];
+    var domain = parts[1];
+    if (local.isEmpty ||
+        local.length > 64 ||
+        local.startsWith('.') ||
+        local.endsWith('.') ||
+        local.contains('..') ||
+        !_localPartPattern.hasMatch(local)) {
+      return false;
+    }
+
+    if (domain.isEmpty || domain.length > 253) {
+      return false;
+    }
+
+    var labels = domain.split('.');
+    if (labels.length < 2) {
+      return false;
+    }
+    for (var label in labels) {
+      if (label.isEmpty ||
+          label.length > 63 ||
+          label.startsWith('-') ||
+          label.endsWith('-') ||
+          !_domainLabelPattern.hasMatch(label)) {
+        return false;
+      }
+    }
+
+    return _tldPattern.hasMatch(labels.last);
+  }
+
   Future<void> _handleLogin() async {
+    if (_cooldownRemaining > 0) {
+      return;
+    }
+
     var formState = _formKey.currentState;
-    if (formState == null || !formState.validate()) {
+    if (formState == null) {
+      return;
+    }
+    if (!formState.validate()) {
+      // Turn on live validation only after the first failed submit, so the
+      // user does not see "wajib diisi" before touching anything. From here
+      // on, correcting an input immediately clears its error.
+      if (_autovalidateMode == AutovalidateMode.disabled) {
+        setState(() => _autovalidateMode = AutovalidateMode.onUserInteraction);
+      }
       return;
     }
 
@@ -93,8 +166,40 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     // The app is wired to GoRouter: `Navigator.pushReplacementNamed` would throw
     // because GoRouter does not expose named routes on its Navigator.
     if (success) {
+      // Lets Android/iOS password managers offer to save the credentials.
+      TextInput.finishAutofillContext();
       context.go('/home');
+      return;
     }
+
+    // A 429 means every retry inside the window is rejected by the server.
+    // Keep the button disabled until the server told us it is safe again.
+    var retryAfter = authProvider.retryAfter;
+    if (retryAfter != null) {
+      _startCooldown(retryAfter);
+    } else if (authProvider.errorStatusCode == 429) {
+      _startCooldown(const Duration(seconds: 60));
+    }
+  }
+
+  void _startCooldown(Duration duration) {
+    var seconds = duration.inSeconds;
+    if (seconds <= 0) {
+      return;
+    }
+
+    _cooldownTimer?.cancel();
+    setState(() => _cooldownRemaining = seconds);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _cooldownRemaining <= 1) {
+        timer.cancel();
+        if (mounted) {
+          setState(() => _cooldownRemaining = 0);
+        }
+        return;
+      }
+      setState(() => _cooldownRemaining -= 1);
+    });
   }
 
   @override
@@ -171,24 +276,27 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(theme, isDark),
-            const SizedBox(height: AppTheme.space6),
-            _buildErrorMessage(authProvider, isDark),
-            _buildEmailField(theme, isDark, authProvider),
-            const SizedBox(height: AppTheme.space3),
-            _buildPasswordField(theme, isDark, authProvider),
-            const SizedBox(height: AppTheme.space5),
-            _buildSubmitButton(theme, isDark, authProvider),
-            const SizedBox(height: AppTheme.space4),
-            _buildTrustNote(theme, isDark),
-            const SizedBox(height: AppTheme.space4),
-            _buildFooter(theme, isDark),
-            _buildServerSection(theme, isDark, authProvider),
-          ],
+        autovalidateMode: _autovalidateMode,
+        child: AutofillGroup(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(theme, isDark),
+              const SizedBox(height: AppTheme.space6),
+              _buildErrorMessage(authProvider, isDark),
+              _buildEmailField(theme, isDark, authProvider),
+              const SizedBox(height: AppTheme.space3),
+              _buildPasswordField(theme, isDark, authProvider),
+              const SizedBox(height: AppTheme.space5),
+              _buildSubmitButton(theme, isDark, authProvider),
+              const SizedBox(height: AppTheme.space4),
+              _buildTrustNote(theme, isDark),
+              const SizedBox(height: AppTheme.space4),
+              _buildFooter(theme, isDark),
+              _buildServerSection(theme, isDark, authProvider),
+            ],
+          ),
         ),
       ),
     );
@@ -200,44 +308,144 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() {
       _showServer = !_showServer;
       _serverNotice = null;
+      _serverError = null;
       if (_showServer) {
         _serverController.text = authProvider.apiBaseUrl;
       }
     });
   }
 
-  Future<void> _handleSaveServer(AuthProvider authProvider) async {
-    setState(() {
-      _savingServer = true;
-      _serverNotice = null;
-    });
+  /// Replacing the server clears the current session, so make the destination
+  /// explicit before accepting the change. This also prevents a mistyped host
+  /// from silently receiving the next login attempt.
+  Future<bool> _confirmServerChange(String current, String next) async {
     FocusScope.of(context).unfocus();
-    var effective = await authProvider.setApiBaseUrl(_serverController.text);
-    if (!mounted) {
+    var confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ganti server?'),
+        content: Text(
+          'Aplikasi akan diarahkan ke server berikut:\n\n'
+          '$next\n\n'
+          'Server saat ini: $current\n\n'
+          'Sesi saat ini akan dihapus dan Anda harus login ulang.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Ganti server'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _handleSaveServer(AuthProvider authProvider) async {
+    if (_savingServer) {
       return;
     }
-    setState(() {
-      _savingServer = false;
-      if (effective != null) {
-        _serverNotice = 'Server: $effective — silakan login ulang.';
+
+    var input = _serverController.text;
+    if (input.trim().isEmpty) {
+      setState(() {
+        _serverNotice = null;
+        _serverError =
+            'Alamat server tidak boleh kosong. Gunakan tombol Bawaan untuk '
+            'kembali ke server default.';
+      });
+      return;
+    }
+
+    var preview = ApiClient.normalizeBaseUrl(input);
+    if (preview == authProvider.apiBaseUrl) {
+      setState(() {
+        _serverError = null;
+        _serverNotice = 'Server tidak berubah.';
+      });
+      return;
+    }
+
+    if (preview != null) {
+      var confirmed = await _confirmServerChange(
+        authProvider.apiBaseUrl,
+        preview,
+      );
+      if (!confirmed || !mounted) {
+        return;
       }
-    });
+    }
+
+    await _applyServer(authProvider, input);
   }
 
   Future<void> _handleResetServer(AuthProvider authProvider) async {
+    if (_savingServer) {
+      return;
+    }
+
+    var target = ApiClient.resolvedBaseUrl;
+    if (authProvider.apiBaseUrl == target) {
+      setState(() {
+        _serverController.text = authProvider.apiBaseUrl;
+        _serverError = null;
+        _serverNotice = 'Sudah memakai server bawaan.';
+      });
+      return;
+    }
+
+    var confirmed = await _confirmServerChange(authProvider.apiBaseUrl, target);
+    if (!confirmed || !mounted) {
+      return;
+    }
+
+    await _applyServer(authProvider, '');
+  }
+
+  Future<void> _applyServer(AuthProvider authProvider, String input) async {
+    // Drop any leftover login error so a failure below can only show the
+    // server error next to the field.
+    authProvider.clearError();
     setState(() {
       _savingServer = true;
+      _serverError = null;
       _serverNotice = null;
     });
-    var effective = await authProvider.setApiBaseUrl('');
+    FocusScope.of(context).unfocus();
+
+    String? effective;
+    try {
+      effective = await authProvider.setApiBaseUrl(input);
+    } catch (_) {
+      effective = null;
+    }
+
     if (!mounted) {
       return;
     }
-    _serverController.text = authProvider.apiBaseUrl;
+
     setState(() {
       _savingServer = false;
-      _serverNotice = 'Kembali ke server bawaan: $effective';
+      if (effective == null) {
+        _serverError =
+            authProvider.error ?? 'Gagal menyimpan server. Silakan coba lagi.';
+      } else {
+        _serverController.text = authProvider.apiBaseUrl;
+        _serverNotice = input.trim().isEmpty
+            ? 'Kembali ke server bawaan: $effective'
+            : 'Server: $effective — silakan login ulang.';
+      }
     });
+
+    if (effective == null) {
+      // Show the failure next to the field instead of the banner at the top
+      // of the card, which may be scrolled out of view.
+      authProvider.clearError();
+    }
   }
 
   Widget _buildServerSection(
@@ -266,19 +474,30 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ),
         if (_showServer) ...[
           const SizedBox(height: AppTheme.space2),
-          TextField(
-            controller: _serverController,
-            keyboardType: TextInputType.url,
-            autocorrect: false,
-            enableSuggestions: false,
-            style: _fieldTextStyle(theme, isDark),
-            cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
-            decoration: _inputDecoration(
-              hint: 'https://api.onezentra.sbs',
-              icon: Icons.link_outlined,
-              isDark: isDark,
+          _FieldLabel(
+            label: 'Alamat server',
+            isDark: isDark,
+            child: TextField(
+              key: const Key('server-url-field'),
+              controller: _serverController,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              enableSuggestions: false,
+              style: _fieldTextStyle(theme, isDark),
+              cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
+              decoration: _inputDecoration(
+                hint: 'https://api.onezentra.sbs',
+                icon: Icons.link_outlined,
+                isDark: isDark,
+                errorText: _serverError,
+              ),
+              onChanged: (_) {
+                if (_serverError != null) {
+                  setState(() => _serverError = null);
+                }
+              },
+              onSubmitted: (_) => _handleSaveServer(authProvider),
             ),
-            onSubmitted: (_) => _handleSaveServer(authProvider),
           ),
           const SizedBox(height: AppTheme.space2),
           Row(
@@ -310,10 +529,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           ),
           if (_serverNotice != null) ...[
             const SizedBox(height: AppTheme.space2),
-            Text(
-              _serverNotice!,
-              style: theme.textTheme.bodySmall?.copyWith(color: muted),
-              textAlign: TextAlign.center,
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _serverNotice!,
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ],
@@ -339,6 +561,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           fit: BoxFit.contain,
           color: isDark ? Colors.white : AppTheme.gray900,
           colorBlendMode: BlendMode.srcIn,
+          semanticLabel: 'ONEZENTRA',
         ),
         const SizedBox(height: AppTheme.space6),
         Text(
@@ -441,7 +664,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         if (value == null || value.trim().isEmpty) {
           return 'Email tidak boleh kosong';
         }
-        if (!_emailPattern.hasMatch(value.trim())) {
+        if (!_isValidEmail(value)) {
           return 'Format email tidak valid';
         }
         return null;
@@ -474,6 +697,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         // breaks the login.
         autocorrect: false,
         enableSuggestions: false,
+        // Keep the keyboard from learning a password typed into the field.
+        enableIMEPersonalizedLearning: false,
         autofillHints: const [AutofillHints.password],
         style: _fieldTextStyle(theme, isDark),
         cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
@@ -517,12 +742,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         fontWeight: FontWeight.w500,
       );
 
-  /// Pill shaped input shared by the email and password fields.
+  /// Pill shaped input shared by the email, password, and server fields.
   InputDecoration _inputDecoration({
     required String hint,
     required IconData icon,
     required bool isDark,
     Widget? suffixIcon,
+    String? errorText,
   }) {
     var theme = Theme.of(context);
     var borderColor = isDark
@@ -540,6 +766,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
     return InputDecoration(
       hintText: hint,
+      errorText: errorText,
+      errorMaxLines: 3,
       hintStyle: theme.textTheme.bodyMedium?.copyWith(color: iconColor),
       filled: true,
       fillColor: isDark
@@ -580,30 +808,39 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     AuthProvider authProvider,
   ) {
     var isLoading = authProvider.isLoading;
+    var isCoolingDown = _cooldownRemaining > 0;
+    var isDisabled = isLoading || isCoolingDown;
+    var buttonLabel = isCoolingDown
+        ? 'Tunggu $_cooldownRemaining dtk'
+        : 'Masuk';
 
     return Semantics(
       button: true,
-      enabled: !isLoading,
-      label: 'Masuk',
+      enabled: !isDisabled,
+      label: buttonLabel,
+      // Keep the accessibility action even though child semantics are
+      // excluded to avoid the label being announced twice.
+      onTap: isDisabled ? null : _handleLogin,
+      excludeSemantics: true,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
-        opacity: isLoading ? 0.8 : 1,
+        opacity: isDisabled ? 0.8 : 1,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: isLoading ? null : _handleLogin,
+            onTap: isDisabled ? null : _handleLogin,
             borderRadius: AppTheme.radiusFull,
             splashColor: Colors.white.withValues(alpha: 0.14),
             highlightColor: Colors.white.withValues(alpha: 0.06),
             child: Ink(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: isLoading
+                  colors: isDisabled
                       ? [AppTheme.gray400, AppTheme.gray500]
                       : [AppTheme.primary600, AppTheme.primary500],
                 ),
                 borderRadius: AppTheme.radiusFull,
-                boxShadow: isLoading ? null : [AppTheme.shadowPrimary],
+                boxShadow: isDisabled ? null : [AppTheme.shadowPrimary],
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppTheme.space4),
@@ -619,6 +856,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           valueColor: AlwaysStoppedAnimation<Color>(
                             Colors.white,
                           ),
+                        ),
+                      )
+                    else if (isCoolingDown)
+                      Text(
+                        buttonLabel,
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
                       )
                     else ...[
@@ -702,16 +948,20 @@ class _FieldLabel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: labelColor,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.4,
+        // The caption is visual only; the field below carries the same label
+        // in its semantics node so screen readers announce it when focused.
+        ExcludeSemantics(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: labelColor,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
           ),
         ),
         const SizedBox(height: AppTheme.space2),
-        child,
+        Semantics(label: label, child: child),
       ],
     );
   }

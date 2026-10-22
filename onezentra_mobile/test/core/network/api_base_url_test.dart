@@ -32,6 +32,43 @@ void main() {
       expect(ApiClient.normalizeBaseUrl('ftp://host/api'), isNull);
       expect(ApiClient.normalizeBaseUrl('http://'), isNull);
     });
+
+    test('build non-debug menolak http, debug tetap mengizinkannya', () {
+      expect(
+        ApiClient.normalizeBaseUrl(
+          'http://192.168.1.5:8000/api/v1',
+          allowInsecure: false,
+        ),
+        isNull,
+      );
+      expect(
+        ApiClient.normalizeBaseUrl(
+          'http://192.168.1.5:8000/api/v1',
+          allowInsecure: true,
+        ),
+        'http://192.168.1.5:8000/api/v1',
+      );
+    });
+  });
+
+  group('error message', () {
+    test('401 login berarti kredensial salah, bukan sesi berakhir', () {
+      expect(
+        ApiClient.errorMessageForStatus(401, null, endpoint: '/mobile/login'),
+        'Email atau password salah.',
+      );
+      expect(
+        ApiClient.errorMessageForStatus(401, null, endpoint: '/user'),
+        'Sesi berakhir. Silakan login kembali.',
+      );
+    });
+
+    test('Retry-After dibaca dalam detik', () {
+      expect(ApiClient.parseRetryAfter('7'), const Duration(seconds: 7));
+      expect(ApiClient.parseRetryAfter('0'), isNull);
+      expect(ApiClient.parseRetryAfter('bukan angka'), isNull);
+      expect(ApiClient.parseRetryAfter(null), isNull);
+    });
   });
 
   group('runtime override', () {

@@ -335,38 +335,54 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var card = Container(
-      padding: padding ?? const EdgeInsets.all(AppTheme.space6),
-      margin: margin,
-      decoration: BoxDecoration(
-        color: color ?? AppTheme.surfaceCard,
-        borderRadius: borderRadius ?? AppTheme.radius2xl,
-        border: border ?? Border.all(color: AppTheme.gray300),
-        boxShadow:
-            shadows ??
-            [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                offset: const Offset(0, 1),
-                blurRadius: 3,
-              ),
-            ],
-      ),
-      child: child,
-    );
+    var radius = borderRadius ?? AppTheme.radius2xl;
+    var cardBorder = border ?? Border.all(color: AppTheme.gray300);
+    var cardShadow =
+        shadows ??
+        [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            offset: const Offset(0, 1),
+            blurRadius: 3,
+          ),
+        ];
 
-    if (onTap != null) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: borderRadius ?? AppTheme.radius2xl,
-          child: card,
+    // No tap target: keep the simple opaque container.
+    if (onTap == null) {
+      return Container(
+        padding: padding ?? const EdgeInsets.all(AppTheme.space6),
+        margin: margin,
+        decoration: BoxDecoration(
+          color: color ?? AppTheme.surfaceCard,
+          borderRadius: radius,
+          border: cardBorder,
+          boxShadow: cardShadow,
         ),
+        child: child,
       );
     }
 
-    return card;
+    // Interactive cards put the colour on the Material, not on an opaque
+    // child. An opaque Container above InkWell paints over the ripple,
+    // highlight, and keyboard focus ring, leaving the card with no feedback.
+    return Container(
+      margin: margin,
+      decoration: BoxDecoration(borderRadius: radius, boxShadow: cardShadow),
+      child: Material(
+        color: color ?? AppTheme.surfaceCard,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Container(
+            padding: padding ?? const EdgeInsets.all(AppTheme.space6),
+            decoration: BoxDecoration(borderRadius: radius, border: cardBorder),
+            child: child,
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -73,8 +73,9 @@ class _OneZentraAppState extends State<OneZentraApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Roles & permissions are edited on web. The app caches them at login,
     // so re-fetch on every foregrounding — otherwise a web change only
-    // takes effect after logout + login. Failures are swallowed inside
-    // [AuthProvider.refreshUser] (offline return keeps the old session).
+    // takes effect after logout + login. This is the single resume owner;
+    // HomePage only performs the initial fetch. Failures are recorded on the
+    // provider so HomePage can show a retry banner without hiding the menu.
     if (state == AppLifecycleState.resumed) {
       widget.authProvider.refreshUser();
     }
@@ -97,17 +98,23 @@ class _OneZentraAppState extends State<OneZentraApp>
           // go light while the pages stay dark (guarded by theme_guard_test).
           themeMode: ThemeMode.dark,
           routerConfig: widget.router,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(
-                MediaQuery.of(context).textScaler.scale(1).clamp(0.85, 1.15),
-              ),
-            ),
-            child: child!,
-          ),
         ),
       );
 }
+
+/// Permission required to open each operational route.
+///
+/// The menu already filters cards by permission, but a deep link, a stale
+/// route, or a permission revoked on web could still open the page. Guarding
+/// here keeps the route and the menu in sync; the API remains the real
+/// authority for data access.
+const Map<String, String> _routePermissions = {
+  '/gate': 'gate.view',
+  '/gate/riwayat': 'gate.view',
+  '/validasi-sj': 'sj_validation.view',
+  '/bongkar': 'receiving.view',
+  '/hasil-penerimaan': 'receiving.view',
+};
 
 /// App Router Configuration — four operational menus, nothing else.
 ///
@@ -174,6 +181,12 @@ GoRouter buildRouter(
 
     // If authenticated and on login page, redirect to home
     if (isAuthenticated && isLoginPage) {
+      return '/home';
+    }
+
+    var requiredPermission = _routePermissions[state.matchedLocation];
+    if (requiredPermission != null &&
+        !(authProvider.user?.hasPermission(requiredPermission) ?? false)) {
       return '/home';
     }
 

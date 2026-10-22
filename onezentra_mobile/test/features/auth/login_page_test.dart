@@ -86,6 +86,21 @@ Future<void> _submitCredentials(
   await tester.pump();
 }
 
+Future<void> _openServerPanel(WidgetTester tester) async {
+  var serverButton = find.textContaining('Server:');
+  await tester.ensureVisible(serverButton);
+  await tester.pumpAndSettle();
+  await tester.tap(serverButton);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
 /// Decoration of the email field, i.e. the first input on the login card.
 InputDecoration _emailFieldDecoration(WidgetTester tester) =>
     tester.widget<InputDecorator>(find.byType(InputDecorator).first).decoration;
@@ -107,8 +122,9 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
-    // ApiClient is a singleton: clear the in-memory session between tests.
-    await ApiClient().clearAuth();
+    // ApiClient is a singleton: reset both the in-memory session and any
+    // server override a previous test installed.
+    await ApiClient().setBaseUrl('');
   });
 
   group('LoginPage', () {
@@ -125,7 +141,35 @@ void main() {
       expect(find.text('Password tidak boleh kosong'), findsOneWidget);
     });
 
-    testWidgets('menolak email dengan format salah', (tester) async {
+    testWidgets('menolak email yang juga ditolak validasi server', (
+      tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        _FakeAuthRepository((_, _) async {
+          throw StateError('email tidak valid tidak boleh dikirim ke server');
+        }),
+      );
+
+      for (var email in [
+        'budi.santoso',
+        'a..b@example.com',
+        '.a@example.com',
+        'a@-example.com',
+        'a@example-.com',
+      ]) {
+        await _submitCredentials(tester, email: email, password: 'rahasia123');
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Format email tidak valid'),
+          findsOneWidget,
+          reason: '$email seharusnya ditolak di klien',
+        );
+      }
+    });
+
+    testWidgets('error email hilang saat input diperbaiki', (tester) async {
       await _pumpApp(
         tester,
         _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
@@ -137,8 +181,15 @@ void main() {
         password: 'rahasia123',
       );
       await tester.pumpAndSettle();
-
       expect(find.text('Format email tidak valid'), findsOneWidget);
+
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'budi@onezentra.com',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Format email tidak valid'), findsNothing);
     });
 
     testWidgets('menerima email dengan TLD panjang (mis. studio.museum)', (
@@ -222,6 +273,165 @@ void main() {
 
       expect(find.text('Email atau password salah.'), findsNothing);
     });
+
+    testWidgets('tombol tampilkan password mengubah obscureText', (
+      tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
+      );
+
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText).at(1))
+            .obscureText,
+        isTrue,
+      );
+
+      await tester.tap(find.byTooltip('Tampilkan password'));
+      await tester.pump();
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText).at(1))
+            .obscureText,
+        isFalse,
+      );
+
+      await tester.tap(find.byTooltip('Sembunyikan password'));
+      await tester.pump();
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText).at(1))
+            .obscureText,
+        isTrue,
+      );
+    });
+
+    testWidgets('field punya label semantik', (tester) async {
+      var semantics = tester.ensureSemantics();
+
+      await _pumpApp(
+        tester,
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
+      );
+
+      expect(find.bySemanticsLabel(RegExp('Email')), findsWidgets);
+      expect(find.bySemanticsLabel(RegExp('Password')), findsWidgets);
+
+      semantics.dispose();
+    });
+
+    testWidgets('menghormati text scale pengguna', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await _pumpApp(
+        tester,
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
+      );
+
+      var context = tester.element(find.text('Selamat datang kembali'));
+      expect(MediaQuery.textScalerOf(context).scale(1), closeTo(2, 0.01));
+    });
+
+    testWidgets('429 menonaktifkan tombol sampai cooldown selesai', (
+      tester,
+    ) async {
+      await _pumpApp(
+        tester,
+        _FakeAuthRepository(
+          (_, _) async => throw const ApiException(
+            'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.',
+            429,
+            null,
+            Duration(seconds: 2),
+          ),
+        ),
+      );
+
+      await _submitCredentials(
+        tester,
+        email: 'budi@onezentra.com',
+        password: 'salah',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tunggu 2 dtk'), findsOneWidget);
+      expect(find.text('Masuk'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Tunggu 1 dtk'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Masuk'), findsOneWidget);
+    });
+
+    testWidgets('server tidak valid menampilkan error inline', (tester) async {
+      var provider = await _pumpApp(
+        tester,
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
+      );
+      await _openServerPanel(tester);
+
+      await tester.enterText(
+        find.byKey(const Key('server-url-field')),
+        'ftp://host/api',
+      );
+      await _tapVisible(tester, find.text('Simpan'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Alamat server tidak valid'), findsOneWidget);
+      expect(find.text('Ganti server?'), findsNothing);
+      expect(provider.apiBaseUrl, ApiClient.resolvedBaseUrl);
+    });
+
+    testWidgets('mengganti server meminta konfirmasi dan membuang sesi', (
+      tester,
+    ) async {
+      var provider = await _pumpApp(
+        tester,
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
+      );
+      await _openServerPanel(tester);
+
+      await tester.enterText(
+        find.byKey(const Key('server-url-field')),
+        'https://api.example.test',
+      );
+      await _tapVisible(tester, find.text('Simpan'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ganti server?'), findsOneWidget);
+      expect(provider.apiBaseUrl, isNot('https://api.example.test/api/v1'));
+
+      await tester.tap(find.text('Batal'));
+      await tester.pumpAndSettle();
+      expect(provider.apiBaseUrl, isNot('https://api.example.test/api/v1'));
+
+      await _tapVisible(tester, find.text('Simpan'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ganti server'));
+      await tester.pumpAndSettle();
+
+      expect(provider.apiBaseUrl, 'https://api.example.test/api/v1');
+      expect(find.textContaining('silakan login ulang'), findsOneWidget);
+    });
+
+    testWidgets('server kosong tidak menimpa default', (tester) async {
+      var provider = await _pumpApp(
+        tester,
+        _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
+      );
+      await _openServerPanel(tester);
+
+      await tester.enterText(find.byKey(const Key('server-url-field')), '');
+      await _tapVisible(tester, find.text('Simpan'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('tidak boleh kosong'), findsOneWidget);
+      expect(provider.apiBaseUrl, ApiClient.resolvedBaseUrl);
+    });
   });
 
   group('AuthProvider', () {
@@ -281,6 +491,52 @@ void main() {
         'Sesi Anda telah berakhir. Silakan login kembali.',
       );
     });
+
+    test('menyimpan status 429 dan retryAfter untuk cooldown UI', () async {
+      var provider = AuthProvider(
+        repository: _FakeAuthRepository(
+          (_, _) async => throw const ApiException(
+            'Terlalu banyak percobaan.',
+            429,
+            null,
+            Duration(seconds: 30),
+          ),
+        ),
+      );
+
+      var ok = await provider.login(
+        email: 'budi@onezentra.com',
+        password: 'salah',
+      );
+
+      expect(ok, isFalse);
+      expect(provider.errorStatusCode, 429);
+      expect(provider.retryAfter, const Duration(seconds: 30));
+
+      provider.clearError();
+      expect(provider.errorStatusCode, isNull);
+      expect(provider.retryAfter, isNull);
+    });
+
+    test('respons tanpa token tidak membuat provider authenticated', () async {
+      var provider = AuthProvider(
+        repository: AuthRepository(
+          post: (_, _) async => {
+            'message': 'Login successful',
+            'user': _fakeUser().toJson(),
+          },
+        ),
+      );
+
+      var ok = await provider.login(
+        email: 'budi@onezentra.com',
+        password: 'rahasia123',
+      );
+
+      expect(ok, isFalse);
+      expect(provider.isAuthenticated, isFalse);
+      expect(provider.error, contains('token'));
+    });
   });
 
   group('AuthRepository', () {
@@ -294,6 +550,12 @@ void main() {
       expect(
         AuthRepository.localizeMessage('Your account is inactive.'),
         'Akun Anda tidak aktif. Silakan hubungi admin.',
+      );
+      expect(
+        AuthRepository.localizeMessage(
+          'The email field must be a valid email address.',
+        ),
+        'Format email tidak valid.',
       );
     });
 
@@ -324,6 +586,70 @@ void main() {
             (e) => e.message,
             'message',
             contains('tidak memuat data pengguna'),
+          ),
+        ),
+      );
+    });
+
+    test('respons login tanpa token ditolak dengan pesan jelas', () async {
+      var repository = _repositoryAnswering({
+        'message': 'Login successful',
+        'user': {
+          'id': 1,
+          'full_name': 'Budi Santoso',
+          'email': 'budi@onezentra.com',
+        },
+      });
+
+      await expectLater(
+        repository.login(email: 'budi@onezentra.com', password: 'rahasia123'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            contains('tidak memuat token'),
+          ),
+        ),
+      );
+    });
+
+    test('status 429 mempertahankan retryAfter dari API', () async {
+      var repository = AuthRepository(
+        post: (_, _) async => throw const ApiException(
+          'Terlalu banyak percobaan.',
+          429,
+          null,
+          Duration(seconds: 7),
+        ),
+      );
+
+      await expectLater(
+        repository.login(email: 'budi@onezentra.com', password: 'rahasia123'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.retryAfter,
+            'retryAfter',
+            const Duration(seconds: 7),
+          ),
+        ),
+      );
+    });
+
+    test('pesan validasi email dari server diterjemahkan', () async {
+      var repository = AuthRepository(
+        post: (_, _) async => throw const ApiException(
+          'The email field must be a valid email address.',
+          422,
+        ),
+      );
+
+      await expectLater(
+        repository.login(email: 'budi@onezentra.com', password: 'rahasia123'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            'Format email tidak valid.',
           ),
         ),
       );

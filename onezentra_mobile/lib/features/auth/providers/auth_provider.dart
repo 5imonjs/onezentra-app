@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:onezentra_mobile/features/auth/models/auth_models.dart';
 import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart';
@@ -17,13 +19,25 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   DateTime? _expiresAt;
   bool _isLoading = false;
+  bool _isRefreshing = false;
+  bool _refreshFailed = false;
+  Future<bool>? _refreshFuture;
   String? _error;
+  int? _errorStatusCode;
+  Duration? _retryAfter;
 
   User? get user => _user;
   String? get token => _token;
   DateTime? get expiresAt => _expiresAt;
   bool get isLoading => _isLoading;
+  bool get isRefreshing => _isRefreshing;
+  bool get refreshFailed => _refreshFailed;
   String? get error => _error;
+  int? get errorStatusCode => _errorStatusCode;
+
+  /// Wait time requested by the server after a 429, used by the login screen
+  /// to keep the submit button disabled until the throttle window ends.
+  Duration? get retryAfter => _retryAfter;
   bool get isAuthenticated => _token != null && _user != null;
   bool get isAdmin => _user?.isAdmin ?? false;
 
@@ -77,23 +91,37 @@ class AuthProvider extends ChangeNotifier {
         deviceName: deviceName,
       );
 
-      _token = response.token;
-      _user = response.user;
-      _expiresAt = response.expiresAt == null
+      var token = response.token;
+      if (token == null || token.trim().isEmpty) {
+        throw const ApiException(
+          'Respons login tidak memuat token. Silakan coba lagi.',
+          0,
+        );
+      }
+
+      var user = response.user;
+      var expiresAt = response.expiresAt == null
           ? null
           : DateTime.tryParse(response.expiresAt!);
 
-      // Save to storage via ApiClient
+      // Persist first, then publish the new state. If storage fails, the
+      // provider must not claim to be authenticated while login() returns
+      // false.
       await _apiClient.setAuth(
-        _token!,
-        _user!.toJson(),
+        token,
+        user.toJson(),
         expiresAt: response.expiresAt,
       );
+
+      _token = token;
+      _user = user;
+      _expiresAt = expiresAt;
+      _refreshFailed = false;
 
       _setLoading(false);
       return true;
     } on ApiException catch (e) {
-      _setError(e.message);
+      _setError(e.message, retryAfter: e.retryAfter, statusCode: e.statusCode);
       _setLoading(false);
       return false;
     } catch (e, stack) {
@@ -108,20 +136,33 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Logout user
+  /// Logout user.
+  ///
+  /// The local session is cleared before the revoke request finishes so an
+  /// offline device never makes the user wait for the HTTP timeout. The
+  /// request is started first, while the token is still attached, then left
+  /// to finish in the background.
   Future<void> logout() async {
+    if (_isLoading) {
+      return;
+    }
+
     _setLoading(true);
 
+    var revoke = _repository.logout();
+    unawaited(revoke.catchError((_) {}));
+
+    _token = null;
+    _user = null;
+    _expiresAt = null;
+    _error = null;
+    _errorStatusCode = null;
+    _retryAfter = null;
+    _refreshFailed = false;
+
     try {
-      await _repository.logout();
-    } catch (_) {
-      // Ignore logout errors, clear local state anyway
-    } finally {
-      _token = null;
-      _user = null;
-      _expiresAt = null;
-      _error = null;
       await _apiClient.clearAuth();
+    } finally {
       _setLoading(false);
     }
   }
@@ -133,28 +174,87 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
     _expiresAt = null;
     _isLoading = false;
+    _refreshFailed = false;
     _error = 'Sesi Anda telah berakhir. Silakan login kembali.';
+    _errorStatusCode = 401;
+    _retryAfter = null;
     notifyListeners();
   }
 
-  /// Refresh user data from server
-  Future<void> refreshUser() async {
+  /// Refresh user data from server.
+  ///
+  /// Concurrent callers share one request: the app lifecycle observer and the
+  /// initial HomePage fetch can overlap, and two profile requests could race
+  /// and publish stale permissions. The returned future reports success so
+  /// the UI can show a retry banner without hiding the current menu.
+  Future<bool> refreshUser() {
     if (!isAuthenticated) {
-      return;
+      return Future.value(false);
     }
+
+    var inFlight = _refreshFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    var future = _runRefresh();
+    _refreshFuture = future;
+    return future;
+  }
+
+  Future<bool> _runRefresh() async {
+    var token = _token;
+    if (token == null) {
+      return false;
+    }
+
+    _setRefreshing(true);
 
     try {
       var user = await _repository.getUser();
+
+      // A logout or a fresh login can land while the request is in flight.
+      // Never publish a profile belonging to the previous session.
+      if (_token != token) {
+        return false;
+      }
+
       _user = user;
       await _apiClient.setAuth(
-        _token!,
-        _user!.toJson(),
+        token,
+        user.toJson(),
         expiresAt: _expiresAt?.toIso8601String(),
       );
+
+      // The session can end while the refreshed profile is being persisted.
+      // Do not let that write resurrect the token that logout just removed.
+      if (_token != token) {
+        if (_token == null) {
+          await _apiClient.clearAuth();
+        }
+        return false;
+      }
+
+      _refreshFailed = false;
       notifyListeners();
+      return true;
     } catch (_) {
-      // Ignore refresh errors
+      if (_token == token) {
+        _refreshFailed = true;
+      }
+      return false;
+    } finally {
+      _refreshFuture = null;
+      _setRefreshing(false);
     }
+  }
+
+  void _setRefreshing(bool value) {
+    if (_isRefreshing == value) {
+      return;
+    }
+    _isRefreshing = value;
+    notifyListeners();
   }
 
   /// Update profile
@@ -194,7 +294,7 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return true;
     } on ApiException catch (e) {
-      _setError(e.message);
+      _setError(e.message, statusCode: e.statusCode);
       _setLoading(false);
       return false;
     } catch (_) {
@@ -209,13 +309,17 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _setError(String error) {
+  void _setError(String error, {Duration? retryAfter, int? statusCode}) {
     _error = error;
+    _retryAfter = retryAfter;
+    _errorStatusCode = statusCode;
     notifyListeners();
   }
 
   void _clearError() {
     _error = null;
+    _retryAfter = null;
+    _errorStatusCode = null;
   }
 
   /// Public method to clear error
@@ -243,10 +347,12 @@ class AuthProvider extends ChangeNotifier {
       _user = null;
       _expiresAt = null;
       _error = null;
+      _errorStatusCode = null;
+      _retryAfter = null;
       notifyListeners();
       return effective;
     } on ApiException catch (e) {
-      _setError(e.message);
+      _setError(e.message, statusCode: e.statusCode);
       return null;
     }
   }

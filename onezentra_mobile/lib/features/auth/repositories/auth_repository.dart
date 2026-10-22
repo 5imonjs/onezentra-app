@@ -58,10 +58,22 @@ class AuthRepository {
           0,
         );
       }
+      var token = body['token'];
+      if (token is! String || token.trim().isEmpty) {
+        throw const ApiException(
+          'Respons login tidak memuat token. Silakan coba lagi.',
+          0,
+        );
+      }
 
       return AuthResponse.fromJson(body);
     } on ApiException catch (e) {
-      throw ApiException(localizeMessage(e.message), e.statusCode, e.data);
+      throw ApiException(
+        localizeMessage(e.message),
+        e.statusCode,
+        e.data,
+        e.retryAfter,
+      );
     } on FormatException catch (e) {
       throw ApiException(
         'Respons server tidak dapat dibaca (${e.message}).',
@@ -191,8 +203,15 @@ class AuthRepository {
   /// as raw API text.
   static const Map<String, String> _messageTranslations = {
     'the provided credentials are incorrect.': 'Email atau password salah.',
+    'these credentials do not match our records.': 'Email atau password salah.',
     'your account is inactive.':
         'Akun Anda tidak aktif. Silakan hubungi admin.',
+    'the email field is required.': 'Email tidak boleh kosong.',
+    'the email field must be a valid email address.':
+        'Format email tidak valid.',
+    'the password field is required.': 'Password tidak boleh kosong.',
+    'the device name field must not be greater than 100 characters.':
+        'Nama perangkat terlalu panjang.',
   };
 
   /// Public so the mapping can be covered by a unit test without a network.

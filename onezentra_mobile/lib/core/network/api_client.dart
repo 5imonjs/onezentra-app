@@ -53,7 +53,12 @@ class ApiClient {
   /// Normalisasi input server oleh pengguna: rapikan slash, lengkapi skema
   /// (default https), dan lengkapi path `/api/v1` bila hanya host yang diisi.
   /// Mengembalikan null bila input bukan URL http(s) yang valid.
-  static String? normalizeBaseUrl(String input) {
+  ///
+  /// Build selain debug menolak `http://` karena kredensial login akan
+  /// dikirim tanpa enkripsi. [allowInsecure] hanya dipakai test; production
+  /// memakai default `kDebugMode`.
+  static String? normalizeBaseUrl(String input, {bool? allowInsecure}) {
+    var allowHttp = allowInsecure ?? kDebugMode;
     var text = input.trim().replaceAll(RegExp(r'/+$'), '');
     if (text.isEmpty) {
       return null;
@@ -64,6 +69,7 @@ class ApiClient {
     var uri = Uri.tryParse(text);
     if (uri == null ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
+        (uri.scheme == 'http' && !allowHttp) ||
         uri.host.isEmpty ||
         uri.host == uri.scheme ||
         (uri.host != 'localhost' && !uri.host.contains('.'))) {
@@ -165,12 +171,17 @@ class ApiClient {
   /// dibuang karena token milik server sebelumnya. URL kosong/null
   /// mengembalikan ke default. Mengembalikan URL ternormalisasi yang dipakai.
   Future<String?> setBaseUrl(String? url) async {
-    var normalized = (url == null || url.trim().isEmpty)
-        ? null
-        : normalizeBaseUrl(url);
-    if (url != null && url.trim().isNotEmpty && normalized == null) {
-      throw const ApiException(
-        'Alamat server tidak valid. Contoh: https://api.onezentra.sbs',
+    var trimmed = url?.trim() ?? '';
+    var normalized = trimmed.isEmpty ? null : normalizeBaseUrl(trimmed);
+    if (trimmed.isNotEmpty && normalized == null) {
+      // Bedakan penolakan karena skema tidak aman dari URL yang memang salah,
+      // supaya pengguna tahu apa yang harus diperbaiki.
+      var insecureBlocked =
+          !kDebugMode && normalizeBaseUrl(trimmed, allowInsecure: true) != null;
+      throw ApiException(
+        insecureBlocked
+            ? 'Server harus menggunakan HTTPS. Contoh: https://api.onezentra.sbs'
+            : 'Alamat server tidak valid. Contoh: https://api.onezentra.sbs',
         0,
       );
     }
@@ -249,9 +260,10 @@ class ApiClient {
     }
 
     throw ApiException(
-      _errorMessage(response.statusCode, body),
+      errorMessageForStatus(response.statusCode, body, endpoint: endpoint),
       response.statusCode,
       body,
+      parseRetryAfter(response.headers['retry-after']),
     );
   }
 
@@ -274,15 +286,26 @@ class ApiClient {
   }
 
   /// Builds a message the user can act on, in the language of the app.
-  String _errorMessage(int statusCode, Map<String, dynamic>? body) {
+  ///
+  /// Exposed for tests: a 401 from the login endpoint means wrong
+  /// credentials, while a 401 from any other endpoint means an expired
+  /// session. Using the session message on the login screen would confuse the
+  /// user into thinking their session expired before they even signed in.
+  static String errorMessageForStatus(
+    int statusCode,
+    Map<String, dynamic>? body, {
+    String endpoint = '',
+  }) {
     if (statusCode == 401) {
-      return 'Sesi berakhir. Silakan login kembali.';
+      return endpoint.contains('login')
+          ? 'Email atau password salah.'
+          : 'Sesi berakhir. Silakan login kembali.';
     }
     if (statusCode == 403) {
       return 'Anda tidak memiliki akses ke data ini.';
     }
     if (statusCode == 429) {
-      return 'Terlalu banyak percobaan. Tunggu 1 menit lalu coba lagi.';
+      return 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.';
     }
     if (statusCode >= 500) {
       return 'Server sedang bermasalah. Silakan coba lagi nanti.';
@@ -302,7 +325,7 @@ class ApiClient {
   }
 
   /// Laravel validation errors arrive as `{"errors": {"email": ["..."]}}`.
-  String? _firstValidationMessage(Map<String, dynamic>? body) {
+  static String? _firstValidationMessage(Map<String, dynamic>? body) {
     var errors = body?['errors'];
     if (errors is! Map) {
       return null;
@@ -314,6 +337,28 @@ class ApiClient {
       }
     }
     return null;
+  }
+
+  /// Reads the `Retry-After` header (seconds or an HTTP date). The login
+  /// screen uses it to disable the submit button until the throttle window
+  /// ends instead of letting the user burn more attempts.
+  static Duration? parseRetryAfter(String? value) {
+    var text = value?.trim();
+    if (text == null || text.isEmpty) {
+      return null;
+    }
+
+    var seconds = int.tryParse(text);
+    if (seconds != null) {
+      return seconds > 0 ? Duration(seconds: seconds) : null;
+    }
+
+    try {
+      var delta = HttpDate.parse(text).difference(DateTime.now());
+      return delta > Duration.zero ? delta : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _handleUnauthorized() async {
@@ -501,10 +546,18 @@ class ApiClient {
 
 /// Custom exception for API errors
 class ApiException implements Exception {
-  const ApiException(this.message, this.statusCode, [this.data]);
+  const ApiException(
+    this.message,
+    this.statusCode, [
+    this.data,
+    this.retryAfter,
+  ]);
   final String message;
   final int statusCode;
   final dynamic data;
+
+  /// Server-requested wait before the next attempt (429 `Retry-After`).
+  final Duration? retryAfter;
 
   /// The stored token was rejected or has expired.
   bool get isUnauthorized => statusCode == 401;
