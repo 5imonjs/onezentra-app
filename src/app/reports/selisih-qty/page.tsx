@@ -76,7 +76,7 @@ export default function SelisihQtyReportPage() {
   }, [dateFrom, dateTo, kodeDepo]);
 
   const fetchData = useCallback(async () => {
-    if (!hasPermission('reports.view')) return;
+    if (!hasPermission('reports.selisih_qty')) return;
     const reqId = ++reqIdRef.current;
     setLoading(true);
     setError('');
@@ -182,7 +182,7 @@ export default function SelisihQtyReportPage() {
   const lebihPct = summary && summary.total_item > 0
     ? Math.round((summary.item_lebih / summary.total_item) * 100) : 0;
 
-  if (!hasPermission('reports.view')) {
+  if (!hasPermission('reports.selisih_qty')) {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">

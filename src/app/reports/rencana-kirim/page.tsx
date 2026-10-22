@@ -145,7 +145,7 @@ export default function RencanaKirimReportPage() {
   }, [dateFrom, dateTo, status, kodeDepo, debouncedSearch, page]);
 
   const fetchData = useCallback(async () => {
-    if (!hasPermission('reports.view')) return;
+    if (!hasPermission('reports.rencana_kirim')) return;
     const reqId = ++reqIdRef.current;
     setLoading(true);
     setError('');
@@ -262,9 +262,9 @@ export default function RencanaKirimReportPage() {
     }
   };
 
-  const canExport = hasPermission('reports.view') && !loading && items.length > 0;
+  const canExport = hasPermission('reports.rencana_kirim') && !loading && items.length > 0;
 
-  if (!hasPermission('reports.view')) {
+  if (!hasPermission('reports.rencana_kirim')) {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">

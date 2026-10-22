@@ -41,10 +41,10 @@ const biayaMenus = [
 ];
 
 const reportItems = [
-  { name: 'Laporan Replenishment', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.view' },
-  { name: 'Laporan Inbound', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.view' },
-  { name: 'Penerimaan & Expired (Semua)', path: '/reports/penerimaan-batch-expired', icon: 'clipboard', permission: 'reports.view' },
-  { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.view' },
+  { name: 'Laporan Replenishment', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.rencana_kirim' },
+  { name: 'Laporan Inbound', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.penerimaan' },
+  { name: 'Penerimaan & Expired (Semua)', path: '/reports/penerimaan-batch-expired', icon: 'clipboard', permission: 'reports.penerimaan_batch_expired' },
+  { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.selisih_qty' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
   { name: 'Laporan Batch Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },

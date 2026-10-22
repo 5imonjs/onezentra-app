@@ -105,7 +105,7 @@ export default function PenerimaanReportPage() {
   }, [items.length, page, summary?.total_item]);
 
   const fetchData = useCallback(async () => {
-    if (!hasPermission('reports.view')) return;
+    if (!hasPermission('reports.penerimaan')) return;
     const reqId = ++reqIdRef.current;
     setLoading(true);
     setError('');
@@ -223,7 +223,7 @@ export default function PenerimaanReportPage() {
   const canExport = !loading && !exporting && items.length > 0;
   const selisihBad = (summary?.total_selisih ?? 0) !== 0;
 
-  if (!hasPermission('reports.view')) {
+  if (!hasPermission('reports.penerimaan')) {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
