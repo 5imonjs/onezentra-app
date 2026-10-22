@@ -77,7 +77,11 @@ class PermissionSeeder extends Seeder
             // Ubah Setting Depo hanya untuk admin_master: tidak masuk peta
             // role lain di bawah, dan controller meng-gate ulang level.
             ['name' => 'Ubah Setting Depo', 'slug' => 'depot_settings.manage', 'menu_group' => 'Sistem', 'icon' => 'building-office', 'route' => null, 'sort_order' => 436],
-            ['name' => 'Laporan View', 'slug' => 'reports.view', 'menu_group' => 'Laporan', 'icon' => 'chart', 'route' => 'reports.index', 'sort_order' => 440],
+            ['name' => 'Laporan Selisih Qty View', 'slug' => 'reports.selisih_qty', 'menu_group' => 'Laporan', 'icon' => 'chart', 'route' => 'reports.selisih_qty', 'sort_order' => 440],
+            ['name' => 'Laporan Penerimaan View', 'slug' => 'reports.penerimaan', 'menu_group' => 'Laporan', 'icon' => 'clipboard', 'route' => 'reports.penerimaan', 'sort_order' => 441],
+            ['name' => 'Laporan Penerimaan & Expired View', 'slug' => 'reports.penerimaan_batch_expired', 'menu_group' => 'Laporan', 'icon' => 'clipboard', 'route' => 'reports.penerimaan_batch_expired', 'sort_order' => 442],
+            ['name' => 'Laporan Rencana Kirim View', 'slug' => 'reports.rencana_kirim', 'menu_group' => 'Laporan', 'icon' => 'truck', 'route' => 'reports.rencana_kirim', 'sort_order' => 443],
+            ['name' => 'Laporan View', 'slug' => 'reports.view', 'menu_group' => 'Laporan', 'icon' => 'chart', 'route' => 'reports.index', 'sort_order' => 439],
             ['name' => 'Laporan Biaya THL View', 'slug' => 'reports.biaya_thl', 'menu_group' => 'Laporan', 'icon' => 'coins', 'route' => 'reports.biaya_thl', 'sort_order' => 441],
             ['name' => 'Laporan Biaya Retribusi View', 'slug' => 'reports.biaya_retribusi', 'menu_group' => 'Laporan', 'icon' => 'file-dollar', 'route' => 'reports.biaya_retribusi', 'sort_order' => 442],
             ['name' => 'Opname Expired View', 'slug' => 'opname.view', 'menu_group' => 'Opname', 'icon' => 'clock', 'route' => 'opname_expired.index', 'sort_order' => 450],
@@ -140,7 +144,7 @@ class PermissionSeeder extends Seeder
                 'biaya_retribusi.view', 'biaya_retribusi.create', 'biaya_retribusi.edit',
                 'biaya_retribusi.import',
                 'rencana_kirim.view', 'roles.view', 'users.view',
-                'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete',
+                'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete',
                 'gate.edit', 'gate.delete',
                 'receiving.import', 'receiving.export', 'receiving.template',
                 // Keputusan akses 2026-10-09: staff_logistic memang lintas-depo.
@@ -173,7 +177,7 @@ class PermissionSeeder extends Seeder
                 'biaya_thl.view', 'biaya_thl.create', 'biaya_thl.edit',
                 'biaya_retribusi.view', 'biaya_retribusi.create', 'biaya_retribusi.edit',
                 'sj_validation.view',
-                'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.delete',
+                'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.delete',
                 'approval.submit',
                 'gate.edit', 'gate.delete',
                 // Keputusan akses 2026-10-09: grant live yang dipertahankan.
@@ -201,7 +205,7 @@ class PermissionSeeder extends Seeder
                 'standar_umur.view', 'standarisasi.view', 'standarisasi.import',
                 'biaya_thl.view', 'biaya_thl.create', 'biaya_thl.edit',
                 'biaya_retribusi.view', 'biaya_retribusi.create', 'biaya_retribusi.edit',
-                'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.delete',
+                'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.delete',
                 'approval.check', 'approval.revise',
                 'gate.edit', 'gate.delete',
             ],
@@ -223,7 +227,7 @@ class PermissionSeeder extends Seeder
                 'users.view', 'users.edit', 'roles.view',
                 'users.import', 'roles.import', 'roles.export', 'roles.template',
                 'emails.view', 'emails.edit',
-                'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete',
+                'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete',
                 'gate.edit', 'gate.delete',
                 'receiving.import', 'receiving.export', 'receiving.template',
             ],
@@ -241,7 +245,7 @@ class PermissionSeeder extends Seeder
                 'biaya_thl.view', 'biaya_thl.create', 'biaya_thl.edit',
                 'biaya_thl.import',
                 'biaya_retribusi.view', 'biaya_retribusi.create', 'biaya_retribusi.edit',
-                'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.delete',
+                'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.delete',
                 'gate.edit', 'gate.delete',
                 'receiving.import', 'receiving.export', 'receiving.template',
             ],
@@ -254,7 +258,7 @@ class PermissionSeeder extends Seeder
                 'gate.view', 'gate.create', 'gate.edit', 'gate.delete',
                 'receiving.view', 'receiving.create', 'receiving.edit', 'receiving.delete',
                 'biaya_thl.view',
-                'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.delete',
+                'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.delete',
                 // Keputusan akses 2026-10-09: cheker tetap memegang aksi
                 // sensitif ini (grant live yang dipertahankan).
                 'approval.submit', 'retribusi_rates.manage', 'sj_validation.edit_completed', 'opname.edit', 'penerimaan.delete',
@@ -269,7 +273,7 @@ class PermissionSeeder extends Seeder
                 'rencana_kirim.view', 'gate.view', 'sj_validation.view', 'receiving.view',
                 'penerimaan.view', 'npn.view', 'standar_umur.view', 'standarisasi.view',
                 'biaya_thl.view', 'biaya_retribusi.view',
-                'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view',
+                'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view',
             ],
         ];
 

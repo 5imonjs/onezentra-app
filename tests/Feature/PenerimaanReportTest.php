@@ -19,7 +19,7 @@ class PenerimaanReportTest extends TestCase
         parent::setUp();
 
         $role = Role::firstOrCreate(['slug' => 'report_view'], ['name' => 'Report View']);
-        foreach (['reports.view', 'depot.view_all'] as $slug) {
+        foreach (['reports.penerimaan', 'depot.view_all'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Reports']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }
@@ -107,7 +107,7 @@ class PenerimaanReportTest extends TestCase
         $item->update(['kode_depo' => '0999', 'nama_depo' => 'Depo Lain']);
 
         $role = Role::firstOrCreate(['slug' => 'report_view_depot'], ['name' => 'Report View Depot']);
-        $role->permissions()->syncWithoutDetaching([Permission::where('slug', 'reports.view')->first()->id]);
+        $role->permissions()->syncWithoutDetaching([Permission::where('slug', 'reports.penerimaan')->first()->id]);
         $role->users()->attach($depotUser->id);
 
         Sanctum::actingAs($depotUser);

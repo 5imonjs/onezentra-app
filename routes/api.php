@@ -374,14 +374,14 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::prefix('reports')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
-        Route::get('/selisih-qty', [ReportController::class, 'selisihQty'])->middleware('permission:reports.view');
-        Route::get('/selisih-qty/export', [ReportController::class, 'selisihQtyExport'])->middleware(['permission:reports.view', 'throttle:30,1,heavy-read']);
-        Route::get('/penerimaan', [ReportController::class, 'penerimaan'])->middleware('permission:reports.view');
-        Route::get('/penerimaan/export', [ReportController::class, 'penerimaanExport'])->middleware(['permission:reports.view', 'throttle:30,1,heavy-read']);
-        Route::get('/penerimaan-batch-expired', [ReportController::class, 'penerimaanExpired'])->middleware('permission:reports.view');
-        Route::get('/penerimaan-batch-expired/export', [ReportController::class, 'penerimaanExpiredExport'])->middleware(['permission:reports.view', 'throttle:30,1,heavy-read']);
-        Route::get('/rencana-kirim', [ReportController::class, 'rencanaKirim'])->middleware('permission:reports.view');
-        Route::get('/rencana-kirim/export', [ReportController::class, 'rencanaKirimExport'])->middleware(['permission:reports.view', 'throttle:30,1,heavy-read']);
+        Route::get('/selisih-qty', [ReportController::class, 'selisihQty'])->middleware('permission:reports.selisih_qty');
+        Route::get('/selisih-qty/export', [ReportController::class, 'selisihQtyExport'])->middleware(['permission:reports.selisih_qty', 'throttle:30,1,heavy-read']);
+        Route::get('/penerimaan', [ReportController::class, 'penerimaan'])->middleware('permission:reports.penerimaan');
+        Route::get('/penerimaan/export', [ReportController::class, 'penerimaanExport'])->middleware(['permission:reports.penerimaan', 'throttle:30,1,heavy-read']);
+        Route::get('/penerimaan-batch-expired', [ReportController::class, 'penerimaanExpired'])->middleware('permission:reports.penerimaan_batch_expired');
+        Route::get('/penerimaan-batch-expired/export', [ReportController::class, 'penerimaanExpiredExport'])->middleware(['permission:reports.penerimaan_batch_expired', 'throttle:30,1,heavy-read']);
+        Route::get('/rencana-kirim', [ReportController::class, 'rencanaKirim'])->middleware('permission:reports.rencana_kirim');
+        Route::get('/rencana-kirim/export', [ReportController::class, 'rencanaKirimExport'])->middleware(['permission:reports.rencana_kirim', 'throttle:30,1,heavy-read']);
         Route::get('/biaya-thl', [ReportController::class, 'biayaThl'])->middleware('permission:reports.biaya_thl');
         Route::get('/biaya-thl/export', [ReportController::class, 'biayaThlExport'])->middleware(['permission:reports.biaya_thl', 'throttle:30,1,heavy-read']);
         Route::get('/biaya-retribusi', [ReportController::class, 'biayaRetribusi'])->middleware('permission:reports.biaya_retribusi');

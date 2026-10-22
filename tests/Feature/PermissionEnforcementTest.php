@@ -104,7 +104,7 @@ class PermissionEnforcementTest extends TestCase
     public function test_depo_list_is_available_without_rencana_kirim_view(): void
     {
         $user = $this->makeScopedUser('staff_logistic');
-        $this->attach($user, 'reports.view');
+        $this->attach($user, 'reports.rencana_kirim');
 
         $this->makeScopedUser('staff_logistic', 'DEPO-B');
 

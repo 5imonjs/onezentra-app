@@ -54,7 +54,7 @@ class ReportSelisihBiayaTest extends TestCase
 
     public function test_selisih_qty_summary_counts_via_sql(): void
     {
-        $user = $this->userWith(['reports.view']);
+        $user = $this->userWith(['reports.selisih_qty']);
         $this->makeSelisihGraph($user);
         Sanctum::actingAs($user);
 
@@ -111,7 +111,7 @@ class ReportSelisihBiayaTest extends TestCase
 
     public function test_biaya_report_requires_specific_permission(): void
     {
-        Sanctum::actingAs($this->userWith(['reports.view']));
+        Sanctum::actingAs($this->userWith(['reports.selisih_qty']));
 
         $this->getJson('/api/v1/reports/biaya-thl')->assertForbidden();
         $this->getJson('/api/v1/reports/biaya-retribusi')->assertForbidden();

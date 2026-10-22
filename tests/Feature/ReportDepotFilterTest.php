@@ -33,7 +33,7 @@ class ReportDepotFilterTest extends TestCase
         parent::setUp();
 
         $role = Role::firstOrCreate(['slug' => 'report_depot_master'], ['name' => 'Report Depot Master']);
-        foreach (['reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'depot.view_all'] as $slug) {
+        foreach (['reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'depot.view_all'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Reports']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }
@@ -50,7 +50,7 @@ class ReportDepotFilterTest extends TestCase
         $role->users()->attach($this->master->id);
 
         $scopedRole = Role::firstOrCreate(['slug' => 'report_depot_scoped'], ['name' => 'Report Depot Scoped']);
-        foreach (['reports.view', 'opname.view'] as $slug) {
+        foreach (['reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'opname.view'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Reports']);
             $scopedRole->permissions()->syncWithoutDetaching([$perm->id]);
         }

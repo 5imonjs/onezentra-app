@@ -29,7 +29,7 @@ class PenerimaanExpiredReportTest extends TestCase
         parent::setUp();
 
         $role = Role::firstOrCreate(['slug' => 'expired_report_view'], ['name' => 'Expired Report View']);
-        foreach (['reports.view', 'depot.view_all'] as $slug) {
+        foreach (['reports.penerimaan_batch_expired', 'depot.view_all'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug, 'name' => $slug], ['menu_group' => 'Reports']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }

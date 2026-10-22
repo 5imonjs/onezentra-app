@@ -106,7 +106,7 @@ export default function PenerimaanBatchExpiredReportPage() {
   }, [dateFrom, dateTo, kodeDepo, cluster, status, searchApply, page]);
 
   const fetchData = useCallback(async () => {
-    if (!hasPermission('reports.view')) return;
+    if (!hasPermission('reports.penerimaan_batch_expired')) return;
     const reqId = ++reqIdRef.current;
     setLoading(true);
     setError('');
@@ -217,7 +217,7 @@ export default function PenerimaanBatchExpiredReportPage() {
 
   const canExport = !loading && !exporting && rows.length > 0;
 
-  if (!hasPermission('reports.view')) {
+  if (!hasPermission('reports.penerimaan_batch_expired')) {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">

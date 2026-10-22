@@ -61,7 +61,7 @@ class ExportRowLimitTest extends TestCase
     public function test_report_export_over_row_limit_returns_422(): void
     {
         config()->set('exports.max_rows', 1);
-        $user = $this->userWith('export-rk@test.com', ['reports.view', 'depot.view_all']);
+        $user = $this->userWith('export-rk@test.com', ['reports.rencana_kirim', 'depot.view_all']);
         Sanctum::actingAs($user);
 
         RencanaKirim::create(['po_transporter' => 'PO-E1', 'status' => 'SCHEDULED', 'created_by' => $user->id]);

@@ -177,7 +177,7 @@ class DepotScopeTest extends TestCase
         ReceivingItem::create(['receiving_id' => $recPlan->id, 'kode_barang' => 'B-PLAN', 'nama_barang' => 'Barang Plan', 'expected_qty' => 10, 'actual_qty' => 8, 'selisih_qty' => -2]);
         ReceivingItem::create(['receiving_id' => $recChek->id, 'kode_barang' => 'B-CHEK', 'nama_barang' => 'Barang Chek', 'expected_qty' => 10, 'actual_qty' => 12, 'selisih_qty' => 2]);
 
-        $this->grant($planner, 'reports.view');
+        $this->grant($planner, 'reports.rencana_kirim');
         Sanctum::actingAs($planner);
 
         $response = $this->getJson('/api/v1/reports/selisih-qty');

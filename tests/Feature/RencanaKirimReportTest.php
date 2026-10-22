@@ -21,8 +21,8 @@ class RencanaKirimReportTest extends TestCase
     {
         $role = Role::firstOrCreate(['slug' => 'rk_report_view'], ['name' => 'RK Report View']);
         $perm = Permission::firstOrCreate(
-            ['slug' => 'reports.view'],
-            ['name' => 'reports.view', 'menu_group' => 'Laporan']
+            ['slug' => 'reports.rencana_kirim'],
+            ['name' => 'reports.rencana_kirim', 'menu_group' => 'Laporan']
         );
         $role->permissions()->syncWithoutDetaching([$perm->id]);
 

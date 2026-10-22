@@ -276,7 +276,7 @@ class SeederRoleVerificationTest extends TestCase
             'penerimaan.view', 'npn.view', 'standar_umur.view', 'standarisasi.view',
             'biaya_thl.view', 'biaya_thl.export',
             'biaya_retribusi.view', 'biaya_retribusi.export',
-            'reports.view', 'reports.biaya_thl', 'reports.biaya_retribusi',
+            'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi',
             'opname.view', 'opname.progress_all',
             'cluster_principal.view',
         ];
@@ -301,8 +301,8 @@ class SeederRoleVerificationTest extends TestCase
         // Total sistem tetap konsisten: 12 role lama + ga + bh, 102 permission
         // (99 lama + 3 sesi opname), dan grant hasil turunan.
         $this->assertSame(14, Role::count());
-        $this->assertSame(102, Permission::count());
-        $this->assertSame(534, DB::table('role_permission')->count());
+        $this->assertSame(106, Permission::count());
+        $this->assertSame(568, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void
