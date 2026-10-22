@@ -324,12 +324,37 @@ void main() {
 
     expect(find.text('Validasi SJ'), findsWidgets);
     expect(find.text('Scan Dokumen'), findsOneWidget);
-    // Twice: the header chip plus the IN_PROGRESS badge of the history row.
+    // Twice: the header stat tile plus the IN_PROGRESS badge of the history row.
     expect(find.text('Berjalan'), findsNWidgets(2));
     expect(find.text('1 sesi tercatat'), findsOneWidget);
     expect(find.text('PO-042'), findsWidgets);
     expect(repository.listCalls, greaterThan(0));
     expect(repository.statsCalls, greaterThan(0));
+  });
+
+  testWidgets('header statistik tetap rapi di layout tablet', (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    var repository = _FakeValidationRepository(
+      history: [_openSession()],
+      cannedStats: const ValidationStats(
+        total: 5,
+        hariIni: 2,
+        berjalan: 3,
+        selesai: 4,
+        cancelled: 1,
+      ),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    expect(find.byType(AppStatTile), findsNWidgets(5));
+    expect(find.text('Hari ini'), findsOneWidget);
+    expect(find.text('Total'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('scan PO → sesi terbuka dengan daftar item', (tester) async {

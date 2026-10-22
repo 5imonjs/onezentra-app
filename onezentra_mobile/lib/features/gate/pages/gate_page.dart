@@ -227,22 +227,22 @@ class _GatePageState extends State<GatePage> {
 
   Widget _buildHeader(GateProvider gate) {
     var stats = [
-      _StatTile(
+      AppStatTile(
         label: 'Hari ini',
         value: gate.stats.hariIni,
         dotColor: Colors.white,
       ),
-      _StatTile(
+      AppStatTile(
         label: 'Terjadwal',
         value: gate.stats.terjadwal,
         dotColor: AppTheme.info,
       ),
-      _StatTile(
+      AppStatTile(
         label: 'Selesai',
         value: gate.stats.selesai,
         dotColor: AppTheme.success,
       ),
-      _StatTile(
+      AppStatTile(
         label: 'Total',
         value: gate.stats.total,
         dotColor: AppTheme.gray300,
@@ -1086,69 +1086,5 @@ class _GatePageState extends State<GatePage> {
         ),
       ),
     ],
-  );
-}
-
-/// Counter tile in the dark header. Labels stay on one line so the four-tile
-/// row cannot force the header taller than the available width.
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.dotColor,
-  });
-  final String label;
-  final int value;
-  final Color dotColor;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(AppTheme.space3),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.07),
-      borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: dotColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(
-                  fontSize: 10.5,
-                  height: 1.2,
-                  color: AppTheme.gray400,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '$value',
-          style: GoogleFonts.roboto(
-            fontSize: 22,
-            height: 1.1,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-      ],
-    ),
   );
 }

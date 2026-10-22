@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 
 /// Custom text field matching the web app's input-field style
@@ -477,6 +478,71 @@ class AppBadge extends StatelessWidget {
 }
 
 enum AppBadgeVariant { success, warning, danger, info, primary, gray }
+
+/// Counter tile used in the dark operational headers (Check In Point,
+/// Validasi SJ). Shared so the header rhythm cannot drift between pages.
+class AppStatTile extends StatelessWidget {
+  const AppStatTile({
+    required this.label,
+    required this.value,
+    required this.dotColor,
+    super.key,
+  });
+  final String label;
+  final int value;
+  final Color dotColor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.07),
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.roboto(
+                  fontSize: 10.5,
+                  height: 1.2,
+                  color: AppTheme.gray400,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '$value',
+          style: GoogleFonts.roboto(
+            fontSize: 22,
+            height: 1.1,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 /// Loading overlay
 class AppLoadingOverlay extends StatelessWidget {

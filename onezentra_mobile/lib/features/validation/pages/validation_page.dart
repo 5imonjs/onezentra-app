@@ -125,47 +125,60 @@ class _ValidationPageState extends State<ValidationPage> {
             : RefreshIndicator(
                 onRefresh: validation.refresh,
                 color: AppTheme.primary600,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(AppTheme.space4),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 960),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          // Phones keep one column; tablets get the active
-                          // work column next to history so both stay visible
-                          // without a 1000px-wide scan bar.
-                          var wide = constraints.maxWidth >= 820;
-                          var work = Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildScanCard(validation, canCreate: canCreate),
-                              if (validation.active != null) ...[
-                                const SizedBox(height: AppTheme.space4),
-                                _buildActiveCard(
-                                  validation.active!,
-                                  validation: validation,
-                                  canValidate: canValidate,
-                                  canComplete: canComplete,
-                                  canCancel: canCancel,
-                                  canPrintLabels: canPrintLabels,
-                                  canCreateStandarisasi:
-                                      user?.hasPermission(
-                                        'standarisasi.create',
-                                      ) ??
-                                      false,
-                                ),
-                              ],
-                            ],
-                          );
-                          var history = _buildHistory(validation);
-                          return Column(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Same responsive rhythm as Check In Point: one column on
+                    // phones, work + history side by side on tablets, and a
+                    // wider gutter once the viewport can afford it.
+                    var isWide = constraints.maxWidth >= 820;
+                    var horizontalPadding = constraints.maxWidth >= 900
+                        ? AppTheme.space8
+                        : constraints.maxWidth >= 600
+                        ? AppTheme.space6
+                        : AppTheme.space4;
+                    var work = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildScanCard(validation, canCreate: canCreate),
+                        if (validation.active != null) ...[
+                          const SizedBox(height: AppTheme.space4),
+                          _buildActiveCard(
+                            validation.active!,
+                            validation: validation,
+                            canValidate: canValidate,
+                            canComplete: canComplete,
+                            canCancel: canCancel,
+                            canPrintLabels: canPrintLabels,
+                            canCreateStandarisasi:
+                                user?.hasPermission('standarisasi.create') ??
+                                false,
+                          ),
+                        ],
+                      ],
+                    );
+                    var history = _buildHistory(validation);
+
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        AppTheme.space4,
+                        horizontalPadding,
+                        AppTheme.space8,
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 960),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildHeader(validation),
-                              const SizedBox(height: AppTheme.space4),
-                              if (wide)
+                              SizedBox(
+                                height: isWide
+                                    ? AppTheme.space5
+                                    : AppTheme.space4,
+                              ),
+                              if (isWide)
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -179,13 +192,12 @@ class _ValidationPageState extends State<ValidationPage> {
                                 const SizedBox(height: AppTheme.space4),
                                 history,
                               ],
-                              const SizedBox(height: AppTheme.space8),
                             ],
-                          );
-                        },
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
       ),
@@ -196,144 +208,201 @@ class _ValidationPageState extends State<ValidationPage> {
   // No access
   // ---------------------------------------------------------------------
 
-  Widget _buildNoAccess() => SingleChildScrollView(
-    padding: const EdgeInsets.all(AppTheme.space5),
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.space5),
-      decoration: BoxDecoration(
-        color: AppTheme.warningWell,
-        borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.warningText),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
-          const SizedBox(width: AppTheme.space3),
-          Expanded(
-            child: Text(
-              'Anda tidak memiliki izin untuk melihat Validasi SJ.',
-              style: GoogleFonts.roboto(
-                fontSize: 13,
-                height: 1.4,
-                color: AppTheme.warningText,
+  Widget _buildNoAccess() => LayoutBuilder(
+    builder: (context, constraints) {
+      var horizontalPadding = constraints.maxWidth >= 900
+          ? AppTheme.space8
+          : constraints.maxWidth >= 600
+          ? AppTheme.space6
+          : AppTheme.space5;
+
+      return SingleChildScrollView(
+        padding: EdgeInsets.all(horizontalPadding),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppTheme.space5),
+              decoration: BoxDecoration(
+                color: AppTheme.warningWell,
+                borderRadius: AppTheme.radiusXl,
+                border: Border.all(color: AppTheme.warningText),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.lock_rounded,
+                    size: 20,
+                    color: AppTheme.warningText,
+                  ),
+                  const SizedBox(width: AppTheme.space3),
+                  Expanded(
+                    child: Text(
+                      'Anda tidak memiliki izin untuk melihat Validasi SJ.',
+                      style: GoogleFonts.roboto(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: AppTheme.warningText,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 
   // ---------------------------------------------------------------------
   // Dark header with the stats
   // ---------------------------------------------------------------------
 
-  Widget _buildHeader(ValidationProvider validation) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppTheme.space5),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [AppTheme.ink900, AppTheme.ink800],
+  Widget _buildHeader(ValidationProvider validation) {
+    var stats = [
+      AppStatTile(
+        label: 'Hari ini',
+        value: validation.stats.hariIni,
+        dotColor: Colors.white,
       ),
-      borderRadius: AppTheme.radius2xl,
-      boxShadow: [
-        BoxShadow(
-          color: AppTheme.ink900.withValues(alpha: 0.2),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
+      AppStatTile(
+        label: 'Berjalan',
+        value: validation.stats.berjalan,
+        dotColor: AppTheme.info,
+      ),
+      AppStatTile(
+        label: 'Selesai',
+        value: validation.stats.selesai,
+        dotColor: AppTheme.success,
+      ),
+      AppStatTile(
+        label: 'Batal',
+        value: validation.stats.cancelled,
+        dotColor: AppTheme.danger,
+      ),
+      AppStatTile(
+        label: 'Total',
+        value: validation.stats.total,
+        dotColor: AppTheme.gray300,
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space5),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppTheme.ink900, AppTheme.ink800],
         ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: AppTheme.radiusLg,
-              ),
-              child: const Icon(
-                Icons.verified_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: AppTheme.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ringkasan Validasi',
-                    style: GoogleFonts.roboto(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Scan PO — validasi produk — selesaikan',
-                    style: GoogleFonts.roboto(
-                      fontSize: 12,
-                      color: AppTheme.gray400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space4),
-        Wrap(
-          spacing: AppTheme.space2,
-          runSpacing: AppTheme.space2,
-          children: [
-            _StatChip(
-              label: 'Hari ini',
-              value: validation.stats.hariIni,
-              dotColor: Colors.white,
-            ),
-            _StatChip(
-              label: 'Berjalan',
-              value: validation.stats.berjalan,
-              dotColor: AppTheme.info,
-            ),
-            _StatChip(
-              label: 'Selesai',
-              value: validation.stats.selesai,
-              dotColor: AppTheme.success,
-            ),
-            _StatChip(
-              label: 'Batal',
-              value: validation.stats.cancelled,
-              dotColor: AppTheme.danger,
-            ),
-            _StatChip(
-              label: 'Total',
-              value: validation.stats.total,
-              dotColor: AppTheme.gray300,
-            ),
-          ],
-        ),
-        if (validation.statsError != null) ...[
-          const SizedBox(height: AppTheme.space3),
-          Text(
-            'Statistik gagal dimuat — tarik untuk mencoba lagi.',
-            style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray400),
+        borderRadius: AppTheme.radius2xl,
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.ink900.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
-      ],
-    ),
-  );
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: AppTheme.radiusLg,
+                ),
+                child: const Icon(
+                  Icons.verified_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Validasi SJ',
+                      style: GoogleFonts.roboto(
+                        fontSize: 18,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Scan PO — validasi produk — selesaikan sesi',
+                      style: GoogleFonts.roboto(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: AppTheme.gray400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space5),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 520) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: stats[0]),
+                        const SizedBox(width: AppTheme.space2),
+                        Expanded(child: stats[1]),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space2),
+                    Row(
+                      children: [
+                        Expanded(child: stats[2]),
+                        const SizedBox(width: AppTheme.space2),
+                        Expanded(child: stats[3]),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space2),
+                    Row(children: [Expanded(child: stats[4])]),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  for (var i = 0; i < stats.length; i++) ...[
+                    if (i > 0) const SizedBox(width: AppTheme.space2),
+                    Expanded(child: stats[i]),
+                  ],
+                ],
+              );
+            },
+          ),
+          if (validation.statsError != null) ...[
+            const SizedBox(height: AppTheme.space3),
+            Text(
+              'Statistik gagal dimuat — tarik untuk mencoba lagi.',
+              style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray400),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   // ---------------------------------------------------------------------
   // PO scan + message
@@ -343,14 +412,16 @@ class _ValidationPageState extends State<ValidationPage> {
     ValidationProvider validation, {
     required bool canCreate,
   }) => AppCard(
+    key: const ValueKey('validation-scan'),
     padding: const EdgeInsets.all(AppTheme.space5),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _iconBox(
-              36,
+              38,
               AppTheme.primary50,
               Icons.qr_code_scanner_rounded,
               iconColor: AppTheme.primary600,
@@ -363,16 +434,18 @@ class _ValidationPageState extends State<ValidationPage> {
                   Text(
                     'Scan Dokumen',
                     style: GoogleFonts.roboto(
-                      fontSize: 14,
+                      fontSize: 15,
+                      height: 1.25,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.foreground,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     'Pindai barcode PO / surat jalan, lalu Mulai',
                     style: GoogleFonts.roboto(
-                      fontSize: 11,
+                      fontSize: 11.5,
+                      height: 1.4,
                       color: AppTheme.gray400,
                     ),
                   ),
@@ -406,6 +479,7 @@ class _ValidationPageState extends State<ValidationPage> {
               text: 'Mulai',
               height: 48,
               isFullWidth: stacked,
+              leadingIcon: Icons.play_arrow_rounded,
               isLoading: validation.startBusy,
               onPressed: canCreate && !validation.startBusy
                   ? _submitScan
@@ -1731,61 +1805,6 @@ class _ValidationPageState extends State<ValidationPage> {
 }
 
 /// Small counter chip in the dark header.
-class _StatChip extends StatelessWidget {
-  const _StatChip({
-    required this.label,
-    required this.value,
-    required this.dotColor,
-  });
-  final String label;
-  final int value;
-  final Color dotColor;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(
-      horizontal: AppTheme.space3,
-      vertical: 6,
-    ),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.08),
-      borderRadius: AppTheme.radiusFull,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray300),
-        ),
-        const SizedBox(width: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
-            borderRadius: AppTheme.radiusFull,
-          ),
-          child: Text(
-            '$value',
-            style: GoogleFonts.roboto(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 /// Bottom sheet for validating one line: actual qty, condition, expiry,
 /// optional product barcode / notes / stack measurements.
 ///
