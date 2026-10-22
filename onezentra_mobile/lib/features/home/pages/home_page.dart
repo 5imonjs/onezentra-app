@@ -9,9 +9,9 @@ import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Home Page - the only landing after login.
 ///
-/// Exactly four operational menus, nothing else: Check In Point, Validasi
-/// SJ, Bongkar, and Hasil Penerimaan. Each card is hidden when the
-/// role lacks its permission — same rule as the web sidebar.
+/// Operational menus: Check In Point, Riwayat Gate, Validasi SJ, Bongkar,
+/// and Hasil Penerimaan. Each card is hidden when the role lacks its
+/// permission — same rule as the web sidebar.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -49,6 +49,14 @@ class _HomePageState extends State<HomePage> {
         AppTheme.primary300,
         ['gate.view'],
         '/gate',
+      ),
+      const _HomeMenu(
+        'Riwayat Gate',
+        'Cari & telusuri transaksi gate',
+        Icons.history_rounded,
+        AppTheme.info,
+        ['gate.view'],
+        '/gate/riwayat',
       ),
       const _HomeMenu(
         'Validasi SJ',

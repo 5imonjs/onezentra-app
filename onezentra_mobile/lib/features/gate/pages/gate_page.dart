@@ -12,12 +12,11 @@ import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Check In Point (Gate) — lookup a rencana kirim by PO / Nopol, record
-/// Gate IN, verify the document, and browse the gate history.
+/// Gate IN, and verify the document.
 ///
 /// Mirrors the web app's `/gate` screen, adapted for a phone: the scan input
-/// accepts manual typing or the camera barcode scanner, and everything else —
-/// stats, quick scan, action rules per status, permission warnings, paginated
-/// history — matches the web behaviour.
+/// accepts manual typing or the camera barcode scanner. Gate history lives on
+/// its own `/gate/riwayat` page, reachable from the home menu.
 class GatePage extends StatefulWidget {
   const GatePage({super.key, this.repository, this.openScanner});
 
@@ -91,11 +90,6 @@ class _GatePageState extends State<GatePage> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: canView ? () => context.push('/gate/riwayat') : null,
-            tooltip: 'Riwayat Gate',
-            icon: const Icon(Icons.history_rounded),
-          ),
-          IconButton(
             onPressed: canView && !gate.isLoading && !gate.isLoadingStats
                 ? () => gate.refresh()
                 : null,
@@ -152,31 +146,15 @@ class _GatePageState extends State<GatePage> {
                                       ),
                                     ),
                                     const SizedBox(width: AppTheme.space4),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          _buildHistoryTeaser(context),
-                                          const SizedBox(
-                                            height: AppTheme.space4,
-                                          ),
-                                          _buildGuideCard(),
-                                        ],
-                                      ),
-                                    ),
+                                    Expanded(flex: 2, child: _buildGuideCard()),
                                   ],
                                 )
-                              else ...[
+                              else
                                 _buildQuickScan(
                                   gate,
                                   canCreate: canCreate,
                                   canVerify: canVerify,
                                 ),
-                                const SizedBox(height: AppTheme.space4),
-                                _buildHistoryTeaser(context),
-                              ],
                               const SizedBox(height: AppTheme.space8),
                             ],
                           ),
@@ -1013,9 +991,8 @@ class _GatePageState extends State<GatePage> {
     child: Icon(icon, size: size * 0.5, color: iconColor),
   );
 
-  /// Pintu masuk ke halaman Riwayat Gate tersendiri.
-  /// Wide layouts have room for the secondary rail: history plus a short
-  /// explanation of the gate flow. Phones stay focused on the scan action.
+  /// Wide layouts have room for a short explanation of the gate flow in the
+  /// secondary rail. Phones stay focused on the scan action.
   Widget _buildGuideCard() => AppCard(
     key: const ValueKey('gate-guide-card'),
     padding: const EdgeInsets.all(AppTheme.space5),
@@ -1109,49 +1086,6 @@ class _GatePageState extends State<GatePage> {
         ),
       ),
     ],
-  );
-
-  Widget _buildHistoryTeaser(BuildContext context) => AppCard(
-    key: const ValueKey('gate-history-teaser'),
-    padding: const EdgeInsets.all(AppTheme.space5),
-    onTap: () => context.push('/gate/riwayat'),
-    child: Row(
-      children: [
-        _iconBox(
-          38,
-          AppTheme.primary50,
-          Icons.history_rounded,
-          iconColor: AppTheme.primary600,
-        ),
-        const SizedBox(width: AppTheme.space3),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Riwayat Gate',
-                style: GoogleFonts.roboto(
-                  fontSize: 15,
-                  height: 1.25,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.foreground,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'Cari + telusuri semua transaksi',
-                style: GoogleFonts.roboto(
-                  fontSize: 11.5,
-                  height: 1.4,
-                  color: AppTheme.gray400,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const Icon(Icons.chevron_right_rounded, color: AppTheme.gray400),
-      ],
-    ),
   );
 }
 

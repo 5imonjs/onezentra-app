@@ -100,7 +100,7 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
-  testWidgets('menampilkan keempat menu operasional', (tester) async {
+  testWidgets('menampilkan lima menu operasional', (tester) async {
     var auth = await _loginAuth();
 
     await _pumpHomePage(tester, auth);
@@ -108,6 +108,8 @@ void main() {
     expect(find.text('Halo,'), findsOneWidget);
     expect(find.text('Operator'), findsOneWidget);
     expect(find.text('Check In Point'), findsOneWidget);
+    expect(find.text('Riwayat Gate'), findsOneWidget);
+    expect(find.text('Cari & telusuri transaksi gate'), findsOneWidget);
     expect(find.text('Validasi SJ'), findsOneWidget);
     expect(find.text('Bongkar'), findsOneWidget);
     expect(find.text('Hasil Penerimaan'), findsOneWidget);
@@ -152,6 +154,7 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     expect(find.text('Check In Point'), findsOneWidget);
+    expect(find.text('Riwayat Gate'), findsOneWidget);
     expect(find.text('Check Out Point'), findsNothing);
     expect(find.text('Validasi SJ'), findsNothing);
     // Check Out sudah tidak ada di home page; Bongkar butuh receiving.view.
@@ -197,7 +200,7 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     var phoneCards = find.byType(AppCard);
-    expect(phoneCards, findsNWidgets(4));
+    expect(phoneCards, findsNWidgets(5));
     var phoneFirst = tester.getRect(phoneCards.at(0));
     var phoneSecond = tester.getRect(phoneCards.at(1));
     expect(phoneFirst.left, closeTo(phoneSecond.left, 0.1));
@@ -208,11 +211,12 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     var wideCards = find.byType(AppCard);
-    expect(wideCards, findsNWidgets(4));
-    var rects = [for (var i = 0; i < 4; i++) tester.getRect(wideCards.at(i))];
+    expect(wideCards, findsNWidgets(5));
+    var rects = [for (var i = 0; i < 5; i++) tester.getRect(wideCards.at(i))];
     expect(rects[0].top, closeTo(rects[1].top, 0.1));
     expect(rects[0].top, closeTo(rects[2].top, 0.1));
     expect(rects[3].top, greaterThan(rects[0].bottom));
+    expect(rects[4].top, greaterThan(rects[0].bottom));
     for (var rect in rects) {
       expect(rect.height, lessThan(200));
     }
@@ -230,7 +234,7 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(AppCard), findsNWidgets(4));
+    expect(find.byType(AppCard), findsNWidgets(5));
   });
 
   testWidgets('banner retry tampil saat refresh izin gagal', (tester) async {

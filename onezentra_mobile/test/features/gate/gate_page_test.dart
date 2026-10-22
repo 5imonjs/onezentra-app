@@ -281,19 +281,19 @@ void main() {
 
     await _pumpGatePage(tester, auth, repository);
 
-    // Halaman Check In Point kini hanya Scan: statistik + teaser riwayat,
-    // tanpa daftar transaksi (pindah ke /gate/riwayat).
+    // Halaman Check In Point hanya Scan: statistik + form, tanpa daftar
+    // transaksi maupun pintasan riwayat (pindah ke menu Riwayat Gate).
     expect(find.text('Check In Point'), findsWidgets);
     expect(find.text('Quick Scan'), findsOneWidget);
     expect(find.text('Hari ini'), findsOneWidget);
-    expect(find.text('Riwayat Gate'), findsOneWidget);
+    expect(find.text('Riwayat Gate'), findsNothing);
     expect(find.text('PO-TEST-001'), findsNothing);
     expect(find.text('1 transaksi tercatat'), findsNothing);
     expect(repository.statsCalls, greaterThan(0));
     expect(repository.listCalls, 0);
   });
 
-  testWidgets('layout HP sempit menumpuk form dan riwayat', (tester) async {
+  testWidgets('layout HP sempit menumpuk form scan', (tester) async {
     var repository = _FakeGateRepository();
     var auth = await _loginAuth();
 
@@ -305,13 +305,8 @@ void main() {
 
     expect(tester.takeException(), isNull);
 
-    var quickScan = tester.getRect(
-      find.byKey(const ValueKey('gate-quick-scan')),
-    );
-    var history = tester.getRect(
-      find.byKey(const ValueKey('gate-history-teaser')),
-    );
-    expect(history.top, greaterThan(quickScan.bottom));
+    expect(find.byKey(const ValueKey('gate-quick-scan')), findsOneWidget);
+    expect(find.byKey(const ValueKey('gate-history-teaser')), findsNothing);
     expect(find.byKey(const ValueKey('gate-guide-card')), findsNothing);
 
     var field = tester.getRect(find.byType(TextFormField).first);
@@ -336,15 +331,10 @@ void main() {
     var quickScan = tester.getRect(
       find.byKey(const ValueKey('gate-quick-scan')),
     );
-    var history = tester.getRect(
-      find.byKey(const ValueKey('gate-history-teaser')),
-    );
-    expect(history.left, greaterThan(quickScan.right));
-    expect(history.top, closeTo(quickScan.top, 0.1));
-
     var guide = tester.getRect(find.byKey(const ValueKey('gate-guide-card')));
-    expect(guide.top, greaterThan(history.bottom));
-    expect(guide.left, closeTo(history.left, 0.1));
+    expect(guide.left, greaterThan(quickScan.right));
+    expect(guide.top, closeTo(quickScan.top, 0.1));
+    expect(find.byKey(const ValueKey('gate-history-teaser')), findsNothing);
 
     var field = tester.getRect(find.byType(TextFormField).first);
     var search = tester.getRect(find.widgetWithText(AppPrimaryButton, 'Cari'));
@@ -374,7 +364,7 @@ void main() {
     expect(find.text('Gate IN →'), findsOneWidget);
   });
 
-  testWidgets('tombol riwayat membuka halaman riwayat terpisah', (
+  testWidgets('menu Riwayat Gate di home membuka halaman riwayat', (
     tester,
   ) async {
     var repository = _FakeGateRepository();
@@ -384,10 +374,10 @@ void main() {
     await tester.pumpWidget(OneZentraApp(authProvider: auth, router: router));
     await tester.pumpAndSettle();
 
-    unawaited(router.push('/gate'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byTooltip('Riwayat Gate'));
+    var menu = find.text('Riwayat Gate');
+    expect(menu, findsOneWidget);
+    await tester.ensureVisible(menu);
+    await tester.tap(menu);
     await tester.pumpAndSettle();
 
     expect(find.text('Pencarian'), findsOneWidget);

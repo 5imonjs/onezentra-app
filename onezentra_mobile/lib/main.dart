@@ -116,7 +116,7 @@ const Map<String, String> _routePermissions = {
   '/hasil-penerimaan': 'receiving.view',
 };
 
-/// App Router Configuration — four operational menus, nothing else.
+/// App Router Configuration — home menus plus their detail routes.
 ///
 /// Detail pages are pushed (not `go`) from the home menu so the system back
 /// button returns to the menu list.
