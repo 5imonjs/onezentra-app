@@ -26,8 +26,13 @@ const usagePayload = () => ({
   from: '2026-09-01',
   to: '2026-09-30',
   days: 30,
-  daily: [{ date: '2026-09-01', requests: 5, active_users: 2 }],
+  daily: [{ date: '2026-09-01', requests: 5, active_users: 2, logins: 1 }],
   top_users: [],
+  top_modules: [
+    { module: 'Rencana Kirim', requests: 4 },
+    { module: 'Login & Logout', requests: 1 },
+  ],
+  totals: { activities: 5, logins: 1, active_users: 2, peak_active_users: 2 },
 });
 
 const summary = (trend: { current_7d: number; prev_7d: number }) => ({
@@ -93,6 +98,15 @@ describe('DashboardActivityChart', () => {
     expect(await screen.findByText('Baru minggu ini')).toBeInTheDocument();
   });
 
+  it('menampilkan aktivitas menyeluruh: login dan rincian per modul', async () => {
+    render(<DashboardActivityChart />);
+
+    expect(await screen.findByText('Login berhasil')).toBeInTheDocument();
+    expect(screen.getByText('Login & Logout')).toBeInTheDocument();
+    expect(screen.getByText('Rencana Kirim')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
+
   it('tidak dirender dan tidak memuat data untuk peran tanpa users.view', () => {
     hasPermission.mockReturnValue(false);
 
@@ -107,7 +121,14 @@ describe('DashboardActivityChart', () => {
     const first = new Promise((resolve) => { resolveFirst = resolve; });
     activity.mockReturnValueOnce(first);
     activity.mockResolvedValueOnce({
-      data: { data: { ...usagePayload(), days: 7, daily: [{ date: '2026-09-01', requests: 99, active_users: 3 }] } },
+      data: {
+        data: {
+          ...usagePayload(),
+          days: 7,
+          daily: [{ date: '2026-09-01', requests: 99, active_users: 3, logins: 2 }],
+          totals: { activities: 99, logins: 2, active_users: 3, peak_active_users: 3 },
+        },
+      },
     });
 
     render(<DashboardActivityChart />);
@@ -119,7 +140,16 @@ describe('DashboardActivityChart', () => {
 
     // Permintaan 30 hari (mount) baru selesai SETELAH permintaan 7 hari.
     // Tanpa guard balapan, angka lama (5) akan menimpa angka terbaru.
-    resolveFirst({ data: { data: { ...usagePayload(), days: 30, daily: [{ date: '2026-09-01', requests: 5, active_users: 2 }] } } });
+    resolveFirst({
+      data: {
+        data: {
+          ...usagePayload(),
+          days: 30,
+          daily: [{ date: '2026-09-01', requests: 5, active_users: 2, logins: 1 }],
+          totals: { activities: 5, logins: 1, active_users: 2, peak_active_users: 2 },
+        },
+      },
+    });
 
     await waitFor(() => expect(screen.getByText('99')).toBeInTheDocument());
     expect(screen.queryByText('5')).not.toBeInTheDocument();
