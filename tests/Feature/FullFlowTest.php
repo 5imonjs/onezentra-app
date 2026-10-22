@@ -112,6 +112,7 @@ class FullFlowTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
             'sj_validation_item_id' => $itemId,
             'actual_qty' => 10,
+            'expired_date' => '2027-01-31',
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
 
@@ -187,6 +188,7 @@ class FullFlowTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
             'sj_validation_item_id' => $itemId,
             'actual_qty' => 8,
+            'expired_date' => '2027-01-31',
         ])->assertOk();
 
         $this->assertDatabaseHas('sj_validation_items', ['id' => $itemId, 'status' => 'MISMATCH']);
@@ -240,6 +242,7 @@ class FullFlowTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
             'sj_validation_item_id' => $itemId,
             'actual_qty' => 5,
+            'expired_date' => '2027-01-31',
         ])->assertOk();
 
         $this->postJson("/api/v1/sj-validations/{$validationId}/complete")->assertOk();
@@ -367,6 +370,7 @@ class FullFlowTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
             'sj_validation_item_id' => $itemId,
             'actual_qty' => 10,
+            'expired_date' => '2027-01-31',
             'condition' => 'FISIK_BAGUS',
             'tier' => 4,
             'tinggi_tumpukan' => 120,

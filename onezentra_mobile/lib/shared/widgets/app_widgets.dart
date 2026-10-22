@@ -17,6 +17,8 @@ class AppTextField extends StatelessWidget {
     this.onSaved,
     this.onChanged,
     this.onEditingComplete,
+    this.onTap,
+    this.readOnly = false,
     this.enabled = true,
     this.maxLines = 1,
     this.maxLength,
@@ -35,6 +37,8 @@ class AppTextField extends StatelessWidget {
   final void Function(String?)? onSaved;
   final void Function(String)? onChanged;
   final void Function()? onEditingComplete;
+  final void Function()? onTap;
+  final bool readOnly;
   final bool enabled;
   final int? maxLines;
   final int? maxLength;
@@ -67,6 +71,8 @@ class AppTextField extends StatelessWidget {
           onSaved: onSaved,
           onChanged: onChanged,
           onEditingComplete: onEditingComplete,
+          onTap: onTap,
+          readOnly: readOnly,
           enabled: enabled,
           maxLines: maxLines,
           maxLength: maxLength,

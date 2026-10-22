@@ -211,7 +211,7 @@ class SystemEndToEndTest extends TestCase
         $itemId = $start->json('data.items.0.id');
 
         $this->postJson("/api/v1/sj-validations/{$vid}/scan", [
-            'sj_validation_item_id' => $itemId, 'actual_qty' => 8, 'condition' => 'FISIK_BAGUS',
+            'sj_validation_item_id' => $itemId, 'actual_qty' => 8, 'expired_date' => '2027-01-31', 'condition' => 'FISIK_BAGUS',
         ])->assertOk()->assertJsonPath('data.status', 'MISMATCH'); // 8 != 10
 
         // Daftarkan penerima notif selisih, lalu complete → email selisih terpush.

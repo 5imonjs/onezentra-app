@@ -34,6 +34,12 @@ class SjValidationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = SjValidation::with(['rencanaKirim:id,po_transporter,driver_name,nopol,destination_name,kode_depo,nama_depo', 'validator:id,full_name'])
+            // History rows only need the counters, not every line. Loading the
+            // items relation would make the list heavier and is unnecessary.
+            ->withCount([
+                'items',
+                'items as validated_items_count' => fn ($q) => $q->where('status', '!=', 'PENDING'),
+            ])
             ->when($request->user()->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->forUserDepot($request->user())))
             ->when($request->filled('kode_depo') && ! $request->user()->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->where('kode_depo', $request->input('kode_depo'))))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
@@ -660,6 +666,18 @@ class SjValidationController extends Controller
 
             $pending = $locked->items()->where('status', 'PENDING')->count();
             abort_if($pending > 0, 422, 'Masih ada item yang belum divalidasi ('.$pending.')');
+
+            // Tanggal expired adalah syarat kelengkapan yang sama di web.
+            // Tanpa guard di server, client lain bisa menyelesaikan sesi
+            // dengan data bolong dan Receiving/Opname Expired ikut kosong.
+            $missingExpired = $locked->items()
+                ->where(fn ($q) => $q->whereNull('expired_date')->orWhere('expired_date', ''))
+                ->count();
+            abort_if(
+                $missingExpired > 0,
+                422,
+                'Lengkapi tanggal expired untuk '.$missingExpired.' item sebelum menyelesaikan validasi.'
+            );
 
             $finishedAt = now();
 

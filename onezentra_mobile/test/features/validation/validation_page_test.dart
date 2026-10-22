@@ -105,6 +105,7 @@ class _FakeValidationRepository extends ValidationRepository {
       kodeBarang: current.kodeBarang,
       namaBarang: current.namaBarang,
       expectedQty: current.expectedQty,
+      expiredDate: '2027-01-31',
       actualQty: actualQty,
       satuan: current.satuan,
       condition: condition,
@@ -201,7 +202,7 @@ Future<void> _pumpValidationPage(
     ChangeNotifierProvider<AuthProvider>.value(
       value: auth,
       child: MaterialApp(
-        theme: AppTheme.light,
+        theme: AppTheme.dark,
         home: ValidationPage(repository: repository, openScanner: openScanner),
       ),
     ),
@@ -228,6 +229,7 @@ SjValidation _openSession() => const SjValidation(
       kodeBarang: 'BRG-1',
       namaBarang: 'Gula 50kg',
       expectedQty: 100,
+      expiredDate: '2027-01-31',
       satuan: 'zak',
       standarisasi: ItemStandarisasi(
         tier: 4,
@@ -242,6 +244,7 @@ SjValidation _openSession() => const SjValidation(
       kodeBarang: 'BRG-2',
       namaBarang: 'Terigu 25kg',
       expectedQty: 50,
+      expiredDate: '2027-01-31',
       actualQty: 50,
       satuan: 'zak',
       status: 'VALIDATED',
@@ -275,6 +278,7 @@ SjValidation _lockedSession() => const SjValidation(
       kodeBarang: 'BRG-1',
       namaBarang: 'Gula 50kg',
       expectedQty: 100,
+      expiredDate: '2027-01-31',
       satuan: 'zak',
     ),
   ],
@@ -445,6 +449,7 @@ void main() {
           kodeBarang: 'BRG-1',
           namaBarang: 'Gula 50kg',
           expectedQty: 100,
+          expiredDate: '2027-01-31',
           actualQty: 100,
           satuan: 'zak',
           status: 'VALIDATED',
@@ -564,6 +569,7 @@ void main() {
           kodeBarang: 'BRG-1',
           namaBarang: 'Gula 50kg',
           expectedQty: 100,
+          expiredDate: '2027-01-31',
           actualQty: 95,
           satuan: 'zak',
           condition: 'QTY_KURANG',
@@ -641,6 +647,7 @@ void main() {
         kodeBarang: 'BRG-1',
         namaBarang: 'Gula 50kg',
         expectedQty: 100,
+        expiredDate: '2027-01-31',
         actualQty: 100,
         satuan: 'zak',
         status: 'VALIDATED',
@@ -670,6 +677,7 @@ void main() {
         kodeBarang: 'BRG-1',
         namaBarang: 'Gula 50kg',
         expectedQty: 100,
+        expiredDate: '2027-01-31',
         actualQty: 100,
         satuan: 'zak',
         status: 'VALIDATED',
@@ -742,5 +750,262 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  SjValidation missingExpirySession() => const SjValidation(
+    id: 9,
+    scanCode: 'PO-042',
+    items: [
+      SjValidationItem(
+        id: 31,
+        validationId: 9,
+        kodeBarang: 'BRG-1',
+        namaBarang: 'Gula 50kg',
+        expectedQty: 100,
+        satuan: 'zak',
+        standarisasi: ItemStandarisasi(
+          tier: 4,
+          tinggiTumpukan: 6,
+          status: 'approved',
+        ),
+      ),
+    ],
+  );
+
+  testWidgets('Sesuai membuka sheet saat tanggal expired belum ada', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: missingExpirySession(),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    var quickButton = find.widgetWithText(FilledButton, 'Sesuai');
+    await tester.ensureVisible(quickButton);
+    await tester.tap(quickButton);
+    await tester.pumpAndSettle();
+
+    // The fast path must not bypass expiry: the sheet opens and no scan is
+    // sent until the date is filled.
+    expect(find.text('Simpan Validasi'), findsOneWidget);
+    expect(find.text('Tanggal expired *'), findsOneWidget);
+    expect(repository.scanCalls, 0);
+
+    var saveButton = find.widgetWithText(AppPrimaryButton, 'Simpan Validasi');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tanggal expired wajib diisi'), findsOneWidget);
+    expect(repository.scanCalls, 0);
+  });
+
+  testWidgets('Selesaikan terkunci saat item belum punya tanggal expired', (
+    tester,
+  ) async {
+    const session = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      items: [
+        SjValidationItem(
+          id: 31,
+          validationId: 9,
+          kodeBarang: 'BRG-1',
+          namaBarang: 'Gula 50kg',
+          expectedQty: 100,
+          actualQty: 100,
+          satuan: 'zak',
+          status: 'VALIDATED',
+          standarisasi: ItemStandarisasi(
+            tier: 4,
+            tinggiTumpukan: 6,
+            status: 'approved',
+          ),
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: session);
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lengkapi 1 tanggal expired'), findsOneWidget);
+    expect(
+      find.textContaining('server juga menolak sesi tanpa tanggal expired'),
+      findsOneWidget,
+    );
+    expect(repository.completeCalls, 0);
+  });
+
+  testWidgets('riwayat memakai items_count server, bukan daftar kosong', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      history: const [
+        SjValidation(
+          id: 12,
+          scanCode: 'PO-HISTORY',
+          status: 'COMPLETED',
+          itemsCount: 5,
+          validatedItemsCount: 3,
+        ),
+      ],
+      cannedStats: const ValidationStats(cancelled: 2),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    expect(find.text('3/5 item'), findsOneWidget);
+    expect(find.text('Batal'), findsOneWidget);
+  });
+
+  testWidgets('sesi selesai yang boleh dikoreksi menampilkan tombol Ubah', (
+    tester,
+  ) async {
+    const session = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      status: 'COMPLETED',
+      canCorrectCompleted: true,
+      items: [
+        SjValidationItem(
+          id: 31,
+          validationId: 9,
+          kodeBarang: 'BRG-1',
+          namaBarang: 'Gula 50kg',
+          expectedQty: 100,
+          expiredDate: '2027-01-31',
+          actualQty: 100,
+          satuan: 'zak',
+          status: 'VALIDATED',
+          standarisasi: ItemStandarisasi(
+            tier: 4,
+            tinggiTumpukan: 6,
+            status: 'approved',
+          ),
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(
+      history: const [session],
+      sessionToOpen: session,
+    );
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+    await tester.tap(find.text('PO-042'));
+    await tester.pumpAndSettle();
+
+    var editButton = find.widgetWithText(OutlinedButton, 'Ubah');
+    expect(editButton, findsOneWidget);
+    await tester.ensureVisible(editButton);
+    await tester.tap(editButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Simpan Validasi'), findsOneWidget);
+  });
+
+  testWidgets('tombol Batalkan sesi meminta konfirmasi lalu memanggil API', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: missingExpirySession(),
+    );
+    var auth = await _loginAuth(
+      permissions: [..._fullValidationPermissions, 'sj_validation.cancel'],
+    );
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    var cancel = find.text('Batalkan sesi');
+    await tester.ensureVisible(cancel);
+    await tester.tap(cancel);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Batalkan sesi validasi?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Ya, Batalkan'));
+    await tester.pumpAndSettle();
+
+    expect(repository.cancelCalls, 1);
+    expect(find.text('Batalkan sesi'), findsNothing);
+  });
+
+  testWidgets('tanpa sj_validation.create scan field dan Mulai nonaktif', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: missingExpirySession(),
+    );
+    var auth = await _loginAuth(
+      permissions: ['sj_validation.view', 'sj_validation.validate'],
+    );
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    expect(
+      find.textContaining('tidak memiliki izin sj_validation.create'),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    expect(repository.startCalls, 0);
+  });
+
+  testWidgets('teks besar 2x tetap tidak overflow di kartu aktif', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    var repository = _FakeValidationRepository(sessionToOpen: printedSession());
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    var start = find.widgetWithText(AppPrimaryButton, 'Mulai');
+    await tester.ensureVisible(start);
+    await tester.tap(start);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tombol Standarisasi memakai teks gelap di atas amber terang', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(sessionToOpen: _lockedSession());
+    var auth = await _loginAuth();
+
+    await _pumpValidationPage(tester, auth, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+
+    var button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Standarisasi'),
+    );
+    expect(button.style?.backgroundColor?.resolve({}), AppTheme.warningText);
+    expect(button.style?.foregroundColor?.resolve({}), AppTheme.ink900);
   });
 }

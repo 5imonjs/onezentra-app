@@ -112,6 +112,7 @@ class SupplyChainGapTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
             'sj_validation_item_id' => $itemId,
             'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
 
@@ -178,6 +179,7 @@ class SupplyChainGapTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
             'sj_validation_item_id' => $itemId,
             'actual_qty' => 80,
+            'expired_date' => '2027-01-31',
             'condition' => 'QTY_KURANG',
             'photo' => UploadedFile::fake()->image('gap.jpg'),
         ])->assertOk();
@@ -222,6 +224,7 @@ class SupplyChainGapTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validationId}/scan", [
             'sj_validation_item_id' => $itemId,
             'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
         $this->postJson("/api/v1/sj-validations/{$validationId}/complete")->assertOk();

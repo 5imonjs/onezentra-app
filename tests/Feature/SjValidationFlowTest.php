@@ -376,6 +376,7 @@ class SjValidationFlowTest extends TestCase
         $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
             'sj_validation_item_id' => $validation['items'][0]['id'],
             'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
         ])->assertOk();
 
         // NULL sebelum selesai — belum final, bukan berarti 0.
@@ -426,6 +427,7 @@ class SjValidationFlowTest extends TestCase
         $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
             'sj_validation_item_id' => $validation['items'][0]['id'],
             'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
         ])->assertOk();
 
         // Majukan `started_at` ke masa depan, sehingga selesai < mulai.
@@ -535,6 +537,7 @@ class SjValidationFlowTest extends TestCase
         $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
             'sj_validation_item_id' => $item['id'],
             'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
             'condition' => 'FISIK_BAGUS',
         ])->assertOk();
 
@@ -543,6 +546,63 @@ class SjValidationFlowTest extends TestCase
         $this->assertSame('VERIFIED', $rk->fresh()->status);
         $this->assertSame(1, Receiving::count());
         $this->assertSame(1, Receiving::where('rencana_kirim_id', $rk->id)->count());
+    }
+
+    public function test_complete_blocks_when_expired_date_is_missing(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+        $itemId = $validation['items'][0]['id'];
+
+        // Scan tanpa expired tetap boleh disimpan sebagai draft item, tetapi
+        // sesi belum boleh ditutup.
+        $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 100,
+            'condition' => 'FISIK_BAGUS',
+        ])->assertOk();
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Lengkapi tanggal expired untuk 1 item sebelum menyelesaikan validasi.');
+
+        $this->assertDatabaseHas('sj_validations', [
+            'id' => $validation['id'],
+            'status' => 'IN_PROGRESS',
+        ]);
+        $this->assertSame(0, Receiving::count());
+
+        // Setelah tanggal dilengkapi, sesi dapat diselesaikan.
+        $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertOk();
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertOk();
+        $this->assertSame('COMPLETED', $this->validationRow($validation['id'])->status);
+    }
+
+    public function test_index_includes_item_counts_for_history(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.view']));
+        $rk = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+
+        $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
+            'sj_validation_item_id' => $validation['items'][0]['id'],
+            'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertOk();
+
+        $this->getJson('/api/v1/sj-validations')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $validation['id'])
+            ->assertJsonPath('data.0.items_count', 1)
+            ->assertJsonPath('data.0.validated_items_count', 1);
     }
 
     public function test_complete_is_idempotent_no_duplicate_receiving(): void
@@ -554,6 +614,7 @@ class SjValidationFlowTest extends TestCase
         $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
             'sj_validation_item_id' => $validation['items'][0]['id'],
             'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
         ])->assertOk();
         $this->postJson("/api/v1/sj-validations/{$validation['id']}/complete")->assertOk();
         // Complete kedua → 422 (bukan dobel data).
@@ -610,6 +671,7 @@ class SjValidationFlowTest extends TestCase
         $this->post("/api/v1/sj-validations/{$validation['id']}/scan", [
             'sj_validation_item_id' => $validation['items'][0]['id'],
             'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
         ])->assertOk();
 
         // Item sudah tervalidasi tapi tanpa complete permission → ditolak.

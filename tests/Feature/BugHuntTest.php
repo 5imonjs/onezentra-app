@@ -161,7 +161,11 @@ class BugHuntTest extends TestCase
         $start = $this->postJson("/api/v1/sj-validations/start/{$rk->id}")->assertOk();
         $vid = $start->json('data.id');
         $itemId = $start->json('data.items.0.id');
-        $this->postJson("/api/v1/sj-validations/{$vid}/scan", ['sj_validation_item_id' => $itemId, 'actual_qty' => 5])->assertOk();
+        $this->postJson("/api/v1/sj-validations/{$vid}/scan", [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 5,
+            'expired_date' => '2027-01-31',
+        ])->assertOk();
         $this->postJson("/api/v1/sj-validations/{$vid}/complete")->assertOk();
         // scan lagi setelah complete harus 422
         $this->postJson("/api/v1/sj-validations/{$vid}/scan", ['sj_validation_item_id' => $itemId, 'actual_qty' => 5])->assertStatus(422);

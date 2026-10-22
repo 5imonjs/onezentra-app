@@ -59,19 +59,21 @@ class _ValidationPageState extends State<ValidationPage> {
       if (!mounted) {
         return;
       }
-      var canView =
-          context.read<AuthProvider>().user?.hasPermission(
-            'sj_validation.view',
-          ) ??
-          false;
+      var user = context.read<AuthProvider>().user;
+      var canView = user?.hasPermission('sj_validation.view') ?? false;
+      var canCreate = user?.hasPermission('sj_validation.create') ?? false;
       _provider.bootstrap(canView: canView);
       // Handoff from Check In Point: the PO is already known, so the
       // session opens by itself — the operator skips the scan entirely.
+      // A view-only user still sees the PO in the field, but no request is
+      // sent (the server would reject it with 403 anyway).
       var handoff = widget.initialScanCode?.trim();
       if (!_autoStarted && handoff != null && handoff.isNotEmpty) {
         _autoStarted = true;
         _scanController.text = handoff;
-        _provider.start(handoff);
+        if (canView && canCreate) {
+          _provider.start(handoff);
+        }
       }
     });
   }
@@ -97,6 +99,9 @@ class _ValidationPageState extends State<ValidationPage> {
     var canCreate = user?.hasPermission('sj_validation.create') ?? false;
     var canValidate = user?.hasPermission('sj_validation.validate') ?? false;
     var canComplete = user?.hasPermission('sj_validation.complete') ?? false;
+    var canCancel = user?.hasPermission('sj_validation.cancel') ?? false;
+    var canPrintLabels =
+        canValidate || (user?.hasPermission('penerimaan.view') ?? false);
     var validation = context.watch<ValidationProvider>();
 
     return Scaffold(
@@ -123,28 +128,63 @@ class _ValidationPageState extends State<ValidationPage> {
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(AppTheme.space4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(validation),
-                      const SizedBox(height: AppTheme.space4),
-                      _buildScanCard(validation, canCreate: canCreate),
-                      const SizedBox(height: AppTheme.space4),
-                      if (validation.active != null)
-                        _buildActiveCard(
-                          validation.active!,
-                          validation: validation,
-                          canValidate: canValidate,
-                          canComplete: canComplete,
-                          canCreateStandarisasi:
-                              user?.hasPermission('standarisasi.create') ??
-                              false,
-                        ),
-                      if (validation.active != null)
-                        const SizedBox(height: AppTheme.space4),
-                      _buildHistory(validation),
-                      const SizedBox(height: AppTheme.space8),
-                    ],
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 960),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Phones keep one column; tablets get the active
+                          // work column next to history so both stay visible
+                          // without a 1000px-wide scan bar.
+                          var wide = constraints.maxWidth >= 820;
+                          var work = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildScanCard(validation, canCreate: canCreate),
+                              if (validation.active != null) ...[
+                                const SizedBox(height: AppTheme.space4),
+                                _buildActiveCard(
+                                  validation.active!,
+                                  validation: validation,
+                                  canValidate: canValidate,
+                                  canComplete: canComplete,
+                                  canCancel: canCancel,
+                                  canPrintLabels: canPrintLabels,
+                                  canCreateStandarisasi:
+                                      user?.hasPermission(
+                                        'standarisasi.create',
+                                      ) ??
+                                      false,
+                                ),
+                              ],
+                            ],
+                          );
+                          var history = _buildHistory(validation);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeader(validation),
+                              const SizedBox(height: AppTheme.space4),
+                              if (wide)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(flex: 3, child: work),
+                                    const SizedBox(width: AppTheme.space4),
+                                    Expanded(flex: 2, child: history),
+                                  ],
+                                )
+                              else ...[
+                                work,
+                                const SizedBox(height: AppTheme.space4),
+                                history,
+                              ],
+                              const SizedBox(height: AppTheme.space8),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -232,7 +272,7 @@ class _ValidationPageState extends State<ValidationPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Validasi SJ',
+                    'Ringkasan Validasi',
                     style: GoogleFonts.roboto(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -273,12 +313,24 @@ class _ValidationPageState extends State<ValidationPage> {
               dotColor: AppTheme.success,
             ),
             _StatChip(
+              label: 'Batal',
+              value: validation.stats.cancelled,
+              dotColor: AppTheme.danger,
+            ),
+            _StatChip(
               label: 'Total',
               value: validation.stats.total,
               dotColor: AppTheme.gray300,
             ),
           ],
         ),
+        if (validation.statsError != null) ...[
+          const SizedBox(height: AppTheme.space3),
+          Text(
+            'Statistik gagal dimuat — tarik untuk mencoba lagi.',
+            style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray400),
+          ),
+        ],
       ],
     ),
   );
@@ -297,7 +349,12 @@ class _ValidationPageState extends State<ValidationPage> {
       children: [
         Row(
           children: [
-            _iconBox(36, AppTheme.gray900, Icons.qr_code_scanner_rounded),
+            _iconBox(
+              36,
+              AppTheme.primary50,
+              Icons.qr_code_scanner_rounded,
+              iconColor: AppTheme.primary600,
+            ),
             const SizedBox(width: AppTheme.space3),
             Expanded(
               child: Column(
@@ -325,33 +382,54 @@ class _ValidationPageState extends State<ValidationPage> {
           ],
         ),
         const SizedBox(height: AppTheme.space4),
-        Row(
-          children: [
-            Expanded(
-              child: AppTextField(
-                controller: _scanController,
-                hint: 'Barcode PO...',
-                prefixIcon: Icons.qr_code_scanner_rounded,
-                suffixIcon: IconButton(
-                  tooltip: 'Pindai dengan kamera',
-                  onPressed: validation.startBusy ? null : _openScanner,
-                  icon: const Icon(Icons.photo_camera_rounded),
-                ),
-                textInputAction: TextInputAction.done,
-                onEditingComplete: _submitScan,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Below 380px the start button would squeeze the input until the
+            // PO is unreadable; stack them instead.
+            var stacked = constraints.maxWidth < 380;
+            var field = AppTextField(
+              controller: _scanController,
+              hint: 'Barcode PO...',
+              prefixIcon: Icons.qr_code_scanner_rounded,
+              enabled: canCreate && !validation.startBusy,
+              suffixIcon: IconButton(
+                tooltip: 'Pindai dengan kamera',
+                onPressed: canCreate && !validation.startBusy
+                    ? _openScanner
+                    : null,
+                icon: const Icon(Icons.photo_camera_rounded),
               ),
-            ),
-            const SizedBox(width: AppTheme.space3),
-            // Natural width (not a fixed 104px box): a longer label such
-            // as "Mulai" overflows a fixed box on narrow screens.
-            AppPrimaryButton(
+              textInputAction: TextInputAction.done,
+              onEditingComplete: canCreate ? _submitScan : null,
+            );
+            var start = AppPrimaryButton(
               text: 'Mulai',
               height: 48,
-              isFullWidth: false,
+              isFullWidth: stacked,
               isLoading: validation.startBusy,
-              onPressed: validation.startBusy ? null : _submitScan,
-            ),
-          ],
+              onPressed: canCreate && !validation.startBusy
+                  ? _submitScan
+                  : null,
+            );
+            if (stacked) {
+              return Column(
+                children: [
+                  field,
+                  const SizedBox(height: AppTheme.space3),
+                  start,
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: field),
+                const SizedBox(width: AppTheme.space3),
+                // Natural width (not a fixed 104px box): a longer label such
+                // as "Mulai" overflows a fixed box on narrow screens.
+                start,
+              ],
+            );
+          },
         ),
         if (!canCreate)
           _warningBox(
@@ -362,7 +440,13 @@ class _ValidationPageState extends State<ValidationPage> {
     ),
   );
 
+  bool _hasPermission(String slug) =>
+      context.read<AuthProvider>().user?.hasPermission(slug) ?? false;
+
   Future<void> _submitScan() async {
+    if (!_hasPermission('sj_validation.create')) {
+      return;
+    }
     FocusScope.of(context).unfocus();
     // Uses the state field, not `context.read`: this State's context sits
     // above the ChangeNotifierProvider that owns the ValidationProvider.
@@ -376,6 +460,9 @@ class _ValidationPageState extends State<ValidationPage> {
   /// Opens the camera scanner and, when a code is read, fills the scan field
   /// and starts the validation session immediately.
   Future<void> _openScanner() async {
+    if (!_hasPermission('sj_validation.create')) {
+      return;
+    }
     var injected = widget.openScanner;
     var code = await (injected != null
         ? injected()
@@ -472,9 +559,18 @@ class _ValidationPageState extends State<ValidationPage> {
     required ValidationProvider validation,
     required bool canValidate,
     required bool canComplete,
+    required bool canCancel,
+    required bool canPrintLabels,
     required bool canCreateStandarisasi,
   }) {
     var doc = session.document;
+    // `can_correct_completed` is computed server-side from the user's
+    // `sj_validation.edit_completed` permission AND the Receiving status.
+    var canEditItems =
+        canValidate && (session.isRunning || session.canCorrectCompleted);
+    var statusHeading = session.isRunning
+        ? 'SESI BERJALAN'
+        : 'SESI ${ValidationStatus.label(session.status).toUpperCase()}';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space4),
@@ -494,7 +590,8 @@ class _ValidationPageState extends State<ValidationPage> {
             children: [
               Expanded(
                 child: Text(
-                  'SESI BERJALAN • ${session.validatedCount}/${session.items.length} ITEM',
+                  '$statusHeading • ${session.validatedCount}/'
+                  '${session.totalItemCount} ITEM',
                   style: GoogleFonts.roboto(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -505,9 +602,7 @@ class _ValidationPageState extends State<ValidationPage> {
               ),
               AppBadge(
                 text: ValidationStatus.label(session.status),
-                variant: session.isRunning
-                    ? AppBadgeVariant.primary
-                    : AppBadgeVariant.success,
+                variant: _statusVariant(session.status),
               ),
               IconButton(
                 onPressed: validation.actionBusy
@@ -525,7 +620,8 @@ class _ValidationPageState extends State<ValidationPage> {
           ),
           // Web parity: lines without an approved standarisasi stay locked
           // until BLC approves — the operator sees why at a glance.
-          if (session.items.any((item) => !item.canValidate))
+          if (session.isRunning &&
+              session.items.any((item) => item.isPending && !item.canValidate))
             _standarisasiBanner(),
           const SizedBox(height: AppTheme.space2),
           Row(
@@ -552,21 +648,38 @@ class _ValidationPageState extends State<ValidationPage> {
           ClipRRect(
             borderRadius: AppTheme.radiusFull,
             child: LinearProgressIndicator(
-              value: session.items.isEmpty
+              value: session.totalItemCount == 0
                   ? 0
-                  : session.validatedCount / session.items.length,
+                  : session.validatedCount / session.totalItemCount,
               minHeight: 6,
               backgroundColor: Colors.white.withValues(alpha: 0.1),
               valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
             ),
           ),
+          if (session.startedAt != null || session.durationSeconds != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppTheme.space2),
+              child: Text(
+                [
+                  if (session.startedAt != null)
+                    'Mulai ${_formatDateTime(session.startedAt)}',
+                  if (session.durationSeconds != null)
+                    'Durasi ${_formatDuration(session.durationSeconds)}',
+                ].join(' • '),
+                style: GoogleFonts.roboto(
+                  fontSize: 10.5,
+                  color: AppTheme.gray400,
+                ),
+              ),
+            ),
           const SizedBox(height: AppTheme.space4),
           ...[
             for (var i = 0; i < session.items.length; i++) ...[
               _itemTile(
                 session.items[i],
                 validation: validation,
-                canValidate: canValidate && session.isRunning,
+                canValidate: canEditItems,
+                canPrintLabels: canPrintLabels,
                 canCreateStandarisasi: canCreateStandarisasi,
               ),
               if (i != session.items.length - 1)
@@ -581,7 +694,37 @@ class _ValidationPageState extends State<ValidationPage> {
               _inlineWarning(
                 'Anda tidak memiliki izin sj_validation.complete untuk menyelesaikan sesi.',
               ),
+            if (canCancel) ...[
+              const SizedBox(height: AppTheme.space2),
+              Align(
+                child: TextButton.icon(
+                  onPressed: validation.actionBusy
+                      ? null
+                      : () => _confirmCancel(validation),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.dangerText,
+                    textStyle: GoogleFonts.roboto(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  icon: const Icon(Icons.cancel_rounded, size: 18),
+                  label: const Text('Batalkan sesi'),
+                ),
+              ),
+            ],
             const SizedBox(height: AppTheme.space2),
+          ] else if (session.isCompleted && !session.canCorrectCompleted) ...[
+            const SizedBox(height: AppTheme.space4),
+            _inlineWarning(
+              'Sesi selesai. Koreksi item hanya dapat dilakukan supervisor '
+              'selama Receiving belum ditutup.',
+            ),
+          ] else if (session.isCancelled) ...[
+            const SizedBox(height: AppTheme.space4),
+            _inlineWarning(
+              'Sesi dibatalkan; label dan data validasi ini tidak berlaku.',
+            ),
           ],
         ],
       ),
@@ -592,6 +735,7 @@ class _ValidationPageState extends State<ValidationPage> {
     SjValidationItem item, {
     required ValidationProvider validation,
     required bool canValidate,
+    required bool canPrintLabels,
     required bool canCreateStandarisasi,
   }) {
     // Web parity: without an approved standarisasi the line routes to the
@@ -719,6 +863,8 @@ class _ValidationPageState extends State<ValidationPage> {
                       validation,
                       canCreate: canCreateStandarisasi,
                     )
+                  else if (!item.isPending && canValidate && item.canValidate)
+                    _editButton(item)
                   else
                     AppBadge(
                       text: ValidationCondition.label(item.condition),
@@ -730,7 +876,7 @@ class _ValidationPageState extends State<ValidationPage> {
                   // jadi operator bisa mencetak (atau mencetak ulang) labelnya
                   // di sini. Badge tercetak mengikuti printed_at server
                   // (mark-printed), sinkron lintas device seperti web.
-                  if (item.hasLabel) ...[
+                  if (canPrintLabels && item.canPrintLabel) ...[
                     if (item.batch?.isPrinted == true)
                       const AppBadge(
                         text: 'Tercetak',
@@ -748,29 +894,44 @@ class _ValidationPageState extends State<ValidationPage> {
   }
 
   /// Tombol cetak label untuk item yang sudah tervalidasi.
-  Widget _printLabelButton(SjValidationItem item) => SizedBox(
-    height: 40,
-    child: OutlinedButton.icon(
-      onPressed: () => _openPrintSheet(item),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppTheme.gray200,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-        // Tema memaksa minimumSize full-width (Size(double.infinity, 52));
-        // di dalam Row tak terbatas itu crash (minWidth tak hingga), jadi
-        // kunci ulang ke lebar konten × tinggi baris tile.
-        minimumSize: const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
-        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
-        textStyle: GoogleFonts.roboto(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      icon: const Icon(Icons.print_rounded, size: 16),
-      label: Text(
-        item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
+  Widget _printLabelButton(SjValidationItem item) => OutlinedButton.icon(
+    onPressed: () => _openPrintSheet(item),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: AppTheme.gray200,
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+      // Tema memaksa minimumSize full-width (Size(double.infinity, 52));
+      // di dalam Row tak terbatas itu crash (minWidth tak hingga), jadi
+      // kunci ulang ke lebar konten dan biarkan tinggi tumbuh saat text
+      // scale diperbesar.
+      minimumSize: const Size(0, 40),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+      shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
+      textStyle: GoogleFonts.roboto(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
       ),
     ),
+    icon: const Icon(Icons.print_rounded, size: 16),
+    label: Text(item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label'),
+  );
+
+  /// Explicit edit affordance for an already validated line (running session
+  /// or a supervisor correcting a completed one).
+  Widget _editButton(SjValidationItem item) => OutlinedButton.icon(
+    onPressed: () => _openItemSheet(item),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: AppTheme.gray200,
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+      minimumSize: const Size(0, 40),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+      shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
+      textStyle: GoogleFonts.roboto(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    icon: const Icon(Icons.edit_rounded, size: 16),
+    label: const Text('Ubah'),
   );
 
   /// Buka panel cetak label dan tampilkan hasilnya ke operator.
@@ -830,25 +991,24 @@ class _ValidationPageState extends State<ValidationPage> {
     SjValidationItem item,
     ValidationProvider validation, {
     required bool canCreate,
-  }) => SizedBox(
-    height: 40,
-    child: FilledButton.icon(
-      onPressed: validation.actionBusy
-          ? null
-          : () => _openStandarisasiSheet(item, canCreate: canCreate),
-      style: FilledButton.styleFrom(
-        backgroundColor: AppTheme.warningText,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
-        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
-        textStyle: GoogleFonts.roboto(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w700,
-        ),
+  }) => FilledButton.icon(
+    onPressed: validation.actionBusy
+        ? null
+        : () => _openStandarisasiSheet(item, canCreate: canCreate),
+    style: FilledButton.styleFrom(
+      backgroundColor: AppTheme.warningText,
+      // Dark ink on the pale amber surface; white-on-yellow was unreadable.
+      foregroundColor: AppTheme.ink900,
+      minimumSize: const Size(0, 40),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+      shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
+      textStyle: GoogleFonts.roboto(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
       ),
-      icon: const Icon(Icons.layers_rounded, size: 16),
-      label: const Text('Standarisasi'),
     ),
+    icon: const Icon(Icons.layers_rounded, size: 16),
+    label: const Text('Standarisasi'),
   );
 
   Future<void> _openStandarisasiSheet(
@@ -887,36 +1047,77 @@ class _ValidationPageState extends State<ValidationPage> {
     return body;
   }
 
+  static String _formatDateTime(DateTime? value) {
+    if (value == null) {
+      return '—';
+    }
+    var local = value.toLocal();
+    String two(int part) => part.toString().padLeft(2, '0');
+    return '${two(local.day)}/${two(local.month)}/${local.year} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
+
+  static String _formatDuration(int? seconds) {
+    if (seconds == null || seconds < 0) {
+      return '—';
+    }
+    var duration = Duration(seconds: seconds);
+    if (duration.inHours > 0) {
+      return '${duration.inHours}j ${duration.inMinutes.remainder(60)}m';
+    }
+    if (duration.inMinutes > 0) {
+      return '${duration.inMinutes}m';
+    }
+    return '${duration.inSeconds}d';
+  }
+
+  static AppBadgeVariant _statusVariant(String status) => switch (status) {
+    'IN_PROGRESS' => AppBadgeVariant.primary,
+    'COMPLETED' => AppBadgeVariant.success,
+    'CANCELLED' => AppBadgeVariant.danger,
+    _ => AppBadgeVariant.gray,
+  };
+
   /// One-tap "matches" validation: actual = expected, condition good.
   /// When the expected qty is unknown the sheet opens instead, so the
   /// operator always enters a real number.
   Widget _quickOkButton(SjValidationItem item, ValidationProvider validation) {
     var expected = item.expectedQty;
-    return SizedBox(
-      height: 40,
-      child: FilledButton.icon(
-        onPressed: validation.actionBusy
-            ? null
-            : () {
-                if (expected == null) {
-                  _openItemSheet(item);
-                  return;
-                }
-                validation.validateItem(itemId: item.id, actualQty: expected);
-              },
-        style: FilledButton.styleFrom(
-          backgroundColor: AppTheme.success,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
-          shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
-          textStyle: GoogleFonts.roboto(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-          ),
+    // The fast path may only skip the sheet when it would produce exactly the
+    // same complete record: qty known, expiry already captured, good condition.
+    // Otherwise open the sheet so expiry and condition are not bypassed.
+    var needsSheet =
+        expected == null ||
+        !item.hasExpiredDate ||
+        item.condition != 'FISIK_BAGUS';
+    return FilledButton.icon(
+      onPressed: validation.actionBusy
+          ? null
+          : () {
+              if (needsSheet) {
+                _openItemSheet(item);
+                return;
+              }
+              validation.validateItem(
+                itemId: item.id,
+                actualQty: expected,
+                expiredDate: item.expiredDate,
+              );
+            },
+      style: FilledButton.styleFrom(
+        backgroundColor: AppTheme.success,
+        // Dark ink keeps the green CTA readable in the dark theme.
+        foregroundColor: AppTheme.ink900,
+        minimumSize: const Size(0, 40),
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
+        textStyle: GoogleFonts.roboto(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
         ),
-        icon: const Icon(Icons.check_rounded, size: 16),
-        label: const Text('Sesuai'),
       ),
+      icon: const Icon(Icons.check_rounded, size: 16),
+      label: const Text('Sesuai'),
     );
   }
 
@@ -1003,7 +1204,7 @@ class _ValidationPageState extends State<ValidationPage> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.success,
-              foregroundColor: Colors.white,
+              foregroundColor: AppTheme.ink900,
             ),
             child: const Text('Ya, Selesaikan'),
           ),
@@ -1012,6 +1213,50 @@ class _ValidationPageState extends State<ValidationPage> {
     );
     if ((confirmed ?? false) && mounted) {
       await validation.completeActive();
+    }
+  }
+
+  Future<void> _confirmCancel(ValidationProvider validation) async {
+    var session = validation.active;
+    if (session == null) {
+      return;
+    }
+    var po = session.document?.poTransporter ?? session.scanCode ?? 'PO ini';
+    var confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
+        title: Text(
+          'Batalkan sesi validasi?',
+          style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Sesi $po akan dibatalkan. Label yang sudah tercetak tidak berlaku '
+          'lagi dan tindakan ini tidak dapat diurungkan.',
+          style: GoogleFonts.roboto(
+            fontSize: 13,
+            height: 1.4,
+            color: AppTheme.gray600,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Kembali'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: AppTheme.ink900,
+            ),
+            child: const Text('Ya, Batalkan'),
+          ),
+        ],
+      ),
+    );
+    if ((confirmed ?? false) && mounted) {
+      await validation.cancelActive();
     }
   }
 
@@ -1068,7 +1313,7 @@ class _ValidationPageState extends State<ValidationPage> {
         ),
         decoration: highlight
             ? const BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.primary100,
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
@@ -1084,9 +1329,7 @@ class _ValidationPageState extends State<ValidationPage> {
               style: GoogleFonts.roboto(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: highlight
-                    ? AppTheme.gray50.withValues(alpha: 0.65)
-                    : AppTheme.gray400,
+                color: highlight ? AppTheme.primary800 : AppTheme.gray400,
               ),
             ),
             const SizedBox(height: 2),
@@ -1097,7 +1340,7 @@ class _ValidationPageState extends State<ValidationPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.gray50 : Colors.white,
+                color: highlight ? AppTheme.primary950 : Colors.white,
               ),
             ),
           ],
@@ -1141,6 +1384,9 @@ class _ValidationPageState extends State<ValidationPage> {
     ValidationProvider validation,
   ) {
     var pending = session.items.where((item) => item.isPending).length;
+    var missingExpired = session.items
+        .where((item) => !item.isPending && !item.hasExpiredDate)
+        .length;
     var unprinted = session.items
         .where(
           (item) =>
@@ -1149,18 +1395,21 @@ class _ValidationPageState extends State<ValidationPage> {
               !(item.batch?.isPrinted ?? false),
         )
         .length;
-    var blocked = pending > 0 || unprinted > 0;
+    var blocked = pending > 0 || missingExpired > 0 || unprinted > 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _darkActionButton(
           label: pending > 0
               ? 'Selesaikan ($pending item tersisa)'
+              : missingExpired > 0
+              ? 'Lengkapi $missingExpired tanggal expired'
               : unprinted > 0
               ? 'Cetak $unprinted label dulu'
               : 'Selesaikan Validasi ✓',
           background: AppTheme.success,
-          foreground: Colors.white,
+          // Dark ink on green avoids the white-on-green contrast trap.
+          foreground: AppTheme.ink900,
           loading: validation.actionBusy,
           onPressed: blocked ? null : () => _confirmComplete(validation),
         ),
@@ -1169,6 +1418,8 @@ class _ValidationPageState extends State<ValidationPage> {
           Text(
             pending > 0
                 ? 'Validasi dulu $pending item di atas — tombol aktif otomatis.'
+                : missingExpired > 0
+                ? 'Isi tanggal expired $missingExpired item di atas — server juga menolak sesi tanpa tanggal expired.'
                 : 'Cetak label $unprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',
             textAlign: TextAlign.center,
             style: GoogleFonts.roboto(fontSize: 11.5, color: AppTheme.gray400),
@@ -1187,13 +1438,14 @@ class _ValidationPageState extends State<ValidationPage> {
     bool loading = false,
   }) => SizedBox(
     width: double.infinity,
-    height: 44,
     child: FilledButton(
       onPressed: loading ? null : onPressed,
       style: FilledButton.styleFrom(
         backgroundColor: background,
         foregroundColor: foreground,
         disabledBackgroundColor: background.withValues(alpha: 0.6),
+        disabledForegroundColor: foreground.withValues(alpha: 0.75),
+        minimumSize: const Size(0, 44),
         side: outline
             ? BorderSide(color: Colors.white.withValues(alpha: 0.4))
             : null,
@@ -1212,7 +1464,7 @@ class _ValidationPageState extends State<ValidationPage> {
                 color: foreground,
               ),
             )
-          : Text(label),
+          : Text(label, textAlign: TextAlign.center),
     ),
   );
 
@@ -1424,22 +1676,33 @@ class _ValidationPageState extends State<ValidationPage> {
                     const SizedBox(width: AppTheme.space2),
                     AppBadge(
                       text: ValidationStatus.label(session.status),
-                      variant: session.isRunning
-                          ? AppBadgeVariant.primary
-                          : session.status == 'COMPLETED'
-                          ? AppBadgeVariant.success
-                          : AppBadgeVariant.gray,
+                      variant: _statusVariant(session.status),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${session.validatedCount}/${session.items.length} item'
+                  '${session.validatedCount}/${session.totalItemCount} item'
                   '${session.validatorName != null ? ' • ${session.validatorName}' : ''}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 11,
+                    color: AppTheme.gray500,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  [
+                    if (session.startedAt != null)
+                      _formatDateTime(session.startedAt),
+                    if (session.durationSeconds != null)
+                      'Durasi ${_formatDuration(session.durationSeconds)}',
+                  ].join(' • '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 10.5,
                     color: AppTheme.gray500,
                   ),
                 ),
@@ -1543,6 +1806,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   );
   final _barcodeController = TextEditingController();
   final _notesController = TextEditingController();
+  final _expiredController = TextEditingController();
   String _condition = 'FISIK_BAGUS';
   DateTime? _expiredDate;
   bool _saving = false;
@@ -1563,6 +1827,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
         ? widget.item.condition
         : 'FISIK_BAGUS';
     _expiredDate = DateTime.tryParse(widget.item.expiredDate ?? '');
+    _expiredController.text = _formatDate(_expiredDate);
   }
 
   @override
@@ -1570,6 +1835,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     _qtyController.dispose();
     _barcodeController.dispose();
     _notesController.dispose();
+    _expiredController.dispose();
     super.dispose();
   }
 
@@ -1680,7 +1946,9 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Kondisi ini wajib foto — aplikasi mobile belum mendukung upload foto. Lanjutkan di web bila server menolak.',
+                            'Kondisi ini wajib foto. Upload foto belum tersedia '
+                            'di aplikasi mobile — pilih kondisi lain atau '
+                            'lanjutkan validasi ini di web.',
                             style: GoogleFonts.roboto(
                               fontSize: 11.5,
                               height: 1.4,
@@ -1692,8 +1960,22 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                     ),
                   ),
                 const SizedBox(height: AppTheme.space3),
+                // Required, not hidden in "optional": the server blocks
+                // completion without it and Opname Expired depends on it.
+                AppTextField(
+                  controller: _expiredController,
+                  label: 'Tanggal expired *',
+                  hint: 'Wajib diisi',
+                  prefixIcon: Icons.calendar_today_rounded,
+                  readOnly: true,
+                  onTap: _pickDate,
+                  validator: (_) => _expiredDate == null
+                      ? 'Tanggal expired wajib diisi'
+                      : null,
+                ),
+                const SizedBox(height: AppTheme.space3),
                 // Rarely needed on a fast pass — tucked away so the common
-                // case stays: qty → kondisi → simpan.
+                // case stays: qty → kondisi → expired → simpan.
                 ExpansionTile(
                   title: Text(
                     'Detail lainnya (opsional)',
@@ -1709,29 +1991,6 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   childrenPadding: EdgeInsets.zero,
                   shape: const Border(),
                   children: [
-                    AppTextField(
-                      controller: TextEditingController(
-                        text: _expiredDate == null
-                            ? ''
-                            : '${_expiredDate!.day.toString().padLeft(2, '0')}/'
-                                  '${_expiredDate!.month.toString().padLeft(2, '0')}/'
-                                  '${_expiredDate!.year}',
-                      ),
-                      label: 'Tanggal expired',
-                      hint: 'Pilih tanggal',
-                      prefixIcon: Icons.calendar_today_rounded,
-                      enabled: false,
-                    ),
-                    const SizedBox(height: AppTheme.space2),
-                    AppSecondaryButton(
-                      text: _expiredDate == null
-                          ? 'Pilih tanggal'
-                          : 'Ubah tanggal',
-                      height: 44,
-                      leadingIcon: Icons.event_rounded,
-                      onPressed: _pickDate,
-                    ),
-                    const SizedBox(height: AppTheme.space3),
                     AppTextField(
                       controller: _barcodeController,
                       label: 'Barcode produk',
@@ -1772,7 +2031,11 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                 AppPrimaryButton(
                   text: 'Simpan Validasi',
                   isLoading: _saving,
-                  onPressed: _saving ? null : _save,
+                  onPressed:
+                      _saving ||
+                          ValidationCondition.requiresPhoto.contains(_condition)
+                      ? null
+                      : _save,
                 ),
               ],
             ),
@@ -1826,12 +2089,36 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
       lastDate: DateTime(2100),
     );
     if (picked != null && mounted) {
-      setState(() => _expiredDate = picked);
+      setState(() {
+        _expiredDate = picked;
+        _expiredController.text = _formatDate(picked);
+      });
+      _formKey.currentState?.validate();
     }
+  }
+
+  static String _formatDate(DateTime? value) {
+    if (value == null) {
+      return '';
+    }
+    String two(int part) => part.toString().padLeft(2, '0');
+    return '${two(value.day)}/${two(value.month)}/${value.year}';
   }
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    if (_expiredDate == null) {
+      setState(() => _error = 'Tanggal expired wajib diisi.');
+      return;
+    }
+    if (ValidationCondition.requiresPhoto.contains(_condition)) {
+      setState(
+        () => _error =
+            'Kondisi ini wajib foto. Lanjutkan validasi di web karena '
+            'aplikasi mobile belum mendukung upload foto.',
+      );
       return;
     }
     setState(() {

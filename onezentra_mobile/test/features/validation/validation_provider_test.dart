@@ -44,6 +44,26 @@ class _MarkFakeRepository extends ValidationRepository {
   }
 }
 
+class _SearchRaceRepository extends ValidationRepository {
+  final List<Completer<ValidationHistoryPage>> requests = [];
+  final List<String?> searches = [];
+
+  @override
+  Future<ValidationHistoryPage> list({
+    String? search,
+    int page = 1,
+    int perPage = 20,
+  }) {
+    searches.add(search);
+    var completer = Completer<ValidationHistoryPage>();
+    requests.add(completer);
+    return completer.future;
+  }
+
+  @override
+  Future<ValidationStats> stats() async => const ValidationStats();
+}
+
 void main() {
   test('scan baru membuang sesi lama selama pemindaian berjalan', () async {
     var pending = Completer<SjValidation>();
@@ -112,6 +132,42 @@ void main() {
     expect(provider.message?.success, isFalse);
     expect(provider.message?.message, contains('gagal dilaporkan'));
 
+    provider.dispose();
+  });
+
+  test('respons pencarian lama tidak menimpa hasil terbaru', () async {
+    var repository = _SearchRaceRepository();
+    var provider = ValidationProvider(repository: repository);
+
+    provider.setSearch('PO');
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    expect(repository.searches, ['PO']);
+
+    provider.setSearch('PO-2');
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    expect(repository.searches, ['PO', 'PO-2']);
+
+    // The newer request lands first; the older one must not overwrite it.
+    repository.requests[1].complete(
+      const ValidationHistoryPage(
+        items: [SjValidation(id: 2, scanCode: 'PO-2')],
+        currentPage: 1,
+        lastPage: 1,
+        total: 1,
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    repository.requests[0].complete(
+      const ValidationHistoryPage(
+        items: [SjValidation(id: 1, scanCode: 'PO-OLD')],
+        currentPage: 1,
+        lastPage: 1,
+        total: 1,
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(provider.items.single.scanCode, 'PO-2');
     provider.dispose();
   });
 }

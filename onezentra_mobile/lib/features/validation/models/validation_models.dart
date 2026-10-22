@@ -199,6 +199,7 @@ class ValidationBatch {
     this.batchNumberLabel,
     this.printedAt,
     this.createdAt,
+    this.status,
   });
 
   factory ValidationBatch.fromJson(
@@ -212,6 +213,7 @@ class ValidationBatch {
     batchNumberLabel: _readString(json['batch_number_label']),
     printedAt: _readDate(json['printed_at']),
     createdAt: _readString(json['created_at']),
+    status: _readString(json['status']),
   );
 
   final int id;
@@ -220,9 +222,13 @@ class ValidationBatch {
   final String? batchNumberLabel;
   final DateTime? printedAt;
   final String? createdAt;
+  final String? status;
 
   /// Label sudah dilaporkan tercetak ke server (sumber kebenaran lintas device).
   bool get isPrinted => printedAt != null;
+
+  /// Batch yang dibatalkan tidak boleh dicetak ulang.
+  bool get isCancelled => status == 'CANCELLED';
 }
 
 class SjValidationItem {
@@ -291,8 +297,18 @@ class SjValidationItem {
 
   bool get isPending => status == 'PENDING';
 
+  bool get hasExpiredDate =>
+      expiredDate != null && expiredDate!.trim().isNotEmpty;
+
+  /// Sama dengan aturan kelengkapan web: qty, tanggal expired, dan status
+  /// validasi harus terisi sebelum sesi boleh ditutup.
+  bool get isComplete => !isPending && actualQty != null && hasExpiredDate;
+
   /// Label hanya bisa dicetak kalau server sudah Issuing batch untuk item ini.
   bool get hasLabel => batch?.barcodeLabel != null;
+
+  /// Label batch yang sudah dibatalkan tidak berlaku lagi.
+  bool get canPrintLabel => hasLabel && batch?.isCancelled != true;
 
   /// Web parity: only an approved standarisasi unlocks validation.
   bool get canValidate => standarisasi?.isApproved ?? false;
@@ -336,15 +352,28 @@ class SjValidation {
     this.status = 'IN_PROGRESS',
     this.startedAt,
     this.completedAt,
+    this.durationSeconds,
     this.document,
     this.items = const [],
     this.validatorName,
+    this.itemsCount,
+    this.validatedItemsCount,
+    this.canCorrectCompleted = false,
   });
 
   factory SjValidation.fromJson(Map<String, dynamic> json) {
     var document = _readMap(json['rencana_kirim']);
     var validator = _readMap(json['validator']);
     var rawItems = json['items'];
+    var items = rawItems is List
+        ? rawItems
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    SjValidationItem.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList()
+        : <SjValidationItem>[];
     return SjValidation(
       id: _readInt(json['id']) ?? 0,
       rencanaKirimId: _readInt(json['rencana_kirim_id']),
@@ -352,18 +381,17 @@ class SjValidation {
       status: _readString(json['status']) ?? 'IN_PROGRESS',
       startedAt: _readDate(json['started_at']),
       completedAt: _readDate(json['completed_at']),
+      durationSeconds: _readInt(json['duration_seconds']),
       document: document == null ? null : ValidationDocument.fromJson(document),
-      items: rawItems is List
-          ? rawItems
-                .whereType<Map>()
-                .map(
-                  (item) => SjValidationItem.fromJson(
-                    Map<String, dynamic>.from(item),
-                  ),
-                )
-                .toList()
-          : const [],
+      items: items,
       validatorName: _readString(validator?['full_name']),
+      // `index` hanya mengirim counter (tanpa semua item) agar riwayat tetap
+      // ringan. Detail sesi tetap memakai hitungan dari daftar item.
+      itemsCount: _readInt(json['items_count']) ?? items.length,
+      validatedItemsCount:
+          _readInt(json['validated_items_count']) ??
+          items.where((item) => !item.isPending).length,
+      canCorrectCompleted: json['can_correct_completed'] == true,
     );
   }
   final int id;
@@ -372,13 +400,27 @@ class SjValidation {
   final String status;
   final DateTime? startedAt;
   final DateTime? completedAt;
+  final int? durationSeconds;
   final ValidationDocument? document;
   final List<SjValidationItem> items;
   final String? validatorName;
+  final int? itemsCount;
+  final int? validatedItemsCount;
+
+  /// Dihitung server; hanya supervisor dengan `sj_validation.edit_completed`
+  /// dan Receiving yang masih terbuka yang mendapat izin koreksi.
+  final bool canCorrectCompleted;
 
   bool get isRunning => status == 'IN_PROGRESS';
 
-  int get validatedCount => items.where((item) => !item.isPending).length;
+  bool get isCompleted => status == 'COMPLETED';
+
+  bool get isCancelled => status == 'CANCELLED';
+
+  int get totalItemCount => itemsCount ?? items.length;
+
+  int get validatedCount =>
+      validatedItemsCount ?? items.where((item) => !item.isPending).length;
 }
 
 /// One row of the validation history (Laravel paginator may embed the full
@@ -422,6 +464,7 @@ class ValidationStats {
     this.hariIni = 0,
     this.berjalan = 0,
     this.selesai = 0,
+    this.cancelled = 0,
   });
 
   factory ValidationStats.fromJson(Map<String, dynamic> json) =>
@@ -430,11 +473,13 @@ class ValidationStats {
         hariIni: _readInt(json['today']) ?? 0,
         berjalan: _readInt(json['in_progress']) ?? 0,
         selesai: _readInt(json['completed']) ?? 0,
+        cancelled: _readInt(json['cancelled']) ?? 0,
       );
   final int total;
   final int hariIni;
   final int berjalan;
   final int selesai;
+  final int cancelled;
 }
 
 /// Success / failure banner shown after a lookup or a validation action.

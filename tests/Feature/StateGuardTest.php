@@ -110,6 +110,7 @@ class StateGuardTest extends TestCase
             'sj_validation_item_id' => $itemId,
             'kode_barang' => 'B-SG-01',
             'actual_qty' => 5,
+            'expired_date' => '2027-01-31',
         ])->assertOk();
 
         $this->postJson("/api/v1/sj-validations/{$validationId}/complete")->assertOk();

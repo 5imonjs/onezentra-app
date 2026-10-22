@@ -33,11 +33,18 @@ class ValidationProvider extends ChangeNotifier {
   ValidationStats _stats = const ValidationStats();
   bool _isLoading = false;
   String? _listError;
+  String? _statsError;
   int _currentPage = 1;
   int _lastPage = 1;
   int _total = 0;
   String _search = '';
   Timer? _searchDebounce;
+
+  /// Guards against out-of-order responses when the operator types quickly or
+  /// changes page while the previous request is still in flight. Only the
+  /// newest request may touch the list state.
+  int _itemsRequestId = 0;
+  int _statsRequestId = 0;
 
   SjValidation? _active;
   bool _startBusy = false;
@@ -49,6 +56,7 @@ class ValidationProvider extends ChangeNotifier {
   ValidationStats get stats => _stats;
   bool get isLoading => _isLoading;
   String? get listError => _listError;
+  String? get statsError => _statsError;
   int get currentPage => _currentPage;
   int get lastPage => _lastPage;
   int get total => _total;
@@ -80,11 +88,25 @@ class ValidationProvider extends ChangeNotifier {
   }
 
   Future<void> loadStats() async {
+    var requestId = ++_statsRequestId;
     try {
-      _stats = await _repository.stats();
+      var stats = await _repository.stats();
+      if (requestId != _statsRequestId) {
+        return;
+      }
+      _stats = stats;
+      _statsError = null;
     } on ApiException catch (e) {
+      if (requestId != _statsRequestId) {
+        return;
+      }
+      _statsError = e.message;
       debugPrint('ValidationProvider.loadStats: ${e.message}');
     } catch (e, stack) {
+      if (requestId != _statsRequestId) {
+        return;
+      }
+      _statsError = 'Statistik gagal dimuat.';
       debugPrint(
         'ValidationProvider.loadStats: unhandled ${e.runtimeType}: $e',
       );
@@ -94,6 +116,7 @@ class ValidationProvider extends ChangeNotifier {
   }
 
   Future<void> loadItems() async {
+    var requestId = ++_itemsRequestId;
     _isLoading = true;
     _listError = null;
     _notify();
@@ -102,20 +125,31 @@ class ValidationProvider extends ChangeNotifier {
         search: _search.isEmpty ? null : _search,
         page: _currentPage,
       );
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       _items = page.items;
       _lastPage = page.lastPage;
       _total = page.total;
     } on ApiException catch (e) {
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       _listError = e.message;
     } catch (e, stack) {
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       debugPrint(
         'ValidationProvider.loadItems: unhandled ${e.runtimeType}: $e',
       );
       debugPrintStack(stackTrace: stack, maxFrames: 8);
       _listError = 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     } finally {
-      _isLoading = false;
-      _notify();
+      if (requestId == _itemsRequestId) {
+        _isLoading = false;
+        _notify();
+      }
     }
   }
 
@@ -142,7 +176,7 @@ class ValidationProvider extends ChangeNotifier {
   /// A failed scan never leaves a stale session on screen.
   Future<void> start(String raw) async {
     var code = raw.trim();
-    if (code.isEmpty || _startBusy) {
+    if (code.isEmpty || _startBusy || _actionBusy) {
       if (code.isEmpty) {
         _message = const ValidationActionMessage.failure(
           'Masukkan / pindai barcode PO terlebih dahulu.',
@@ -163,7 +197,7 @@ class ValidationProvider extends ChangeNotifier {
       _active = await _repository.startByCode(code);
       _message = ValidationActionMessage.success(
         'Sesi validasi dibuka: ${_active?.document?.poTransporter ?? code} '
-        '(${_active?.validatedCount ?? 0}/${_active?.items.length ?? 0} item).',
+        '(${_active?.validatedCount ?? 0}/${_active?.totalItemCount ?? 0} item).',
       );
     } on ApiException catch (e) {
       _active = null;
@@ -240,7 +274,7 @@ class ValidationProvider extends ChangeNotifier {
       var updated = _active;
       _message = ValidationActionMessage.success(
         'Item divalidasi (${updated?.validatedCount ?? 0}'
-        '/${updated?.items.length ?? 0}).',
+        '/${updated?.totalItemCount ?? 0}).',
       );
       return true;
     } on ApiException catch (e) {
@@ -394,6 +428,7 @@ class ValidationProvider extends ChangeNotifier {
     }
 
     _actionBusy = true;
+    _message = null;
     _notify();
     try {
       await _repository.markPrinted(batchId);
