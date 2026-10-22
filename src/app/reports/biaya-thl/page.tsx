@@ -5,6 +5,8 @@ import DashboardLayout from '@/app/dashboard/layout';
 import { reports, depo, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { todayLocal } from '@/lib/dates';
+import { useReportRowDelete } from '@/lib/useReportRowDelete';
+import { ReportDeleteBar, ReportSelectCheckbox } from '@/components/ReportDeleteControls';
 
 interface BiayaThlReportRow {
   id: number;
@@ -148,6 +150,9 @@ export default function BiayaThlReportPage() {
       if (reqIdRef.current === reqId) setLoading(false);
     }
   }, [dateFrom, dateTo, kodeDepo, status, searchApply, page, hasPermission]);
+
+  const canDelete = hasPermission('reports.delete');
+  const { selectedIds, toggle, toggleAll, clear, deleting, removeSelected } = useReportRowDelete('biaya_thl_detail', () => fetchData());
 
   const loadDepots = useCallback(async () => {
     try {
@@ -433,6 +438,15 @@ export default function BiayaThlReportPage() {
               <caption className="sr-only">Laporan biaya THL</caption>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                  {canDelete && (
+                    <th scope="col" className="table-header w-10 text-center">
+                      <ReportSelectCheckbox
+                        checked={items.length > 0 && selectedIds.length === items.length}
+                        onChange={() => toggleAll(items.map((i) => i.id))}
+                        label="Pilih semua baris laporan"
+                      />
+                    </th>
+                  )}
                   <th scope="col" className="table-header whitespace-nowrap">Tgl Pengajuan</th>
                   <th scope="col" className="table-header whitespace-nowrap">Depo</th>
                   <th scope="col" className="table-header whitespace-nowrap">No SJ</th>
@@ -465,7 +479,7 @@ export default function BiayaThlReportPage() {
                   ))
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="table-cell text-center py-16">
+                    <td colSpan={canDelete ? 12 : 11} className="table-cell text-center py-16">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
                           <svg className="w-7 h-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
@@ -483,6 +497,15 @@ export default function BiayaThlReportPage() {
                 ) : (
                   items.map((item) => (
                     <tr key={item.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
+                      {canDelete && (
+                        <td className="table-cell text-center">
+                          <ReportSelectCheckbox
+                            checked={selectedIds.includes(item.id)}
+                            onChange={() => toggle(item.id)}
+                            label={`Pilih biaya THL ${item.no_surat_jalan}`}
+                          />
+                        </td>
+                      )}
                       <td className="table-cell text-sm text-slate-600 whitespace-nowrap font-mono">{item.tanggal_pengajuan}</td>
                       <td className="table-cell text-sm text-slate-600 whitespace-nowrap">{item.nama_depo} <span className="text-slate-400 text-xs">({item.kode_depo})</span></td>
                       <td className="table-cell text-sm font-mono font-medium text-slate-800 whitespace-nowrap">{item.no_surat_jalan}</td>
@@ -599,6 +622,10 @@ export default function BiayaThlReportPage() {
           )}
         </div>
       </div>
+
+      {canDelete && (
+        <ReportDeleteBar count={selectedIds.length} deleting={deleting} onDelete={removeSelected} onClear={clear} />
+      )}
     </DashboardLayout>
   );
 }

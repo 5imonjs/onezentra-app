@@ -641,6 +641,7 @@ export const reports = {
   biayaThlExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl/export', { params, responseType: 'blob' }),
   biayaRetribusi: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi', { params }),
   biayaRetribusiExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi/export', { params, responseType: 'blob' }),
+  deleteRows: (type: string, ids: number[]) => apiClient.delete('/reports/rows', { data: { type, ids } }),
 };
 
 export const biayaThl = {

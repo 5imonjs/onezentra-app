@@ -5,6 +5,8 @@ import DashboardLayout from '@/app/dashboard/layout';
 import { reports, depo, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { todayLocal } from '@/lib/dates';
+import { useReportRowDelete } from '@/lib/useReportRowDelete';
+import { ReportDeleteBar, ReportSelectCheckbox } from '@/components/ReportDeleteControls';
 
 interface SelisihItem {
   id: number;
@@ -65,6 +67,7 @@ export default function SelisihQtyReportPage() {
   const [rangePreset, setRangePreset] = useState('');
   const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const reqIdRef = useRef(0);
+  const canDelete = hasPermission('reports.delete');
 
   const selectedDepo = depots.find((d) => d.kode_depo === kodeDepo);
 
@@ -97,6 +100,8 @@ export default function SelisihQtyReportPage() {
       if (reqIdRef.current === reqId) setLoading(false);
     }
   }, [dateFrom, dateTo, kodeDepo, hasPermission]);
+
+  const { selectedIds, toggle, toggleAll, clear, deleting, removeSelected } = useReportRowDelete('receiving_item', () => fetchData());
 
   const loadDepots = useCallback(async () => {
     try {
@@ -378,6 +383,15 @@ export default function SelisihQtyReportPage() {
               <caption className="sr-only">Laporan selisih kuantitas</caption>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                  {canDelete && (
+                    <th scope="col" className="table-header w-10 text-center">
+                      <ReportSelectCheckbox
+                        checked={items.length > 0 && selectedIds.length === items.length}
+                        onChange={() => toggleAll(items.map((i) => i.id))}
+                        label="Pilih semua baris laporan"
+                      />
+                    </th>
+                  )}
                   <th scope="col" className="table-header whitespace-nowrap">Tanggal</th>
                   <th scope="col" className="table-header whitespace-nowrap">PO Transporter</th>
                   <th scope="col" className="table-header whitespace-nowrap">Kode Barang</th>
@@ -408,7 +422,7 @@ export default function SelisihQtyReportPage() {
                   ))
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="table-cell text-center py-16">
+                    <td colSpan={canDelete ? 11 : 10} className="table-cell text-center py-16">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
                           <svg className="w-7 h-7 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -429,6 +443,15 @@ export default function SelisihQtyReportPage() {
                     const plus = item.selisih_qty > 0;
                     return (
                       <tr key={item.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
+                        {canDelete && (
+                          <td className="table-cell text-center">
+                            <ReportSelectCheckbox
+                              checked={selectedIds.includes(item.id)}
+                              onChange={() => toggle(item.id)}
+                              label={`Pilih selisih qty ${item.kode_barang}`}
+                            />
+                          </td>
+                        )}
                         <td className="table-cell text-sm text-slate-600 whitespace-nowrap font-mono">{formatTanggal(item.created_at)}</td>
                         <td className="table-cell text-sm font-mono font-medium text-slate-800 whitespace-nowrap">{item.po_transporter}</td>
                         <td className="table-cell text-sm font-mono text-slate-600 whitespace-nowrap">{item.kode_barang}</td>
@@ -527,6 +550,10 @@ export default function SelisihQtyReportPage() {
           </div>
         </div>
       </div>
+
+      {canDelete && (
+        <ReportDeleteBar count={selectedIds.length} deleting={deleting} onDelete={removeSelected} onClear={clear} />
+      )}
     </DashboardLayout>
   );
 }

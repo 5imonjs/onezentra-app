@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { depo, getErrorMessage, reports } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { useReportRowDelete } from '@/lib/useReportRowDelete';
+import { ReportDeleteBar, ReportSelectCheckbox } from '@/components/ReportDeleteControls';
 
 interface Row {
   id: number;
@@ -75,6 +77,7 @@ export default function PenerimaanBatchExpiredReportPage() {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const reqIdRef = useRef(0);
+  const canDelete = hasPermission('reports.delete');
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -125,6 +128,8 @@ export default function PenerimaanBatchExpiredReportPage() {
       if (reqIdRef.current === reqId) setLoading(false);
     }
   }, [buildParams, hasPermission]);
+
+  const { selectedIds, toggle, toggleAll, clear, deleting, removeSelected } = useReportRowDelete('receiving_item', () => fetchData());
 
   const loadDepots = useCallback(async () => {
     try {
@@ -382,6 +387,15 @@ export default function PenerimaanBatchExpiredReportPage() {
               <caption className="sr-only">Laporan penerimaan produk dan status batch expired, dikelompokkan per cluster</caption>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                  {canDelete && (
+                    <th scope="col" className="table-header w-10 text-center">
+                      <ReportSelectCheckbox
+                        checked={rows.length > 0 && selectedIds.length === rows.length}
+                        onChange={() => toggleAll(rows.map((r) => r.id))}
+                        label="Pilih semua baris laporan"
+                      />
+                    </th>
+                  )}
                   <th scope="col" className="table-header text-right whitespace-nowrap">No</th>
                   <th scope="col" className="table-header whitespace-nowrap">Cluster</th>
                   <th scope="col" className="table-header whitespace-nowrap">Produk</th>
@@ -415,7 +429,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                 ))}
                 {!loading && rows.length === 0 && (
                   <tr>
-                    <td colSpan={12} className="p-10 text-center">
+                    <td colSpan={canDelete ? 13 : 12} className="p-10 text-center">
                       <p className="text-sm text-slate-600 font-bold">Tidak ada data</p>
                       <p className="text-xs text-slate-400 mt-1">Belum ada penerimaan pada filter ini</p>
                       {activeFilterCount > 0 && (
@@ -430,6 +444,15 @@ export default function PenerimaanBatchExpiredReportPage() {
                     className={row.is_expired ? 'bg-red-50/70' : 'hover:bg-gray-50/60'}
                     title={row.is_expired ? `EXPIRED — lewat ${Math.abs(row.sisa_hari ?? 0)} hari` : undefined}
                   >
+                    {canDelete && (
+                      <td className="table-cell text-center">
+                        <ReportSelectCheckbox
+                          checked={selectedIds.includes(row.id)}
+                          onChange={() => toggle(row.id)}
+                          label={`Pilih ${row.kode_barang}`}
+                        />
+                      </td>
+                    )}
                     <td className="table-cell text-right text-sm text-slate-400 tabular-nums">{row.no ?? index + 1}</td>
                     <td className="table-cell text-sm whitespace-nowrap">
                       {index === 0 || rows[index - 1].cluster !== row.cluster ? (
@@ -533,6 +556,10 @@ export default function PenerimaanBatchExpiredReportPage() {
           )}
         </div>
       </div>
+
+      {canDelete && (
+        <ReportDeleteBar count={selectedIds.length} deleting={deleting} onDelete={removeSelected} onClear={clear} />
+      )}
     </DashboardLayout>
   );
 }
