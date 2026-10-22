@@ -23,11 +23,18 @@ class AuthTest extends TestCase
             ->assertJsonPath('message', 'Logged out successfully');
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
+        // Satu peristiwa logout, bukan dua (middleware melewati rute auth).
+        $this->assertDatabaseCount('user_activity_logs', 1);
+        $this->assertDatabaseHas('user_activity_logs', [
+            'user_id' => $user->id,
+            'method' => 'LOGOUT',
+            'route' => 'auth.logout',
+        ]);
     }
 
     public function test_login_does_not_issue_bearer_token(): void
     {
-        User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'auth-audit@example.com',
             'password' => 'secret-123',
         ]);
@@ -40,6 +47,11 @@ class AuthTest extends TestCase
         $response->assertOk();
         $response->assertJsonMissingPath('token');
         $this->assertDatabaseCount('personal_access_tokens', 0);
+        $this->assertDatabaseHas('user_activity_logs', [
+            'user_id' => $user->id,
+            'method' => 'LOGIN',
+            'route' => 'auth.login',
+        ]);
     }
 
     public function test_login_inactive_account_gets_distinct_message_only_after_correct_password(): void

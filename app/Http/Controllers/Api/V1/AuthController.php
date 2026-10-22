@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\LogUserActivity;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -82,6 +83,8 @@ class AuthController extends Controller
             $request->session()->regenerate();
         }
 
+        $this->trackAuthEvent($user, 'LOGIN', 'auth.login');
+
         return response()->json([
             'message' => 'Login successful',
             'user' => $user->load('roles'),
@@ -91,10 +94,12 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $user = $request->user();
+
         // Hapus HANYA token akses yang dipakai request ini (multi-device safe).
         // Jangan pakai `$user->tokens()->delete()`: itu akan mencabut token
         // mobile / perangkat lain saat user logout dari web.
-        $currentToken = $request->user()?->currentAccessToken();
+        $currentToken = $user?->currentAccessToken();
         if ($currentToken && method_exists($currentToken, 'delete')) {
             $currentToken->delete();
         }
@@ -106,6 +111,10 @@ class AuthController extends Controller
             auth('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+        }
+
+        if ($user !== null) {
+            $this->trackAuthEvent($user, 'LOGOUT', 'auth.logout');
         }
 
         return response()->json(['message' => 'Logged out successfully']);
@@ -151,6 +160,8 @@ class AuthController extends Controller
 
         $token = $user->createToken($deviceName, ['*'], $expiresAt);
 
+        $this->trackAuthEvent($user, 'LOGIN', 'auth.mobile_login');
+
         return response()->json([
             'message' => 'Login successful',
             'token' => $token->plainTextToken,
@@ -167,9 +178,14 @@ class AuthController extends Controller
      */
     public function mobileLogout(Request $request)
     {
-        $currentToken = $request->user()?->currentAccessToken();
+        $user = $request->user();
+        $currentToken = $user?->currentAccessToken();
         if ($currentToken && method_exists($currentToken, 'delete')) {
             $currentToken->delete();
+        }
+
+        if ($user !== null) {
+            $this->trackAuthEvent($user, 'LOGOUT', 'auth.mobile_logout');
         }
 
         return response()->json(['message' => 'Logged out successfully']);
@@ -211,5 +227,19 @@ class AuthController extends Controller
             'message' => 'Profile updated',
             'user' => $user->load('roles'),
         ]);
+    }
+
+    /**
+     * Catat login/logout sebagai bagian dari mobilitas pengguna. Middleware
+     * TrackUserActivity sengaja melewati rute auth agar tidak terjadi dobel.
+     */
+    private function trackAuthEvent(User $user, string $method, string $route): void
+    {
+        dispatch(new LogUserActivity(
+            $user->id,
+            $method,
+            $route,
+            now()->toDateTimeString(),
+        ))->afterResponse();
     }
 }

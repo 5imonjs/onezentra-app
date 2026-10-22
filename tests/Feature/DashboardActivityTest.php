@@ -39,6 +39,12 @@ class DashboardActivityTest extends TestCase
             'route' => 'api/v1/dashboard',
             'occurred_at' => now(),
         ]);
+        UserActivityLog::create([
+            'user_id' => $user->id,
+            'method' => 'LOGIN',
+            'route' => 'auth.login',
+            'occurred_at' => now(),
+        ]);
 
         Sanctum::actingAs($user);
 
@@ -46,10 +52,16 @@ class DashboardActivityTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.days', 30)
-            ->assertJsonPath('data.daily.29.requests', 1)
+            ->assertJsonPath('data.daily.29.requests', 2)
             ->assertJsonPath('data.daily.29.active_users', 1)
+            ->assertJsonPath('data.daily.29.logins', 1)
+            ->assertJsonPath('data.totals.activities', 2)
+            ->assertJsonPath('data.totals.logins', 1)
+            ->assertJsonPath('data.totals.active_users', 1)
             ->assertJsonPath('data.top_users.0.name', 'Activity Tester')
-            ->assertJsonPath('data.top_users.0.requests', 1);
+            ->assertJsonPath('data.top_users.0.requests', 2)
+            ->assertJsonFragment(['module' => 'Dashboard', 'requests' => 1])
+            ->assertJsonFragment(['module' => 'Login & Logout', 'requests' => 1]);
 
         $this->assertDatabaseHas('user_activity_logs', [
             'user_id' => $user->id,

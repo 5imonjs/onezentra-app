@@ -14,7 +14,7 @@ class MobileAuthTest extends TestCase
 
     public function test_mobile_login_issues_bearer_token(): void
     {
-        User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'mobile@onezentra.com',
             'password' => 'secret-123',
             'status' => 'active',
@@ -34,6 +34,11 @@ class MobileAuthTest extends TestCase
         $this->assertNotEmpty($response->json('token'));
         $this->assertNotEmpty($response->json('expires_at'));
         $this->assertDatabaseHas('personal_access_tokens', ['name' => 'pixel-8']);
+        $this->assertDatabaseHas('user_activity_logs', [
+            'user_id' => $user->id,
+            'method' => 'LOGIN',
+            'route' => 'auth.mobile_login',
+        ]);
     }
 
     public function test_mobile_login_rejects_wrong_password_and_inactive(): void

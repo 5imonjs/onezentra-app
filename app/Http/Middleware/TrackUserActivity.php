@@ -19,7 +19,17 @@ class TrackUserActivity
         $response = $next($request);
         $user = $request->user();
 
-        if ($user !== null && $request->is('api/*') && $request->method() !== 'OPTIONS') {
+        // Login/logout dicatat eksplisit oleh AuthController sebagai LOGIN/
+        // LOGOUT. Lewati di sini agar satu peristiwa tidak tercatat dua kali
+        // (mis. logout yang sudah punya user terautentikasi).
+        $isAuthEvent = $request->is(
+            'api/*/login',
+            'api/*/mobile/login',
+            'api/*/logout',
+            'api/*/mobile/logout',
+        );
+
+        if ($user !== null && ! $isAuthEvent && $request->is('api/*') && $request->method() !== 'OPTIONS') {
             // Queue async agar tidak menambah latency API (fix P-1/S-8).
             // Fallback sync jika queue driver = sync/array (testing).
             dispatch(new LogUserActivity(

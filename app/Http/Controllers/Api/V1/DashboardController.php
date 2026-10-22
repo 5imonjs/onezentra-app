@@ -28,11 +28,21 @@ class DashboardController extends Controller
         $depot = $request->user()->isDepotScoped()
             ? $request->user()->kode_depo
             : ($depotInput === '' ? null : $depotInput);
-        $logs = UserActivityLog::query()
-            ->where('occurred_at', '>=', $since)
-            ->whereHas('user', fn ($query) => $query->forUserDepot($request->user())
-                ->when($depot, fn ($q) => $q->where('users.kode_depo', $depot)))
-            ->selectRaw('DATE(occurred_at) as date, COUNT(*) as requests, COUNT(DISTINCT user_id) as active_users')
+        // Satu definisi scope dipakai ulang oleh agregasi harian, modul, dan
+        // total agar filter depo tidak bisa berbeda antar potongan respons.
+        $activityQuery = function () use ($request, $since, $depot) {
+            return UserActivityLog::query()
+                ->where('occurred_at', '>=', $since)
+                ->whereHas('user', fn ($query) => $query->forUserDepot($request->user())
+                    ->when($depot, fn ($q) => $q->where('users.kode_depo', $depot)));
+        };
+
+        $logs = $activityQuery()
+            ->selectRaw(
+                'DATE(occurred_at) as date, COUNT(*) as requests, '
+                .'COUNT(DISTINCT user_id) as active_users, '
+                ."SUM(CASE WHEN method = 'LOGIN' THEN 1 ELSE 0 END) as logins"
+            )
             ->groupBy('date')
             ->orderBy('date')
             ->get()
@@ -46,8 +56,46 @@ class DashboardController extends Controller
                 'date' => $date,
                 'requests' => (int) ($row->requests ?? 0),
                 'active_users' => (int) ($row->active_users ?? 0),
+                'logins' => (int) ($row->logins ?? 0),
             ];
         })->values();
+
+        // Klasifikasi modul dilakukan di SQL agar tetap ringan untuk 90 hari.
+        // Urutan CASE penting: modul spesifik lebih dulu, auth paling akhir
+        // supaya route login/logout tidak jatuh ke "Lainnya".
+        // Normalisasi hyphen route path (mis. `standar-umur`, `sj-validation`)
+        // agar pola modul sama untuk route name (underscore) dan path (hyphen).
+        $routeKey = "REPLACE(LOWER(COALESCE(route, '')), '-', '_')";
+        $moduleCase = "CASE
+            WHEN {$routeKey} LIKE '%report%' THEN 'Laporan'
+            WHEN {$routeKey} LIKE '%rencana%' THEN 'Rencana Kirim'
+            WHEN {$routeKey} LIKE '%gate%' THEN 'Gate Check'
+            WHEN {$routeKey} LIKE '%penerimaan%' THEN 'Penerimaan'
+            WHEN {$routeKey} LIKE '%receiving%' THEN 'Receiving'
+            WHEN {$routeKey} LIKE '%validasi%' OR {$routeKey} LIKE '%sj_validation%' THEN 'Validasi SJ'
+            WHEN {$routeKey} LIKE '%npn%' THEN 'NPN'
+            WHEN {$routeKey} LIKE '%standar_umur%' THEN 'Standar Umur'
+            WHEN {$routeKey} LIKE '%standarisasi%' THEN 'Standarisasi'
+            WHEN {$routeKey} LIKE '%opname%' THEN 'Opname Expired'
+            WHEN {$routeKey} LIKE '%biaya%' THEN 'Biaya'
+            WHEN {$routeKey} LIKE '%role%' THEN 'Role & Permission'
+            WHEN {$routeKey} LIKE '%user%' THEN 'Pengguna'
+            WHEN {$routeKey} LIKE '%dashboard%' THEN 'Dashboard'
+            WHEN method IN ('LOGIN', 'LOGOUT') OR {$routeKey} LIKE '%login%' OR {$routeKey} LIKE '%logout%' THEN 'Login & Logout'
+            ELSE 'Lainnya'
+        END";
+
+        $topModules = $activityQuery()
+            ->selectRaw("{$moduleCase} as module, COUNT(*) as total")
+            ->groupByRaw('module')
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get()
+            ->map(fn ($row): array => [
+                'module' => (string) $row->module,
+                'requests' => (int) $row->total,
+            ])
+            ->values();
 
         $topUsers = User::query()
             ->forUserDepot($request->user())
@@ -73,6 +121,13 @@ class DashboardController extends Controller
                 'days' => $days,
                 'daily' => $daily,
                 'top_users' => $topUsers,
+                'top_modules' => $topModules,
+                'totals' => [
+                    'activities' => (int) $daily->sum('requests'),
+                    'logins' => (int) $daily->sum('logins'),
+                    'active_users' => (int) $activityQuery()->distinct()->count('user_id'),
+                    'peak_active_users' => (int) $daily->max('active_users'),
+                ],
             ],
         ]);
     }

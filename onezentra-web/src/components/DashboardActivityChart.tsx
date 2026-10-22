@@ -8,9 +8,23 @@ import DashboardPanel from '@/components/DashboardPanel';
 
 const ACTIVITY_ICON = <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />;
 
-type UsageDay = { date: string; requests: number; active_users: number };
+type UsageDay = { date: string; requests: number; active_users: number; logins?: number };
 type TopUser = { id: number; name: string; level: string; requests: number };
-type UsagePayload = { from: string; to: string; days: number; daily: UsageDay[]; top_users: TopUser[] };
+type TopModule = { module: string; requests: number };
+type UsagePayload = {
+  from: string;
+  to: string;
+  days: number;
+  daily: UsageDay[];
+  top_users: TopUser[];
+  top_modules?: TopModule[];
+  totals?: {
+    activities: number;
+    logins: number;
+    active_users: number;
+    peak_active_users: number;
+  };
+};
 type UsageResponse = { data?: { data?: UsagePayload } };
 
 const PERIODS = [
@@ -77,18 +91,22 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
     load(periodDays, kodeDepo);
   }, [load, periodDays, kodeDepo, hasPermission]);
 
-  // Metrik internal (request API per user) hanya relevan untuk pengelola
-  // sistem. Peran operasional tidak dirender chart ini agar dashboard fokus
-  // ke pekerjaan gudang.
+  // Jejak aktivitas pengguna (login/logout + seluruh proses API) hanya
+  // relevan untuk pengelola sistem. Peran operasional tidak dirender chart ini
+  // agar dashboard fokus ke pekerjaan gudang.
   if (!hasPermission('users.view')) {
     return null;
   }
 
   const daily = Array.isArray(usage?.daily) ? usage.daily : [];
   const topUsers = Array.isArray(usage?.top_users) ? usage.top_users : [];
-  const totalRequests = daily.reduce((sum, day) => sum + day.requests, 0);
-  const peakUsers = Math.max(...daily.map((day) => day.active_users), 0);
+  const topModules = Array.isArray(usage?.top_modules) ? usage.top_modules : [];
+  const totalRequests = usage?.totals?.activities ?? daily.reduce((sum, day) => sum + day.requests, 0);
+  const totalLogins = usage?.totals?.logins ?? daily.reduce((sum, day) => sum + (day.logins ?? 0), 0);
+  const activeUsers = usage?.totals?.active_users ?? 0;
+  const peakUsers = usage?.totals?.peak_active_users ?? Math.max(...daily.map((day) => day.active_users), 0);
   const maxRequests = Math.max(...daily.map((day) => day.requests), 1);
+  const maxModuleRequests = Math.max(...topModules.map((item) => item.requests), 1);
   const isEmpty = totalRequests === 0;
   // Label tanggal hanya ditampilkan pada sebagian bar agar tidak sesak di layar kecil.
   const labelStep = daily.length > 45 ? 7 : daily.length > 20 ? 3 : daily.length > 10 ? 2 : 1;
@@ -144,7 +162,8 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
       <div className="p-6">
         {loading && (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="h-20 bg-surface-raised rounded-xl animate-pulse" />
               <div className="h-20 bg-surface-raised rounded-xl animate-pulse" />
               <div className="h-20 bg-surface-raised rounded-xl animate-pulse" />
               <div className="h-20 bg-surface-raised rounded-xl animate-pulse" />
@@ -169,16 +188,20 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
         )}
         {!loading && !error && usage && !isEmpty && (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <div className="rounded-xl bg-surface-raised px-4 py-3">
                 <p className="text-xs text-gray-500">Total aktivitas</p>
                 <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">{totalRequests.toLocaleString('id-ID')}</p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 px-4 py-3">
+                <p className="text-xs text-emerald-700">Login berhasil</p>
+                <p className="mt-1 text-xl font-bold text-emerald-900 tabular-nums">{totalLogins.toLocaleString('id-ID')}</p>
               </div>
               <div className="rounded-xl bg-cyan-50 px-4 py-3">
                 <p className="text-xs text-cyan-700">Puncak user aktif</p>
                 <p className="mt-1 text-xl font-bold text-cyan-900 tabular-nums">{peakUsers}</p>
               </div>
-              <div className="col-span-2 sm:col-span-1 rounded-xl bg-amber-50 px-4 py-3">
+              <div className="rounded-xl bg-amber-50 px-4 py-3">
                 <p className="text-xs text-amber-700">User teratas</p>
                 <p className="mt-1 text-sm font-bold text-amber-900 truncate">{topUsers[0]?.name ?? 'Belum ada data'}</p>
               </div>
@@ -190,7 +213,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
                   key={day.date}
                   tabIndex={0}
                   role="img"
-                  aria-label={`${formatDate(day.date)}: ${day.requests.toLocaleString('id-ID')} aktivitas, ${day.active_users} user aktif`}
+                  aria-label={`${formatDate(day.date)}: ${day.requests.toLocaleString('id-ID')} aktivitas, ${(day.logins ?? 0).toLocaleString('id-ID')} login, ${day.active_users} user aktif`}
                   className="h-full flex-1 min-w-0 flex flex-col justify-end items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded"
                 >
                   <div
@@ -204,10 +227,39 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
               ))}
             </div>
 
-            <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-gray-500">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" aria-hidden="true" />
-              Aktivitas API per hari
+              Login + seluruh proses sistem per hari
+              {activeUsers > 0 && (
+                <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+                  {activeUsers.toLocaleString('id-ID')} user aktif
+                </span>
+              )}
             </div>
+
+            {topModules.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-800 mb-3">Aktivitas per modul</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                  {topModules.slice(0, 8).map((item) => (
+                    <div key={item.module}>
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-gray-600 truncate">{item.module}</span>
+                        <span className="font-bold text-gray-900 tabular-nums shrink-0">
+                          {item.requests.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-surface-raised overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-cyan-500"
+                          style={{ width: `${Math.max((item.requests / maxModuleRequests) * 100, 3)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {topUsers.length > 0 && (
               <div className="mt-6 pt-5 border-t border-gray-100">
