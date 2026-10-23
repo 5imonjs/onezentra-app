@@ -11,12 +11,18 @@ const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep'
 
 export function splitDateOnly(value: string | null | undefined): { y: string; m: string; d: string } | null {
   if (!value) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  const trimmed = value.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/.exec(trimmed)
+    ?? /^(\d{4})(\d{2})(\d{2})$/.exec(trimmed);
   if (!match) return null;
   const [, y, m, d] = match;
+  const year = Number(y);
   const month = Number(m);
   const day = Number(d);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  if (year < 1 || month < 1 || month > 12 || day < 1) return null;
+  const isLeapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  if (day > daysInMonth) return null;
   return { y, m, d };
 }
 
@@ -24,6 +30,12 @@ export function splitDateOnly(value: string | null | undefined): { y: string; m:
 export function toDateInput(value?: string | null): string {
   const parts = splitDateOnly(value ?? null);
   return parts ? `${parts.y}-${parts.m}-${parts.d}` : '';
+}
+
+/** Format tanggal label 'YYYY-MM-DD...' atau 'YYYYMMDD' sebagai 'DD/MM/YYYY'. */
+export function formatDateDmy(value?: string | null): string {
+  const parts = splitDateOnly(value ?? null);
+  return parts ? `${parts.d}/${parts.m}/${parts.y}` : '-';
 }
 
 /** Tanggal hari ini (zona lokal browser) sebagai 'YYYY-MM-DD'. */

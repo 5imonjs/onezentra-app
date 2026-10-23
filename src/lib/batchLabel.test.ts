@@ -52,10 +52,15 @@ describe('buildBatchLabelPdf', () => {
     expect(encoded.endsWith('1')).toBe(true);
   });
 
-  it('mempertahankan tanggal expired apa adanya, tanpa konversi timezone', () => {
-    // Tanggal yang bergeser satu hari karena timezone akan menaruh produk di
-    // rak yang salah, jadi label harus memakai nilai mentah dari API.
-    expect(label.expired_date).toBe('2027-01-31');
+  it('mencetak expired date dari format ISO tanpa timezone dan format legacy ringkas', () => {
+    const isoPdf = buildBatchLabelPdf(label).output();
+    expect(isoPdf).toContain('EXP 31/01/2027');
+
+    const legacyPdf = buildBatchLabelPdf({
+      ...label,
+      expired_date: '20260823',
+    }).output();
+    expect(legacyPdf).toContain('EXP 23/08/2026');
   });
 });
 
