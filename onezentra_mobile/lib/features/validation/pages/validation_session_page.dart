@@ -138,7 +138,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                           : () => _confirmCancel(provider),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.dangerText,
-                        side: BorderSide(color: AppTheme.dangerText),
+                        side: const BorderSide(color: AppTheme.dangerText),
                         minimumSize: const Size(0, 44),
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppTheme.space4,
@@ -813,7 +813,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     onPressed: () => _openItemSheet(item),
     style: OutlinedButton.styleFrom(
       foregroundColor: AppTheme.gray200,
-      side: BorderSide(color: AppTheme.gray500),
+      side: const BorderSide(color: AppTheme.gray500),
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
@@ -827,7 +827,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     onPressed: () => _openPrintSheet(item),
     style: OutlinedButton.styleFrom(
       foregroundColor: AppTheme.gray200,
-      side: BorderSide(color: AppTheme.gray500),
+      side: const BorderSide(color: AppTheme.gray500),
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
