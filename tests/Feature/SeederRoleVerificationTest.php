@@ -147,10 +147,9 @@ class SeederRoleVerificationTest extends TestCase
         $this->seedRoles();
         $this->seed(PermissionSeeder::class);
 
-        // Grant live yang disengaja (keputusan akses 2026-10-09) harus tetap
-        // ada di seeder supaya `sync()` berikutnya tidak mencabutnya diam-diam.
+        // Grant operasional yang disengaja harus tetap ada di seeder supaya
+        // `sync()` berikutnya tidak mencabutnya diam-diam.
         $kept = [
-            'staff_logistic' => ['depot.view_all'],
             'cheker' => [
                 'approval.submit', 'retribusi_rates.manage', 'sj_validation.edit_completed',
                 'opname.edit', 'penerimaan.delete',
@@ -171,6 +170,12 @@ class SeederRoleVerificationTest extends TestCase
                 $this->assertContains($slug, $held, "Role {$roleSlug} harus memegang {$slug}");
             }
         }
+        foreach (['staff_logistic', 'ga'] as $roleSlug) {
+            $this->assertFalse(
+                Role::where('slug', $roleSlug)->first()->permissions()->where('slug', 'depot.view_all')->exists(),
+                "Role {$roleSlug} tidak boleh membuka akses global depo secara default"
+            );
+        }
 
         // approval.view sengaja TIDAK dipertahankan — tetap admin_master-only.
         $this->assertTrue(
@@ -184,13 +189,11 @@ class SeederRoleVerificationTest extends TestCase
         $this->seedRoles();
         $this->seed(PermissionSeeder::class);
 
-        // `depot.view_all` = saklar lintas-depo GLOBAL. Revisi 2026-10-09:
-        // BLC tidak lagi memegangnya supaya tidak melihat semua depo di semua
-        // modul + filter depo dashboard. Yang tersisa hanya role yang memang
-        // lintas-depo secara menyeluruh (+ GA viewer luas, keputusan 2026-10-09).
+        // `depot.view_all` = saklar lintas-depo GLOBAL. Hanya admin_master
+        // yang mendapatkannya secara default; role operasional tetap scoped.
         $globalViewAll = Role::whereHas('permissions', fn ($query) => $query->where('slug', 'depot.view_all'))
             ->pluck('slug')->sort()->values()->all();
-        $this->assertSame(['admin_master', 'ga', 'staff_logistic'], $globalViewAll);
+        $this->assertSame(['admin_master'], $globalViewAll);
         $this->assertFalse(
             Role::where('slug', 'blc')->first()->permissions()->where('slug', 'depot.view_all')->exists(),
             'blc tidak boleh memegang depot.view_all (saklar global)'
@@ -266,12 +269,12 @@ class SeederRoleVerificationTest extends TestCase
         $this->seedRoles();
         $this->seed(PermissionSeeder::class);
 
-        // GA = viewer luas: semua modul view-only, lintas depo (keputusan
-        // akses 2026-10-09). Set eksak dikunci supaya drift langsung terlihat.
+        // GA = viewer luas: semua modul view-only, tetap pada assignment depo.
+        // Set eksak dikunci supaya drift langsung terlihat.
         $ga = Role::where('slug', 'ga')->first()->permissions()->pluck('slug')->sort()->values()->all();
         $this->assertNotEmpty($ga, 'Role ga tidak boleh nol permission (lockout)');
         $expectedGa = [
-            'dashboard.view', 'depot.view_all',
+            'dashboard.view',
             'rencana_kirim.view', 'gate.view', 'sj_validation.view', 'receiving.view',
             'penerimaan.view', 'npn.view', 'standar_umur.view', 'standarisasi.view',
             'biaya_thl.view', 'biaya_thl.export',
@@ -303,7 +306,7 @@ class SeederRoleVerificationTest extends TestCase
         // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
         $this->assertSame(108, Permission::count());
-        $this->assertSame(570, DB::table('role_permission')->count());
+        $this->assertSame(568, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void

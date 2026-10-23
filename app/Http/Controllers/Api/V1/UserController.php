@@ -112,6 +112,23 @@ class UserController extends Controller
         ], 201);
     }
 
+    public function roleOptions()
+    {
+        $roles = Role::query()
+            ->with('permissions:id,slug')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Role $role): array => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'slug' => $role->slug,
+                'is_active' => $role->is_active,
+                'has_global_depot_access' => $role->permissions->contains('slug', 'depot.view_all'),
+            ]);
+
+        return response()->json(['data' => $roles]);
+    }
+
     private function authorizeDepot(User $user): void
     {
         $this->authorizeDepotRow(
@@ -133,6 +150,13 @@ class UserController extends Controller
         $this->authorizeDepot($user);
 
         $validated = $request->validated();
+        if (isset($validated['level']) && $validated['level'] !== $user->level) {
+            $requestedRole = Role::where('slug', $validated['level'])->first();
+            abort_if($requestedRole && ! $requestedRole->is_active, 422, 'Role yang dipilih tidak aktif.');
+        }
+        $hasDepotAssignments = array_key_exists('depot_codes', $validated);
+        $depotCodes = $validated['depot_codes'] ?? [];
+        unset($validated['depot_codes']);
 
         $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
@@ -149,12 +173,22 @@ class UserController extends Controller
             }
         }
 
+        $regionChanged = array_key_exists('region_id', $validated)
+            && $validated['region_id'] !== $user->getOriginal('region_id');
+        if ($regionChanged && ! $hasDepotAssignments) {
+            $hasDepotAssignments = true;
+            $depotCodes = [];
+        }
+
         // Hanya admin master yang boleh mengubah user admin master.
         $this->authorize('update', $user);
 
         if (array_key_exists('region_id', $validated) && blank($validated['region_id'])) {
             $validated['region_id'] = null;
         }
+        $depotAssignments = $hasDepotAssignments
+            ? $this->activeDepotAssignments($depotCodes, $validated['region_id'] ?? $user->region_id, $actor)
+            : null;
 
         if (! empty($validated['password'])) {
             $isSelf = $actor->id === $user->id;
@@ -195,20 +229,24 @@ class UserController extends Controller
             ];
         }
 
-        $user->update($validated);
+        DB::transaction(function () use ($user, $validated, $request, $depotAssignments): void {
+            $user->update($validated);
 
-        $user->forceFill(['updated_by' => $request->user()->id])->saveQuietly();
+            $user->forceFill(['updated_by' => $request->user()->id])->saveQuietly();
 
-        if (isset($validated['level'])) {
-            $user->roles()->detach();
-            $role = Role::where('slug', $validated['level'])->first();
-            if ($role) {
+            if (isset($validated['level'])) {
+                $user->roles()->detach();
+                $role = Role::where('slug', $validated['level'])->firstOrFail();
                 $user->roles()->attach($role);
                 // forceFill: 'role_id' sengaja tidak fillable (lihat User::$fillable).
                 $user->forceFill(['role_id' => $role->id])->save();
+                User::clearPermissionCache($user->id);
             }
-            User::clearPermissionCache($user->id);
-        }
+
+            if ($depotAssignments !== null) {
+                $this->replaceDepotAssignments($user, $depotAssignments);
+            }
+        });
 
         return response()->json([
             'message' => 'User updated successfully',
@@ -255,33 +293,41 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Get depot assignments for a user.
-     * Returns all depots with assignment status.
-     */
-    public function getDepots(User $user)
+    /** Get assignments visible to the actor with their current assignment status. */
+    public function getDepots(Request $request, User $user)
     {
         $this->authorizeDepot($user);
 
-        $allDepots = DepotSetting::where('is_active', true)
+        $actor = $request->user();
+        $depotsQuery = DepotSetting::where('is_active', true);
+        if ($actor->isDepotScoped()) {
+            $depotsQuery->whereIn('kode_depo', $actor->depot_codes);
+        }
+        $allDepots = $depotsQuery
             ->orderBy('region_id')
             ->orderBy('kode_depo')
             ->get(['kode_depo', 'nama_depo', 'region_id']);
 
-        $effectiveCodes = $user->depot_codes;
+        $assignedCodes = $user->isDepotScoped()
+            ? $user->depot_codes
+            : DB::table('user_depots')->where('user_id', $user->id)->pluck('kode_depo')->all();
 
-        $data = $allDepots->map(function ($depot) use ($effectiveCodes) {
+        if ($assignedCodes === [] && ! blank($user->kode_depo)) {
+            $assignedCodes = [$user->kode_depo];
+        }
+
+        $data = $allDepots->map(function ($depot) use ($assignedCodes) {
             return [
                 'kode_depo' => $depot->kode_depo,
                 'nama_depo' => $depot->nama_depo,
                 'region_id' => $depot->region_id,
-                'assigned' => in_array($depot->kode_depo, $effectiveCodes, true),
+                'assigned' => in_array($depot->kode_depo, $assignedCodes, true),
             ];
         });
 
         return response()->json([
             'data' => $data,
-            'assigned_count' => count($effectiveCodes),
+            'assigned_count' => count($assignedCodes),
             'region_id' => $user->region_id,
             'has_region_permission' => $user->hasRegionPermission(),
             'uses_global_scope' => ! $user->isDepotScoped(),

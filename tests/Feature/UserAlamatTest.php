@@ -16,6 +16,7 @@ class UserAlamatTest extends TestCase
     private function admin(): User
     {
         $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin Master']);
+        Role::firstOrCreate(['slug' => 'blc'], ['name' => 'BLC', 'is_active' => true]);
         foreach (['users.create', 'users.edit', 'users.view', 'depot.view_all'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);

@@ -3,11 +3,11 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\Models\Role;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Aturan validasi pembuatan user — dipindah utuh dari
- * UserController::store() tanpa perubahan.
+ * Validasi akun baru dan role aktif yang boleh ditetapkan.
  *
  * authorize() sengaja return true: otorisasi dilakukan di DUA tempat
  * yang tidak bisa digabung di sini — middleware `permission:users.create`
@@ -24,7 +24,7 @@ class StoreUserRequest extends FormRequest
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -38,7 +38,19 @@ class StoreUserRequest extends FormRequest
             'alamat' => 'nullable|string|max:2000',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'level' => 'required|in:'.implode(',', Role::LEVEL_SLUGS),
+            'level' => [
+                'required',
+                'string',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $role = Role::where('slug', $value)->first();
+                    $isLegacyRoleWithoutRow = $role === null && in_array($value, Role::LEVEL_SLUGS, true);
+                    if (($role?->is_active ?? false) || $isLegacyRoleWithoutRow) {
+                        return;
+                    }
+
+                    $fail('Role yang dipilih tidak aktif atau tidak valid.');
+                },
+            ],
             'status' => 'nullable|in:active,inactive',
         ];
     }

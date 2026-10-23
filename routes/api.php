@@ -215,6 +215,7 @@ Route::prefix('v1')->group(function () {
     Route::prefix('users')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
         Route::get('/', [UserController::class, 'index'])->middleware('permission:users.view');
         Route::post('/', [UserController::class, 'store'])->middleware('permission:users.create');
+        Route::get('/role-options', [UserController::class, 'roleOptions'])->middleware('permission:users.view');
         Route::get('/{user}', [UserController::class, 'show'])->middleware('permission:users.view');
         Route::put('/{user}', [UserController::class, 'update'])->middleware('permission:users.edit');
         Route::delete('/{user}', [UserController::class, 'destroy'])->middleware('permission:users.delete');

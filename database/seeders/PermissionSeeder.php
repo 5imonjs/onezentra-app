@@ -15,8 +15,8 @@ class PermissionSeeder extends Seeder
         // Standarisasi → Sistem → Notifikasi. Dalam grup: view, create, edit, delete, import.
         $permissions = [
             ['name' => 'Dashboard View', 'slug' => 'dashboard.view', 'menu_group' => 'Umum', 'icon' => 'dashboard', 'route' => 'dashboard', 'sort_order' => 10],
-            ['name' => 'Akses Semua Depo', 'slug' => 'depot.view_all', 'menu_group' => 'Umum', 'icon' => 'globe', 'route' => null, 'sort_order' => 20, 'description' => 'Global: melihat seluruh depo lintas region. Dapat diberikan/dicabut admin master lewat Roles & Permissions.'],
-            ['name' => 'Konteks Depo Region', 'slug' => 'depot.view_region', 'menu_group' => 'Umum', 'icon' => 'map', 'route' => null, 'sort_order' => 21, 'description' => 'Menandai role yang bekerja dalam konteks region. Akses data tetap hanya ke depo yang ditetapkan pada user.'],
+            ['name' => 'Akses Semua Depo (Global)', 'slug' => 'depot.view_all', 'menu_group' => 'Umum', 'icon' => 'globe', 'route' => null, 'sort_order' => 20, 'description' => 'Cakupan global: akses seluruh depo di semua region, melewati assignment depo user. Berikan hanya untuk role yang memang memerlukan akses global.'],
+            ['name' => 'Konteks Region (tanpa akses otomatis)', 'slug' => 'depot.view_region', 'menu_group' => 'Umum', 'icon' => 'map', 'route' => null, 'sort_order' => 21, 'description' => 'Menandai user sebagai pengguna berkonteks region; tidak memperluas cakupan data. Akses tetap hanya ke depo yang ditetapkan pada user.'],
             ['name' => 'Pindah Depo Dokumen', 'slug' => 'depot.move', 'menu_group' => 'Umum', 'icon' => 'arrows-right-left', 'route' => null, 'sort_order' => 22],
             ['name' => 'Rencana Kirim View', 'slug' => 'rencana_kirim.view', 'menu_group' => 'Rencana Kirim', 'icon' => 'truck', 'route' => 'rencana_kirim.index', 'sort_order' => 30],
             ['name' => 'Rencana Kirim Create', 'slug' => 'rencana_kirim.create', 'menu_group' => 'Rencana Kirim', 'icon' => 'plus', 'route' => 'rencana_kirim.create', 'sort_order' => 40],
@@ -134,20 +134,9 @@ class PermissionSeeder extends Seeder
 
         $allPermSlugs = array_column($permissions, 'slug');
         $allPermIds = Permission::whereIn('slug', $allPermSlugs)->pluck('id', 'slug')->toArray();
-
-        // Hierarki tampilan (bukan hierarki hak akses): permission turunan
-        // dirender sebagai cabang di bawah induknya pada Roles & Permissions.
-        // Sumber kebenaran ada di kolom `permissions.parent_id`, bukan di UI.
-        $permissionHierarchy = [
-            'depot.view_region' => 'depot.view_all',
-        ];
-        foreach ($permissionHierarchy as $childSlug => $parentSlug) {
-            $childId = $allPermIds[$childSlug] ?? null;
-            $parentId = $allPermIds[$parentSlug] ?? null;
-            if ($childId !== null && $parentId !== null) {
-                Permission::whereKey($childId)->update(['parent_id' => $parentId]);
-            }
-        }
+        // These are alternative data scopes, not parent/child permissions.
+        Permission::whereIn('slug', ['depot.view_all', 'depot.view_region'])
+            ->update(['parent_id' => null]);
 
         $rolePermMap = [
             'admin_master' => $allPermSlugs,
@@ -163,10 +152,6 @@ class PermissionSeeder extends Seeder
                 'reports.selisih_qty', 'reports.penerimaan', 'reports.penerimaan_batch_expired', 'reports.rencana_kirim', 'reports.biaya_thl', 'reports.biaya_retribusi', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete',
                 'gate.edit', 'gate.delete',
                 'receiving.import', 'receiving.export', 'receiving.template',
-                // Keputusan akses 2026-10-09: staff_logistic memang lintas-depo.
-                // Grant ini sebelumnya hanya ada di DB (menutupi bug cross-depo
-                // H1-H3) dan kini dicatat di seeder agar ter-audit.
-                'depot.view_all',
             ],
             'rlh' => [
                 'dashboard.view', 'penerimaan.view', 'npn.view',
@@ -286,7 +271,7 @@ class PermissionSeeder extends Seeder
             // opname.progress_all (dari opname.view), cluster_principal.view
             // (dari npn.view) — lihat aturan post-processing di bawah.
             'ga' => [
-                'dashboard.view', 'depot.view_all',
+                'dashboard.view',
                 'rencana_kirim.view', 'gate.view', 'sj_validation.view', 'receiving.view',
                 'penerimaan.view', 'npn.view', 'standar_umur.view', 'standarisasi.view',
                 'biaya_thl.view', 'biaya_retribusi.view',

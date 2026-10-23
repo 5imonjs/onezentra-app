@@ -63,6 +63,7 @@ class DepotSettingController extends Controller
 
         $validated = $request->validate([
             'nama_depo' => 'nullable|string|max:100',
+            'region_id' => 'nullable|string|max:20',
             'nama_pengirim' => 'nullable|string|max:200',
             'alamat_pengirim' => 'nullable|string|max:2000',
             'telepon_pengirim' => 'nullable|string|max:50',

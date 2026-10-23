@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Imports\UserImport;
 use App\Models\DepotSetting;
 use App\Models\Permission;
 use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -293,5 +296,212 @@ class RegionDepotScopeTest extends TestCase
         ])->assertForbidden();
 
         $this->assertNull($target->fresh()->region_id);
+    }
+
+    public function test_user_import_assigns_active_custom_role_and_multiple_depots_in_region(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $this->makeDepot('R1-B', 'REG-1');
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+        $role = Role::create([
+            'name' => 'Planner Custom',
+            'slug' => 'planner_custom',
+            'is_active' => true,
+        ]);
+
+        $import = new UserImport($admin);
+        $import->collection(new Collection([[
+            'email' => 'imported-planner@example.test',
+            'full_name' => 'Planner Import',
+            'level' => 'planner_custom',
+            'region_id' => 'REG-1',
+            'depot_codes' => 'R1-A, R1-B',
+            'status' => 'active',
+        ]]));
+
+        $this->assertSame([], $import->errors);
+        $user = User::where('email', 'imported-planner@example.test')->firstOrFail();
+        $this->assertSame(1, $import->imported);
+        $this->assertSame('REG-1', $user->region_id);
+        $this->assertEqualsCanonicalizing(['R1-A', 'R1-B'], $user->depot_codes);
+        $this->assertSame([$role->id], $user->roles()->pluck('roles.id')->all());
+    }
+
+    public function test_user_import_keeps_legacy_role_slugs_without_role_rows(): void
+    {
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+
+        $import = new UserImport($admin);
+        $import->collection(new Collection([[
+            'email' => 'legacy-role-import@example.test',
+            'full_name' => 'Legacy Role',
+            'level' => 'staff_logistic',
+        ]]));
+
+        $user = User::where('email', 'legacy-role-import@example.test')->firstOrFail();
+        $this->assertSame(1, $import->imported);
+        $this->assertSame([], $import->errors);
+        $this->assertSame('staff_logistic', $user->level);
+        $this->assertSame(0, $user->roles()->count());
+    }
+
+    public function test_user_import_rejects_depots_from_another_region(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $this->makeDepot('R2-A', 'REG-2');
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+        Role::create(['name' => 'Planner Custom', 'slug' => 'planner_custom', 'is_active' => true]);
+
+        $import = new UserImport($admin);
+        $import->collection(new Collection([[
+            'email' => 'mismatched-planner@example.test',
+            'full_name' => 'Mismatched Planner',
+            'level' => 'planner_custom',
+            'region_id' => 'REG-1',
+            'depot_codes' => 'R2-A',
+        ]]));
+
+        $this->assertSame(0, $import->imported);
+        $this->assertCount(1, $import->errors);
+        $this->assertDatabaseMissing('users', ['email' => 'mismatched-planner@example.test']);
+    }
+
+    public function test_scoped_user_import_cannot_assign_a_depot_outside_actor_scope(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $this->makeDepot('R1-B', 'REG-1');
+        Role::firstOrCreate(['slug' => 'staff_logistic'], ['name' => 'Staff Logistik']);
+
+        $actor = $this->makeUser('admin_planner', 'R1-A', 'Depo R1-A', 'REG-1');
+        $this->grant($actor, 'users.import');
+        DB::table('user_depots')->insert([
+            'user_id' => $actor->id,
+            'kode_depo' => 'R1-A',
+            'assigned_at' => now(),
+        ]);
+
+        $import = new UserImport($actor);
+        $import->collection(new Collection([[
+            'email' => 'out-of-scope-import@example.test',
+            'full_name' => 'Outside Scope',
+            'level' => 'staff_logistic',
+            'region_id' => 'REG-1',
+            'depot_codes' => 'R1-B',
+        ]]));
+
+        $this->assertSame(0, $import->imported);
+        $this->assertCount(1, $import->errors);
+        $this->assertDatabaseMissing('users', ['email' => 'out-of-scope-import@example.test']);
+    }
+
+    public function test_user_import_updates_region_role_and_depot_assignments_together(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $this->makeDepot('R2-A', 'REG-2');
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+        $target = $this->makeUser('staff_logistic', 'R1-A', 'Depo R1-A', 'REG-1');
+        DB::table('user_depots')->insert([
+            'user_id' => $target->id,
+            'kode_depo' => 'R1-A',
+            'assigned_at' => now(),
+        ]);
+        $role = Role::create([
+            'name' => 'Planner Custom',
+            'slug' => 'planner_custom',
+            'is_active' => true,
+        ]);
+
+        $import = new UserImport($admin);
+        $import->collection(new Collection([[
+            'email' => $target->email,
+            'full_name' => $target->full_name,
+            'level' => 'planner_custom',
+            'region_id' => 'REG-2',
+            'depot_codes' => 'R2-A',
+            'status' => 'active',
+        ]]));
+
+        $updated = $target->fresh();
+        $this->assertSame([], $import->errors);
+        $this->assertSame(1, $import->updated);
+        $this->assertSame('REG-2', $updated->region_id);
+        $this->assertSame(['R2-A'], $updated->depot_codes);
+        $this->assertSame('R2-A', $updated->kode_depo);
+        $this->assertSame([$role->id], $updated->roles()->pluck('roles.id')->all());
+        $this->assertDatabaseMissing('user_depots', [
+            'user_id' => $updated->id,
+            'kode_depo' => 'R1-A',
+        ]);
+    }
+
+    public function test_planner_creates_and_sees_rencana_kirim_only_for_its_assigned_depot(): void
+    {
+        $this->makeDepot('ABC-A', 'REG-A', 'Depo ABC');
+        $this->makeDepot('ABC-B', 'REG-B', 'Depo ABC');
+
+        $plannerA = $this->makeUser('admin_planner', 'ABC-A', 'Depo ABC', 'REG-A');
+        $this->grant($plannerA, 'depot.view_region');
+        $this->grant($plannerA, 'rencana_kirim.view');
+        $this->grant($plannerA, 'rencana_kirim.create');
+        DB::table('user_depots')->insert([
+            'user_id' => $plannerA->id,
+            'kode_depo' => 'ABC-A',
+            'assigned_at' => now(),
+        ]);
+
+        $plannerB = $this->makeUser('admin_planner', 'ABC-B', 'Depo ABC', 'REG-B');
+        $this->grant($plannerB, 'depot.view_region');
+        $this->grant($plannerB, 'rencana_kirim.view');
+        $this->grant($plannerB, 'rencana_kirim.create');
+        DB::table('user_depots')->insert([
+            'user_id' => $plannerB->id,
+            'kode_depo' => 'ABC-B',
+            'assigned_at' => now(),
+        ]);
+
+        Sanctum::actingAs($plannerA);
+        $this->postJson('/api/v1/rencana-kirim', [
+            'po_transporter' => 'PO-REG-A',
+            'kode_depo' => 'ABC-A',
+        ])->assertCreated()->assertJsonPath('data.kode_depo', 'ABC-A');
+
+        Sanctum::actingAs($plannerB);
+        $this->postJson('/api/v1/rencana-kirim', [
+            'po_transporter' => 'PO-REG-B',
+            'kode_depo' => 'ABC-B',
+        ])->assertCreated()->assertJsonPath('data.kode_depo', 'ABC-B');
+
+        Sanctum::actingAs($plannerA);
+        $this->getJson('/api/v1/rencana-kirim')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.po_transporter', 'PO-REG-A');
+        $this->getJson('/api/v1/rencana-kirim?kode_depo=ABC-B')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.po_transporter', 'PO-REG-A');
+
+        Sanctum::actingAs($plannerB);
+        $this->getJson('/api/v1/rencana-kirim')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.po_transporter', 'PO-REG-B');
+    }
+
+    public function test_depot_code_cannot_be_reused_in_another_region(): void
+    {
+        $this->makeDepot('ABC', 'REG-A', 'Depo ABC');
+        $this->expectException(QueryException::class);
+
+        DepotSetting::create([
+            'kode_depo' => 'ABC',
+            'nama_depo' => 'Depo ABC Region B',
+            'region_id' => 'REG-B',
+            'is_active' => true,
+        ]);
     }
 }

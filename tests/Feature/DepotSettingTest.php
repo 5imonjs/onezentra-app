@@ -130,6 +130,29 @@ class DepotSettingTest extends TestCase
         ]);
     }
 
+    public function test_admin_master_can_assign_depot_to_a_region(): void
+    {
+        DepotSetting::create(['kode_depo' => 'DPA', 'nama_depo' => 'Depo A']);
+        Sanctum::actingAs($this->user('admin_master', 'DPA'));
+
+        $this->putJson('/api/v1/depot-settings/DPA', ['region_id' => 'REG-01'])
+            ->assertOk()
+            ->assertJsonPath('data.region_id', 'REG-01');
+
+        $this->assertDatabaseHas('depot_settings', [
+            'kode_depo' => 'DPA',
+            'region_id' => 'REG-01',
+        ]);
+    }
+
+    public function test_region_code_is_validated(): void
+    {
+        Sanctum::actingAs($this->user('admin_master', 'DPA'));
+
+        $this->putJson('/api/v1/depot-settings/DPA', ['region_id' => str_repeat('R', 21)])
+            ->assertJsonValidationErrors(['region_id']);
+    }
+
     public function test_upsert_validates_email(): void
     {
         Sanctum::actingAs($this->user('admin_master', 'DPA'));

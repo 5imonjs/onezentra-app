@@ -602,6 +602,7 @@ export interface UserDepotsResponse {
 
 export const users = {
   list: (params?: Record<string, unknown>) => apiClient.get('/users', { params }),
+  roleOptions: () => apiClient.get('/users/role-options'),
   import: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

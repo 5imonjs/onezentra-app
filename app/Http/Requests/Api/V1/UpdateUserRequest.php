@@ -4,11 +4,11 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Models\Role;
 use App\Models\User;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Aturan validasi pembaruan user — dipindah utuh dari
- * UserController::update() tanpa perubahan.
+ * Validasi pembaruan profil, role, dan assignment depo user.
  *
  * unique email memakai `$this->route('user')`: route memakai implicit
  * binding `{user}`, jadi route parameter berisi model User (atau id
@@ -27,7 +27,7 @@ class UpdateUserRequest extends FormRequest
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -38,11 +38,23 @@ class UpdateUserRequest extends FormRequest
             'kode_depo' => 'sometimes|string|max:20',
             'nama_depo' => 'sometimes|string|max:100',
             'region_id' => 'sometimes|nullable|string|max:20',
+            'depot_codes' => 'sometimes|array',
+            'depot_codes.*' => 'string|max:20|distinct',
             'full_name' => 'sometimes|string|max:100',
             'alamat' => 'nullable|string|max:2000',
             'email' => 'sometimes|email|max:255|unique:users,email,'.$ignoreId,
             'password' => 'nullable|string|min:8|confirmed',
-            'level' => 'sometimes|in:'.implode(',', Role::LEVEL_SLUGS),
+            'level' => [
+                'sometimes',
+                'string',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (Role::where('slug', $value)->exists() || in_array($value, Role::LEVEL_SLUGS, true)) {
+                        return;
+                    }
+
+                    $fail('Role yang dipilih tidak valid.');
+                },
+            ],
             'status' => 'sometimes|in:active,inactive',
         ];
     }
