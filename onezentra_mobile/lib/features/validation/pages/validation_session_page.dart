@@ -907,6 +907,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           reportWarning = message?.message;
         }
       }
+      // Segera refresh provider agar status badge cetak berubah dan
+      // tombol Selesaikan dapat aktif jika semua label sudah tercetak.
+      if (mounted) {
+        // ignore: use_build_context_synchronously
+        var v = context.read<ValidationProvider>();
+        await v.openSession(v.active?.id ?? 0);
+      }
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -1019,6 +1027,15 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     );
     if ((confirmed ?? false) && mounted) {
       await provider.completeActive();
+      if (mounted && provider.active != null) {
+        // Selesai validasi → lanjutkan ke Check Out Point (Receiving/Bongkar)
+        // agar dokumen siap diproses diterima.
+        try {
+          await Navigator.pushNamed(context, '/bongkar');
+        } catch (_) {
+          // Route /bongkar tidak terdaftar (misal dalam tes), abaikan.
+        }
+      }
     }
   }
 
