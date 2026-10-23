@@ -17,7 +17,7 @@
         .meta div { padding: 2px 0; }
         .section-date { font-weight: bold; height: 12px; }
         .data th { background: #d2d2d2; text-align: center; font-weight: bold; padding: 4px; }
-        .data td { height: 14px; vertical-align: top; }
+        .data td { vertical-align: top; }
         .summary .col-no { width: 3%; }
         .summary .col-nopol { width: 23%; }
         .summary .col-type { width: 18%; }

@@ -115,6 +115,8 @@ class BiayaRetribusiPdfTest extends TestCase
         $this->assertStringContainsString('admin_master', $html);
         $this->assertStringContainsString('PENGAJUAN', $html);
         $this->assertStringContainsString('22 Sep 2026', $html);
+        $this->assertStringContainsString('.data td { vertical-align: top; }', $html);
+        $this->assertStringNotContainsString('.data td { height: 14px;', $html);
 
         $biayaThl->update([
             'status' => 'checked',
