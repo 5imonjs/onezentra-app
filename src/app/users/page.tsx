@@ -458,6 +458,11 @@ export default function UsersPage() {
           notifyGlobal('Pilih tepat satu depo aktif sebelum menyimpan perubahan user.');
           return;
         }
+        const selectedDepot = userDepots.find(depot => depot.kode_depo === editDepotCodes[0]);
+        if (!selectedDepot?.region_id || selectedDepot.region_id !== editForm.region_id) {
+          notifyGlobal('Depo terpilih tidak sesuai dengan region user. Pilih ulang region dan depo.');
+          return;
+        }
         const data = { ...editForm };
         if (!data.password) {
           delete data.password;
@@ -472,7 +477,13 @@ export default function UsersPage() {
         if (!data.nama_depo?.trim()) {
           delete data.nama_depo;
         }
-        await users.update(editItem.id, { ...data, depot_codes: editDepotCodes });
+        await users.update(editItem.id, {
+          ...data,
+          region_id: selectedDepot.region_id,
+          kode_depo: selectedDepot.kode_depo,
+          nama_depo: selectedDepot.nama_depo,
+          depot_codes: [selectedDepot.kode_depo],
+        });
         setEditItem(null);
         setEditForm({});
       }

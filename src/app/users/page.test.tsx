@@ -466,6 +466,37 @@ describe('UsersPage region and depot assignments', () => {
     expect(syncDepots).not.toHaveBeenCalled();
   });
 
+  it('assigns a depot to an existing user who previously had no depot', async () => {
+    const unassignedUser = {
+      ...user,
+      kode_depo: '',
+      nama_depo: '',
+      depot_codes: [],
+    };
+    list.mockResolvedValue(listResponse([unassignedUser]));
+    getDepots.mockResolvedValue({
+      data: {
+        data: depots.map(depot => ({ ...depot, assigned: false })),
+        has_region_permission: false,
+        uses_global_scope: false,
+      },
+    });
+    render(<UsersPage />);
+
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Edit' }))[0]);
+    fireEvent.click(await screen.findByRole('tab', { name: '2. Cakupan Depo' }));
+    fireEvent.click(await screen.findByRole('radio', { name: /D-01/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Simpan' }));
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith(11, expect.objectContaining({
+      region_id: 'REG-1',
+      kode_depo: 'D-01',
+      nama_depo: 'Depo Satu',
+      depot_codes: ['D-01'],
+    })));
+  });
+
   it('does not submit a user edit until a depot is selected after changing region', async () => {
     list.mockResolvedValue(listResponse([user]));
     const { container } = render(<UsersPage />);
