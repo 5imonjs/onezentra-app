@@ -9,6 +9,7 @@ use App\Models\Npn;
 use App\Models\StandarUmurProduk;
 use App\Services\ExportGuard;
 use App\Support\LikePattern;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -234,12 +235,30 @@ class NpnController extends Controller
         return Excel::download(new NpnExport(empty: true), 'npn_template.xlsx');
     }
 
-    public function searchProduct(Request $request)
+    /**
+     * Pencarian produk untuk picker "Nama Barang" (Rencana Kirim, Standarisasi,
+     * Manual Batch). Mendukung paginasi: satu kata kunci umum bisa match lebih
+     * dari satu halaman, jadi `limit` hanyalah UKURAN HALAMAN dan `total`/
+     * `has_more` memberi tahu klien sisa datanya — "menampilkan X dari Y" lalu
+     * tombol muat lanjut. Batas halaman dahulu memotong hasil secara diam-diam
+     * (500 pertama urut szNickName), sehingga barang setelahnya tak pernah muncul.
+     */
+    public function searchProduct(Request $request): JsonResponse
     {
-        $request->validate(['q' => 'required|string|min:1']);
+        // Trim di server agar spasi murni tidak jadi pencarian '% %'.
+        $request->merge(['q' => trim((string) $request->input('q'))]);
 
-        $like = LikePattern::contains($request->q);
-        $query = Npn::select('id', 'BOSnetszProductId', 'SAPszProductId', 'SAPszUomId', 'SAPdecUom', 'decVolume', 'szNickName', 'szNickNameNew', 'szShortDescription', 'decUomConversion1', 'BOSnetdecUom')
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'min:1'],
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:1000'],
+            'offset' => ['sometimes', 'integer', 'min:0'],
+        ]);
+
+        $limit = (int) ($validated['limit'] ?? 500);
+        $offset = (int) ($validated['offset'] ?? 0);
+
+        $like = LikePattern::contains($validated['q']);
+        $base = Npn::query()
             // Ikut mencari szShortDescription/SAP ID/barcode karena itulah teks yang
             // benar-benar tampil pada picker, bukan hanya nickname produk.
             ->where(function ($q) use ($like) {
@@ -250,15 +269,38 @@ class NpnController extends Controller
                     ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('szBarcodeSekunder LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szBarcodeTersier LIKE ? ESCAPE ?', [$like, '\\']);
-            })
+                    ->orWhereRaw('szBarcodeTersier LIKE ? ESCAPE ?', [$like, '\\'])
+                    // Nama panjang & deskripsi kategori sering jadi kata kunci user
+                    // walau teks itu tidak pernah tampil di baris hasil.
+                    ->orWhereRaw('szLongDescription LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat1Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat2Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat3Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat4Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat5Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat6Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat7Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat8Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat9Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat10Description LIKE ? ESCAPE ?', [$like, '\\']);
+            });
+
+        $products = (clone $base)
+            ->select('id', 'BOSnetszProductId', 'SAPszProductId', 'SAPszUomId', 'SAPdecUom', 'decVolume', 'szNickName', 'szNickNameNew', 'szShortDescription', 'decUomConversion1', 'BOSnetdecUom')
             ->orderBy('szNickName')
-            ->limit(500)
+            ->offset($offset)
+            ->limit($limit)
             ->get();
 
-        $materials = $query->pluck('SAPszProductId')->filter()->unique()->values();
+        // COUNT hanya saat halaman penuh (kemungkinan masih ada sisa). Kalau
+        // hasil kurang dari limit, halaman sudah mentok dan totalnya persis
+        // offset + jumlah hasil — kebanyakan ketikan jadi tanpa query hitam penuh.
+        $returned = $products->count();
+        $total = $returned === $limit ? (clone $base)->count() : $offset + $returned;
+
+        $materials = $products->pluck('SAPszProductId')->filter()->unique()->values();
         $umurs = StandarUmurProduk::whereIn('material', $materials)->pluck('umur', 'material');
-        foreach ($query as $product) {
+        foreach ($products as $product) {
             $product->umur = $product->SAPszProductId ? ($umurs[$product->SAPszProductId] ?? null) : null;
             $product->decVolume = $product->decVolume !== null ? (float) $product->decVolume : null;
             $product->SAPdecUom = $product->SAPdecUom !== null ? (int) $product->SAPdecUom : null;
@@ -266,6 +308,12 @@ class NpnController extends Controller
             $product->BOSnetdecUom = $product->BOSnetdecUom !== null ? (float) $product->BOSnetdecUom : null;
         }
 
-        return response()->json(['data' => $query]);
+        return response()->json([
+            'data' => $products,
+            'total' => $total,
+            'limit' => $limit,
+            'offset' => $offset,
+            'has_more' => $offset + $returned < $total,
+        ]);
     }
 }
