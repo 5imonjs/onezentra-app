@@ -28,21 +28,28 @@ class UnloadProvider extends ChangeNotifier {
   }
 
   UnloadSession? _active;
+  List<UnloadSession> _activeReceivings = const [];
   bool _lookupBusy = false;
   bool _actionBusy = false;
   UnloadActionMessage? _message;
   UnloadStats _stats = const UnloadStats();
   bool _isLoadingStats = false;
+  bool _isLoadingReceivings = false;
+  String? _receivingsError;
   String? _statsError;
   int _statsRequestId = 0;
+  int _receivingsRequestId = 0;
   bool _bootstrapped = false;
 
   UnloadSession? get active => _active;
+  List<UnloadSession> get activeReceivings => _activeReceivings;
   bool get lookupBusy => _lookupBusy;
   bool get actionBusy => _actionBusy;
   UnloadActionMessage? get message => _message;
   UnloadStats get stats => _stats;
   bool get isLoadingStats => _isLoadingStats;
+  bool get isLoadingReceivings => _isLoadingReceivings;
+  String? get receivingsError => _receivingsError;
   String? get statsError => _statsError;
 
   /// Scans a PO barcode and opens its receiving (exact match only).
@@ -66,7 +73,8 @@ class UnloadProvider extends ChangeNotifier {
     try {
       _active = await _repository.findByPo(code);
       _message = UnloadActionMessage.success(
-        'Bongkar dibuka: ${_active?.poTransporter ?? code}.',
+        'Receiving ditemukan: ${_active?.poTransporter ?? code}. '
+        'Periksa detail sebelum menyelesaikan.',
       );
     } on ApiException catch (e) {
       _active = null;
@@ -93,12 +101,12 @@ class UnloadProvider extends ChangeNotifier {
     if (!canView) {
       return;
     }
-    await loadStats();
+    await refresh();
   }
 
-  /// Reloads both stats and (optionally) the active session.
+  /// Reloads receiving status counts and active receiving rows.
   Future<void> refresh() async {
-    await loadStats();
+    await Future.wait([loadStats(), loadActiveReceivings()]);
   }
 
   Future<void> loadStats() async {
@@ -134,6 +142,46 @@ class UnloadProvider extends ChangeNotifier {
         _notify();
       }
     }
+  }
+
+  Future<void> loadActiveReceivings() async {
+    var requestId = ++_receivingsRequestId;
+    _isLoadingReceivings = true;
+    _receivingsError = null;
+    _notify();
+    try {
+      var receivings = await _repository.listActive();
+      if (requestId != _receivingsRequestId) {
+        return;
+      }
+      _activeReceivings = receivings;
+    } on ApiException catch (e) {
+      if (requestId != _receivingsRequestId) {
+        return;
+      }
+      _receivingsError = e.message;
+      debugPrint('UnloadProvider.loadActiveReceivings: ${e.message}');
+    } catch (e, stack) {
+      if (requestId != _receivingsRequestId) {
+        return;
+      }
+      _receivingsError = 'Daftar receiving aktif gagal dimuat.';
+      debugPrint(
+        'UnloadProvider.loadActiveReceivings: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+    } finally {
+      if (requestId == _receivingsRequestId) {
+        _isLoadingReceivings = false;
+        _notify();
+      }
+    }
+  }
+
+  void selectReceiving(UnloadSession session) {
+    _active = session;
+    _message = null;
+    _notify();
   }
 
   /// Starts the unloading, then reloads so totals stay exact.
@@ -179,7 +227,10 @@ class UnloadProvider extends ChangeNotifier {
   Future<bool> completeActive() => _run((session) async {
     var po = session.poTransporter ?? '';
     _active = await _repository.complete(session.id, barcode: po);
-    _message = const UnloadActionMessage.success('Bongkar selesai.');
+    _message = UnloadActionMessage.success(
+      'Receiving PO ${session.poTransporter ?? '-'} selesai. '
+      'Notifikasi dikirim ke BLC (TO) & Admin Distribusi (CC).',
+    );
   });
 
   /// Cancels the running unloading and returns to the scan state.

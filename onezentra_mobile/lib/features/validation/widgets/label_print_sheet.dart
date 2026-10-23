@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,18 +12,20 @@ import 'package:onezentra_mobile/core/printer/thermal_label.dart';
 /// merender seluruh halaman, dan supaya halaman yang sudah panjang tidak makin
 /// sulit dibaca.
 class LabelPrintSheet extends StatefulWidget {
-  const LabelPrintSheet({required this.label, super.key});
+  const LabelPrintSheet({required this.label, this.printer, super.key});
 
   final BatchLabelData label;
+  final LabelPrintProvider? printer;
 
   /// Buka panel cetak. Mengembalikan true kalau label berhasil dicetak.
   static Future<bool?> show(
     BuildContext context, {
     required BatchLabelData label,
+    LabelPrintProvider? printer,
   }) => showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => LabelPrintSheet(label: label),
+    builder: (_) => LabelPrintSheet(label: label, printer: printer),
   );
 
   @override
@@ -29,11 +33,20 @@ class LabelPrintSheet extends StatefulWidget {
 }
 
 class _LabelPrintSheetState extends State<LabelPrintSheet> {
-  late final LabelPrintProvider _printer = LabelPrintProvider();
+  late final LabelPrintProvider _printer =
+      widget.printer ?? LabelPrintProvider();
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_printer.initialize());
+  }
 
   @override
   void dispose() {
-    _printer.dispose();
+    if (widget.printer == null) {
+      _printer.dispose();
+    }
     super.dispose();
   }
 
@@ -154,8 +167,10 @@ class _PrinterSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     if (printer.available.isEmpty) {
       return Text(
-        'Belum ada printer. Tekan "Cari Printer" dulu, lalu pastikan printer '
-        'sudah dipasangkan lewat Pengaturan Bluetooth HP.',
+        printer.scanning
+            ? 'Mencari printer yang sudah dipasangkan...'
+            : 'Belum ada printer. Pastikan printer sudah dipasangkan lewat '
+                  'Pengaturan Bluetooth HP, lalu tekan "Cari Printer".',
         style: Theme.of(context).textTheme.bodySmall,
       );
     }
@@ -176,7 +191,7 @@ class _PrinterSelector extends StatelessWidget {
       onChanged: (address) {
         var match = printer.available.where((p) => p.address == address);
         if (match.isNotEmpty) {
-          printer.select(match.first);
+          unawaited(printer.select(match.first));
         }
       },
     );

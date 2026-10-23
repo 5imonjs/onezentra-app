@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:onezentra_mobile/core/printer/escpos_label.dart';
 import 'package:onezentra_mobile/core/printer/label_printer.dart';
@@ -21,8 +22,12 @@ class LabelPrintProvider extends ChangeNotifier {
   final LabelPrinter _printer;
   final BluetoothPermissionRequest _requestPermissions;
 
+  static const _selectedPrinterKey = 'label_print_selected_printer_address';
+
   List<DiscoveredPrinter> _available = const [];
   DiscoveredPrinter? _selected;
+  String? _preferredAddress;
+  Future<void>? _initialization;
   bool _scanning = false;
   bool _printing = false;
   String? _error;
@@ -84,10 +89,33 @@ class LabelPrintProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void select(DiscoveredPrinter printer) {
+  Future<void> initialize() => _initialization ??= _initialize();
+
+  Future<void> _initialize() async {
+    try {
+      var preferences = await SharedPreferences.getInstance();
+      _preferredAddress = preferences.getString(_selectedPrinterKey);
+    } catch (e) {
+      debugPrint('LabelPrintProvider.initialize: $e');
+    }
+    await scan();
+  }
+
+  Future<void> select(DiscoveredPrinter printer) async {
     _selected = printer;
+    _preferredAddress = printer.address;
     _error = null;
     notifyListeners();
+    await _saveSelectedAddress(printer.address);
+  }
+
+  Future<void> _saveSelectedAddress(String address) async {
+    try {
+      var preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_selectedPrinterKey, address);
+    } catch (e) {
+      debugPrint('LabelPrintProvider.saveSelectedAddress: $e');
+    }
   }
 
   void clearMessages() {
@@ -121,19 +149,27 @@ class LabelPrintProvider extends ChangeNotifier {
       }
       var found = await _printer.scan();
       _available = found;
-      // Pertahankan pilihan yang masih ada supaya label yang sama tidak perlu
-      // dipilih ulang setiap kali operator membuka panel cetak.
-      if (_selected != null &&
-          !found.any((p) => p.address == _selected!.address)) {
+      var address = _preferredAddress ?? _selected?.address;
+      if (found.isEmpty) {
         _selected = null;
+      } else if (address == null) {
+        _selected = found.first;
+        _preferredAddress = _selected!.address;
+        unawaited(_saveSelectedAddress(_selected!.address));
+      } else {
+        var matchingPrinters = found.where(
+          (printer) => printer.address == address,
+        );
+        _selected = matchingPrinters.isEmpty ? null : matchingPrinters.first;
       }
-      _selected ??= found.isEmpty ? null : found.first;
     } on PrinterException catch (e) {
       _available = const [];
+      _selected = null;
       _error = e.message;
     } catch (e) {
       debugPrint('LabelPrintProvider.scan: $e');
       _available = const [];
+      _selected = null;
       _error = 'Gagal mencari printer Bluetooth.';
     } finally {
       _scanning = false;

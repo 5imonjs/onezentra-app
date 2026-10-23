@@ -48,6 +48,61 @@ Map<String, dynamic> _sessionBody({String status = 'PENDING'}) => {
 
 void main() {
   group('UnloadRepository', () {
+    test(
+      'stats menghitung status seperti header Check Out Point web',
+      () async {
+        var requestedStatuses = <String?>[];
+        var repository = UnloadRepository(
+          get: (endpoint) async {
+            var query = Uri.parse(endpoint).queryParameters;
+            requestedStatuses.add(query['status']);
+            return {'total': query['status'] == null ? 12 : 3};
+          },
+          post: (_, _) async => throw StateError('unexpected POST'),
+        );
+
+        var stats = await repository.stats();
+
+        expect(requestedStatuses, [
+          null,
+          'PENDING',
+          'IN_PROGRESS',
+          'COMPLETED',
+        ]);
+        expect(stats.total, 12);
+        expect(stats.pending, 3);
+        expect(stats.inProgress, 3);
+        expect(stats.completed, 3);
+      },
+    );
+
+    test(
+      'listActive memuat receiving menunggu dan diproses per halaman',
+      () async {
+        var requestedStatuses = <String>[];
+        var repository = UnloadRepository(
+          get: (endpoint) async {
+            var query = Uri.parse(endpoint).queryParameters;
+            var status = query['status']!;
+            requestedStatuses.add('$status:${query['page']}');
+            return {
+              'data': [_receivingRow(status: status)],
+              'last_page': 1,
+            };
+          },
+          post: (_, _) async => throw StateError('unexpected POST'),
+        );
+
+        var rows = await repository.listActive();
+
+        expect(requestedStatuses, ['PENDING:1', 'IN_PROGRESS:1']);
+        expect(rows.map((row) => row.status).toList(), [
+          'PENDING',
+          'IN_PROGRESS',
+        ]);
+      },
+    );
+
     test('findByPo memilih cocok persis, bukan kandidat pertama', () async {
       String? detailEndpoint;
       var repository = UnloadRepository(

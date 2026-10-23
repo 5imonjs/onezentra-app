@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:onezentra_mobile/core/printer/label_print_provider.dart';
@@ -86,6 +87,10 @@ const label = BatchLabelData(
 );
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('LabelPrintProvider.scan', () {
     test('menampilkan printer yang ditemukan radio bluetooth', () async {
       var fake = _FakeLabelPrinter(available: [printerA, printerB]);
@@ -114,6 +119,44 @@ void main() {
       expect(provider.selected, isNotNull);
       expect(provider.selected!.address, printerA.address);
     });
+
+    test(
+      'mengembalikan printer pilihan setelah provider dibuat ulang',
+      () async {
+        var firstProvider = LabelPrintProvider(
+          printer: _FakeLabelPrinter(available: [printerA, printerB]),
+        );
+        await firstProvider.initialize();
+        await firstProvider.select(printerB);
+        firstProvider.dispose();
+
+        var nextProvider = LabelPrintProvider(
+          printer: _FakeLabelPrinter(available: [printerA, printerB]),
+        );
+        await nextProvider.initialize();
+
+        expect(nextProvider.selected?.address, printerB.address);
+        nextProvider.dispose();
+      },
+    );
+
+    test(
+      'tidak memilih printer lain jika printer tersimpan sedang offline',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'label_print_selected_printer_address': printerB.address,
+        });
+        var provider = LabelPrintProvider(
+          printer: _FakeLabelPrinter(available: [printerA]),
+        );
+
+        await provider.initialize();
+
+        expect(provider.selected, isNull);
+        expect(provider.available, [printerA]);
+        provider.dispose();
+      },
+    );
 
     test(
       'menampilkan pesan yang bisa dimengerti saat printer tidak ada',
@@ -160,7 +203,7 @@ void main() {
       var provider = LabelPrintProvider(printer: fake);
       await provider.scan();
 
-      provider.select(printerB);
+      await provider.select(printerB);
       var ok = await provider.printLabel(label);
 
       expect(ok, isTrue);

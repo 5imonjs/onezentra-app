@@ -178,19 +178,19 @@ class UnloadActionMessage {
 class UnloadStats {
   const UnloadStats({
     this.total = 0,
-    this.hariIni = 0,
-    this.diterima = 0,
-    this.belumDiterima = 0,
+    this.pending = 0,
+    this.inProgress = 0,
+    this.completed = 0,
   });
 
   factory UnloadStats.fromJson(Map<String, dynamic> json) => UnloadStats(
-        total: _readInt(json['total']) ?? 0,
-        hariIni: _readInt(json['today']) ?? 0,
-        diterima: _readInt(json['completed']) ?? 0,
-        belumDiterima: _readInt(json['in_progress']) ?? 0,
-      );
+    total: _readInt(json['total']) ?? 0,
+    pending: _readInt(json['pending']) ?? 0,
+    inProgress: _readInt(json['in_progress']) ?? 0,
+    completed: _readInt(json['completed']) ?? 0,
+  );
   final int total;
-  final int hariIni;
-  final int diterima;
-  final int belumDiterima;
+  final int pending;
+  final int inProgress;
+  final int completed;
 }

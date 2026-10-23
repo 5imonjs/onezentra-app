@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -373,6 +374,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var tapAction = !canValidate || provider.actionBusy
         ? null
         : () => _onItemTap(item, canCreateStandarisasi: canCreateStandarisasi);
+
     return InkWell(
       onTap: tapAction,
       borderRadius: AppTheme.radiusLg,
@@ -387,186 +389,189 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 : Colors.white.withValues(alpha: 0.08),
           ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: locked
-                    ? AppTheme.warningDark.withValues(alpha: 0.4)
-                    : item.isPending
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : AppTheme.success.withValues(alpha: 0.2),
-                borderRadius: AppTheme.radiusLg,
-              ),
-              child: Icon(
-                locked
-                    ? Icons.lock_outline_rounded
-                    : item.isPending
-                    ? Icons.hourglass_empty_rounded
-                    : item.status == 'VALIDATED'
-                    ? Icons.check_circle_rounded
-                    : Icons.warning_rounded,
-                size: 18,
-                color: locked
-                    ? AppTheme.warningText
-                    : item.isPending
-                    ? AppTheme.gray400
-                    : item.status == 'VALIDATED'
-                    ? AppTheme.success
-                    : AppTheme.warning,
-              ),
-            ),
-            const SizedBox(width: AppTheme.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.namaBarang ?? item.kodeBarang ?? 'Item #${item.id}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.roboto(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: locked ? 0.6 : 1.0),
-                    ),
+            // Baris 1: Icon + Nama Produk + Info
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: locked
+                        ? AppTheme.warningDark.withValues(alpha: 0.4)
+                        : item.isPending
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : AppTheme.success.withValues(alpha: 0.2),
+                    borderRadius: AppTheme.radiusLg,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Ekspektasi ${_formatQty(item.expectedQty)}'
-                    '${item.actualQty != null ? ' • Aktual ${_formatQty(item.actualQty)}' : ''}'
-                    '${item.satuan != null ? ' ${item.satuan}' : ''}'
-                    ' • ${ValidationItemStatus.label(item.status)}',
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 11,
-                      color: AppTheme.gray400.withValues(
-                        alpha: locked ? 0.6 : 1.0,
-                      ),
-                    ),
+                  child: Icon(
+                    locked
+                        ? Icons.lock_outline_rounded
+                        : item.isPending
+                            ? Icons.hourglass_empty_rounded
+                            : item.status == 'VALIDATED'
+                                ? Icons.check_circle_rounded
+                                : Icons.warning_rounded,
+                    size: 18,
+                    color: locked
+                        ? AppTheme.warningText
+                        : item.isPending
+                            ? AppTheme.gray400
+                            : item.status == 'VALIDATED'
+                                ? AppTheme.success
+                                : AppTheme.warning,
                   ),
-                  if (locked) ...[
-                    const SizedBox(height: 2),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.space2,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningDark,
-                        borderRadius: AppTheme.radiusFull,
-                        border: Border.all(color: AppTheme.warningText),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.error_outline_rounded,
-                            size: 11,
-                            color: AppTheme.warningText,
+                ),
+                const SizedBox(width: AppTheme.space3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.namaBarang ?? item.kodeBarang ?? 'Item #${item.id}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.roboto(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(
+                            alpha: locked ? 0.6 : 1.0,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Ekspektasi ${_formatQty(item.expectedQty)}'
+                        '${item.actualQty != null ? ' • Aktual ${_formatQty(item.actualQty)}' : ''}'
+                        '${item.satuan != null ? ' ${item.satuan}' : ''}'
+                        ' • ${ValidationItemStatus.label(item.status)}',
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 11,
+                          color: AppTheme.gray400.withValues(
+                            alpha: locked ? 0.6 : 1.0,
+                          ),
+                        ),
+                      ),
+                      if (locked) ...[
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppTheme.space2,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.warningDark,
+                            borderRadius: AppTheme.radiusFull,
+                            border: Border.all(color: AppTheme.warningText),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                size: 11,
+                                color: AppTheme.warningText,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                item.standarisasi?.status == 'pending'
+                                    ? 'SUDAH DIJUKAN BLC'
+                                    : 'BELUM ADA STANDARISASI',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.warningText,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (!item.canValidate)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
                             item.standarisasi?.status == 'pending'
-                                ? 'SUDAH DIJUKAN BLC'
-                                : 'BELUM ADA STANDARISASI',
+                                ? 'Standarisasi sudah diajukan — menunggu approve BLC'
+                                : 'Belum ada standarisasi tumpukan — ajukan dulu',
                             style: GoogleFonts.roboto(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.warningText,
-                              letterSpacing: 0.4,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.warning,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (!item.canValidate)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        item.standarisasi?.status == 'pending'
-                            ? 'Standarisasi sudah diajukan — menunggu approve BLC'
-                            : 'Belum ada standarisasi tumpukan — ajukan dulu',
-                        style: GoogleFonts.roboto(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.warning,
                         ),
-                      ),
-                    ),
-                  if (item.selisih != null && item.selisih != 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        'Selisih ${_formatSigned(item.selisih!)}'
-                        '${item.selisihReason != null ? ' • ${item.selisihReason}' : ''}',
-                        style: GoogleFonts.roboto(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: item.selisih! < 0
-                              ? AppTheme.danger
-                              : AppTheme.success,
+                      if (item.selisih != null && item.selisih != 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            'Selisih ${_formatSigned(item.selisih!)}'
+                            '${item.selisihReason != null ? ' • ${item.selisihReason}' : ''}',
+                            style: GoogleFonts.roboto(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: item.selisih! < 0
+                                  ? AppTheme.danger
+                                  : AppTheme.success,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: AppTheme.space2),
-            Flexible(
-              child: Wrap(
-                spacing: AppTheme.space2,
-                runSpacing: AppTheme.space2,
-                alignment: WrapAlignment.end,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  if (item.isPending && canValidate && item.canValidate)
-                    _quickOkButton(item, provider)
-                  else if (item.isPending && canValidate && !item.canValidate)
-                    _standarisasiButton(
-                      item,
-                      provider,
-                      canCreate: canCreateStandarisasi,
-                    )
-                  else if (!item.isPending && canValidate && item.canValidate)
-                    _editButton(item)
-                  else
-                    AppBadge(
-                      text: ValidationCondition.label(item.condition),
-                      variant: item.condition == 'FISIK_BAGUS'
-                          ? AppBadgeVariant.gray
-                          : AppBadgeVariant.warning,
-                    ),
-                  if (canPrintLabels && item.canPrintLabel) ...[
-                    if (item.isPending)
-                      const AppBadge(
-                        text: 'BELUM DIVALIDASI',
-                        variant: AppBadgeVariant.warning,
-                      ),
-                    if (!item.isPending && item.batch?.isPrinted == true)
-                      const AppBadge(
-                        text: 'Tercetak',
-                        variant: AppBadgeVariant.success,
-                      ),
-                    if (!item.isPending && item.batch?.isPrinted != true)
-                      const AppBadge(
-                        text: 'BELUM DICETAK',
-                        variant: AppBadgeVariant.danger,
-                      ),
-                    _printLabelButton(item),
-                  ],
-                ],
-              ),
+            const SizedBox(height: AppTheme.space2),
+            // Baris 2: Aksi item (full width)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: AppTheme.space2,
+                    runSpacing: AppTheme.space2,
+                    alignment: WrapAlignment.start,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (item.isPending && canValidate && item.canValidate)
+                        _quickOkButton(item, provider)
+                      else if (item.isPending && canValidate && !item.canValidate)
+                        _standarisasiButton(
+                          item,
+                          provider,
+                          canCreate: canCreateStandarisasi,
+                        )
+                      else if (!item.isPending && canValidate && item.canValidate)
+                        _editButton(item)
+                      else
+                        AppBadge(
+                          text: ValidationCondition.label(item.condition),
+                          variant: item.condition == 'FISIK_BAGUS'
+                              ? AppBadgeVariant.gray
+                              : AppBadgeVariant.warning,
+                        ),
+                      if (canPrintLabels && item.canPrintLabel) ...[
+                        if (item.batch?.isPrinted == true)
+                          const AppBadge(
+                            text: 'Tercetak',
+                            variant: AppBadgeVariant.success,
+                          ),
+                        _printLabelButton(item),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
-  }
-
-  /// Menangani sentuhan pada satu baris produk.
+  }  /// Menangani sentuhan pada satu baris produk.
   ///
   /// Produk yang sudah disetujui BLC dibuka langsung ke layar validasi item.
   /// Produk yang BELUM disetujui BLC menampilkan konfirmasi pop-up terlebih
@@ -998,14 +1003,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       ),
     );
     if ((confirmed ?? false) && mounted) {
-      await provider.completeActive();
-      if (mounted && provider.active != null) {
-        // Selesai validasi → lanjutkan ke Check Out Point (Receiving/Bongkar)
-        // agar dokumen siap diproses diterima.
-        try {
-          await Navigator.pushNamed(context, '/bongkar');
+      var completed = await provider.completeActive();
+      if (completed && mounted) {
+        // Selesai validasi → lanjutkan ke Check Out Point (Receiving/Bongkar).
+                try {
+          context.go('/bongkar');
         } catch (_) {
-          // Route /bongkar tidak terdaftar (misal dalam tes), abaikan.
+          // Route /bongkar mungkin belum terdaftar (misal dalam tes),
+          // abaikan saja.
         }
       }
     }

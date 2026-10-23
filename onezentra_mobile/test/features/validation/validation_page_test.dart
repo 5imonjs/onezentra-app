@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -629,6 +630,83 @@ void main() {
     expect(repository.completeCalls, 1);
   });
 
+  testWidgets('validasi sukses langsung mengarahkan ke Check Out Point', (
+    tester,
+  ) async {
+    const completedSession = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      document: ValidationDocument(
+        id: 11,
+        poTransporter: 'PO-042',
+        nopol: 'B 9999 ZZ',
+        driverName: 'Andi',
+        status: 'CHECKED_IN',
+      ),
+      items: [
+        SjValidationItem(
+          id: 31,
+          validationId: 9,
+          npnId: 501,
+          kodeBarang: 'BRG-1',
+          namaBarang: 'Gula 50kg',
+          expectedQty: 100,
+          expiredDate: '2027-01-31',
+          actualQty: 100,
+          satuan: 'zak',
+          status: 'VALIDATED',
+          standarisasi: ItemStandarisasi(
+            tier: 4,
+            tinggiTumpukan: 6,
+            status: 'approved',
+          ),
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: completedSession);
+    var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
+    await provider.start('PO-042');
+    expect(provider.active, isNotNull);
+
+    var router = GoRouter(
+      initialLocation: '/session',
+      routes: [
+        GoRoute(
+          path: '/session',
+          builder: (context, state) => ValidationSessionPage(
+            provider: provider,
+            session: completedSession,
+          ),
+        ),
+        GoRoute(
+          path: '/bongkar',
+          builder: (context, state) =>
+              const Scaffold(body: Text('Check Out Point terbuka')),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: auth,
+        child: MaterialApp.router(routerConfig: router, theme: AppTheme.dark),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Selesaikan Validasi ✓'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Ya, Selesaikan'));
+    await tester.pumpAndSettle();
+
+    expect(repository.completeCalls, 1);
+    expect(find.text('Check Out Point terbuka'), findsOneWidget);
+    router.dispose();
+    provider.dispose();
+  });
+
   testWidgets('item tanpa standarisasi terkunci + banner tampil', (
     tester,
   ) async {
@@ -646,7 +724,10 @@ void main() {
 
     // Amber banner explains the lock, like the web page.
     expect(find.text('Standarisasi Tumpukan Belum Disetujui'), findsOneWidget);
-    expect(find.text('Belum ada standarisasi tumpukan — ajukan dulu'), findsOneWidget);
+    expect(
+      find.text('Belum ada standarisasi tumpukan — ajukan dulu'),
+      findsOneWidget,
+    );
     // No green fast path while locked — the amber shortcut instead.
     expect(find.widgetWithText(FilledButton, 'Sesuai'), findsNothing);
     expect(find.widgetWithText(FilledButton, 'Standarisasi'), findsOneWidget);

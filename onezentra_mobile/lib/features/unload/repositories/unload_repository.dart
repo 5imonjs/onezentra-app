@@ -53,14 +53,67 @@ class UnloadRepository {
     return UnloadSession.fromJson(Map<String, dynamic>.from(data));
   }
 
-  /// Header counters. A payload without `data` degrades to zero counts.
+  /// Header counters, using the same receiving list filters as the web page.
   Future<UnloadStats> stats() async {
-    var body = _expectObject(await _get('/receivings/stats'));
-    var data = body['data'];
-    if (data is! Map) {
-      return const UnloadStats();
+    Future<int> count({String? status}) async {
+      var query = Uri(
+        queryParameters: {
+          'per_page': '1',
+          if (status != null) 'status': status,
+        },
+      ).query;
+      var body = _expectObject(await _get('/receivings?$query'));
+      return _readInt(body['total']) ?? 0;
     }
-    return UnloadStats.fromJson(Map<String, dynamic>.from(data));
+
+    var counts = await Future.wait([
+      count(),
+      count(status: 'PENDING'),
+      count(status: 'IN_PROGRESS'),
+      count(status: 'COMPLETED'),
+    ]);
+    return UnloadStats(
+      total: counts[0],
+      pending: counts[1],
+      inProgress: counts[2],
+      completed: counts[3],
+    );
+  }
+
+  /// Active records shown in the Check Out Point list.
+  ///
+  /// Matches the web list's PENDING / IN_PROGRESS completion workflow and
+  /// fetches every page so operators can select any active receiving.
+  Future<List<UnloadSession>> listActive() async {
+    var active = <UnloadSession>[];
+    for (var status in ['PENDING', 'IN_PROGRESS']) {
+      var page = 1;
+      var lastPage = 1;
+      do {
+        var query = Uri(
+          queryParameters: {
+            'status': status,
+            'per_page': '100',
+            'page': '$page',
+          },
+        ).query;
+        var body = _expectObject(await _get('/receivings?$query'));
+        var raw = body['data'];
+        if (raw is List) {
+          for (var row in raw.whereType<Map>()) {
+            var session = UnloadSession.fromJson(
+              Map<String, dynamic>.from(row),
+            );
+            if (session.status == status) {
+              active.add(session);
+            }
+          }
+        }
+        lastPage = _readLastPage(body['last_page']) ?? page;
+        page++;
+      } while (page <= lastPage);
+    }
+    return active;
   }
 
   /// Finds the receiving behind a PO barcode. Exact match is mandatory —
@@ -197,6 +250,16 @@ class UnloadRepository {
   };
 
   static int? _readLastPage(dynamic value) {
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  static int? _readInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
     if (value is num) {
       return value.toInt();
     }

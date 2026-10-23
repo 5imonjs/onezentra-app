@@ -187,6 +187,7 @@ class BluetoothLabelPrinter implements LabelPrinter {
         connection.output.add(Uint8List.fromList(bytes.sublist(offset, end)));
         await Future<void>.delayed(const Duration(milliseconds: 60));
       }
+      await connection.output.allSent;
     } on PrinterException {
       rethrow;
     } on TimeoutException {

@@ -12,7 +12,6 @@ import 'package:onezentra_mobile/features/unload/models/unload_models.dart';
 import 'package:onezentra_mobile/features/unload/pages/unload_page.dart';
 import 'package:onezentra_mobile/features/unload/repositories/unload_repository.dart';
 import 'package:onezentra_mobile/main.dart';
-import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Repository that answers from canned sessions so the Bongkar flow can be
 /// exercised without a running API.
@@ -22,11 +21,28 @@ class _FakeUnloadRepository extends UnloadRepository {
   UnloadSession session;
 
   int lookupCalls = 0;
+  int listActiveCalls = 0;
   int startCalls = 0;
   int scanCalls = 0;
   int completeCalls = 0;
   int cancelCalls = 0;
   double? lastActualQty;
+
+  @override
+  Future<UnloadStats> stats() async => UnloadStats(
+    total: 1,
+    pending: session.status == 'PENDING' ? 1 : 0,
+    inProgress: session.status == 'IN_PROGRESS' ? 1 : 0,
+    completed: session.status == 'COMPLETED' ? 1 : 0,
+  );
+
+  @override
+  Future<List<UnloadSession>> listActive() async {
+    listActiveCalls++;
+    return session.status == 'PENDING' || session.status == 'IN_PROGRESS'
+        ? [session]
+        : [];
+  }
 
   @override
   Future<UnloadSession> findByPo(String po) async {
@@ -232,11 +248,14 @@ void main() {
       find.text('Anda tidak memiliki izin untuk melihat Check Out Point.'),
       findsOneWidget,
     );
-    expect(find.text('Scan Bongkar'), findsNothing);
+    expect(find.text('Konfirmasi Selesai Bongkar'), findsNothing);
     expect(repository.lookupCalls, 0);
+    expect(repository.listActiveCalls, 0);
   });
 
-  testWidgets('scan PO → siap bongkar → mulai → daftar produk', (tester) async {
+  testWidgets('scan PO memilih receiving aktif untuk konfirmasi selesai', (
+    tester,
+  ) async {
     var repository = _FakeUnloadRepository(session: _pendingSession());
     var auth = await _loginAuth();
 
@@ -251,43 +270,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lookupCalls, 1);
-    expect(find.textContaining('SIAP BONGKAR'), findsOneWidget);
-
-    var startButton = find.widgetWithText(FilledButton, 'Mulai Bongkar');
-    await tester.ensureVisible(startButton);
-    await tester.tap(startButton);
-    await tester.pumpAndSettle();
-
-    expect(repository.startCalls, 1);
-    expect(find.textContaining('BONGKAR BERJALAN'), findsOneWidget);
-    expect(find.text('Gula 50kg'), findsOneWidget);
+    expect(find.text('PO Transporter'), findsOneWidget);
+    expect(find.text('Selesai Bongkar'), findsOneWidget);
+    expect(find.text('Mulai Bongkar'), findsNothing);
+    expect(find.text('Scan Bongkar'), findsNothing);
   });
 
-  testWidgets('tombol Sesuai mencatat satu ketuk', (tester) async {
-    var repository = _FakeUnloadRepository(session: _pendingSession());
-    var auth = await _loginAuth();
-
-    await _pumpUnloadPage(tester, auth, repository);
-
-    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
-    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Buka'));
-    await tester.pumpAndSettle();
-    var startButton = find.widgetWithText(FilledButton, 'Mulai Bongkar');
-    await tester.ensureVisible(startButton);
-    await tester.tap(startButton);
-    await tester.pumpAndSettle();
-
-    var quickButton = find.widgetWithText(FilledButton, 'Sesuai');
-    expect(quickButton, findsOneWidget);
-    await tester.ensureVisible(quickButton);
-    await tester.tap(quickButton);
-    await tester.pumpAndSettle();
-
-    expect(repository.scanCalls, 1);
-    expect(repository.lastActualQty, 100);
-  });
-
-  testWidgets('selesai nonaktif tanpa item, aktif + handoff setelah pindai', (
+  testWidgets('pilih receiving aktif lalu konfirmasi selesai seperti web', (
     tester,
   ) async {
     var repository = _FakeUnloadRepository(session: _pendingSession());
@@ -295,37 +284,20 @@ void main() {
 
     await _pumpUnloadPage(tester, auth, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
-    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Buka'));
-    await tester.pumpAndSettle();
-    var startButton = find.widgetWithText(FilledButton, 'Mulai Bongkar');
-    await tester.ensureVisible(startButton);
-    await tester.tap(startButton);
+    await tester.tap(find.text('PO-042'));
     await tester.pumpAndSettle();
 
-    // No scans yet: the button refuses instead of writing an empty receiving.
-    expect(find.text('Selesai Bongkar (belum ada item)'), findsOneWidget);
-
-    var quickButton = find.widgetWithText(FilledButton, 'Sesuai');
-    await tester.ensureVisible(quickButton);
-    await tester.tap(quickButton);
+    await tester.tap(find.widgetWithText(FilledButton, 'Selesai Bongkar'));
     await tester.pumpAndSettle();
-
-    var completeButton = find.widgetWithText(
-      FilledButton,
-      'Selesaikan Bongkar ✓',
-    );
-    expect(completeButton, findsOneWidget);
-    await tester.ensureVisible(completeButton);
-    await tester.tap(completeButton);
-    await tester.pumpAndSettle();
-
+    expect(find.textContaining('melepas dock'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, 'Ya, Selesaikan'));
     await tester.pumpAndSettle();
 
     expect(repository.completeCalls, 1);
-    // Receiving-only: a finished session shows no further action.
-    expect(find.textContaining('tidak ada aksi tersisa'), findsOneWidget);
+    expect(find.textContaining('Receiving PO PO-042 selesai.'), findsOneWidget);
+    expect(find.textContaining('BLC (TO)'), findsOneWidget);
+    expect(find.text('Daftar Receiving'), findsOneWidget);
+    expect(find.text('Pilih receiving lain'), findsNothing);
   });
 
   testWidgets('rute /bongkar merender UnloadPage dengan repo tersuntik', (
@@ -343,6 +315,8 @@ void main() {
 
     expect(find.byType(UnloadPage), findsOneWidget);
     expect(find.text('Check Out Point'), findsWidgets);
-    expect(find.text('Scan Bongkar'), findsOneWidget);
+    expect(find.text('Konfirmasi Selesai Bongkar'), findsOneWidget);
+    expect(find.text('Daftar Receiving'), findsOneWidget);
+    expect(find.text('Scan Bongkar'), findsNothing);
   });
 }
