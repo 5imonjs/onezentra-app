@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { formatDateDmy } from './dates';
 import { encodeCode39 } from './suratJalanPdf';
 
 /** Data label yang perlu dicetak setelah satu produk divalidasi. */
@@ -31,15 +32,11 @@ const CONDITION_LABEL: Record<string, string> = {
 };
 
 /**
- * Tanggal dicetak apa adanya (YYYY-MM-DD dari API), bukan lewat `new Date()`.
- *
- * Label adalah dokumen fisik yang menempel di rak. Kalau someday dicetak
- * ulang di zona waktu berbeda, tanggal bisa bergeser sehari — dan tanggal
- * expired yang bergeser berarti produk berada di rak yang salah. Format ISO
- * tidak ambigu dan persis sama dengan yang tersimpan di database.
+ * Date-only API values (and legacy YYYYMMDD values) must stay calendar dates,
+ * not be interpreted as timestamps or shifted by the printer device timezone.
  */
 function safeDate(value: string | null | undefined): string {
-  return value && value.length > 0 ? value : '-';
+  return formatDateDmy(value);
 }
 
 function safe(value: string | number | null | undefined): string {

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatDateId, todayLocal, toDateInput, formatDurationId } from './dates';
+import { formatDateDmy, formatDateId, todayLocal, toDateInput, formatDurationId } from './dates';
 
 describe('toDateInput', () => {
   it('memotong bagian waktu tanpa menggeser hari', () => {
     expect(toDateInput('2026-09-09')).toBe('2026-09-09');
     expect(toDateInput('2026-09-09T00:00:00.000000Z')).toBe('2026-09-09');
+    expect(toDateInput('20260823')).toBe('2026-08-23');
   });
 
   it('mengembalikan kosong untuk nilai tak valid', () => {
@@ -18,11 +19,24 @@ describe('formatDateId', () => {
   it('memformat tanpa sentuhan zona waktu', () => {
     expect(formatDateId('2026-09-09')).toBe('09 Sep 2026');
     expect(formatDateId('2027-01-15T00:00:00.000000Z')).toBe('15 Jan 2027');
+    expect(formatDateId('20260823')).toBe('23 Agu 2026');
+    expect(formatDateId('20260230')).toBe('-');
   });
 
   it('mengembalikan strip untuk nilai tak valid', () => {
     expect(formatDateId(null)).toBe('-');
     expect(formatDateId('')).toBe('-');
+  });
+});
+
+describe('formatDateDmy', () => {
+  it('memformat tanggal ISO dan ringkas tanpa zona waktu', () => {
+    expect(formatDateDmy('2026-08-23T00:00:00.000000Z')).toBe('23/08/2026');
+    expect(formatDateDmy('20260823')).toBe('23/08/2026');
+  });
+
+  it('menolak tanggal kalender yang tidak valid', () => {
+    expect(formatDateDmy('20260230')).toBe('-');
   });
 });
 

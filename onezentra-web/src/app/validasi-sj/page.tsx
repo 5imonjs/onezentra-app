@@ -15,6 +15,7 @@ import { conditionRequiresPhoto, hasQty } from '@/lib/condition';
 import { downloadBatchLabel, printBatchLabel, type BatchLabelData } from '@/lib/batchLabel';
 import { clearPrintedLabels, isLabelPrinted, loadPrintedLabels, markLabelPrinted, unprintedCompleteItems } from '@/lib/labelPrint';
 import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
+import { formatDateDmy } from '@/lib/dates';
 import { fmtDate, fmtDateTime, batchCell, canEditItems, validationDuration } from '@/lib/validationTable';
 
 /** Batch label yang dibuat server saat satu produk divalidasi. */
@@ -495,7 +496,7 @@ export default function ValidasiSjPage() {
       nama_barang: item.nama_barang,
       actual_qty: item.actual_qty,
       satuan: item.satuan,
-      expired_date: fmtDate(item.expired_date),
+      expired_date: item.expired_date,
       condition: item.condition,
       po_transporter: active?.rencana_kirim?.po_transporter ?? null,
     };
@@ -1415,7 +1416,7 @@ export default function ValidasiSjPage() {
                 </div>
                 <div className="rounded-2xl border border-slate-300 bg-surface-raised p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tanggal expired</p>
-                  <p className="mt-2 text-lg font-black text-slate-900">{form.expired_date ? new Date(form.expired_date).toLocaleDateString('id-ID') : '-'}</p>
+                  <p className="mt-2 text-lg font-black text-slate-900">{formatDateDmy(form.expired_date)}</p>
                   <p className="mt-1 text-[11px] text-slate-500">Tanggal acuan perhitungan</p>
                 </div>
               </div>

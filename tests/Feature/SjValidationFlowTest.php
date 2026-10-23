@@ -8,6 +8,7 @@ use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\Role;
 use App\Models\SjValidation;
+use App\Models\SjValidationItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -198,6 +199,40 @@ class SjValidationFlowTest extends TestCase
             'condition' => 'FISIK_RUSAK',
             'photo' => UploadedFile::fake()->image('bukti.jpg'),
         ])->assertOk()->assertJsonPath('data.status', 'VALIDATED');
+    }
+
+    public function test_scan_normalizes_compact_expiry_dates_and_rejects_invalid_dates(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.create', 'sj_validation.validate']));
+        $rk = $this->scheduledRencana($user);
+        $rk->update(['status' => 'CHECKED_IN']);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])
+            ->assertOk()
+            ->json('data');
+        $itemId = $validation['items'][0]['id'];
+        $scanUrl = "/api/v1/sj-validations/{$validation['id']}/scan";
+
+        $this->postJson($scanUrl, [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 100,
+            'expired_date' => '20260823',
+        ])->assertOk();
+
+        $this->assertSame(
+            '2026-08-23',
+            SjValidationItem::findOrFail($itemId)->expired_date->toDateString()
+        );
+
+        $this->postJson($scanUrl, [
+            'sj_validation_item_id' => $itemId,
+            'actual_qty' => 100,
+            'expired_date' => '20260230',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['expired_date']);
+
+        $this->assertSame(
+            '2026-08-23',
+            SjValidationItem::findOrFail($itemId)->expired_date->toDateString()
+        );
     }
 
     public function test_cancel_marks_session_and_its_batches_cancelled(): void

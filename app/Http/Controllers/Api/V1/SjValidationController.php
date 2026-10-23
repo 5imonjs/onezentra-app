@@ -501,11 +501,26 @@ class SjValidationController extends Controller
         $this->authorizeDepot($sjValidation);
         [$editable, $reason] = $this->itemEditability($sjValidation);
         abort_unless($editable, 422, $reason);
+
+        $expiredDate = $request->input('expired_date');
+        if (is_string($expiredDate) && preg_match('/^\d{8}$/', trim($expiredDate))) {
+            $compactDate = trim($expiredDate);
+            $year = (int) substr($compactDate, 0, 4);
+            $month = (int) substr($compactDate, 4, 2);
+            $day = (int) substr($compactDate, 6, 2);
+
+            if (checkdate($month, $day, $year)) {
+                $request->merge([
+                    'expired_date' => sprintf('%04d-%02d-%02d', $year, $month, $day),
+                ]);
+            }
+        }
+
         $validated = $request->validate([
             'sj_validation_item_id' => 'required|exists:sj_validation_items,id',
             'barcode' => 'nullable|string|max:100',
             'actual_qty' => 'required|numeric|min:0|max:999999',
-            'expired_date' => 'nullable|date',
+            'expired_date' => 'nullable|date_format:Y-m-d',
             'condition' => 'nullable|string|in:FISIK_BAGUS,FISIK_RUSAK,QTY_KURANG,ISI_KEMASAN_KURANG,EXPIRED_TIDAK_STANDAR,LAINNYA',
             'notes' => 'nullable|string|max:2000',
             'tier' => 'nullable|integer|min:1|max:9999',

@@ -172,14 +172,27 @@ String formatExpiredDate(String? value) {
   if (value == null || value.trim().isEmpty) {
     return '-';
   }
-  var parsed = DateTime.tryParse(value.trim());
-  if (parsed == null) {
-    // Jika tidak dapat di-parse sebagai DateTime, coba gunakan langsung
-    // jika sudah dalam format YYYY-MM-DD.
-    var trimmed = value.trim();
-    if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(trimmed)) {
-      return '${trimmed.substring(8, 10)}/${trimmed.substring(5, 7)}/${trimmed.substring(0, 4)}';
+
+  var trimmed = value.trim();
+  var compactDate = RegExp(r'^(\d{4})(\d{2})(\d{2})$').firstMatch(trimmed);
+  var isoDate = RegExp(
+    r'^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])',
+  ).firstMatch(trimmed);
+  var dateMatch = compactDate ?? isoDate;
+  if (dateMatch != null) {
+    var year = int.parse(dateMatch.group(1)!);
+    var month = int.parse(dateMatch.group(2)!);
+    var day = int.parse(dateMatch.group(3)!);
+    var date = DateTime.utc(year, month, day);
+    if (date.year != year || date.month != month || date.day != day) {
+      return '-';
     }
+    return '${day.toString().padLeft(2, '0')}/'
+        '${month.toString().padLeft(2, '0')}/$year';
+  }
+
+  var parsed = DateTime.tryParse(trimmed);
+  if (parsed == null) {
     return '-';
   }
   return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
