@@ -125,9 +125,9 @@ export default function AccessManagementPage() {
         <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-               { step: 1, title: 'Role = Peran', desc: 'Contoh: BLC, Cheker, Admin Distribusi. Satu role bisa dipakai banyak user.' },
-              { step: 2, title: 'Berikan Akses', desc: 'Klik "Kelola Akses" pada role, lalu nyalakan permission menu yang boleh diakses role tersebut.' },
-              { step: 3, title: 'User Melekat pada Role', desc: 'Menu di sidebar otomatis menyesuaikan akses role sang user. Tidak perlu atur satu-satu.' },
+              { step: 1, title: 'Buat role sesuai pekerjaan', desc: 'Contoh: Cheker atau Admin Distribusi. Satu role dapat dipakai banyak user.' },
+              { step: 2, title: 'Atur hak tindakan role', desc: 'Di "Kelola Akses", pilih menu dan tindakan yang dibutuhkan: lihat, tambah, ubah, atau hapus.' },
+              { step: 3, title: 'Pilih role saat mengatur user', desc: 'Di Users, pilih role user lalu atur region dan depo yang boleh diakses secara terpisah.' },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-3">
                 <div className="shrink-0 w-8 h-8 rounded-full bg-chip-primary text-accent-text flex items-center justify-center text-sm font-bold">
@@ -139,6 +139,16 @@ export default function AccessManagementPage() {
                 </div>
               </div>
             ))}
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 md:grid-cols-2">
+            <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <p className="font-semibold">Cakupan data: assignment user</p>
+              <p className="mt-1 text-xs leading-relaxed">User scoped hanya melihat depo yang dipilih pada profil user. <code>depot.view_region</code> hanya menandai konteks region dan tidak menambah akses ke depo lain.</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">Pengecualian: Akses Semua Depo</p>
+              <p className="mt-1 text-xs leading-relaxed"><code>depot.view_all</code> membuka data seluruh depo lintas region. Aktifkan hanya jika role memang harus memiliki akses global.</p>
+            </div>
           </div>
         </div>
 
@@ -769,6 +779,10 @@ function RolesTab() {
           </div>
         ) : (
           <div className="space-y-4">
+            <div className="rounded-lg border border-primary-100 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+              <p className="font-semibold">Yang diatur di sini adalah hak tindakan role</p>
+              <p className="mt-1 text-xs leading-relaxed">Permission modul menentukan menu dan tindakan. Cakupan data user ditentukan oleh assignment depo; <code>depot.view_region</code> hanya penanda konteks dan tidak memperluas akses. Hanya <code>depot.view_all</code> yang membuka semua depo lintas region.</p>
+            </div>
             {/* Summary Bar */}
             <div className="flex items-center justify-between p-3 bg-surface-raised rounded-xl">
               <div className="flex items-center gap-3">
