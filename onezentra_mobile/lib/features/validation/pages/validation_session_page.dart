@@ -394,7 +394,6 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           children: [
             // Baris 1: Icon + Nama Produk + Info
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
                   width: 36,
@@ -534,7 +533,6 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   child: Wrap(
                     spacing: AppTheme.space2,
                     runSpacing: AppTheme.space2,
-                    alignment: WrapAlignment.start,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       if (item.isPending && canValidate && item.canValidate)

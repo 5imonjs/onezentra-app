@@ -57,10 +57,7 @@ class UnloadRepository {
   Future<UnloadStats> stats() async {
     Future<int> count({String? status}) async {
       var query = Uri(
-        queryParameters: {
-          'per_page': '1',
-          if (status != null) 'status': status,
-        },
+        queryParameters: {'per_page': '1', ?status: status},
       ).query;
       var body = _expectObject(await _get('/receivings?$query'));
       return _readInt(body['total']) ?? 0;

@@ -586,8 +586,8 @@ class _UnloadPageState extends State<UnloadPage> {
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.space4),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [AppTheme.ink900, AppTheme.ink800],
