@@ -568,10 +568,20 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                           : AppBadgeVariant.warning,
                     ),
                   if (canPrintLabels && item.canPrintLabel) ...[
-                    if (item.batch?.isPrinted == true)
+                    if (item.isPending)
+                      AppBadge(
+                        text: 'BELUM DIVALIDASI',
+                        variant: AppBadgeVariant.warning,
+                      ),
+                    if (!item.isPending && item.batch?.isPrinted == true)
                       const AppBadge(
                         text: 'Tercetak',
                         variant: AppBadgeVariant.success,
+                      ),
+                    if (!item.isPending && item.batch?.isPrinted != true)
+                      AppBadge(
+                        text: 'BELUM DICETAK',
+                        variant: AppBadgeVariant.danger,
                       ),
                     _printLabelButton(item),
                   ],
@@ -732,14 +742,35 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         ),
         if (blocked) ...[
           const SizedBox(height: AppTheme.space2),
-          Text(
-            pending > 0
-                ? 'Validasi dulu $pending item di atas — tombol aktif otomatis.'
-                : missingExpired > 0
-                ? 'Isi tanggal expired $missingExpired item di atas — server juga menolak sesi tanpa tanggal expired.'
-                : 'Cetak label $unprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.roboto(fontSize: 11.5, color: AppTheme.gray400),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppTheme.space3),
+            decoration: BoxDecoration(
+              color: AppTheme.warningDark,
+              borderRadius: AppTheme.radiusLg,
+              border: Border.all(color: AppTheme.warningText),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.warning_rounded, size: 16, color: AppTheme.warningText),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    pending > 0
+                        ? 'Validasi dulu $pending item di atas — tombol aktif otomatis.'
+                        : missingExpired > 0
+                            ? 'Isi tanggal expired $missingExpired item di atas — server juga menolak sesi tanpa tanggal expired.'
+                            : 'Cetak label $unprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',
+                    style: GoogleFonts.roboto(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: AppTheme.warning,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ],
