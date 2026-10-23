@@ -646,7 +646,7 @@ void main() {
 
     // Amber banner explains the lock, like the web page.
     expect(find.text('Standarisasi Tumpukan Belum Disetujui'), findsOneWidget);
-    expect(find.text('Butuh input standarisasi tumpukan'), findsOneWidget);
+    expect(find.text('Belum ada standarisasi tumpukan — ajukan dulu'), findsOneWidget);
     // No green fast path while locked — the amber shortcut instead.
     expect(find.widgetWithText(FilledButton, 'Sesuai'), findsNothing);
     expect(find.widgetWithText(FilledButton, 'Standarisasi'), findsOneWidget);

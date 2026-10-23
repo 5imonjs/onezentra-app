@@ -49,6 +49,10 @@ class ValidationSessionPage extends StatefulWidget {
 }
 
 class _ValidationSessionPageState extends State<ValidationSessionPage> {
+  // Mencegah operator mengetuk produk yang sama berulang kali sambil
+  // pop-up konfirmasi / sheet standarisasi masih terbuka.
+  var _isTapping = false;
+
   @override
   Widget build(BuildContext context) =>
       ChangeNotifierProvider<ValidationProvider>.value(
@@ -409,19 +413,25 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: item.isPending
+                color: locked
+                    ? AppTheme.warningDark.withValues(alpha: 0.4)
+                    : item.isPending
                     ? Colors.white.withValues(alpha: 0.1)
                     : AppTheme.success.withValues(alpha: 0.2),
                 borderRadius: AppTheme.radiusLg,
               ),
               child: Icon(
-                item.isPending
+                locked
+                    ? Icons.lock_outline_rounded
+                    : item.isPending
                     ? Icons.hourglass_empty_rounded
                     : item.status == 'VALIDATED'
                     ? Icons.check_circle_rounded
                     : Icons.warning_rounded,
                 size: 18,
-                color: item.isPending
+                color: locked
+                    ? AppTheme.warningText
+                    : item.isPending
                     ? AppTheme.gray400
                     : item.status == 'VALIDATED'
                     ? AppTheme.success
@@ -440,7 +450,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: Colors.white.withValues(alpha: locked ? 0.6 : 1.0),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -451,7 +461,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     ' • ${ValidationItemStatus.label(item.status)}',
                     style: GoogleFonts.robotoMono(
                       fontSize: 11,
-                      color: AppTheme.gray400,
+                      color: AppTheme.gray400.withValues(
+                        alpha: locked ? 0.6 : 1.0,
+                      ),
                     ),
                   ),
                   if (locked) ...[
@@ -476,7 +488,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'BELUM DISETUJUI BLC',
+                            item.standarisasi?.status == 'pending'
+                                ? 'SUDAH DIJUKAN BLC'
+                                : 'BELUM ADA STANDARISASI',
                             style: GoogleFonts.roboto(
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
@@ -493,8 +507,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         item.standarisasi?.status == 'pending'
-                            ? 'Standarisasi menunggu approve BLC'
-                            : 'Butuh input standarisasi tumpukan',
+                            ? 'Standarisasi sudah diajukan — menunggu approve BLC'
+                            : 'Belum ada standarisasi tumpukan — ajukan dulu',
                         style: GoogleFonts.roboto(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -567,83 +581,106 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   /// Produk yang sudah disetujui BLC dibuka langsung ke layar validasi item.
   /// Produk yang BELUM disetujui BLC menampilkan konfirmasi pop-up terlebih
   /// dahulu, lalu diarahkan ke input standarisasi (tier × tinggi).
+  ///
+  /// Guard [_isTapping] mencegah operator mengetuk produk yang sama
+  /// berulang kali sambil pop-up / sheet masih terbuka.
   Future<void> _onItemTap(
     SjValidationItem item, {
     required bool canCreateStandarisasi,
   }) async {
-    if (item.canValidate) {
-      await _openItemSheet(item);
+    if (_isTapping) {
       return;
     }
-    // BLC belum menyetujui standarisasi untuk produk ini. Tampilkan pop-up
-    // konfirmasi sebelum mengarahkan operator ke input standarisasi.
-    var confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceCard,
-        title: Text(
-          'Produk Belum Disetujui BLC',
-          style: GoogleFonts.roboto(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.foreground,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${item.namaBarang ?? item.kodeBarang ?? 'Produk ini'} '
-              'belum memiliki standarisasi tumpukan yang disetujui BLC. '
-              'Validasi tidak dapat dilakukan sebelum disetujui.',
-              style: GoogleFonts.roboto(
-                fontSize: 13,
-                height: 1.4,
-                color: AppTheme.gray600,
-              ),
+    _isTapping = true;
+
+    try {
+      if (item.canValidate) {
+        await _openItemSheet(item);
+        return;
+      }
+      // BLC belum menyetujui standarisasi untuk produk ini. Tampilkan pop-up
+      // konfirmasi sebelum mengarahkan operator ke input standarisasi.
+      var confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppTheme.surfaceCard,
+          title: Text(
+            'Produk Belum Disetujui BLC',
+            style: GoogleFonts.roboto(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.foreground,
             ),
-            if (item.standarisasi?.status == 'pending') ...[
-              const SizedBox(height: AppTheme.space2),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'Standarisasi sudah dikirim (menunggu approval). '
-                'Validasi akan terbuka otomatis setelah BLC menyetujui.',
+                '${item.namaBarang ?? item.kodeBarang ?? 'Produk ini'} '
+                'belum memiliki standarisasi tumpukan yang disetujui BLC. '
+                'Validasi tidak dapat dilakukan sebelum disetujui.',
                 style: GoogleFonts.roboto(
-                  fontSize: 12.5,
+                  fontSize: 13,
                   height: 1.4,
-                  color: AppTheme.warning,
+                  color: AppTheme.gray600,
                 ),
               ),
+              if (item.standarisasi?.status == 'pending') ...[
+                const SizedBox(height: AppTheme.space2),
+                Text(
+                  'Standarisasi sudah dikirim — menunggu approval BLC. '
+                  'Validasi akan terbuka otomatis setelah disetujui.',
+                  style: GoogleFonts.roboto(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    color: AppTheme.warning,
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: AppTheme.space2),
+                Text(
+                  'Belum ada permintaan standarisasi untuk produk ini. '
+                  'Ajukan terlebih dahulu agar BLC dapat menyetujui.',
+                  style: GoogleFonts.roboto(
+                    fontSize: 12.5,
+                    height: 1.4,
+                    color: AppTheme.warning,
+                  ),
+                ),
+              ],
             ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Kembali'),
+            ),
+            if (canCreateStandarisasi &&
+                item.npnId != null &&
+                item.standarisasi?.status != 'pending')
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.warningText,
+                  foregroundColor: AppTheme.ink900,
+                ),
+                child: const Text('Input Standarisasi'),
+              ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Kembali'),
-          ),
-          if (canCreateStandarisasi &&
-              item.npnId != null &&
-              item.standarisasi?.status != 'pending')
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.warningText,
-                foregroundColor: AppTheme.ink900,
-              ),
-              child: const Text('Input Standarisasi'),
-            ),
-        ],
-      ),
-    );
-    if (!mounted) {
-      return;
-    }
-    if ((confirmed ?? false) &&
-        canCreateStandarisasi &&
-        item.npnId != null &&
-        item.standarisasi?.status != 'pending') {
-      await _openStandarisasiSheet(item, canCreate: true);
+      );
+      if (!mounted) {
+        return;
+      }
+      if ((confirmed ?? false) &&
+          canCreateStandarisasi &&
+          item.npnId != null &&
+          item.standarisasi?.status != 'pending') {
+        await _openStandarisasiSheet(item, canCreate: true);
+      }
+    } finally {
+      _isTapping = false;
     }
   }
 
