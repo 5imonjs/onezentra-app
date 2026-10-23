@@ -213,6 +213,37 @@ class HierarchyManagementTest extends TestCase
         ]);
     }
 
+    public function test_master_can_assign_a_depot_to_a_user_without_an_existing_depot(): void
+    {
+        $master = $this->makeActor('master');
+        $target = $this->makeActor('depot');
+        $target->forceFill([
+            'kode_depo' => '',
+            'nama_depo' => '',
+        ])->save();
+        DB::table('user_depots')->where('user_id', $target->id)->delete();
+        Sanctum::actingAs($master);
+
+        $this->putJson('/api/v1/users/'.$target->id, [
+            'scope_level' => 'depot',
+            'region_id' => 'REG-A',
+            'kode_depo' => 'DEPOT-A',
+            'nama_depo' => 'Depo A',
+            'depot_codes' => ['DEPOT-A'],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'region_id' => 'REG-A',
+            'kode_depo' => 'DEPOT-A',
+            'nama_depo' => 'DEPOT-A',
+        ]);
+        $this->assertDatabaseHas('user_depots', [
+            'user_id' => $target->id,
+            'kode_depo' => 'DEPOT-A',
+        ]);
+    }
+
     public function test_scope_edit_still_rejects_a_new_inactive_depot_assignment(): void
     {
         $master = $this->makeActor('master');
