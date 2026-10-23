@@ -252,13 +252,21 @@ class UserController extends Controller
 
         $depotAssignments = null;
         if ($scopeFieldsChanged) {
+            abort_if(
+                $requestedDepotCodes !== null && count($requestedDepotCodes) !== 1,
+                422,
+                'Pilih tepat satu depo aktif sebelum menyimpan perubahan scope.'
+            );
             $scope = [
                 'scope_level' => $validated['scope_level'] ?? $user->scope_level,
                 'region_id' => $validated['region_id'] ?? $user->region_id,
-                'kode_depo' => $validated['kode_depo'] ?? $requestedDepotCodes[0] ?? $user->kode_depo,
+                'kode_depo' => array_key_exists('kode_depo', $validated)
+                    ? $validated['kode_depo']
+                    : ($requestedDepotCodes[0] ?? $user->kode_depo),
                 'kode_ps' => $validated['kode_ps'] ?? $user->kode_ps,
             ];
             $depotCode = $scope['kode_depo'];
+            abort_if(blank($depotCode), 422, 'Pilih tepat satu depo aktif sebelum menyimpan perubahan scope.');
             $depot = DepotSetting::query()
                 ->where('kode_depo', $depotCode)
                 ->where('is_active', true)

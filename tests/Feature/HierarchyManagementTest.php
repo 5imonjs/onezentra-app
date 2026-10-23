@@ -239,6 +239,29 @@ class HierarchyManagementTest extends TestCase
         ]);
     }
 
+    public function test_scope_edit_with_empty_depot_returns_a_clear_selection_error(): void
+    {
+        $master = $this->makeActor('master');
+        $target = $this->makeActor('depot');
+        Region::firstOrCreate(['code' => 'REG-B'], ['name' => 'REG-B']);
+        Sanctum::actingAs($master);
+
+        $this->putJson('/api/v1/users/'.$target->id, [
+            'region_id' => 'REG-B',
+            'kode_depo' => null,
+            'nama_depo' => null,
+            'depot_codes' => [],
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Pilih tepat satu depo aktif sebelum menyimpan perubahan scope.');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'region_id' => 'REG-A',
+            'kode_depo' => 'DEPOT-A',
+        ]);
+    }
+
     public function test_only_master_scope_can_grant_global_depot_data_access(): void
     {
         $scopedAdmin = $this->makeActor(

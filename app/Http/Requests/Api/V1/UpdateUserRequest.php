@@ -36,8 +36,8 @@ class UpdateUserRequest extends FormRequest
         $ignoreId = $target instanceof User ? $target->id : $target;
 
         return [
-            'kode_depo' => 'sometimes|string|max:20',
-            'nama_depo' => 'sometimes|string|max:100',
+            'kode_depo' => 'sometimes|nullable|string|max:20',
+            'nama_depo' => 'sometimes|nullable|string|max:100',
             'region_id' => ['sometimes', 'nullable', 'string', 'max:20', Rule::exists('regions', 'code')],
             'scope_level' => 'sometimes|in:master,region,depot,ps',
             'kode_ps' => [
