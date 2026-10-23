@@ -1020,9 +1020,7 @@ void main() {
     expect(find.text('Batal'), findsOneWidget);
   });
 
-  testWidgets('sesi selesai yang boleh dikoreksi menampilkan tombol Detail Validasi', (
-    tester,
-  ) async {
+  testWidgets('form koreksi memuat data yang sudah tersimpan', (tester) async {
     const session = SjValidation(
       id: 9,
       scanCode: 'PO-042',
@@ -1035,9 +1033,11 @@ void main() {
           kodeBarang: 'BRG-1',
           namaBarang: 'Gula 50kg',
           expectedQty: 100,
-          expiredDate: '2027-01-31',
+          expiredDate: '2026-08-23T00:00:00.000000Z',
           actualQty: 100,
           satuan: 'zak',
+          barcode: 'SKU-BARCODE',
+          notes: 'Catatan tersimpan',
           status: 'VALIDATED',
           standarisasi: ItemStandarisasi(
             tier: 4,
@@ -1067,6 +1067,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Simpan Validasi'), findsOneWidget);
+    expect(find.text('23/08/2026'), findsOneWidget);
+
+    await tester.tap(find.text('Detail lainnya (opsional)'));
+    await tester.pumpAndSettle();
+
+    var fieldValues = tester
+        .widgetList<EditableText>(find.byType(EditableText))
+        .map((field) => field.controller.text)
+        .toList();
+    expect(fieldValues, contains('SKU-BARCODE'));
+    expect(fieldValues, contains('Catatan tersimpan'));
   });
 
   testWidgets('tanpa sj_validation.create scan field dan Mulai nonaktif', (

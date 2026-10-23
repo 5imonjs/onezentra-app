@@ -15,7 +15,7 @@ import { conditionRequiresPhoto, hasQty } from '@/lib/condition';
 import { downloadBatchLabel, printBatchLabel, type BatchLabelData } from '@/lib/batchLabel';
 import { clearPrintedLabels, isLabelPrinted, loadPrintedLabels, markLabelPrinted, unprintedCompleteItems } from '@/lib/labelPrint';
 import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
-import { formatDateDmy } from '@/lib/dates';
+import { formatDateDmy, toDateInput } from '@/lib/dates';
 import { fmtDate, fmtDateTime, batchCell, canEditItems, validationDuration } from '@/lib/validationTable';
 
 /** Batch label yang dibuat server saat satu produk divalidasi. */
@@ -411,7 +411,7 @@ export default function ValidasiSjPage() {
       // "belum diisi" berubah jadi "barang tidak datang" — dua hal yang sangat
       // berbeda. String membuat keduanya tetap dapat dibedakan.
       actual_qty: item.actual_qty != null ? String(item.actual_qty) : '',
-      expired_date: item.expired_date ?? '',
+      expired_date: toDateInput(item.expired_date),
       condition: item.condition || 'FISIK_BAGUS',
       notes: item.notes ?? '',
       barcode: item.barcode ?? '',

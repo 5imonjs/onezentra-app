@@ -1221,6 +1221,8 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   @override
   void initState() {
     super.initState();
+    _barcodeController.text = widget.item.barcode ?? '';
+    _notesController.text = widget.item.notes ?? '';
     _condition = ValidationCondition.values.contains(widget.item.condition)
         ? widget.item.condition
         : 'FISIK_BAGUS';
