@@ -110,6 +110,19 @@ const jenisKendaraanOptions = ['CDD', 'CDE', 'L300', 'FUSO', 'TRONTON', 'CONTAIN
  */
 const EMPTY_CODES: string[] = [];
 
+/**
+ * Ukuran halaman pencarian NPN. INI BUKAN PEMOTONG: sisa hasilnya ditarik lewat
+ * tombol "Muat lebih banyak" dan diumumkan lewat indikator "Menampilkan X dari
+ * Y" — sebelumnya `limit(500)` diam-diam memangkas hasil ke-501 dst.
+ */
+const SEARCH_PAGE_SIZE = 500;
+
+/** Axios membatalkan dengan `code: 'ERR_CANCELED'`, AbortController native dengan `name: 'AbortError'`. */
+function isCanceledError(e: unknown): boolean {
+  const err = e as { code?: string; name?: string } | null;
+  return err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError' || err?.name === 'AbortError';
+}
+
 const emptyItem: RencanaKirimItem = {
   npn_id: undefined,
   item_number: 1, kode_barang: '', nama_barang: '',
@@ -138,6 +151,11 @@ function NamaBarangInput({
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
+  /** Total dari server — sumber indikator "Menampilkan X dari Y". */
+  const [total, setTotal] = useState(0);
+  /** Kata kunci terakhir yang SELESAI dicari; null = belum pernah mencari. */
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const isLocked = !!namaValue;
   // One of these is rendered per item row, so the listbox ids have to be
   // scoped to the row or every row would share one combobox target.
@@ -154,6 +172,8 @@ function NamaBarangInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  /** Pencarian in-flight — dibatalkan begitu ketikan baru datang (anti-balapan respons). */
+  const abortRef = useRef<AbortController | null>(null);
   const onTypingChangeRef = useRef(onTypingChange);
 
   useEffect(() => {
@@ -164,10 +184,12 @@ function NamaBarangInput({
 
   // The debounce timer survives unmount otherwise: typing and then closing the
   // modal within 300ms would still fire the request and setState on a dead
-  // component.
+  // component. Request yang masih terbang ikut dibatalkan agar tidak
+  // membuang-buang jaringan (dan menjaga guard `abortRef` konsisten).
   useEffect(
     () => () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
     },
     [],
   );
@@ -182,30 +204,95 @@ function NamaBarangInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const doSearch = useCallback((query: string) => {
+  const doSearch = useCallback((raw: string) => {
+    const query = raw.trim();
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Batalkan pencarian yang masih in-flight: respons lama tidak boleh
+    // menimpa hasil kata kunci terbaru (balapan respons jaringan).
+    abortRef.current?.abort();
+
     if (query.length < 1) {
       setResults([]);
+      setTotal(0);
+      setSearchedQuery(null);
+      setActiveIndex(-1);
       setShowDropdown(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      abortRef.current = controller;
       setLoading(true);
       try {
-        const res = await npn.searchProduct(query);
-        const found = res.data.data;
+        const res = await npn.searchProduct(query, {
+          limit: SEARCH_PAGE_SIZE,
+          offset: 0,
+          signal: controller.signal,
+        });
+        // Guard balapan: request ini sudah basi bila ada ketikan baru
+        // setelahnya. Abort di atas sudah membatalkannya; penjaga ini menutup
+        // jendela kecil ketika respons sempat tiba duluan lalu baru dibatalkan.
+        if (abortRef.current !== controller) return;
+        const payload = res.data ?? {};
+        const found: NpnProduct[] = payload.data ?? [];
         setResults(found);
-        setShowDropdown(found.length > 0);
+        setTotal(typeof payload.total === 'number' ? payload.total : found.length);
+        setSearchedQuery(query);
+        // Dropdown tetap dibuka walau 0 hasil supaya empty-state tampil —
+        // sebelumnya hasil kosong = layar diam tanpa penjelasan sama sekali.
+        setShowDropdown(true);
         // Hasil pencarian bisa jadi seluruhnya sudah terpakai; jangan sampai
         // kursor mendarat di opsi yang tidak bisa dipilih.
         setActiveIndex(found.findIndex((p: NpnProduct) => !isTakenElsewhere(p.BOSnetszProductId)));
       } catch (e) {
-      notifyGlobal(getErrorMessage(e, 'Gagal memuat produk NPN.'), 'error');
-    } finally {
-        setLoading(false);
+        if (isCanceledError(e)) return;
+        notifyGlobal(getErrorMessage(e, 'Gagal memuat produk NPN.'), 'error');
+        // Hasil lama jangan terus tampil seolah inilah hasil ketikan yang
+        // baru saja gagal dimuat.
+        if (abortRef.current === controller) {
+          setResults([]);
+          setTotal(0);
+          setSearchedQuery(null);
+          setActiveIndex(-1);
+          setShowDropdown(false);
+        }
+      } finally {
+        if (abortRef.current === controller) setLoading(false);
       }
     }, 300);
   }, [isTakenElsewhere]);
+
+  /**
+   * Tarik halaman BERIKUTNYA untuk kata kunci yang sama. `SEARCH_PAGE_SIZE`
+   * hanya ukuran halaman — indikator "Menampilkan X dari Y" memakai `total`
+   * dari server sehingga sisa data tetap terlihat dan terjangkau.
+   */
+  const handleLoadMore = async () => {
+    const query = searchedQuery;
+    if (!query || loading || loadingMore) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoadingMore(true);
+    try {
+      const res = await npn.searchProduct(query, {
+        limit: SEARCH_PAGE_SIZE,
+        offset: results.length,
+        signal: controller.signal,
+      });
+      if (abortRef.current !== controller) return;
+      const payload = res.data ?? {};
+      const next: NpnProduct[] = payload.data ?? [];
+      setResults((prev) => [...prev, ...next]);
+      setTotal(typeof payload.total === 'number' ? payload.total : results.length + next.length);
+    } catch (e) {
+      if (isCanceledError(e)) return;
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat produk NPN.'), 'error');
+    } finally {
+      if (abortRef.current === controller) setLoadingMore(false);
+    }
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -239,7 +326,12 @@ function NamaBarangInput({
     // programatik (mis. restored state dari draft) yang tidak lewat klik.
     if (isTakenElsewhere(product.BOSnetszProductId)) return;
     setSearch('');
+    // Hasil pencarian dibersihkan sekalian: kalau tidak, empty-state/indikator
+    // kata kunci lama bisa muncul lagi saat input dibuka ulang.
+    abortRef.current?.abort();
     setResults([]);
+    setTotal(0);
+    setSearchedQuery(null);
     setShowDropdown(false);
     setActiveIndex(-1);
     onTypingChange?.(false);
@@ -248,10 +340,21 @@ function NamaBarangInput({
 
   const handleUnlock = () => {
     setSearch('');
+    abortRef.current?.abort();
+    setResults([]);
+    setTotal(0);
+    setSearchedQuery(null);
+    setShowDropdown(false);
+    setActiveIndex(-1);
     onClear();
     onTypingChange?.(false);
     setTimeout(() => inputRef.current?.focus(), 50);
   };
+
+  // Dropdown terbuka kalau ada hasil, ATAU ketika pencarian sudah selesai tanpa
+  // hasil (empty-state) — syarat yang sama dipakai focus & ArrowDown.
+  const showEmptyState = searchedQuery !== null && !loading && results.length === 0;
+  const dropdownOpen = showDropdown && (results.length > 0 || showEmptyState);
 
   if (isLocked) {
     return (
@@ -284,15 +387,15 @@ function NamaBarangInput({
           id={inputId}
           type="text"
           role="combobox"
-          aria-expanded={showDropdown && results.length > 0}
+          aria-expanded={dropdownOpen}
           aria-controls={`${listboxId}-listbox`}
           aria-autocomplete="list"
           aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
           value={search}
           onChange={handleSearchChange}
-          onFocus={() => results.length > 0 && setShowDropdown(true)}
+          onFocus={() => { if (results.length > 0 || showEmptyState) setShowDropdown(true); }}
           onKeyDown={(e) => {
-            if (e.key === 'ArrowDown') { e.preventDefault(); if (results.length > 0) { setShowDropdown(true); setActiveIndex(i => stepActiveIndex(i, 1)); } }
+            if (e.key === 'ArrowDown') { e.preventDefault(); if (results.length > 0 || showEmptyState) { setShowDropdown(true); setActiveIndex(i => stepActiveIndex(i, 1)); } }
             else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => stepActiveIndex(i, -1)); }
             else if (e.key === 'Enter') { if (showDropdown && activeIndex >= 0 && results.length > 0) { e.preventDefault(); handleSelectIndex(activeIndex); } }
             else if (e.key === 'Escape' && showDropdown) { e.stopPropagation(); setShowDropdown(false); setActiveIndex(-1); }
@@ -310,41 +413,67 @@ function NamaBarangInput({
         )}
       </div>
 
-      {showDropdown && results.length > 0 && (
-        <ul id={`${listboxId}-listbox`} role="listbox" aria-label="Hasil pencarian barang NPN" className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
-          {results.map((product, i) => {
-            const taken = isTakenElsewhere(product.BOSnetszProductId);
-            return (
-            <li key={product.id} role="option" id={`${listboxId}-option-${i}`} aria-selected={i === activeIndex} aria-disabled={taken || undefined}>
-            <button
-              type="button"
-              onClick={() => handleSelectIndex(i)}
-              disabled={taken}
-              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
-                taken ? 'opacity-45 cursor-not-allowed' : i === activeIndex
-                  ? 'bg-row-active text-row-active-text'
-                  : 'hover:bg-surface-hover text-gray-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-row-active-icon flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-row-active-text">{product.BOSnetszProductId?.charAt(0) || '?'}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm truncate">{product.szShortDescription || product.szNickName || product.szNickNameNew || '-'}</p>
-                  <span className="text-xs font-mono opacity-70">{product.BOSnetszProductId}</span>
-                </div>
-                {taken && (
-                  <span className="shrink-0 rounded-full bg-surface-raised border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-gray-500">
-                    Sudah dipakai
-                  </span>
-                )}
-              </div>
-            </button>
-            </li>
-            );
-          })}
-        </ul>
+      {dropdownOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg overflow-hidden">
+          {results.length > 0 && (
+            <ul id={`${listboxId}-listbox`} role="listbox" aria-label="Hasil pencarian barang NPN" className="max-h-60 overflow-auto">
+              {results.map((product, i) => {
+                const taken = isTakenElsewhere(product.BOSnetszProductId);
+                return (
+                  <li key={product.id} role="option" id={`${listboxId}-option-${i}`} aria-selected={i === activeIndex} aria-disabled={taken || undefined}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectIndex(i)}
+                      disabled={taken}
+                      className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
+                        taken ? 'opacity-45 cursor-not-allowed' : i === activeIndex
+                          ? 'bg-row-active text-row-active-text'
+                          : 'hover:bg-surface-hover text-gray-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-row-active-icon flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-row-active-text">{product.BOSnetszProductId?.charAt(0) || '?'}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{product.szShortDescription || product.szNickName || product.szNickNameNew || '-'}</p>
+                          <span className="text-xs font-mono opacity-70">{product.BOSnetszProductId}</span>
+                        </div>
+                        {taken && (
+                          <span className="shrink-0 rounded-full bg-surface-raised border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+                            Sudah dipakai
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {showEmptyState && (
+            <p className="px-4 py-3 text-center text-sm text-gray-500">
+              Tidak ada barang yang cocok dengan “{searchedQuery}”
+            </p>
+          )}
+
+          {results.length > 0 && total > results.length && (
+            <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-3 py-2">
+              <span className="text-xs text-gray-500">
+                Menampilkan {results.length} dari {total} barang
+              </span>
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="shrink-0 rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-semibold text-gray-700 transition-colors hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingMore ? 'Memuat…' : 'Muat lebih banyak'}
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
