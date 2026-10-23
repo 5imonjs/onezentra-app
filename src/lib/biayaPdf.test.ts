@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actedNameFor, auditDates, extractAllNopol, extractAllSuratJalan, extractAllType, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, overflowsPage, pdfFilename, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
+import { actedNameFor, auditDates, extractAllNopol, extractAllSuratJalan, extractAllType, fitStampFontSize, formatSuratJalan, MANIFEST_COL_WIDTHS, nextPdfSectionPosition, overflowsPage, pdfFilename, PDF_PAGE_WIDTH, stampFor, STAMP_BASE_FONT_SIZE, STAMP_MAX_RADIUS, SUMMARY_COL_WIDTHS, THL_COL_WIDTHS, type ApprovalSection, type RetribusiData } from './biayaPdf';
 
 describe('formatSuratJalan', () => {
   it('renders primary and additional surat jalan in one cell', () => {
@@ -78,6 +78,16 @@ describe('overflowsPage', () => {
     expect(overflowsPage(170, 32)).toBe(true);
     expect(overflowsPage(100, 32)).toBe(false);
     expect(overflowsPage(168, 32)).toBe(false);
+  });
+});
+
+describe('nextPdfSectionPosition', () => {
+  it('menempatkan approval setelah tabel panjang tanpa membatasi posisi Y', () => {
+    expect(nextPdfSectionPosition(85, 52)).toEqual({ y: 85, addPage: false });
+  });
+
+  it('memulai approval di halaman baru bila ruang di bawah tabel tidak cukup', () => {
+    expect(nextPdfSectionPosition(150, 52)).toEqual({ y: 12, addPage: true });
   });
 });
 

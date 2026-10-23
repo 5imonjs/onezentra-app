@@ -365,6 +365,15 @@ export function overflowsPage(
 ): boolean {
   return y + boxHeight > pageHeight - margin;
 }
+export function nextPdfSectionPosition(
+  currentY: number,
+  sectionHeight: number,
+): { y: number; addPage: boolean } {
+  if (overflowsPage(currentY, sectionHeight)) {
+    return { y: PDF_PAGE_MARGIN + 2, addPage: true };
+  }
+  return { y: currentY, addPage: false };
+}
 /** No, No Kendaraan, Jenis, Surat Jalan, Nominal, Paraf. */
 export const SUMMARY_COL_WIDTHS = [9, 61, 53, 55, 46, 53];
 /** No, Nama, Kubikasi, Drop Point, Posisi, Jam Datang, Jam Pulang. */
@@ -913,7 +922,12 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
   });
   const retribusiY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 65;
 
-  const approvalY = Math.min(retribusiY + 3, 82);
+  const rejected = data.status === 'rejected';
+  const revisi = data.status === 'revisi';
+  const approvalBlockHeight = includeThlSection && (rejected || revisi) ? 63 : 52;
+  const approvalPosition = nextPdfSectionPosition(retribusiY + 3, approvalBlockHeight);
+  if (approvalPosition.addPage) doc.addPage('a4', 'landscape');
+  const approvalY = approvalPosition.y;
   const approvalSections = (await loadApprovalSections(data)).filter((section) => section.title !== 'RFAH*' || data.is_rfah_required);
 
   const approvalWidth = pageWidth / approvalSections.length;
@@ -975,8 +989,6 @@ async function buildCombinedRetribusi(data: RetribusiData, mode: PdfMode, option
     return;
   }
 
-  const rejected = data.status === 'rejected';
-  const revisi = data.status === 'revisi';
   let thlTop = approvalY + (rejected ? 63 : revisi ? 63 : 52);
   // Header + tabel THL tidak boleh mulai di ujung bawah kertas.
   if (overflowsPage(thlTop, 32)) {
