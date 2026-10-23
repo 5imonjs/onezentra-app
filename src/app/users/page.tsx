@@ -429,6 +429,10 @@ export default function UsersPage() {
   };
 
   const handleSaveEdit = () => {
+    if (editDepotCodes.length !== 1) {
+      notifyGlobal('Pilih tepat satu depo aktif sebelum menyimpan perubahan user.');
+      return;
+    }
     setSaveMode('edit');
     setShowSaveConfirm(true);
   };
@@ -450,6 +454,10 @@ export default function UsersPage() {
         setCreateDepotCodes([]);
       } else {
         if (!editItem) return;
+        if (editDepotCodes.length !== 1) {
+          notifyGlobal('Pilih tepat satu depo aktif sebelum menyimpan perubahan user.');
+          return;
+        }
         const data = { ...editForm };
         if (!data.password) {
           delete data.password;
@@ -1435,7 +1443,7 @@ export default function UsersPage() {
         footer={
           <>
             <button type="button" onClick={() => { setEditItem(null); setEditForm({}); setUserDepots([]); setEditDepotCodes([]); setDepotLoadError(null); setEditTab('profile'); }} className="btn-secondary">Batal</button>
-            <button type="submit" form="edit-user-form" disabled={saving || loadingDepots || depotLoadError !== null || editDepotCodes.length !== 1} className="btn-primary disabled:opacity-50">
+            <button type="submit" form="edit-user-form" disabled={saving || loadingDepots || depotLoadError !== null || editDepotCodes.length !== 1} className="btn-primary disabled:cursor-not-allowed disabled:opacity-50">
               <span className="flex items-center gap-2">
                 {saving ? (
                   <>
@@ -1573,6 +1581,11 @@ export default function UsersPage() {
                   {editItem && (editForm.region_id || '') !== (editItem.region_id || '') && (
                     <p role="status" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                       Region berubah. Assignment depo lama sudah dikosongkan; pilih depo yang sesuai di tab Cakupan Depo sebelum menyimpan.
+                    </p>
+                  )}
+                  {editDepotCodes.length !== 1 && (
+                    <p role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      Pilih tepat satu depo aktif di tab Cakupan Depo sebelum menyimpan user.
                     </p>
                   )}
                 </div>

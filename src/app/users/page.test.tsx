@@ -465,4 +465,23 @@ describe('UsersPage region and depot assignments', () => {
     expect(update.mock.calls[0][1]).not.toHaveProperty('current_password');
     expect(syncDepots).not.toHaveBeenCalled();
   });
+
+  it('does not submit a user edit until a depot is selected after changing region', async () => {
+    list.mockResolvedValue(listResponse([user]));
+    const { container } = render(<UsersPage />);
+
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Edit' }))[0]);
+    await waitFor(() => expect(getDepots).toHaveBeenCalledWith(user.id));
+
+    fireEvent.click(await screen.findByRole('tab', { name: '1. Profil & Role' }));
+    fireEvent.change(screen.getByLabelText('Region akun'), { target: { value: 'REG-2' } });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Pilih tepat satu depo aktif');
+    expect(screen.getByRole('button', { name: 'Simpan' })).toBeDisabled();
+
+    fireEvent.submit(container.querySelector('#edit-user-form')!);
+
+    expect(update).not.toHaveBeenCalled();
+    expect(notifyGlobal).toHaveBeenCalledWith('Pilih tepat satu depo aktif sebelum menyimpan perubahan user.');
+  });
 });
