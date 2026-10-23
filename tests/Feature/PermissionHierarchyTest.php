@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\DepotSetting;
 use App\Models\Permission;
+use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,6 +55,7 @@ class PermissionHierarchyTest extends TestCase
 
     private function makeDepot(string $kodeDepo, string $regionId): void
     {
+        Region::firstOrCreate(['code' => $regionId], ['name' => $regionId]);
         DepotSetting::updateOrCreate(
             ['kode_depo' => $kodeDepo],
             ['nama_depo' => 'Depo '.$kodeDepo, 'region_id' => $regionId, 'is_active' => true]

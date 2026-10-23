@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import React from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { users, depotSettings, getErrorMessage, type UserDepot } from '@/lib/api';
+import { users, depotSettings, regions, getErrorMessage, type UserDepot } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
@@ -30,6 +30,11 @@ interface UserItem {
 }
 
 type DepotOption = Pick<UserDepot, 'kode_depo' | 'nama_depo' | 'region_id'>;
+
+interface RegionOption {
+  code: string;
+  name: string;
+}
 
 interface RoleOption {
   id: number;
@@ -89,13 +94,25 @@ export default function UsersPage() {
   const [depotLoadError, setDepotLoadError] = useState<string | null>(null);
   const [usesGlobalScope, setUsesGlobalScope] = useState(false);
   const [depotOptions, setDepotOptions] = useState<DepotOption[]>([]);
-  const [regionOptions, setRegionOptions] = useState<string[]>([]);
+  const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [roleOptionsError, setRoleOptionsError] = useState<string | null>(null);
   const [regionAssignments, setRegionAssignments] = useState<Record<string, string>>({});
   const [showRegionMapping, setShowRegionMapping] = useState(false);
   const [savingRegionDepot, setSavingRegionDepot] = useState<string | null>(null);
   const [regionMappingError, setRegionMappingError] = useState<string | null>(null);
+  const [showNewRegionFields, setShowNewRegionFields] = useState(false);
+  const [newRegionCode, setNewRegionCode] = useState('');
+  const [newRegionName, setNewRegionName] = useState('');
+  const [creatingRegion, setCreatingRegion] = useState(false);
+  const [regionNameEditCode, setRegionNameEditCode] = useState('');
+  const [regionNameEditValue, setRegionNameEditValue] = useState('');
+  const [savingRegionName, setSavingRegionName] = useState(false);
+  const [showNewDepotFields, setShowNewDepotFields] = useState(false);
+  const [newDepotCode, setNewDepotCode] = useState('');
+  const [newDepotName, setNewDepotName] = useState('');
+  const [creatingDepot, setCreatingDepot] = useState(false);
+  const [masterDataError, setMasterDataError] = useState<string | null>(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -123,20 +140,18 @@ export default function UsersPage() {
   useEffect(() => {
     if (!canViewUsers) return;
     setDepotLoadError(null);
-    depotSettings.list()
-      .then(res => {
-        const list = (res.data.data ?? []) as DepotOption[];
+    Promise.all([depotSettings.list(), regions.list()])
+      .then(([depotResponse, regionResponse]) => {
+        const list = (depotResponse.data.data ?? []) as DepotOption[];
         setDepotOptions(list);
         setRegionAssignments(Object.fromEntries(list.map(depot => [depot.kode_depo, depot.region_id ?? ''])));
-        const regions = Array.from(new Set(
-          list.map(d => d.region_id).filter((r): r is string => Boolean(r))
-        )).sort();
-        setRegionOptions(regions);
+        const options = (regionResponse.data.data ?? []) as RegionOption[];
+        setRegionOptions(options);
       })
       .catch(e => {
         setDepotOptions([]);
         setRegionOptions([]);
-        setDepotLoadError(getErrorMessage(e, 'Gagal memuat daftar region dan depo.'));
+        setDepotLoadError(getErrorMessage(e, 'Gagal memuat lookup region dan depo.'));
       });
   }, [canViewUsers]);
 
@@ -164,13 +179,20 @@ export default function UsersPage() {
 
   const createRegionDepots = depotOptions.filter(depot => (depot.region_id ?? '') === createForm.region_id);
   const editRegionDepots = userDepots.filter(depot => (depot.region_id ?? '') === (editForm.region_id || ''));
-  const regionDepotGroups = depotOptions.reduce<Record<string, DepotOption[]>>((groups, depot) => {
-    const region = depot.region_id || 'Tanpa Region';
-    groups[region] = groups[region] || [];
-    groups[region].push(depot);
+  const regionDepotGroups = regionOptions.reduce<Record<string, DepotOption[]>>((groups, region) => {
+    groups[region.code] = [];
     return groups;
   }, {});
+  depotOptions.forEach(depot => {
+    const region = depot.region_id || 'Tanpa Region';
+    regionDepotGroups[region] = regionDepotGroups[region] || [];
+    regionDepotGroups[region].push(depot);
+  });
   const roleLabel = (slug: string) => roleOptions.find(role => role.slug === slug)?.name || slug;
+  const regionLabel = (code: string) => {
+    const region = regionOptions.find(option => option.code === code);
+    return region ? `${region.code} · ${region.name}` : code;
+  };
   const activeRoleOptions = roleOptions.filter(role => role.is_active);
   const createRole = activeRoleOptions.find(role => role.slug === createForm.level);
   const editRole = roleOptions.find(role => role.slug === editForm.level);
@@ -179,6 +201,86 @@ export default function UsersPage() {
   const handleCreate = () => {
     setSaveMode('create');
     setShowSaveConfirm(true);
+  };
+
+  const handleCreateRegion = async () => {
+    const code = newRegionCode.trim();
+    const name = newRegionName.trim();
+    if (!code || !name) {
+      setMasterDataError('Kode dan nama region wajib diisi.');
+      return;
+    }
+    setCreatingRegion(true);
+    setMasterDataError(null);
+    try {
+      const response = await regions.create({ code, name });
+      const createdRegion = response.data.data as RegionOption;
+      setRegionOptions(current => [...current.filter(region => region.code !== createdRegion.code), createdRegion].sort((a, b) => a.code.localeCompare(b.code)));
+      setCreateForm(current => ({ ...current, region_id: createdRegion.code }));
+      setCreateDepotCodes([]);
+      setNewRegionCode('');
+      setNewRegionName('');
+      setShowNewRegionFields(false);
+    } catch (error) {
+      setMasterDataError(getErrorMessage(error, 'Gagal membuat region.'));
+    } finally {
+      setCreatingRegion(false);
+    }
+  };
+
+  const handleCreateDepot = async () => {
+    const code = newDepotCode.trim();
+    const name = newDepotName.trim();
+    if (!createForm.region_id || !code || !name) {
+      setMasterDataError('Pilih region, lalu isi kode dan nama depo.');
+      return;
+    }
+    if (depotOptions.some(depot => depot.kode_depo.toLowerCase() === code.toLowerCase())) {
+      setMasterDataError(`Kode depo ${code} sudah terdaftar. Pilih depo tersebut dari daftar.`);
+      return;
+    }
+    setCreatingDepot(true);
+    setMasterDataError(null);
+    try {
+      const response = await depotSettings.create({
+        kode_depo: code,
+        nama_depo: name,
+        region_id: createForm.region_id,
+      });
+      const createdDepot = response.data.data as DepotOption;
+      setDepotOptions(current => [...current, createdDepot].sort((a, b) => a.kode_depo.localeCompare(b.kode_depo)));
+      setRegionAssignments(current => ({ ...current, [createdDepot.kode_depo]: createForm.region_id }));
+      setCreateDepotCodes(current => [...new Set([...current, createdDepot.kode_depo])]);
+      setNewDepotCode('');
+      setNewDepotName('');
+      setShowNewDepotFields(false);
+    } catch (error) {
+      setMasterDataError(getErrorMessage(error, 'Gagal membuat depo.'));
+    } finally {
+      setCreatingDepot(false);
+    }
+  };
+
+  const handleSaveRegionName = async () => {
+    const region = regionOptions.find(option => option.code === regionNameEditCode);
+    const name = regionNameEditValue.trim();
+    if (!region || !name) {
+      setRegionMappingError('Pilih region dan isi nama region.');
+      return;
+    }
+    setSavingRegionName(true);
+    setRegionMappingError(null);
+    try {
+      const response = await regions.update(region.code, { name });
+      const updatedRegion = response.data.data as RegionOption;
+      setRegionOptions(current => current.map(option => option.code === updatedRegion.code ? updatedRegion : option));
+      setRegionNameEditValue(updatedRegion.name);
+      notifyGlobal(`Nama region ${updatedRegion.code} berhasil diperbarui.`);
+    } catch (error) {
+      setRegionMappingError(getErrorMessage(error, 'Gagal memperbarui nama region.'));
+    } finally {
+      setSavingRegionName(false);
+    }
   };
 
   const handleImport = async () => {
@@ -255,9 +357,6 @@ export default function UsersPage() {
         ? { ...item, region_id: regionId || null }
         : item);
       setDepotOptions(updatedDepots);
-      setRegionOptions(Array.from(new Set(
-        updatedDepots.map(item => item.region_id).filter((region): region is string => Boolean(region))
-      )).sort());
       notifyGlobal(`Region depo ${depot.kode_depo} berhasil diperbarui.`);
     } catch (error) {
       setRegionMappingError(getErrorMessage(error, `Gagal mengubah region depo ${depot.kode_depo}.`));
@@ -347,9 +446,13 @@ export default function UsersPage() {
   const fromCount = totalCount === 0 ? 0 : (page - 1) * 20 + 1;
   const toCount = Math.min(page * 20, totalCount);
 
-  const displayRegion = (item: UserItem): { regionId: string; inferred: boolean } | null => {
+  const displayRegion = (item: UserItem): { regionId: string; regionName?: string; inferred: boolean } | null => {
     if (item.region_id) {
-      return { regionId: item.region_id, inferred: false };
+      return {
+        regionId: item.region_id,
+        regionName: regionOptions.find(region => region.code === item.region_id)?.name,
+        inferred: false,
+      };
     }
 
     const codes = item.depot_codes?.length ? item.depot_codes : item.kode_depo ? [item.kode_depo] : [];
@@ -361,7 +464,11 @@ export default function UsersPage() {
     const uniqueRegions = Array.from(new Set(mappedRegions));
     const inferredRegion = uniqueRegions[0];
     return uniqueRegions.length === 1 && inferredRegion
-      ? { regionId: inferredRegion, inferred: true }
+      ? {
+        regionId: inferredRegion,
+        regionName: regionOptions.find(region => region.code === inferredRegion)?.name,
+        inferred: true,
+      }
       : null;
   };
 
@@ -383,7 +490,7 @@ export default function UsersPage() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
         </svg>
-        {region.regionId}{region.inferred ? ' · dari depo' : ''}
+        {region.regionId}{region.regionName ? ` · ${region.regionName}` : ''}{region.inferred ? ' · dari depo' : ''}
       </span>
     );
   };
@@ -420,7 +527,7 @@ export default function UsersPage() {
     const codes = item.depot_codes?.length ? item.depot_codes.join(', ') : item.kode_depo || 'Tanpa depo';
     const region = displayRegion(item);
     const regionLabel = region
-      ? `Region ${region.regionId}${region.inferred ? ' (dari pemetaan depo)' : ''}`
+      ? `Region ${region.regionId}${region.regionName ? ` · ${region.regionName}` : ''}${region.inferred ? ' (dari pemetaan depo)' : ''}`
       : 'Region belum dipetakan';
     return `${regionLabel} · ${codes}`;
   };
@@ -583,7 +690,7 @@ export default function UsersPage() {
                 aria-label="Filter region"
               >
                 <option value="">Semua Region</option>
-                {regionOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                {regionOptions.map(region => <option key={region.code} value={region.code}>{region.code} · {region.name}</option>)}
               </select>
               <button
                 type="button"
@@ -610,7 +717,19 @@ export default function UsersPage() {
                 </button>
               )}
               {hasPermission('users.create') && (
-                <button onClick={() => setShowCreate(true)} className="btn-primary whitespace-nowrap">
+                <button onClick={() => {
+                  setCreateForm({
+                    ...emptyForm,
+                    level: activeRoleOptions.find(role => role.slug === 'staff_logistic' && !role.has_global_depot_access)?.slug
+                      ?? activeRoleOptions.find(role => !role.has_global_depot_access)?.slug
+                      ?? '',
+                  });
+                  setCreateDepotCodes([]);
+                  setMasterDataError(null);
+                  setShowNewRegionFields(false);
+                  setShowNewDepotFields(false);
+                  setShowCreate(true);
+                }} className="btn-primary whitespace-nowrap">
                   <span className="flex items-center gap-2">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah
@@ -654,7 +773,11 @@ export default function UsersPage() {
                 <tbody className="divide-y divide-gray-100">
                   {Object.entries(regionDepotGroups).sort(([regionA], [regionB]) => regionA.localeCompare(regionB)).map(([region, depots]) => (
                     <tr key={region} className="hover:bg-overlay-70">
-                      <th scope="row" className="px-5 py-4 text-left align-top text-sm font-semibold text-gray-900">{region}</th>
+                      <th scope="row" className="px-5 py-4 text-left align-top text-sm font-semibold text-gray-900">
+                        {regionOptions.find(option => option.code === region)?.name
+                          ? `${region} · ${regionOptions.find(option => option.code === region)?.name}`
+                          : region}
+                      </th>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-2">
                           {depots.map(depot => (
@@ -676,19 +799,39 @@ export default function UsersPage() {
                   )}
                 </tbody>
               </table>
-              <datalist id="existing-region-codes">
-                {regionOptions.map(region => <option key={region} value={region} />)}
-              </datalist>
             </div>
           )}
           {showRegionMapping && isAdminMaster && !depotLoadError && (
             <div className="border-t border-gray-100 p-5">
               <div className="mb-4 rounded-lg border border-primary-100 bg-primary-50 px-4 py-3 text-sm text-primary-900">
                 <p className="font-semibold">Tetapkan region induk untuk setiap depo</p>
-                <p className="mt-1 text-xs leading-relaxed">Pilih kode region yang sudah ada agar depo berada dalam kelompok yang sama, atau ketik kode baru untuk membuat kelompok region. Setiap depo hanya memiliki satu region induk.</p>
+                <p className="mt-1 text-xs leading-relaxed">Pilih region dari master region. Jika belum tersedia, buat region terlebih dahulu melalui form tambah user. Setiap depo hanya memiliki satu region induk.</p>
                 <p className="mt-2 text-xs font-medium leading-relaxed">Mengubah region depo dapat mencabut akses user yang assignment-nya tidak lagi cocok dengan region baru. Periksa kembali user terkait setelah memindahkan depo.</p>
               </div>
               {regionMappingError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{regionMappingError}</p>}
+              <div className="mb-5 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                <label className="text-xs font-medium text-gray-700">Region master
+                  <select
+                    aria-label="Pilih region untuk ubah nama"
+                    value={regionNameEditCode}
+                    onChange={event => {
+                      const code = event.target.value;
+                      setRegionNameEditCode(code);
+                      setRegionNameEditValue(regionOptions.find(option => option.code === code)?.name ?? '');
+                    }}
+                    className="select-field mt-1"
+                  >
+                    <option value="">Pilih region</option>
+                    {regionOptions.map(region => <option key={region.code} value={region.code}>{region.code} · {region.name}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-gray-700">Nama region
+                  <input aria-label="Nama region master" value={regionNameEditValue} onChange={event => setRegionNameEditValue(event.target.value)} maxLength={100} className="input-field mt-1" disabled={!regionNameEditCode} />
+                </label>
+                <button type="button" onClick={handleSaveRegionName} disabled={!regionNameEditCode || savingRegionName} className="btn-secondary disabled:opacity-50">
+                  {savingRegionName ? 'Menyimpan...' : 'Simpan nama'}
+                </button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px]">
                   <caption className="sr-only">Pengaturan region induk setiap depo</caption>
@@ -706,15 +849,17 @@ export default function UsersPage() {
                         <td className="px-4 py-3 font-mono text-sm font-medium text-gray-900">{depot.kode_depo}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{depot.nama_depo}</td>
                         <td className="px-4 py-3">
-                          <input
+                          <select
                             aria-label={`Kode region untuk depo ${depot.kode_depo}`}
-                            list="existing-region-codes"
                             value={regionAssignments[depot.kode_depo] ?? ''}
                             onChange={event => setRegionAssignments(current => ({ ...current, [depot.kode_depo]: event.target.value }))}
-                            maxLength={20}
-                            className="input-field !py-2"
-                            placeholder="Pilih kode atau ketik kode baru"
-                          />
+                            className="select-field !py-2"
+                          >
+                            <option value="">— Belum dipetakan —</option>
+                            {regionOptions.map(region => (
+                              <option key={region.code} value={region.code}>{region.code} · {region.name}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button
@@ -945,7 +1090,7 @@ export default function UsersPage() {
           <section aria-labelledby="create-data-scope-heading" className="space-y-4">
           <div>
             <h3 id="create-data-scope-heading" className="text-sm font-bold uppercase tracking-wide text-slate-500">2. Cakupan Data</h3>
-            <p className="mt-1 text-xs text-gray-500">Pilih region sebagai kelompok depo, kemudian centang hanya depo yang boleh diakses user.</p>
+            <p className="mt-1 text-xs text-gray-500">Pilih region dari lookup atau buat region baru. Setelah itu pilih depo yang boleh diakses user, atau buat depo baru di region tersebut.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="region">Region User</label>
@@ -953,18 +1098,45 @@ export default function UsersPage() {
               const regionId = e.target.value;
               setCreateForm(prev => ({ ...prev, region_id: regionId }));
               setCreateDepotCodes([]);
+              setMasterDataError(null);
             }} className="select-field">
-              <option value="">— Tanpa region (atur depot manual) —</option>
-              {regionOptions.map(r => <option key={r} value={r}>{r}</option>)}
+              <option value="">— Pilih region —</option>
+              {regionOptions.map(region => <option key={region.code} value={region.code}>{region.code} · {region.name}</option>)}
             </select>
-            <p className="text-xs text-gray-500 mt-1">Region bukan pemberian akses otomatis. Akses data diberikan melalui pilihan depo di bawah.</p>
+            {isAdminMaster && (
+              <button type="button" className="mt-2 text-sm font-medium text-primary-700 hover:text-primary-800" onClick={() => {
+                setShowNewRegionFields(current => !current);
+                setMasterDataError(null);
+              }}>
+                {showNewRegionFields ? 'Batal buat region' : '+ Buat region baru'}
+              </button>
+            )}
+            {showNewRegionFields && isAdminMaster && (
+              <div className="mt-3 space-y-3 rounded-lg border border-primary-200 bg-primary-50 p-3">
+                <p className="text-sm font-semibold text-primary-900">Buat master region</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs font-medium text-gray-700">Kode region
+                    <input aria-label="Kode region baru" value={newRegionCode} onChange={event => setNewRegionCode(event.target.value)} maxLength={20} className="input-field mt-1" placeholder="Contoh: REG-A" />
+                  </label>
+                  <label className="text-xs font-medium text-gray-700">Nama region
+                    <input aria-label="Nama region baru" value={newRegionName} onChange={event => setNewRegionName(event.target.value)} maxLength={100} className="input-field mt-1" placeholder="Contoh: Region Kalimantan Barat" />
+                  </label>
+                </div>
+                <button type="button" onClick={handleCreateRegion} disabled={creatingRegion} className="btn-secondary disabled:opacity-50">
+                  {creatingRegion ? 'Menyimpan region...' : 'Simpan dan pilih region'}
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-1">Region adalah induk pengelompokan depo; hak akses data tetap ditentukan oleh depo yang dipilih.</p>
+            {masterDataError && <p role="alert" className="mt-2 text-sm text-red-700">{masterDataError}</p>}
           </div>
           <div className="rounded-xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between gap-3 bg-gray-50 px-4 py-3">
               <div>
                 <p className="font-medium text-gray-900">Pilih depo yang boleh diakses</p>
-                <p className="text-xs text-gray-500">{createForm.region_id ? `Region ${createForm.region_id}` : 'Tanpa region'}</p>
+                <p className="text-xs text-gray-500">{createForm.region_id ? regionLabel(createForm.region_id) : 'Pilih region terlebih dahulu'}</p>
               </div>
+              <div className="flex items-center gap-3">
               {createRegionDepots.length > 0 && (
                 <button
                   type="button"
@@ -978,7 +1150,32 @@ export default function UsersPage() {
                   {createRegionDepots.every(depot => createDepotCodes.includes(depot.kode_depo)) ? 'Hapus semua depo' : 'Pilih semua depo region'}
                 </button>
               )}
+              {isAdminMaster && createForm.region_id && (
+                <button type="button" onClick={() => {
+                  setShowNewDepotFields(current => !current);
+                  setMasterDataError(null);
+                }} className="text-xs font-medium text-primary-700 hover:text-primary-800">
+                  {showNewDepotFields ? 'Batal' : '+ Buat depo'}
+                </button>
+              )}
+              </div>
             </div>
+            {showNewDepotFields && isAdminMaster && createForm.region_id && (
+              <div className="space-y-3 border-b border-gray-200 bg-primary-50 p-4">
+                <p className="text-sm font-semibold text-primary-900">Buat depo baru di {regionLabel(createForm.region_id)}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs font-medium text-gray-700">Kode depo
+                    <input aria-label="Kode depo baru" value={newDepotCode} onChange={event => setNewDepotCode(event.target.value)} maxLength={20} className="input-field mt-1" placeholder="Contoh: A-ABC" />
+                  </label>
+                  <label className="text-xs font-medium text-gray-700">Nama depo
+                    <input aria-label="Nama depo baru" value={newDepotName} onChange={event => setNewDepotName(event.target.value)} maxLength={100} className="input-field mt-1" placeholder="Contoh: Depo ABC" />
+                  </label>
+                </div>
+                <button type="button" onClick={handleCreateDepot} disabled={creatingDepot} className="btn-secondary disabled:opacity-50">
+                  {creatingDepot ? 'Menyimpan depo...' : 'Simpan depo dan tetapkan ke user'}
+                </button>
+              </div>
+            )}
             {depotLoadError ? (
               <p role="alert" className="p-4 text-sm text-red-700">{depotLoadError}</p>
             ) : createRegionDepots.length === 0 ? (
@@ -1189,7 +1386,7 @@ export default function UsersPage() {
                     setEditDepotCodes([]);
                   }} className="select-field">
                     <option value="">— Tanpa region (atur depot manual) —</option>
-                    {regionOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                    {regionOptions.map(region => <option key={region.code} value={region.code}>{region.code} · {region.name}</option>)}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
                     Region hanya mengelompokkan depo; akses data ditentukan oleh depo yang dicentang pada tab Cakupan Depo.

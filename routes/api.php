@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\OpnameExpiredSessionController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ReceivingController;
 use App\Http\Controllers\Api\V1\ReceivingItemController;
+use App\Http\Controllers\Api\V1\RegionController;
 use App\Http\Controllers\Api\V1\RencanaKirimController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RetribusiRateController;
@@ -66,11 +67,17 @@ Route::prefix('v1')->group(function () {
     // sendiri, alamat tujuan dari depo tujuan). Read: semua user login.
     Route::prefix('depot-settings')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
         Route::get('/', [DepotSettingController::class, 'index']);
+        Route::post('/', [DepotSettingController::class, 'store'])->middleware('permission:users.create');
         Route::get('/{kodeDepo}', [DepotSettingController::class, 'show']);
         // PUT digate permission (invarian AuthorizationInventoryTest) + gate
         // ulang level admin_master di controller — grant manual ke role lain
         // tetap 403. GET sengaja tanpa gate: dipakai auto-fill form semua role.
         Route::put('/{kodeDepo}', [DepotSettingController::class, 'upsert'])->middleware('permission:depot_settings.manage');
+    });
+    Route::prefix('regions')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
+        Route::get('/', [RegionController::class, 'index'])->middleware('permission:users.view');
+        Route::post('/', [RegionController::class, 'store'])->middleware('permission:users.create');
+        Route::put('/{region}', [RegionController::class, 'update'])->middleware('permission:users.edit');
     });
 
     Route::get('dashboard/activity', [DashboardController::class, 'activity'])

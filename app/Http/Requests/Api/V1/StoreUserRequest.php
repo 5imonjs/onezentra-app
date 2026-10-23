@@ -5,6 +5,7 @@ namespace App\Http\Requests\Api\V1;
 use App\Models\Role;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validasi akun baru dan role aktif yang boleh ditetapkan.
@@ -31,7 +32,7 @@ class StoreUserRequest extends FormRequest
         return [
             'kode_depo' => 'nullable|string|max:20',
             'nama_depo' => 'nullable|string|max:100',
-            'region_id' => 'nullable|string|max:20',
+            'region_id' => ['nullable', 'string', 'max:20', Rule::exists('regions', 'code')],
             'depot_codes' => 'sometimes|array',
             'depot_codes.*' => 'string|max:20|distinct',
             'full_name' => 'required|string|max:100',

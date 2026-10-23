@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DepotSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class DepotSettingController extends Controller
 {
@@ -48,6 +49,31 @@ class DepotSettingController extends Controller
         return response()->json(['data' => $setting]);
     }
 
+    public function store(Request $request): JsonResponse
+    {
+        abort_unless(
+            $request->user()?->isAdminMaster(),
+            403,
+            'Hanya admin master yang boleh membuat depo.'
+        );
+
+        $validated = $request->validate([
+            'kode_depo' => 'required|string|max:20|unique:depot_settings,kode_depo',
+            'nama_depo' => 'required|string|max:100',
+            'region_id' => ['required', 'string', 'max:20', Rule::exists('regions', 'code')],
+        ]);
+
+        $depot = DepotSetting::create([
+            ...$validated,
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'message' => 'Depo berhasil dibuat.',
+            'data' => $depot,
+        ], 201);
+    }
+
     /**
      * Simpan/ubah setting satu depo. Hanya admin_master agar alamat resmi
      * depo tidak bisa diubah sembarang role (precedent: RoleController
@@ -63,7 +89,7 @@ class DepotSettingController extends Controller
 
         $validated = $request->validate([
             'nama_depo' => 'nullable|string|max:100',
-            'region_id' => 'nullable|string|max:20',
+            'region_id' => ['nullable', 'string', 'max:20', Rule::exists('regions', 'code')],
             'nama_pengirim' => 'nullable|string|max:200',
             'alamat_pengirim' => 'nullable|string|max:2000',
             'telepon_pengirim' => 'nullable|string|max:50',

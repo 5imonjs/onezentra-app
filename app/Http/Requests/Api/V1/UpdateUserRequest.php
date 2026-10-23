@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\User;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validasi pembaruan profil, role, dan assignment depo user.
@@ -37,7 +38,7 @@ class UpdateUserRequest extends FormRequest
         return [
             'kode_depo' => 'sometimes|string|max:20',
             'nama_depo' => 'sometimes|string|max:100',
-            'region_id' => 'sometimes|nullable|string|max:20',
+            'region_id' => ['sometimes', 'nullable', 'string', 'max:20', Rule::exists('regions', 'code')],
             'depot_codes' => 'sometimes|array',
             'depot_codes.*' => 'string|max:20|distinct',
             'full_name' => 'sometimes|string|max:100',

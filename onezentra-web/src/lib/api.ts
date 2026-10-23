@@ -453,7 +453,14 @@ export const depo = {
 export const depotSettings = {
   list: () => apiClient.get('/depot-settings'),
   get: (kodeDepo: string) => apiClient.get(`/depot-settings/${kodeDepo}`),
+  create: (data: { kode_depo: string; nama_depo: string; region_id: string }) => apiClient.post('/depot-settings', data),
   upsert: (kodeDepo: string, data: Record<string, unknown>) => apiClient.put(`/depot-settings/${kodeDepo}`, data),
+};
+
+export const regions = {
+  list: () => apiClient.get('/regions'),
+  create: (data: { code: string; name: string }) => apiClient.post('/regions', data),
+  update: (code: string, data: { name: string }) => apiClient.put(`/regions/${encodeURIComponent(code)}`, data),
 };
 
 export const retribusiRates = {

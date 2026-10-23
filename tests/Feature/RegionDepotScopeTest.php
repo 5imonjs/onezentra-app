@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Imports\UserImport;
 use App\Models\DepotSetting;
 use App\Models\Permission;
+use App\Models\Region;
 use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
@@ -54,6 +55,7 @@ class RegionDepotScopeTest extends TestCase
 
     private function makeDepot(string $kodeDepo, string $regionId, ?string $namaDepo = null): void
     {
+        Region::firstOrCreate(['code' => $regionId], ['name' => $regionId]);
         DepotSetting::updateOrCreate(
             ['kode_depo' => $kodeDepo],
             [
@@ -563,6 +565,97 @@ class RegionDepotScopeTest extends TestCase
             'region_id' => 'REG-B',
             'is_active' => true,
         ]);
+    }
+
+    public function test_region_lookup_returns_names_and_is_limited_to_actor_depots(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $this->makeDepot('R2-A', 'REG-2');
+        Region::where('code', 'REG-1')->update(['name' => 'Region Satu']);
+        Region::where('code', 'REG-2')->update(['name' => 'Region Dua']);
+
+        $viewer = $this->makeUser('admin_planner', 'R1-A', 'Depo R1-A', 'REG-1');
+        $this->grant($viewer, 'users.view');
+        DB::table('user_depots')->insert([
+            'user_id' => $viewer->id,
+            'kode_depo' => 'R1-A',
+            'assigned_at' => now(),
+        ]);
+        Sanctum::actingAs($viewer);
+
+        $this->getJson('/api/v1/regions')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.code', 'REG-1')
+            ->assertJsonPath('data.0.name', 'Region Satu');
+    }
+
+    public function test_only_admin_master_can_create_region_master(): void
+    {
+        $nonAdmin = $this->makeUser('admin_planner', 'PLANNER', 'Planner');
+        $this->grant($nonAdmin, 'users.create');
+        Sanctum::actingAs($nonAdmin);
+
+        $this->postJson('/api/v1/regions', [
+            'code' => 'REG-DENIED',
+            'name' => 'Region Ditolak',
+        ])->assertForbidden();
+
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'users.create');
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/v1/regions', [
+            'code' => 'REG-NEW',
+            'name' => 'Region Baru',
+        ])->assertCreated()
+            ->assertJsonPath('data.code', 'REG-NEW')
+            ->assertJsonPath('data.name', 'Region Baru');
+
+        $this->assertDatabaseHas('regions', ['code' => 'REG-NEW', 'name' => 'Region Baru']);
+    }
+
+    public function test_only_admin_master_can_update_region_name(): void
+    {
+        Region::create(['code' => 'REG-01', 'name' => 'Region Lama']);
+
+        $nonAdmin = $this->makeUser('admin_planner', 'PLANNER', 'Planner');
+        $this->grant($nonAdmin, 'users.edit');
+        Sanctum::actingAs($nonAdmin);
+
+        $this->putJson('/api/v1/regions/REG-01', ['name' => 'Tidak Diizinkan'])
+            ->assertForbidden();
+
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'users.edit');
+        Sanctum::actingAs($admin);
+
+        $this->putJson('/api/v1/regions/REG-01', ['name' => 'Region Diperbarui'])
+            ->assertOk()
+            ->assertJsonPath('data.code', 'REG-01')
+            ->assertJsonPath('data.name', 'Region Diperbarui');
+    }
+
+    public function test_admin_master_can_create_depot_in_an_existing_region(): void
+    {
+        Region::create(['code' => 'REG-NEW', 'name' => 'Region Baru']);
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'users.create');
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/v1/depot-settings', [
+            'kode_depo' => 'NEW-DEPOT',
+            'nama_depo' => 'Depo Baru',
+            'region_id' => 'REG-NEW',
+        ])->assertCreated()
+            ->assertJsonPath('data.kode_depo', 'NEW-DEPOT')
+            ->assertJsonPath('data.region_id', 'REG-NEW');
+
+        $this->postJson('/api/v1/depot-settings', [
+            'kode_depo' => 'NEW-DEPOT',
+            'nama_depo' => 'Kode Dipakai',
+            'region_id' => 'REG-NEW',
+        ])->assertJsonValidationErrors(['kode_depo']);
     }
 
     public function test_region_backfill_fills_only_users_with_one_consistent_depot_region(): void

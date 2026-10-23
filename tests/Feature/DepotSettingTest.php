@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\DepotSetting;
 use App\Models\Permission;
+use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -132,6 +133,7 @@ class DepotSettingTest extends TestCase
 
     public function test_admin_master_can_assign_depot_to_a_region(): void
     {
+        Region::create(['code' => 'REG-01', 'name' => 'Region Satu']);
         DepotSetting::create(['kode_depo' => 'DPA', 'nama_depo' => 'Depo A']);
         Sanctum::actingAs($this->user('admin_master', 'DPA'));
 

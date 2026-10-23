@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\DepotSetting;
+use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -50,6 +51,11 @@ class UserImport implements ToCollection, WithHeadingRow
         $depotName = trim((string) ($row['nama_depo'] ?? $row['nama_depot'] ?? ''));
         $requestedRegion = trim((string) ($row['region_id'] ?? ''));
         $regionWasProvided = $row->has('region_id') && $requestedRegion !== '';
+        if ($regionWasProvided && ! Region::where('code', $requestedRegion)->exists()) {
+            $this->addError($rowNumber, "Region \"{$requestedRegion}\" tidak ditemukan");
+
+            return;
+        }
         $hasDepotCodesColumn = $row->has('depot_codes');
         $depotCodesInput = $row->get('depot_codes') ?: $primaryDepotCode;
         $depotCodes = $this->parseDepotCodes($depotCodesInput);
