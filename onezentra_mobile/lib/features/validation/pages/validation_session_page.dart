@@ -132,15 +132,23 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 if (canCancel) ...[
                   const SizedBox(height: AppTheme.space2),
                   Align(
-                    child: TextButton.icon(
+                    child: OutlinedButton.icon(
                       onPressed: provider.actionBusy
                           ? null
                           : () => _confirmCancel(provider),
-                      style: TextButton.styleFrom(
+                      style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.dangerText,
+                        side: BorderSide(color: AppTheme.dangerText),
+                        minimumSize: const Size(0, 44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.space4,
+                        ),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: AppTheme.radiusLg,
+                        ),
                         textStyle: GoogleFonts.roboto(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                       icon: const Icon(Icons.cancel_rounded, size: 18),
@@ -805,16 +813,13 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     onPressed: () => _openItemSheet(item),
     style: OutlinedButton.styleFrom(
       foregroundColor: AppTheme.gray200,
-      side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-      minimumSize: const Size(0, 40),
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+      side: BorderSide(color: AppTheme.gray500),
+      minimumSize: const Size(0, 44),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
-      textStyle: GoogleFonts.roboto(
-        fontSize: 12.5,
-        fontWeight: FontWeight.w700,
-      ),
+      textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: const Icon(Icons.edit_rounded, size: 16),
+    icon: const Icon(Icons.edit_rounded, size: 18),
     label: const Text('Ubah'),
   );
 
@@ -822,16 +827,13 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     onPressed: () => _openPrintSheet(item),
     style: OutlinedButton.styleFrom(
       foregroundColor: AppTheme.gray200,
-      side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-      minimumSize: const Size(0, 40),
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+      side: BorderSide(color: AppTheme.gray500),
+      minimumSize: const Size(0, 44),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
-      textStyle: GoogleFonts.roboto(
-        fontSize: 12.5,
-        fontWeight: FontWeight.w700,
-      ),
+      textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: const Icon(Icons.print_rounded, size: 16),
+    icon: const Icon(Icons.print_rounded, size: 18),
     label: Text(item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label'),
   );
 
@@ -1115,28 +1117,42 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       style: FilledButton.styleFrom(
         backgroundColor: background,
         foregroundColor: foreground,
-        disabledBackgroundColor: background.withValues(alpha: 0.6),
-        disabledForegroundColor: foreground.withValues(alpha: 0.75),
-        minimumSize: const Size(0, 44),
+        disabledBackgroundColor: background.withValues(alpha: 0.4),
+        disabledForegroundColor: foreground.withValues(alpha: 0.5),
+        minimumSize: const Size(0, 48),
         side: outline
             ? BorderSide(color: Colors.white.withValues(alpha: 0.4))
             : null,
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
         ),
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.5),
       ),
       child: loading
           ? SizedBox(
-              width: 16,
-              height: 16,
+              width: 20,
+              height: 20,
               child: CircularProgressIndicator(
-                strokeWidth: 2,
+                strokeWidth: 2.5,
                 color: foreground,
               ),
             )
-          : Text(label, textAlign: TextAlign.center),
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
     ),
   );
 
