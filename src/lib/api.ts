@@ -379,7 +379,15 @@ export const npn = {
   },
   export: (params?: Record<string, unknown>) => apiClient.get('/npn/export', { params, responseType: 'blob' }),
   template: () => apiClient.get('/npn/template', { responseType: 'blob' }),
-  searchProduct: (q: string) => apiClient.get('/npn/search-product', { params: { q } }),
+  // `signal` membatalkan pencarian lama (combobox anti-balapan respons);
+  // `limit`/`offset` menggerakkan tombol "Muat lebih banyak" — batas halaman,
+  // bukan pemotong. Tanpa opsi, perilaku lama dipertahankan (offset 0, baku 500).
+  searchProduct: (q: string, opts?: { limit?: number; offset?: number; signal?: AbortSignal }) => {
+    const params: Record<string, unknown> = { q };
+    if (opts?.limit !== undefined) params.limit = opts.limit;
+    if (opts?.offset !== undefined) params.offset = opts.offset;
+    return apiClient.get('/npn/search-product', { params, signal: opts?.signal });
+  },
 };
 
 export const clusterPrincipal = {
@@ -587,6 +595,9 @@ export interface UserDepot {
 export interface UserDepotsResponse {
   data: UserDepot[];
   assigned_count: number;
+  region_id: string | null;
+  uses_region_scope: boolean;
+  can_use_region_scope: boolean;
 }
 
 export const users = {

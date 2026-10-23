@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import React from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { users, getErrorMessage, type UserDepot } from '@/lib/api';
+import { users, depotSettings, getErrorMessage, type UserDepot } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
@@ -14,6 +14,7 @@ interface UserItem {
   id: number;
   kode_depo: string;
   nama_depo: string;
+  region_id?: string | null;
   full_name: string;
   alamat: string;
   email: string;
@@ -42,7 +43,7 @@ const levels = [
 ];
 
 const emptyForm = {
-  kode_depo: '', nama_depo: '', full_name: '', alamat: '', email: '',
+  kode_depo: '', nama_depo: '', region_id: '', full_name: '', alamat: '', email: '',
   password: '', password_confirmation: '',
   level: 'staff_logistic', status: 'active',
 };
@@ -83,6 +84,8 @@ export default function UsersPage() {
   const [editTab, setEditTab] = useState<'profile' | 'depots'>('profile');
   const [userDepots, setUserDepots] = useState<UserDepot[]>([]);
   const [loadingDepots, setLoadingDepots] = useState(false);
+  const [canUseRegionScope, setCanUseRegionScope] = useState(false);
+  const [regionOptions, setRegionOptions] = useState<string[]>([]);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
@@ -104,6 +107,18 @@ export default function UsersPage() {
   }, [search, levelFilter, statusFilter, page]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+
+  useEffect(() => {
+    depotSettings.list()
+      .then(res => {
+        const list = (res.data.data ?? []) as { region_id?: string | null }[];
+        const regions = Array.from(new Set(
+          list.map(d => d.region_id).filter((r): r is string => Boolean(r))
+        )).sort();
+        setRegionOptions(regions);
+      })
+      .catch(() => setRegionOptions([]));
+  }, []);
 
   const handleCreate = () => {
     setSaveMode('create');
@@ -132,6 +147,7 @@ export default function UsersPage() {
     setEditForm({
       kode_depo: item.kode_depo || '',
       nama_depo: item.nama_depo || '',
+      region_id: item.region_id || '',
       full_name: item.full_name || '',
       alamat: item.alamat || '',
       email: item.email || '',
@@ -143,9 +159,11 @@ export default function UsersPage() {
     setEditTab('profile');
     // Fetch depot assignments
     setLoadingDepots(true);
+    setCanUseRegionScope(false);
     users.getDepots(item.id)
       .then(res => {
         setUserDepots(res.data.data);
+        setCanUseRegionScope(Boolean(res.data.can_use_region_scope));
       })
       .catch(() => {
         setUserDepots([]);
@@ -156,7 +174,7 @@ export default function UsersPage() {
   };
 
   const handleToggleDepot = async (kodeDepo: string, assigned: boolean) => {
-    if (!editItem) return;
+    if (!editItem || regionScopeActive) return;
     const currentAssigned = userDepots.filter(d => d.assigned).map(d => d.kode_depo);
     const newAssigned = assigned
       ? [...currentAssigned, kodeDepo]
@@ -171,7 +189,7 @@ export default function UsersPage() {
   };
 
   const handleBulkToggleRegion = async (regionId: string, assign: boolean) => {
-    if (!editItem) return;
+    if (!editItem || regionScopeActive) return;
     const regionDepots = userDepots.filter(d => d.region_id === regionId);
     const currentAssigned = userDepots.filter(d => d.assigned).map(d => d.kode_depo);
     const regionCodes = regionDepots.map(d => d.kode_depo);
@@ -239,6 +257,8 @@ export default function UsersPage() {
       setDeleteTargetId(null);
     }
   };
+
+  const regionScopeActive = canUseRegionScope && Boolean(editForm.region_id);
 
   const getLevelBadge = (level: string) => {
     const colors: Record<string, string> = {
@@ -641,13 +661,21 @@ export default function UsersPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-depo">Kode Depo *</label>
-              <input id="kode-depo" value={createForm.kode_depo} onChange={(e) => setCreateForm(prev => ({ ...prev, kode_depo: e.target.value }))} className="input-field" placeholder="Masukkan kode depo" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-depo">Kode Depo</label>
+              <input id="kode-depo" value={createForm.kode_depo} onChange={(e) => setCreateForm(prev => ({ ...prev, kode_depo: e.target.value }))} className="input-field" placeholder="Masukkan kode depo (opsional untuk user region)" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="nama-depo">Nama Depo *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="nama-depo">Nama Depo</label>
               <input id="nama-depo" value={createForm.nama_depo} onChange={(e) => setCreateForm(prev => ({ ...prev, nama_depo: e.target.value }))} className="input-field" placeholder="Masukkan nama depo" />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="region">Region</label>
+            <select id="region" value={createForm.region_id} onChange={(e) => setCreateForm(prev => ({ ...prev, region_id: e.target.value }))} className="select-field">
+              <option value="">— Tanpa region (atur depot manual) —</option>
+              {regionOptions.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Region hanya berlaku untuk role dengan permission <code>Akses Depo Region</code> (Admin Planner / BH). User otomatis mendapat semua depot di region tersebut.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat">Alamat</label>
@@ -799,6 +827,18 @@ export default function UsersPage() {
                   </div>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="region-2">Region</label>
+                  <select id="region-2" value={editForm.region_id || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, region_id: e.target.value }))} className="select-field">
+                    <option value="">— Tanpa region (atur depot manual) —</option>
+                    {regionOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {canUseRegionScope
+                      ? 'User ini otomatis mendapat semua depot di region yang dipilih.'
+                      : 'Role user ini tidak memegang permission "Akses Depo Region". Region akan tersimpan tetapi tidak mengubah akses depot.'}
+                  </p>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat-2">Alamat</label>
                   <textarea id="alamat-2" value={editForm.alamat || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
                 </div>
@@ -823,14 +863,23 @@ export default function UsersPage() {
             {/* Depot Akses Tab */}
             {editTab === 'depots' && (
               <div className="space-y-4">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className={`border rounded-xl p-4 ${regionScopeActive ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
                   <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                    <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${regionScopeActive ? 'text-emerald-600' : 'text-amber-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                     </svg>
-                    <div className="text-sm text-amber-800">
-                      <p className="font-medium">Hanya untuk user tanpa permission <code>depot.view_all</code></p>
-                      <p>User dengan permission <code>depot.view_all</code> (Admin Master, Staff Logistic, GA) otomatis memiliki akses ke semua depot.</p>
+                    <div className={`text-sm ${regionScopeActive ? 'text-emerald-800' : 'text-amber-800'}`}>
+                      {regionScopeActive ? (
+                        <>
+                          <p className="font-medium">Akses depot mengikuti region {editForm.region_id}</p>
+                          <p>Semua depot aktif di region ini otomatis dapat diakses. Ubah region di tab <strong>Data User</strong> bila perlu.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium">Hanya untuk user tanpa permission <code>depot.view_all</code></p>
+                          <p>User dengan permission <code>depot.view_all</code> (Admin Master, Staff Logistic, GA) otomatis memiliki akses ke semua depot.</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -861,11 +910,12 @@ export default function UsersPage() {
                             <span className="text-xs text-gray-500">{depots.filter(d => d.assigned).length} / {depots.length} depot</span>
                             <button
                               type="button"
+                              disabled={regionScopeActive}
                               onClick={() => {
                                 const allAssigned = depots.every(d => d.assigned);
                                 handleBulkToggleRegion(regionId, !allAssigned);
                               }}
-                              className="text-xs font-medium text-primary-600 hover:text-primary-700"
+                              className="text-xs font-medium text-primary-600 hover:text-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               {depots.every(d => d.assigned) ? 'Hapus semua' : 'Pilih semua'}
                             </button>
@@ -878,8 +928,9 @@ export default function UsersPage() {
                                 <input
                                   type="checkbox"
                                   checked={depot.assigned}
+                                  disabled={regionScopeActive}
                                   onChange={() => handleToggleDepot(depot.kode_depo, !depot.assigned)}
-                                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+                                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
                                 <div>
                                   <p className="font-mono font-medium text-gray-900">{depot.kode_depo}</p>
