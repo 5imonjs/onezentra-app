@@ -809,7 +809,7 @@ export default function UsersPage() {
                 <p className="mt-2 text-xs font-medium leading-relaxed">Mengubah region depo dapat mencabut akses user yang assignment-nya tidak lagi cocok dengan region baru. Periksa kembali user terkait setelah memindahkan depo.</p>
               </div>
               {regionMappingError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{regionMappingError}</p>}
-              <div className="mb-5 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div className="mb-5 grid gap-3 rounded-lg border border-gray-200 bg-surface-card p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                 <label className="text-xs font-medium text-gray-700">Region master
                   <select
                     aria-label="Pilih region untuk ubah nama"
