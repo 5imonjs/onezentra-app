@@ -104,11 +104,12 @@ void main() {
       }
     });
 
-    test('tidak mengubah tanggal expired, memakai nilai dari server', () {
-      // Kalau tanggal dihitung ulang dari objek Date, zona waktu perangkat bisa
-      // menggesernya satu hari — produk lalu dilabeli tanggal yang salah.
+    test('mengubah tanggal expired ke format dd/MM/yyyy pada label', () {
+      // Tanggal expired dari server bisa dalam format ISO 8601
+      // (YYYY-MM-DDTHH:mm:ss.sssZ), jadi harus diformat ulang supaya
+      // operator tidak baca tanggal yang salah.
       var text = buildLabelText(sample, LabelWidth.w58);
-      expect(text, contains('2027-01-31'));
+      expect(text, contains('31/01/2027'));
     });
 
     test('qty bulat tidak jadi "120.00"', () {
