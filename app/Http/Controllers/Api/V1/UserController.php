@@ -13,6 +13,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Support\LikePattern;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -43,7 +44,16 @@ class UserController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        if ($request->filled('region_id')) {
+            $query->where('region_id', $request->region_id);
+        }
         $users = $query->orderBy('created_at', 'desc')->paginate($this->perPage($request));
+        // Region mengelompokkan depot, tetapi tidak memperluas akses data.
+        $users->through(fn (User $user): array => array_merge($user->toArray(), [
+            'depot_codes' => $user->depot_codes,
+            'has_region_permission' => $user->hasRegionPermission(),
+            'uses_global_scope' => ! $user->isDepotScoped(),
+        ]));
         $payload = $users->toArray();
         $payload['meta'] = [
             'total' => (clone $baseQuery)->count(),
@@ -58,6 +68,9 @@ class UserController extends Controller
     public function store(StoreUserRequest $request)
     {
         $validated = $request->validated();
+        $hasDepotAssignments = array_key_exists('depot_codes', $validated);
+        $depotCodes = $validated['depot_codes'] ?? [];
+        unset($validated['depot_codes']);
 
         $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
@@ -70,17 +83,28 @@ class UserController extends Controller
         }
         $validated = $request->user()->depotAttributes($validated);
 
-        $user = User::create($validated);
+        $depotAssignments = $hasDepotAssignments
+            ? $this->activeDepotAssignments($depotCodes, $validated['region_id'] ?? null, $request->user())
+            : null;
 
-        $role = Role::where('slug', $validated['level'])->first();
-        if ($role) {
-            $user->roles()->attach($role);
-            // forceFill, bukan update(): 'role_id' sengaja tidak fillable supaya
-            // tidak bisa datang dari payload. Kolom legacy ini harus tetap terisi
-            // karena masih dibaca kode lama di luar resolusi permission.
-            $user->forceFill(['role_id' => $role->id])->save();
-            User::clearPermissionCache($user->id);
-        }
+        $user = DB::transaction(function () use ($validated, $depotAssignments): User {
+            $user = User::create($validated);
+            $role = Role::where('slug', $validated['level'])->first();
+            if ($role) {
+                $user->roles()->attach($role);
+                // forceFill, bukan update(): 'role_id' sengaja tidak fillable supaya
+                // tidak bisa datang dari payload. Kolom legacy ini harus tetap terisi
+                // karena masih dibaca kode lama di luar resolusi permission.
+                $user->forceFill(['role_id' => $role->id])->save();
+                User::clearPermissionCache($user->id);
+            }
+
+            if ($depotAssignments !== null) {
+                $this->replaceDepotAssignments($user, $depotAssignments);
+            }
+
+            return $user;
+        });
 
         return response()->json([
             'message' => 'User created successfully',
@@ -239,24 +263,12 @@ class UserController extends Controller
     {
         $this->authorizeDepot($user);
 
-        $usesRegionScope = $user->hasRegionScope();
-
-        // Direct query to avoid ambiguous column issue
-        $assignedCodes = \DB::table('user_depots')
-            ->where('user_id', $user->id)
-            ->pluck('kode_depo')
-            ->toArray();
-
         $allDepots = DepotSetting::where('is_active', true)
             ->orderBy('region_id')
             ->orderBy('kode_depo')
             ->get(['kode_depo', 'nama_depo', 'region_id']);
 
-        // User dengan cakupan region otomatis memegang SEMUA depot di region
-        // tersebut, jadi status checkbox diturunkan dari region-nya.
-        $effectiveCodes = $usesRegionScope
-            ? $allDepots->where('region_id', $user->region_id)->pluck('kode_depo')->all()
-            : $assignedCodes;
+        $effectiveCodes = $user->depot_codes;
 
         $data = $allDepots->map(function ($depot) use ($effectiveCodes) {
             return [
@@ -271,8 +283,8 @@ class UserController extends Controller
             'data' => $data,
             'assigned_count' => count($effectiveCodes),
             'region_id' => $user->region_id,
-            'uses_region_scope' => $usesRegionScope,
-            'can_use_region_scope' => $user->isRegionScoped(),
+            'has_region_permission' => $user->hasRegionPermission(),
+            'uses_global_scope' => ! $user->isDepotScoped(),
         ]);
     }
 
@@ -284,41 +296,10 @@ class UserController extends Controller
     {
         $this->authorizeDepot($user);
 
-        if ($user->hasRegionScope()) {
-            return response()->json([
-                'message' => 'Akses depot user ini mengikuti region '.$user->region_id.'. Lepaskan region terlebih dahulu untuk mengatur depot secara manual.',
-            ], 422);
-        }
-
         $validated = $request->validated();
         $depotCodes = $validated['depot_codes'] ?? [];
-
-        // Verify all depots exist and are active
-        $existingDepots = DepotSetting::whereIn('kode_depo', $depotCodes)
-            ->where('is_active', true)
-            ->pluck('kode_depo')
-            ->toArray();
-
-        $invalid = array_diff($depotCodes, $existingDepots);
-        if (! empty($invalid)) {
-            return response()->json([
-                'message' => 'Depot berikut tidak valid atau tidak aktif: '.implode(', ', $invalid),
-            ], 422);
-        }
-
-        // Sync pivot table using direct query (avoid ambiguous column)
-        \DB::table('user_depots')->where('user_id', $user->id)->delete();
-        $syncData = [];
-        foreach ($existingDepots as $kodeDepo) {
-            $syncData[] = [
-                'user_id' => $user->id,
-                'kode_depo' => $kodeDepo,
-                'assigned_at' => now(),
-            ];
-        }
-        if (! empty($syncData)) {
-            \DB::table('user_depots')->insert($syncData);
-        }
+        $existingDepots = $this->activeDepotAssignments($depotCodes, $user->region_id, $request->user());
+        DB::transaction(fn () => $this->replaceDepotAssignments($user, $existingDepots));
 
         // Clear permission cache since depot_codes changed
         User::clearPermissionCache($user->id);
@@ -326,9 +307,76 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Depot assignments updated',
             'data' => [
-                'assigned' => $existingDepots,
-                'count' => count($existingDepots),
+                'assigned' => $existingDepots->pluck('kode_depo')->all(),
+                'count' => $existingDepots->count(),
             ],
         ]);
+    }
+
+    /**
+     * @param  array<int, string>  $depotCodes
+     * @return Collection<int, DepotSetting>
+     */
+    private function activeDepotAssignments(array $depotCodes, ?string $regionId, User $actor): Collection
+    {
+        $depots = DepotSetting::query()
+            ->whereIn('kode_depo', $depotCodes)
+            ->where('is_active', true)
+            ->get(['kode_depo', 'nama_depo', 'region_id']);
+
+        $invalid = array_diff($depotCodes, $depots->pluck('kode_depo')->all());
+        abort_if(
+            $invalid !== [],
+            422,
+            'Depot berikut tidak valid atau tidak aktif: '.implode(', ', $invalid)
+        );
+
+        if ($actor->isDepotScoped()) {
+            $outsideActorScope = array_diff($depotCodes, $actor->depot_codes);
+            abort_if(
+                $outsideActorScope !== [],
+                403,
+                'Anda tidak berwenang menetapkan depot di luar cakupan Anda.'
+            );
+        }
+
+        $outsideUserRegion = $depots->contains(
+            fn (DepotSetting $depot): bool => ! blank($regionId) && $depot->region_id !== $regionId
+        );
+        $selectedRegions = $depots->pluck('region_id')->unique();
+        abort_if(
+            $outsideUserRegion || (blank($regionId) && $selectedRegions->count() > 1),
+            422,
+            'Depot yang dipilih harus berasal dari satu region dan sesuai dengan region user.'
+        );
+
+        return $depots;
+    }
+
+    /**
+     * @param  Collection<int, DepotSetting>  $depots
+     */
+    private function replaceDepotAssignments(User $user, Collection $depots): void
+    {
+        DB::table('user_depots')->where('user_id', $user->id)->delete();
+        $primaryDepot = $depots->first();
+        $user->forceFill([
+            'kode_depo' => $primaryDepot?->kode_depo ?? '',
+            'nama_depo' => $primaryDepot?->nama_depo ?? '',
+        ])->save();
+
+        $syncData = [];
+        foreach ($depots as $depot) {
+            $syncData[] = [
+                'user_id' => $user->id,
+                'kode_depo' => $depot->kode_depo,
+                'assigned_at' => now(),
+            ];
+        }
+        if ($syncData !== []) {
+            DB::table('user_depots')->insert($syncData);
+        }
+
+        User::clearPermissionCache($user->id);
     }
 }

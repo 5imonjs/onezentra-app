@@ -24,6 +24,7 @@ class PermissionController extends Controller
             $query->where('menu_group', $request->menu_group);
         }
         $permissions = $query
+            ->with('parent:id,name,slug')
             ->withCount('roles')
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -46,6 +47,7 @@ class PermissionController extends Controller
             'menu_group' => 'nullable|string|max:100',
             'icon' => 'nullable|string|max:50',
             'route' => 'nullable|string|max:255',
+            'parent_id' => 'nullable|integer|exists:permissions,id',
         ]);
 
         $permission = Permission::create($validated);
@@ -70,12 +72,17 @@ class PermissionController extends Controller
             'icon' => 'nullable|string|max:50',
             'route' => 'nullable|string|max:255',
             'is_active' => 'nullable|boolean',
+            'parent_id' => 'nullable|integer|exists:permissions,id',
         ]);
 
         // Slug permission adalah acuan gate CheckPermission di routes — rename
         // diam-diam memutus/mengalihkan gate. Immutable bagi non-admin_master.
         if (array_key_exists('slug', $validated) && $validated['slug'] !== $permission->slug) {
             abort_unless($request->user()?->level === 'admin_master', 403, 'Hanya admin master yang boleh mengubah slug permission.');
+        }
+
+        if (array_key_exists('parent_id', $validated)) {
+            $this->assertValidParentId($permission, $validated['parent_id']);
         }
 
         $permission->update($validated);
@@ -94,6 +101,27 @@ class PermissionController extends Controller
         $permission->delete();
 
         return response()->json(['message' => 'Permission deleted']);
+    }
+
+    /**
+     * Cegah siklus pada hierarki tampilan: sebuah permission tidak boleh menjadi
+     * induk dirinya sendiri atau dipindah ke bawah salah satu turunannya.
+     */
+    private function assertValidParentId(Permission $permission, ?int $parentId): void
+    {
+        if ($parentId === null) {
+            return;
+        }
+
+        abort_if($parentId === $permission->id, 422, 'Permission tidak boleh menjadi induk dirinya sendiri.');
+
+        $cursor = Permission::find($parentId);
+        $visited = [];
+        while ($cursor !== null && ! in_array($cursor->id, $visited, true)) {
+            $visited[] = $cursor->id;
+            abort_if($cursor->id === $permission->id, 422, 'Permission tidak boleh dipindah ke bawah turunannya sendiri.');
+            $cursor = $cursor->parent_id ? Permission::find($cursor->parent_id) : null;
+        }
     }
 
     /**

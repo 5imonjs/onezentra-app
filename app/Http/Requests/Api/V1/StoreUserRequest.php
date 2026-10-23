@@ -32,6 +32,8 @@ class StoreUserRequest extends FormRequest
             'kode_depo' => 'nullable|string|max:20',
             'nama_depo' => 'nullable|string|max:100',
             'region_id' => 'nullable|string|max:20',
+            'depot_codes' => 'sometimes|array',
+            'depot_codes.*' => 'string|max:20|distinct',
             'full_name' => 'required|string|max:100',
             'alamat' => 'nullable|string|max:2000',
             'email' => 'required|email|max:255|unique:users,email',

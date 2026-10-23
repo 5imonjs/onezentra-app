@@ -14,7 +14,7 @@ class SyncUserDepotsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'depot_codes' => 'required|array|min:1',
+            'depot_codes' => 'present|array',
             'depot_codes.*' => 'string|max:20|distinct',
         ];
     }
@@ -23,7 +23,6 @@ class SyncUserDepotsRequest extends FormRequest
     {
         return [
             'depot_codes.required' => 'Daftar depot wajib diisi.',
-            'depot_codes.min' => 'Minimal satu depot harus dipilih.',
             'depot_codes.*.distinct' => 'Depot tidak boleh duplikat.',
         ];
     }

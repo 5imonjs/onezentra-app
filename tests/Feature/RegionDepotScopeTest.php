@@ -8,6 +8,7 @@ use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -60,7 +61,7 @@ class RegionDepotScopeTest extends TestCase
         );
     }
 
-    public function test_region_user_sees_all_depots_in_region_only(): void
+    public function test_region_user_sees_only_assigned_depots_within_region(): void
     {
         $this->makeDepot('R1-A', 'REG-1');
         $this->makeDepot('R1-B', 'REG-1');
@@ -69,6 +70,11 @@ class RegionDepotScopeTest extends TestCase
         $user = $this->makeUser('admin_planner', 'R1-A', 'Depo A', 'REG-1');
         $this->grant($user, 'depot.view_region');
         $this->grant($user, 'rencana_kirim.view');
+        DB::table('user_depots')->insert([
+            'user_id' => $user->id,
+            'kode_depo' => 'R1-A',
+            'assigned_at' => now(),
+        ]);
 
         RencanaKirim::create(['po_transporter' => 'SJ-R1A', 'kode_depo' => 'R1-A', 'nama_depo' => 'Depo R1-A', 'status' => 'DRAFT', 'created_by' => $user->id]);
         RencanaKirim::create(['po_transporter' => 'SJ-R1B', 'kode_depo' => 'R1-B', 'nama_depo' => 'Depo R1-B', 'status' => 'DRAFT', 'created_by' => $user->id]);
@@ -80,7 +86,7 @@ class RegionDepotScopeTest extends TestCase
 
         $response->assertOk();
         $this->assertEqualsCanonicalizing(
-            ['SJ-R1A', 'SJ-R1B'],
+            ['SJ-R1A'],
             collect($response->json('data'))->pluck('po_transporter')->all()
         );
     }
@@ -125,10 +131,11 @@ class RegionDepotScopeTest extends TestCase
         $this->assertSame(['SJ-R1A'], collect($response->json('data'))->pluck('po_transporter')->all());
     }
 
-    public function test_sync_depots_is_rejected_for_region_scoped_user(): void
+    public function test_region_user_can_be_assigned_only_depots_in_their_region(): void
     {
         $this->makeDepot('R1-A', 'REG-1');
         $this->makeDepot('R1-B', 'REG-1');
+        $this->makeDepot('R2-A', 'REG-2');
 
         $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
         $admin->forceFill(['region_id' => null])->save();
@@ -143,13 +150,87 @@ class RegionDepotScopeTest extends TestCase
 
         $this->putJson("/api/v1/users/{$target->id}/depots", [
             'depot_codes' => ['R1-A'],
-        ])->assertStatus(422);
+        ])->assertOk();
 
-        // Sumber kebenaran tetap region, bukan pivot.
-        $this->assertSame(['R1-A', 'R1-B'], $target->fresh()->depot_codes);
+        $this->assertSame(['R1-A'], $target->fresh()->depot_codes);
+
+        $this->putJson("/api/v1/users/{$target->id}/depots", [
+            'depot_codes' => ['R2-A'],
+        ])->assertStatus(422);
     }
 
-    public function test_get_depots_reports_region_scope(): void
+    public function test_scoped_actor_cannot_assign_another_depot_in_the_same_region(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $this->makeDepot('R1-B', 'REG-1');
+
+        $actor = $this->makeUser('admin_planner', 'R1-A', 'Depo A', 'REG-1');
+        $this->grant($actor, 'users.view');
+        $this->grant($actor, 'users.edit');
+        $this->grant($actor, 'users.create');
+
+        $target = $this->makeUser('staff_logistic', 'R1-A', 'Depo A', 'REG-1');
+        Sanctum::actingAs($actor);
+
+        $this->putJson("/api/v1/users/{$target->id}/depots", [
+            'depot_codes' => ['R1-B'],
+        ])->assertForbidden();
+
+        $this->assertSame(['R1-A'], $target->fresh()->depot_codes);
+
+        Role::firstOrCreate(['slug' => 'staff_logistic'], ['name' => 'Staff Logistik']);
+        $this->postJson('/api/v1/users', [
+            'full_name' => 'User Depot B',
+            'email' => 'depot-b-user@example.test',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'level' => 'staff_logistic',
+            'region_id' => 'REG-1',
+            'depot_codes' => ['R1-B'],
+        ])->assertForbidden();
+
+        $this->assertDatabaseMissing('users', ['email' => 'depot-b-user@example.test']);
+    }
+
+    public function test_store_user_persists_selected_depots_atomically_and_rejects_other_regions(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $this->makeDepot('R1-B', 'REG-1');
+        $this->makeDepot('R2-A', 'REG-2');
+
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+        $this->grant($admin, 'users.create');
+        Role::firstOrCreate(['slug' => 'staff_logistic'], ['name' => 'Staff Logistik']);
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/v1/users', [
+            'full_name' => 'User Region 1',
+            'email' => 'region-user@example.test',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'level' => 'staff_logistic',
+            'region_id' => 'REG-1',
+            'depot_codes' => ['R1-A', 'R1-B'],
+        ])->assertCreated();
+
+        $user = User::where('email', 'region-user@example.test')->firstOrFail();
+        $this->assertEqualsCanonicalizing(['R1-A', 'R1-B'], $user->depot_codes);
+
+        $this->postJson('/api/v1/users', [
+            'full_name' => 'User Mismatch',
+            'email' => 'mismatch-user@example.test',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'level' => 'staff_logistic',
+            'region_id' => 'REG-1',
+            'depot_codes' => ['R2-A'],
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('users', ['email' => 'mismatch-user@example.test']);
+    }
+
+    public function test_get_depots_reports_region_permission_and_explicit_assignments(): void
     {
         $this->makeDepot('R1-A', 'REG-1');
         $this->makeDepot('R1-B', 'REG-1');
@@ -167,11 +248,31 @@ class RegionDepotScopeTest extends TestCase
         $response = $this->getJson("/api/v1/users/{$target->id}/depots");
 
         $response->assertOk()
-            ->assertJsonPath('uses_region_scope', true)
+            ->assertJsonPath('has_region_permission', true)
             ->assertJsonPath('region_id', 'REG-1');
 
         $assigned = collect($response->json('data'))->where('assigned', true)->pluck('kode_depo')->all();
-        $this->assertEqualsCanonicalizing(['R1-A', 'R1-B'], $assigned);
+        $this->assertSame(['R1-A'], $assigned);
+    }
+
+    public function test_user_can_clear_all_depot_assignments_without_legacy_fallback(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+        $this->grant($admin, 'users.view');
+        $this->grant($admin, 'users.edit');
+
+        $target = $this->makeUser('admin_planner', 'R1-A', 'Depo A', 'REG-1');
+        Sanctum::actingAs($admin);
+
+        $this->putJson("/api/v1/users/{$target->id}/depots", [
+            'depot_codes' => [],
+        ])->assertOk();
+
+        $this->assertSame([], $target->fresh()->depot_codes);
+        $this->assertSame('', $target->fresh()->kode_depo);
     }
 
     public function test_non_admin_master_cannot_change_region_id(): void

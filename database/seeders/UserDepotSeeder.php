@@ -11,7 +11,7 @@ class UserDepotSeeder extends Seeder
 {
     /**
      * Assign depots to users via user_depots pivot table.
-     * Region managers get all depots in their region.
+     * Region managers must receive explicit depot assignments.
      * Depot users get only their specific depot.
      */
     public function run(): void
@@ -19,7 +19,8 @@ class UserDepotSeeder extends Seeder
         // Clear existing assignments
         \DB::table('user_depots')->truncate();
 
-        // Region Managers (admin_planner / bh level) - manage all depots in their region
+        // Region users are created without depot access. Admins assign the
+        // exact depots through Users after reviewing the active depot list.
         $regionManagers = [
             [
                 'email' => 'region001@onezentra.com',
@@ -53,29 +54,14 @@ class UserDepotSeeder extends Seeder
                 }
             }
 
-            // Region-scoped access: user otomatis memegang semua depot di region.
             $user->forceFill([
                 'region_id' => $mgr['region_id'],
                 'level' => $mgr['level'],
             ])->save();
 
-            // Pivot dipertahankan sebagai jejak eksplisit (bukan sumber utama
-            // scoping saat region_id terisi).
             \DB::table('user_depots')->where('user_id', $user->id)->delete();
-            $depotCodes = DepotSetting::where('region_id', $mgr['region_id'])
-                ->where('is_active', true)
-                ->pluck('kode_depo')
-                ->toArray();
-
-            foreach ($depotCodes as $kodeDepo) {
-                \DB::table('user_depots')->insert([
-                    'user_id' => $user->id,
-                    'kode_depo' => $kodeDepo,
-                    'assigned_at' => now(),
-                ]);
-            }
-
-            $this->command->info("Assigned {$user->email} to depots: ".implode(', ', $depotCodes));
+            $user->forceFill(['kode_depo' => '', 'nama_depo' => ''])->save();
+            $this->command->info("Created {$user->email} for {$mgr['region_id']} with no depot access; assign depots in Users.");
         }
 
         // Depot-level users (cheker, staff_logistic) - single depot each

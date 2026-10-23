@@ -596,8 +596,8 @@ export interface UserDepotsResponse {
   data: UserDepot[];
   assigned_count: number;
   region_id: string | null;
-  uses_region_scope: boolean;
-  can_use_region_scope: boolean;
+  has_region_permission: boolean;
+  uses_global_scope: boolean;
 }
 
 export const users = {

@@ -23,6 +23,8 @@ interface Role {
 
 interface Permission {
   id: number;
+  parent_id?: number | null;
+  parent?: { id: number; name: string; slug: string } | null;
   name: string;
   slug: string;
   description: string;
@@ -30,16 +32,20 @@ interface Permission {
   icon: string;
   route: string;
   is_active: boolean;
+  sort_order?: number;
   roles_count?: number;
 }
 
 interface PermissionItem {
   id: number;
+  parent_id?: number | null;
   name: string;
   slug: string;
+  description?: string | null;
   menu_group: string;
   icon: string;
   assigned: boolean;
+  sort_order?: number;
 }
 
 interface GroupedPermissionItems {
@@ -48,6 +54,29 @@ interface GroupedPermissionItems {
 
 interface GroupedPermissions {
   [key: string]: Permission[];
+}
+
+/**
+ * Urutkan permission dalam satu grup: induk lebih dulu, lalu cabang-cabangnya.
+ * Relasi diambil dari `parent_id` yang dikirim backend, bukan daftar slug yang
+ * dikeraskan di UI — permission baru otomatis ikut aturan yang sama.
+ */
+function orderPermissionItems(perms: PermissionItem[]): PermissionItem[] {
+  const byId = new Map(perms.map((perm) => [perm.id, perm]));
+  const childrenByParent = new Map<number, PermissionItem[]>();
+  const roots: PermissionItem[] = [];
+
+  perms.forEach((perm) => {
+    if (perm.parent_id && byId.has(perm.parent_id)) {
+      const siblings = childrenByParent.get(perm.parent_id) ?? [];
+      siblings.push(perm);
+      childrenByParent.set(perm.parent_id, siblings);
+    } else {
+      roots.push(perm);
+    }
+  });
+
+  return roots.flatMap((root) => [root, ...(childrenByParent.get(root.id) ?? [])]);
 }
 
 // ==================== MAIN COMPONENT ====================
@@ -348,6 +377,9 @@ function RolesTab() {
         if (!grouped[p.menu_group]) grouped[p.menu_group] = [];
         grouped[p.menu_group].push(p);
       });
+      Object.keys(grouped).forEach((groupName) => {
+        grouped[groupName] = orderPermissionItems(grouped[groupName]);
+      });
       setAllPermissions(grouped);
       setAssignedIds(res.data.assignedIds || []);
     } catch (e) {
@@ -438,6 +470,10 @@ function RolesTab() {
 
   const totalPerms = Object.values(allPermissions).flat().length;
   const totalAssigned = assignedIds.length;
+
+  const permissionNamesById = new Map(
+    Object.values(allPermissions).flat().map((perm) => [perm.id, perm.name])
+  );
 
   // Filter grup/item sesuai pencarian; saat mencari, semua grup hasil tampil terbuka.
   const permSearchLower = permSearch.trim().toLowerCase();
@@ -816,26 +852,56 @@ function RolesTab() {
 
                 {/* Permission Items */}
                 {!collapsed && (
+                <>
+                {perms.some((perm) => perm.slug === 'depot.view_all') && (
+                  <div className="mx-4 mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
+                    <p><strong>Akses Semua Depo</strong> membuka seluruh depot lintas region. <strong>Konteks Depo Region</strong> menandai peran regional, tetapi tidak memperluas data yang terlihat: user tetap hanya melihat depo yang dipilih di <strong>Users → Depot Akses</strong>. Bila akses global aktif, pembatasan depo tidak berlaku.</p>
+                  </div>
+                )}
                 <div className="divide-y divide-gray-50">
-                  {perms.map((perm) => (
-                    <div key={perm.id} className="flex items-center justify-between px-4 py-3 hover:bg-overlay-50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${assignedIds.includes(perm.id) ? 'bg-primary-500' : 'bg-gray-200'}`}></div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">{perm.name}</span>
-                          <span className="text-xs text-gray-400 ml-2 font-mono">{perm.slug}</span>
+                  {perms.map((perm) => {
+                    const parentName = perm.parent_id ? permissionNamesById.get(perm.parent_id) : null;
+                    const isBranch = Boolean(parentName);
+                    return (
+                      <div
+                        key={perm.id}
+                        className={`flex items-center justify-between px-4 py-3 hover:bg-overlay-50 transition-colors ${isBranch ? 'bg-surface-raised/40' : ''}`}
+                      >
+                        <div className={`flex items-center gap-3 ${isBranch ? 'pl-6' : ''}`}>
+                          {isBranch ? (
+                            <svg className="h-3.5 w-3.5 shrink-0 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5v6a3 3 0 003 3h12m0 0l-3-3m3 3l-3 3" />
+                            </svg>
+                          ) : (
+                            <div className={`w-2 h-2 rounded-full ${assignedIds.includes(perm.id) ? 'bg-primary-500' : 'bg-gray-200'}`}></div>
+                          )}
+                          <div>
+                            <div className="flex flex-wrap items-center gap-x-2">
+                              <span className="text-sm font-medium text-gray-700">{perm.name}</span>
+                              <span className="text-xs text-gray-400 font-mono">{perm.slug}</span>
+                              {isBranch && (
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                  Cabang dari {parentName}
+                                </span>
+                              )}
+                            </div>
+                            {perm.description && (
+                              <p className="mt-0.5 text-xs text-gray-400">{perm.description}</p>
+                            )}
+                          </div>
                         </div>
+                        {hasPermission('roles.edit') && (
+                          <ToggleSwitch
+                            checked={assignedIds.includes(perm.id)}
+                            onChange={() => togglePermission(perm.id)}
+                            size="sm"
+                          />
+                        )}
                       </div>
-                      {hasPermission('roles.edit') && (
-                        <ToggleSwitch
-                          checked={assignedIds.includes(perm.id)}
-                          onChange={() => togglePermission(perm.id)}
-                          size="sm"
-                        />
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                </>
                 )}
               </div>
               );
@@ -938,7 +1004,7 @@ function PermissionsTab() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPerm, setEditingPerm] = useState<Permission | null>(null);
-  const [form, setForm] = useState({ name: '', slug: '', description: '', menu_group: '', icon: '', route: '' });
+  const [form, setForm] = useState({ name: '', slug: '', description: '', menu_group: '', icon: '', route: '', parent_id: '' as string | number });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -970,13 +1036,14 @@ function PermissionsTab() {
   const confirmSubmit = async () => {
     setSubmitLoading(true);
     try {
+      const payload = { ...form, parent_id: form.parent_id === '' ? null : Number(form.parent_id) };
       if (editingPerm) {
-        await permissions.update(editingPerm.id, form);
+        await permissions.update(editingPerm.id, payload);
       } else {
-        await permissions.create(form);
+        await permissions.create(payload);
       }
       setShowModal(false);
-      setForm({ name: '', slug: '', description: '', menu_group: '', icon: '', route: '' });
+      setForm({ name: '', slug: '', description: '', menu_group: '', icon: '', route: '', parent_id: '' });
       setEditingPerm(null);
       loadPermissions();
     } catch (e) {
@@ -1111,7 +1178,7 @@ function PermissionsTab() {
         </div>
         {hasPermission('roles.create') && (
         <button
-          onClick={() => { setEditingPerm(null); setForm({ name: '', slug: '', description: '', menu_group: '', icon: '', route: '' }); setShowModal(true); }}
+          onClick={() => { setEditingPerm(null); setForm({ name: '', slug: '', description: '', menu_group: '', icon: '', route: '', parent_id: '' }); setShowModal(true); }}
           className="btn-primary"
         >
           <span className="flex items-center gap-2">
@@ -1180,7 +1247,12 @@ function PermissionsTab() {
                   {(perms as Permission[]).map((perm) => (
                     <div key={perm.id} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-overlay-50 transition-colors items-center">
                       <div className="col-span-4">
-                        <div className="font-medium text-gray-900">{perm.name}</div>
+                        <div className={`font-medium text-gray-900 ${perm.parent_id ? 'pl-4 border-l-2 border-slate-200' : ''}`}>
+                          {perm.name}
+                        </div>
+                        {perm.parent && (
+                          <div className="text-xs text-slate-500 mt-0.5 pl-4">↳ cabang dari {perm.parent.name}</div>
+                        )}
                         {perm.description && (
                           <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{perm.description}</div>
                         )}
@@ -1214,7 +1286,19 @@ function PermissionsTab() {
                       <div className="col-span-2 flex items-center justify-end gap-2">
                         {hasPermission('roles.edit') && (
                         <button
-                          onClick={() => { setEditingPerm(perm); setForm(perm); setShowModal(true); }}
+                          onClick={() => {
+                            setEditingPerm(perm);
+                            setForm({
+                              name: perm.name,
+                              slug: perm.slug,
+                              description: perm.description || '',
+                              menu_group: perm.menu_group || '',
+                              icon: perm.icon || '',
+                              route: perm.route || '',
+                              parent_id: perm.parent_id ?? '',
+                            });
+                            setShowModal(true);
+                          }}
                           aria-label="Edit permission"
                           className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-primary-500 hover:bg-chip-primary rounded-lg transition-colors"
                         >
@@ -1303,6 +1387,34 @@ function PermissionsTab() {
               className="input-field"
               placeholder="Contoh: NPN Products"
             />
+          </div>
+          <div>
+            <label htmlFor="perm-parent" className="block text-sm font-semibold text-gray-700 mb-2">Induk Permission (opsional)</label>
+            <select
+              id="perm-parent"
+              value={String(form.parent_id ?? '')}
+              onChange={(e) => {
+                const value = e.target.value;
+                const parent = value ? permList.find((p) => p.id === Number(value)) : null;
+                setForm((prev) => ({
+                  ...prev,
+                  parent_id: value,
+                  menu_group: parent?.menu_group || prev.menu_group,
+                }));
+              }}
+              className="select-field"
+            >
+              <option value="">— Tanpa induk (top-level) —</option>
+              {permList
+                .filter((p) => p.id !== editingPerm?.id)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
+                ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Permission turunan tampil sebagai cabang di bawah induknya pada tab Roles → Kelola Akses.
+              Menu Group otomatis mengikuti induk agar cabang tetap satu grup.
+            </p>
           </div>
           <div>
             <label htmlFor="perm-route" className="block text-sm font-semibold text-gray-700 mb-2">Route</label>

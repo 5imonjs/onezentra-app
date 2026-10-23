@@ -117,10 +117,13 @@ class RoleController extends Controller
             'permissions' => $allPermissions->map(function ($p) use ($assignedIds) {
                 return [
                     'id' => $p->id,
+                    'parent_id' => $p->parent_id,
                     'name' => $p->name,
                     'slug' => $p->slug,
+                    'description' => $p->description,
                     'menu_group' => $p->menu_group,
                     'icon' => $p->icon,
+                    'sort_order' => $p->sort_order,
                     'assigned' => in_array($p->id, $assignedIds),
                 ];
             }),

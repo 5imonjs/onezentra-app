@@ -44,25 +44,16 @@ class User extends Authenticatable
      */
     public function isDepotScoped(): bool
     {
-        // Setiap user tanpa `depot.view_all` tetap dibatasi (scoped), baik ke
-        // depot yang di-assign maupun ke seluruh depot di region-nya. Hanya
-        // `depot.view_all` yang membuka akses global.
+        // Setiap user tanpa `depot.view_all` tetap dibatasi ke daftar
+        // depot yang ditetapkan. Hanya `depot.view_all` yang membuka akses global.
         return ! $this->hasPermission('depot.view_all');
     }
 
     /**
-     * Apakah user mengikuti cakupan region (semua depot di region-nya).
-     * Hanya berlaku bila permission `depot.view_region` dipegang DAN region_id terisi.
+     * Apakah role user memiliki permission khusus untuk konteks region.
+     * Hak akses data tetap dibatasi ke depot yang ditetapkan pada user.
      */
-    public function hasRegionScope(): bool
-    {
-        return $this->hasPermission('depot.view_region') && ! blank($this->region_id);
-    }
-
-    /**
-     * Apakah user dibatasi hanya pada region-nya (region-scoped).
-     */
-    public function isRegionScoped(): bool
+    public function hasRegionPermission(): bool
     {
         return $this->hasPermission('depot.view_region');
     }
@@ -104,8 +95,8 @@ class User extends Authenticatable
     /**
      * Kode depot yang dapat diakses user (untuk scoping query).
      * - Global (depot.view_all): return [] (no filter)
-     * - Region-scoped (depot.view_region): return all depots in user's region
-     * - Depot-scoped: return assigned depots from user_depots pivot
+     * - Depot-scoped: return only assigned depots from user_depots pivot
+     *   that belong to the user's region, when one is set.
      */
     public function getDepotCodesAttribute(): array
     {
@@ -114,26 +105,32 @@ class User extends Authenticatable
             return [];
         }
 
-        // User region-scoped (depot.view_region + region_id): semua depot aktif
-        // di region tersebut.
-        if ($this->hasRegionScope()) {
-            return \DB::table('depot_settings')
+        $assignedCodes = \DB::table('user_depots')
+            ->where('user_id', $this->id)
+            ->pluck('kode_depo');
+        $hasAssignments = $assignedCodes->isNotEmpty();
+
+        if (! blank($this->region_id)) {
+            $codesInRegion = \DB::table('depot_settings')
                 ->where('region_id', $this->region_id)
-                ->where('is_active', true)
-                ->pluck('kode_depo')
-                ->toArray();
+                ->pluck('kode_depo');
+            $assignedCodes = $assignedCodes->intersect($codesInRegion);
         }
 
-        // Depot-scoped: Direct query to avoid ambiguous column issue with BelongsToMany
-        $codes = \DB::table('user_depots')
-            ->where('user_id', $this->id)
-            ->pluck('kode_depo')
-            ->toArray();
+        $codes = $assignedCodes->all();
 
         // Fallback ke kolom legacy untuk backward compatibility
         // (user lama yang belum dimigrasi ke user_depots)
-        if (empty($codes) && ! blank($this->kode_depo)) {
-            $codes = [$this->kode_depo];
+        if (empty($codes) && ! $hasAssignments && ! blank($this->kode_depo)) {
+            $legacyDepot = blank($this->region_id)
+                || DepotSetting::query()
+                    ->where('kode_depo', $this->kode_depo)
+                    ->where('region_id', $this->region_id)
+                    ->exists();
+
+            if ($legacyDepot) {
+                $codes = [$this->kode_depo];
+            }
         }
 
         return array_values(array_unique($codes));
