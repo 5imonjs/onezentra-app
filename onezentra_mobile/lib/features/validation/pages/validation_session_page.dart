@@ -69,7 +69,6 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var user = context.watch<AuthProvider>().user;
     var canValidate = user?.hasPermission('sj_validation.validate') ?? false;
     var canComplete = user?.hasPermission('sj_validation.complete') ?? false;
-    var canCancel = user?.hasPermission('sj_validation.cancel') ?? false;
     var canPrintLabels =
         canValidate || (user?.hasPermission('penerimaan.view') ?? false);
     var canCreateStandarisasi =
@@ -129,33 +128,6 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   provider,
                   canComplete: canComplete,
                 ),
-                if (canCancel) ...[
-                  const SizedBox(height: AppTheme.space2),
-                  Align(
-                    child: OutlinedButton.icon(
-                      onPressed: provider.actionBusy
-                          ? null
-                          : () => _confirmCancel(provider),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.dangerText,
-                        side: const BorderSide(color: AppTheme.dangerText),
-                        minimumSize: const Size(0, 44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.space4,
-                        ),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: AppTheme.radiusLg,
-                        ),
-                        textStyle: GoogleFonts.roboto(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      icon: const Icon(Icons.cancel_rounded, size: 18),
-                      label: const Text('Batalkan sesi'),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: AppTheme.space2),
               ] else if (session.isCompleted &&
                   !session.canCorrectCompleted) ...[
@@ -1036,50 +1008,6 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           // Route /bongkar tidak terdaftar (misal dalam tes), abaikan.
         }
       }
-    }
-  }
-
-  Future<void> _confirmCancel(ValidationProvider provider) async {
-    var session = provider.active;
-    if (session == null) {
-      return;
-    }
-    var po = session.document?.poTransporter ?? session.scanCode ?? 'PO ini';
-    var confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceCard,
-        title: Text(
-          'Batalkan sesi validasi?',
-          style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Sesi $po akan dibatalkan. Label yang sudah tercetak tidak berlaku '
-          'lagi dan tindakan ini tidak dapat diurungkan.',
-          style: GoogleFonts.roboto(
-            fontSize: 13,
-            height: 1.4,
-            color: AppTheme.gray600,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Kembali'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.danger,
-              foregroundColor: AppTheme.ink900,
-            ),
-            child: const Text('Ya, Batalkan'),
-          ),
-        ],
-      ),
-    );
-    if ((confirmed ?? false) && mounted) {
-      await provider.cancelActive();
     }
   }
 

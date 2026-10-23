@@ -1069,38 +1069,6 @@ void main() {
     expect(find.text('Simpan Validasi'), findsOneWidget);
   });
 
-  testWidgets('tombol Batalkan sesi meminta konfirmasi lalu memanggil API', (
-    tester,
-  ) async {
-    var repository = _FakeValidationRepository(
-      sessionToOpen: missingExpirySession(),
-    );
-    var auth = await _loginAuth(
-      permissions: [..._fullValidationPermissions, 'sj_validation.cancel'],
-    );
-    var provider = ValidationProvider(repository: repository);
-
-    await _pumpValidationPage(tester, auth, repository, provider: provider);
-
-    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
-    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
-    await tester.pumpAndSettle();
-    // Mulai dialihkan ke halaman pemrosesan sesi tersisa.
-    await _pumpSessionPage(tester, auth, provider, provider.active!);
-
-    var cancel = find.text('Batalkan sesi');
-    await tester.ensureVisible(cancel);
-    await tester.tap(cancel);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Batalkan sesi validasi?'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Ya, Batalkan'));
-    await tester.pumpAndSettle();
-
-    expect(repository.cancelCalls, 1);
-    // Setelah batal, provider.active null dan sesi tidak lagi ditampilkan.
-  });
-
   testWidgets('tanpa sj_validation.create scan field dan Mulai nonaktif', (
     tester,
   ) async {
