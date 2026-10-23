@@ -17,6 +17,8 @@ const {
   regionUpdate,
   depotCreate,
   depotUpsert,
+  partnerSiteList,
+  partnerSiteCreate,
   notifyGlobal,
 } = vi.hoisted(() => ({
   hasPermission: vi.fn((_permission: string): boolean => true),
@@ -33,6 +35,8 @@ const {
   regionUpdate: vi.fn(),
   depotCreate: vi.fn(),
   depotUpsert: vi.fn(),
+  partnerSiteList: vi.fn(),
+  partnerSiteCreate: vi.fn(),
   notifyGlobal: vi.fn(),
 }));
 
@@ -41,7 +45,10 @@ vi.mock('@/app/dashboard/layout', () => ({
 }));
 
 vi.mock('@/store/auth', () => ({
-  useAuthStore: () => ({ hasPermission, user: { level: 'admin_master' } }),
+  useAuthStore: () => ({
+    hasPermission,
+    user: { id: 7, level: 'admin_master', scope_level: 'master', region_id: null, kode_depo: 'ADMIN', nama_depo: 'Master' },
+  }),
 }));
 
 vi.mock('@/store/globalToast', () => ({ notifyGlobal }));
@@ -50,6 +57,7 @@ vi.mock('@/lib/api', () => ({
   users: { list, roleOptions, create, update, delete: remove, getDepots, syncDepots },
   depotSettings: { list: depotList, create: depotCreate, upsert: depotUpsert },
   regions: { list: regionList, create: regionCreate, update: regionUpdate },
+  partnerSites: { list: partnerSiteList, create: partnerSiteCreate },
   getErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
@@ -103,6 +111,8 @@ const user = {
   kode_depo: 'D-01',
   nama_depo: 'Depo Satu',
   depot_codes: ['D-01'],
+  scope_level: 'depot' as const,
+  kode_ps: null,
   region_id: 'REG-1',
   full_name: 'User Satu',
   alamat: '',
@@ -148,6 +158,8 @@ describe('UsersPage region and depot assignments', () => {
     regionUpdate.mockImplementation(async (code: string, data: { name: string }) => ({ data: { data: { code, ...data } } }));
     depotCreate.mockImplementation(async (data: { kode_depo: string; nama_depo: string; region_id: string }) => ({ data: { data: { ...data, is_active: true } } }));
     depotUpsert.mockResolvedValue({ data: {} });
+    partnerSiteList.mockResolvedValue({ data: { data: [] } });
+    partnerSiteCreate.mockImplementation(async (data: { kode_ps: string; nama_ps: string; kode_depo: string }) => ({ data: { data } }));
     create.mockResolvedValue({ data: { data: { id: 41 } } });
     update.mockResolvedValue({ data: { data: user } });
     remove.mockResolvedValue({ data: {} });
@@ -199,13 +211,46 @@ describe('UsersPage region and depot assignments', () => {
     expect(depotList).not.toHaveBeenCalled();
   });
 
-  it('explains region, multi-depot, and active-role columns in the import dialog', async () => {
+  it('shows a load error instead of making a failed user list look empty', async () => {
+    list.mockRejectedValue(new Error('network failure'));
+    render(<UsersPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Gagal memuat data pengguna.');
+  });
+
+  it('wraps password inputs in forms and submits the current password for self-service changes', async () => {
+    list.mockResolvedValue(listResponse([{ ...user, id: 7 }]));
+    render(<UsersPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tambah' }));
+    const createPassword = await screen.findByLabelText('Password *');
+    expect(createPassword.closest('form')).toHaveAttribute('id', 'create-user-form');
+    fireEvent.click(screen.getByRole('button', { name: 'Batal' }));
+
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Edit' }))[0]);
+    const newPassword = await screen.findByLabelText('Password (kosongkan jika tidak diubah)');
+    expect(newPassword.closest('form')).toHaveAttribute('id', 'edit-user-form');
+    fireEvent.change(newPassword, { target: { value: 'password-baru-123' } });
+    fireEvent.change(screen.getByLabelText('Konfirmasi Password'), { target: { value: 'password-baru-123' } });
+    fireEvent.change(await screen.findByLabelText('Password saat ini'), { target: { value: 'password-lama-123' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Simpan' }));
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith(7, expect.objectContaining({
+      password: 'password-baru-123',
+      password_confirmation: 'password-baru-123',
+      current_password: 'password-lama-123',
+    })));
+  });
+
+  it('explains hierarchy scope, a single depot, and active roles in the import dialog', async () => {
     render(<UsersPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Import' }));
 
-    expect(await screen.findByText(/region_id, depot_codes, level, status/)).toBeInTheDocument();
-    expect(screen.getByText(/dipisahkan koma atau titik koma/)).toBeInTheDocument();
+    expect(await screen.findByText(/scope_level, region_id, kode_depo, kode_ps, level, status/)).toBeInTheDocument();
+    expect(screen.getByText(/tepat satu depo/)).toBeInTheDocument();
     expect(screen.getByText(/slug role aktif/)).toBeInTheDocument();
   });
 
@@ -262,7 +307,7 @@ describe('UsersPage region and depot assignments', () => {
       nama_depo: 'Depo Baru',
       region_id: 'REG-1',
     }));
-    expect(await screen.findByRole('checkbox', { name: /R1-NEW/ })).toBeChecked();
+    expect(await screen.findByRole('radio', { name: /R1-NEW/ })).toBeChecked();
   });
 
   it('creates a region, creates its depot, and submits the user with that depot assigned', async () => {
@@ -279,7 +324,7 @@ describe('UsersPage region and depot assignments', () => {
     fireEvent.change(screen.getByLabelText('Kode depo baru'), { target: { value: 'NEW-DEPOT' } });
     fireEvent.change(screen.getByLabelText('Nama depo baru'), { target: { value: 'Depo Baru' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan depo dan tetapkan ke user' }));
-    expect(await screen.findByRole('checkbox', { name: /NEW-DEPOT/ })).toBeChecked();
+    expect(await screen.findByRole('radio', { name: /NEW-DEPOT/ })).toBeChecked();
 
     fireEvent.change(screen.getByLabelText('Full Name *'), { target: { value: 'User Baru' } });
     fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'user.baru@example.com' } });
@@ -290,11 +335,58 @@ describe('UsersPage region and depot assignments', () => {
 
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
       region_id: 'REG-NEW',
+      scope_level: 'depot',
       level: 'staff_logistic',
       kode_depo: 'NEW-DEPOT',
       nama_depo: 'Depo Baru',
       depot_codes: ['NEW-DEPOT'],
     })));
+  });
+
+  it('requires a PS under the selected depot for a Partner Site-scoped account', async () => {
+    partnerSiteList.mockResolvedValue({
+      data: { data: [{ kode_ps: 'PS-01', nama_ps: 'Partner Satu', kode_depo: 'D-01', is_active: true }] },
+    });
+    render(<UsersPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tambah' }));
+    fireEvent.change(await screen.findByLabelText('Scope hierarki *'), { target: { value: 'ps' } });
+    fireEvent.change(screen.getByLabelText('Region User'), { target: { value: 'REG-1' } });
+    fireEvent.click(await screen.findByRole('radio', { name: /D-01/ }));
+    fireEvent.change(await screen.findByLabelText('Partner Site *'), { target: { value: 'PS-01' } });
+    fireEvent.change(screen.getByLabelText('Full Name *'), { target: { value: 'User PS' } });
+    fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'user.ps@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password *'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText('Konfirmasi Password *'), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Simpan' }));
+
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      scope_level: 'ps',
+      region_id: 'REG-1',
+      kode_depo: 'D-01',
+      kode_ps: 'PS-01',
+      depot_codes: ['D-01'],
+    })));
+  });
+
+  it('creates a Partner Site linked to the selected depot', async () => {
+    render(<UsersPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Tambah' }));
+    fireEvent.change(await screen.findByLabelText('Scope hierarki *'), { target: { value: 'ps' } });
+    fireEvent.change(await screen.findByLabelText('Region User'), { target: { value: 'REG-1' } });
+    fireEvent.click(await screen.findByRole('radio', { name: /D-01/ }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Buat Partner Site' }));
+    fireEvent.change(screen.getByLabelText('Kode PS baru'), { target: { value: 'PS-NEW' } });
+    fireEvent.change(screen.getByLabelText('Nama PS baru'), { target: { value: 'Partner Baru' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan Partner Site' }));
+
+    await waitFor(() => expect(partnerSiteCreate).toHaveBeenCalledWith({
+      kode_ps: 'PS-NEW',
+      nama_ps: 'Partner Baru',
+      kode_depo: 'D-01',
+    }));
+    expect(await screen.findByLabelText('Partner Site *')).toHaveValue('PS-NEW');
   });
 
   it('creates a user with only selected depots from the chosen region', async () => {
@@ -303,38 +395,39 @@ describe('UsersPage region and depot assignments', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tambah' }));
     await screen.findAllByRole('option', { name: /REG-1 · Region Satu/ });
     expect(screen.getByText('1. Akun User')).toBeInTheDocument();
-    expect(screen.getByText('2. Cakupan Data')).toBeInTheDocument();
+    expect(screen.getByText('2. Scope & Hierarki')).toBeInTheDocument();
     expect(screen.getByText('3. Hak Tindakan User')).toBeInTheDocument();
     expect(screen.getByText('Role menentukan menu dan tindakan yang boleh dilakukan. Role tidak memilih depo user.')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Region User'), { target: { value: 'REG-1' } });
 
-    expect(await screen.findByRole('checkbox', { name: /D-01/ })).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /D-02/ })).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: /D-03/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('radio', { name: /D-01/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /D-02/ })).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /D-03/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /D-01/ }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /D-02/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /D-02/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
     fireEvent.click(screen.getByRole('alertdialog').querySelector('button')!);
 
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
       region_id: 'REG-1',
-      kode_depo: 'D-01',
-      nama_depo: 'Depo Satu',
-      depot_codes: ['D-01', 'D-02'],
+      kode_depo: 'D-02',
+      nama_depo: 'Depo Dua',
+      depot_codes: ['D-02'],
     })));
     expect(syncDepots).not.toHaveBeenCalled();
   });
 
-  it('offers active custom roles and warns when a role has global depot access', async () => {
+  it('separates hierarchy scope from a role with cross-depot operational access', async () => {
     render(<UsersPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Tambah' }));
     fireEvent.change(await screen.findByLabelText('Role / Peran *'), { target: { value: 'auditor_global' } });
 
     expect(screen.getAllByRole('option', { name: 'Supervisor Regional' })).toHaveLength(2);
-    expect(screen.getByRole('alert')).toHaveTextContent('Role ini memberi akses global ke semua depo');
-    expect(screen.getByLabelText('Ringkasan akses user baru')).toHaveTextContent('Semua depo (global)');
+    expect(screen.getByRole('alert')).toHaveTextContent('Role ini memberi akses data operasional lintas depo');
+    expect(screen.getByRole('alert')).toHaveTextContent('tidak memperluas hak kelola entitas');
+    expect(screen.getByLabelText('Ringkasan akses user baru')).toHaveTextContent('Scope hierarki: Depo');
+    expect(screen.getByLabelText('Ringkasan akses user baru')).toHaveTextContent('Role operasional: Auditor Global · Akses data: Lintas depo');
   });
 
   it('saves edited depot assignments only from the selected region', async () => {
@@ -350,14 +443,14 @@ describe('UsersPage region and depot assignments', () => {
 
     fireEvent.click((await screen.findAllByRole('button', { name: 'Edit' }))[0]);
     fireEvent.click(await screen.findByRole('tab', { name: '2. Cakupan Depo' }));
-    expect(await screen.findByRole('checkbox', { name: /D-01/ })).toBeChecked();
-    expect(screen.queryByRole('checkbox', { name: /D-03/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('radio', { name: /D-01/ })).toBeChecked();
+    expect(screen.queryByRole('radio', { name: /D-03/ })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: '1. Profil & Role' }));
-    fireEvent.change(screen.getByLabelText('Region User'), { target: { value: 'REG-2' } });
+    fireEvent.change(screen.getByLabelText('Region akun'), { target: { value: 'REG-2' } });
     expect(screen.getByRole('status')).toHaveTextContent('Region berubah. Assignment depo lama sudah dikosongkan');
     fireEvent.click(screen.getByRole('tab', { name: '2. Cakupan Depo' }));
-    fireEvent.click(await screen.findByRole('checkbox', { name: /D-03/ }));
+    fireEvent.click(await screen.findByRole('radio', { name: /D-03/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
     fireEvent.click(screen.getByRole('alertdialog').querySelector('button')!);
 
@@ -365,6 +458,11 @@ describe('UsersPage region and depot assignments', () => {
       region_id: 'REG-2',
       depot_codes: ['D-03'],
     })));
+    expect(update.mock.calls[0][1]).toHaveProperty('kode_depo', 'D-03');
+    expect(update.mock.calls[0][1]).toHaveProperty('nama_depo', 'Depo Tiga');
+    expect(update.mock.calls[0][1]).not.toHaveProperty('password');
+    expect(update.mock.calls[0][1]).not.toHaveProperty('password_confirmation');
+    expect(update.mock.calls[0][1]).not.toHaveProperty('current_password');
     expect(syncDepots).not.toHaveBeenCalled();
   });
 });

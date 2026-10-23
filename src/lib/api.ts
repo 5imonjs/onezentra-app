@@ -463,6 +463,11 @@ export const regions = {
   update: (code: string, data: { name: string }) => apiClient.put(`/regions/${encodeURIComponent(code)}`, data),
 };
 
+export const partnerSites = {
+  list: () => apiClient.get<{ data: PartnerSiteOption[] }>('/partner-sites'),
+  create: (data: { kode_ps: string; nama_ps: string; kode_depo: string }) => apiClient.post('/partner-sites', data),
+};
+
 export const retribusiRates = {
   list: () => apiClient.get('/retribusi-rates'),
   save: (data: Record<string, unknown>) => apiClient.post('/retribusi-rates', data),
@@ -597,6 +602,13 @@ export interface UserDepot {
   nama_depo: string;
   region_id: string | null;
   assigned: boolean;
+}
+
+export interface PartnerSiteOption {
+  kode_ps: string;
+  nama_ps: string;
+  kode_depo: string;
+  is_active: boolean;
 }
 
 export interface UserDepotsResponse {

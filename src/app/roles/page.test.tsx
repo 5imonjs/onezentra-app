@@ -12,7 +12,7 @@ vi.mock('@/app/dashboard/layout', () => ({
 }));
 
 vi.mock('@/store/auth', () => ({
-  useAuthStore: () => ({ hasPermission, user: { level: 'admin_master' } }),
+  useAuthStore: () => ({ hasPermission, user: { level: 'admin_master', scope_level: 'master' } }),
 }));
 
 vi.mock('@/lib/api', () => ({
@@ -43,7 +43,10 @@ describe('AccessManagementPage role guidance', () => {
     expect(screen.getByText('Pilih role saat mengatur user')).toBeInTheDocument();
     expect(screen.getByText('Cakupan data: assignment user')).toBeInTheDocument();
     expect(screen.getByText(/depot\.view_region/)).toBeInTheDocument();
-    expect(screen.getByText('Pengecualian: Akses Semua Depo')).toBeInTheDocument();
+    expect(screen.getByText('Sensitif: Akses Semua Depo')).toBeInTheDocument();
     expect(screen.getByText(/depot\.view_all/)).toBeInTheDocument();
+    expect(screen.getByText(/tidak memberi hak membuat atau mengubah Region/)).toBeInTheDocument();
+    expect(screen.getByText('admin_master')).toBeInTheDocument();
+    expect(screen.getByText(/tidak memberi akses otomatis/)).toBeInTheDocument();
   });
 });
