@@ -237,7 +237,9 @@ describe('UsersPage region and depot assignments', () => {
   it('updates the name of a legacy region master', async () => {
     render(<UsersPage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Atur Region → Depo' }));
-    fireEvent.change(screen.getByRole('combobox', { name: 'Pilih region untuk ubah nama' }), { target: { value: 'REG-1' } });
+    const regionSelect = screen.getByRole('combobox', { name: 'Pilih region untuk ubah nama' });
+    expect(regionSelect.closest('.mb-5')).toHaveClass('bg-surface-card');
+    fireEvent.change(regionSelect, { target: { value: 'REG-1' } });
     fireEvent.change(screen.getByLabelText('Nama region master'), { target: { value: 'Region Barat' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan nama' }));
 
