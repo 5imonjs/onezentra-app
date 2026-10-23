@@ -189,6 +189,56 @@ class HierarchyManagementTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_profile_edit_does_not_revalidate_an_unchanged_existing_depot_scope(): void
+    {
+        $master = $this->makeActor('master');
+        $target = $this->makeActor('depot');
+        DepotSetting::where('kode_depo', $target->kode_depo)->update(['is_active' => false]);
+        Sanctum::actingAs($master);
+
+        $this->putJson('/api/v1/users/'.$target->id, [
+            'full_name' => 'Updated User Name',
+            'scope_level' => $target->scope_level,
+            'region_id' => $target->region_id,
+            'kode_depo' => $target->kode_depo,
+            'nama_depo' => $target->nama_depo,
+            'kode_ps' => $target->kode_ps,
+            'depot_codes' => [$target->kode_depo],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'full_name' => 'Updated User Name',
+            'kode_depo' => $target->kode_depo,
+        ]);
+    }
+
+    public function test_scope_edit_still_rejects_a_new_inactive_depot_assignment(): void
+    {
+        $master = $this->makeActor('master');
+        $target = $this->makeActor('depot');
+        DepotSetting::create([
+            'kode_depo' => 'DEPOT-INACTIVE',
+            'nama_depo' => 'Depo Nonaktif',
+            'region_id' => 'REG-A',
+            'is_active' => false,
+        ]);
+        Sanctum::actingAs($master);
+
+        $this->putJson('/api/v1/users/'.$target->id, [
+            'scope_level' => 'depot',
+            'region_id' => 'REG-A',
+            'kode_depo' => 'DEPOT-INACTIVE',
+            'nama_depo' => 'Depo Nonaktif',
+            'depot_codes' => ['DEPOT-INACTIVE'],
+        ])->assertStatus(422);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'kode_depo' => 'DEPOT-A',
+        ]);
+    }
+
     public function test_only_master_scope_can_grant_global_depot_data_access(): void
     {
         $scopedAdmin = $this->makeActor(

@@ -229,10 +229,27 @@ class UserController extends Controller
         // Hanya scope Master yang boleh mengubah akun scope Master.
         $this->authorize('update', $user);
 
-        $scopeFieldsChanged = array_intersect(
-            ['scope_level', 'region_id', 'kode_depo', 'kode_ps', 'depot_codes'],
-            array_keys($request->validated())
-        ) !== [];
+        $currentDepotCodes = DB::table('user_depots')
+            ->where('user_id', $user->id)
+            ->orderBy('kode_depo')
+            ->pluck('kode_depo')
+            ->all();
+        if ($currentDepotCodes === [] && filled($user->kode_depo)) {
+            $currentDepotCodes = [$user->kode_depo];
+        }
+
+        $scopeFieldsChanged = false;
+        foreach (['scope_level', 'region_id', 'kode_depo', 'nama_depo', 'kode_ps'] as $scopeField) {
+            if (array_key_exists($scopeField, $validated)
+                && $validated[$scopeField] !== $user->getAttribute($scopeField)) {
+                $scopeFieldsChanged = true;
+                break;
+            }
+        }
+        if ($requestedDepotCodes !== null && $requestedDepotCodes !== $currentDepotCodes) {
+            $scopeFieldsChanged = true;
+        }
+
         $depotAssignments = null;
         if ($scopeFieldsChanged) {
             $scope = [
@@ -273,6 +290,8 @@ class UserController extends Controller
             $this->authorizeUserScopeAssignment($scope, $actor, $user);
             $depotAssignments = $this->activeDepotAssignments([$depotCode], $scope['region_id'], $actor);
             unset($validated['depot_codes']);
+        } else {
+            unset($validated['scope_level'], $validated['region_id'], $validated['kode_depo'], $validated['nama_depo'], $validated['kode_ps']);
         }
 
         if (! empty($validated['password'])) {
