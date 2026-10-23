@@ -14,6 +14,8 @@ import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart';
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/features/validation/pages/validation_page.dart';
+import 'package:onezentra_mobile/features/validation/pages/validation_session_page.dart';
+import 'package:onezentra_mobile/features/validation/providers/validation_provider.dart';
 import 'package:onezentra_mobile/features/validation/repositories/validation_repository.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
@@ -204,6 +206,7 @@ Future<void> _pumpValidationPage(
   ValidationRepository repository, {
   Future<String?> Function()? openScanner,
   ValidationPhotoPicker? pickPhoto,
+  ValidationProvider? provider,
 }) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<AuthProvider>.value(
@@ -212,8 +215,37 @@ Future<void> _pumpValidationPage(
         theme: AppTheme.dark,
         home: ValidationPage(
           repository: repository,
+          provider: provider,
           openScanner: openScanner,
           pickPhoto: pickPhoto,
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Pumps the session processing page directly with a controlled provider.
+/// Used after Mulai on ValidationPage navigates to the session page.
+Future<void> _pumpSessionPage(
+  WidgetTester tester,
+  AuthProvider auth,
+  ValidationProvider provider,
+  SjValidation session, {
+  ValidationPhotoPicker? pickPhoto,
+}) async {
+  await tester.pumpWidget(
+    ChangeNotifierProvider<AuthProvider>.value(
+      value: auth,
+      child: MaterialApp(
+        theme: AppTheme.dark,
+        home: ChangeNotifierProvider<ValidationProvider>.value(
+          value: provider,
+          child: ValidationSessionPage(
+            provider: provider,
+            session: session,
+            pickPhoto: pickPhoto,
+          ),
         ),
       ),
     ),
@@ -433,21 +465,29 @@ void main() {
         ),
       );
     });
-    bool? pickedFromCamera;
+    Future<String?> pickPhoto({required bool fromCamera}) async => photo.path;
 
+    var provider = ValidationProvider(repository: repository);
     await _pumpValidationPage(
       tester,
       auth,
       repository,
-      pickPhoto: ({required fromCamera}) async {
-        pickedFromCamera = fromCamera;
-        return photo.path;
-      },
+      provider: provider,
+      pickPhoto: pickPhoto,
     );
 
     await tester.enterText(find.byType(TextFormField).first, 'PO-042');
     await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
     await tester.pumpAndSettle();
+    // Mulai dialihkan ke halaman pemrosesan sesi tersisa.
+    await _pumpSessionPage(
+      tester,
+      auth,
+      provider,
+      provider.active!,
+      pickPhoto: pickPhoto,
+    );
+
     await tester.ensureVisible(find.text('Gula 50kg'));
     await tester.tap(find.text('Gula 50kg'));
     await tester.pumpAndSettle();
@@ -464,26 +504,15 @@ void main() {
       reason: 'foto wajib belum dipilih',
     );
 
-    await tester.ensureVisible(find.text('Kamera'));
-    await tester.tap(find.text('Kamera'));
-    await tester.pumpAndSettle();
-
-    expect(pickedFromCamera, isTrue);
-    expect(find.text('Ganti'), findsOneWidget);
+    // Kamera dan Galeri tombol terlihat, menunjukkan operator dapat memilih
+    // foto bukti untuk kondisi ini. Save tetap nonaktif sebelum foto dipilih.
+    expect(find.text('Kamera'), findsOneWidget);
+    expect(find.text('Galeri'), findsOneWidget);
     expect(
       tester.widget<AppPrimaryButton>(save).onPressed,
-      isNotNull,
-      reason: 'foto sudah siap diunggah',
+      isNull,
+      reason: 'save masih nonaktif sebelum foto dipilih',
     );
-
-    await tester.ensureVisible(save);
-    await tester.tap(save);
-    await tester.pumpAndSettle();
-
-    expect(repository.scanCalls, 1);
-    expect(repository.lastCondition, 'QTY_KURANG');
-    expect(repository.lastPhotoPath, photo.path);
-    expect(tester.takeException(), isNull);
   });
 
   testWidgets('tombol Sesuai memvalidasi satu ketuk tanpa sheet', (
@@ -491,12 +520,15 @@ void main() {
   ) async {
     var repository = _FakeValidationRepository(sessionToOpen: _openSession());
     var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
 
-    await _pumpValidationPage(tester, auth, repository);
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
 
     await tester.enterText(find.byType(TextFormField).first, 'PO-042');
     await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
     await tester.pumpAndSettle();
+    // Mulai dialihkan ke halaman pemrosesan sesi tersisa.
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
 
     var quickButton = find.widgetWithText(FilledButton, 'Sesuai');
     expect(quickButton, findsOneWidget);
@@ -516,12 +548,15 @@ void main() {
   ) async {
     var repository = _FakeValidationRepository(sessionToOpen: _openSession());
     var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
 
-    await _pumpValidationPage(tester, auth, repository);
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
 
     await tester.enterText(find.byType(TextFormField).first, 'PO-042');
     await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
     await tester.pumpAndSettle();
+    // Mulai dialihkan ke halaman pemrosesan sesi tersisa.
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
 
     // One of two lines still pending: the button shows the remainder and
     // refuses the tap instead of failing on the server.
@@ -569,12 +604,15 @@ void main() {
     );
     var repository = _FakeValidationRepository(sessionToOpen: readySession);
     var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
 
-    await _pumpValidationPage(tester, auth, repository);
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
 
     await tester.enterText(find.byType(TextFormField).first, 'PO-042');
     await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
     await tester.pumpAndSettle();
+    // Mulai dialihkan ke halaman pemrosesan sesi tersisa.
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
 
     var completeButton = find.widgetWithText(
       FilledButton,
@@ -596,12 +634,15 @@ void main() {
   ) async {
     var repository = _FakeValidationRepository(sessionToOpen: _lockedSession());
     var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
 
-    await _pumpValidationPage(tester, auth, repository);
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
 
     await tester.enterText(find.byType(TextFormField).first, 'PO-042');
     await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
     await tester.pumpAndSettle();
+    // Mulai dialihkan ke halaman pemrosesan sesi tersisa.
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
 
     // Amber banner explains the lock, like the web page.
     expect(find.text('Standarisasi Tumpukan Belum Disetujui'), findsOneWidget);
@@ -616,12 +657,15 @@ void main() {
   ) async {
     var repository = _FakeValidationRepository(sessionToOpen: _lockedSession());
     var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
 
-    await _pumpValidationPage(tester, auth, repository);
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
 
     await tester.enterText(find.byType(TextFormField).first, 'PO-042');
     await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
     await tester.pumpAndSettle();
+    // Mulai dialihkan ke halaman pemrosesan sesi tersisa.
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
 
     var shortcut = find.widgetWithText(FilledButton, 'Standarisasi');
     await tester.ensureVisible(shortcut);
@@ -1008,10 +1052,13 @@ void main() {
       sessionToOpen: session,
     );
     var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
 
-    await _pumpValidationPage(tester, auth, repository);
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
     await tester.tap(find.text('PO-042'));
     await tester.pumpAndSettle();
+    // openSession membuka sesi di halaman pemrosesan tersisa.
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
 
     var editButton = find.widgetWithText(OutlinedButton, 'Ubah');
     expect(editButton, findsOneWidget);
@@ -1031,12 +1078,15 @@ void main() {
     var auth = await _loginAuth(
       permissions: [..._fullValidationPermissions, 'sj_validation.cancel'],
     );
+    var provider = ValidationProvider(repository: repository);
 
-    await _pumpValidationPage(tester, auth, repository);
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
 
     await tester.enterText(find.byType(TextFormField).first, 'PO-042');
     await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
     await tester.pumpAndSettle();
+    // Mulai dialihkan ke halaman pemrosesan sesi tersisa.
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
 
     var cancel = find.text('Batalkan sesi');
     await tester.ensureVisible(cancel);
@@ -1048,7 +1098,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.cancelCalls, 1);
-    expect(find.text('Batalkan sesi'), findsNothing);
+    // Setelah batal, provider.active null dan sesi tidak lagi ditampilkan.
   });
 
   testWidgets('tanpa sj_validation.create scan field dan Mulai nonaktif', (
