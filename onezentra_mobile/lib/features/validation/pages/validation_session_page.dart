@@ -1721,8 +1721,8 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
       condition: _condition,
       expiredDate: _expiredDate == null
           ? null
-          : '${_expiredDate!.year.toString().padLeft(4, '0')}'
-                '${_expiredDate!.month.toString().padLeft(2, '0')}'
+          : '${_expiredDate!.year.toString().padLeft(4, '0')}-'
+                '${_expiredDate!.month.toString().padLeft(2, '0')}-'
                 '${_expiredDate!.day.toString().padLeft(2, '0')}',
       notes: _notesController.text.trim().isEmpty
           ? null
