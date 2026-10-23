@@ -812,29 +812,34 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   Widget _editButton(SjValidationItem item) => OutlinedButton.icon(
     onPressed: () => _openItemSheet(item),
     style: OutlinedButton.styleFrom(
-      foregroundColor: AppTheme.gray200,
-      side: const BorderSide(color: AppTheme.gray500),
+      foregroundColor: Colors.white,
+      side: const BorderSide(color: AppTheme.primary600),
+      backgroundColor: AppTheme.surfaceHover,
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: const Icon(Icons.description_rounded, size: 18),
-    label: const Text('Detail Validasi'),
+    icon: const Icon(Icons.description_rounded, size: 18, color: Colors.white),
+    label: const Text('Detail Validasi', style: TextStyle(color: Colors.white)),
   );
 
   Widget _printLabelButton(SjValidationItem item) => OutlinedButton.icon(
     onPressed: () => _openPrintSheet(item),
     style: OutlinedButton.styleFrom(
-      foregroundColor: AppTheme.gray200,
-      side: const BorderSide(color: AppTheme.gray500),
+      foregroundColor: Colors.white,
+      side: const BorderSide(color: AppTheme.primary600),
+      backgroundColor: AppTheme.surfaceHover,
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: const Icon(Icons.print_rounded, size: 18),
-    label: Text(item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label'),
+    icon: const Icon(Icons.print_rounded, size: 18, color: Colors.white),
+    label: Text(
+      item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
+      style: const TextStyle(color: Colors.white),
+    ),
   );
 
   Future<void> _openPrintSheet(SjValidationItem item) async {
