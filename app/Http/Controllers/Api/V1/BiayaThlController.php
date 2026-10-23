@@ -581,7 +581,7 @@ class BiayaThlController extends Controller
     {
         /** @var User|null $user */
         $user = Auth::user();
-        if ($user && ($user->isAdminMaster() || $biayaThl->created_by === $user->id)) {
+        if ($user && $biayaThl->created_by === $user->id) {
             return;
         }
         $this->authorizeViewer($biayaThl);

@@ -38,7 +38,11 @@ class AdminDatabaseItemPurgeTest extends TestCase
         );
         $role->permissions()->syncWithoutDetaching([$purge->id, $viewAll->id]);
 
-        $user = User::factory()->create(['level' => 'admin_master', 'status' => 'active']);
+        $user = User::factory()->create([
+            'level' => 'admin_master',
+            'scope_level' => 'master',
+            'status' => 'active',
+        ]);
         $user->roles()->attach($role->id);
 
         return $user;

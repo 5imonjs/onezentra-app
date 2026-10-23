@@ -28,8 +28,13 @@ class BiayaRetribusiPdfTest extends TestCase
             'name' => 'Biaya THL View',
             'menu_group' => 'Biaya',
         ]);
+        $globalDepotPermission = Permission::create([
+            'slug' => 'depot.view_all',
+            'name' => 'Akses Semua Depo',
+            'menu_group' => 'Umum',
+        ]);
         $role = Role::create(['slug' => 'biaya_retribusi_pdf', 'name' => 'Biaya Retribusi PDF']);
-        $role->permissions()->attach([$permission->id, $thlPermission->id]);
+        $role->permissions()->attach([$permission->id, $thlPermission->id, $globalDepotPermission->id]);
         $user = User::create([
             'email' => 'biaya-retribusi-pdf@test.com',
             'password' => 'password',
@@ -148,8 +153,13 @@ class BiayaRetribusiPdfTest extends TestCase
             'name' => 'Biaya Retribusi View',
             'menu_group' => 'Biaya',
         ]);
+        $globalDepotPermission = Permission::create([
+            'slug' => 'depot.view_all',
+            'name' => 'Akses Semua Depo',
+            'menu_group' => 'Umum',
+        ]);
         $role = Role::create(['slug' => 'biaya_retribusi_show', 'name' => 'Biaya Retribusi Show']);
-        $role->permissions()->attach($permission->id);
+        $role->permissions()->attach([$permission->id, $globalDepotPermission->id]);
 
         $viewer = $this->retribusiUser('retribusi-show@test.com', 'Viewer Show', $role);
         $submitter = $this->retribusiUser('submitter@test.com', 'Pengaju Retribusi', null);
@@ -198,8 +208,13 @@ class BiayaRetribusiPdfTest extends TestCase
             'name' => 'Biaya Retribusi View',
             'menu_group' => 'Biaya',
         ]);
+        $globalDepotPermission = Permission::create([
+            'slug' => 'depot.view_all',
+            'name' => 'Akses Semua Depo',
+            'menu_group' => 'Umum',
+        ]);
         $role = Role::create(['slug' => 'biaya_retribusi_show_pending', 'name' => 'Biaya Retribusi Show Pending']);
-        $role->permissions()->attach($permission->id);
+        $role->permissions()->attach([$permission->id, $globalDepotPermission->id]);
 
         $viewer = $this->retribusiUser('retribusi-pending@test.com', 'Viewer Pending', $role);
         $submitter = $this->retribusiUser('submitter-pending@test.com', 'Pengaju Pending', null);

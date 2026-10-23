@@ -73,10 +73,10 @@ class RoleController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        // Slug bersifat immutable bagi non-admin_master: slug dipakai acuan
+        // Slug bersifat immutable bagi non-Master: slug dipakai acuan
         // permission/level di banyak tempat, rename diam-diam = bypass gate.
         if (array_key_exists('slug', $validated) && $validated['slug'] !== $role->slug) {
-            abort_unless($request->user()?->level === 'admin_master', 403, 'Hanya admin master yang boleh mengubah slug peran.');
+            abort_unless($request->user()?->isMasterScope(), 403, 'Hanya scope Master yang boleh mengubah slug peran.');
         }
 
         if (isset($validated['is_active']) && ! $validated['is_active'] && $role->users()->exists()) {
@@ -84,9 +84,9 @@ class RoleController extends Controller
             // kehilangan akses diam-diam — kecuali admin master yang
             // melakukannya secara sadar lewat konfirmasi di UI.
             abort_unless(
-                $request->user()?->level === 'admin_master',
+                $request->user()?->isMasterScope(),
                 422,
-                'Peran dengan user aktif tidak dapat dinonaktifkan.'
+                'Hanya scope Master yang dapat menonaktifkan role dengan user aktif.'
             );
         }
 
@@ -140,23 +140,25 @@ class RoleController extends Controller
 
         $actor = $request->user();
 
-        // Permission sensitif (users.*, roles.*) hanya boleh di-sync oleh
-        // admin_master — tanpa ini pemegang roles.edit bisa memberi dirinya
-        // users.edit lalu menaikkan level akun kompromi (eskalasi mandiri).
+        // Permission sensitif hanya boleh dikelola oleh scope Master. Akses
+        // semua depo juga sensitif karena melintasi batas data operasional.
         $requestedSlugs = Permission::whereIn('id', $validated['permission_ids'])->pluck('slug');
         $touchesSensitive = $requestedSlugs->contains(
-            fn (string $slug): bool => str_starts_with($slug, 'users.') || str_starts_with($slug, 'roles.')
+            fn (string $slug): bool => str_starts_with($slug, 'users.')
+                || str_starts_with($slug, 'roles.')
+                || $slug === 'depot.view_all'
         );
         if ($touchesSensitive) {
-            abort_unless($actor?->level === 'admin_master', 403, 'Hanya admin master yang boleh mengatur permission sensitif (users.*, roles.*).');
+            abort_unless($actor?->isMasterScope(), 403, 'Hanya scope Master yang boleh mengatur permission sensitif (users.*, roles.*, depot.view_all).');
         }
 
         // Anti-eskalasi mandiri: role yang dipakai aktor sendiri tidak boleh
         // diberi permission di luar yang ia miliki — itu pemberian hak baru
         // ke diri sendiri tanpa jejak persetujuan admin master.
         $isOwnRole = $actor && $actor->roles()->where('roles.id', $role->id)->exists();
-        if ($isOwnRole && $actor?->level !== 'admin_master') {
-            $beyondOwn = $requestedSlugs->diff($actor->getAssignedPermissionSlugs());
+        if ($isOwnRole && ! $actor->isMasterScope()) {
+            $currentRoleSlugs = $role->permissions()->pluck('permissions.slug');
+            $beyondOwn = $requestedSlugs->diff($currentRoleSlugs);
             abort_if($beyondOwn->isNotEmpty(), 403, 'Tidak dapat memberi role sendiri permission di luar yang Anda miliki: '.$beyondOwn->implode(', '));
         }
 
@@ -219,9 +221,9 @@ class RoleController extends Controller
                     continue;
                 }
 
-                // Perubahan is_active via import hanya boleh oleh admin_master.
-                if ($newIsActive !== (bool) $existing->is_active && $request->user()?->level !== 'admin_master') {
-                    $errors[] = ['row' => $index + 2, 'errors' => 'Hanya admin master yang boleh mengubah status aktif peran via import.'];
+                // Perubahan status role via import hanya boleh oleh scope Master.
+                if ($newIsActive !== (bool) $existing->is_active && ! $request->user()?->isMasterScope()) {
+                    $errors[] = ['row' => $index + 2, 'errors' => 'Hanya scope Master yang boleh mengubah status aktif role via import.'];
 
                     continue;
                 }

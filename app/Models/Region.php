@@ -19,4 +19,9 @@ class Region extends Model
     {
         return $this->hasMany(DepotSetting::class, 'region_id', 'code');
     }
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'region_id', 'code');
+    }
 }

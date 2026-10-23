@@ -4,6 +4,9 @@ import { clearDashboardSummaryCache } from '@/lib/dashboardSummary';
 
 interface User {
   id: number;
+  scope_level: 'master' | 'region' | 'depot' | 'ps';
+  kode_ps: string | null;
+  region_id: string | null;
   kode_depo: string;
   nama_depo: string;
   full_name: string;

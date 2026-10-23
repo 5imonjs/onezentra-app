@@ -14,10 +14,10 @@ use Illuminate\Support\Facades\Auth;
 trait AuthorizesBiayaRows
 {
     /**
-     * Boleh melihat: admin master, peran pengaju, pembuat, atau approver
+     * Boleh melihat: peran pengaju, pembuat, atau approver
      * (BAC/RLH/RFAH) yang ditetapkan untuk depo pengajuan.
      */
-    protected function authorizeBiayaRowViewer(object $row, string $module, bool $allowAdminRole = false): void
+    protected function authorizeBiayaRowViewer(object $row, string $module): void
     {
         /** @var User|null $user */
         $user = Auth::user();
@@ -25,7 +25,15 @@ trait AuthorizesBiayaRows
             abort(403);
         }
 
-        if ($user->isAdminMaster() || ($allowAdminRole && $user->hasRole('admin_master')) || $row->created_by === $user->id) {
+        if ($row->created_by === $user->id) {
+            return;
+        }
+
+        if ($user->hasPermission('depot.view_all')) {
+            return;
+        }
+
+        if ($user->hasPermission('depot.view_all')) {
             return;
         }
 
@@ -50,7 +58,7 @@ trait AuthorizesBiayaRows
     }
 
     /**
-     * Boleh mengubah/menghapus: admin master, pembuat, atau peran pengaju /
+     * Boleh mengubah/menghapus: pembuat atau peran pengaju /
      * pemegang kendali penuh — dibatasi ke depo-nya sendiri (cegah IDOR).
      */
     protected function authorizeBiayaRowCreator(object $row, string $permission): void
@@ -61,7 +69,7 @@ trait AuthorizesBiayaRows
             abort(403);
         }
 
-        if ($user->isAdminMaster() || $row->created_by === $user->id) {
+        if ($row->created_by === $user->id) {
             return;
         }
 

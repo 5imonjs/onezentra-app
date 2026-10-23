@@ -60,9 +60,9 @@ class AdminDatabaseController extends Controller
     private function ensureMaster(Request $request): void
     {
         abort_unless(
-            $request->user()?->level === 'admin_master',
+            $request->user()?->isMasterScope(),
             403,
-            'Hanya akun level admin master yang boleh mengosongkan data.'
+            'Hanya akun dengan scope Master yang boleh mengosongkan data.'
         );
     }
 

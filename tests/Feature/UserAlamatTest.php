@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\DepotSetting;
 use App\Models\Permission;
+use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,6 +17,11 @@ class UserAlamatTest extends TestCase
 
     private function admin(): User
     {
+        Region::firstOrCreate(['code' => 'REG-TEST'], ['name' => 'Region Test']);
+        DepotSetting::updateOrCreate(
+            ['kode_depo' => 'DPO'],
+            ['nama_depo' => 'Depo Test', 'region_id' => 'REG-TEST', 'is_active' => true],
+        );
         $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin Master']);
         Role::firstOrCreate(['slug' => 'blc'], ['name' => 'BLC', 'is_active' => true]);
         foreach (['users.create', 'users.edit', 'users.view', 'depot.view_all'] as $slug) {
@@ -27,6 +34,7 @@ class UserAlamatTest extends TestCase
             'full_name' => 'Admin Master',
             'kode_depo' => 'ADMIN',
             'nama_depo' => 'Kantor Pusat',
+            'scope_level' => 'master',
             'level' => 'admin_master',
             'status' => 'active',
         ]);
@@ -40,6 +48,8 @@ class UserAlamatTest extends TestCase
         return array_merge([
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo Test',
+            'scope_level' => 'depot',
+            'region_id' => 'REG-TEST',
             'full_name' => 'User Alamat',
             'email' => 'user-alamat-'.uniqid().'@test.com',
             'password' => 'secret123',

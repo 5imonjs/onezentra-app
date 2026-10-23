@@ -31,6 +31,7 @@ class PermissionHierarchyTest extends TestCase
             'kode_depo' => $kodeDepo,
             'nama_depo' => 'Depo '.$kodeDepo,
             'region_id' => $regionId,
+            'scope_level' => $level === 'admin_master' ? 'master' : 'depot',
             'level' => $level,
             'status' => 'active',
         ]);
@@ -89,6 +90,43 @@ class PermissionHierarchyTest extends TestCase
         $region = collect($response->json('data'))->firstWhere('slug', 'depot.view_region');
         $this->assertNull($global['parent_id']);
         $this->assertNull($region['parent_id']);
+    }
+
+    public function test_existing_admin_master_users_are_migrated_to_explicit_permissions(): void
+    {
+        $admin = $this->makeUser('admin_master', 'ADMIN');
+        $viewAll = Permission::create([
+            'name' => 'Akses Semua Depo',
+            'slug' => 'depot.view_all',
+            'menu_group' => 'Umum',
+            'is_active' => true,
+        ]);
+        $admin->getPermissions();
+
+        $existingAdminRole = Role::create([
+            'slug' => 'admin_master',
+            'name' => 'Admin Master',
+            'is_active' => true,
+        ]);
+        $existingRoleUser = $this->makeUser('staff_logistic', 'STAFF-1');
+        $existingAdminRole->users()->attach($existingRoleUser->id);
+        $existingRoleUser->getPermissions();
+
+        $migration = require database_path('migrations/2026_10_23_164122_migrate_admin_master_to_explicit_role_permissions.php');
+        $migration->up();
+
+        $role = Role::where('slug', 'admin_master')->firstOrFail();
+        $this->assertDatabaseHas('role_user', [
+            'user_id' => $admin->id,
+            'role_id' => $role->id,
+        ]);
+        $this->assertDatabaseHas('role_permission', [
+            'role_id' => $role->id,
+            'permission_id' => $viewAll->id,
+        ]);
+        $this->assertTrue($admin->fresh()->hasPermission('depot.view_all'));
+        $this->assertTrue($admin->fresh()->hasPermission('opname.delete_validated'));
+        $this->assertTrue($existingRoleUser->fresh()->hasPermission('depot.view_all'));
     }
 
     public function test_admin_master_can_grant_and_revoke_depot_view_all_on_a_role(): void
@@ -233,7 +271,10 @@ class PermissionHierarchyTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'level' => $role->slug,
+            'scope_level' => 'depot',
             'region_id' => 'REG-1',
+            'kode_depo' => 'R1-A',
+            'nama_depo' => 'Depo R1-A',
             'depot_codes' => ['R1-A'],
         ])->assertCreated();
 

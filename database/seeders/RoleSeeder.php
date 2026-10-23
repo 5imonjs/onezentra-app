@@ -10,7 +10,7 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         $meta = [
-            'admin_master' => ['name' => 'Admin Master', 'description' => 'Semua menu + setting'],
+            'admin_master' => ['name' => 'Admin Master', 'description' => 'Akses sesuai permission yang diberikan'],
             'staff_logistic' => ['name' => 'Staff Logistic', 'description' => 'Input & update data'],
             'rlh' => ['name' => 'RLH', 'description' => 'Approval RLH'],
             'rfah' => ['name' => 'RFAH', 'description' => 'Approval RFAH'],

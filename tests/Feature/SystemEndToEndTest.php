@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Mail\ReceivingCompleted;
 use App\Mail\SelisihQtyNotification;
 use App\Mail\StandarisasiStatusNotification;
+use App\Models\DepotSetting;
 use App\Models\Npn;
 use App\Models\OpnameExpiredWave;
 use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\ReceivingItem;
+use App\Models\Region;
 use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\Role;
@@ -68,12 +70,21 @@ class SystemEndToEndTest extends TestCase
             $this->roleAdmin->permissions()->syncWithoutDetaching([$perm->id]);
         }
 
+        Region::create(['code' => 'REG-ADMIN', 'name' => 'Region Admin']);
+        DepotSetting::create([
+            'kode_depo' => 'ADMIN',
+            'nama_depo' => 'Kantor Pusat',
+            'region_id' => 'REG-ADMIN',
+            'is_active' => true,
+        ]);
         $this->admin = User::create([
             'email' => 'admin@onezentra.com',
             'password' => 'password',
             'full_name' => 'Admin Master',
             'kode_depo' => 'ADMIN',
             'nama_depo' => 'Kantor Pusat',
+            'region_id' => 'REG-ADMIN',
+            'scope_level' => 'master',
             'level' => 'admin_master',
             'status' => 'active',
             'role_id' => $this->roleAdmin->id,
@@ -527,6 +538,7 @@ class SystemEndToEndTest extends TestCase
         $newRole = Role::firstOrCreate(['slug' => 'staff_logistic'], ['name' => 'Staff Logistic']);
         $this->postJson('/api/v1/users', [
             'kode_depo' => 'ADMIN', 'nama_depo' => 'Kantor Pusat', 'full_name' => 'User Baru', 'email' => 'baru@onezentra.com',
+            'region_id' => 'REG-ADMIN', 'scope_level' => 'depot',
             'password' => 'secret-123', 'password_confirmation' => 'secret-123', 'level' => 'staff_logistic',
         ])->assertCreated()->assertJsonPath('data.email', 'baru@onezentra.com');
 

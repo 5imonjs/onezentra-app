@@ -24,9 +24,16 @@ class BiayaRetribusiTigaArmadaTest extends TestCase
 
     private function master(): User
     {
-        Permission::firstOrCreate(['slug' => 'biaya_retribusi.create'], ['name' => 'Create', 'menu_group' => 'Test']);
-        Permission::firstOrCreate(['slug' => 'biaya_retribusi.view'], ['name' => 'View', 'menu_group' => 'Test']);
+        $permissions = collect([
+            ['biaya_retribusi.create', 'Create'],
+            ['biaya_retribusi.view', 'View'],
+            ['depot.view_all', 'Akses Semua Depo'],
+        ])->map(fn (array $permission): Permission => Permission::firstOrCreate(
+            ['slug' => $permission[0]],
+            ['name' => $permission[1], 'menu_group' => 'Test'],
+        ));
         $role = Role::firstOrCreate(['slug' => 'tiga_armada'], ['name' => 'Tiga Armada']);
+        $role->permissions()->syncWithoutDetaching($permissions->pluck('id'));
         $user = User::factory()->create(['level' => 'admin_master', 'status' => 'active']);
         $role->users()->attach($user->id);
 

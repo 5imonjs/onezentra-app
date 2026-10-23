@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\RencanaKirim;
 use App\Models\RetribusiRate;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -26,8 +27,16 @@ class BiayaRetribusiKoliCalcTest extends TestCase
 
     private function actingUser(): User
     {
-        Permission::firstOrCreate(['slug' => 'biaya_retribusi.create'], ['name' => 'Create', 'menu_group' => 'Test']);
-        Permission::firstOrCreate(['slug' => 'biaya_retribusi.view'], ['name' => 'View', 'menu_group' => 'Test']);
+        $permissions = collect([
+            ['biaya_retribusi.create', 'Create'],
+            ['biaya_retribusi.view', 'View'],
+            ['depot.view_all', 'Akses Semua Depo'],
+        ])->map(fn (array $permission): Permission => Permission::firstOrCreate(
+            ['slug' => $permission[0]],
+            ['name' => $permission[1], 'menu_group' => 'Test'],
+        ));
+        $role = Role::firstOrCreate(['slug' => 'biaya_retribusi_koli'], ['name' => 'Biaya Retribusi Koli']);
+        $role->permissions()->syncWithoutDetaching($permissions->pluck('id'));
 
         $user = User::factory()->create([
             'level' => 'admin_master',
@@ -35,6 +44,7 @@ class BiayaRetribusiKoliCalcTest extends TestCase
             'nama_depo' => 'Depo DPO',
             'status' => 'active',
         ]);
+        $role->users()->attach($user->id);
 
         Sanctum::actingAs($user);
 

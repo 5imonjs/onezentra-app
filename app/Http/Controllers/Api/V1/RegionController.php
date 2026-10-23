@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\DepotSetting;
 use App\Models\Region;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,13 +14,12 @@ class RegionController extends Controller
         $query = Region::query()->orderBy('code');
         $actor = $request->user();
 
-        if ($actor->isDepotScoped()) {
-            $visibleRegionCodes = DepotSetting::query()
-                ->whereIn('kode_depo', $actor->depot_codes)
-                ->whereNotNull('region_id')
-                ->where('region_id', '!=', '')
-                ->select('region_id');
-            $query->whereIn('code', $visibleRegionCodes);
+        if ($actor->isMasterScope()) {
+            // Master scope can manage the full hierarchy.
+        } elseif (filled($actor->region_id)) {
+            $query->where('code', $actor->region_id);
+        } else {
+            $query->whereRaw('1 = 0');
         }
 
         return response()->json(['data' => $query->get()]);
@@ -29,7 +27,7 @@ class RegionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        abort_unless($request->user()?->isAdminMaster(), 403, 'Hanya admin master yang boleh membuat region.');
+        abort_unless($request->user()?->isMasterScope(), 403, 'Hanya pengguna scope Master yang boleh membuat region.');
 
         $validated = $request->validate([
             'code' => 'required|string|max:20|unique:regions,code',
@@ -46,7 +44,7 @@ class RegionController extends Controller
 
     public function update(Request $request, Region $region): JsonResponse
     {
-        abort_unless($request->user()?->isAdminMaster(), 403, 'Hanya admin master yang boleh mengubah region.');
+        abort_unless($request->user()?->isMasterScope(), 403, 'Hanya pengguna scope Master yang boleh mengubah region.');
 
         $validated = $request->validate([
             'name' => 'required|string|max:100',

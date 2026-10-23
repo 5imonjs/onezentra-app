@@ -55,6 +55,7 @@ class SupplyChainGapTest extends TestCase
             'full_name' => 'Gap Test User',
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo Test',
+            'scope_level' => 'master',
             'level' => 'admin_master',
             'status' => 'active',
         ]);

@@ -122,6 +122,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'Gate Edit', 'slug' => 'gate.edit', 'menu_group' => 'Gate Check', 'icon' => 'edit', 'route' => 'gate.edit', 'sort_order' => 91],
             ['name' => 'Gate Delete', 'slug' => 'gate.delete', 'menu_group' => 'Gate Check', 'icon' => 'trash', 'route' => 'gate.destroy', 'sort_order' => 92],
             ['name' => 'Opname Expired Delete', 'slug' => 'opname.delete', 'menu_group' => 'Opname', 'icon' => 'trash', 'route' => 'opname_expired.destroy', 'sort_order' => 471],
+            ['name' => 'Hapus Wave Opname Tervalidasi', 'slug' => 'opname.delete_validated', 'menu_group' => 'Opname', 'icon' => 'shield-check', 'route' => null, 'sort_order' => 476],
             ['name' => 'Opname Progres Semua Depo', 'slug' => 'opname.progress_all', 'menu_group' => 'Opname', 'icon' => 'chart', 'route' => 'opname_expired.progress', 'sort_order' => 472],
             ['name' => 'Opname Sesi View', 'slug' => 'opname.session.view', 'menu_group' => 'Opname', 'icon' => 'clipboard', 'route' => 'opname_sessions.index', 'sort_order' => 473],
             ['name' => 'Opname Sesi Buat', 'slug' => 'opname.session.create', 'menu_group' => 'Opname', 'icon' => 'plus', 'route' => 'opname_sessions.store', 'sort_order' => 474],
@@ -139,6 +140,8 @@ class PermissionSeeder extends Seeder
             ->update(['parent_id' => null]);
 
         $rolePermMap = [
+            // First setup grants the current set explicitly. Re-seeding an
+            // existing role preserves reviewed grants and never auto-adds new permissions.
             'admin_master' => $allPermSlugs,
             'staff_logistic' => [
                 'dashboard.view', 'penerimaan.view', 'penerimaan.create', 'penerimaan.edit',
@@ -344,6 +347,10 @@ class PermissionSeeder extends Seeder
         foreach ($rolePermMap as $roleSlug => $permSlugs) {
             $role = Role::where('slug', $roleSlug)->first();
             if (! $role) {
+                continue;
+            }
+
+            if ($roleSlug === 'admin_master' && $role->permissions()->exists()) {
                 continue;
             }
 

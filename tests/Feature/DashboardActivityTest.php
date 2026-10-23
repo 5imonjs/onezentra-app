@@ -21,14 +21,19 @@ class DashboardActivityTest extends TestCase
             'slug' => 'dashboard.view',
             'menu_group' => 'Test',
         ]);
+        $globalDepotPermission = Permission::firstOrCreate(
+            ['slug' => 'depot.view_all'],
+            ['name' => 'Akses Semua Depo', 'menu_group' => 'Test'],
+        );
         $role = Role::create(['name' => 'Dashboard Tester', 'slug' => 'dashboard_tester']);
-        $role->permissions()->attach($permission);
+        $role->permissions()->attach([$permission->id, $globalDepotPermission->id]);
         $user = User::create([
             'email' => 'activity@example.com',
             'password' => 'password',
             'full_name' => 'Activity Tester',
             'kode_depo' => '',
             'nama_depo' => '',
+            'scope_level' => 'depot',
             'level' => 'staff_logistic',
             'status' => 'active',
         ]);
@@ -42,6 +47,7 @@ class DashboardActivityTest extends TestCase
             'full_name' => 'Master Tester',
             'kode_depo' => '',
             'nama_depo' => '',
+            'scope_level' => 'master',
             'level' => 'admin_master',
             'status' => 'active',
         ]);

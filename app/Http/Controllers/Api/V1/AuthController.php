@@ -25,9 +25,9 @@ class AuthController extends Controller
         ]);
 
         abort_unless(
-            $request->user()->isAdminMaster() || ($validated['level'] ?? null) !== 'admin_master',
+            $request->user()->isMasterScope() || ($validated['level'] ?? null) !== 'admin_master',
             403,
-            'Hanya admin master yang dapat membuat admin master.'
+            'Hanya scope Master yang dapat menetapkan role admin master.'
         );
 
         $validated['password'] = Hash::make($validated['password']);

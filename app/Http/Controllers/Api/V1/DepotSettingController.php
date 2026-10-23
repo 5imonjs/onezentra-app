@@ -18,8 +18,12 @@ class DepotSettingController extends Controller
     {
         $query = DepotSetting::query()->where('is_active', true);
 
-        if ($request->user()->isDepotScoped()) {
-            $request->user()->applyDepotFilter($query, 'kode_depo');
+        if ($request->user()->isMasterScope()) {
+            // Master scope can see all depots.
+        } elseif ($request->user()->scope_level === 'region' && filled($request->user()->region_id)) {
+            $query->where('region_id', $request->user()->region_id);
+        } else {
+            $query->where('kode_depo', $request->user()->kode_depo);
         }
 
         return response()->json([
@@ -35,8 +39,11 @@ class DepotSettingController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isDepotScoped() && ! in_array($kodeDepo, $user->depot_codes, true)) {
-            abort(403, 'Anda tidak memiliki akses ke data depo ini.');
+        if (! $user->isMasterScope()) {
+            $isInScope = $user->scope_level === 'region'
+                ? DepotSetting::query()->where('kode_depo', $kodeDepo)->where('region_id', $user->region_id)->exists()
+                : $kodeDepo === $user->kode_depo;
+            abort_unless($isInScope, 403, 'Anda tidak memiliki akses ke data depo ini.');
         }
 
         $setting = DepotSetting::query()
@@ -51,17 +58,19 @@ class DepotSettingController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        abort_unless(
-            $request->user()?->isAdminMaster(),
-            403,
-            'Hanya admin master yang boleh membuat depo.'
-        );
+        $actor = $request->user();
+        abort_unless($actor?->canCreateDepot(), 403, 'Hanya Master atau pengguna scope Region yang boleh membuat depo.');
 
         $validated = $request->validate([
             'kode_depo' => 'required|string|max:20|unique:depot_settings,kode_depo',
             'nama_depo' => 'required|string|max:100',
             'region_id' => ['required', 'string', 'max:20', Rule::exists('regions', 'code')],
         ]);
+        abort_if(
+            $actor->scope_level === 'region' && $validated['region_id'] !== $actor->region_id,
+            403,
+            'Anda hanya dapat membuat depo di region Anda.'
+        );
 
         $depot = DepotSetting::create([
             ...$validated,
@@ -75,16 +84,16 @@ class DepotSettingController extends Controller
     }
 
     /**
-     * Simpan/ubah setting satu depo. Hanya admin_master agar alamat resmi
+     * Simpan/ubah setting satu depo. Hanya scope Master agar alamat resmi
      * depo tidak bisa diubah sembarang role (precedent: RoleController
-     * membatasi permission sensitif untuk admin_master).
+     * membatasi permission sensitif untuk role operasional tertentu).
      */
     public function upsert(Request $request, string $kodeDepo): JsonResponse
     {
         abort_unless(
-            $request->user()?->level === 'admin_master',
+            $request->user()?->isMasterScope(),
             403,
-            'Hanya admin master yang boleh mengatur alamat depo.'
+            'Hanya scope Master yang boleh mengatur data depo.'
         );
 
         $validated = $request->validate([

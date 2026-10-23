@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import React from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
-import { users, depotSettings, regions, getErrorMessage, type UserDepot } from '@/lib/api';
+import { users, depotSettings, regions, partnerSites, getErrorMessage, type PartnerSiteOption, type UserDepot } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
@@ -15,6 +15,8 @@ interface UserItem {
   kode_depo: string;
   nama_depo: string;
   depot_codes?: string[];
+  scope_level: 'master' | 'region' | 'depot' | 'ps';
+  kode_ps: string | null;
   region_id?: string | null;
   has_region_permission?: boolean;
   uses_global_scope?: boolean;
@@ -45,7 +47,7 @@ interface RoleOption {
 }
 
 const emptyForm = {
-  kode_depo: '', nama_depo: '', region_id: '', full_name: '', alamat: '', email: '',
+  kode_depo: '', nama_depo: '', region_id: '', scope_level: 'depot', kode_ps: '', full_name: '', alamat: '', email: '',
   password: '', password_confirmation: '',
   level: '', status: 'active',
 };
@@ -53,9 +55,11 @@ const emptyForm = {
 export default function UsersPage() {
   const { hasPermission, user } = useAuthStore();
   const canViewUsers = hasPermission('users.view');
-  const isAdminMaster = user?.level === 'admin_master';
+  const isMasterScope = user?.scope_level === 'master';
+  const canCreateDepot = isMasterScope || user?.scope_level === 'region';
+  const canCreatePartnerSite = isMasterScope || user?.scope_level === 'depot';
   const [items, setItems] = useState<UserItem[]>([]);
-  const [_error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -94,6 +98,7 @@ export default function UsersPage() {
   const [depotLoadError, setDepotLoadError] = useState<string | null>(null);
   const [usesGlobalScope, setUsesGlobalScope] = useState(false);
   const [depotOptions, setDepotOptions] = useState<DepotOption[]>([]);
+  const [partnerSiteOptions, setPartnerSiteOptions] = useState<PartnerSiteOption[]>([]);
   const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [roleOptionsError, setRoleOptionsError] = useState<string | null>(null);
@@ -112,6 +117,10 @@ export default function UsersPage() {
   const [newDepotCode, setNewDepotCode] = useState('');
   const [newDepotName, setNewDepotName] = useState('');
   const [creatingDepot, setCreatingDepot] = useState(false);
+  const [showNewPartnerSiteFields, setShowNewPartnerSiteFields] = useState(false);
+  const [newPartnerSiteCode, setNewPartnerSiteCode] = useState('');
+  const [newPartnerSiteName, setNewPartnerSiteName] = useState('');
+  const [creatingPartnerSite, setCreatingPartnerSite] = useState(false);
   const [masterDataError, setMasterDataError] = useState<string | null>(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -127,6 +136,7 @@ export default function UsersPage() {
       setLastPage(res.data.last_page ?? 1);
       setTotalCount(res.data.total ?? res.data.data?.length ?? 0);
       setStats(res.data.meta ?? { total: 0, active: 0, inactive: 0, admin_master: 0 });
+      setError(null);
     } catch (e) {
       // Jangan biarkan error menyamar sebagai 'belum ada data'
       setError(getErrorMessage(e, 'Gagal memuat data pengguna.'));
@@ -140,17 +150,19 @@ export default function UsersPage() {
   useEffect(() => {
     if (!canViewUsers) return;
     setDepotLoadError(null);
-    Promise.all([depotSettings.list(), regions.list()])
-      .then(([depotResponse, regionResponse]) => {
+    Promise.all([depotSettings.list(), regions.list(), partnerSites.list()])
+      .then(([depotResponse, regionResponse, partnerSiteResponse]) => {
         const list = (depotResponse.data.data ?? []) as DepotOption[];
         setDepotOptions(list);
         setRegionAssignments(Object.fromEntries(list.map(depot => [depot.kode_depo, depot.region_id ?? ''])));
         const options = (regionResponse.data.data ?? []) as RegionOption[];
         setRegionOptions(options);
+        setPartnerSiteOptions(partnerSiteResponse.data.data ?? []);
       })
       .catch(e => {
         setDepotOptions([]);
         setRegionOptions([]);
+        setPartnerSiteOptions([]);
         setDepotLoadError(getErrorMessage(e, 'Gagal memuat lookup region dan depo.'));
       });
   }, [canViewUsers]);
@@ -179,6 +191,15 @@ export default function UsersPage() {
 
   const createRegionDepots = depotOptions.filter(depot => (depot.region_id ?? '') === createForm.region_id);
   const editRegionDepots = userDepots.filter(depot => (depot.region_id ?? '') === (editForm.region_id || ''));
+  const createPartnerSites = partnerSiteOptions.filter(site => site.kode_depo === createForm.kode_depo);
+  const editPartnerSites = partnerSiteOptions.filter(site => site.kode_depo === editForm.kode_depo);
+  const createScopeOptions: UserItem['scope_level'][] = isMasterScope
+    ? ['master', 'region', 'depot', 'ps']
+    : user?.scope_level === 'region'
+      ? ['depot', 'ps']
+      : user?.scope_level === 'depot'
+        ? ['ps']
+        : [];
   const regionDepotGroups = regionOptions.reduce<Record<string, DepotOption[]>>((groups, region) => {
     groups[region.code] = [];
     return groups;
@@ -189,6 +210,12 @@ export default function UsersPage() {
     regionDepotGroups[region].push(depot);
   });
   const roleLabel = (slug: string) => roleOptions.find(role => role.slug === slug)?.name || slug;
+  const scopeLabel = (scope: UserItem['scope_level']) => ({
+    master: 'Master',
+    region: 'Region',
+    depot: 'Depo',
+    ps: 'Partner Site',
+  })[scope];
   const regionLabel = (code: string) => {
     const region = regionOptions.find(option => option.code === code);
     return region ? `${region.code} · ${region.name}` : code;
@@ -197,6 +224,7 @@ export default function UsersPage() {
   const createRole = activeRoleOptions.find(role => role.slug === createForm.level);
   const editRole = roleOptions.find(role => role.slug === editForm.level);
   const editRoleHasGlobalAccess = editRole?.has_global_depot_access ?? usesGlobalScope;
+  const isEditingOwnAccount = editItem?.id === user?.id;
 
   const handleCreate = () => {
     setSaveMode('create');
@@ -216,7 +244,7 @@ export default function UsersPage() {
       const response = await regions.create({ code, name });
       const createdRegion = response.data.data as RegionOption;
       setRegionOptions(current => [...current.filter(region => region.code !== createdRegion.code), createdRegion].sort((a, b) => a.code.localeCompare(b.code)));
-      setCreateForm(current => ({ ...current, region_id: createdRegion.code }));
+      setCreateForm(current => ({ ...current, region_id: createdRegion.code, kode_depo: '', nama_depo: '', kode_ps: '' }));
       setCreateDepotCodes([]);
       setNewRegionCode('');
       setNewRegionName('');
@@ -250,7 +278,13 @@ export default function UsersPage() {
       const createdDepot = response.data.data as DepotOption;
       setDepotOptions(current => [...current, createdDepot].sort((a, b) => a.kode_depo.localeCompare(b.kode_depo)));
       setRegionAssignments(current => ({ ...current, [createdDepot.kode_depo]: createForm.region_id }));
-      setCreateDepotCodes(current => [...new Set([...current, createdDepot.kode_depo])]);
+      setCreateDepotCodes([createdDepot.kode_depo]);
+      setCreateForm(current => ({
+        ...current,
+        kode_depo: createdDepot.kode_depo,
+        nama_depo: createdDepot.nama_depo,
+        kode_ps: '',
+      }));
       setNewDepotCode('');
       setNewDepotName('');
       setShowNewDepotFields(false);
@@ -258,6 +292,34 @@ export default function UsersPage() {
       setMasterDataError(getErrorMessage(error, 'Gagal membuat depo.'));
     } finally {
       setCreatingDepot(false);
+    }
+  };
+
+  const handleCreatePartnerSite = async () => {
+    const code = newPartnerSiteCode.trim();
+    const name = newPartnerSiteName.trim();
+    if (!createForm.kode_depo || !code || !name) {
+      setMasterDataError('Pilih depo, lalu isi kode dan nama Partner Site.');
+      return;
+    }
+    setCreatingPartnerSite(true);
+    setMasterDataError(null);
+    try {
+      const response = await partnerSites.create({
+        kode_ps: code,
+        nama_ps: name,
+        kode_depo: createForm.kode_depo,
+      });
+      const createdSite = response.data.data as PartnerSiteOption;
+      setPartnerSiteOptions(current => [...current.filter(site => site.kode_ps !== createdSite.kode_ps), createdSite]);
+      setCreateForm(current => ({ ...current, kode_ps: createdSite.kode_ps }));
+      setNewPartnerSiteCode('');
+      setNewPartnerSiteName('');
+      setShowNewPartnerSiteFields(false);
+    } catch (error) {
+      setMasterDataError(getErrorMessage(error, 'Gagal membuat Partner Site.'));
+    } finally {
+      setCreatingPartnerSite(false);
     }
   };
 
@@ -306,11 +368,14 @@ export default function UsersPage() {
       kode_depo: item.kode_depo || '',
       nama_depo: item.nama_depo || '',
       region_id: item.region_id || '',
+      scope_level: item.scope_level || 'depot',
+      kode_ps: item.kode_ps || '',
       full_name: item.full_name || '',
       alamat: item.alamat || '',
       email: item.email || '',
       password: '',
       password_confirmation: '',
+      current_password: '',
       level: item.level || 'staff_logistic',
       status: item.status || 'active',
     });
@@ -334,17 +399,15 @@ export default function UsersPage() {
   };
 
   const handleToggleDepot = (kodeDepo: string, assigned: boolean) => {
-    setEditDepotCodes(current => assigned
-      ? [...new Set([...current, kodeDepo])]
-      : current.filter(code => code !== kodeDepo));
-  };
-
-  const handleBulkToggleRegion = (regionId: string, assign: boolean) => {
-    const regionDepots = userDepots.filter(d => d.region_id === regionId);
-    const regionCodes = regionDepots.map(d => d.kode_depo);
-    setEditDepotCodes(current => assign
-      ? [...new Set([...current, ...regionCodes])]
-      : current.filter(code => !regionCodes.includes(code)));
+    const nextCodes = assigned ? [kodeDepo] : [];
+    setEditDepotCodes(nextCodes);
+    const depot = userDepots.find(option => option.kode_depo === kodeDepo);
+    setEditForm(current => ({
+      ...current,
+      kode_depo: assigned ? kodeDepo : '',
+      nama_depo: assigned ? (depot?.nama_depo ?? '') : '',
+      kode_ps: assigned && current.kode_depo === kodeDepo ? current.kode_ps : '',
+    }));
   };
 
   const saveDepotRegion = async (depot: DepotOption) => {
@@ -391,6 +454,15 @@ export default function UsersPage() {
         if (!data.password) {
           delete data.password;
           delete data.password_confirmation;
+          delete data.current_password;
+        } else if (!isEditingOwnAccount) {
+          delete data.current_password;
+        }
+        if (!data.kode_depo?.trim()) {
+          delete data.kode_depo;
+        }
+        if (!data.nama_depo?.trim()) {
+          delete data.nama_depo;
         }
         await users.update(editItem.id, { ...data, depot_codes: editDepotCodes });
         setEditItem(null);
@@ -561,7 +633,10 @@ export default function UsersPage() {
       </div>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">{depotCellContent(item)}</div>
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{roleLabel(item.level)}</span>
+        <span className="flex flex-col items-end gap-1">
+          <span className="rounded bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">{scopeLabel(item.scope_level)}</span>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{roleLabel(item.level)}</span>
+        </span>
       </div>
       <div className="flex items-center gap-2 border-t border-gray-100 pt-2">
         {hasPermission('users.edit') && (
@@ -706,7 +781,7 @@ export default function UsersPage() {
                 <span className="hidden xl:inline">Kelompokkan depo</span>
                 <span className="xl:hidden">Depo</span>
               </button>
-              {(hasPermission('users.import') || hasPermission('users.create')) && (
+              {isMasterScope && (hasPermission('users.import') || hasPermission('users.create')) && (
                 <button onClick={() => setShowImport(true)} className="btn-secondary whitespace-nowrap">
                   <span className="flex items-center gap-2">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -716,18 +791,28 @@ export default function UsersPage() {
                   </span>
                 </button>
               )}
-              {hasPermission('users.create') && (
+              {hasPermission('users.create') && createScopeOptions.length > 0 && (
                 <button onClick={() => {
+                  const initialScope = createScopeOptions.includes('depot')
+                    ? 'depot'
+                    : (createScopeOptions[0] ?? 'depot');
+                  const initialRegion = user?.scope_level === 'master' ? '' : (user?.region_id ?? '');
+                  const initialDepot = user?.scope_level === 'depot' ? user.kode_depo : '';
                   setCreateForm({
                     ...emptyForm,
+                    scope_level: initialScope,
+                    region_id: initialRegion,
+                    kode_depo: initialDepot,
+                    nama_depo: user?.scope_level === 'depot' ? user.nama_depo : '',
                     level: activeRoleOptions.find(role => role.slug === 'staff_logistic' && !role.has_global_depot_access)?.slug
                       ?? activeRoleOptions.find(role => !role.has_global_depot_access)?.slug
                       ?? '',
                   });
-                  setCreateDepotCodes([]);
+                  setCreateDepotCodes(initialDepot ? [initialDepot] : []);
                   setMasterDataError(null);
                   setShowNewRegionFields(false);
                   setShowNewDepotFields(false);
+                  setShowNewPartnerSiteFields(false);
                   setShowCreate(true);
                 }} className="btn-primary whitespace-nowrap">
                   <span className="flex items-center gap-2">
@@ -746,7 +831,7 @@ export default function UsersPage() {
               <h2 className="font-semibold text-gray-900">Pemetaan Induk Region → Anak Depo</h2>
               <p className="mt-1 text-sm text-gray-500">Setiap depo terdaftar di satu region. Akses user tetap dibatasi ke depo yang ditetapkan.</p>
             </div>
-            {isAdminMaster && (
+            {isMasterScope && (
               <button
                 type="button"
                 onClick={() => { setShowRegionMapping(current => !current); setRegionMappingError(null); }}
@@ -801,9 +886,9 @@ export default function UsersPage() {
               </table>
             </div>
           )}
-          {showRegionMapping && isAdminMaster && !depotLoadError && (
+          {showRegionMapping && isMasterScope && !depotLoadError && (
             <div className="border-t border-gray-100 p-5">
-              <div className="mb-4 rounded-lg border border-primary-100 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+              <div className="mb-4 rounded-lg border border-chip-primary-border bg-brand-wash px-4 py-3 text-sm text-primary-900">
                 <p className="font-semibold">Tetapkan region induk untuk setiap depo</p>
                 <p className="mt-1 text-xs leading-relaxed">Pilih region dari master region. Jika belum tersedia, buat region terlebih dahulu melalui form tambah user. Setiap depo hanya memiliki satu region induk.</p>
                 <p className="mt-2 text-xs font-medium leading-relaxed">Mengubah region depo dapat mencabut akses user yang assignment-nya tidak lagi cocok dengan region baru. Periksa kembali user terkait setelah memindahkan depo.</p>
@@ -881,6 +966,12 @@ export default function UsersPage() {
           )}
         </section>
 
+        {error && (
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Desktop table */}
@@ -892,7 +983,7 @@ export default function UsersPage() {
                   <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">User</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Depo</th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Level</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Scope / Role</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
                   <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
                 </tr>
@@ -937,9 +1028,12 @@ export default function UsersPage() {
                       {depotCellContent(item)}
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>
-                        {roleLabel(item.level)}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="rounded bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">{scopeLabel(item.scope_level)}</span>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>
+                          {roleLabel(item.level)}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-300'}`}>
@@ -981,7 +1075,7 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="table-cell">{depotCellContent(item)}</td>
-                    <td className="table-cell"><span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{roleLabel(item.level)}</span></td>
+                    <td className="table-cell"><div className="flex flex-col items-start gap-1"><span className="rounded bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">{scopeLabel(item.scope_level)}</span><span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{roleLabel(item.level)}</span></div></td>
                     <td className="table-cell"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-300'}`}><span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>{item.status === 'active' ? 'Active' : 'Inactive'}</span></td>
                     <td className="table-cell"><div className="flex items-center justify-end gap-1">{hasPermission('users.edit') && (<button onClick={() => handleEdit(item)} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200" title="Edit" aria-label="Edit"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg></button>)}{hasPermission('users.delete') && (<button onClick={() => handleDelete(item.id)} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Hapus" aria-label="Hapus"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>)}</div></td>
                   </tr>
@@ -1040,8 +1134,8 @@ export default function UsersPage() {
       <Modal open={showCreate} onClose={() => { setShowCreate(false); setCreateForm({ ...emptyForm }); setCreateDepotCodes([]); }} title="Tambah User" subtitle="Buat akun pengguna baru" size="md"
         footer={
           <>
-            <button onClick={() => { setShowCreate(false); setCreateForm({ ...emptyForm }); setCreateDepotCodes([]); }} className="btn-secondary">Batal</button>
-            <button onClick={handleCreate} disabled={saving || activeRoleOptions.length === 0 || roleOptionsError !== null} className="btn-primary disabled:opacity-50">
+            <button type="button" onClick={() => { setShowCreate(false); setCreateForm({ ...emptyForm }); setCreateDepotCodes([]); }} className="btn-secondary">Batal</button>
+            <button type="submit" form="create-user-form" disabled={saving || activeRoleOptions.length === 0 || roleOptionsError !== null} className="btn-primary disabled:opacity-50">
               <span className="flex items-center gap-2">
                 {saving ? (
                   <>
@@ -1059,10 +1153,10 @@ export default function UsersPage() {
           </>
         }
       >
-        <div className="space-y-4">
-          <div className="rounded-lg border border-primary-100 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+        <form id="create-user-form" className="space-y-4" onSubmit={(event) => { event.preventDefault(); handleCreate(); }}>
+          <div className="rounded-lg border border-chip-primary-border bg-brand-wash px-4 py-3 text-sm text-primary-900">
             <p className="font-semibold">Urutan pengaturan user</p>
-            <p className="mt-1 text-xs leading-relaxed">Isi akun, tentukan region dan depo yang boleh diakses, lalu pilih role untuk menentukan menu dan tindakan user.</p>
+            <p className="mt-1 text-xs leading-relaxed">Pilih scope hierarki, satu region dan satu depo, lalu tentukan role operasional secara terpisah.</p>
           </div>
           <section aria-labelledby="create-account-heading" className="space-y-4">
             <h3 id="create-account-heading" className="text-sm font-bold uppercase tracking-wide text-slate-500">1. Akun User</h3>
@@ -1079,31 +1173,53 @@ export default function UsersPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password">Password *</label>
-              <input id="password" type="password" value={createForm.password} onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
+              <input id="password" type="password" autoComplete="new-password" minLength={8} value={createForm.password} onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password">Konfirmasi Password *</label>
-              <input id="konfirmasi-password" type="password" value={createForm.password_confirmation} onChange={(e) => setCreateForm(prev => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
+              <input id="konfirmasi-password" type="password" autoComplete="new-password" value={createForm.password_confirmation} onChange={(e) => setCreateForm(prev => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
             </div>
           </div>
           </section>
           <section aria-labelledby="create-data-scope-heading" className="space-y-4">
           <div>
-            <h3 id="create-data-scope-heading" className="text-sm font-bold uppercase tracking-wide text-slate-500">2. Cakupan Data</h3>
-            <p className="mt-1 text-xs text-gray-500">Pilih region dari lookup atau buat region baru. Setelah itu pilih depo yang boleh diakses user, atau buat depo baru di region tersebut.</p>
+            <h3 id="create-data-scope-heading" className="text-sm font-bold uppercase tracking-wide text-slate-500">2. Scope &amp; Hierarki</h3>
+            <p className="mt-1 text-xs text-gray-500">Scope menentukan entitas yang dapat dikelola. Setiap akun harus memiliki satu region dan satu depo.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="scope-level">Scope hierarki *</label>
+            <select
+              id="scope-level"
+              value={createForm.scope_level}
+              onChange={event => setCreateForm(current => ({ ...current, scope_level: event.target.value, kode_ps: '' }))}
+              className="select-field"
+              required
+            >
+              {createScopeOptions.map(scope => (
+                <option key={scope} value={scope}>
+                  {scope === 'master' ? 'Master — kelola seluruh hierarki' :
+                    scope === 'region' ? 'Region — kelola depo di region' :
+                      scope === 'depot' ? 'Depo — kelola Partner Site di depo' :
+                        'PS — akun operasional Partner Site'}
+                </option>
+              ))}
+            </select>
+            {createScopeOptions.length === 0 && (
+              <p role="alert" className="mt-1 text-xs text-amber-700">Scope akun Anda tidak dapat membuat akun bawahan.</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="region">Region User</label>
             <select id="region" value={createForm.region_id} onChange={(e) => {
               const regionId = e.target.value;
-              setCreateForm(prev => ({ ...prev, region_id: regionId }));
+              setCreateForm(prev => ({ ...prev, region_id: regionId, kode_depo: '', nama_depo: '', kode_ps: '' }));
               setCreateDepotCodes([]);
               setMasterDataError(null);
-            }} className="select-field">
+            }} className="select-field" required disabled={!isMasterScope}>
               <option value="">— Pilih region —</option>
               {regionOptions.map(region => <option key={region.code} value={region.code}>{region.code} · {region.name}</option>)}
             </select>
-            {isAdminMaster && (
+            {isMasterScope && (
               <button type="button" className="mt-2 text-sm font-medium text-primary-700 hover:text-primary-800" onClick={() => {
                 setShowNewRegionFields(current => !current);
                 setMasterDataError(null);
@@ -1111,8 +1227,8 @@ export default function UsersPage() {
                 {showNewRegionFields ? 'Batal buat region' : '+ Buat region baru'}
               </button>
             )}
-            {showNewRegionFields && isAdminMaster && (
-              <div className="mt-3 space-y-3 rounded-lg border border-primary-200 bg-primary-50 p-3">
+            {showNewRegionFields && isMasterScope && (
+              <div className="mt-3 space-y-3 rounded-lg border border-chip-primary-border bg-brand-wash p-3">
                 <p className="text-sm font-semibold text-primary-900">Buat master region</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="text-xs font-medium text-gray-700">Kode region
@@ -1133,24 +1249,11 @@ export default function UsersPage() {
           <div className="rounded-xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between gap-3 bg-gray-50 px-4 py-3">
               <div>
-                <p className="font-medium text-gray-900">Pilih depo yang boleh diakses</p>
+                <p className="font-medium text-gray-900">Pilih satu depo akun</p>
                 <p className="text-xs text-gray-500">{createForm.region_id ? regionLabel(createForm.region_id) : 'Pilih region terlebih dahulu'}</p>
               </div>
               <div className="flex items-center gap-3">
-              {createRegionDepots.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setCreateDepotCodes(current =>
-                    current.length === createRegionDepots.length
-                      ? []
-                      : createRegionDepots.map(depot => depot.kode_depo)
-                  )}
-                  className="text-xs font-medium text-primary-600 hover:text-primary-700"
-                >
-                  {createRegionDepots.every(depot => createDepotCodes.includes(depot.kode_depo)) ? 'Hapus semua depo' : 'Pilih semua depo region'}
-                </button>
-              )}
-              {isAdminMaster && createForm.region_id && (
+              {canCreateDepot && createForm.region_id && (
                 <button type="button" onClick={() => {
                   setShowNewDepotFields(current => !current);
                   setMasterDataError(null);
@@ -1160,8 +1263,8 @@ export default function UsersPage() {
               )}
               </div>
             </div>
-            {showNewDepotFields && isAdminMaster && createForm.region_id && (
-              <div className="space-y-3 border-b border-gray-200 bg-primary-50 p-4">
+            {showNewDepotFields && canCreateDepot && createForm.region_id && (
+              <div className="space-y-3 border-b border-gray-200 bg-brand-wash p-4">
                 <p className="text-sm font-semibold text-primary-900">Buat depo baru di {regionLabel(createForm.region_id)}</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="text-xs font-medium text-gray-700">Kode depo
@@ -1187,12 +1290,20 @@ export default function UsersPage() {
                 {createRegionDepots.map(depot => (
                   <label key={depot.kode_depo} className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-gray-50">
                     <input
-                      type="checkbox"
-                      checked={createDepotCodes.includes(depot.kode_depo)}
-                      onChange={event => setCreateDepotCodes(current => event.target.checked
-                        ? [...new Set([...current, depot.kode_depo])]
-                        : current.filter(code => code !== depot.kode_depo))}
-                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      type="radio"
+                      name="create-kode-depo"
+                      required
+                      checked={createForm.kode_depo === depot.kode_depo}
+                      onChange={() => {
+                        setCreateDepotCodes([depot.kode_depo]);
+                        setCreateForm(current => ({
+                          ...current,
+                          kode_depo: depot.kode_depo,
+                          nama_depo: depot.nama_depo,
+                          kode_ps: '',
+                        }));
+                      }}
+                      className="h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                     <span className="font-mono text-sm font-medium text-gray-900">{depot.kode_depo}</span>
                     <span className="text-sm text-gray-500">{depot.nama_depo}</span>
@@ -1200,10 +1311,42 @@ export default function UsersPage() {
                 ))}
               </div>
             )}
-            <p className="border-t border-gray-100 bg-white px-4 py-2 text-xs text-gray-500">
-              {createDepotCodes.length} depo dipilih. Jika tidak memilih depo, user tidak mendapat data depo—kecuali role diberi akses global.
+            <p className="border-t border-gray-100 bg-surface-card px-4 py-2 text-xs text-gray-500">
+              Pilih tepat satu depo untuk akun ini.
             </p>
           </div>
+          {canCreatePartnerSite && createForm.kode_depo && (
+            <div className="space-y-2">
+              <button type="button" onClick={() => setShowNewPartnerSiteFields(current => !current)} className="text-sm font-medium text-primary-700 hover:text-primary-800">
+                {showNewPartnerSiteFields ? 'Batal buat Partner Site' : '+ Buat Partner Site'}
+              </button>
+              {showNewPartnerSiteFields && (
+                <div className="space-y-3 rounded-lg border border-chip-primary-border bg-brand-wash p-3">
+                  <p className="text-sm font-semibold text-primary-900">Buat PS baru di depo {createForm.kode_depo}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="text-xs font-medium text-gray-700">Kode PS
+                      <input aria-label="Kode PS baru" value={newPartnerSiteCode} onChange={event => setNewPartnerSiteCode(event.target.value)} maxLength={20} className="input-field mt-1" />
+                    </label>
+                    <label className="text-xs font-medium text-gray-700">Nama PS
+                      <input aria-label="Nama PS baru" value={newPartnerSiteName} onChange={event => setNewPartnerSiteName(event.target.value)} maxLength={100} className="input-field mt-1" />
+                    </label>
+                  </div>
+                  <button type="button" onClick={handleCreatePartnerSite} disabled={creatingPartnerSite} className="btn-secondary disabled:opacity-50">
+                    {creatingPartnerSite ? 'Menyimpan PS...' : 'Simpan Partner Site'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {createForm.scope_level === 'ps' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-ps">Partner Site *</label>
+              <select id="kode-ps" value={createForm.kode_ps} required onChange={event => setCreateForm(current => ({ ...current, kode_ps: event.target.value }))} className="select-field">
+                <option value="">— Pilih Partner Site —</option>
+                {createPartnerSites.map(site => <option key={site.kode_ps} value={site.kode_ps}>{site.kode_ps} · {site.nama_ps}</option>)}
+              </select>
+            </div>
+          )}
           </section>
           <section aria-labelledby="create-role-heading" className="space-y-3">
           <div>
@@ -1237,17 +1380,17 @@ export default function UsersPage() {
           </div>
           {createRole?.has_global_depot_access && (
             <div role="alert" className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-              <p className="font-semibold">Role ini memberi akses global ke semua depo</p>
-              <p className="mt-1 text-xs leading-relaxed">Pilihan Region dan Depo tidak membatasi data user ini. Gunakan role ini hanya jika akses lintas region memang disetujui.</p>
+              <p className="font-semibold">Role ini memberi akses data operasional lintas depo</p>
+              <p className="mt-1 text-xs leading-relaxed">Hak mengelola Region, Depo, dan Partner Site tetap dibatasi oleh Scope hierarki; role ini tidak memperluas hak kelola entitas.</p>
             </div>
           )}
           <div aria-label="Ringkasan akses user baru" className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
             <p className="font-semibold">Periksa sebelum menyimpan</p>
-            <p className="mt-1 text-xs">Region: {createForm.region_id || 'Belum dipilih'} · Depo: {createDepotCodes.length ? createDepotCodes.join(', ') : 'Tidak ada'}</p>
-            <p className="mt-1 text-xs">Role: {createRole?.name || 'Belum dipilih'} · Cakupan: {createRole?.has_global_depot_access ? 'Semua depo (global)' : 'Hanya depo yang dipilih'}</p>
+            <p className="mt-1 text-xs">Scope hierarki: {scopeLabel(createForm.scope_level as UserItem['scope_level'])} · Region: {createForm.region_id || 'Belum dipilih'} · Depo: {createDepotCodes.length ? createDepotCodes.join(', ') : 'Belum dipilih'}</p>
+            <p className="mt-1 text-xs">Role operasional: {createRole?.name || 'Belum dipilih'} · Akses data: {createRole?.has_global_depot_access ? 'Lintas depo' : 'Sesuai izin role dalam scope akun'}</p>
           </div>
           </section>
-        </div>
+        </form>
       </Modal>
 
       {/* Import Modal */}
@@ -1274,7 +1417,7 @@ export default function UsersPage() {
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
             <p className="text-sm font-medium text-gray-700">{selectedFile?.name || 'Klik untuk memilih file'}</p>
             <p className="text-xs text-gray-500 mt-2">
-              Kolom: email, full_name, alamat, region_id, depot_codes, level, status. Isi depot_codes dengan kode depo dipisahkan koma atau titik koma; semua depo harus aktif dan berada dalam satu region. Kode depo lama tetap bisa diimpor melalui kolom kode_depo sebagai satu depo. level harus memakai slug role aktif.
+              Kolom: email, full_name, alamat, scope_level, region_id, kode_depo, kode_ps, level, status. Setiap akun wajib memiliki satu region dan tepat satu depo aktif. Untuk scope PS, kode_ps harus berada di depo yang sama. Import hanya dapat dilakukan oleh scope Master; level harus memakai slug role aktif.
             </p>
           </div>
           {importResult && (
@@ -1291,8 +1434,8 @@ export default function UsersPage() {
       <Modal open={!!editItem} onClose={() => { setEditItem(null); setEditForm({}); setUserDepots([]); setEditDepotCodes([]); setDepotLoadError(null); setEditTab('profile'); }} title="Edit User" subtitle="Edit data pengguna" size="lg"
         footer={
           <>
-            <button onClick={() => { setEditItem(null); setEditForm({}); setUserDepots([]); setEditDepotCodes([]); setDepotLoadError(null); setEditTab('profile'); }} className="btn-secondary">Batal</button>
-            <button onClick={handleSaveEdit} disabled={saving || loadingDepots || depotLoadError !== null} className="btn-primary disabled:opacity-50">
+            <button type="button" onClick={() => { setEditItem(null); setEditForm({}); setUserDepots([]); setEditDepotCodes([]); setDepotLoadError(null); setEditTab('profile'); }} className="btn-secondary">Batal</button>
+            <button type="submit" form="edit-user-form" disabled={saving || loadingDepots || depotLoadError !== null || editDepotCodes.length !== 1} className="btn-primary disabled:opacity-50">
               <span className="flex items-center gap-2">
                 {saving ? (
                   <>
@@ -1310,11 +1453,12 @@ export default function UsersPage() {
           </>
         }
       >
-        <div className="space-y-4">
+        <form id="edit-user-form" className="space-y-4" onSubmit={(event) => { event.preventDefault(); handleSaveEdit(); }}>
           {/* Tab Navigation */}
           <div className="border-b border-gray-200">
             <nav className="flex gap-1" role="tablist" aria-label="Edit user tabs">
               <button
+                type="button"
                 role="tab"
                 aria-selected={editTab === 'profile'}
                 onClick={() => setEditTab('profile')}
@@ -1327,6 +1471,7 @@ export default function UsersPage() {
                 1. Profil &amp; Role
               </button>
               <button
+                type="button"
                 role="tab"
                 aria-selected={editTab === 'depots'}
                 onClick={() => setEditTab('depots')}
@@ -1346,9 +1491,9 @@ export default function UsersPage() {
 
           {/* Tab Panels */}
           <div className="space-y-4" role="tabpanel">
-            <div className="rounded-lg border border-primary-100 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+            <div className="rounded-lg border border-chip-primary-border bg-brand-wash px-4 py-3 text-sm text-primary-900">
               <p className="font-semibold">Dua pengaturan yang berbeda</p>
-              <p className="mt-1 text-xs leading-relaxed"><strong>Role</strong> mengatur menu dan tindakan. <strong>Region dan depo</strong> mengatur data depo yang dapat dilihat user. Periksa kedua bagian sebelum menyimpan.</p>
+              <p className="mt-1 text-xs leading-relaxed"><strong>Scope</strong> membatasi hierarki yang dikelola. <strong>Role</strong> mengatur menu dan tindakan. Akun selalu terikat ke satu region dan satu depo.</p>
             </div>
             {/* Data User Tab */}
             {editTab === 'profile' && (
@@ -1363,18 +1508,51 @@ export default function UsersPage() {
                     <input id="email-2" type="email" value={editForm.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, email: e.target.value }))} className="input-field" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                {(isMasterScope || isEditingOwnAccount) && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password-kosongkan-jika-tidak-diubah">Password (kosongkan jika tidak diubah)</label>
+                        <input id="password-kosongkan-jika-tidak-diubah" type="password" autoComplete="new-password" minLength={8} value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password-2">Konfirmasi Password</label>
+                        <input id="konfirmasi-password-2" type="password" autoComplete="new-password" required={Boolean(editForm.password)} value={editForm.password_confirmation || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
+                      </div>
+                    </div>
+                    {isEditingOwnAccount && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password-saat-ini">Password saat ini</label>
+                        <input id="password-saat-ini" type="password" autoComplete="current-password" required={Boolean(editForm.password)} value={editForm.current_password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, current_password: e.target.value }))} className="input-field" />
+                        <p className="mt-1 text-xs text-gray-500">Wajib diisi untuk mengganti password akun sendiri.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+                {isMasterScope ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password-kosongkan-jika-tidak-diubah">Password (kosongkan jika tidak diubah)</label>
-                    <input id="password-kosongkan-jika-tidak-diubah" type="password" value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="scope-level-2">Scope hierarki</label>
+                    <select
+                      id="scope-level-2"
+                      value={editForm.scope_level || 'depot'}
+                      onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setEditForm(current => ({
+                        ...current,
+                        scope_level: event.target.value,
+                        kode_ps: '',
+                      }))}
+                      className="select-field"
+                    >
+                      <option value="master">Master — kelola seluruh hierarki</option>
+                      <option value="region">Region — kelola depo di region</option>
+                      <option value="depot">Depo — kelola Partner Site di depo</option>
+                      <option value="ps">PS — akun operasional Partner Site</option>
+                    </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password-2">Konfirmasi Password</label>
-                    <input id="konfirmasi-password-2" type="password" value={editForm.password_confirmation || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-sm text-gray-700">Scope hierarki: <strong>{editForm.scope_level}</strong></p>
+                )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="region-2">Region User</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="region-2">Region akun</label>
                   <select id="region-2" value={editForm.region_id || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                     const regionId = e.target.value;
                     setEditForm((prev: Record<string, string>) => ({
@@ -1382,14 +1560,15 @@ export default function UsersPage() {
                       region_id: regionId,
                       kode_depo: '',
                       nama_depo: '',
+                      kode_ps: '',
                     }));
                     setEditDepotCodes([]);
-                  }} className="select-field">
-                    <option value="">— Tanpa region (atur depot manual) —</option>
+                  }} className="select-field" required disabled={!isMasterScope}>
+                    <option value="">— Pilih region —</option>
                     {regionOptions.map(region => <option key={region.code} value={region.code}>{region.code} · {region.name}</option>)}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Region hanya mengelompokkan depo; akses data ditentukan oleh depo yang dicentang pada tab Cakupan Depo.
+                    Region adalah induk scope akun; akun harus terikat pada satu depo di region ini.
                   </p>
                   {editItem && (editForm.region_id || '') !== (editItem.region_id || '') && (
                     <p role="status" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -1397,6 +1576,15 @@ export default function UsersPage() {
                     </p>
                   )}
                 </div>
+                {editForm.scope_level === 'ps' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-ps-2">Partner Site *</label>
+                    <select id="kode-ps-2" value={editForm.kode_ps || ''} required onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setEditForm(current => ({ ...current, kode_ps: event.target.value }))} className="select-field">
+                      <option value="">— Pilih Partner Site —</option>
+                      {editPartnerSites.map(site => <option key={site.kode_ps} value={site.kode_ps}>{site.kode_ps} · {site.nama_ps}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat-2">Alamat</label>
                   <textarea id="alamat-2" value={editForm.alamat || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
@@ -1404,7 +1592,7 @@ export default function UsersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="level-2">Role / Peran</label>
-                    <select id="level-2" value={editForm.level || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, level: e.target.value }))} className="select-field" disabled={roleOptions.length === 0 || roleOptionsError !== null}>
+                    <select id="level-2" value={editForm.level || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, level: e.target.value }))} className="select-field" disabled={!isMasterScope || roleOptions.length === 0 || roleOptionsError !== null}>
                       {!activeRoleOptions.some(role => role.slug === editForm.level) && editForm.level && (
                         <option value={editForm.level}>{roleOptions.find(role => role.slug === editForm.level)?.name || editItem?.roles?.find(role => role.slug === editForm.level)?.name || editForm.level} (nonaktif)</option>
                       )}
@@ -1418,7 +1606,7 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="status-2">Status</label>
-                    <select id="status-2" value={editForm.status || 'active'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, status: e.target.value }))} className="select-field">
+                    <select id="status-2" value={editForm.status || 'active'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, status: e.target.value }))} className="select-field" disabled={!isMasterScope}>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                     </select>
@@ -1426,14 +1614,14 @@ export default function UsersPage() {
                 </div>
                 {editRoleHasGlobalAccess && (
                   <div role="alert" className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-                    <p className="font-semibold">Role ini memberi akses global ke semua depo</p>
-                    <p className="mt-1 text-xs leading-relaxed">Assignment depo tidak membatasi data selama permission global aktif pada role ini.</p>
+                    <p className="font-semibold">Role ini memberi akses data operasional lintas depo</p>
+                    <p className="mt-1 text-xs leading-relaxed">Hak mengelola Region, Depo, dan Partner Site tetap dibatasi oleh Scope hierarki; role ini tidak memperluas hak kelola entitas.</p>
                   </div>
                 )}
                 <div aria-label="Ringkasan akses user" className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                   <p className="font-semibold">Ringkasan akses</p>
-                  <p className="mt-1 text-xs">Region: {editForm.region_id || 'Belum dipilih'} · Depo: {editDepotCodes.length ? editDepotCodes.join(', ') : 'Tidak ada'}</p>
-                  <p className="mt-1 text-xs">Role: {editRole?.name || editItem?.roles?.find(role => role.slug === editForm.level)?.name || editForm.level || 'Belum dipilih'} · Cakupan: {editRoleHasGlobalAccess ? 'Semua depo (global)' : 'Hanya depo yang dipilih'}</p>
+                  <p className="mt-1 text-xs">Scope hierarki: {scopeLabel((editForm.scope_level || 'depot') as UserItem['scope_level'])} · Region: {editForm.region_id || 'Belum dipilih'} · Depo: {editDepotCodes.length ? editDepotCodes.join(', ') : 'Belum dipilih'}</p>
+                  <p className="mt-1 text-xs">Role operasional: {editRole?.name || editItem?.roles?.find(role => role.slug === editForm.level)?.name || editForm.level || 'Belum dipilih'} · Akses data: {editRoleHasGlobalAccess ? 'Lintas depo' : 'Sesuai izin role dalam scope akun'}</p>
                 </div>
               </div>
             )}
@@ -1471,7 +1659,7 @@ export default function UsersPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">Pilih Depot yang Dikelola</h3>
+                  <h3 className="font-semibold text-gray-900">Pilih satu depo akun</h3>
                   {loadingDepots && <span className="text-xs text-gray-500 animate-pulse">Memuat...</span>}
                 </div>
 
@@ -1493,29 +1681,19 @@ export default function UsersPage() {
                             </svg>
                             <span className="font-medium text-gray-900">{regionId}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">{depots.filter(d => editDepotCodes.includes(d.kode_depo)).length} / {depots.length} depo</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const allAssigned = depots.every(d => editDepotCodes.includes(d.kode_depo));
-                                handleBulkToggleRegion(regionId, !allAssigned);
-                              }}
-                              className="text-xs font-medium text-primary-600 hover:text-primary-700"
-                            >
-                              {depots.every(d => editDepotCodes.includes(d.kode_depo)) ? 'Hapus semua' : 'Pilih semua'}
-                            </button>
-                          </div>
+                          <span className="text-xs text-gray-500">Pilih satu</span>
                         </div>
                         <div className="divide-y divide-gray-100">
                           {depots.map(depot => (
                             <label key={depot.kode_depo} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
                               <div className="flex items-center gap-3">
                                 <input
-                                  type="checkbox"
+                                  type="radio"
+                                  name="edit-kode-depo"
+                                  required
                                   checked={editDepotCodes.includes(depot.kode_depo)}
                                   onChange={event => handleToggleDepot(depot.kode_depo, event.target.checked)}
-                                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+                                  className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 focus:ring-2"
                                 />
                                 <div>
                                   <p className="font-mono font-medium text-gray-900">{depot.kode_depo}</p>
@@ -1540,12 +1718,12 @@ export default function UsersPage() {
                   </div>
                 )}
                 <p className="text-xs text-gray-500">
-                  {editDepotCodes.length} depo dipilih. Perubahan disimpan bersama tombol Simpan; kosongkan daftar untuk menutup akses depo (kecuali role memiliki akses global).
+                  {editDepotCodes.length === 1 ? `Depo akun: ${editDepotCodes[0]}` : 'Pilih tepat satu depo akun sebelum menyimpan.'}
                 </p>
               </div>
             )}
           </div>
-        </div>
+        </form>
       </Modal>
 
       {/* Confirm Dialogs */}

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\DepotSetting;
 use App\Models\Permission;
+use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +22,11 @@ class SecurityAuditTest extends TestCase
 
     private function userWith(string $roleSlug, array $extraPerms = []): User
     {
+        Region::firstOrCreate(['code' => 'REG-A'], ['name' => 'Region A']);
+        DepotSetting::updateOrCreate(
+            ['kode_depo' => 'DPO'],
+            ['nama_depo' => 'Depo', 'region_id' => 'REG-A', 'is_active' => true],
+        );
         $role = Role::firstOrCreate(['slug' => $roleSlug], ['name' => $roleSlug, 'slug' => $roleSlug]);
         foreach ($extraPerms as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug]);
@@ -32,6 +39,8 @@ class SecurityAuditTest extends TestCase
             'full_name' => ucfirst($roleSlug),
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo',
+            'region_id' => 'REG-A',
+            'scope_level' => $roleSlug === 'admin_master' ? 'master' : 'depot',
             'level' => $roleSlug,
             'status' => 'active',
         ]);
@@ -121,6 +130,8 @@ class SecurityAuditTest extends TestCase
         $res = $this->postJson('/api/v1/users', [
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo',
+            'region_id' => 'REG-A',
+            'scope_level' => 'depot',
             'full_name' => 'Payload Attack',
             'email' => 'atk-'.uniqid().'@example.com',
             'password' => 'password123',
@@ -152,6 +163,7 @@ class SecurityAuditTest extends TestCase
 
         $this->postJson('/api/v1/users', [
             'kode_depo' => 'DPO', 'nama_depo' => 'Depo',
+            'region_id' => 'REG-A', 'scope_level' => 'depot',
             'full_name' => 'Attacker', 'email' => 'atk-'.uniqid().'@example.com',
             'password' => 'password123', 'password_confirmation' => 'password123',
             'level' => 'admin_master',

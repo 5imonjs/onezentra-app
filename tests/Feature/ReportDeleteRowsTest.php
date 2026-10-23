@@ -30,6 +30,7 @@ class ReportDeleteRowsTest extends TestCase
             'full_name' => 'Report Deleter',
             'kode_depo' => '0000',
             'nama_depo' => 'Kantor Pusat',
+            'scope_level' => $level === 'admin_master' ? 'master' : 'depot',
             'level' => $level,
             'status' => 'active',
         ]);

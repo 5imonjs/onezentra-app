@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\GateTransactionController;
 use App\Http\Controllers\Api\V1\NpnController;
 use App\Http\Controllers\Api\V1\OpnameExpiredController;
 use App\Http\Controllers\Api\V1\OpnameExpiredSessionController;
+use App\Http\Controllers\Api\V1\PartnerSiteController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ReceivingController;
 use App\Http\Controllers\Api\V1\ReceivingItemController;
@@ -78,6 +79,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [RegionController::class, 'index'])->middleware('permission:users.view');
         Route::post('/', [RegionController::class, 'store'])->middleware('permission:users.create');
         Route::put('/{region}', [RegionController::class, 'update'])->middleware('permission:users.edit');
+    });
+    Route::prefix('partner-sites')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
+        Route::get('/', [PartnerSiteController::class, 'index'])->middleware('permission:users.view');
+        Route::post('/', [PartnerSiteController::class, 'store'])->middleware('permission:users.create');
     });
 
     Route::get('dashboard/activity', [DashboardController::class, 'activity'])

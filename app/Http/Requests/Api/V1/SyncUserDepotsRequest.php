@@ -14,7 +14,7 @@ class SyncUserDepotsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'depot_codes' => 'present|array',
+            'depot_codes' => 'required|array|min:1|max:1',
             'depot_codes.*' => 'string|max:20|distinct',
         ];
     }

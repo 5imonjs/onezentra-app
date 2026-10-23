@@ -570,12 +570,12 @@ class BiayaRetribusiController extends Controller
     }
 
     /**
-     * Melihat boleh: admin master, peran pengaju, pembuat, atau approver
-     * (BAC/RLH/RFAH) yang ditetapkan untuk depo pengajuan.
+     * Melihat boleh: peran pengaju, pembuat, atau approver (BAC/RLH/RFAH)
+     * yang ditetapkan untuk depo pengajuan.
      */
     private function authorizeViewer(BiayaRetribusi $biayaRetribusi): void
     {
-        $this->authorizeBiayaRowViewer($biayaRetribusi, ApprovalAssignment::MODULE_RETRIBUSI, allowAdminRole: true);
+        $this->authorizeBiayaRowViewer($biayaRetribusi, ApprovalAssignment::MODULE_RETRIBUSI);
     }
 
     private function authorizeCreator(BiayaRetribusi $biayaRetribusi): void

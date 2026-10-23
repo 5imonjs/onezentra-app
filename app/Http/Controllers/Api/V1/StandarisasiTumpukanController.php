@@ -321,13 +321,10 @@ class StandarisasiTumpukanController extends Controller
      * dan selisihnya tidak terlihat dari mana pun kecuali membaca
      * controller ini. Peran yang benar-benar lintas depo sekarang
      * ditentukan di PermissionSeeder, sama seperti modul lain.
-     *
-     * `isAdminMaster()` tetap diperiksa eksplisit karena peran itu punya
-     * jalur admin tersendiri di luar permission.
      */
     private function canManageRow(User $user, StandarisasiTumpukan $row): bool
     {
-        if ($user->isAdminMaster() || $user->hasPermission('standarisasi.view_all')) {
+        if ($user->hasPermission('standarisasi.view_all')) {
             return true;
         }
 

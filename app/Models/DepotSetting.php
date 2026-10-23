@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DepotSetting extends Model
 {
@@ -41,5 +44,15 @@ class DepotSetting extends Model
         return $this->belongsToMany(User::class, 'user_depots', 'kode_depo', 'user_id')
             ->withTimestamps()
             ->withPivot('assigned_at');
+    }
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class, 'region_id', 'code');
+    }
+
+    public function partnerSites(): HasMany
+    {
+        return $this->hasMany(PartnerSite::class, 'kode_depo', 'kode_depo');
     }
 }

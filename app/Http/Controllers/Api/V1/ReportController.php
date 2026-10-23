@@ -669,7 +669,7 @@ class ReportController extends Controller
      */
     public function destroyRows(Request $request): JsonResponse
     {
-        abort_unless($request->user()->level === 'admin_master', 403, 'Hanya level master yang boleh menghapus data laporan.');
+        abort_unless($request->user()->isMasterScope(), 403, 'Hanya scope Master yang boleh menghapus data laporan.');
 
         $validated = $request->validate([
             'type' => 'required|string|in:rencana_kirim,receiving_item,opname_wave,biaya_thl_detail,biaya_retribusi_detail',

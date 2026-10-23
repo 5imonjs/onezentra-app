@@ -17,6 +17,10 @@ class DepotSettingTest extends TestCase
 
     private function user(string $level, string $kodeDepo, array $permSlugs = []): User
     {
+        Region::firstOrCreate(['code' => 'REG-TEST'], ['name' => 'Test']);
+        if ($level === 'admin_master') {
+            $permSlugs[] = 'depot_settings.manage';
+        }
         $role = Role::firstOrCreate(['slug' => 'depot-setting-'.$level], ['name' => 'Depot Setting '.$level]);
         foreach ($permSlugs as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
@@ -28,6 +32,8 @@ class DepotSettingTest extends TestCase
             'full_name' => 'User '.$level,
             'kode_depo' => $kodeDepo,
             'nama_depo' => 'Depo '.$kodeDepo,
+            'region_id' => 'REG-TEST',
+            'scope_level' => $level === 'admin_master' ? 'master' : 'depot',
             'level' => $level,
             'status' => 'active',
         ]);
@@ -54,7 +60,7 @@ class DepotSettingTest extends TestCase
             ->assertJsonPath('data.0.kode_depo', 'DPA');
     }
 
-    public function test_user_with_view_all_sees_every_depot(): void
+    public function test_depot_scope_limits_hierarchy_listing_even_with_view_all_permission(): void
     {
         DepotSetting::create(['kode_depo' => 'DPA', 'nama_depo' => 'Depo A']);
         DepotSetting::create(['kode_depo' => 'DPB', 'nama_depo' => 'Depo B']);
@@ -63,7 +69,8 @@ class DepotSettingTest extends TestCase
 
         $this->getJson('/api/v1/depot-settings')
             ->assertOk()
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.kode_depo', 'DPA');
     }
 
     public function test_show_forbidden_for_other_depot_when_scoped(): void
@@ -86,11 +93,11 @@ class DepotSettingTest extends TestCase
             ->assertJsonPath('data.alamat_pengirim', 'Jl A');
     }
 
-    public function test_show_returns_404_when_missing(): void
+    public function test_show_forbids_lookup_outside_scope_even_when_missing(): void
     {
         Sanctum::actingAs($this->user('admin_planner', 'DPA', ['depot.view_all']));
 
-        $this->getJson('/api/v1/depot-settings/XXX')->assertNotFound();
+        $this->getJson('/api/v1/depot-settings/XXX')->assertForbidden();
     }
 
     public function test_upsert_forbidden_for_non_master(): void

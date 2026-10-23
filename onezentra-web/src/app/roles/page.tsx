@@ -141,13 +141,14 @@ export default function AccessManagementPage() {
             ))}
           </div>
           <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 md:grid-cols-2">
-            <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <div className="rounded-lg bg-surface-raised px-4 py-3 text-sm text-slate-700">
               <p className="font-semibold">Cakupan data: assignment user</p>
-              <p className="mt-1 text-xs leading-relaxed">User scoped hanya melihat depo yang dipilih pada profil user. <code>depot.view_region</code> hanya menandai konteks region dan tidak menambah akses ke depo lain.</p>
+              <p className="mt-1 text-xs leading-relaxed">Scope hierarki menentukan entitas yang boleh dikelola. Untuk data operasional, user biasa dibatasi ke depo profilnya; <code>depot.view_region</code> tidak memperluas akses ke depo lain.</p>
             </div>
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <p className="font-semibold">Pengecualian: Akses Semua Depo</p>
-              <p className="mt-1 text-xs leading-relaxed"><code>depot.view_all</code> membuka data seluruh depo lintas region. Aktifkan hanya jika role memang harus memiliki akses global.</p>
+              <p className="font-semibold">Sensitif: Akses Semua Depo</p>
+              <p className="mt-1 text-xs leading-relaxed"><code>depot.view_all</code> melintasi batas data operasional semua depo dan dapat memengaruhi operasi yang diizinkan oleh role. Hanya scope Master yang dapat memberikannya. Ini tidak memberi hak membuat atau mengubah Region, Depo, atau PS di luar scope hierarki.</p>
+              <p className="mt-1 text-xs leading-relaxed">Nama role <code>admin_master</code> tidak memberi akses otomatis. Permission yang dicentang menentukan hak operasional; permission baru tidak otomatis ditambahkan ke role ini. Scope Master tetap menjadi batas untuk pengelolaan hirarki.</p>
             </div>
           </div>
         </div>
@@ -200,7 +201,7 @@ export default function AccessManagementPage() {
 // ==================== ROLES TAB ====================
 function RolesTab() {
   const { hasPermission, user } = useAuthStore();
-  const isMaster = user?.level === 'admin_master';
+  const isMaster = user?.scope_level === 'master';
   const [roleList, setRoleList] = useState<Role[]>([]);
   const [totalPermissions, setTotalPermissions] = useState(0);
   const [_error, setError] = useState<string | null>(null);
@@ -779,9 +780,9 @@ function RolesTab() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-lg border border-primary-100 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+            <div className="rounded-lg border border-chip-primary-border bg-brand-wash px-4 py-3 text-sm text-primary-900">
               <p className="font-semibold">Yang diatur di sini adalah hak tindakan role</p>
-              <p className="mt-1 text-xs leading-relaxed">Permission modul menentukan menu dan tindakan. Cakupan data user ditentukan oleh assignment depo; <code>depot.view_region</code> hanya penanda konteks dan tidak memperluas akses. Hanya <code>depot.view_all</code> yang membuka semua depo lintas region.</p>
+              <p className="mt-1 text-xs leading-relaxed">Permission modul menentukan menu dan tindakan, sedangkan <strong>Scope</strong> menentukan hierarki yang dikelola. <code>depot.view_all</code> adalah izin sensitif yang hanya dapat diberikan Master untuk akses data operasional lintas depo; izin itu tidak memperluas hak kelola entitas.</p>
             </div>
             {/* Summary Bar */}
             <div className="flex items-center justify-between p-3 bg-surface-raised rounded-xl">
@@ -868,8 +869,8 @@ function RolesTab() {
                 {!collapsed && (
                 <>
                 {perms.some((perm) => perm.slug === 'depot.view_all') && (
-                  <div className="mx-4 mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-800">
-                    <p><strong>Akses Semua Depo</strong> membuka seluruh depot lintas region. <strong>Konteks Depo Region</strong> menandai peran regional, tetapi tidak memperluas data yang terlihat: user tetap hanya melihat depo yang dipilih di <strong>Users → Depot Akses</strong>. Bila akses global aktif, pembatasan depo tidak berlaku.</p>
+                  <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                    <p><strong>Akses Semua Depo</strong> adalah izin sensitif lintas batas data operasional. Hanya scope Master yang dapat memberikannya. Hak membuat/mengubah Region, Depo, dan PS tetap ditentukan Scope hierarki; <strong>depot.view_region</strong> sendiri tidak memperluas data yang terlihat.</p>
                   </div>
                 )}
                 <div className="divide-y divide-gray-50">

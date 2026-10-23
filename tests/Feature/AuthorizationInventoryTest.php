@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\DepotSetting;
 use App\Models\Permission;
+use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,6 +38,11 @@ class AuthorizationInventoryTest extends TestCase
 
     private function userWith(string $roleSlug, array $perms = [], string $level = 'staff_logistic'): User
     {
+        Region::firstOrCreate(['code' => 'REG-1'], ['name' => 'Region Satu']);
+        DepotSetting::updateOrCreate(
+            ['kode_depo' => 'DPO'],
+            ['nama_depo' => 'Depo', 'region_id' => 'REG-1', 'is_active' => true],
+        );
         $role = Role::firstOrCreate(['slug' => 'role_'.$roleSlug], ['name' => $roleSlug, 'slug' => 'role_'.$roleSlug]);
         foreach ($perms as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
@@ -48,6 +55,8 @@ class AuthorizationInventoryTest extends TestCase
             'full_name' => ucfirst($roleSlug),
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo',
+            'region_id' => 'REG-1',
+            'scope_level' => $level === 'admin_master' ? 'master' : 'depot',
             'level' => $level,
             'status' => 'active',
         ]);
@@ -140,6 +149,7 @@ class AuthorizationInventoryTest extends TestCase
 
         $this->postJson('/api/v1/users', [
             'kode_depo' => 'DPO', 'nama_depo' => 'Depo',
+            'region_id' => 'REG-1', 'scope_level' => 'depot',
             'full_name' => 'Escalation', 'email' => 'esc-'.uniqid().'@example.com',
             'password' => 'password123', 'password_confirmation' => 'password123',
             'level' => 'admin_master',
@@ -154,6 +164,7 @@ class AuthorizationInventoryTest extends TestCase
 
         $this->postJson('/api/v1/users', [
             'kode_depo' => 'DPO', 'nama_depo' => 'Depo',
+            'region_id' => 'REG-1', 'scope_level' => 'depot',
             'full_name' => 'User Baru', 'email' => 'nb-'.uniqid().'@example.com',
             'password' => 'password123', 'password_confirmation' => 'password123',
             'level' => 'staff_logistic',
@@ -172,6 +183,7 @@ class AuthorizationInventoryTest extends TestCase
 
         $this->postJson('/api/v1/users', [
             'kode_depo' => 'DPO', 'nama_depo' => 'Depo',
+            'region_id' => 'REG-1', 'scope_level' => 'depot',
             'full_name' => 'Tanpa Izin', 'email' => 'ti-'.uniqid().'@example.com',
             'password' => 'password123', 'password_confirmation' => 'password123',
             'level' => 'staff_logistic',

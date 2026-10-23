@@ -30,10 +30,18 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kode_depo' => 'nullable|string|max:20',
+            'kode_depo' => ['required', 'string', 'max:20', Rule::exists('depot_settings', 'kode_depo')->where('is_active', true)],
             'nama_depo' => 'nullable|string|max:100',
-            'region_id' => ['nullable', 'string', 'max:20', Rule::exists('regions', 'code')],
-            'depot_codes' => 'sometimes|array',
+            'region_id' => ['required', 'string', 'max:20', Rule::exists('regions', 'code')],
+            'scope_level' => 'required|in:master,region,depot,ps',
+            'kode_ps' => [
+                'required_if:scope_level,ps',
+                'nullable',
+                'string',
+                'max:20',
+                Rule::exists('partner_sites', 'kode_ps'),
+            ],
+            'depot_codes' => 'sometimes|array|max:1',
             'depot_codes.*' => 'string|max:20|distinct',
             'full_name' => 'required|string|max:100',
             'alamat' => 'nullable|string|max:2000',

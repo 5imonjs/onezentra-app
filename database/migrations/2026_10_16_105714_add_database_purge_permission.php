@@ -6,11 +6,8 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Permission `database.purge` (Reset Data Operasional) hanya untuk
-     * admin_master: level master melewati RBAC dan memegang semua permission
-     * aktif, sedangkan controller AdminDatabaseController meng-gate ulang
-     * level === admin_master — jadi walau slug ini dicentang ke role lain
-     * lewat UI, endpoint tetap 403 untuk non-master.
+     * Permission `database.purge` is granted explicitly to the admin_master
+     * role. The endpoint additionally requires Master hierarchy scope.
      */
     public function up(): void
     {

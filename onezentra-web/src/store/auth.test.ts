@@ -14,6 +14,9 @@ import { useAuthStore } from './auth';
 
 const user = (id: number, depo: string) => ({
   id,
+  scope_level: 'depot' as const,
+  kode_ps: null,
+  region_id: null,
   kode_depo: depo,
   nama_depo: depo,
   full_name: 'Nama',

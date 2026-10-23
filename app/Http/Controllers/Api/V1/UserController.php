@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreUserRequest;
 use App\Http\Requests\Api\V1\SyncUserDepotsRequest;
 use App\Http\Requests\Api\V1\UpdateUserRequest;
 use App\Imports\UserImport;
 use App\Models\DepotSetting;
+use App\Models\PartnerSite;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\LikePattern;
@@ -22,11 +22,21 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
 {
-    use AuthorizesDepotRow;
-
     public function index(Request $request)
     {
-        $query = User::with('roles')->forUserDepot($request->user());
+        $actor = $request->user();
+        $query = User::with('roles');
+        if (! $actor->isMasterScope()) {
+            if ($actor->scope_level === 'region') {
+                $query->where('region_id', $actor->region_id);
+            } elseif ($actor->scope_level === 'depot') {
+                $query->where('kode_depo', $actor->kode_depo);
+            } elseif ($actor->scope_level === 'ps') {
+                $query->where('kode_ps', $actor->kode_ps);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
         $baseQuery = clone $query;
         if ($request->filled('search')) {
             // Escape wildcard LIKE (% _) agar input dianggap literal.
@@ -68,24 +78,47 @@ class UserController extends Controller
     public function store(StoreUserRequest $request)
     {
         $validated = $request->validated();
-        $hasDepotAssignments = array_key_exists('depot_codes', $validated);
-        $depotCodes = $validated['depot_codes'] ?? [];
+        $actor = $request->user();
+        $requestedDepotCodes = $validated['depot_codes'] ?? null;
         unset($validated['depot_codes']);
+        $depotCode = $validated['kode_depo'];
+        $depot = DepotSetting::query()
+            ->where('kode_depo', $depotCode)
+            ->where('is_active', true)
+            ->firstOrFail();
+        abort_if(
+            $depot->region_id !== $validated['region_id'],
+            422,
+            'Depo yang dipilih harus berada di region akun.'
+        );
+        abort_if(
+            $requestedDepotCodes !== null && $requestedDepotCodes !== [$depotCode],
+            422,
+            'Akun hanya dapat ditetapkan ke satu depo dan harus sesuai dengan depo utama.'
+        );
+        $this->authorizeUserScopeAssignment($validated, $actor);
+        if (($validated['scope_level'] ?? null) === 'ps') {
+            abort_unless(
+                PartnerSite::query()
+                    ->where('kode_ps', $validated['kode_ps'])
+                    ->where('kode_depo', $depotCode)
+                    ->where('is_active', true)
+                    ->exists(),
+                422,
+                'Partner Site harus berada di depo akun.'
+            );
+        } else {
+            $validated['kode_ps'] = null;
+        }
+
+        $validated['nama_depo'] = $depot->nama_depo;
+        $depotCodes = [$depotCode];
 
         $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
         $validated['password'] = Hash::make($validated['password']);
         $validated['status'] = $validated['status'] ?? 'active';
-        $validated['kode_depo'] = $validated['kode_depo'] ?? '';
-        $validated['nama_depo'] = $validated['nama_depo'] ?? '';
-        if (array_key_exists('region_id', $validated) && blank($validated['region_id'])) {
-            $validated['region_id'] = null;
-        }
-        $validated = $request->user()->depotAttributes($validated);
-
-        $depotAssignments = $hasDepotAssignments
-            ? $this->activeDepotAssignments($depotCodes, $validated['region_id'] ?? null, $request->user())
-            : null;
+        $depotAssignments = $this->activeDepotAssignments($depotCodes, $validated['region_id'], $actor);
 
         $user = DB::transaction(function () use ($validated, $depotAssignments): User {
             $user = User::create($validated);
@@ -131,11 +164,24 @@ class UserController extends Controller
 
     private function authorizeDepot(User $user): void
     {
-        $this->authorizeDepotRow(
-            $user->kode_depo,
-            $user->nama_depo,
-            'Pengguna tidak ditemukan di depo Anda.'
-        );
+        $actor = Auth::user();
+        abort_unless($actor instanceof User, 403);
+
+        if ($actor->isMasterScope()) {
+            return;
+        }
+        abort_if($user->scope_level === 'master', 403, 'Pengguna tidak ditemukan dalam scope Anda.');
+
+        $isWithinScope = match ($actor->scope_level) {
+            'region' => filled($actor->region_id) && $user->region_id === $actor->region_id,
+            'depot' => filled($actor->kode_depo) && $user->kode_depo === $actor->kode_depo,
+            'ps' => filled($actor->kode_ps)
+                && $user->kode_depo === $actor->kode_depo
+                && $user->kode_ps === $actor->kode_ps,
+            default => false,
+        };
+
+        abort_unless($isWithinScope, 403, 'Pengguna tidak ditemukan dalam scope Anda.');
     }
 
     public function show(User $user)
@@ -154,41 +200,80 @@ class UserController extends Controller
             $requestedRole = Role::where('slug', $validated['level'])->first();
             abort_if($requestedRole && ! $requestedRole->is_active, 422, 'Role yang dipilih tidak aktif.');
         }
-        $hasDepotAssignments = array_key_exists('depot_codes', $validated);
-        $depotCodes = $validated['depot_codes'] ?? [];
+        $requestedDepotCodes = $validated['depot_codes'] ?? null;
         unset($validated['depot_codes']);
 
         $this->authorize('assignAdminMaster', [User::class, $validated['level'] ?? null]);
 
-        // Hanya admin master boleh mengubah level/status akun lain.
+        // Hanya scope Master boleh mengubah role/status akun lain.
         // Tanpa ini, pemegang users.edit bisa menaikkan level akun kompromi
         // lalu memakai permission level baru (eskalasi tanpa jejak).
         $actor = $request->user();
-        if (! $actor->isAdminMaster()) {
-            foreach (['level', 'status', 'region_id'] as $guarded) {
+        if (! $actor->isMasterScope()) {
+            foreach (['level', 'status'] as $guarded) {
                 if (array_key_exists($guarded, $validated) && $validated[$guarded] !== $user->getOriginal($guarded)) {
-                    abort(403, 'Hanya admin master yang boleh mengubah level/status/region akun.');
+                    abort(403, 'Hanya scope Master yang boleh mengubah role/status akun.');
+                }
+                unset($validated[$guarded]);
+            }
+        }
+        if (! $actor->isMasterScope()) {
+            foreach (['region_id', 'scope_level', 'kode_depo', 'nama_depo', 'kode_ps'] as $guarded) {
+                if (array_key_exists($guarded, $validated) && $validated[$guarded] !== $user->getOriginal($guarded)) {
+                    abort(403, 'Hanya Master yang boleh mengubah scope akun.');
                 }
                 unset($validated[$guarded]);
             }
         }
 
-        $regionChanged = array_key_exists('region_id', $validated)
-            && $validated['region_id'] !== $user->getOriginal('region_id');
-        if ($regionChanged && ! $hasDepotAssignments) {
-            $hasDepotAssignments = true;
-            $depotCodes = [];
-        }
-
-        // Hanya admin master yang boleh mengubah user admin master.
+        // Hanya scope Master yang boleh mengubah akun scope Master.
         $this->authorize('update', $user);
 
-        if (array_key_exists('region_id', $validated) && blank($validated['region_id'])) {
-            $validated['region_id'] = null;
+        $scopeFieldsChanged = array_intersect(
+            ['scope_level', 'region_id', 'kode_depo', 'kode_ps', 'depot_codes'],
+            array_keys($request->validated())
+        ) !== [];
+        $depotAssignments = null;
+        if ($scopeFieldsChanged) {
+            $scope = [
+                'scope_level' => $validated['scope_level'] ?? $user->scope_level,
+                'region_id' => $validated['region_id'] ?? $user->region_id,
+                'kode_depo' => $validated['kode_depo'] ?? $requestedDepotCodes[0] ?? $user->kode_depo,
+                'kode_ps' => $validated['kode_ps'] ?? $user->kode_ps,
+            ];
+            $depotCode = $scope['kode_depo'];
+            $depot = DepotSetting::query()
+                ->where('kode_depo', $depotCode)
+                ->where('is_active', true)
+                ->first();
+            abort_unless($depot, 422, 'Depo akun wajib aktif dan valid.');
+            abort_unless($depot->region_id === $scope['region_id'], 422, 'Depo yang dipilih harus berada di region akun.');
+            abort_if(
+                $requestedDepotCodes !== null && $requestedDepotCodes !== [$depotCode],
+                422,
+                'Akun hanya dapat ditetapkan ke satu depo dan harus sesuai dengan depo utama.'
+            );
+            if ($scope['scope_level'] === 'ps') {
+                abort_unless(
+                    PartnerSite::query()
+                        ->where('kode_ps', $scope['kode_ps'])
+                        ->where('kode_depo', $depotCode)
+                        ->where('is_active', true)
+                        ->exists(),
+                    422,
+                    'Partner Site harus berada di depo akun.'
+                );
+            } else {
+                $validated['kode_ps'] = null;
+            }
+            $validated['nama_depo'] = $depot->nama_depo;
+            $validated['region_id'] = $scope['region_id'];
+            $validated['kode_depo'] = $depotCode;
+            $validated['scope_level'] = $scope['scope_level'];
+            $this->authorizeUserScopeAssignment($scope, $actor, $user);
+            $depotAssignments = $this->activeDepotAssignments([$depotCode], $scope['region_id'], $actor);
+            unset($validated['depot_codes']);
         }
-        $depotAssignments = $hasDepotAssignments
-            ? $this->activeDepotAssignments($depotCodes, $validated['region_id'] ?? $user->region_id, $actor)
-            : null;
 
         if (! empty($validated['password'])) {
             $isSelf = $actor->id === $user->id;
@@ -202,9 +287,9 @@ class UserController extends Controller
                     'Password saat ini salah.'
                 );
             } else {
-                // Reset password akun lain = tindakan sensitif: hanya admin
-                // master, dan selalu dicatat (jejak anti-eskalasi diam-diam).
-                abort_unless($actor->isAdminMaster(), 403, 'Hanya admin master yang boleh mereset password pengguna lain.');
+                // Reset password akun lain = tindakan sensitif: hanya scope
+                // Master, dan selalu dicatat.
+                abort_unless($actor->isMasterScope(), 403, 'Hanya scope Master yang boleh mereset password pengguna lain.');
                 Log::info('Password user direset admin.', [
                     'actor_id' => $actor->id,
                     'target_id' => $user->id,
@@ -214,19 +299,6 @@ class UserController extends Controller
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
-        }
-
-        if ($request->user()->isDepotScoped()) {
-            // Aktor depo-scoped tidak boleh memindahkan user ke depo lain:
-            // paksa mengikuti depo miliknya (sudah lolos authorizeDepot).
-            $validated = $request->user()->depotAttributes($validated);
-        } else {
-            // Pertahankan kode_depo/nama_depo milik user kecuali eksplisit dikirim
-            // (hindari meng-overwrite depot user dengan depot si pembuat saat update).
-            $validated = $validated + [
-                'kode_depo' => $user->kode_depo,
-                'nama_depo' => $user->nama_depo,
-            ];
         }
 
         DB::transaction(function () use ($user, $validated, $request, $depotAssignments): void {
@@ -260,12 +332,12 @@ class UserController extends Controller
         if ($user->id === Auth::id()) {
             return response()->json(['message' => 'Cannot delete your own account'], 422);
         }
-        if ($user->isAdminMaster()) {
+        if ($user->scope_level === 'master') {
             $this->authorize('delete', $user);
             abort_unless(
-                User::where('level', 'admin_master')->whereKeyNot($user->id)->exists(),
+                User::where('scope_level', 'master')->whereKeyNot($user->id)->exists(),
                 422,
-                'Tidak dapat menghapus satu-satunya akun admin master.'
+                'Tidak dapat menghapus satu-satunya akun Master.'
             );
         }
         $user->roles()->detach();
@@ -277,6 +349,7 @@ class UserController extends Controller
 
     public function import(Request $request)
     {
+        abort_unless($request->user()?->isMasterScope(), 403, 'Hanya scope Master yang boleh mengimpor pengguna.');
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
 
         $import = new UserImport($request->user());
@@ -300,8 +373,12 @@ class UserController extends Controller
 
         $actor = $request->user();
         $depotsQuery = DepotSetting::where('is_active', true);
-        if ($actor->isDepotScoped()) {
-            $depotsQuery->whereIn('kode_depo', $actor->depot_codes);
+        if ($actor->isMasterScope()) {
+            // Master scope may assign an account to any active depot.
+        } elseif ($actor->scope_level === 'region' && filled($actor->region_id)) {
+            $depotsQuery->where('region_id', $actor->region_id);
+        } else {
+            $depotsQuery->where('kode_depo', $actor->kode_depo);
         }
         $allDepots = $depotsQuery
             ->orderBy('region_id')
@@ -344,6 +421,13 @@ class UserController extends Controller
 
         $validated = $request->validated();
         $depotCodes = $validated['depot_codes'] ?? [];
+        if ($user->scope_level === 'ps') {
+            abort_unless(
+                PartnerSite::query()->where('kode_ps', $user->kode_ps)->where('kode_depo', $depotCodes[0] ?? null)->exists(),
+                422,
+                'Depo harus sesuai dengan Partner Site akun.'
+            );
+        }
         $existingDepots = $this->activeDepotAssignments($depotCodes, $user->region_id, $request->user());
         DB::transaction(fn () => $this->replaceDepotAssignments($user, $existingDepots));
 
@@ -365,6 +449,8 @@ class UserController extends Controller
      */
     private function activeDepotAssignments(array $depotCodes, ?string $regionId, User $actor): Collection
     {
+        abort_if(count($depotCodes) !== 1, 422, 'Setiap akun harus ditetapkan ke tepat satu depo.');
+
         $depots = DepotSetting::query()
             ->whereIn('kode_depo', $depotCodes)
             ->where('is_active', true)
@@ -377,13 +463,13 @@ class UserController extends Controller
             'Depot berikut tidak valid atau tidak aktif: '.implode(', ', $invalid)
         );
 
-        if ($actor->isDepotScoped()) {
-            $outsideActorScope = array_diff($depotCodes, $actor->depot_codes);
-            abort_if(
-                $outsideActorScope !== [],
-                403,
-                'Anda tidak berwenang menetapkan depot di luar cakupan Anda.'
-            );
+        if (! $actor->isMasterScope()) {
+            $allowed = match ($actor->scope_level) {
+                'region' => $depots->every(fn (DepotSetting $depot): bool => $depot->region_id === $actor->region_id),
+                'depot', 'ps' => $depots->every(fn (DepotSetting $depot): bool => $depot->kode_depo === $actor->kode_depo),
+                default => false,
+            };
+            abort_unless($allowed, 403, 'Anda tidak berwenang menetapkan depo di luar scope Anda.');
         }
 
         $outsideUserRegion = $depots->contains(
@@ -397,6 +483,53 @@ class UserController extends Controller
         );
 
         return $depots;
+    }
+
+    /**
+     * Ensure the requested account scope is a descendant of the actor's scope.
+     *
+     * @param  array{scope_level: string, region_id: ?string, kode_depo: ?string, kode_ps?: ?string}  $scope
+     */
+    private function authorizeUserScopeAssignment(array $scope, User $actor): void
+    {
+        abort_unless(
+            filled($scope['region_id']) && filled($scope['kode_depo']),
+            422,
+            'Setiap akun wajib memiliki region dan depo.'
+        );
+        abort_if(
+            $scope['scope_level'] === 'master' && ! $actor->isMasterScope(),
+            403,
+            'Hanya Master yang dapat menetapkan scope Master.'
+        );
+
+        if ($actor->isMasterScope()) {
+            return;
+        }
+
+        $allowedLevels = match ($actor->scope_level) {
+            'region' => ['depot', 'ps'],
+            'depot' => ['depot', 'ps'],
+            'ps' => [],
+            default => [],
+        };
+        abort_unless(
+            in_array($scope['scope_level'], $allowedLevels, true),
+            403,
+            'Anda tidak dapat menetapkan akun di luar level scope Anda.'
+        );
+
+        if ($actor->scope_level === 'region') {
+            abort_unless($scope['region_id'] === $actor->region_id, 403, 'Anda hanya dapat menetapkan akun di region Anda.');
+        } elseif ($actor->scope_level === 'depot') {
+            abort_unless($scope['kode_depo'] === $actor->kode_depo, 403, 'Anda hanya dapat menetapkan akun di depo Anda.');
+        } else {
+            abort_unless(
+                $scope['kode_depo'] === $actor->kode_depo && ($scope['kode_ps'] ?? null) === $actor->kode_ps,
+                403,
+                'Anda hanya dapat menetapkan akun di Partner Site Anda.'
+            );
+        }
     }
 
     /**

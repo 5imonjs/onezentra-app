@@ -26,6 +26,7 @@ class UserIndexMetaTest extends TestCase
             'full_name' => 'UM '.$email,
             'kode_depo' => $kodeDepo,
             'nama_depo' => $namaDepo,
+            'scope_level' => $level === 'admin_master' ? 'master' : 'depot',
             'level' => $level,
             'status' => $status,
         ]);

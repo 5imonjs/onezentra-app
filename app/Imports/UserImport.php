@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\DepotSetting;
+use App\Models\PartnerSite;
 use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
@@ -51,6 +52,10 @@ class UserImport implements ToCollection, WithHeadingRow
         $depotName = trim((string) ($row['nama_depo'] ?? $row['nama_depot'] ?? ''));
         $requestedRegion = trim((string) ($row['region_id'] ?? ''));
         $regionWasProvided = $row->has('region_id') && $requestedRegion !== '';
+        $requestedScope = trim((string) ($row['scope_level'] ?? ''));
+        $scopeWasProvided = $row->has('scope_level') && $requestedScope !== '';
+        $requestedPartnerSite = trim((string) ($row['kode_ps'] ?? ''));
+        $partnerSiteWasProvided = $row->has('kode_ps') && $requestedPartnerSite !== '';
         if ($regionWasProvided && ! Region::where('code', $requestedRegion)->exists()) {
             $this->addError($rowNumber, "Region \"{$requestedRegion}\" tidak ditemukan");
 
@@ -60,6 +65,11 @@ class UserImport implements ToCollection, WithHeadingRow
         $depotCodesInput = $row->get('depot_codes') ?: $primaryDepotCode;
         $depotCodes = $this->parseDepotCodes($depotCodesInput);
         $hasDepotAssignments = $hasDepotCodesColumn || $primaryDepotCode !== '';
+        if (count($depotCodes) > 1) {
+            $this->addError($rowNumber, 'Setiap akun hanya boleh memiliki satu depo.');
+
+            return;
+        }
         $requestedLevel = trim((string) ($row['level'] ?? $row['role'] ?? $row['level_akses'] ?? ''));
         $requestedStatus = trim((string) ($row['status'] ?? ''));
 
@@ -73,14 +83,22 @@ class UserImport implements ToCollection, WithHeadingRow
         }
 
         $user = User::where('email', $email)->first();
-        if ($user && ! $this->actor->canAccessDepotRow($user->kode_depo, $user->nama_depo)) {
+        if ($user && ! $this->actor->isMasterScope()
+            && ! $this->actor->canAccessDepotRow($user->kode_depo, $user->nama_depo)
+        ) {
             $this->addError($rowNumber, 'User berada di luar depo Anda');
 
             return;
         }
 
-        if ($user?->isAdminMaster() && ! $this->actor->isAdminMaster()) {
-            $this->addError($rowNumber, 'Hanya admin master yang dapat mengubah akun admin master');
+        if ($hasDepotAssignments && count($depotCodes) !== 1) {
+            $this->addError($rowNumber, 'Setiap akun harus ditetapkan ke tepat satu depo.');
+
+            return;
+        }
+
+        if ($user?->scope_level === 'master' && ! $this->actor->isMasterScope()) {
+            $this->addError($rowNumber, 'Hanya scope Master yang dapat mengubah akun scope Master');
 
             return;
         }
@@ -101,8 +119,8 @@ class UserImport implements ToCollection, WithHeadingRow
             return;
         }
 
-        if ($level === 'admin_master' && ! $this->actor->isAdminMaster()) {
-            $this->addError($rowNumber, 'Hanya admin master yang dapat menetapkan level admin master');
+        if ($level === 'admin_master' && ! $this->actor->isMasterScope()) {
+            $this->addError($rowNumber, 'Hanya scope Master yang dapat menetapkan role admin master');
 
             return;
         }
@@ -115,7 +133,7 @@ class UserImport implements ToCollection, WithHeadingRow
         }
 
         $skipped = [];
-        if ($user !== null && ! $this->actor->isAdminMaster()) {
+        if ($user !== null && ! $this->actor->isMasterScope()) {
             if ($requestedLevel !== '' && $requestedLevel !== $user->level) {
                 $skipped[] = 'level';
                 $level = $user->level;
@@ -131,7 +149,7 @@ class UserImport implements ToCollection, WithHeadingRow
             }
         }
 
-        if ($user !== null && ! $this->actor->isAdminMaster() && $user->level !== $level) {
+        if ($user !== null && ! $this->actor->isMasterScope() && $user->level !== $level) {
             $this->addError($rowNumber, 'Role user tidak dapat diubah oleh aktor ini');
 
             return;
@@ -146,7 +164,7 @@ class UserImport implements ToCollection, WithHeadingRow
         if ($user === null && $this->actor->isDepotScoped()) {
             $requestedRegion = (string) ($this->actor->region_id ?? '');
             $regionWasProvided = $requestedRegion !== '';
-        } elseif ($user !== null && ! $this->actor->isAdminMaster()) {
+        } elseif ($user !== null && ! $this->actor->isMasterScope()) {
             $requestedRegion = (string) ($user->region_id ?? '');
             $regionWasProvided = $requestedRegion !== '';
         }
@@ -161,6 +179,24 @@ class UserImport implements ToCollection, WithHeadingRow
         $targetRegion = $regionWasProvided
             ? $requestedRegion
             : ($user?->region_id);
+        $scopeLevel = $scopeWasProvided
+            ? $requestedScope
+            : ($user?->scope_level ?? 'depot');
+        if (! in_array($scopeLevel, ['master', 'region', 'depot', 'ps'], true)) {
+            $this->addError($rowNumber, 'Scope harus master, region, depot, atau ps.');
+
+            return;
+        }
+        if ($user === null && (! $regionWasProvided || count($depotCodes) !== 1)) {
+            $this->addError($rowNumber, 'User baru wajib memiliki region_id dan tepat satu kode_depo.');
+
+            return;
+        }
+        if ($user !== null && $scopeWasProvided && count($depotCodes) !== 1) {
+            $this->addError($rowNumber, 'Perubahan scope wajib menyertakan satu kode_depo.');
+
+            return;
+        }
         $depotAssignments = null;
         if ($hasDepotAssignments) {
             $depotAssignments = $this->resolveDepotAssignments(
@@ -189,17 +225,31 @@ class UserImport implements ToCollection, WithHeadingRow
         $regionWasResolvedFromAssignments = ! blank($resolvedRegion)
             && $resolvedRegion !== $targetRegion;
 
-        if ($primaryDepotCode === 'ADMIN' && $level === 'admin_master'
-            && ($depotAssignments === null || $depotAssignments->isEmpty())
-        ) {
-            $primaryDepotCode = 'ADMIN';
-        } elseif ($depotAssignments !== null) {
+        if ($depotAssignments !== null) {
             $primaryDepot = $depotAssignments->first();
             $primaryDepotCode = $primaryDepot?->kode_depo ?? '';
             $depotName = $primaryDepot?->nama_depo ?? '';
         }
 
-        if ($user !== null && ! $this->actor->isAdminMaster()) {
+        $resolvedPartnerSite = $partnerSiteWasProvided
+            ? $requestedPartnerSite
+            : ($user?->kode_ps ?? '');
+        if ($scopeLevel === 'ps') {
+            $targetDepotCode = $depotAssignments?->first()?->kode_depo ?? $user?->kode_depo ?? $primaryDepotCode;
+            if ($resolvedPartnerSite === '' || ! PartnerSite::query()
+                ->where('kode_ps', $resolvedPartnerSite)
+                ->where('kode_depo', $targetDepotCode)
+                ->where('is_active', true)
+                ->exists()) {
+                $this->addError($rowNumber, 'Scope PS wajib memiliki kode_ps aktif yang berada pada depo akun.');
+
+                return;
+            }
+        } else {
+            $resolvedPartnerSite = '';
+        }
+
+        if ($user !== null && ! $this->actor->isMasterScope()) {
             $attributes = [
                 'full_name' => $fullName,
                 'alamat' => $alamat,
@@ -219,6 +269,11 @@ class UserImport implements ToCollection, WithHeadingRow
             ], static fn (?string $value): bool => $value !== null && $value !== '');
         }
 
+        if ($user === null || $scopeWasProvided || $partnerSiteWasProvided) {
+            $attributes['scope_level'] = $scopeLevel;
+            $attributes['kode_ps'] = $resolvedPartnerSite !== '' ? $resolvedPartnerSite : null;
+        }
+
         if ($depotAssignments !== null) {
             $attributes['kode_depo'] = $primaryDepotCode;
             $attributes['nama_depo'] = $depotName;
@@ -232,11 +287,9 @@ class UserImport implements ToCollection, WithHeadingRow
             $attributes['password'] = Hash::make(Str::random(16));
             $attributes['status'] ??= 'active';
             $attributes['level'] ??= $level;
-            if (! array_key_exists('kode_depo', $attributes)) {
-                $attributes['kode_depo'] = '';
-                $attributes['nama_depo'] = '';
+            if (! $this->actor->isMasterScope()) {
+                $attributes = $this->actor->depotAttributes($attributes);
             }
-            $attributes = $this->actor->depotAttributes($attributes);
         }
 
         DB::transaction(function () use ($user, $attributes, $role, $depotAssignments): void {
@@ -270,7 +323,7 @@ class UserImport implements ToCollection, WithHeadingRow
         if ($skipped !== []) {
             $this->addError(
                 $rowNumber,
-                'Kolom diabaikan (hanya admin master yang boleh mengubah): '.implode(', ', $skipped)
+                'Kolom diabaikan (hanya scope Master yang boleh mengubah): '.implode(', ', $skipped)
             );
         }
 

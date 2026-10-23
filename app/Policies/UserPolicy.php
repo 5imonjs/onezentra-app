@@ -8,7 +8,7 @@ use App\Models\User;
  * Aturan akses untuk operasi pada user lain.
  *
  * Yang dikindle di sini HANYA aturan yang butuh knowing-mengenai actor
- * dan target — namely operasi terhadap akun `admin_master`. Gate permission
+ * dan target — namely operasi terhadap akun scope Master. Gate permission
  * (`users.create`, `users.edit`, `users.delete`) tetap di level route lewat
  * middleware `permission:`.
  *
@@ -38,13 +38,13 @@ class UserPolicy
             return true;
         }
 
-        return $actor->isAdminMaster();
+        return $actor->isMasterScope();
     }
 
-    /** Hanya admin master boleh mengubah akun admin master. */
+    /** Hanya scope Master boleh mengubah akun scope Master. */
     public function update(User $actor, User $target): bool
     {
-        if ($target->isAdminMaster() && ! $actor->isAdminMaster()) {
+        if ($target->scope_level === 'master' && ! $actor->isMasterScope()) {
             return false;
         }
 
@@ -52,16 +52,16 @@ class UserPolicy
     }
 
     /**
-     * Menghapus akun admin master.
+     * Menghapus akun scope Master.
      *
-     * Pemeriksaan "user ini adalah admin master" TIDAK digabung di sini —
+     * Pemeriksaan "user ini adalah scope Master" TIDAK digabung di sini —
      * ia butuh=user target untuk deciding, dan aturan "jangan hapus akun
-     * admin master terakhir" butuh query, jadi lebih tepat performed di
+     * scope Master terakhir" butuh query, jadi lebih tepat performed di
      * controller setelah policy lolos.
      */
     public function delete(User $actor, User $target): bool
     {
-        if ($target->isAdminMaster() && ! $actor->isAdminMaster()) {
+        if ($target->scope_level === 'master' && ! $actor->isMasterScope()) {
             return false;
         }
 

@@ -666,6 +666,38 @@ class OpnameExpiredTest extends TestCase
         $this->assertDatabaseHas('opname_expired_waves', ['id' => $used->id]);
     }
 
+    public function test_admin_master_level_needs_explicit_permission_to_delete_validated_wave(): void
+    {
+        $this->receipt('B-DEL-VALIDATED', 'Produk Tervalidasi', 4, '2027-01-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+        $wave = OpnameExpiredWave::where('kode_barang', 'B-DEL-VALIDATED')->firstOrFail();
+        $wave->update(['validated_by' => $this->user->id, 'validated_at' => now()]);
+
+        $deletePermission = Permission::where('slug', 'opname.delete')->firstOrFail();
+        $role = Role::create(['slug' => 'admin_master_opname_test', 'name' => 'Admin Master Opname Test']);
+        $role->permissions()->attach($deletePermission);
+        $admin = User::factory()->create([
+            'level' => 'admin_master',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+        ]);
+        $role->users()->attach($admin->id);
+        Sanctum::actingAs($admin);
+
+        $this->deleteJson("/api/v1/opname-expired/{$wave->id}")->assertStatus(422);
+        $this->assertDatabaseHas('opname_expired_waves', ['id' => $wave->id]);
+
+        $deleteValidatedPermission = Permission::firstOrCreate(
+            ['slug' => 'opname.delete_validated'],
+            ['name' => 'Hapus Wave Opname Tervalidasi', 'menu_group' => 'Opname', 'is_active' => true],
+        );
+        $role->permissions()->attach($deleteValidatedPermission);
+        User::clearPermissionCache($admin->id);
+
+        $this->deleteJson("/api/v1/opname-expired/{$wave->id}")->assertOk();
+        $this->assertDatabaseMissing('opname_expired_waves', ['id' => $wave->id]);
+    }
+
     public function test_pending_reports_eligible_split_by_source_before_generate(): void
     {
         // Baseline campuran: 1 baris SJ + 2 baris import pada minggu berjalan.

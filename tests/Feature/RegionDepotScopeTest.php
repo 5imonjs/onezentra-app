@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Imports\UserImport;
 use App\Models\DepotSetting;
+use App\Models\PartnerSite;
 use App\Models\Permission;
 use App\Models\Region;
 use App\Models\RencanaKirim;
@@ -36,6 +37,7 @@ class RegionDepotScopeTest extends TestCase
             'kode_depo' => $kodeDepo,
             'nama_depo' => $namaDepo,
             'region_id' => $regionId,
+            'scope_level' => $level === 'admin_master' ? 'master' : 'depot',
             'level' => $level,
             'status' => 'active',
         ]);
@@ -168,6 +170,12 @@ class RegionDepotScopeTest extends TestCase
     {
         $this->makeDepot('R1-A', 'REG-1');
         $this->makeDepot('R1-B', 'REG-1');
+        PartnerSite::create([
+            'kode_ps' => 'PS-R1-B',
+            'nama_ps' => 'Partner Site R1-B',
+            'kode_depo' => 'R1-B',
+            'is_active' => true,
+        ]);
 
         $actor = $this->makeUser('admin_planner', 'R1-A', 'Depo A', 'REG-1');
         $this->grant($actor, 'users.view');
@@ -190,7 +198,10 @@ class RegionDepotScopeTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'level' => 'staff_logistic',
+            'scope_level' => 'ps',
             'region_id' => 'REG-1',
+            'kode_depo' => 'R1-B',
+            'kode_ps' => 'PS-R1-B',
             'depot_codes' => ['R1-B'],
         ])->assertForbidden();
 
@@ -215,12 +226,14 @@ class RegionDepotScopeTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'level' => 'staff_logistic',
+            'scope_level' => 'depot',
             'region_id' => 'REG-1',
-            'depot_codes' => ['R1-A', 'R1-B'],
+            'kode_depo' => 'R1-A',
+            'depot_codes' => ['R1-A'],
         ])->assertCreated();
 
         $user = User::where('email', 'region-user@example.test')->firstOrFail();
-        $this->assertEqualsCanonicalizing(['R1-A', 'R1-B'], $user->depot_codes);
+        $this->assertSame(['R1-A'], $user->depot_codes);
 
         $this->postJson('/api/v1/users', [
             'full_name' => 'User Mismatch',
@@ -228,14 +241,16 @@ class RegionDepotScopeTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'level' => 'staff_logistic',
+            'scope_level' => 'depot',
             'region_id' => 'REG-1',
+            'kode_depo' => 'R2-A',
             'depot_codes' => ['R2-A'],
         ])->assertStatus(422);
 
         $this->assertDatabaseMissing('users', ['email' => 'mismatch-user@example.test']);
     }
 
-    public function test_store_user_infers_region_from_selected_depot_when_region_is_omitted(): void
+    public function test_store_user_requires_an_explicit_region(): void
     {
         $this->makeDepot('R1-A', 'REG-1');
         $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
@@ -250,11 +265,12 @@ class RegionDepotScopeTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'level' => 'staff_logistic',
+            'scope_level' => 'depot',
+            'kode_depo' => 'R1-A',
             'depot_codes' => ['R1-A'],
-        ])->assertCreated();
+        ])->assertJsonValidationErrors(['region_id']);
 
-        $user = User::where('email', 'inferred-region-user@example.test')->firstOrFail();
-        $this->assertSame('REG-1', $user->region_id);
+        $this->assertDatabaseMissing('users', ['email' => 'inferred-region-user@example.test']);
     }
 
     public function test_get_depots_reports_region_permission_and_explicit_assignments(): void
@@ -282,7 +298,7 @@ class RegionDepotScopeTest extends TestCase
         $this->assertSame(['R1-A'], $assigned);
     }
 
-    public function test_user_can_clear_all_depot_assignments_without_legacy_fallback(): void
+    public function test_user_must_keep_exactly_one_depot_assignment(): void
     {
         $this->makeDepot('R1-A', 'REG-1');
 
@@ -296,10 +312,10 @@ class RegionDepotScopeTest extends TestCase
 
         $this->putJson("/api/v1/users/{$target->id}/depots", [
             'depot_codes' => [],
-        ])->assertOk();
+        ])->assertJsonValidationErrors(['depot_codes']);
 
-        $this->assertSame([], $target->fresh()->depot_codes);
-        $this->assertSame('', $target->fresh()->kode_depo);
+        $this->assertSame(['R1-A'], $target->fresh()->depot_codes);
+        $this->assertSame('R1-A', $target->fresh()->kode_depo);
     }
 
     public function test_sync_depots_infers_region_for_legacy_user_without_region(): void
@@ -339,7 +355,7 @@ class RegionDepotScopeTest extends TestCase
         $this->assertNull($target->fresh()->region_id);
     }
 
-    public function test_user_import_assigns_active_custom_role_and_multiple_depots_in_region(): void
+    public function test_user_import_assigns_an_active_custom_role_and_one_depot(): void
     {
         $this->makeDepot('R1-A', 'REG-1');
         $this->makeDepot('R1-B', 'REG-1');
@@ -356,8 +372,9 @@ class RegionDepotScopeTest extends TestCase
             'email' => 'imported-planner@example.test',
             'full_name' => 'Planner Import',
             'level' => 'planner_custom',
+            'scope_level' => 'depot',
             'region_id' => 'REG-1',
-            'depot_codes' => 'R1-A, R1-B',
+            'kode_depo' => 'R1-A',
             'status' => 'active',
         ]]));
 
@@ -365,12 +382,13 @@ class RegionDepotScopeTest extends TestCase
         $user = User::where('email', 'imported-planner@example.test')->firstOrFail();
         $this->assertSame(1, $import->imported);
         $this->assertSame('REG-1', $user->region_id);
-        $this->assertEqualsCanonicalizing(['R1-A', 'R1-B'], $user->depot_codes);
+        $this->assertSame(['R1-A'], $user->depot_codes);
         $this->assertSame([$role->id], $user->roles()->pluck('roles.id')->all());
     }
 
     public function test_user_import_keeps_legacy_role_slugs_without_role_rows(): void
     {
+        $this->makeDepot('R1-A', 'REG-1');
         $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
         $this->grant($admin, 'depot.view_all');
 
@@ -379,6 +397,9 @@ class RegionDepotScopeTest extends TestCase
             'email' => 'legacy-role-import@example.test',
             'full_name' => 'Legacy Role',
             'level' => 'staff_logistic',
+            'scope_level' => 'depot',
+            'region_id' => 'REG-1',
+            'kode_depo' => 'R1-A',
         ]]));
 
         $user = User::where('email', 'legacy-role-import@example.test')->firstOrFail();
@@ -388,7 +409,7 @@ class RegionDepotScopeTest extends TestCase
         $this->assertSame(0, $user->roles()->count());
     }
 
-    public function test_user_import_infers_region_when_assigning_depots_without_region_column(): void
+    public function test_user_import_requires_a_region_for_new_users(): void
     {
         $this->makeDepot('R1-A', 'REG-1');
         $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
@@ -403,10 +424,9 @@ class RegionDepotScopeTest extends TestCase
             'depot_codes' => 'R1-A',
         ]]));
 
-        $user = User::where('email', 'import-inferred-region@example.test')->firstOrFail();
-        $this->assertSame([], $import->errors);
-        $this->assertSame('REG-1', $user->region_id);
-        $this->assertSame([$role->id], $user->roles()->pluck('roles.id')->all());
+        $this->assertSame(0, $import->imported);
+        $this->assertCount(1, $import->errors);
+        $this->assertDatabaseMissing('users', ['email' => 'import-inferred-region@example.test']);
     }
 
     public function test_user_import_rejects_depots_from_another_region(): void
@@ -422,8 +442,9 @@ class RegionDepotScopeTest extends TestCase
             'email' => 'mismatched-planner@example.test',
             'full_name' => 'Mismatched Planner',
             'level' => 'planner_custom',
+            'scope_level' => 'depot',
             'region_id' => 'REG-1',
-            'depot_codes' => 'R2-A',
+            'kode_depo' => 'R2-A',
         ]]));
 
         $this->assertSame(0, $import->imported);
@@ -450,8 +471,9 @@ class RegionDepotScopeTest extends TestCase
             'email' => 'out-of-scope-import@example.test',
             'full_name' => 'Outside Scope',
             'level' => 'staff_logistic',
+            'scope_level' => 'depot',
             'region_id' => 'REG-1',
-            'depot_codes' => 'R1-B',
+            'kode_depo' => 'R1-B',
         ]]));
 
         $this->assertSame(0, $import->imported);
@@ -482,8 +504,9 @@ class RegionDepotScopeTest extends TestCase
             'email' => $target->email,
             'full_name' => $target->full_name,
             'level' => 'planner_custom',
+            'scope_level' => 'depot',
             'region_id' => 'REG-2',
-            'depot_codes' => 'R2-A',
+            'kode_depo' => 'R2-A',
             'status' => 'active',
         ]]));
 

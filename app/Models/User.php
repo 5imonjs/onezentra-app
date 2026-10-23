@@ -25,7 +25,7 @@ use Laravel\Sanctum\HasApiTokens;
 //
 // Penulisan ke kolom ini harus selalu eksplisit di sisi server, lihat
 // SecurityAuditTest::test_role_id_bisa_ditulis_server_walau_tidak_fillable.
-#[Fillable(['kode_depo', 'nama_depo', 'region_id', 'full_name', 'alamat', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'status'])]
+#[Fillable(['kode_depo', 'nama_depo', 'region_id', 'scope_level', 'kode_ps', 'full_name', 'alamat', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'status'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
@@ -34,6 +34,21 @@ class User extends Authenticatable
     public function isAdminMaster(): bool
     {
         return $this->level === 'admin_master';
+    }
+
+    public function isMasterScope(): bool
+    {
+        return $this->scope_level === 'master';
+    }
+
+    public function canCreateDepot(): bool
+    {
+        return $this->isMasterScope() || $this->scope_level === 'region';
+    }
+
+    public function canCreatePartnerSite(): bool
+    {
+        return $this->isMasterScope() || $this->scope_level === 'depot';
     }
 
     /**
@@ -90,6 +105,11 @@ class User extends Authenticatable
         )
             ->withTimestamps()
             ->withPivot('assigned_at');
+    }
+
+    public function partnerSite(): BelongsTo
+    {
+        return $this->belongsTo(PartnerSite::class, 'kode_ps', 'kode_ps');
     }
 
     /**
@@ -278,22 +298,15 @@ class User extends Authenticatable
             });
         }
 
-        // Level master melewati RBAC role: selalu memegang seluruh permission
-        // aktif. Satu titik ini mengendalikan middleware permission, respons
-        // login (slug ke frontend), dan semua hasPermission di backend.
-        if ($this->level === 'admin_master') {
-            $perms = Permission::where('is_active', true)->get();
-        } else {
-            $perms = Permission::join('role_permission', 'permissions.id', '=', 'role_permission.permission_id')
-                ->join('role_user', 'role_permission.role_id', '=', 'role_user.role_id')
-                ->join('roles', 'role_permission.role_id', '=', 'roles.id')
-                ->where('role_user.user_id', $this->id)
-                ->where('roles.is_active', true)
-                ->where('permissions.is_active', true)
-                ->select('permissions.*')
-                ->distinct()
-                ->get();
-        }
+        $perms = Permission::join('role_permission', 'permissions.id', '=', 'role_permission.permission_id')
+            ->join('role_user', 'role_permission.role_id', '=', 'role_user.role_id')
+            ->join('roles', 'role_permission.role_id', '=', 'roles.id')
+            ->where('role_user.user_id', $this->id)
+            ->where('roles.is_active', true)
+            ->where('permissions.is_active', true)
+            ->select('permissions.*')
+            ->distinct()
+            ->get();
 
         // Simpan sebagai array plain untuk hindari __PHP_Incomplete_Class saat unserialize di database cache
         Cache::put($cacheKey, $perms->map->getAttributes()->toArray(), 300);

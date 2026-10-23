@@ -500,10 +500,9 @@ class OpnameExpiredController extends Controller
             'Anda tidak memiliki akses ke data ini.'
         );
 
-        // Level master boleh menghapus wave apa pun (termasuk yang sudah
-        // divalidasi/terpakai) atas tanggung jawabnya sendiri. Level lain
-        // tetap ditolak untuk menjaga bukti audit.
-        if ($request->user()->level !== 'admin_master') {
+        // Grant khusus ini menjaga perlindungan bukti audit tetap terpisah dari
+        // izin hapus wave biasa.
+        if (! $request->user()->hasPermission('opname.delete_validated')) {
             abort_if(
                 $wave->validated_by !== null
                     || $wave->koreksi_by !== null

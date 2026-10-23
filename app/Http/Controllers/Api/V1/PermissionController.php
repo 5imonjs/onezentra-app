@@ -76,9 +76,9 @@ class PermissionController extends Controller
         ]);
 
         // Slug permission adalah acuan gate CheckPermission di routes — rename
-        // diam-diam memutus/mengalihkan gate. Immutable bagi non-admin_master.
+        // diam-diam memutus/mengalihkan gate. Immutable bagi non-Master.
         if (array_key_exists('slug', $validated) && $validated['slug'] !== $permission->slug) {
-            abort_unless($request->user()?->level === 'admin_master', 403, 'Hanya admin master yang boleh mengubah slug permission.');
+            abort_unless($request->user()?->isMasterScope(), 403, 'Hanya scope Master yang boleh mengubah slug permission.');
         }
 
         if (array_key_exists('parent_id', $validated)) {

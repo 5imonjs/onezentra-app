@@ -28,7 +28,7 @@ class SeederRoleVerificationTest extends TestCase
     {
         $this->seedRoles();
         $expectedMeta = [
-            'admin_master' => ['name' => 'Admin Master', 'description' => 'Semua menu + setting'],
+            'admin_master' => ['name' => 'Admin Master', 'description' => 'Akses sesuai permission yang diberikan'],
             'staff_logistic' => ['name' => 'Staff Logistic', 'description' => 'Input & update data'],
             'rlh' => ['name' => 'RLH', 'description' => 'Approval RLH'],
             'rfah' => ['name' => 'RFAH', 'description' => 'Approval RFAH'],
@@ -112,6 +112,26 @@ class SeederRoleVerificationTest extends TestCase
                 "Role {$roleSlug} harus memegang {$permissionSlug}"
             );
         }
+    }
+
+    public function test_reseeding_does_not_auto_grant_new_permissions_to_admin_master(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        $adminMasterRole = Role::where('slug', 'admin_master')->firstOrFail();
+        $futurePermission = Permission::create([
+            'name' => 'Future Permission',
+            'slug' => 'future.permission',
+            'menu_group' => 'Test',
+            'is_active' => true,
+        ]);
+
+        $this->seed(PermissionSeeder::class);
+
+        $this->assertFalse(
+            $adminMasterRole->permissions()->whereKey($futurePermission->id)->exists()
+        );
     }
 
     public function test_sac_and_operator_mirror_bac_and_cheker_permissions(): void
@@ -301,18 +321,18 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertNotEmpty($bh, 'Role bh tidak boleh nol permission (lockout)');
         $this->assertSame($adminPlanner, $bh);
 
-        // Total sistem tetap konsisten: 12 role lama + ga + bh, 102 permission
-        // (99 lama + 3 sesi opname), dan grant hasil turunan.
+        // Total sistem tetap konsisten: 12 role lama + ga + bh, 109 permission
+        // (106 lama + 3 sesi opname), dan grant hasil turunan.
         // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
-        $this->assertSame(108, Permission::count());
-        $this->assertSame(568, DB::table('role_permission')->count());
+        $this->assertSame(109, Permission::count());
+        $this->assertSame(569, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void
     {
         $meta = [
-            'admin_master' => ['name' => 'Admin Master', 'description' => 'Semua menu + setting'],
+            'admin_master' => ['name' => 'Admin Master', 'description' => 'Akses sesuai permission yang diberikan'],
             'staff_logistic' => ['name' => 'Staff Logistic', 'description' => 'Input & update data'],
             'rlh' => ['name' => 'RLH', 'description' => 'Approval RLH'],
             'rfah' => ['name' => 'RFAH', 'description' => 'Approval RFAH'],
