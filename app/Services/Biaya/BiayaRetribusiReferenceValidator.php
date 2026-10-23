@@ -33,8 +33,7 @@ class BiayaRetribusiReferenceValidator
                 && $source->biayaThl?->status === 'approved';
 
             if ($valid && $request->user()->isDepotScoped()) {
-                $valid = $source->biayaThl->kode_depo === $request->user()->kode_depo
-                    && $source->biayaThl->nama_depo === $request->user()->nama_depo;
+                $valid = in_array($source->biayaThl->kode_depo, $request->user()->depot_codes, true);
             }
 
             if (! $valid) {
@@ -66,7 +65,7 @@ class BiayaRetribusiReferenceValidator
 
             if ($valid && $request->user()->isDepotScoped()) {
                 $valid = $receiving->rencanaKirim
-                    && $receiving->rencanaKirim->kode_depo === $request->user()->kode_depo;
+                    && in_array($receiving->rencanaKirim->kode_depo, $request->user()->depot_codes, true);
             }
 
             if ($valid) {

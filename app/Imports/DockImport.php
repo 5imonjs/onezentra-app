@@ -39,7 +39,7 @@ class DockImport implements ToCollection, WithHeadingRow
             // Lookup by-name: user depot-scoped hanya mencocokkan dock
             // depo sendiri; admin view_all mencocokkan global.
             $existing = Dock::where('name', $name)
-                ->when($this->user->isDepotScoped(), fn ($query) => $query->where('kode_depo', $this->user->kode_depo))
+                ->when($this->user->isDepotScoped(), fn ($query) => $this->user->applyDepotFilter($query, 'kode_depo'))
                 ->first();
 
             // Tolak cross-depo: nama milik depo lain bukan untuk di-update,

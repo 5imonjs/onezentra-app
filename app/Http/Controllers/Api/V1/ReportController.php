@@ -597,7 +597,7 @@ class ReportController extends Controller
 
         if ($request->user()->isDepotScoped()) {
             $query->where(fn ($q) => $q
-                ->where('kode_depo', $request->user()->kode_depo)
+                ->whereIn('kode_depo', $request->user()->depot_codes)
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($request->user())));
         }
 

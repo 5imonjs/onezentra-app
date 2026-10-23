@@ -26,7 +26,7 @@ class DashboardController extends Controller
         $since = now()->subDays($days - 1)->startOfDay();
         $depotInput = trim((string) $request->input('kode_depo', ''));
         $depot = $request->user()->isDepotScoped()
-            ? $request->user()->kode_depo
+            ? null
             : ($depotInput === '' ? null : $depotInput);
         // Satu definisi scope dipakai ulang oleh agregasi harian, modul, dan
         // total agar filter depo tidak bisa berbeda antar potongan respons.
@@ -147,7 +147,7 @@ class DashboardController extends Controller
         $afterId = max($request->integer('after_id', 0), 0);
         $depotInput = trim((string) $request->input('kode_depo', ''));
         $depot = $request->user()->isDepotScoped()
-            ? $request->user()->kode_depo
+            ? null
             : ($depotInput === '' ? null : $depotInput);
 
         $events = UserActivityLog::query()
@@ -239,7 +239,7 @@ class DashboardController extends Controller
         if ($can('opname.view')) {
             $waveQuery = OpnameExpiredWave::query();
             if ($user->isDepotScoped()) {
-                $waveQuery->where('kode_depo', $user->kode_depo);
+                $user->applyDepotFilter($waveQuery, 'kode_depo');
             } elseif ($depot) {
                 $waveQuery->where('kode_depo', $depot);
             }
@@ -395,7 +395,9 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         if ($user->isDepotScoped()) {
-            return $user->kode_depo;
+            // Scoped user sudah difilter lewat forUserDepot/applyDepotFilter
+            // (bisa satu depot, banyak depot, atau seluruh depot region).
+            return null;
         }
         $value = trim((string) $request->input('kode_depo', ''));
 
@@ -409,23 +411,35 @@ class DashboardController extends Controller
      */
     private function moduleQuery(string $key, ?string $depot, User $user)
     {
-        $rkScope = fn ($q) => $depot
-            ? $q->whereHas('rencanaKirim', fn ($rk) => $rk->where('kode_depo', $depot))
-            : $q;
+        $scoped = $user->isDepotScoped();
+        $rkScope = function ($q) use ($user, $depot, $scoped) {
+            if ($scoped) {
+                $q->whereHas('rencanaKirim', fn ($rk) => $rk->forUserDepot($user));
+            }
+            if ($depot) {
+                $q->whereHas('rencanaKirim', fn ($rk) => $rk->where('kode_depo', $depot));
+            }
+
+            return $q;
+        };
 
         return match ($key) {
-            'rencana_kirim' => RencanaKirim::query()->when($depot, fn ($q) => $q->where('kode_depo', $depot)),
+            'rencana_kirim' => RencanaKirim::query()
+                ->when($scoped, fn ($q) => $q->forUserDepot($user))
+                ->when($depot, fn ($q) => $q->where('kode_depo', $depot)),
             'gate' => $rkScope(GateTransaction::query()),
             'penerimaan' => ReceivingItem::where('source', ReceivingItem::SOURCE_VALIDASI)
-                ->when($user->isDepotScoped(), fn ($q) => $q->where(fn ($qq) => $qq
-                    ->where('receiving_items.kode_depo', $user->kode_depo)
+                ->when($scoped, fn ($q) => $q->where(fn ($qq) => $qq
+                    ->whereIn('receiving_items.kode_depo', $user->depot_codes)
                     ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($user))))
                 ->when($depot, fn ($q) => $q->where('receiving_items.kode_depo', $depot)),
             'receiving' => $rkScope(Receiving::query()),
             'sj_validation' => $rkScope(SjValidation::query()),
             'npn' => Npn::query(),
             'standar_umur' => StandarUmurProduk::query(),
-            'standarisasi' => StandarisasiTumpukan::query()->forUserDepot($user)->when($depot, fn ($q) => $q->where('standarisasi_tumpukan.kode_depo', $depot)),
+            'standarisasi' => StandarisasiTumpukan::query()
+                ->when($scoped, fn ($q) => $q->forUserDepot($user))
+                ->when($depot, fn ($q) => $q->where('standarisasi_tumpukan.kode_depo', $depot)),
         };
     }
 

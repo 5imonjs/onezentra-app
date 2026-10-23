@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\BiayaRetribusi;
+use App\Models\DepotSetting;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -47,12 +48,14 @@ class BiayaRetribusiImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            $kodeDepo = auth()->user()?->kode_depo;
+            $user = auth()->user();
+            $kodeDepo = $user?->depot_codes[0] ?? $user?->kode_depo;
             if (blank($kodeDepo)) {
                 $this->errors[] = ['row' => $rowNumber, 'errors' => 'Kode depo tidak ditemukan — header tanpa kode_depo tidak dibuat'];
 
                 continue;
             }
+            $namaDepo = DepotSetting::where('kode_depo', $kodeDepo)->value('nama_depo') ?? $user?->nama_depo;
 
             try {
                 // Header selalu dibuat bersama minimal 1 detail valid —
@@ -60,9 +63,9 @@ class BiayaRetribusiImport implements ToCollection, WithHeadingRow
                 $header = BiayaRetribusi::create([
                     'tanggal_pengajuan' => now(),
                     'kode_depo' => $kodeDepo,
-                    'nama_depo' => auth()->user()?->nama_depo,
+                    'nama_depo' => $namaDepo,
                     'nominal_biaya' => (float) $nominal,
-                    'created_by' => auth()->id(),
+                    'created_by' => $user?->id,
                     'status' => 'draft',
                 ]);
                 $header->details()->create([

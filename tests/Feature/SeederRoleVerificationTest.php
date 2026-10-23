@@ -302,8 +302,8 @@ class SeederRoleVerificationTest extends TestCase
         // (99 lama + 3 sesi opname), dan grant hasil turunan.
         // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
-        $this->assertSame(107, Permission::count());
-        $this->assertSame(567, DB::table('role_permission')->count());
+        $this->assertSame(108, Permission::count());
+        $this->assertSame(570, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void

@@ -63,7 +63,7 @@ class StandarisasiTumpukanImport implements ToCollection, WithHeadingRow
                 ->where('npn_id', $npnId)
                 ->when(
                     $this->user?->isDepotScoped(),
-                    fn ($q) => $q->where('kode_depo', $this->user->kode_depo)
+                    fn ($q) => $this->user->applyDepotFilter($q, 'kode_depo')
                 )
                 ->first();
 

@@ -17,7 +17,10 @@ class BiayaThlPdfSettingController extends Controller
         // User ber-scope depo tidak boleh mengintip setting depo lain;
         // permintaan `kode_depo` asing diabaikan, bukan dihormati.
         if ($user->isDepotScoped()) {
-            $kodeDepo = $user->kode_depo;
+            $allowed = $user->depot_codes;
+            if ($kodeDepo === null || $kodeDepo === '' || ! in_array($kodeDepo, $allowed, true)) {
+                $kodeDepo = $allowed[0] ?? $user->kode_depo;
+            }
         }
 
         if ($kodeDepo) {

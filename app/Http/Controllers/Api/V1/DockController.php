@@ -23,8 +23,7 @@ class DockController extends Controller
         $query = Dock::query();
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo)
-                ->where('nama_depo', $request->user()->nama_depo);
+            $request->user()->applyDepotFilter($query, 'kode_depo');
         }
 
         if ($request->status) {

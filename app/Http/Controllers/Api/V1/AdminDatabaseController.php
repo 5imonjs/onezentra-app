@@ -394,7 +394,7 @@ class AdminDatabaseController extends Controller
             ->orderBy('kode_depo');
 
         if ($user->isDepotScoped()) {
-            $query->where('kode_depo', $user->kode_depo);
+            $user->applyDepotFilter($query, 'kode_depo');
         }
 
         $depots = $query->get(['kode_depo', 'nama_depo']);
@@ -409,10 +409,10 @@ class AdminDatabaseController extends Controller
         }
 
         if ($user->isDepotScoped()) {
-            return collect([[
-                'kode_depo' => $user->kode_depo,
-                'nama_depo' => $user->nama_depo,
-            ]]);
+            return collect($user->depot_codes)->map(fn (string $kode): array => [
+                'kode_depo' => $kode,
+                'nama_depo' => DepotSetting::where('kode_depo', $kode)->value('nama_depo'),
+            ])->values();
         }
 
         return User::query()

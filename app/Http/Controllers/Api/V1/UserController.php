@@ -63,6 +63,11 @@ class UserController extends Controller
 
         $validated['password'] = Hash::make($validated['password']);
         $validated['status'] = $validated['status'] ?? 'active';
+        $validated['kode_depo'] = $validated['kode_depo'] ?? '';
+        $validated['nama_depo'] = $validated['nama_depo'] ?? '';
+        if (array_key_exists('region_id', $validated) && blank($validated['region_id'])) {
+            $validated['region_id'] = null;
+        }
         $validated = $request->user()->depotAttributes($validated);
 
         $user = User::create($validated);
@@ -112,9 +117,9 @@ class UserController extends Controller
         // lalu memakai permission level baru (eskalasi tanpa jejak).
         $actor = $request->user();
         if (! $actor->isAdminMaster()) {
-            foreach (['level', 'status'] as $guarded) {
+            foreach (['level', 'status', 'region_id'] as $guarded) {
                 if (array_key_exists($guarded, $validated) && $validated[$guarded] !== $user->getOriginal($guarded)) {
-                    abort(403, 'Hanya admin master yang boleh mengubah level/status akun.');
+                    abort(403, 'Hanya admin master yang boleh mengubah level/status/region akun.');
                 }
                 unset($validated[$guarded]);
             }
@@ -122,6 +127,10 @@ class UserController extends Controller
 
         // Hanya admin master yang boleh mengubah user admin master.
         $this->authorize('update', $user);
+
+        if (array_key_exists('region_id', $validated) && blank($validated['region_id'])) {
+            $validated['region_id'] = null;
+        }
 
         if (! empty($validated['password'])) {
             $isSelf = $actor->id === $user->id;
@@ -230,6 +239,8 @@ class UserController extends Controller
     {
         $this->authorizeDepot($user);
 
+        $usesRegionScope = $user->hasRegionScope();
+
         // Direct query to avoid ambiguous column issue
         $assignedCodes = \DB::table('user_depots')
             ->where('user_id', $user->id)
@@ -241,18 +252,27 @@ class UserController extends Controller
             ->orderBy('kode_depo')
             ->get(['kode_depo', 'nama_depo', 'region_id']);
 
-        $data = $allDepots->map(function ($depot) use ($assignedCodes) {
+        // User dengan cakupan region otomatis memegang SEMUA depot di region
+        // tersebut, jadi status checkbox diturunkan dari region-nya.
+        $effectiveCodes = $usesRegionScope
+            ? $allDepots->where('region_id', $user->region_id)->pluck('kode_depo')->all()
+            : $assignedCodes;
+
+        $data = $allDepots->map(function ($depot) use ($effectiveCodes) {
             return [
                 'kode_depo' => $depot->kode_depo,
                 'nama_depo' => $depot->nama_depo,
                 'region_id' => $depot->region_id,
-                'assigned' => in_array($depot->kode_depo, $assignedCodes, true),
+                'assigned' => in_array($depot->kode_depo, $effectiveCodes, true),
             ];
         });
 
         return response()->json([
             'data' => $data,
-            'assigned_count' => count($assignedCodes),
+            'assigned_count' => count($effectiveCodes),
+            'region_id' => $user->region_id,
+            'uses_region_scope' => $usesRegionScope,
+            'can_use_region_scope' => $user->isRegionScoped(),
         ]);
     }
 
@@ -263,6 +283,12 @@ class UserController extends Controller
     public function syncDepots(SyncUserDepotsRequest $request, User $user)
     {
         $this->authorizeDepot($user);
+
+        if ($user->hasRegionScope()) {
+            return response()->json([
+                'message' => 'Akses depot user ini mengikuti region '.$user->region_id.'. Lepaskan region terlebih dahulu untuk mengatur depot secara manual.',
+            ], 422);
+        }
 
         $validated = $request->validated();
         $depotCodes = $validated['depot_codes'] ?? [];

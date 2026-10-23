@@ -53,7 +53,15 @@ class UserDepotSeeder extends Seeder
                 }
             }
 
-            // Assign all depots in the region
+            // Region-scoped access: user otomatis memegang semua depot di region.
+            $user->forceFill([
+                'region_id' => $mgr['region_id'],
+                'level' => $mgr['level'],
+            ])->save();
+
+            // Pivot dipertahankan sebagai jejak eksplisit (bukan sumber utama
+            // scoping saat region_id terisi).
+            \DB::table('user_depots')->where('user_id', $user->id)->delete();
             $depotCodes = DepotSetting::where('region_id', $mgr['region_id'])
                 ->where('is_active', true)
                 ->pluck('kode_depo')

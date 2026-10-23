@@ -20,8 +20,7 @@ class DepoController extends Controller
             ->where('kode_depo', '!=', '');
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo)
-                ->where('nama_depo', $request->user()->nama_depo);
+            $request->user()->applyDepotFilter($query, 'kode_depo');
         }
 
         $depos = $query->groupBy('kode_depo', 'nama_depo')

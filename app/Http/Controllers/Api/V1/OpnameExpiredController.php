@@ -52,7 +52,7 @@ class OpnameExpiredController extends Controller
             ->leftJoin('cluster_principal as cp_sku', 'cp_sku.product_sku', '=', 'opname_expired_waves.kode_barang');
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('opname_expired_waves.kode_depo', $request->user()->kode_depo);
+            $request->user()->applyDepotFilter($query, 'opname_expired_waves.kode_depo');
         }
 
         if ($request->week_start) {
@@ -129,7 +129,7 @@ class OpnameExpiredController extends Controller
         $waves = $query->paginate($perPage);
 
         $weeks = OpnameExpiredWave::query()
-            ->when($request->user()->isDepotScoped(), fn ($q) => $q->where('kode_depo', $request->user()->kode_depo))
+            ->when($request->user()->isDepotScoped(), fn ($q) => $request->user()->applyDepotFilter($q, 'kode_depo'))
             ->select('week_start')
             ->distinct()
             ->orderByDesc('week_start')
@@ -208,20 +208,20 @@ class OpnameExpiredController extends Controller
 
         $waves = OpnameExpiredWave::query()
             ->where('week_start', $weekStart)
-            ->when($scoped, fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
             ->get();
 
         $completedSessions = OpnameExpiredSession::query()
             ->where('week_start', $weekStart)
             ->where('status', OpnameExpiredSession::STATUS_COMPLETED)
-            ->when($scoped, fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
             ->pluck('kode_depo')
             ->flip();
 
         $openSessions = OpnameExpiredSession::query()
             ->where('week_start', $weekStart)
             ->whereIn('status', [OpnameExpiredSession::STATUS_OPEN, OpnameExpiredSession::STATUS_IN_PROGRESS])
-            ->when($scoped, fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
             ->pluck('kode_depo')
             ->flip();
 
@@ -390,7 +390,7 @@ class OpnameExpiredController extends Controller
         $query = OpnameExpiredWave::query()->orderBy('kode_depo')->orderBy('kode_barang');
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo);
+            $request->user()->applyDepotFilter($query, 'kode_depo');
         }
 
         if ($request->kode_depo && ! $request->user()->isDepotScoped()) {
@@ -439,7 +439,7 @@ class OpnameExpiredController extends Controller
         $query = OpnameExpiredWave::query()->where('week_start', $weekStart);
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo);
+            $request->user()->applyDepotFilter($query, 'kode_depo');
         }
 
         if ($request->search) {
@@ -475,7 +475,7 @@ class OpnameExpiredController extends Controller
         $query = OpnameExpiredWave::query()->where('week_start', $weekStart);
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo);
+            $request->user()->applyDepotFilter($query, 'kode_depo');
         }
 
         return $query->selectRaw('kode_depo, nama_depo, status_ini, count(*) as c, sum(qty_ini_crt) as qty')

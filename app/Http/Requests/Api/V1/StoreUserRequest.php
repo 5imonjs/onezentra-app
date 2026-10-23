@@ -29,8 +29,9 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kode_depo' => 'required|string|max:20',
-            'nama_depo' => 'required|string|max:100',
+            'kode_depo' => 'nullable|string|max:20',
+            'nama_depo' => 'nullable|string|max:100',
+            'region_id' => 'nullable|string|max:20',
             'full_name' => 'required|string|max:100',
             'alamat' => 'nullable|string|max:2000',
             'email' => 'required|email|max:255|unique:users,email',

@@ -120,7 +120,7 @@ class OpnameExpiredService
         $query = OpnameExpiredWave::query()->where('week_start', $prevWeekStart->toDateString());
 
         if ($user?->isDepotScoped()) {
-            $query->where('kode_depo', $user->kode_depo);
+            $user->applyDepotFilter($query, 'kode_depo');
         }
 
         $result = [];
@@ -149,7 +149,7 @@ class OpnameExpiredService
 
         $waveKeys = OpnameExpiredWave::query()
             ->where('week_start', $weekStart->toDateString())
-            ->when($user?->isDepotScoped(), fn ($q) => $q->where('kode_depo', $user->kode_depo))
+            ->when($user?->isDepotScoped(), fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
             ->get()
             ->map(fn ($w) => implode('|', [$w->kode_barang, $w->kode_depo ?: self::DEPO_GENERAL, $w->expired_date_ini?->toDateString()]))
             ->flip();
@@ -320,7 +320,7 @@ class OpnameExpiredService
                 continue;
             }
 
-            if ($user?->isDepotScoped() && $carried->kode_depo !== $user->kode_depo) {
+            if ($user?->isDepotScoped() && ! in_array($carried->kode_depo, $user->depot_codes, true)) {
                 continue;
             }
 

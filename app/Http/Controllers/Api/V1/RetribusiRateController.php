@@ -17,7 +17,7 @@ class RetribusiRateController extends Controller
 
         // Tarif bersifat per-depo; user ber-scope hanya melihat depo sendiri.
         if ($user->isDepotScoped()) {
-            $query->where('kode_depo', $user->kode_depo);
+            $user->applyDepotFilter($query, 'kode_depo');
         }
 
         return response()->json(['data' => $query->get()]);

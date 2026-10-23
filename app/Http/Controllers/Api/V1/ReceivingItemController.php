@@ -34,7 +34,7 @@ class ReceivingItemController extends Controller
 
         if ($request->user()->isDepotScoped()) {
             $query->where(fn ($q) => $q
-                ->where('kode_depo', $request->user()->kode_depo)
+                ->whereIn('kode_depo', $request->user()->depot_codes)
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($request->user())));
         }
 
@@ -78,7 +78,7 @@ class ReceivingItemController extends Controller
 
         if ($request->user()->isDepotScoped()) {
             $base->where(fn ($q) => $q
-                ->where('kode_depo', $request->user()->kode_depo)
+                ->whereIn('kode_depo', $request->user()->depot_codes)
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($request->user())));
         }
 
@@ -194,7 +194,7 @@ class ReceivingItemController extends Controller
         // konsisten dengan kandidat yang dihitung.
         if ($request->user()->isDepotScoped()) {
             $itemsQuery->where(fn ($q) => $q
-                ->where('kode_depo', $request->user()->kode_depo)
+                ->whereIn('kode_depo', $request->user()->depot_codes)
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($request->user())));
         }
         if ($request->search) {
@@ -369,10 +369,11 @@ class ReceivingItemController extends Controller
         }
 
         // User depot-scoped tidak boleh memindahkan baris ke depo lain lewat
-        // update: kunci ke depo sendiri (pola yang sama dengan store).
+        // update: pertahankan depo baris (sudah lolos otorisasi), termasuk
+        // untuk user region yang boleh mengelola beberapa depot.
         if ($request->user()->isDepotScoped()) {
-            $attributes['kode_depo'] = $request->user()->kode_depo;
-            $attributes['nama_depo'] = $request->user()->nama_depo;
+            $attributes['kode_depo'] = $receivingItem->kode_depo;
+            $attributes['nama_depo'] = $receivingItem->nama_depo;
         }
 
         if (in_array($attributes['condition'] ?? $request->input('condition'), ReceivingItem::CONDITIONS_REQUIRING_PHOTO, true) && empty($receivingItem->photo) && ! $request->hasFile('photo')) {
@@ -504,7 +505,7 @@ class ReceivingItemController extends Controller
         }
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo);
+            $request->user()->applyDepotFilter($query, 'kode_depo');
         }
 
         // Aturan hapus ledger berlabel: label ikut terhapus bersama barisnya

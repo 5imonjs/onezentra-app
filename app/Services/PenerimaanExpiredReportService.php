@@ -114,7 +114,7 @@ class PenerimaanExpiredReportService
 
         if ($user && $user->isDepotScoped()) {
             $query->where(fn ($q) => $q
-                ->where('receiving_items.kode_depo', $user->kode_depo)
+                ->whereIn('receiving_items.kode_depo', $user->depot_codes)
                 ->orWhereHas('receiving.rencanaKirim', fn ($r) => $r->forUserDepot($user)));
         }
 

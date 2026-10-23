@@ -36,7 +36,7 @@ class OpnameExpiredSessionController extends Controller
             ->orderByDesc('id');
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo);
+            $request->user()->applyDepotFilter($query, 'kode_depo');
         }
 
         if ($request->week_start) {
@@ -105,8 +105,8 @@ class OpnameExpiredSessionController extends Controller
             : Carbon::today()->startOfWeek(Carbon::MONDAY);
 
         $user = $request->user();
-        if ($user->isDepotScoped() && $validated['kode_depo'] !== $user->kode_depo) {
-            abort(403, 'Anda hanya bisa membuat sesi untuk depo sendiri.');
+        if ($user->isDepotScoped() && ! in_array($validated['kode_depo'], $user->depot_codes, true)) {
+            abort(403, 'Anda hanya bisa membuat sesi untuk depo dalam cakupan Anda.');
         }
 
         // Assignee wajib satu depo dengan sesi: sesi lintas-depo membuat

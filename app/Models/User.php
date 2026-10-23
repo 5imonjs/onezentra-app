@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasDepotScope;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -24,7 +25,7 @@ use Laravel\Sanctum\HasApiTokens;
 //
 // Penulisan ke kolom ini harus selalu eksplisit di sisi server, lihat
 // SecurityAuditTest::test_role_id_bisa_ditulis_server_walau_tidak_fillable.
-#[Fillable(['kode_depo', 'nama_depo', 'full_name', 'alamat', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'status'])]
+#[Fillable(['kode_depo', 'nama_depo', 'region_id', 'full_name', 'alamat', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'status'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
@@ -43,7 +44,27 @@ class User extends Authenticatable
      */
     public function isDepotScoped(): bool
     {
+        // Setiap user tanpa `depot.view_all` tetap dibatasi (scoped), baik ke
+        // depot yang di-assign maupun ke seluruh depot di region-nya. Hanya
+        // `depot.view_all` yang membuka akses global.
         return ! $this->hasPermission('depot.view_all');
+    }
+
+    /**
+     * Apakah user mengikuti cakupan region (semua depot di region-nya).
+     * Hanya berlaku bila permission `depot.view_region` dipegang DAN region_id terisi.
+     */
+    public function hasRegionScope(): bool
+    {
+        return $this->hasPermission('depot.view_region') && ! blank($this->region_id);
+    }
+
+    /**
+     * Apakah user dibatasi hanya pada region-nya (region-scoped).
+     */
+    public function isRegionScoped(): bool
+    {
+        return $this->hasPermission('depot.view_region');
     }
 
     protected function casts(): array
@@ -82,16 +103,28 @@ class User extends Authenticatable
 
     /**
      * Kode depot yang dapat diakses user (untuk scoping query).
-     * Menggabungkan pivot user_depots + fallback ke kolom legacy kode_depo.
+     * - Global (depot.view_all): return [] (no filter)
+     * - Region-scoped (depot.view_region): return all depots in user's region
+     * - Depot-scoped: return assigned depots from user_depots pivot
      */
     public function getDepotCodesAttribute(): array
     {
         // User global (punya depot.view_all) tidak dibatasi depot_codes
-        if (! $this->isDepotScoped()) {
+        if ($this->hasPermission('depot.view_all')) {
             return [];
         }
 
-        // Direct query to avoid ambiguous column issue with BelongsToMany
+        // User region-scoped (depot.view_region + region_id): semua depot aktif
+        // di region tersebut.
+        if ($this->hasRegionScope()) {
+            return \DB::table('depot_settings')
+                ->where('region_id', $this->region_id)
+                ->where('is_active', true)
+                ->pluck('kode_depo')
+                ->toArray();
+        }
+
+        // Depot-scoped: Direct query to avoid ambiguous column issue with BelongsToMany
         $codes = \DB::table('user_depots')
             ->where('user_id', $this->id)
             ->pluck('kode_depo')
@@ -152,6 +185,19 @@ class User extends Authenticatable
     {
         if ($this->isDepotScoped()) {
             $codes = $this->depot_codes;
+            $requested = $attributes['kode_depo'] ?? null;
+
+            // Multi-depot / region: hormati depo yang diminta selama masih
+            // berada dalam cakupan user. Jika tidak, jatuh ke depot utama.
+            if (! empty($codes) && ! blank($requested) && in_array($requested, $codes, true)) {
+                $requestedDepot = DepotSetting::where('kode_depo', $requested)->first();
+                $attributes['nama_depo'] = $requestedDepot?->nama_depo
+                    ?? $attributes['nama_depo']
+                    ?? $requested;
+
+                return $attributes;
+            }
+
             if (! empty($codes)) {
                 $primaryDepot = DepotSetting::where('kode_depo', $codes[0])->first();
                 $attributes['kode_depo'] = $codes[0];
@@ -173,6 +219,26 @@ class User extends Authenticatable
         }
 
         return $attributes;
+    }
+
+    /**
+     * Terapkan filter depot pada query. Untuk user scoped, hanya baris dengan
+     * kode_depo di `depot_codes` yang lolos; user tanpa depot sama sekali
+     * menghasilkan query kosong (bukan tanpa filter).
+     */
+    public function applyDepotFilter(Builder $query, string $column = 'kode_depo'): Builder
+    {
+        if (! $this->isDepotScoped()) {
+            return $query;
+        }
+
+        $codes = $this->depot_codes;
+
+        if (empty($codes)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn($column, $codes);
     }
 
     /**

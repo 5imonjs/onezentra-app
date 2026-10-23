@@ -19,8 +19,13 @@ class BiayaConfigController extends Controller
     {
         $kodeDepo = trim((string) $request->input('kode_depo', ''));
         if ($request->user()->isDepotScoped()) {
-            // User ber-scope: depo selalu miliknya, walau kode_depo asing dikirim.
-            $kodeDepo = (string) $request->user()->kode_depo;
+            // User ber-scope: hanya boleh memakai depo dalam cakupannya.
+            // Jika kode_depo kosong/asing, pakai depo utama (untuk region:
+            // depot pertama di region tersebut).
+            $allowed = $request->user()->depot_codes;
+            if ($kodeDepo === '' || ! in_array($kodeDepo, $allowed, true)) {
+                $kodeDepo = (string) ($allowed[0] ?? $request->user()->kode_depo);
+            }
         }
         $module = $request->input('module') === ApprovalAssignment::MODULE_RETRIBUSI
             ? ApprovalAssignment::MODULE_RETRIBUSI

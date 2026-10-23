@@ -41,7 +41,9 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
         // memakai depo user (depotAttributes) bila user punya kode_depo,
         // sehingga ledger depo lain tak perlu dimuat (dulu seluruh tabel).
         $existingQuery = ReceivingItem::where('source', ReceivingItem::SOURCE_IMPORT);
-        if (! blank($this->user->kode_depo)) {
+        if ($this->user->isDepotScoped()) {
+            $this->user->applyDepotFilter($existingQuery, 'kode_depo');
+        } elseif (! blank($this->user->kode_depo)) {
             $existingQuery->where('kode_depo', $this->user->kode_depo);
         }
 

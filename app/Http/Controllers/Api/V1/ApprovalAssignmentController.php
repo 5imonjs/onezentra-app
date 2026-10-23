@@ -20,7 +20,8 @@ class ApprovalAssignmentController extends Controller
         // `input()` (bukan `query()`) agar respons `upsert()` — yang memanggil
         // index dengan `kode_depo` di body JSON — mencerminkan depo yang baru
         // disimpan, bukan depo default user (yang bisa 'ADMIN').
-        $kodeDepo = $request->input('kode_depo', $request->user()->kode_depo);
+        $defaultDepo = $request->user()->depot_codes[0] ?? $request->user()->kode_depo;
+        $kodeDepo = $request->input('kode_depo', $defaultDepo);
         abort_unless($this->canAccessDepot($request->user(), $kodeDepo), 403);
         $module = $request->input('module') === ApprovalAssignment::MODULE_RETRIBUSI
             ? ApprovalAssignment::MODULE_RETRIBUSI
@@ -72,7 +73,7 @@ class ApprovalAssignmentController extends Controller
             ->orderBy('kode_depo');
 
         if ($user->isDepotScoped()) {
-            $query->where('kode_depo', $user->kode_depo);
+            $user->applyDepotFilter($query, 'kode_depo');
         }
 
         $depots = $query->get(['kode_depo', 'nama_depo']);
@@ -82,7 +83,10 @@ class ApprovalAssignmentController extends Controller
         }
 
         if ($user->isDepotScoped()) {
-            return collect([['kode_depo' => $user->kode_depo, 'nama_depo' => $user->nama_depo]]);
+            return collect($user->depot_codes)->map(fn (string $kode) => [
+                'kode_depo' => $kode,
+                'nama_depo' => DepotSetting::where('kode_depo', $kode)->value('nama_depo') ?? $kode,
+            ])->values();
         }
 
         return User::query()
@@ -129,6 +133,6 @@ class ApprovalAssignmentController extends Controller
 
     private function canAccessDepot(User $user, string $kodeDepo): bool
     {
-        return ! $user->isDepotScoped() || $user->kode_depo === $kodeDepo;
+        return ! $user->isDepotScoped() || in_array($kodeDepo, $user->depot_codes, true);
     }
 }

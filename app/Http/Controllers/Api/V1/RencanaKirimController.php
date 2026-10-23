@@ -110,7 +110,11 @@ class RencanaKirimController extends Controller
         }
 
         if ($request->filled('kode_depo')) {
-            $query->where('kode_depo', $request->input('kode_depo'));
+            $requested = (string) $request->input('kode_depo');
+            if (! $request->user()->isDepotScoped()
+                || in_array($requested, $request->user()->depot_codes, true)) {
+                $query->where('kode_depo', $requested);
+            }
         }
 
         if ($request->status) {
@@ -146,10 +150,18 @@ class RencanaKirimController extends Controller
             'po_transporter' => [
                 'required', 'string', 'max:100',
                 Rule::unique('rencana_kirim', 'po_transporter')->where(function ($query) use ($request) {
-                    // Depo efektif: depot-scoped terkunci ke depo user; admin view_all memakai depo yang diminta.
-                    $kodeDepo = $request->user()->isDepotScoped()
-                        ? $request->user()->kode_depo
-                        : $request->input('kode_depo');
+                    // Depo efektif: depot-scoped memakai depo yang diminta bila
+                    // masih dalam cakupan (region bisa punya banyak depo), jika
+                    // tidak jatuh ke depo utama; admin view_all memakai depo yang diminta.
+                    if ($request->user()->isDepotScoped()) {
+                        $allowed = $request->user()->depot_codes;
+                        $requested = $request->input('kode_depo');
+                        $kodeDepo = in_array($requested, $allowed, true)
+                            ? $requested
+                            : ($allowed[0] ?? $request->user()->kode_depo);
+                    } else {
+                        $kodeDepo = $request->input('kode_depo');
+                    }
 
                     // Case-insensitive agar portabel antar driver DB (MySQL & sqlite).
                     return $query->where('kode_depo', $kodeDepo)

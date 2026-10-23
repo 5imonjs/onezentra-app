@@ -18,7 +18,7 @@ class DepotSettingController extends Controller
         $query = DepotSetting::query()->where('is_active', true);
 
         if ($request->user()->isDepotScoped()) {
-            $query->where('kode_depo', $request->user()->kode_depo);
+            $request->user()->applyDepotFilter($query, 'kode_depo');
         }
 
         return response()->json([
@@ -34,7 +34,7 @@ class DepotSettingController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isDepotScoped() && $kodeDepo !== $user->kode_depo) {
+        if ($user->isDepotScoped() && ! in_array($kodeDepo, $user->depot_codes, true)) {
             abort(403, 'Anda tidak memiliki akses ke data depo ini.');
         }
 
