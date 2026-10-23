@@ -423,6 +423,10 @@ class UserController extends Controller
             DB::table('user_depots')->insert($syncData);
         }
 
+        if (blank($user->region_id) && filled($primaryDepot?->region_id)) {
+            $user->forceFill(['region_id' => $primaryDepot->region_id])->save();
+        }
+
         User::clearPermissionCache($user->id);
     }
 }

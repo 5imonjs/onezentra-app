@@ -347,13 +347,32 @@ export default function UsersPage() {
   const fromCount = totalCount === 0 ? 0 : (page - 1) * 20 + 1;
   const toCount = Math.min(page * 20, totalCount);
 
-  /** Region groups depots; assigned depot codes remain the data-access allowlist. */
+  const displayRegion = (item: UserItem): { regionId: string; inferred: boolean } | null => {
+    if (item.region_id) {
+      return { regionId: item.region_id, inferred: false };
+    }
+
+    const codes = item.depot_codes?.length ? item.depot_codes : item.kode_depo ? [item.kode_depo] : [];
+    const mappedRegions = codes.map(code => depotOptions.find(depot => depot.kode_depo === code)?.region_id);
+    if (mappedRegions.length === 0 || mappedRegions.some(region => !region)) {
+      return null;
+    }
+
+    const uniqueRegions = Array.from(new Set(mappedRegions));
+    const inferredRegion = uniqueRegions[0];
+    return uniqueRegions.length === 1 && inferredRegion
+      ? { regionId: inferredRegion, inferred: true }
+      : null;
+  };
+
+  /** Display the depot's mapped region when legacy user data has no region_id. */
   const regionBadge = (item: UserItem) => {
-    if (!item.region_id) return null;
+    const region = displayRegion(item);
+    if (!region) return null;
     const hasRegionPermission = Boolean(item.has_region_permission);
     return (
       <span
-        title={`Region ${item.region_id} mengelompokkan depo; akses data tetap dibatasi ke depo yang ditetapkan.`}
+        title={`${region.inferred ? 'Region berdasarkan pemetaan depo' : 'Region user'}; akses data tetap dibatasi ke depo yang ditetapkan.`}
         className={`inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
           hasRegionPermission
             ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
@@ -364,7 +383,7 @@ export default function UsersPage() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
         </svg>
-        {item.region_id}
+        {region.regionId}{region.inferred ? ' · dari depo' : ''}
       </span>
     );
   };
@@ -399,7 +418,11 @@ export default function UsersPage() {
       return 'Akses global';
     }
     const codes = item.depot_codes?.length ? item.depot_codes.join(', ') : item.kode_depo || 'Tanpa depo';
-    return `${item.region_id ? `Region ${item.region_id}` : 'Tanpa region'} · ${codes}`;
+    const region = displayRegion(item);
+    const regionLabel = region
+      ? `Region ${region.regionId}${region.inferred ? ' (dari pemetaan depo)' : ''}`
+      : 'Region belum dipetakan';
+    return `${regionLabel} · ${codes}`;
   };
 
   const groupedItems = items.reduce<Record<string, UserItem[]>>((groups, item) => {

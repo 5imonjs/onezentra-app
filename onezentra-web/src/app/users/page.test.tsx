@@ -157,6 +157,19 @@ describe('UsersPage region and depot assignments', () => {
     expect(within(regionTable).getByRole('row', { name: /REG-2/ })).toHaveTextContent('D-03');
   });
 
+  it('shows the mapped depot region for legacy users without region_id', async () => {
+    list.mockResolvedValue(listResponse([{
+      ...user,
+      region_id: null,
+      depot_codes: ['D-01'],
+    }]));
+    render(<UsersPage />);
+
+    const userTable = await screen.findByRole('table', { name: 'Daftar pengguna' });
+    expect(within(userTable).getByRole('row', { name: /Region REG-1 \(dari pemetaan depo\) · D-01/ })).toBeInTheDocument();
+    expect(within(userTable).getByText('REG-1 · dari depo')).toBeInTheDocument();
+  });
+
   it('does not fetch user or depot data without users.view', () => {
     hasPermission.mockReturnValue(false);
 

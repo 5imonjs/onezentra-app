@@ -233,6 +233,28 @@ class RegionDepotScopeTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'mismatch-user@example.test']);
     }
 
+    public function test_store_user_infers_region_from_selected_depot_when_region_is_omitted(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+        $this->grant($admin, 'users.create');
+        Role::firstOrCreate(['slug' => 'staff_logistic'], ['name' => 'Staff Logistik']);
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/v1/users', [
+            'full_name' => 'User Region Inferred',
+            'email' => 'inferred-region-user@example.test',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'level' => 'staff_logistic',
+            'depot_codes' => ['R1-A'],
+        ])->assertCreated();
+
+        $user = User::where('email', 'inferred-region-user@example.test')->firstOrFail();
+        $this->assertSame('REG-1', $user->region_id);
+    }
+
     public function test_get_depots_reports_region_permission_and_explicit_assignments(): void
     {
         $this->makeDepot('R1-A', 'REG-1');
@@ -276,6 +298,23 @@ class RegionDepotScopeTest extends TestCase
 
         $this->assertSame([], $target->fresh()->depot_codes);
         $this->assertSame('', $target->fresh()->kode_depo);
+    }
+
+    public function test_sync_depots_infers_region_for_legacy_user_without_region(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+        $this->grant($admin, 'users.view');
+        $this->grant($admin, 'users.edit');
+        $target = $this->makeUser('admin_planner', 'R1-A', 'Depo R1-A');
+        Sanctum::actingAs($admin);
+
+        $this->putJson("/api/v1/users/{$target->id}/depots", [
+            'depot_codes' => ['R1-A'],
+        ])->assertOk();
+
+        $this->assertSame('REG-1', $target->fresh()->region_id);
     }
 
     public function test_non_admin_master_cannot_change_region_id(): void
@@ -345,6 +384,27 @@ class RegionDepotScopeTest extends TestCase
         $this->assertSame([], $import->errors);
         $this->assertSame('staff_logistic', $user->level);
         $this->assertSame(0, $user->roles()->count());
+    }
+
+    public function test_user_import_infers_region_when_assigning_depots_without_region_column(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $admin = $this->makeUser('admin_master', 'ADMIN', 'Admin');
+        $this->grant($admin, 'depot.view_all');
+        $role = Role::create(['name' => 'Planner Custom', 'slug' => 'planner_custom', 'is_active' => true]);
+
+        $import = new UserImport($admin);
+        $import->collection(new Collection([[
+            'email' => 'import-inferred-region@example.test',
+            'full_name' => 'Import Inferred Region',
+            'level' => 'planner_custom',
+            'depot_codes' => 'R1-A',
+        ]]));
+
+        $user = User::where('email', 'import-inferred-region@example.test')->firstOrFail();
+        $this->assertSame([], $import->errors);
+        $this->assertSame('REG-1', $user->region_id);
+        $this->assertSame([$role->id], $user->roles()->pluck('roles.id')->all());
     }
 
     public function test_user_import_rejects_depots_from_another_region(): void
@@ -503,5 +563,27 @@ class RegionDepotScopeTest extends TestCase
             'region_id' => 'REG-B',
             'is_active' => true,
         ]);
+    }
+
+    public function test_region_backfill_fills_only_users_with_one_consistent_depot_region(): void
+    {
+        $this->makeDepot('R1-A', 'REG-1');
+        $this->makeDepot('R1-B', 'REG-1');
+        $this->makeDepot('R2-A', 'REG-2');
+        $singleRegionUser = $this->makeUser('admin_planner', 'R1-A', 'Depo R1-A');
+        $this->makeUser('staff_logistic', 'UNMAPPED', 'Depo Tanpa Region');
+        $ambiguousUser = $this->makeUser('cheker', 'R1-A', 'Depo R1-A');
+        DB::table('user_depots')->insert([
+            ['user_id' => $singleRegionUser->id, 'kode_depo' => 'R1-A', 'assigned_at' => now()],
+            ['user_id' => $ambiguousUser->id, 'kode_depo' => 'R1-A', 'assigned_at' => now()],
+            ['user_id' => $ambiguousUser->id, 'kode_depo' => 'R2-A', 'assigned_at' => now()],
+        ]);
+
+        $migration = require database_path('migrations/2026_10_23_035250_backfill_user_regions_from_assigned_depots.php');
+        $migration->up();
+
+        $this->assertSame('REG-1', $singleRegionUser->fresh()->region_id);
+        $this->assertNull(User::where('kode_depo', 'UNMAPPED')->firstOrFail()->region_id);
+        $this->assertNull($ambiguousUser->fresh()->region_id);
     }
 }

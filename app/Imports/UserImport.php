@@ -180,6 +180,8 @@ class UserImport implements ToCollection, WithHeadingRow
         if ($depotAssignments !== null && $depotAssignments->isNotEmpty()) {
             $resolvedRegion = $depotAssignments->first()->region_id;
         }
+        $regionWasResolvedFromAssignments = ! blank($resolvedRegion)
+            && $resolvedRegion !== $targetRegion;
 
         if ($primaryDepotCode === 'ADMIN' && $level === 'admin_master'
             && ($depotAssignments === null || $depotAssignments->isEmpty())
@@ -203,7 +205,11 @@ class UserImport implements ToCollection, WithHeadingRow
                 'alamat' => $alamat,
                 'level' => $level,
                 'status' => $status,
-                'region_id' => $regionWasProvided || $user === null ? ($resolvedRegion ?: null) : null,
+                'region_id' => $regionWasProvided
+                    || $user === null
+                    || ($hasDepotAssignments && $regionWasResolvedFromAssignments)
+                    ? ($resolvedRegion ?: null)
+                    : null,
             ], static fn (?string $value): bool => $value !== null && $value !== '');
         }
 
