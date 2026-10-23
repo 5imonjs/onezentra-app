@@ -48,18 +48,23 @@ class ReceivingDepotFilterTest extends TestCase
         return $user;
     }
 
-    private function makeReceiving(string $kodeDepo, User $creator): void
-    {
+    private function makeReceiving(
+        string $kodeDepo,
+        User $creator,
+        string $status = 'PENDING',
+        ?string $po = null,
+    ): Receiving {
         $rk = RencanaKirim::create([
-            'po_transporter' => 'PO-RCV-'.uniqid(),
+            'po_transporter' => $po ?? 'PO-RCV-'.uniqid(),
             'status' => 'CHECKED_IN',
             'kode_depo' => $kodeDepo,
             'nama_depo' => 'Depo '.$kodeDepo,
             'created_by' => $creator->id,
         ]);
-        Receiving::create([
+
+        return Receiving::create([
             'rencana_kirim_id' => $rk->id,
-            'status' => 'PENDING',
+            'status' => $status,
             'checked_by' => $creator->id,
         ]);
     }
@@ -93,5 +98,40 @@ class ReceivingDepotFilterTest extends TestCase
             ->assertOk()
             ->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.rencana_kirim.kode_depo', 'DPO-A');
+    }
+
+    public function test_stats_returns_grouped_counts_for_the_users_depo(): void
+    {
+        $master = $this->userWith(true);
+        $this->makeReceiving('DPO-A', $master, 'PENDING');
+        $this->makeReceiving('DPO-A', $master, 'IN_PROGRESS');
+        $this->makeReceiving('DPO-A', $master, 'COMPLETED');
+        $this->makeReceiving('DPO-B', $master, 'PENDING');
+
+        Sanctum::actingAs($this->userWith(false, 'DPO-A'));
+
+        $this->getJson('/api/v1/receivings/stats')
+            ->assertOk()
+            ->assertJsonPath('data.total', 3)
+            ->assertJsonPath('data.pending', 1)
+            ->assertJsonPath('data.in_progress', 1)
+            ->assertJsonPath('data.completed', 1);
+    }
+
+    public function test_by_po_matches_exactly_and_respects_depot_scope(): void
+    {
+        $master = $this->userWith(true);
+        $exact = $this->makeReceiving('DPO-A', $master, 'IN_PROGRESS', 'PO-EXACT');
+        $this->makeReceiving('DPO-A', $master, 'PENDING', 'PO-EXACT-OTHER');
+
+        Sanctum::actingAs($this->userWith(false, 'DPO-A'));
+
+        $this->getJson('/api/v1/receivings/search/by-po?po_transporter=po-exact')
+            ->assertOk()
+            ->assertJsonPath('data.id', $exact->id)
+            ->assertJsonPath('data.status', 'IN_PROGRESS');
+
+        $this->getJson('/api/v1/receivings/search/by-po?po_transporter=PO-EXAC')
+            ->assertNotFound();
     }
 }

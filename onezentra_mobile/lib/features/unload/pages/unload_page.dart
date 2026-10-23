@@ -11,10 +11,9 @@ import 'package:onezentra_mobile/features/unload/repositories/unload_repository.
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
-/// Check Out Point — scan a PO to open its receiving, start the unloading,
-/// scan each unloaded product, then finish. The web console calls the same
-/// receiving module "Check Out Point"; mobile keeps the field term "bongkar"
-/// on the action buttons.
+/// Check Out Point — select an active receiving or look it up by exact PO,
+/// review it, and confirm completion. Item scanning is optional in this
+/// workflow; mobile keeps the field term "bongkar" on the action buttons.
 ///
 /// Only PENDING / IN_PROGRESS records open here; finished ones belong to
 /// Riwayat > Penerimaan. The PO lookup demands an exact match (like the web
@@ -205,7 +204,7 @@ class _UnloadPageState extends State<UnloadPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Check Out Point',
+                      'Ringkasan receiving aktif',
                       style: GoogleFonts.roboto(
                         fontSize: 18,
                         height: 1.2,
@@ -215,7 +214,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Konfirmasi selesai bongkar dengan scan PO transporter.',
+                      'Pantau status dan konfirmasi penyelesaian bongkar.',
                       style: GoogleFonts.roboto(
                         fontSize: 12,
                         height: 1.4,
@@ -317,7 +316,7 @@ class _UnloadPageState extends State<UnloadPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Konfirmasi Selesai Bongkar',
+          'Konfirmasi Receiving',
           style: GoogleFonts.roboto(
             fontSize: 15,
             fontWeight: FontWeight.w700,
@@ -335,31 +334,48 @@ class _UnloadPageState extends State<UnloadPage> {
         ),
         const SizedBox(height: AppTheme.space4),
         if (unload.active == null) ...[
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(
-                  controller: _scanController,
-                  hint: 'Barcode PO transporter...',
-                  prefixIcon: Icons.qr_code_scanner_rounded,
-                  suffixIcon: IconButton(
-                    tooltip: 'Scan barcode PO',
-                    onPressed: unload.lookupBusy ? null : _openScanner,
-                    icon: const Icon(Icons.photo_camera_rounded),
-                  ),
-                  textInputAction: TextInputAction.done,
-                  onEditingComplete: _submitScan,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              var stacked = constraints.maxWidth < 380;
+              var field = AppTextField(
+                controller: _scanController,
+                hint: 'Barcode PO transporter...',
+                prefixIcon: Icons.qr_code_scanner_rounded,
+                suffixIcon: IconButton(
+                  tooltip: 'Scan barcode PO',
+                  onPressed: unload.lookupBusy ? null : _openScanner,
+                  icon: const Icon(Icons.photo_camera_rounded),
                 ),
-              ),
-              const SizedBox(width: AppTheme.space3),
-              AppPrimaryButton(
+                textInputAction: TextInputAction.done,
+                onEditingComplete: _submitScan,
+              );
+              var searchButton = AppPrimaryButton(
                 text: 'Cari PO',
                 height: 48,
-                isFullWidth: false,
+                isFullWidth: stacked,
                 isLoading: unload.lookupBusy,
                 onPressed: unload.lookupBusy ? null : _submitScan,
-              ),
-            ],
+              );
+
+              if (stacked) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    field,
+                    const SizedBox(height: AppTheme.space3),
+                    searchButton,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: field),
+                  const SizedBox(width: AppTheme.space3),
+                  searchButton,
+                ],
+              );
+            },
           ),
           if (!canEdit) ...[
             const SizedBox(height: AppTheme.space3),
@@ -465,7 +481,8 @@ class _UnloadPageState extends State<UnloadPage> {
                   ),
                   const SizedBox(height: AppTheme.space1),
                   Text(
-                    '${unload.activeReceivings.length} receiving menunggu atau diproses',
+                    '${unload.activeReceivings.length} dari '
+                    '${unload.activeTotal} receiving aktif',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
                       color: AppTheme.gray500,
@@ -508,6 +525,46 @@ class _UnloadPageState extends State<UnloadPage> {
               const SizedBox(height: AppTheme.space2),
           ],
         ],
+        if (unload.activeLastPage > 1) ...[
+          const SizedBox(height: AppTheme.space4),
+          const Divider(height: 1, color: AppTheme.gray300),
+          const SizedBox(height: AppTheme.space3),
+          Row(
+            children: [
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Sebelumnya',
+                  height: 42,
+                  isLoading: unload.isLoadingReceivings,
+                  onPressed: unload.activePage > 1 &&
+                          !unload.isLoadingReceivings
+                      ? () => unload.goToReceivingPage(unload.activePage - 1)
+                      : null,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Text(
+                '${unload.activePage}/${unload.activeLastPage}',
+                style: GoogleFonts.roboto(
+                  fontSize: 12,
+                  color: AppTheme.gray500,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Berikutnya',
+                  height: 42,
+                  isLoading: unload.isLoadingReceivings,
+                  onPressed: unload.activePage < unload.activeLastPage &&
+                          !unload.isLoadingReceivings
+                      ? () => unload.goToReceivingPage(unload.activePage + 1)
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     ),
   );
@@ -525,10 +582,10 @@ class _UnloadPageState extends State<UnloadPage> {
       child: Container(
         padding: const EdgeInsets.all(AppTheme.space3),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary100 : AppTheme.surfaceCard,
+          color: selected ? AppTheme.primary950 : AppTheme.surfaceCard,
           borderRadius: AppTheme.radiusLg,
           border: Border.all(
-            color: selected ? AppTheme.primary500 : AppTheme.gray300,
+            color: selected ? AppTheme.primary400 : AppTheme.gray300,
           ),
         ),
         child: Row(
@@ -653,6 +710,8 @@ class _UnloadPageState extends State<UnloadPage> {
             ),
           ],
           const SizedBox(height: AppTheme.space4),
+          // Checkout completion is a direct confirmation; product scans are
+          // optional and must not block this action.
           if (canEdit &&
               (session.status == 'PENDING' || session.status == 'IN_PROGRESS'))
             SizedBox(
@@ -1320,21 +1379,12 @@ class _UnloadScanSheet extends StatefulWidget {
 
 class _UnloadScanSheetState extends State<_UnloadScanSheet> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _qtyController = TextEditingController(
-    text: _initialQty(widget.line.jumlah),
-  );
+  final _qtyController = TextEditingController();
   final _barcodeController = TextEditingController();
   final _notesController = TextEditingController();
   String _condition = 'FISIK_BAGUS';
   bool _saving = false;
   String? _error;
-
-  static String _initialQty(double? value) {
-    if (value == null) {
-      return '';
-    }
-    return value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
-  }
 
   @override
   void dispose() {

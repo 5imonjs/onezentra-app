@@ -70,6 +70,79 @@ class ReceivingController extends Controller
         return response()->json($receivings);
     }
 
+    public function stats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $statusCounts = Receiving::query()
+            ->when(
+                $user->isDepotScoped(),
+                fn ($query) => $query->whereHas(
+                    'rencanaKirim',
+                    fn ($rencanaQuery) => $rencanaQuery->forUserDepot($user)
+                )
+            )
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return response()->json([
+            'data' => [
+                'total' => (int) $statusCounts->sum(),
+                'pending' => (int) ($statusCounts['PENDING'] ?? 0),
+                'in_progress' => (int) ($statusCounts['IN_PROGRESS'] ?? 0),
+                'completed' => (int) ($statusCounts['COMPLETED'] ?? 0),
+            ],
+        ]);
+    }
+
+    public function byPo(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'po_transporter' => 'required|string|max:255',
+        ]);
+        $po = trim($validated['po_transporter']);
+        $user = $request->user();
+
+        $receiving = Receiving::with([
+            'rencanaKirim.items',
+            'dock',
+            'gateTransaction',
+            'items',
+        ])
+            ->whereHas('rencanaKirim', function ($query) use ($user, $po) {
+                $query->forUserDepot($user)
+                    ->whereRaw('LOWER(po_transporter) = ?', [mb_strtolower($po)]);
+            })
+            ->orderByRaw(
+                'CASE WHEN status IN (?, ?) THEN 0 ELSE 1 END',
+                ['PENDING', 'IN_PROGRESS']
+            )
+            ->first();
+
+        if ($receiving === null) {
+            abort(404, "Tidak ada receiving untuk barcode PO \"$po\".");
+        }
+
+        abort_unless(
+            in_array($receiving->status, ['PENDING', 'IN_PROGRESS'], true),
+            422,
+            'Dokumen berstatus '.$this->receivingStatusLabel($receiving->status).' — lihat di menu Riwayat.'
+        );
+
+        return response()->json(['data' => $receiving]);
+    }
+
+    private function receivingStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'PENDING' => 'Menunggu',
+            'IN_PROGRESS' => 'Berjalan',
+            'COMPLETED' => 'Selesai',
+            'CANCELLED' => 'Dibatalkan',
+            default => $status,
+        };
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

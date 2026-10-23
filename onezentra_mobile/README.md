@@ -11,6 +11,22 @@ Aplikasi mobile Flutter untuk sistem manajemen gudang OneZentra, terintegrasi de
 - **Navigation** - GoRouter untuk routing dengan auth guard
 - **API Client** - HTTP client dengan auto token management
 
+## Alur operasional
+
+1. **Check In Point** — pindai atau ketik PO/Nopol, periksa dokumen, lalu
+   catat Gate IN atau verifikasi sesuai status dan izin pengguna.
+2. **Validasi SJ** — buka sesi dari PO, periksa setiap item dan masukkan qty
+   aktual secara eksplisit. Qty rencana hanya ditampilkan sebagai pembanding,
+   bukan nilai awal input aktual. Kondisi tertentu mewajibkan bukti foto.
+3. **Check Out Point** — pilih receiving aktif atau cari dengan PO yang cocok
+   persis, periksa detailnya, lalu konfirmasi penyelesaian. Scan item bukan
+   langkah wajib dalam alur Check Out saat ini.
+4. **Riwayat** — tinjau transaksi Gate, Validasi, dan Penerimaan sesuai izin.
+
+Pencarian PO di Check Out Point dibatasi ke receiving aktif yang cocok persis.
+Statistik receiving dimuat sebagai satu agregat, dan daftar receiving aktif
+ditampilkan per halaman agar layar tetap ringkas pada perangkat handheld.
+
 ## Tech Stack
 
 - Flutter 3.x

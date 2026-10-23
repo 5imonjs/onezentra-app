@@ -194,3 +194,19 @@ class UnloadStats {
   final int inProgress;
   final int completed;
 }
+
+/// One page of active receiving records split across pending and in-progress
+/// server filters.
+class UnloadReceivingPage {
+  const UnloadReceivingPage({
+    required this.items,
+    required this.total,
+    required this.page,
+    required this.lastPage,
+  });
+
+  final List<UnloadSession> items;
+  final int total;
+  final int page;
+  final int lastPage;
+}

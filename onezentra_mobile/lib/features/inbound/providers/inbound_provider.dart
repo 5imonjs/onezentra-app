@@ -19,6 +19,8 @@ class InboundProvider extends ChangeNotifier {
   int _currentPage = 1;
   int _lastPage = 1;
   int _total = 0;
+  int _itemsRequestId = 0;
+  int _detailRequestId = 0;
   String _search = '';
   Timer? _searchDebounce;
 
@@ -26,6 +28,13 @@ class InboundProvider extends ChangeNotifier {
   bool _detailBusy = false;
   String? _detailError;
   bool _bootstrapped = false;
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
 
   List<Receiving> get items => _items;
   bool get isLoading => _isLoading;
@@ -54,32 +63,45 @@ class InboundProvider extends ChangeNotifier {
   }
 
   Future<void> loadItems() async {
+    var requestId = ++_itemsRequestId;
     _isLoading = true;
     _listError = null;
-    notifyListeners();
+    _notify();
     try {
       var page = await _repository.list(
         search: _search.isEmpty ? null : _search,
         page: _currentPage,
       );
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       _items = page.items;
       _lastPage = page.lastPage;
       _total = page.total;
     } on ApiException catch (e) {
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       _listError = e.message;
     } catch (e, stack) {
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       debugPrint('InboundProvider.loadItems: unhandled ${e.runtimeType}: $e');
       debugPrintStack(stackTrace: stack, maxFrames: 8);
       _listError = 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (requestId == _itemsRequestId) {
+        _isLoading = false;
+        _notify();
+      }
     }
   }
 
   /// Debounced so a search request does not fire per keystroke.
   void setSearch(String value) {
     _searchDebounce?.cancel();
+    _itemsRequestId++;
     _searchDebounce = Timer(const Duration(milliseconds: 400), () {
       _search = value.trim();
       _currentPage = 1;
@@ -98,35 +120,53 @@ class InboundProvider extends ChangeNotifier {
 
   /// Opens one record with its received lines.
   Future<void> openDetail(int id) async {
+    var requestId = ++_detailRequestId;
     _detailBusy = true;
     _detailError = null;
-    notifyListeners();
+    _notify();
     try {
-      _open = await _repository.show(id);
+      var receiving = await _repository.show(id);
+      if (requestId != _detailRequestId) {
+        return;
+      }
+      _open = receiving;
     } on ApiException catch (e) {
+      if (requestId != _detailRequestId) {
+        return;
+      }
       _detailError = e.message;
     } catch (e, stack) {
+      if (requestId != _detailRequestId) {
+        return;
+      }
       debugPrint('InboundProvider.openDetail: unhandled ${e.runtimeType}: $e');
       debugPrintStack(stackTrace: stack, maxFrames: 8);
       _detailError = 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     } finally {
-      _detailBusy = false;
-      notifyListeners();
+      if (requestId == _detailRequestId) {
+        _detailBusy = false;
+        _notify();
+      }
     }
   }
 
   /// Closes the opened record and returns to the history list.
   void closeDetail() {
-    if (_open == null && _detailError == null) {
+    if (_open == null && _detailError == null && !_detailBusy) {
       return;
     }
+    _detailRequestId++;
     _open = null;
     _detailError = null;
-    notifyListeners();
+    _detailBusy = false;
+    _notify();
   }
 
   @override
   void dispose() {
+    _disposed = true;
+    _itemsRequestId++;
+    _detailRequestId++;
     _searchDebounce?.cancel();
     super.dispose();
   }

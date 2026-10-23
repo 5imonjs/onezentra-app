@@ -37,6 +37,7 @@ class GateProvider extends ChangeNotifier {
   int _currentPage = 1;
   int _lastPage = 1;
   int _total = 0;
+  int _itemsRequestId = 0;
   String _search = '';
   Timer? _searchDebounce;
 
@@ -98,6 +99,7 @@ class GateProvider extends ChangeNotifier {
   }
 
   Future<void> loadItems() async {
+    var requestId = ++_itemsRequestId;
     _isLoading = true;
     _listError = null;
     _notify();
@@ -106,24 +108,36 @@ class GateProvider extends ChangeNotifier {
         search: _search.isEmpty ? null : _search,
         page: _currentPage,
       );
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       _items = page.items;
       _lastPage = page.lastPage;
       _total = page.total;
     } on ApiException catch (e) {
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       _listError = e.message;
     } catch (e, stack) {
+      if (requestId != _itemsRequestId) {
+        return;
+      }
       debugPrint('GateProvider.loadItems: unhandled ${e.runtimeType}: $e');
       debugPrintStack(stackTrace: stack, maxFrames: 8);
       _listError = 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
     } finally {
-      _isLoading = false;
-      _notify();
+      if (requestId == _itemsRequestId) {
+        _isLoading = false;
+        _notify();
+      }
     }
   }
 
   /// Debounced so a search request does not fire per keystroke.
   void setSearch(String value) {
     _searchDebounce?.cancel();
+    _itemsRequestId++;
     _searchDebounce = Timer(const Duration(milliseconds: 400), () {
       _search = value.trim();
       _currentPage = 1;
@@ -276,6 +290,7 @@ class GateProvider extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _itemsRequestId++;
     _searchDebounce?.cancel();
     super.dispose();
   }

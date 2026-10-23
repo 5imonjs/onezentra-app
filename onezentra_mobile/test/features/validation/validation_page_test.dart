@@ -440,7 +440,19 @@ void main() {
     expect(find.text('Simpan Validasi'), findsOneWidget);
 
     var saveButton = find.widgetWithText(AppPrimaryButton, 'Simpan Validasi');
+    var qtyField = find.byType(TextFormField).first;
+    expect(
+      tester.widget<TextFormField>(qtyField).controller?.text,
+      isEmpty,
+      reason: 'Qty rencana tidak boleh terisi sebagai qty aktual otomatis.',
+    );
     await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Isi qty aktual dengan angka ≥ 0'), findsOneWidget);
+    expect(repository.scanCalls, 0);
+
+    await tester.enterText(qtyField, '100');
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 

@@ -1200,7 +1200,7 @@ class _ItemValidationSheet extends StatefulWidget {
 class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _qtyController = TextEditingController(
-    text: _initialQty(widget.item),
+    text: _initialActualQty(widget.item),
   );
   final _barcodeController = TextEditingController();
   final _notesController = TextEditingController();
@@ -1213,8 +1213,8 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   String? _error;
   String? _photoError;
 
-  static String _initialQty(SjValidationItem item) {
-    var value = item.actualQty ?? item.expectedQty;
+  static String _initialActualQty(SjValidationItem item) {
+    var value = item.actualQty;
     if (value == null) {
       return '';
     }

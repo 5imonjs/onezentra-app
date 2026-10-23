@@ -37,11 +37,20 @@ class _FakeUnloadRepository extends UnloadRepository {
   );
 
   @override
-  Future<List<UnloadSession>> listActive() async {
+  Future<UnloadReceivingPage> listActive({
+    int page = 1,
+    int perPage = 10,
+  }) async {
     listActiveCalls++;
-    return session.status == 'PENDING' || session.status == 'IN_PROGRESS'
+    var active = session.status == 'PENDING' || session.status == 'IN_PROGRESS'
         ? [session]
-        : [];
+        : <UnloadSession>[];
+    return UnloadReceivingPage(
+      items: active,
+      total: active.length,
+      page: page,
+      lastPage: 1,
+    );
   }
 
   @override
@@ -197,12 +206,19 @@ Future<void> _pumpUnloadPage(
   AuthProvider auth,
   UnloadRepository repository, {
   Future<String?> Function()? openScanner,
+  double textScale = 1,
 }) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<AuthProvider>.value(
       value: auth,
       child: MaterialApp(
         theme: AppTheme.light,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: UnloadPage(repository: repository, openScanner: openScanner),
       ),
     ),
@@ -248,7 +264,7 @@ void main() {
       find.text('Anda tidak memiliki izin untuk melihat Check Out Point.'),
       findsOneWidget,
     );
-    expect(find.text('Konfirmasi Selesai Bongkar'), findsNothing);
+    expect(find.text('Konfirmasi Receiving'), findsNothing);
     expect(repository.lookupCalls, 0);
     expect(repository.listActiveCalls, 0);
   });
@@ -274,6 +290,24 @@ void main() {
     expect(find.text('Selesai Bongkar'), findsOneWidget);
     expect(find.text('Mulai Bongkar'), findsNothing);
     expect(find.text('Scan Bongkar'), findsNothing);
+  });
+
+  testWidgets('Check Out tetap rapi di layar sempit dengan teks besar', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var repository = _FakeUnloadRepository(session: _pendingSession());
+    var auth = await _loginAuth();
+
+    await _pumpUnloadPage(tester, auth, repository, textScale: 1.4);
+
+    expect(find.text('Check Out Point'), findsOneWidget);
+    expect(find.text('Konfirmasi Receiving'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('pilih receiving aktif lalu konfirmasi selesai seperti web', (
@@ -314,8 +348,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(UnloadPage), findsOneWidget);
-    expect(find.text('Check Out Point'), findsWidgets);
-    expect(find.text('Konfirmasi Selesai Bongkar'), findsOneWidget);
+    expect(find.text('Check Out Point'), findsOneWidget);
+    expect(find.text('Konfirmasi Receiving'), findsOneWidget);
     expect(find.text('Daftar Receiving'), findsOneWidget);
     expect(find.text('Scan Bongkar'), findsNothing);
   });

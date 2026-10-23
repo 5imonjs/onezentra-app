@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/unload/models/unload_models.dart';
 import 'package:onezentra_mobile/features/unload/repositories/unload_repository.dart';
 
@@ -48,33 +47,31 @@ Map<String, dynamic> _sessionBody({String status = 'PENDING'}) => {
 
 void main() {
   group('UnloadRepository', () {
-    test(
-      'stats menghitung status seperti header Check Out Point web',
-      () async {
-        var requestedStatuses = <String?>[];
-        var repository = UnloadRepository(
-          get: (endpoint) async {
-            var query = Uri.parse(endpoint).queryParameters;
-            requestedStatuses.add(query['status']);
-            return {'total': query['status'] == null ? 12 : 3};
-          },
-          post: (_, _) async => throw StateError('unexpected POST'),
-        );
+    test('stats memakai satu permintaan agregat', () async {
+      var requestedEndpoints = <String>[];
+      var repository = UnloadRepository(
+        get: (endpoint) async {
+          requestedEndpoints.add(endpoint);
+          return {
+            'data': {
+              'total': 12,
+              'pending': 3,
+              'in_progress': 4,
+              'completed': 5,
+            },
+          };
+        },
+        post: (_, _) async => throw StateError('unexpected POST'),
+      );
 
-        var stats = await repository.stats();
+      var stats = await repository.stats();
 
-        expect(requestedStatuses, [
-          null,
-          'PENDING',
-          'IN_PROGRESS',
-          'COMPLETED',
-        ]);
-        expect(stats.total, 12);
-        expect(stats.pending, 3);
-        expect(stats.inProgress, 3);
-        expect(stats.completed, 3);
-      },
-    );
+      expect(requestedEndpoints, ['/receivings/stats']);
+      expect(stats.total, 12);
+      expect(stats.pending, 3);
+      expect(stats.inProgress, 4);
+      expect(stats.completed, 5);
+    });
 
     test(
       'listActive memuat receiving menunggu dan diproses per halaman',
@@ -87,35 +84,32 @@ void main() {
             requestedStatuses.add('$status:${query['page']}');
             return {
               'data': [_receivingRow(status: status)],
-              'last_page': 1,
+              'total': 10,
+              'last_page': 3,
             };
           },
           post: (_, _) async => throw StateError('unexpected POST'),
         );
 
-        var rows = await repository.listActive();
+        var result = await repository.listActive(page: 2, perPage: 5);
 
-        expect(requestedStatuses, ['PENDING:1', 'IN_PROGRESS:1']);
-        expect(rows.map((row) => row.status).toList(), [
+        expect(requestedStatuses, ['PENDING:2', 'IN_PROGRESS:2']);
+        expect(result.items.map((row) => row.status).toList(), [
           'PENDING',
           'IN_PROGRESS',
         ]);
+        expect(result.items, hasLength(2));
+        expect(result.total, 20);
+        expect(result.page, 2);
+        expect(result.lastPage, 3);
       },
     );
 
-    test('findByPo memilih cocok persis, bukan kandidat pertama', () async {
-      String? detailEndpoint;
+    test('findByPo memakai satu endpoint lookup PO eksak', () async {
+      String? requestedEndpoint;
       var repository = UnloadRepository(
         get: (endpoint) async {
-          if (endpoint.startsWith('/receivings?')) {
-            return {
-              'data': [_receivingRow(id: 1, po: 'PO-0420'), _receivingRow()],
-              'current_page': 1,
-              'last_page': 1,
-              'total': 2,
-            };
-          }
-          detailEndpoint = endpoint;
+          requestedEndpoint = endpoint;
           return _sessionBody();
         },
         post: (_, _) async => throw StateError('unexpected POST'),
@@ -125,119 +119,15 @@ void main() {
 
       expect(session, isA<UnloadSession>());
       expect(session.id, 7);
-      expect(detailEndpoint, '/receivings/7');
+      expect(
+        Uri.parse(requestedEndpoint!).path,
+        '/receivings/search/by-po',
+      );
+      expect(
+        Uri.parse(requestedEndpoint!).queryParameters['po_transporter'],
+        'po-042',
+      );
       expect(session.plan, hasLength(1));
-    });
-
-    test('findByPo tanpa cocok persis menjawab 404', () async {
-      var repository = UnloadRepository(
-        get: (_) async => {
-          'data': [_receivingRow(po: 'PO-0420')],
-          'current_page': 1,
-          'last_page': 1,
-          'total': 1,
-        },
-        post: (_, _) async => throw StateError('unexpected POST'),
-      );
-
-      await expectLater(
-        repository.findByPo('PO-042'),
-        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 404)),
-      );
-    });
-
-    test('findByPo menolak dokumen yang sudah selesai', () async {
-      var repository = UnloadRepository(
-        get: (endpoint) async {
-          if (endpoint.startsWith('/receivings?')) {
-            return {
-              'data': [_receivingRow(status: 'COMPLETED')],
-              'current_page': 1,
-              'last_page': 1,
-              'total': 1,
-            };
-          }
-          throw StateError('detail must not be fetched');
-        },
-        post: (_, _) async => throw StateError('unexpected POST'),
-      );
-
-      await expectLater(
-        repository.findByPo('PO-042'),
-        throwsA(
-          isA<ApiException>().having(
-            (e) => e.message,
-            'message',
-            contains('Riwayat'),
-          ),
-        ),
-      );
-    });
-
-    test(
-      'findByPo mengutamakan receiving aktif atas yang dibatalkan',
-      () async {
-        String? detailEndpoint;
-        var repository = UnloadRepository(
-          get: (endpoint) async {
-            if (endpoint.startsWith('/receivings?')) {
-              return {
-                'data': [
-                  _receivingRow(id: 9, status: 'CANCELLED'),
-                  _receivingRow(),
-                ],
-                'current_page': 1,
-                'last_page': 1,
-                'total': 2,
-              };
-            }
-            detailEndpoint = endpoint;
-            return _sessionBody();
-          },
-          post: (_, _) async => throw StateError('unexpected POST'),
-        );
-
-        var session = await repository.findByPo('PO-042');
-
-        expect(session.id, 7);
-        expect(detailEndpoint, '/receivings/7');
-      },
-    );
-
-    test('findByPo menemukan receiving aktif di halaman berikutnya', () async {
-      var requestedPages = <String>[];
-      String? detailEndpoint;
-      var repository = UnloadRepository(
-        get: (endpoint) async {
-          if (endpoint.startsWith('/receivings?')) {
-            var page = Uri.parse(endpoint).queryParameters['page'];
-            requestedPages.add(page ?? '');
-            if (page == '1') {
-              return {
-                'data': [_receivingRow(id: 9, status: 'CANCELLED')],
-                'current_page': 1,
-                'last_page': 2,
-                'total': 2,
-              };
-            }
-            return {
-              'data': [_receivingRow()],
-              'current_page': 2,
-              'last_page': 2,
-              'total': 2,
-            };
-          }
-          detailEndpoint = endpoint;
-          return _sessionBody();
-        },
-        post: (_, _) async => throw StateError('unexpected POST'),
-      );
-
-      var session = await repository.findByPo('PO-042');
-
-      expect(requestedPages, ['1', '2']);
-      expect(session.id, 7);
-      expect(detailEndpoint, '/receivings/7');
     });
 
     test('scan mengirim field kontrak receiving', () async {

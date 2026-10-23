@@ -39,6 +39,9 @@ class UnloadProvider extends ChangeNotifier {
   String? _statsError;
   int _statsRequestId = 0;
   int _receivingsRequestId = 0;
+  int _activePage = 1;
+  int _activeLastPage = 1;
+  int _activeTotal = 0;
   bool _bootstrapped = false;
 
   UnloadSession? get active => _active;
@@ -51,6 +54,9 @@ class UnloadProvider extends ChangeNotifier {
   bool get isLoadingReceivings => _isLoadingReceivings;
   String? get receivingsError => _receivingsError;
   String? get statsError => _statsError;
+  int get activePage => _activePage;
+  int get activeLastPage => _activeLastPage;
+  int get activeTotal => _activeTotal;
 
   /// Scans a PO barcode and opens its receiving (exact match only).
   /// A failed scan never leaves a stale session on screen.
@@ -144,17 +150,26 @@ class UnloadProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadActiveReceivings() async {
+  Future<void> loadActiveReceivings({int? page}) async {
     var requestId = ++_receivingsRequestId;
+    var requestedPage = page ?? _activePage;
     _isLoadingReceivings = true;
     _receivingsError = null;
     _notify();
     try {
-      var receivings = await _repository.listActive();
+      var result = await _repository.listActive(page: requestedPage);
       if (requestId != _receivingsRequestId) {
         return;
       }
-      _activeReceivings = receivings;
+      var lastPage = result.lastPage > 0 ? result.lastPage : 1;
+      if (requestedPage > lastPage) {
+        await loadActiveReceivings(page: lastPage);
+        return;
+      }
+      _activeReceivings = result.items;
+      _activeTotal = result.total;
+      _activePage = result.page;
+      _activeLastPage = lastPage;
     } on ApiException catch (e) {
       if (requestId != _receivingsRequestId) {
         return;
@@ -176,6 +191,14 @@ class UnloadProvider extends ChangeNotifier {
         _notify();
       }
     }
+  }
+
+  Future<void> goToReceivingPage(int page) async {
+    var target = page.clamp(1, _activeLastPage);
+    if (target == _activePage || _isLoadingReceivings) {
+      return;
+    }
+    await loadActiveReceivings(page: target);
   }
 
   void selectReceiving(UnloadSession session) {

@@ -275,6 +275,8 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('receivings')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
         Route::get('/', [ReceivingController::class, 'index'])->middleware('permission:receiving.view');
+        Route::get('/stats', [ReceivingController::class, 'stats'])->middleware('permission:receiving.view');
+        Route::get('/search/by-po', [ReceivingController::class, 'byPo'])->middleware('permission:receiving.view');
         Route::post('/', [ReceivingController::class, 'store'])->middleware('permission:receiving.create');
         // Rute statis wajib sebelum {receiving} agar tidak dibayangi binding model.
         Route::post('/import', [ReceivingController::class, 'import'])->middleware(['permission:receiving.import', 'throttle:20,1,heavy-write']);

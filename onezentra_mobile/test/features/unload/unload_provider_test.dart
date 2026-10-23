@@ -17,6 +17,24 @@ class _SlowUnloadRepository extends UnloadRepository {
   Future<UnloadSession> findByPo(String po) => lookup.future;
 }
 
+class _ShrinkingReceivingRepository extends UnloadRepository {
+  final requestedPages = <int>[];
+
+  @override
+  Future<UnloadReceivingPage> listActive({
+    int page = 1,
+    int perPage = 10,
+  }) async {
+    requestedPages.add(page);
+    return UnloadReceivingPage(
+      items: const [],
+      total: 0,
+      page: page,
+      lastPage: 1,
+    );
+  }
+}
+
 UnloadSession _session() => UnloadSession.fromJson({
   'id': 7,
   'status': 'PENDING',
@@ -37,4 +55,19 @@ void main() {
     await pending;
     expect(provider.active?.id, 7);
   });
+
+  test(
+    'halaman receiving mengikuti batas baru setelah data berkurang',
+    () async {
+      var repository = _ShrinkingReceivingRepository();
+      var provider = UnloadProvider(repository: repository);
+
+      await provider.loadActiveReceivings(page: 3);
+
+      expect(repository.requestedPages, [3, 1]);
+      expect(provider.activePage, 1);
+      expect(provider.activeLastPage, 1);
+      provider.dispose();
+    },
+  );
 }

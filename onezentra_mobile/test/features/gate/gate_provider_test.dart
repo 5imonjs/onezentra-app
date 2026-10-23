@@ -64,6 +64,25 @@ void main() {
 
     provider.dispose();
   });
+
+  test('hasil pencarian gate lama tidak menimpa query terbaru', () async {
+    var repository = _OutOfOrderGateRepository();
+    var provider = GateProvider(repository: repository);
+
+    var firstRequest = provider.loadItems();
+    provider.setSearch('terbaru');
+    await Future<void>.delayed(const Duration(milliseconds: 420));
+    expect(repository.searches, [null, 'terbaru']);
+
+    repository.requests[1].complete(_historyPage(2));
+    await Future<void>.delayed(Duration.zero);
+    repository.requests[0].complete(_historyPage(1));
+    await firstRequest;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(provider.items.single.poTransporter, 'PO-2');
+    provider.dispose();
+  });
 }
 
 class _FailingGateRepository extends GateRepository {
@@ -78,3 +97,34 @@ class _FailingGateRepository extends GateRepository {
     throw const ApiException('Rencana kirim tidak ditemukan.', 404);
   }
 }
+
+class _OutOfOrderGateRepository extends GateRepository {
+  final requests = <Completer<GateTransactionPage>>[];
+  final searches = <String?>[];
+
+  @override
+  Future<GateTransactionPage> list({
+    String? search,
+    int page = 1,
+    int perPage = 20,
+  }) {
+    searches.add(search);
+    var request = Completer<GateTransactionPage>();
+    requests.add(request);
+    return request.future;
+  }
+}
+
+GateTransactionPage _historyPage(int id) => GateTransactionPage(
+  items: [
+    GateTransaction(
+      id: id,
+      rencanaKirimId: id,
+      gateType: 'INBOUND',
+      poTransporter: 'PO-$id',
+    ),
+  ],
+  currentPage: 1,
+  lastPage: 1,
+  total: 1,
+);

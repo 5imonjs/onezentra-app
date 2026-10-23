@@ -53,76 +53,71 @@ class UnloadRepository {
     return UnloadSession.fromJson(Map<String, dynamic>.from(data));
   }
 
-  /// Header counters, using the same receiving list filters as the web page.
+  /// Header counters returned by one grouped aggregate query.
   Future<UnloadStats> stats() async {
-    Future<int> count({String? status}) async {
+    var body = _expectObject(await _get('/receivings/stats'));
+    var data = body['data'];
+    if (data is! Map) {
+      throw const ApiException(
+        'Respons statistik receiving tidak valid. Silakan coba lagi.',
+        0,
+      );
+    }
+    return UnloadStats.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  /// One page per active status, keeping the rendered list bounded.
+  Future<UnloadReceivingPage> listActive({
+    int page = 1,
+    int perPage = 10,
+  }) async {
+    Future<Map<String, dynamic>> loadStatus(String status) async {
       var query = Uri(
-        queryParameters: {'per_page': '1', ?status: status},
+        queryParameters: {
+          'status': status,
+          'per_page': '$perPage',
+          'page': '$page',
+        },
       ).query;
-      var body = _expectObject(await _get('/receivings?$query'));
-      return _readInt(body['total']) ?? 0;
+      return _expectObject(await _get('/receivings?$query'));
     }
 
-    var counts = await Future.wait([
-      count(),
-      count(status: 'PENDING'),
-      count(status: 'IN_PROGRESS'),
-      count(status: 'COMPLETED'),
+    var pages = await Future.wait([
+      loadStatus('PENDING'),
+      loadStatus('IN_PROGRESS'),
     ]);
-    return UnloadStats(
-      total: counts[0],
-      pending: counts[1],
-      inProgress: counts[2],
-      completed: counts[3],
+    var sessions = <UnloadSession>[];
+    for (var index = 0; index < pages.length; index++) {
+      var body = pages[index];
+      var status = index == 0 ? 'PENDING' : 'IN_PROGRESS';
+      var raw = body['data'];
+      if (raw is List) {
+        sessions.addAll(
+          raw
+              .whereType<Map>()
+              .map(
+                (row) => UnloadSession.fromJson(Map<String, dynamic>.from(row)),
+              )
+              .where((session) => session.status == status),
+        );
+      }
+    }
+
+    return UnloadReceivingPage(
+      items: sessions,
+      total:
+          (_readInt(pages[0]['total']) ?? 0) +
+          (_readInt(pages[1]['total']) ?? 0),
+      page: page,
+      lastPage: [
+        _readLastPage(pages[0]['last_page']) ?? page,
+        _readLastPage(pages[1]['last_page']) ?? page,
+      ].reduce((a, b) => a > b ? a : b),
     );
   }
 
-  /// Active records shown in the Check Out Point list.
-  ///
-  /// Matches the web list's PENDING / IN_PROGRESS completion workflow and
-  /// fetches every page so operators can select any active receiving.
-  Future<List<UnloadSession>> listActive() async {
-    var active = <UnloadSession>[];
-    for (var status in ['PENDING', 'IN_PROGRESS']) {
-      var page = 1;
-      var lastPage = 1;
-      do {
-        var query = Uri(
-          queryParameters: {
-            'status': status,
-            'per_page': '100',
-            'page': '$page',
-          },
-        ).query;
-        var body = _expectObject(await _get('/receivings?$query'));
-        var raw = body['data'];
-        if (raw is List) {
-          for (var row in raw.whereType<Map>()) {
-            var session = UnloadSession.fromJson(
-              Map<String, dynamic>.from(row),
-            );
-            if (session.status == status) {
-              active.add(session);
-            }
-          }
-        }
-        lastPage = _readLastPage(body['last_page']) ?? page;
-        page++;
-      } while (page <= lastPage);
-    }
-    return active;
-  }
-
-  /// Finds the receiving behind a PO barcode. Exact match is mandatory —
-  /// anything else answers 404 instead of opening the wrong unloading.
-  /// Records that are already finished belong to Riwayat > Penerimaan.
-  ///
-  /// The server search is a LIKE over PO *and* driver name, ordered by
-  /// creation date, so a single page can hold a CANCELLED row for this PO
-  /// while the live PENDING receiving sits on a later page. Walk every page
-  /// and prefer an active (PENDING / IN_PROGRESS) exact match; a finished
-  /// exact match is only kept so the caller gets the "lihat di Riwayat"
-  /// message instead of a misleading 404.
+  /// Finds the receiving behind a PO barcode using one exact-match endpoint.
+  /// Finished records stay in Riwayat > Penerimaan.
   Future<UnloadSession> findByPo(String po) async {
     var code = po.trim();
     if (code.isEmpty) {
@@ -132,59 +127,8 @@ class UnloadRepository {
       );
     }
 
-    var wantedPo = code.toLowerCase();
-    Map<String, dynamic>? activeMatch;
-    Map<String, dynamic>? finishedMatch;
-    var page = 1;
-    var lastPage = 1;
-
-    do {
-      var query = Uri(
-        queryParameters: {'search': code, 'per_page': '100', 'page': '$page'},
-      ).query;
-      var body = _expectObject(await _get('/receivings?$query'));
-      var raw = body['data'];
-      var candidates = raw is List
-          ? raw.whereType<Map>().map(Map<String, dynamic>.from).toList()
-          : <Map<String, dynamic>>[];
-
-      for (var candidate in candidates) {
-        var doc = candidate['rencana_kirim'];
-        var candidatePo = doc is Map
-            ? doc['po_transporter']?.toString().toLowerCase()
-            : null;
-        if (candidatePo != wantedPo) {
-          continue;
-        }
-        var status = candidate['status']?.toString();
-        if (status == 'PENDING' || status == 'IN_PROGRESS') {
-          activeMatch = candidate;
-          break;
-        }
-        finishedMatch ??= candidate;
-      }
-
-      lastPage = _readLastPage(body['last_page']) ?? page;
-      page++;
-    } while (activeMatch == null && page <= lastPage);
-
-    var exact = activeMatch ?? finishedMatch;
-    if (exact == null) {
-      throw ApiException(
-        'Tidak ada bongkar berjalan dengan barcode "$code".',
-        404,
-      );
-    }
-
-    var session = UnloadSession.fromJson(exact);
-    if (session.status != 'PENDING' && session.status != 'IN_PROGRESS') {
-      throw ApiException(
-        'Dokumen berstatus ${_statusLabel(session.status)} — '
-        'lihat di menu Riwayat.',
-        422,
-      );
-    }
-    return _expectSession(await _get('/receivings/${session.id}'));
+    var query = Uri(queryParameters: {'po_transporter': code}).query;
+    return _expectSession(await _get('/receivings/search/by-po?$query'));
   }
 
   /// Starts the unloading (PENDING → IN_PROGRESS).
@@ -237,14 +181,6 @@ class UnloadRepository {
   Future<void> cancel(int id) async {
     _expectObject(await _post('/receivings/$id/cancel', const {}));
   }
-
-  static String _statusLabel(String status) => switch (status) {
-    'PENDING' => 'Menunggu',
-    'IN_PROGRESS' => 'Berjalan',
-    'COMPLETED' => 'Selesai',
-    'CANCELLED' => 'Dibatalkan',
-    _ => status,
-  };
 
   static int? _readLastPage(dynamic value) {
     if (value is num) {
