@@ -1020,7 +1020,7 @@ void main() {
     expect(find.text('Batal'), findsOneWidget);
   });
 
-  testWidgets('sesi selesai yang boleh dikoreksi menampilkan tombol Ubah', (
+  testWidgets('sesi selesai yang boleh dikoreksi menampilkan tombol Detail Validasi', (
     tester,
   ) async {
     const session = SjValidation(
@@ -1060,7 +1060,7 @@ void main() {
     // openSession membuka sesi di halaman pemrosesan tersisa.
     await _pumpSessionPage(tester, auth, provider, provider.active!);
 
-    var editButton = find.widgetWithText(OutlinedButton, 'Ubah');
+    var editButton = find.widgetWithText(OutlinedButton, 'Detail Validasi');
     expect(editButton, findsOneWidget);
     await tester.ensureVisible(editButton);
     await tester.tap(editButton);

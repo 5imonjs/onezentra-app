@@ -72,6 +72,11 @@ Uint8List buildLabelBytes(
   esc.center();
   esc.line(systemIdentity);
 
+  // Feed beberapa baris sebelum potong supaya baris terakhir teks tidak
+  // masih terjerat di print head saat kertas ditarik. Tanpa ini operator
+  // harus menarik kertas secara manual karena teks terakhir masih setengah
+  // dalam mesin.
+  esc.feed(3);
   esc.cut(enabled: enableCut);
 
   return esc.build();

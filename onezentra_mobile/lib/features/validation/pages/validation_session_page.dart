@@ -819,8 +819,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: const Icon(Icons.edit_rounded, size: 18),
-    label: const Text('Ubah'),
+    icon: const Icon(Icons.description_rounded, size: 18),
+    label: const Text('Detail Validasi'),
   );
 
   Widget _printLabelButton(SjValidationItem item) => OutlinedButton.icon(
