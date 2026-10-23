@@ -569,7 +569,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     ),
                   if (canPrintLabels && item.canPrintLabel) ...[
                     if (item.isPending)
-                      AppBadge(
+                      const AppBadge(
                         text: 'BELUM DIVALIDASI',
                         variant: AppBadgeVariant.warning,
                       ),
@@ -579,7 +579,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         variant: AppBadgeVariant.success,
                       ),
                     if (!item.isPending && item.batch?.isPrinted != true)
-                      AppBadge(
+                      const AppBadge(
                         text: 'BELUM DICETAK',
                         variant: AppBadgeVariant.danger,
                       ),
