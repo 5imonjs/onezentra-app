@@ -83,6 +83,7 @@ class HistoryPage extends StatelessWidget {
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
                   ),
+                  isScrollable: true,
                   tabs: [
                     for (var tab in tabs)
                       Tab(
