@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Mail\SelisihQtyNotification;
 use App\Mail\SjValidated;
 use App\Models\Batch;
-use App\Models\GateTransaction;
 use App\Models\Npn;
 use App\Models\Receiving;
 use App\Models\ReceivingItem;
@@ -320,23 +319,13 @@ class SjValidationController extends Controller
     {
         $this->authorizeDepot($rencanaKirim);
 
-        // CATATAN: Status SCHEDULED bisa dimulai validasi,
-        // namun alur yang benar adalah Schedule -> Gate INBOUND -> CHECKED_IN -> Validation.
-        // Cek ini hanya sebagai pengingat/validasi tambahan, bukan penghalang utama.
-        // Jika ingin memastikan gate-in sudah lewat, bisa dicek di sisi UI/Operator.
-        if ($rencanaKirim->status === 'SCHEDULED') {
-            // Cek gate tapi jangan blokir, hanya catat/validasi
-            $hasGateIn = GateTransaction::where('rencana_kirim_id', $rencanaKirim->id)
-                ->where('gate_type', 'INBOUND')
-                ->exists();
-            // Tidak abort_unless, hanya catat di log jika perlu
-            // \Log::info('Rencana KIR SCHEDULED, gate INBOUND exists: ' . ($hasGateIn ? 'ya' : 'tidak'));
-        }
-
+        // Validasi SJ hanya boleh dimulai setelah Check In Point (Gate IN).
+        // Status yang diizinkan: CHECKED_IN (sudah gate in) atau VERIFIED.
+        // SCHEDULED (belum check-in) DIBLOKIR.
         abort_unless(
-            in_array($rencanaKirim->status, ['SCHEDULED', 'CHECKED_IN', 'VERIFIED'], true),
+            in_array($rencanaKirim->status, ['CHECKED_IN', 'VERIFIED'], true),
             422,
-            "Validasi tidak dapat dimulai untuk rencana berstatus {$rencanaKirim->status}."
+            "Validasi tidak dapat dimulai. Rencana harus sudah Check In terlebih dahulu (status saat ini: {$rencanaKirim->status})."
         );
 
         $validation = DB::transaction(function () use ($rencanaKirim, $request): SjValidation {

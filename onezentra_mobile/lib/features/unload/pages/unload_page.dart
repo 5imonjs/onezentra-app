@@ -41,6 +41,22 @@ class _UnloadPageState extends State<UnloadPage> {
   final _scanController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        return;
+      }
+      var canView =
+          context.read<AuthProvider>().user?.hasPermission('receiving.view') ??
+              false;
+      if (canView) {
+        await _provider.bootstrap(canView: canView);
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _scanController.dispose();
     _provider.dispose();
@@ -62,32 +78,204 @@ class _UnloadPageState extends State<UnloadPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(title: const Text('Check Out Point'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Check Out Point'),
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: canView && !unload.isLoadingStats
+                ? () => unload.refresh()
+                : null,
+            tooltip: 'Muat ulang',
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: !canView
             ? _buildNoAccess()
-            : SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(AppTheme.space4),
+            : RefreshIndicator(
+                onRefresh: unload.refresh,
+                color: AppTheme.primary600,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    var horizontalPadding = constraints.maxWidth >= 900
+                        ? AppTheme.space8
+                        : constraints.maxWidth >= 600
+                            ? AppTheme.space6
+                            : AppTheme.space4;
+
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        AppTheme.space4,
+                        horizontalPadding,
+                        AppTheme.space8,
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 960),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildStatsHeader(unload),
+                              const SizedBox(height: AppTheme.space4),
+                              _buildScanCard(unload),
+                              const SizedBox(height: AppTheme.space4),
+                              if (unload.active != null)
+                                _buildActiveCard(
+                                  unload.active!,
+                                  unload: unload,
+                                  canEdit: canEdit,
+                                ),
+                              if (unload.active != null)
+                                const SizedBox(height: AppTheme.space4),
+                              const SizedBox(height: AppTheme.space8),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildStatsHeader(UnloadProvider unload) {
+    var stats = [
+      AppStatTile(
+        label: 'Hari ini',
+        value: unload.stats.hariIni,
+        dotColor: Colors.white,
+      ),
+      AppStatTile(
+        label: 'Diterima',
+        value: unload.stats.diterima,
+        dotColor: AppTheme.success,
+      ),
+      AppStatTile(
+        label: 'Belum Diterima',
+        value: unload.stats.belumDiterima,
+        dotColor: AppTheme.warning,
+      ),
+      AppStatTile(
+        label: 'Total',
+        value: unload.stats.total,
+        dotColor: AppTheme.gray300,
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space5),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppTheme.ink900, AppTheme.ink800],
+        ),
+        borderRadius: AppTheme.radius2xl,
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.ink900.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: AppTheme.radiusLg,
+                ),
+                child: const Icon(
+                  Icons.forklift,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(),
-                    const SizedBox(height: AppTheme.space4),
-                    _buildScanCard(unload),
-                    const SizedBox(height: AppTheme.space4),
-                    if (unload.active != null)
-                      _buildActiveCard(
-                        unload.active!,
-                        unload: unload,
-                        canEdit: canEdit,
+                    Text(
+                      'Check Out Point',
+                      style: GoogleFonts.roboto(
+                        fontSize: 18,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
-                    if (unload.active != null)
-                      const SizedBox(height: AppTheme.space4),
-                    const SizedBox(height: AppTheme.space4),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Scan PO — bongkar — pindai produk — selesai',
+                      style: GoogleFonts.roboto(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: AppTheme.gray400,
+                      ),
+                    ),
                   ],
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space5),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 520) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: stats[0]),
+                        const SizedBox(width: AppTheme.space2),
+                        Expanded(child: stats[1]),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.space2),
+                    Row(
+                      children: [
+                        Expanded(child: stats[2]),
+                        const SizedBox(width: AppTheme.space2),
+                        Expanded(child: stats[3]),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  for (var i = 0; i < stats.length; i++) ...[
+                    if (i > 0) const SizedBox(width: AppTheme.space2),
+                    Expanded(child: stats[i]),
+                  ],
+                ],
+              );
+            },
+          ),
+          if (unload.statsError != null) ...[
+            const SizedBox(height: AppTheme.space3),
+            Text(
+              'Statistik gagal dimuat — tarik untuk mencoba lagi.',
+              style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray400),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -119,63 +307,6 @@ class _UnloadPageState extends State<UnloadPage> {
           ),
         ],
       ),
-    ),
-  );
-
-  Widget _buildHeader() => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppTheme.space5),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [AppTheme.ink900, AppTheme.ink800],
-      ),
-      borderRadius: AppTheme.radius2xl,
-      boxShadow: [
-        BoxShadow(
-          color: AppTheme.ink900.withValues(alpha: 0.2),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: AppTheme.radiusLg,
-          ),
-          child: const Icon(Icons.forklift, color: Colors.white, size: 22),
-        ),
-        const SizedBox(width: AppTheme.space3),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Check Out Point',
-                style: GoogleFonts.roboto(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Scan PO — bongkar — pindai produk — selesai',
-                style: GoogleFonts.roboto(
-                  fontSize: 12,
-                  color: AppTheme.gray400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     ),
   );
 

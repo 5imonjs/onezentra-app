@@ -173,3 +173,24 @@ class UnloadActionMessage {
   final bool success;
   final String message;
 }
+
+/// Counters shown in the dark header of the Check Out Point screen.
+class UnloadStats {
+  const UnloadStats({
+    this.total = 0,
+    this.hariIni = 0,
+    this.diterima = 0,
+    this.belumDiterima = 0,
+  });
+
+  factory UnloadStats.fromJson(Map<String, dynamic> json) => UnloadStats(
+        total: _readInt(json['total']) ?? 0,
+        hariIni: _readInt(json['today']) ?? 0,
+        diterima: _readInt(json['completed']) ?? 0,
+        belumDiterima: _readInt(json['in_progress']) ?? 0,
+      );
+  final int total;
+  final int hariIni;
+  final int diterima;
+  final int belumDiterima;
+}

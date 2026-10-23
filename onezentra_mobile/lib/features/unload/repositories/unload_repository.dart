@@ -53,6 +53,16 @@ class UnloadRepository {
     return UnloadSession.fromJson(Map<String, dynamic>.from(data));
   }
 
+  /// Header counters. A payload without `data` degrades to zero counts.
+  Future<UnloadStats> stats() async {
+    var body = _expectObject(await _get('/receivings/stats'));
+    var data = body['data'];
+    if (data is! Map) {
+      return const UnloadStats();
+    }
+    return UnloadStats.fromJson(Map<String, dynamic>.from(data));
+  }
+
   /// Finds the receiving behind a PO barcode. Exact match is mandatory —
   /// anything else answers 404 instead of opening the wrong unloading.
   /// Records that are already finished belong to Riwayat > Penerimaan.

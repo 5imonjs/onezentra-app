@@ -31,11 +31,19 @@ class UnloadProvider extends ChangeNotifier {
   bool _lookupBusy = false;
   bool _actionBusy = false;
   UnloadActionMessage? _message;
+  UnloadStats _stats = const UnloadStats();
+  bool _isLoadingStats = false;
+  String? _statsError;
+  int _statsRequestId = 0;
+  bool _bootstrapped = false;
 
   UnloadSession? get active => _active;
   bool get lookupBusy => _lookupBusy;
   bool get actionBusy => _actionBusy;
   UnloadActionMessage? get message => _message;
+  UnloadStats get stats => _stats;
+  bool get isLoadingStats => _isLoadingStats;
+  String? get statsError => _statsError;
 
   /// Scans a PO barcode and opens its receiving (exact match only).
   /// A failed scan never leaves a stale session on screen.
@@ -73,6 +81,58 @@ class UnloadProvider extends ChangeNotifier {
     } finally {
       _lookupBusy = false;
       _notify();
+    }
+  }
+
+  /// Loads header counters exactly once.
+  Future<void> bootstrap({required bool canView}) async {
+    if (_bootstrapped) {
+      return;
+    }
+    _bootstrapped = true;
+    if (!canView) {
+      return;
+    }
+    await loadStats();
+  }
+
+  /// Reloads both stats and (optionally) the active session.
+  Future<void> refresh() async {
+    await loadStats();
+  }
+
+  Future<void> loadStats() async {
+    var requestId = ++_statsRequestId;
+    _isLoadingStats = true;
+    _statsError = null;
+    _notify();
+    try {
+      var stats = await _repository.stats();
+      if (requestId != _statsRequestId) {
+        return;
+      }
+      _stats = stats;
+      _statsError = null;
+    } on ApiException catch (e) {
+      if (requestId != _statsRequestId) {
+        return;
+      }
+      _statsError = e.message;
+      debugPrint('UnloadProvider.loadStats: ${e.message}');
+    } catch (e, stack) {
+      if (requestId != _statsRequestId) {
+        return;
+      }
+      _statsError = 'Statistik gagal dimuat.';
+      debugPrint(
+        'UnloadProvider.loadStats: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+    } finally {
+      if (requestId == _statsRequestId) {
+        _isLoadingStats = false;
+        _notify();
+      }
     }
   }
 
