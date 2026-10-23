@@ -50,7 +50,9 @@ Uint8List buildLabelBytes(
   var qty = data.actualQty == null ? '-' : trimLabelNumber(data.actualQty!);
   var condition = conditionLabel[data.condition] ?? safe(data.condition);
   esc.line(line('QTY $qty ${safe(data.satuan)}', condition));
-  esc.line(line('EXP ${safe(data.expiredDate)}', safe(data.namaDepo)));
+  esc.line(
+    line('EXP ${formatExpiredDate(data.expiredDate)}', safe(data.namaDepo)),
+  );
   esc.line('-' * cols);
 
   var barcode = safe(data.barcodeLabel);

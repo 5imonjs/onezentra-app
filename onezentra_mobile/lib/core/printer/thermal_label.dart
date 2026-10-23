@@ -106,7 +106,9 @@ String buildLabelText(BatchLabelData data, LabelWidth width) {
   var qty = data.actualQty == null ? '-' : trimLabelNumber(data.actualQty!);
   var condition = conditionLabel[data.condition] ?? safe(data.condition);
   buf.writeln(line('QTY $qty ${safe(data.satuan)}', condition));
-  buf.writeln(line('EXP ${safe(data.expiredDate)}', safe(data.namaDepo)));
+  buf.writeln(
+    line('EXP ${formatExpiredDate(data.expiredDate)}', safe(data.namaDepo)),
+  );
 
   buf.writeln('-' * cols);
 
@@ -159,4 +161,26 @@ String trimLabelNumber(double value) {
     return value.toStringAsFixed(0);
   }
   return value.toStringAsFixed(2);
+}
+
+/// Format tanggal expired untuk dicetak pada label.
+///
+/// Menerima string dalam berbagai format (YYYY-MM-DD, YYYY-MM-DDTHH:mm:ss,
+/// YYYY-MM-DDTHH:mm:ss.sssZ, dll.) dan mengembalikan `dd/MM/yyyy`.
+/// Mengembalikan `-` jika nilai null, kosong, atau tidak dapat di-parse.
+String formatExpiredDate(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return '-';
+  }
+  var parsed = DateTime.tryParse(value.trim());
+  if (parsed == null) {
+    // Jika tidak dapat di-parse sebagai DateTime, coba gunakan langsung
+    // jika sudah dalam format YYYY-MM-DD.
+    var trimmed = value.trim();
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(trimmed)) {
+      return '${trimmed.substring(8, 10)}/${trimmed.substring(5, 7)}/${trimmed.substring(0, 4)}';
+    }
+    return '-';
+  }
+  return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
 }
