@@ -227,6 +227,10 @@ export default function UsersPage() {
   const isEditingOwnAccount = editItem?.id === user?.id;
 
   const handleCreate = () => {
+    if (createDepotCodes.length !== 1) {
+      notifyGlobal('Pilih tepat satu depo aktif sebelum menyimpan user baru.');
+      return;
+    }
     setSaveMode('create');
     setShowSaveConfirm(true);
   };
@@ -442,12 +446,23 @@ export default function UsersPage() {
     setSaving(true);
     try {
       if (saveMode === 'create') {
+        if (createDepotCodes.length !== 1) {
+          notifyGlobal('Pilih tepat satu depo aktif sebelum menyimpan user baru.');
+          setSaving(false);
+          return;
+        }
         const primaryDepot = depotOptions.find(depot => depot.kode_depo === createDepotCodes[0]);
+        if (!primaryDepot?.region_id || primaryDepot.region_id !== createForm.region_id) {
+          notifyGlobal('Depo terpilih tidak sesuai dengan region user. Pilih ulang region dan depo.');
+          setSaving(false);
+          return;
+        }
         await users.create({
           ...createForm,
-          kode_depo: primaryDepot?.kode_depo ?? '',
-          nama_depo: primaryDepot?.nama_depo ?? '',
-          depot_codes: createDepotCodes,
+          region_id: primaryDepot.region_id,
+          kode_depo: primaryDepot.kode_depo,
+          nama_depo: primaryDepot.nama_depo,
+          depot_codes: [primaryDepot.kode_depo],
         });
         setShowCreate(false);
         setCreateForm({ ...emptyForm });
