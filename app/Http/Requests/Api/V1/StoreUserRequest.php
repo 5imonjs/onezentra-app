@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Http\Requests\Api\V1\Concerns\NormalizesSingleDepotPayload;
 use App\Models\Role;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -19,6 +20,8 @@ use Illuminate\Validation\Rule;
  */
 class StoreUserRequest extends FormRequest
 {
+    use NormalizesSingleDepotPayload;
+
     public function authorize(): bool
     {
         return true;
