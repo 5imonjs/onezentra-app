@@ -2,12 +2,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminDatabasePage from './page';
 
-const { hasPermission, summary, documents, purge, purgeItems, backfillDepot, notifyGlobal } = vi.hoisted(() => ({
+const { hasPermission, summary, documents, purge, purgeItems, purgeMaster, backfillDepot, notifyGlobal } = vi.hoisted(() => ({
   hasPermission: vi.fn((_permission: string): boolean => true),
   summary: vi.fn(),
   documents: vi.fn(),
   purge: vi.fn(),
   purgeItems: vi.fn(),
+  purgeMaster: vi.fn(),
   backfillDepot: vi.fn(),
   notifyGlobal: vi.fn(),
 }));
@@ -21,7 +22,7 @@ vi.mock('@/store/auth', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  adminDatabase: { summary, documents, purge, purgeItems, backfillDepot },
+  adminDatabase: { summary, documents, purge, purgeItems, purgeMaster, backfillDepot },
 }));
 
 vi.mock('@/store/globalToast', () => ({ notifyGlobal }));
@@ -47,6 +48,7 @@ const countsFor = (kodeDepo?: string): Record<string, number> => ({
 const summaryImplementation = (kodeDepo?: string) => Promise.resolve({
   data: {
     data: countsFor(kodeDepo),
+    master: { npn: 12 },
     depots,
     kode_depo: kodeDepo ?? '0127',
   },
@@ -91,6 +93,7 @@ describe('AdminDatabasePage', () => {
     documents.mockResolvedValue({ data: { data: documentRows } });
     purge.mockResolvedValue({ data: { message: 'Data modul terpilih berhasil dikosongkan.', data: { counts: { rencana_kirim: 2 } } } });
     purgeItems.mockResolvedValue({ data: { message: 'Dokumen terpilih berhasil dihapus.', data: { counts: { rencana_kirim: 1 } } } });
+    purgeMaster.mockResolvedValue({ data: { message: 'Master NPN berhasil dikosongkan.', data: { counts: { npn: 12 } } } });
     backfillDepot.mockResolvedValue({ data: { message: 'Pratinjau backfill: tidak ada data yang diubah.', data: emptyBackfill } });
   });
 
@@ -108,11 +111,55 @@ describe('AdminDatabasePage', () => {
     render(<AdminDatabasePage />);
 
     await waitFor(() => expect(summary).toHaveBeenCalled());
-    expect(await screen.findByText('Reset Data Operasional')).toBeInTheDocument();
+    expect(await screen.findByText('Reset Data')).toBeInTheDocument();
     expect(depotSelect().value).toBe('0127');
     expect(screen.getByText(/Hanya data Singkawang/)).toBeInTheDocument();
     expect(screen.getAllByRole('checkbox')).toHaveLength(10);
     expect(screen.getByText('2 baris')).toBeInTheDocument();
+  });
+
+  it('menampilkan jumlah master NPN global di luar filter depo', async () => {
+    render(<AdminDatabasePage />);
+    await waitFor(() => expect(summary).toHaveBeenCalled());
+
+    expect(await screen.findByText('Reset Master Data (Global)')).toBeInTheDocument();
+    expect(screen.getByText('12 baris')).toBeInTheDocument();
+    expect(screen.getByText(/SEMUA depo/)).toBeInTheDocument();
+  });
+
+  it('pratinjau master NPN menghitung semua depo tanpa menghapus', async () => {
+    render(<AdminDatabasePage />);
+    await waitFor(() => expect(summary).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pratinjau NPN' }));
+
+    await waitFor(() => expect(purgeMaster).toHaveBeenCalledWith({
+      modules: ['npn'],
+      confirm: 'HAPUS NPN',
+      dry_run: true,
+    }));
+    expect(await screen.findByRole('status')).toHaveTextContent('12 baris NPN');
+    expect(purge).not.toHaveBeenCalled();
+  });
+
+  it('mengosongkan master NPN hanya setelah konfirmasi HAPUS NPN', async () => {
+    render(<AdminDatabasePage />);
+    await waitFor(() => expect(summary).toHaveBeenCalled());
+
+    const button = screen.getByRole('button', { name: 'Kosongkan Master NPN' });
+    expect(button).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Konfirmasi ketik HAPUS NPN'), { target: { value: 'HAPUS NPN' } });
+    expect(button).not.toBeDisabled();
+    fireEvent.click(button);
+
+    await waitFor(() => expect(purgeMaster).toHaveBeenCalledWith({
+      modules: ['npn'],
+      confirm: 'HAPUS NPN',
+      dry_run: false,
+    }));
+    expect(notifyGlobal).toHaveBeenCalledWith('Master NPN berhasil dikosongkan.', 'success');
+    await waitFor(() => expect(summary.mock.calls.length).toBeGreaterThanOrEqual(2));
   });
 
   it('mengganti depo memuat ulang ringkasan depo tersebut', async () => {
@@ -313,6 +360,7 @@ describe('AdminDatabasePage', () => {
     expect(summary).not.toHaveBeenCalled();
     expect(documents).not.toHaveBeenCalled();
     expect(purgeItems).not.toHaveBeenCalled();
+    expect(purgeMaster).not.toHaveBeenCalled();
     expect(backfillDepot).not.toHaveBeenCalled();
   });
 });
