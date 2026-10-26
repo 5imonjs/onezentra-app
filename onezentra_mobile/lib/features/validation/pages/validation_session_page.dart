@@ -382,7 +382,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       child: Container(
         padding: const EdgeInsets.all(AppTheme.space3),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.07),
+          color: (!item.isPending && (item.batch?.isPrinted ?? false))
+              ? AppTheme.success.withValues(alpha: 0.12)
+              : Colors.white.withValues(alpha: 0.07),
           borderRadius: AppTheme.radiusLg,
           border: Border(
             left: BorderSide(
