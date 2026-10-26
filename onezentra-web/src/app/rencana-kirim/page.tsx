@@ -419,6 +419,16 @@ function NamaBarangInput({
             <ul id={`${listboxId}-listbox`} role="listbox" aria-label="Hasil pencarian barang NPN" className="max-h-60 overflow-auto">
               {results.map((product, i) => {
                 const taken = isTakenElsewhere(product.BOSnetszProductId);
+                // Nama utama memakai nickname lama (identitas yang dipakai
+                // gudang), lalu short description / nickname baru sebagai
+                // cadangan. Nickname baru tetap ditampilkan terpisah supaya
+                // produk yang sudah migrasi nama tidak "hilang" dari picker.
+                const primaryName =
+                  product.szNickName || product.szShortDescription || product.szNickNameNew || '-';
+                const secondaryNames = [product.szNickNameNew, product.szShortDescription]
+                  .filter((name, index, all): name is string =>
+                    !!name && name !== primaryName && all.indexOf(name) === index
+                  );
                 return (
                   <li key={product.id} role="option" id={`${listboxId}-option-${i}`} aria-selected={i === activeIndex} aria-disabled={taken || undefined}>
                     <button
@@ -436,8 +446,18 @@ function NamaBarangInput({
                           <span className="text-xs font-bold text-row-active-text">{product.BOSnetszProductId?.charAt(0) || '?'}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate">{product.szShortDescription || product.szNickName || product.szNickNameNew || '-'}</p>
-                          <span className="text-xs font-mono opacity-70">{product.BOSnetszProductId}</span>
+                          <p
+                            className="text-sm truncate"
+                            title={[primaryName, ...secondaryNames].join(' • ')}
+                          >
+                            {primaryName}
+                          </p>
+                          <div className="flex min-w-0 items-center gap-2 text-xs opacity-70">
+                            <span className="shrink-0 font-mono">{product.BOSnetszProductId}</span>
+                            {secondaryNames.map((name, nameIndex) => (
+                              <span key={`${name}-${nameIndex}`} className="truncate">• {name}</span>
+                            ))}
+                          </div>
                         </div>
                         {taken && (
                           <span className="shrink-0 rounded-full bg-surface-raised border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-gray-500">

@@ -96,6 +96,54 @@ class NpnSearchProductTest extends TestCase
     }
 
     /**
+     * Picker "Nama Barang" tidak boleh membatasi status: dulu query memakai
+     * `where('szStatus', 'EXISTING')` sehingga produk berstatus A/DEL ada di
+     * halaman NPN tetapi tidak pernah muncul di form Rencana Kirim.
+     */
+    public function test_search_product_returns_products_in_every_status(): void
+    {
+        Sanctum::actingAs($this->userWith(['npn.view']));
+
+        $this->product(['szNickName' => 'PRODUK AKTIF', 'BOSnetszProductId' => 'B-A', 'szStatus' => 'A']);
+        $this->product(['szNickName' => 'PRODUK DELETED', 'BOSnetszProductId' => 'B-DEL', 'szStatus' => 'DEL']);
+        $this->product(['szNickName' => 'PRODUK EXISTING', 'BOSnetszProductId' => 'B-EX', 'szStatus' => 'EXISTING']);
+
+        $codes = array_column(
+            $this->getJson('/api/v1/npn/search-product?q=PRODUK')->assertOk()->json('data'),
+            'BOSnetszProductId'
+        );
+        sort($codes);
+
+        $this->assertSame(['B-A', 'B-DEL', 'B-EX'], $codes);
+    }
+
+    /**
+     * User bisa mencari lewat nickname lama maupun baru, dan kedua kolom itu
+     * harus ikut dikirim agar picker bisa menampilkan nama produknya.
+     */
+    public function test_search_product_matches_and_returns_both_nickname_columns(): void
+    {
+        Sanctum::actingAs($this->userWith(['npn.view']));
+
+        $this->product([
+            'szNickName' => 'NICK LAMA',
+            'szNickNameNew' => 'NICK BARU',
+            'szShortDescription' => 'Deskripsi Produk',
+            'BOSnetszProductId' => 'B-NICK',
+        ]);
+
+        foreach (['NICK LAMA', 'NICK BARU'] as $keyword) {
+            $rows = $this->getJson('/api/v1/npn/search-product?q='.urlencode($keyword))
+                ->assertOk()
+                ->json('data');
+
+            $this->assertCount(1, $rows, "Kata kunci {$keyword} harus menemukan produk.");
+            $this->assertSame('NICK LAMA', $rows[0]['szNickName']);
+            $this->assertSame('NICK BARU', $rows[0]['szNickNameNew']);
+        }
+    }
+
+    /**
      * Kata kunci user bisa berasal dari nama panjang atau deskripsi kategori
      * yang tidak pernah tampil di baris hasil.
      */

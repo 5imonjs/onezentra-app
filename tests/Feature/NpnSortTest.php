@@ -65,6 +65,23 @@ class NpnSortTest extends TestCase
         );
     }
 
+    public function test_npn_index_search_matches_new_nickname(): void
+    {
+        Sanctum::actingAs($this->userWithNpnView());
+        Npn::create([
+            'szNickName' => 'LAMA',
+            'szNickNameNew' => 'BARU SEKALI',
+            'BOSnetszProductId' => 'B-1',
+            'szStatus' => 'EXISTING',
+        ]);
+        Npn::create(['szNickName' => 'LAIN', 'BOSnetszProductId' => 'B-2', 'szStatus' => 'EXISTING']);
+
+        $res = $this->getJson('/api/v1/npn?search='.urlencode('BARU SEKALI'));
+
+        $res->assertOk();
+        $this->assertSame(['LAMA'], array_column($res->json('data'), 'szNickName'));
+    }
+
     public function test_npn_index_ignores_unknown_sort_column(): void
     {
         Sanctum::actingAs($this->userWithNpnView());

@@ -26,6 +26,7 @@ class NpnController extends Controller
             $like = LikePattern::contains($request->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szNickNameNew LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('szShortDescription LIKE ? ESCAPE ?', [$like, '\\'])
