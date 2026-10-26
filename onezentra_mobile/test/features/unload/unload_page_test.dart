@@ -214,9 +214,9 @@ Future<void> _pumpUnloadPage(
       child: MaterialApp(
         theme: AppTheme.light,
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(textScale),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
           child: child ?? const SizedBox.shrink(),
         ),
         home: UnloadPage(repository: repository, openScanner: openScanner),

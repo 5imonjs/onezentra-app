@@ -16,6 +16,7 @@ use App\Models\StandarisasiTumpukan;
 use App\Models\StandarUmurProduk;
 use App\Models\User;
 use App\Services\EmailNotificationService;
+use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
@@ -572,7 +573,7 @@ class SjValidationController extends Controller
 
             $photoPath = null;
             if ($request->hasFile('photo')) {
-                $photoPath = $request->file('photo')->store('validation-photos', 'public');
+                $photoPath = EvidenceStorage::putFile($request->file('photo'), 'validation-photos');
             }
 
             $item->update([

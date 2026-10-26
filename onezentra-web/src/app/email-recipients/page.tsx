@@ -224,7 +224,6 @@ export default function EmailRecipientsPage() {
 
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Filter & pencarian dilakukan di server; paginasi per DEPO (bukan per

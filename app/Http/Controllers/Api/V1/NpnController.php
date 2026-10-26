@@ -85,12 +85,10 @@ class NpnController extends Controller
 
     public function show(Npn $npn)
     {
-        abort_unless(
-            $this->currentUser()->canAccessDepotRow($npn->kode_depo, $npn->nama_depo),
-            403,
-            'Anda tidak memiliki akses ke data ini.'
-        );
-
+        // NPN adalah master produk global: semua pemegang npn.view boleh
+        // membaca detail lintas depo (sama dengan index/export/search-product).
+        // Mutasi tetap dibatasi ke depo provenance lewat update/destroy agar
+        // satu depo tidak mengubah baris milik depo lain.
         return response()->json(['data' => $npn]);
     }
 

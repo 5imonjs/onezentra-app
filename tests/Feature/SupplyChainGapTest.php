@@ -24,9 +24,9 @@ use Tests\TestCase;
  * Tiap test mereproduksi satu bug/inkonsistensi antar-tahap — bukan happy
  * path (itu sudah dicakup FullFlowTest / LoginToCompleteFlowTest):
  *
- * 1. complete() dari rencana SCHEDULED (tanpa gate check-in — sah menurut
- *    test durasi yang berjalan) meninggalkan rencana di SCHEDULED padahal
- *    receiving auto sudah dibuat → alur macet setelah receiving dibatalkan.
+ * 1. complete() dari rencana yang sudah CHECKED_IN harus mendorong rencana
+ *    ke VERIFIED; kalau tidak, receiving auto sudah lahir tetapi rencana
+ *    tertinggal dan alur macet setelah receiving dibatalkan.
  * 2. completeReceiving dipanggil ulang tetap mengirim email notifikasi.
  * 3. ReceivingController::store menyalin item dengan actual_qty tapi
  *    mengeset total_received_qty dari expected → header salah saat selisih.
@@ -66,13 +66,13 @@ class SupplyChainGapTest extends TestCase
         return $user;
     }
 
-    /** Rencana kirim SCHEDULED + satu item, dibuat langsung via model. */
+    /** Rencana kirim CHECKED_IN + satu item, dibuat langsung via model. */
     private function scheduledRencana(User $user, string $po): RencanaKirim
     {
         $rk = RencanaKirim::create([
             'po_transporter' => $po,
             'rkh_date' => now()->toDateString(),
-            'status' => 'SCHEDULED',
+            'status' => 'CHECKED_IN',
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo Test',
             'created_by' => $user->id,
@@ -92,13 +92,11 @@ class SupplyChainGapTest extends TestCase
     }
 
     /**
-     * Celah 1: validasi yang diselesaikan dari rencana SCHEDULED (tanpa gate
-     * check-in) harus tetap mendorong rencana ke VERIFIED — kalau tidak,
-     * rencana tertinggal di SCHEDULED sementara receiving auto sudah lahir;
-     * setelah receiving dibatalkan rencana tidak bisa kembali VERIFIED
-     * (SCHEDULED → VERIFIED tidak ada di peta transisi) → alur mandeg.
+     * Celah 1: validasi yang diselesaikan setelah gate check-in harus
+     * mendorong rencana ke VERIFIED — kalau tidak, receiving auto sudah lahir
+     * tetapi rencana tertinggal dan alur macet setelah receiving dibatalkan.
      */
-    public function test_complete_without_gate_checkin_advances_rencana_and_unblocks_receiving(): void
+    public function test_complete_after_gate_checkin_advances_rencana_and_unblocks_receiving(): void
     {
         $user = $this->userWithPermissions([
             'sj_validation.create', 'sj_validation.validate', 'sj_validation.complete',

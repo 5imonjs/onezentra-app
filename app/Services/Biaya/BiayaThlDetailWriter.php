@@ -3,7 +3,7 @@
 namespace App\Services\Biaya;
 
 use App\Models\BiayaThl;
-use Illuminate\Support\Facades\Storage;
+use App\Support\EvidenceStorage;
 
 /**
  * Penulisan detail Biaya THL beserta kendaraan tambahan & foto bukti.
@@ -49,7 +49,7 @@ class BiayaThlDetailWriter
             }
 
             foreach ($detailPhotos as $photoIndex => $photo) {
-                $path = $photo->store("biaya_thl/{$biayaThl->id}/detail_{$savedDetail->id}", 'public');
+                $path = EvidenceStorage::putFile($photo, "biaya_thl/{$biayaThl->id}/detail_{$savedDetail->id}");
                 $savedDetail->photos()->create([
                     'biaya_thl_id' => $biayaThl->id,
                     'file_path' => $path,
@@ -140,13 +140,13 @@ class BiayaThlDetailWriter
             foreach ($detail['photos_remove'] ?? [] as $photoId) {
                 $photo = $row->photos()->whereKey((int) $photoId)->first();
                 if ($photo) {
-                    Storage::disk('public')->delete($photo->file_path);
+                    EvidenceStorage::delete($photo->file_path);
                     $photo->delete();
                 }
             }
 
             foreach ($detail['photos'] ?? [] as $photoIndex => $photo) {
-                $path = $photo->store("biaya_thl/{$biayaThl->id}/detail_{$row->id}", 'public');
+                $path = EvidenceStorage::putFile($photo, "biaya_thl/{$biayaThl->id}/detail_{$row->id}");
                 $row->photos()->create([
                     'biaya_thl_id' => $biayaThl->id,
                     'file_path' => $path,
@@ -163,7 +163,7 @@ class BiayaThlDetailWriter
         $stale = $biayaThl->details()->whereNotIn('id', $keptIds)->with('photos')->get();
         foreach ($stale as $row) {
             foreach ($row->photos as $photo) {
-                Storage::disk('public')->delete($photo->file_path);
+                EvidenceStorage::delete($photo->file_path);
             }
             $row->delete();
         }

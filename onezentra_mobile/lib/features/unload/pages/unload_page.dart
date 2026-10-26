@@ -536,8 +536,8 @@ class _UnloadPageState extends State<UnloadPage> {
                   text: 'Sebelumnya',
                   height: 42,
                   isLoading: unload.isLoadingReceivings,
-                  onPressed: unload.activePage > 1 &&
-                          !unload.isLoadingReceivings
+                  onPressed:
+                      unload.activePage > 1 && !unload.isLoadingReceivings
                       ? () => unload.goToReceivingPage(unload.activePage - 1)
                       : null,
                 ),
@@ -556,7 +556,8 @@ class _UnloadPageState extends State<UnloadPage> {
                   text: 'Berikutnya',
                   height: 42,
                   isLoading: unload.isLoadingReceivings,
-                  onPressed: unload.activePage < unload.activeLastPage &&
+                  onPressed:
+                      unload.activePage < unload.activeLastPage &&
                           !unload.isLoadingReceivings
                       ? () => unload.goToReceivingPage(unload.activePage + 1)
                       : null,

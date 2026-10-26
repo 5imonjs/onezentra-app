@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckPermission;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackUserActivity;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -19,7 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
-        $middleware->appendToGroup('api', [TrackUserActivity::class]);
+        // SecurityHeaders harus paling luar agar 401/422/500 juga ber-header.
+        $middleware->prependToGroup('api', SecurityHeaders::class);
+        $middleware->appendToGroup('api', TrackUserActivity::class);
         $middleware->alias([
             'permission' => CheckPermission::class,
             'track.activity' => TrackUserActivity::class,

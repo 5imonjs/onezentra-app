@@ -98,8 +98,10 @@ class NpnImport implements ToCollection, WithHeadingRow
             $sapId = $data['SAPszProductId'] ?? null;
             $barcode = $data['szBarcode'] ?? null;
 
+            // Kunci baris saat mencari supaya import paralel tidak membuat
+            // dua baris untuk BOS ID yang sama (diperkuat unique index).
             $existing = ! empty($bosId)
-                ? Npn::query()->where('BOSnetszProductId', $bosId)->first()
+                ? Npn::query()->where('BOSnetszProductId', $bosId)->lockForUpdate()->first()
                 : null;
 
             // SAP ID dan barcode tidak unik per produk BOSnet: dua produk
@@ -117,6 +119,12 @@ class NpnImport implements ToCollection, WithHeadingRow
             }
 
             if ($existing) {
+                // NPN adalah master global: kode_depo hanya provenance importer
+                // pertama. Import dari depo lain tidak boleh memindahkan
+                // kepemilikan baris yang sudah ada.
+                if (! empty($existing->kode_depo)) {
+                    unset($data['kode_depo'], $data['nama_depo']);
+                }
                 $existing->update($data);
                 $this->updated++;
             } else {

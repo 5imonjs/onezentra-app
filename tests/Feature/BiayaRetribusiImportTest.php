@@ -44,15 +44,19 @@ class BiayaRetribusiImportTest extends TestCase
             ->assertJsonStructure(['data' => ['file_url', 'file_name', 'file_size']]);
 
         $fileUrl = $response->json('data.file_url');
-        $this->assertStringContainsString('biaya_retribusi/import/', $fileUrl);
+        $this->assertStringContainsString('/api/v1/biaya-retribusi/import/', $fileUrl);
         $this->assertSame('dokumen.pdf', $response->json('data.file_name'));
 
-        $path = preg_replace('#^(?:https?://[^/]+)?/storage/#', '', $fileUrl);
+        $path = 'biaya_retribusi/import/'.basename((string) parse_url($fileUrl, PHP_URL_PATH));
         Storage::disk('public')->assertExists($path);
 
         $storedSize = Storage::disk('public')->size($path);
         $this->assertLessThan(strlen($pdfBytes), $storedSize, 'qpdf harus mengurangi ukuran PDF sebelum disimpan.');
         $this->assertSame($storedSize, $response->json('data.file_size'));
+
+        $this->get(parse_url($fileUrl, PHP_URL_PATH), ['Accept' => 'application/pdf'])
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
     }
 
     public function test_disallowed_file_type_returns_422(): void
@@ -82,6 +86,8 @@ class BiayaRetribusiImportTest extends TestCase
 
         $response->assertStatus(403);
         Storage::disk('public')->assertDirectoryEmpty('biaya_retribusi');
+
+        $this->get('/api/v1/biaya-retribusi/import/apa-saja.pdf')->assertForbidden();
     }
 
     public function test_unauthenticated_request_returns_401(): void

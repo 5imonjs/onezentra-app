@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\LogUserActivity;
+use App\Models\DepotSetting;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -24,20 +25,56 @@ class AuthController extends Controller
             'level' => 'nullable|in:'.implode(',', Role::LEVEL_SLUGS),
         ]);
 
+        $actor = $request->user();
+        $validated['level'] = $validated['level'] ?? 'staff_logistic';
         abort_unless(
-            $request->user()->isMasterScope() || ($validated['level'] ?? null) !== 'admin_master',
+            $actor->isMasterScope() || $validated['level'] !== 'admin_master',
             403,
             'Hanya scope Master yang dapat menetapkan role admin master.'
         );
 
+        $role = Role::with('permissions')->where('slug', $validated['level'])->first();
+        abort_unless($role && $role->is_active, 422, 'Role yang dipilih tidak aktif.');
+
+        // Register adalah jalur lama; jangan biarkan aktor depo memberi role
+        // yang membuka akses semua depo (eskalasi di luar /users).
+        abort_if(
+            ! $actor->isMasterScope() && $role->permissions->contains('slug', 'depot.view_all'),
+            403,
+            'Anda tidak berwenang menetapkan role dengan akses semua depo.'
+        );
+
         $validated['password'] = Hash::make($validated['password']);
         $validated['status'] = 'active';
-        $validated['level'] = $validated['level'] ?? 'staff_logistic';
-        $validated = $request->user()->depotAttributes($validated);
+        // Hanya master yang boleh membuat admin_master; user itu memang
+        // global. Semua role lain dari jalur lama ini tetap depot-scoped.
+        $validated['scope_level'] = $actor->isMasterScope() && $role->slug === 'admin_master'
+            ? 'master'
+            : 'depot';
+        $validated['kode_ps'] = null;
+
+        $requestedDepot = DepotSetting::query()
+            ->where('kode_depo', $validated['kode_depo'])
+            ->where('is_active', true)
+            ->first();
+
+        if ($actor->isMasterScope()) {
+            // Master boleh memilih depo aktif; region mengikuti depo tersebut.
+            abort_unless($requestedDepot, 422, 'Depo yang dipilih tidak aktif.');
+            $validated['region_id'] = $requestedDepot->region_id;
+            $validated['nama_depo'] = $requestedDepot->nama_depo;
+        } else {
+            // Aktor ter-scope: depo SELALU depo aktor, bukan input klien.
+            $validated = $actor->depotAttributes($validated);
+            $depot = DepotSetting::query()
+                ->where('kode_depo', $validated['kode_depo'])
+                ->first();
+            $validated['region_id'] = $depot?->region_id ?? $actor->region_id;
+            $validated['nama_depo'] = $depot?->nama_depo ?? $actor->nama_depo ?? $validated['kode_depo'];
+        }
 
         $user = User::create($validated);
 
-        $role = Role::where('slug', $validated['level'])->first();
         if ($role) {
             $user->roles()->attach($role);
             // forceFill: 'role_id' sengaja tidak fillable (lihat User::$fillable).

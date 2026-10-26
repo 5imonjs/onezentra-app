@@ -8,8 +8,8 @@ use App\Models\BiayaThlPhoto;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\ReceivingItem;
 use App\Models\SjValidationItem;
+use App\Support\EvidenceStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -22,7 +22,7 @@ class StorageController extends Controller
 {
     public function show(Request $request, string $path): BinaryFileResponse
     {
-        abort_unless(Storage::disk('public')->exists($path), 404);
+        abort_unless(EvidenceStorage::exists($path), 404);
 
         $owner = $this->resolveOwner($path);
         abort_unless($owner !== null, 404);
@@ -33,7 +33,10 @@ class StorageController extends Controller
             404
         );
 
-        return response()->file(Storage::disk('public')->path($path));
+        $absolutePath = EvidenceStorage::path($path);
+        abort_unless($absolutePath !== null, 404);
+
+        return response()->file($absolutePath);
     }
 
     /**
@@ -41,39 +44,51 @@ class StorageController extends Controller
      */
     private function resolveOwner(string $path): ?array
     {
-        $receivingItem = ReceivingItem::where('photo', $path)->first(['kode_depo', 'nama_depo']);
-        if ($receivingItem) {
-            return ['kode_depo' => $receivingItem->kode_depo, 'nama_depo' => $receivingItem->nama_depo];
+        // Foto validasi/receiving/opname selalu disimpan di folder ini.
+        if ($this->isUnderPrefix($path, 'validation-photos')) {
+            $receivingItem = ReceivingItem::where('photo', $path)->first(['kode_depo', 'nama_depo']);
+            if ($receivingItem) {
+                return ['kode_depo' => $receivingItem->kode_depo, 'nama_depo' => $receivingItem->nama_depo];
+            }
+
+            $sjItem = SjValidationItem::with('validation.rencanaKirim')->where('photo', $path)->first();
+            if ($sjItem) {
+                $rencana = $sjItem->validation?->rencanaKirim;
+
+                return ['kode_depo' => $rencana?->kode_depo, 'nama_depo' => $rencana?->nama_depo];
+            }
+
+            $sessionItem = OpnameExpiredSessionItem::with('session')->where('photo', $path)->first();
+            if ($sessionItem) {
+                $session = $sessionItem->session;
+
+                return ['kode_depo' => $session?->kode_depo, 'nama_depo' => $session?->nama_depo];
+            }
         }
 
-        $sjItem = SjValidationItem::where('photo', $path)->first();
-        if ($sjItem) {
-            $rencana = $sjItem->validation?->rencanaKirim;
-
-            return ['kode_depo' => $rencana?->kode_depo, 'nama_depo' => $rencana?->nama_depo];
-        }
-
-        $sessionItem = OpnameExpiredSessionItem::where('photo', $path)->first();
-        if ($sessionItem) {
-            $session = $sessionItem->session;
-
-            return ['kode_depo' => $session?->kode_depo, 'nama_depo' => $session?->nama_depo];
-        }
-
-        $thlPhoto = BiayaThlPhoto::where('file_path', $path)->first();
-        if ($thlPhoto) {
+        $thlPhoto = BiayaThlPhoto::with('biayaThl')->where('file_path', $path)->first();
+        if ($thlPhoto && $this->isUnderPrefix($path, "biaya_thl/{$thlPhoto->biaya_thl_id}")) {
             $parent = $thlPhoto->biayaThl;
 
             return ['kode_depo' => $parent?->kode_depo, 'nama_depo' => $parent?->nama_depo];
         }
 
-        $retribusiDoc = BiayaRetribusiDocument::where('file_path', $path)->first();
-        if ($retribusiDoc) {
+        $retribusiDoc = BiayaRetribusiDocument::with('biayaRetribusi')->where('file_path', $path)->first();
+        if ($retribusiDoc && $this->isUnderPrefix($path, "biaya_retribusi/{$retribusiDoc->biaya_retribusi_id}")) {
             $parent = $retribusiDoc->biayaRetribusi;
 
             return ['kode_depo' => $parent?->kode_depo, 'nama_depo' => $parent?->nama_depo];
         }
 
         return null;
+    }
+
+    private function isUnderPrefix(string $path, string $prefix): bool
+    {
+        $prefix = rtrim($prefix, '/').'/';
+
+        return str_starts_with($path, $prefix)
+            && ! str_contains($path, '..')
+            && ! str_contains($path, '\\');
     }
 }

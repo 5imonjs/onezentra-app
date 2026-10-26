@@ -1,8 +1,24 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        FileInputStream(keystorePropertiesFile).use { load(it) }
+    }
+}
+
+// Release build tidak boleh memakai debug key. File key.properties dan
+// keystore tidak pernah di-commit; lihat key.properties.example.
+if (!keystorePropertiesFile.exists()) {
+    logger.lifecycle("key.properties tidak ditemukan: build release akan gagal sampai keystore produksi dikonfigurasi.")
 }
 
 android {
@@ -30,12 +46,37 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Jangan fallback ke debug signing. Tanpa keystore, release build
+            // memang harus gagal agar APK tidak pernah terbit dengan debug key.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val releaseRequested = allTasks.any { task ->
+        task.name.contains("Release", ignoreCase = true)
+    }
+    if (releaseRequested && !keystorePropertiesFile.exists()) {
+        throw GradleException(
+            "Release build membutuhkan onezentra_mobile/android/key.properties dan keystore produksi. " +
+                "Salin key.properties.example lalu isi nilainya."
+        )
     }
 }
 

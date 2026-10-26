@@ -49,6 +49,102 @@ class SecurityAuditTest extends TestCase
         return $user->fresh();
     }
 
+    public function test_api_responses_memakai_header_keamanan(): void
+    {
+        $this->getJson('/api/v1/user')
+            ->assertUnauthorized()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+
+    public function test_approval_assignment_menyembunyikan_email_tanpa_izin(): void
+    {
+        $actor = $this->userWith('staff_logistic');
+        $this->userWith('staff_logistic');
+        Sanctum::actingAs($actor);
+
+        $response = $this->getJson('/api/v1/approval-assignments')->assertOk();
+        $this->assertArrayNotHasKey('email', $response->json('users.0'));
+
+        $permission = Permission::firstOrCreate(['slug' => 'users.view'], ['name' => 'users.view']);
+        Role::where('slug', 'staff_logistic')->firstOrFail()->permissions()->syncWithoutDetaching([$permission->id]);
+
+        User::clearPermissionCache($actor->id);
+        Sanctum::actingAs($actor->fresh());
+
+        $response = $this->getJson('/api/v1/approval-assignments')->assertOk();
+        $this->assertArrayHasKey('email', $response->json('users.0'));
+    }
+
+    public function test_register_menolak_role_global_untuk_aktor_depo(): void
+    {
+        $actor = $this->userWith('staff_logistic', ['users.create']);
+        $ga = Role::firstOrCreate(['slug' => 'ga'], ['name' => 'GA', 'slug' => 'ga']);
+        $global = Permission::firstOrCreate(['slug' => 'depot.view_all'], ['name' => 'depot.view_all']);
+        $ga->permissions()->syncWithoutDetaching([$global->id]);
+
+        Sanctum::actingAs($actor);
+
+        $this->postJson('/api/v1/register', [
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo',
+            'full_name' => 'User Global',
+            'email' => 'global@depot.test',
+            'password' => 'secret-123',
+            'password_confirmation' => 'secret-123',
+            'level' => 'ga',
+        ])->assertForbidden();
+
+        $this->assertDatabaseMissing('users', ['email' => 'global@depot.test']);
+    }
+
+    public function test_register_master_boleh_membuat_admin_master_global(): void
+    {
+        $actor = $this->userWith('admin_master', ['users.create']);
+        Sanctum::actingAs($actor);
+
+        $this->postJson('/api/v1/register', [
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo',
+            'full_name' => 'Admin Master Baru',
+            'email' => 'admin-master-baru@depot.test',
+            'password' => 'secret-123',
+            'password_confirmation' => 'secret-123',
+            'level' => 'admin_master',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'admin-master-baru@depot.test',
+            'scope_level' => 'master',
+            'kode_ps' => null,
+        ]);
+    }
+
+    public function test_register_aktor_depo_memaksa_region_dan_scope_depo(): void
+    {
+        $actor = $this->userWith('staff_logistic', ['users.create']);
+        Sanctum::actingAs($actor);
+
+        $this->postJson('/api/v1/register', [
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo',
+            'full_name' => 'User Baru',
+            'email' => 'baru-region@depot.test',
+            'password' => 'secret-123',
+            'password_confirmation' => 'secret-123',
+            'level' => 'staff_logistic',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'baru-region@depot.test',
+            'kode_depo' => 'DPO',
+            'region_id' => 'REG-A',
+            'scope_level' => 'depot',
+            'kode_ps' => null,
+        ]);
+    }
+
     /**
      * `role_id` TIDAK lagi mass-assignable.
      *

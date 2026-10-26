@@ -9,12 +9,12 @@ use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\ReceivingItem;
+use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Validators\ValidationException as ExcelValidationException;
@@ -384,9 +384,9 @@ class ReceivingItemController extends Controller
 
         if ($request->hasFile('photo')) {
             if ($receivingItem->photo) {
-                Storage::disk('public')->delete($receivingItem->photo);
+                EvidenceStorage::delete($receivingItem->photo);
             }
-            $attributes['photo'] = $request->file('photo')->store('validation-photos', 'public');
+            $attributes['photo'] = EvidenceStorage::putFile($request->file('photo'), 'validation-photos');
         }
 
         if (array_key_exists('actual_qty', $attributes)) {

@@ -138,9 +138,7 @@ class UnloadProvider extends ChangeNotifier {
         return;
       }
       _statsError = 'Statistik gagal dimuat.';
-      debugPrint(
-        'UnloadProvider.loadStats: unhandled ${e.runtimeType}: $e',
-      );
+      debugPrint('UnloadProvider.loadStats: unhandled ${e.runtimeType}: $e');
       debugPrintStack(stackTrace: stack, maxFrames: 8);
     } finally {
       if (requestId == _statsRequestId) {

@@ -22,6 +22,7 @@ use App\Services\Biaya\BiayaRetribusiCalculator;
 use App\Services\Biaya\BiayaRetribusiReferenceValidator;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
+use App\Support\EvidenceStorage;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -29,7 +30,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -188,7 +188,10 @@ class BiayaRetribusiController extends Controller
             'details.*.nominal_biaya' => 'required|numeric|min:0',
             'documents' => 'nullable|array|max:20',
             'documents.*.document_type' => 'required|string|max:50|in:BA,SJ,invoice,manifest,lainnya',
-            'documents.*.file_path' => 'nullable|string|max:255',
+            // Path dokumen selalu dibuat server dari file upload. Menerima path
+            // dari klien memungkinkan lampiran menunjuk file depo lain (baca
+            // lewat endpoint dokumen, lalu hapus saat update/destroy).
+            'documents.*.file_path' => 'prohibited',
             'documents.*.file_name' => 'nullable|string|max:255',
             'documents.*.mime_type' => 'nullable|string|max:100|in:image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain',
             'documents.*.file_size' => 'nullable|integer',
@@ -236,29 +239,13 @@ class BiayaRetribusiController extends Controller
                 }
 
                 foreach ($validated['files'] ?? [] as $index => $file) {
-                    $path = $file->store("biaya_retribusi/{$biayaRetribusi->id}", 'public');
+                    $path = EvidenceStorage::putFile($file, "biaya_retribusi/{$biayaRetribusi->id}");
                     $biayaRetribusi->documents()->create([
                         'document_type' => $validated['documents'][$index]['document_type'] ?? 'lainnya',
                         'file_path' => $path,
                         'file_name' => $file->getClientOriginalName(),
                         'mime_type' => $file->getMimeType(),
                         'file_size' => $file->getSize(),
-                        'order' => $index,
-                    ]);
-                }
-
-                foreach ($validated['documents'] ?? [] as $index => $doc) {
-                    // Entri tanpa file_path adalah metadata pasangan untuk upload
-                    // files[] di atas (sudah dibuat) — lewati agar tidak duplikat.
-                    if (empty($doc['file_path'])) {
-                        continue;
-                    }
-                    $biayaRetribusi->documents()->create([
-                        'document_type' => $doc['document_type'],
-                        'file_path' => $doc['file_path'] ?? '',
-                        'file_name' => $doc['file_name'] ?? '',
-                        'mime_type' => $doc['mime_type'] ?? '',
-                        'file_size' => $doc['file_size'] ?? 0,
                         'order' => $index,
                     ]);
                 }
@@ -334,7 +321,7 @@ class BiayaRetribusiController extends Controller
             'details.*.nominal_biaya' => 'required|numeric|min:0',
             'documents' => 'nullable|array|max:20',
             'documents.*.document_type' => 'string|max:50|in:BA,SJ,invoice,manifest,lainnya',
-            'documents.*.file_path' => 'nullable|string|max:255',
+            'documents.*.file_path' => 'prohibited',
             'documents.*.file_name' => 'nullable|string|max:255',
             'documents.*.mime_type' => 'nullable|string|max:100|in:image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain',
             'documents.*.file_size' => 'nullable|integer',
@@ -380,13 +367,15 @@ class BiayaRetribusiController extends Controller
                 foreach ($validated['documents_remove'] ?? [] as $docId) {
                     $doc = $biayaRetribusi->documents()->find($docId);
                     if ($doc) {
-                        Storage::disk('public')->delete($doc->file_path);
+                        if ($this->isManagedDocumentPath($doc)) {
+                            EvidenceStorage::delete($doc->file_path);
+                        }
                         $doc->delete();
                     }
                 }
 
                 foreach ($validated['files'] ?? [] as $index => $file) {
-                    $path = $file->store("biaya_retribusi/{$biayaRetribusi->id}", 'public');
+                    $path = EvidenceStorage::putFile($file, "biaya_retribusi/{$biayaRetribusi->id}");
                     $biayaRetribusi->documents()->create([
                         'document_type' => $validated['documents'][$index]['document_type'] ?? 'lainnya',
                         'file_path' => $path,
@@ -443,7 +432,11 @@ class BiayaRetribusiController extends Controller
         });
 
         foreach ($filePaths as $path) {
-            Storage::disk('public')->delete($path);
+            // Hanya hapus file yang memang dibuat untuk pengajuan ini. Path
+            // anomali lama tidak boleh menghapus file depo/pengguna lain.
+            if ($this->isManagedPath($path, $biayaRetribusi->id)) {
+                EvidenceStorage::delete($path);
+            }
         }
 
         return response()->json(['message' => 'Biaya Retribusi deleted']);
@@ -509,9 +502,12 @@ class BiayaRetribusiController extends Controller
         // Samakan dengan show()/pdf(): hanya creator/approver yang berhak
         // melihat lampiran dokumen.
         $this->authorizeViewer($biayaRetribusi);
+        // Hanya path yang dibuat server untuk pengajuan ini. Baris lama hasil
+        // injeksi file_path (menunjuk file depo lain) tidak boleh disajikan.
+        abort_unless($this->isManagedDocumentPath($document), 404);
         /** @var FilesystemAdapter $disk */
-        $disk = Storage::disk('public');
-        abort_unless($document->file_path && $disk->exists($document->file_path), 404);
+        $disk = EvidenceStorage::diskFor($document->file_path);
+        abort_unless($disk, 404);
         $safeName = str_replace(['"', "\n", "\r"], '', $document->file_name ?: basename($document->file_path));
 
         if (! in_array($document->mime_type, self::INLINE_MIME_ALLOWLIST, true)) {
@@ -573,6 +569,21 @@ class BiayaRetribusiController extends Controller
      * Melihat boleh: peran pengaju, pembuat, atau approver (BAC/RLH/RFAH)
      * yang ditetapkan untuk depo pengajuan.
      */
+    private function isManagedDocumentPath(BiayaRetribusiDocument $document): bool
+    {
+        return $document->biaya_retribusi_id !== null
+            && $this->isManagedPath((string) $document->file_path, (int) $document->biaya_retribusi_id);
+    }
+
+    private function isManagedPath(string $path, int $biayaRetribusiId): bool
+    {
+        $prefix = "biaya_retribusi/{$biayaRetribusiId}/";
+
+        return str_starts_with($path, $prefix)
+            && ! str_contains($path, '..')
+            && ! str_contains($path, '\\');
+    }
+
     private function authorizeViewer(BiayaRetribusi $biayaRetribusi): void
     {
         $this->authorizeBiayaRowViewer($biayaRetribusi, ApprovalAssignment::MODULE_RETRIBUSI);
@@ -619,14 +630,15 @@ class BiayaRetribusiController extends Controller
                     $sourcePath = $compressedPath;
                 }
 
-                // Simpan ke disk publik, lalu return file_url
+                // Simpan ke disk privat. file_url menunjuk endpoint API yang
+                // tetap memeriksa autentikasi/kepemilikan saat file diakses.
                 $finalPath = 'biaya_retribusi/import/'.uniqid().'.pdf';
-                Storage::disk('public')->put($finalPath, file_get_contents($sourcePath));
+                EvidenceStorage::put($finalPath, file_get_contents($sourcePath));
 
                 return response()->json([
                     'message' => 'Import berhasil',
                     'data' => [
-                        'file_url' => Storage::disk('public')->url($finalPath),
+                        'file_url' => url('/api/v1/biaya-retribusi/import/'.basename($finalPath)),
                         'file_name' => $originalName,
                         'file_size' => filesize($sourcePath),
                     ],
@@ -654,5 +666,23 @@ class BiayaRetribusiController extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * Sajikan PDF hasil import (bukan dokumen pengajuan) hanya untuk pemegang
+     * izin import. Nama file dibuat server dengan uniqid(), bukan input bebas.
+     */
+    public function importedDocument(string $filename)
+    {
+        abort_unless(preg_match('/^[A-Za-z0-9_-]+\.pdf$/i', $filename) === 1, 404);
+
+        $path = "biaya_retribusi/import/{$filename}";
+        $absolutePath = EvidenceStorage::path($path);
+        abort_unless($absolutePath !== null, 404);
+
+        return response()->file($absolutePath, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        ]);
     }
 }

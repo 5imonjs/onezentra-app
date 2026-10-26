@@ -116,10 +116,7 @@ void main() {
       'membaca tanggal ringkas sebagai tanggal kalender, bukan timestamp',
       () {
         expect(formatExpiredDate('20260823'), '23/08/2026');
-        expect(
-          formatExpiredDate('2026-08-23T00:00:00.000000Z'),
-          '23/08/2026',
-        );
+        expect(formatExpiredDate('2026-08-23T00:00:00.000000Z'), '23/08/2026');
         expect(formatExpiredDate('20260230'), '-');
       },
     );

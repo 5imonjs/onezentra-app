@@ -119,10 +119,7 @@ void main() {
 
       expect(session, isA<UnloadSession>());
       expect(session.id, 7);
-      expect(
-        Uri.parse(requestedEndpoint!).path,
-        '/receivings/search/by-po',
-      );
+      expect(Uri.parse(requestedEndpoint!).path, '/receivings/search/by-po');
       expect(
         Uri.parse(requestedEndpoint!).queryParameters['po_transporter'],
         'po-042',

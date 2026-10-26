@@ -27,9 +27,20 @@ class ApprovalAssignmentController extends Controller
             ? ApprovalAssignment::MODULE_RETRIBUSI
             : ApprovalAssignment::MODULE_THL;
 
+        // GET tidak digate permission karena nama approver dibutuhkan preview
+        // PDF semua role. Email bukan kebutuhan preview: sembunyikan dari
+        // pemegang izin baca dasar agar daftar akun tidak bocor ke seluruh
+        // user terautentikasi.
+        $canSeeEmail = $request->user()->hasPermission('approval.manage')
+            || $request->user()->hasPermission('users.view');
+        $userColumns = ['id', 'full_name', 'level', 'kode_depo', 'nama_depo', 'status'];
+        if ($canSeeEmail) {
+            $userColumns[] = 'email';
+        }
+
         $assignments = ApprovalAssignment::query()
             ->where('module', $module)
-            ->with('user:id,full_name,email,level,kode_depo,nama_depo,status')
+            ->with('user:'.implode(',', $userColumns))
             // `ADMIN` hanya fallback untuk approver final (RLH/RFAH), selaras
             // dengan ensureApprover()/approverName(). Menampilkan ADMIN untuk
             // BLC/BAC membuat penetapan yang tak berpengaruh terlihat berlaku.
@@ -52,7 +63,7 @@ class ApprovalAssignmentController extends Controller
                 ->where('status', 'active')
                 ->when($request->user()->isDepotScoped(), fn ($query) => $query->where('kode_depo', $kodeDepo))
                 ->orderBy('full_name')
-                ->get(['id', 'full_name', 'email', 'level', 'kode_depo', 'nama_depo']),
+                ->get($userColumns),
             'levels' => self::LEVELS,
         ]);
     }

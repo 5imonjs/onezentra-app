@@ -22,6 +22,7 @@ use App\Services\Biaya\BiayaThlDetailWriter;
 use App\Services\Biaya\BiayaThlValidator;
 use App\Services\BiayaApprovalService;
 use App\Services\ExportGuard;
+use App\Support\EvidenceStorage;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -29,7 +30,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -389,7 +389,9 @@ class BiayaThlController extends Controller
         });
 
         foreach ($filePaths as $path) {
-            Storage::disk('public')->delete($path);
+            if ($this->isManagedPhotoPath($path, $biayaThl->id)) {
+                EvidenceStorage::delete($path);
+            }
         }
 
         return response()->json(['message' => 'Biaya THL deleted']);
@@ -450,9 +452,10 @@ class BiayaThlController extends Controller
         // Samakan dengan show()/pdf(): bukan sekadar satu depo, hanya creator/
         // approver yang berhak melihat lampiran bukti.
         $this->authorizeViewer($biayaThl);
+        abort_unless($this->isManagedPhotoPath((string) $photo->file_path, $biayaThl->id), 404);
         /** @var FilesystemAdapter $disk */
-        $disk = Storage::disk('public');
-        abort_unless($photo->file_path && $disk->exists($photo->file_path), 404);
+        $disk = EvidenceStorage::diskFor($photo->file_path);
+        abort_unless($disk, 404);
         $safeName = str_replace(['"', "\n", "\r"], '', $photo->file_name ?: basename($photo->file_path));
 
         if (! in_array($photo->mime_type, self::INLINE_PHOTO_ALLOWLIST, true)) {
@@ -570,6 +573,15 @@ class BiayaThlController extends Controller
         ExportGuard::ensureWithinLimit($query);
 
         return Excel::download(new BiayaThlExport($query, $request->user()), $this->pdfRenderer->downloadFilename('Biaya_THL', now(), 'xlsx'));
+    }
+
+    private function isManagedPhotoPath(string $path, int $biayaThlId): bool
+    {
+        $prefix = "biaya_thl/{$biayaThlId}/";
+
+        return str_starts_with($path, $prefix)
+            && ! str_contains($path, '..')
+            && ! str_contains($path, '\\');
     }
 
     private function authorizeCreator(BiayaThl $biayaThl): void

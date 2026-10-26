@@ -318,11 +318,13 @@ class FullFlowTest extends TestCase
             'szNickName' => 'Produk Update New',
         ]);
 
-        // kode_depo/nama_depo harus diupdate ke milik user import
+        // kode_depo/nama_depo adalah provenance importer pertama dan TIDAK
+        // boleh direbut oleh import depo lain; NPN dibaca global, mutasinya
+        // tetap di-scope ke pemilik asli.
         $this->assertDatabaseHas('npn', [
             'id' => $npn->id,
-            'kode_depo' => 'DPO',
-            'nama_depo' => 'Depo Test',
+            'kode_depo' => 'OLD',
+            'nama_depo' => 'Old Depo',
         ]);
     }
 

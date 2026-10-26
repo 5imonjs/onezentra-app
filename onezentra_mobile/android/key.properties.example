@@ -1,0 +1,6 @@
+# Salin ke key.properties dan isi dengan keystore produksi.
+# Jangan commit key.properties atau file .jks/.keystore.
+storePassword=GANTI_STORE_PASSWORD
+keyPassword=GANTI_KEY_PASSWORD
+keyAlias=onezentra
+storeFile=../keystores/onezentra-release.jks

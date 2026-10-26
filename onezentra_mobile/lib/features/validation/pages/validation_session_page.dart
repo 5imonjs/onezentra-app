@@ -402,26 +402,26 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     color: locked
                         ? AppTheme.warningDark.withValues(alpha: 0.4)
                         : item.isPending
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : AppTheme.success.withValues(alpha: 0.2),
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : AppTheme.success.withValues(alpha: 0.2),
                     borderRadius: AppTheme.radiusLg,
                   ),
                   child: Icon(
                     locked
                         ? Icons.lock_outline_rounded
                         : item.isPending
-                            ? Icons.hourglass_empty_rounded
-                            : item.status == 'VALIDATED'
-                                ? Icons.check_circle_rounded
-                                : Icons.warning_rounded,
+                        ? Icons.hourglass_empty_rounded
+                        : item.status == 'VALIDATED'
+                        ? Icons.check_circle_rounded
+                        : Icons.warning_rounded,
                     size: 18,
                     color: locked
                         ? AppTheme.warningText
                         : item.isPending
-                            ? AppTheme.gray400
-                            : item.status == 'VALIDATED'
-                                ? AppTheme.success
-                                : AppTheme.warning,
+                        ? AppTheme.gray400
+                        : item.status == 'VALIDATED'
+                        ? AppTheme.success
+                        : AppTheme.warning,
                   ),
                 ),
                 const SizedBox(width: AppTheme.space3),
@@ -430,7 +430,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.namaBarang ?? item.kodeBarang ?? 'Item #${item.id}',
+                        item.namaBarang ??
+                            item.kodeBarang ??
+                            'Item #${item.id}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.roboto(
@@ -537,13 +539,17 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     children: [
                       if (item.isPending && canValidate && item.canValidate)
                         _quickOkButton(item, provider)
-                      else if (item.isPending && canValidate && !item.canValidate)
+                      else if (item.isPending &&
+                          canValidate &&
+                          !item.canValidate)
                         _standarisasiButton(
                           item,
                           provider,
                           canCreate: canCreateStandarisasi,
                         )
-                      else if (!item.isPending && canValidate && item.canValidate)
+                      else if (!item.isPending &&
+                          canValidate &&
+                          item.canValidate)
                         _editButton(item)
                       else
                         AppBadge(
@@ -569,7 +575,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         ),
       ),
     );
-  }  /// Menangani sentuhan pada satu baris produk.
+  }
+
+  /// Menangani sentuhan pada satu baris produk.
   ///
   /// Produk yang sudah disetujui BLC dibuka langsung ke layar validasi item.
   /// Produk yang BELUM disetujui BLC menampilkan konfirmasi pop-up terlebih
@@ -728,15 +736,19 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.warning_rounded, size: 16, color: AppTheme.warningText),
+                const Icon(
+                  Icons.warning_rounded,
+                  size: 16,
+                  color: AppTheme.warningText,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     pending > 0
                         ? 'Validasi dulu $pending item di atas — tombol aktif otomatis.'
                         : missingExpired > 0
-                            ? 'Isi tanggal expired $missingExpired item di atas — server juga menolak sesi tanpa tanggal expired.'
-                            : 'Cetak label $unprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',
+                        ? 'Isi tanggal expired $missingExpired item di atas — server juga menolak sesi tanpa tanggal expired.'
+                        : 'Cetak label $unprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',
                     style: GoogleFonts.roboto(
                       fontSize: 12,
                       height: 1.4,
@@ -1004,7 +1016,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       var completed = await provider.completeActive();
       if (completed && mounted) {
         // Selesai validasi → lanjutkan ke Check Out Point (Receiving/Bongkar).
-                try {
+        try {
           context.go('/bongkar');
         } catch (_) {
           // Route /bongkar mungkin belum terdaftar (misal dalam tes),

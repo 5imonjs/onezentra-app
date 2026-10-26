@@ -11,12 +11,12 @@ use App\Models\ReceivingItem;
 use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Services\OpnameExpiredService;
+use App\Support\EvidenceStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -288,9 +288,9 @@ class OpnameExpiredSessionController extends Controller
         $data = $validated;
         if ($request->hasFile('photo')) {
             if ($item->photo) {
-                Storage::disk('public')->delete($item->photo);
+                EvidenceStorage::delete($item->photo);
             }
-            $data['photo'] = $request->file('photo')->store('validation-photos', 'public');
+            $data['photo'] = EvidenceStorage::putFile($request->file('photo'), 'validation-photos');
         }
 
         $result = $service->verifySessionItem($item, $data, $request->user());

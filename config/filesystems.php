@@ -38,11 +38,28 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Disk bukti (foto validasi, dokumen biaya) sengaja memakai nama
+         * "public" demi kompatibilitas kode lama, tetapi root-nya privat:
+         * tidak ada file baru yang bisa diakses langsung lewat /storage.
+         * Semua akses harus melewati endpoint API ber-otorisasi.
+         *
+         * File lama dari storage/app/public tetap bisa dibaca lewat disk
+         * `public_legacy` (fallback) sampai `php artisan evidence:migrate
+         * --apply` dipindahkan ke root privat.
+         */
         'public' => [
             'driver' => 'local',
+            'root' => storage_path('app/private/evidence'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/api/v1/storage',
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'public_legacy' => [
+            'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
-            'visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],
@@ -73,8 +90,12 @@ return [
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    /*
+     * Jangan membuat symlink public/storage. File bukti sekarang privat dan
+     * hanya boleh disajikan oleh StorageController setelah cek autentikasi +
+     * kepemilikan depo. Deploy lama yang sudah punya symlink harus
+     * menghapusnya sekali (lihat `php artisan evidence:migrate --apply`).
+     */
+    'links' => [],
 
 ];

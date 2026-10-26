@@ -33,9 +33,11 @@ class StandarisasiTumpukanControllerTest extends TestCase
 
     private function makeNpn(): Npn
     {
+        $suffix = uniqid();
+
         return Npn::create([
-            'szNickName' => 'Produk STD', 'BOSnetszProductId' => 'B-STD',
-            'SAPszProductId' => 'SAP-STD', 'szBarcode' => 'BC-STD', 'szStatus' => 'EXISTING',
+            'szNickName' => 'Produk STD', 'BOSnetszProductId' => 'B-STD-'.$suffix,
+            'SAPszProductId' => 'SAP-STD-'.$suffix, 'szBarcode' => 'BC-STD-'.$suffix, 'szStatus' => 'EXISTING',
         ]);
     }
 

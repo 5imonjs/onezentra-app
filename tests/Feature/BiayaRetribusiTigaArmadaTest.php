@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BiayaRetribusi;
+use App\Models\BiayaRetribusiDocument;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -27,6 +28,8 @@ class BiayaRetribusiTigaArmadaTest extends TestCase
         $permissions = collect([
             ['biaya_retribusi.create', 'Create'],
             ['biaya_retribusi.view', 'View'],
+            ['biaya_retribusi.edit', 'Edit'],
+            ['biaya_retribusi.delete', 'Delete'],
             ['depot.view_all', 'Akses Semua Depo'],
         ])->map(fn (array $permission): Permission => Permission::firstOrCreate(
             ['slug' => $permission[0]],
@@ -135,5 +138,76 @@ class BiayaRetribusiTigaArmadaTest extends TestCase
         foreach ($biaya->documents as $doc) {
             Storage::disk('public')->assertExists($doc->file_path);
         }
+    }
+
+    public function test_store_menolak_file_path_kiriman_klien(): void
+    {
+        Sanctum::actingAs($this->master());
+
+        $this->postJson('/api/v1/biaya-retribusi', [
+            'tanggal_pengajuan' => '2026-10-16',
+            'details' => $this->tigaBaris(),
+            'documents' => [
+                ['document_type' => 'BA', 'file_path' => 'biaya_retribusi/999/rahasia.pdf'],
+            ],
+        ])->assertStatus(422)->assertJsonValidationErrors('documents.0.file_path');
+    }
+
+    public function test_document_menolak_path_di_luar_folder_pengajuan(): void
+    {
+        Storage::fake('public');
+        $user = $this->master();
+        Sanctum::actingAs($user);
+
+        $biaya = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-10-16',
+            'kode_depo' => $user->kode_depo,
+            'nama_depo' => $user->nama_depo,
+            'nominal_biaya' => 1000,
+            'created_by' => $user->id,
+        ]);
+        $path = 'biaya_retribusi/999/rahasia.pdf';
+        Storage::disk('public')->put($path, 'rahasia');
+        $document = $biaya->documents()->create([
+            'document_type' => 'BA',
+            'file_path' => $path,
+            'file_name' => 'rahasia.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 7,
+            'order' => 0,
+        ]);
+
+        $this->getJson("/api/v1/biaya-retribusi/documents/{$document->id}")->assertNotFound();
+        $this->getJson("/api/v1/storage/{$path}")->assertNotFound();
+    }
+
+    public function test_destroy_tidak_menghapus_file_di_luar_folder_pengajuan(): void
+    {
+        Storage::fake('public');
+        $user = $this->master();
+        Sanctum::actingAs($user);
+
+        $biaya = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-10-16',
+            'kode_depo' => $user->kode_depo,
+            'nama_depo' => $user->nama_depo,
+            'nominal_biaya' => 1000,
+            'created_by' => $user->id,
+        ]);
+        $victimPath = 'validation-photos/milik-depo-lain.jpg';
+        Storage::disk('public')->put($victimPath, 'foto');
+        BiayaRetribusiDocument::create([
+            'biaya_retribusi_id' => $biaya->id,
+            'document_type' => 'BA',
+            'file_path' => $victimPath,
+            'file_name' => 'milik-depo-lain.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 4,
+            'order' => 0,
+        ]);
+
+        $this->deleteJson("/api/v1/biaya-retribusi/{$biaya->id}")->assertOk();
+
+        Storage::disk('public')->assertExists($victimPath);
     }
 }

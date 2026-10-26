@@ -9,12 +9,12 @@ use App\Models\DepotSetting;
 use App\Models\StandarisasiTumpukan;
 use App\Models\User;
 use App\Services\LegacyDepotBackfillService;
+use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -1199,8 +1199,8 @@ class AdminDatabaseController extends Controller
                 || DB::table('biaya_thl_photos')->where('file_path', $path)->exists()
                 || DB::table('biaya_retribusi_documents')->where('file_path', $path)->exists();
 
-            if (! $stillReferenced && Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
+            if (! $stillReferenced && EvidenceStorage::exists($path)) {
+                EvidenceStorage::delete($path);
                 $deleted++;
             }
         }

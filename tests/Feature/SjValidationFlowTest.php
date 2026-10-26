@@ -44,14 +44,15 @@ class SjValidationFlowTest extends TestCase
     }
 
     /**
-     * Rencana kirim SCHEDULED + snapshot item, dibuat langsung via model.
+     * Rencana kirim yang sudah gate check-in + snapshot item, dibuat langsung
+     * via model. Alur nyata mewajibkan CHECKED_IN sebelum validasi SJ.
      */
     private function scheduledRencana(User $user): RencanaKirim
     {
         $rk = RencanaKirim::create([
             'po_transporter' => 'PO-SJ-'.uniqid(),
             'rkh_date' => now()->toDateString(),
-            'status' => 'SCHEDULED',
+            'status' => 'CHECKED_IN',
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo Test',
             'created_by' => $user->id,
@@ -115,6 +116,16 @@ class SjValidationFlowTest extends TestCase
         Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create']));
         $rk = $this->scheduledRencana($user);
         $rk->update(['status' => 'DRAFT']);
+
+        $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])
+            ->assertStatus(422);
+    }
+
+    public function test_start_rejects_rencana_before_gate_checkin(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create']));
+        $rk = $this->scheduledRencana($user);
+        $rk->update(['status' => 'SCHEDULED']);
 
         $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])
             ->assertStatus(422);

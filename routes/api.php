@@ -211,6 +211,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/{biayaRetribusi}', [BiayaRetribusiController::class, 'update'])->middleware('permission:biaya_retribusi.edit');
         Route::delete('/{biayaRetribusi}', [BiayaRetribusiController::class, 'destroy'])->middleware('permission:biaya_retribusi.delete');
         Route::post('/import', [BiayaRetribusiController::class, 'import'])->middleware(['permission:biaya_retribusi.import', 'throttle:20,1,heavy-write']);
+        Route::get('/import/{filename}', [BiayaRetribusiController::class, 'importedDocument'])->middleware('permission:biaya_retribusi.import');
     });
 
     Route::prefix('retribusi-rates')->middleware(['auth:sanctum', 'throttle:600,1,api'])->group(function () {
