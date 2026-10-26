@@ -142,6 +142,28 @@ describe('Rencana Kirim — pencarian Nama Barang (combobox NPN)', () => {
     expect(screen.queryByText(/Menampilkan/)).not.toBeInTheDocument();
   });
 
+  it('menampilkan nickname lama dan nickname baru pada hasil pencarian', async () => {
+    searchProduct.mockResolvedValueOnce({
+      data: {
+        data: [
+          {
+            ...product('B-77', 'NICK LAMA'),
+            szNickNameNew: 'NICK BARU',
+            szShortDescription: 'Deskripsi Lengkap',
+          },
+        ],
+        total: 1,
+      },
+    });
+
+    const input = await openItemsModal();
+    fireEvent.change(input, { target: { value: 'nick' } });
+
+    expect(await screen.findByText('NICK LAMA')).toBeInTheDocument();
+    expect(await screen.findByText(/NICK BARU/)).toBeInTheDocument();
+    expect(await screen.findByText(/Deskripsi Lengkap/)).toBeInTheDocument();
+  });
+
   it('respons pencarian lama tidak menimpa hasil kata kunci terbaru', async () => {
     let resolveStale: ((v: { data: { data: unknown[]; total: number } }) => void) | undefined;
     searchProduct
