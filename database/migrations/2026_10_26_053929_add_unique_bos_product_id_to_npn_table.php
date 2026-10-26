@@ -38,6 +38,14 @@ return new class extends Migration
             );
         }
 
+        $hasUniqueProductIndex = collect(Schema::getIndexes('npn'))->contains(
+            fn (array $index): bool => $index['unique'] === true && $index['columns'] === ['BOSnetszProductId']
+        );
+
+        if ($hasUniqueProductIndex) {
+            return;
+        }
+
         Schema::table('npn', function (Blueprint $table): void {
             $table->unique('BOSnetszProductId', 'npn_bos_product_id_unique');
         });
@@ -45,6 +53,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        $hasOurIndex = collect(Schema::getIndexes('npn'))->contains(
+            fn (array $index): bool => $index['name'] === 'npn_bos_product_id_unique'
+        );
+
+        if (! $hasOurIndex) {
+            return;
+        }
+
         Schema::table('npn', function (Blueprint $table): void {
             $table->dropUnique('npn_bos_product_id_unique');
         });
