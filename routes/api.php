@@ -376,6 +376,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/documents', [AdminDatabaseController::class, 'documents'])->middleware('permission:database.purge');
         Route::post('/purge', [AdminDatabaseController::class, 'purge'])->middleware(['permission:database.purge', 'throttle:10,1,heavy-write']);
         Route::post('/purge-items', [AdminDatabaseController::class, 'purgeItems'])->middleware(['permission:database.purge', 'throttle:10,1,heavy-write']);
+        Route::post('/purge-master', [AdminDatabaseController::class, 'purgeMaster'])->middleware(['permission:database.purge', 'throttle:10,1,heavy-write']);
         Route::post('/backfill-depot', [AdminDatabaseController::class, 'backfillDepot'])->middleware(['permission:database.purge', 'throttle:10,1,heavy-write']);
     });
 

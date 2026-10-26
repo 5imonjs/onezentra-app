@@ -27,8 +27,14 @@ use Illuminate\Validation\ValidationException;
  * dipilih; tidak ada mode "hapus semua depo" agar reset tidak pernah menyentuh
  * data depo lain.
  *
+ * Satu pengecualian: master NPN bersifat global (tidak dimiliki satu depo),
+ * jadi reset master NPN menghapus seluruh tabel `npn` lintas depo. Dokumen
+ * lama tetap ada, tetapi tautan `npn_id` di-set null. Item Rencana Kirim dan
+ * Validasi SJ masih menyimpan kode/nama barang; baris Standarisasi kehilangan
+ * tautan produknya.
+ *
  * Pengaman berlapis:
- * - gate level admin_master di kedua aksi (403 untuk level lain);
+ * - gate level admin_master di setiap aksi (403 untuk level lain);
  * - daftar modul fixed allowlist — tidak bisa hapus tabel arbitrer;
  * - `kode_depo` wajib dan harus depo aktif (validasi terhadap depot_settings);
  * - konfirmasi teks eksak `HAPUS` wajib dikirim;
@@ -57,6 +63,14 @@ class AdminDatabaseController extends Controller
         'biaya-retribusi',
     ];
 
+    /**
+     * Master data global yang boleh dikosongkan. Berbeda dengan MODULES,
+     * modul di sini tidak dibatasi depo.
+     */
+    private const MASTER_MODULES = [
+        'npn',
+    ];
+
     private function ensureMaster(Request $request): void
     {
         abort_unless(
@@ -81,6 +95,7 @@ class AdminDatabaseController extends Controller
 
         return response()->json([
             'data' => $kodeDepo === null ? [] : $this->countModules($kodeDepo),
+            'master' => $this->countMasterModules(),
             'depots' => $depots,
             'kode_depo' => $kodeDepo,
         ]);
@@ -134,6 +149,83 @@ class AdminDatabaseController extends Controller
                 'before' => $counts,
             ],
         ]);
+    }
+
+    /**
+     * Kosongkan master data global — saat ini NPN. Tidak membutuhkan depo
+     * karena master NPN dipakai bersama oleh semua depo. Konfirmasi sengaja
+     * lebih ketat (`HAPUS NPN`) daripada reset operasional biasa.
+     */
+    public function purgeMaster(Request $request): JsonResponse
+    {
+        $this->ensureMaster($request);
+
+        $validated = $request->validate([
+            'modules' => ['required', 'array', 'min:1'],
+            'modules.*' => ['string', Rule::in(self::MASTER_MODULES)],
+            'confirm' => ['required', 'string', 'in:HAPUS NPN'],
+            'dry_run' => ['nullable', 'boolean'],
+        ], [
+            'confirm.in' => 'Ketik HAPUS NPN untuk mengosongkan master NPN.',
+        ]);
+
+        $modules = array_values(array_unique($validated['modules']));
+        $counts = $this->countMasterModules($modules);
+
+        if ($request->boolean('dry_run')) {
+            return response()->json([
+                'message' => 'Dry-run: tidak ada yang dihapus.',
+                'data' => ['modules' => $modules, 'counts' => $counts],
+            ]);
+        }
+
+        $deleted = [];
+        DB::transaction(function () use ($modules, &$deleted): void {
+            if (in_array('npn', $modules, true)) {
+                // Dokumen historis tetap disimpan; hanya tautan ke master yang
+                // dilepas agar FK tidak menggantung. Kode/nama barang sudah
+                // tersalin di masing-masing dokumen.
+                $deleted['rencana_kirim_items_npn_nulled'] = DB::table('rencana_kirim_items')
+                    ->whereNotNull('npn_id')
+                    ->update(['npn_id' => null]);
+                $deleted['sj_validation_items_npn_nulled'] = DB::table('sj_validation_items')
+                    ->whereNotNull('npn_id')
+                    ->update(['npn_id' => null]);
+                $deleted['standarisasi_tumpukan_npn_nulled'] = DB::table('standarisasi_tumpukan')
+                    ->whereNotNull('npn_id')
+                    ->update(['npn_id' => null]);
+                $deleted['npn'] = DB::table('npn')->delete();
+            }
+        });
+
+        return response()->json([
+            'message' => 'Master NPN berhasil dikosongkan.',
+            'data' => [
+                'modules' => $modules,
+                'deleted' => $deleted,
+                'before' => $counts,
+            ],
+        ]);
+    }
+
+    /**
+     * Hitung isi master data global (tidak difilter depo).
+     *
+     * @param  array<int, string>|null  $modules
+     * @return array<string, int>
+     */
+    private function countMasterModules(?array $modules = null): array
+    {
+        $modules ??= self::MASTER_MODULES;
+
+        $counts = [];
+        foreach ($modules as $module) {
+            $counts[$module] = match ($module) {
+                'npn' => DB::table('npn')->count(),
+            };
+        }
+
+        return $counts;
     }
 
     /**

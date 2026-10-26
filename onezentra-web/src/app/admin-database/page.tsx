@@ -98,6 +98,10 @@ export default function AdminDatabasePage() {
   const [legacyWorking, setLegacyWorking] = useState(false);
   const [legacyConfirm, setLegacyConfirm] = useState('');
   const [legacyError, setLegacyError] = useState(false);
+  const [masterCounts, setMasterCounts] = useState<Record<string, number>>({});
+  const [masterConfirm, setMasterConfirm] = useState('');
+  const [masterPreview, setMasterPreview] = useState<Record<string, number> | null>(null);
+  const [masterWorking, setMasterWorking] = useState(false);
 
   // Satu sumber kebenaran depo aktif: dropdown yang terlihat HARUS sama dengan
   // depo yang dihitung dan direset.
@@ -118,11 +122,17 @@ export default function AdminDatabasePage() {
       // sekaligus depo default. Tanpa ini halaman deadlock karena dropdown
       // butuh depo yang hanya datang dari respons ini.
       const response = await adminDatabase.summary(effectiveDepot || undefined) as {
-        data: { data: Record<string, number>; depots?: Depot[]; kode_depo?: string | null };
+        data: {
+          data: Record<string, number>;
+          master?: Record<string, number>;
+          depots?: Depot[];
+          kode_depo?: string | null;
+        };
       };
       if (response.data.depots) setDepots(response.data.depots);
       if (!selectedDepot && response.data.kode_depo) setSelectedDepot(response.data.kode_depo);
       setCounts(response.data.data || {});
+      setMasterCounts(response.data.master || {});
     } catch {
       notifyGlobal('Gagal memuat ringkasan data', 'error');
     } finally {
@@ -257,6 +267,38 @@ export default function AdminDatabasePage() {
     }
   };
 
+  const runMasterNpnPurge = async (dryRun: boolean) => {
+    const total = masterCounts.npn ?? 0;
+    if (total === 0) {
+      notifyGlobal('Master NPN sudah kosong', 'error');
+      return;
+    }
+    if (!dryRun && masterConfirm.trim() !== 'HAPUS NPN') {
+      notifyGlobal('Ketik HAPUS NPN untuk konfirmasi', 'error');
+      return;
+    }
+    setMasterWorking(true);
+    try {
+      const response = await adminDatabase.purgeMaster({
+        modules: ['npn'],
+        confirm: 'HAPUS NPN',
+        dry_run: dryRun,
+      }) as { data: { message: string; data: { counts?: Record<string, number> } } };
+      if (dryRun) {
+        setMasterPreview(response.data.data.counts || {});
+      } else {
+        notifyGlobal(response.data.message || 'Master NPN berhasil dikosongkan', 'success');
+        setMasterConfirm('');
+        setMasterPreview(null);
+        await load();
+      }
+    } catch {
+      notifyGlobal(dryRun ? 'Gagal mempratinjau master NPN' : 'Gagal mengosongkan master NPN', 'error');
+    } finally {
+      setMasterWorking(false);
+    }
+  };
+
   const runItemPurge = async (dryRun: boolean) => {
     if (!effectiveDepot) {
       notifyGlobal('Pilih depo terlebih dahulu', 'error');
@@ -344,8 +386,8 @@ export default function AdminDatabasePage() {
               <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold leading-tight">Reset Data Operasional</h1>
-              <p className="mt-0.5 text-ink-fg-muted">Khusus level master — kosongkan data operasional satu depo. Tidak bisa dibatalkan.</p>
+              <h1 className="text-2xl font-bold leading-tight">Reset Data</h1>
+              <p className="mt-0.5 text-ink-fg-muted">Khusus level master — kosongkan data operasional satu depo atau master NPN global. Tidak bisa dibatalkan.</p>
             </div>
           </div>
         </header>
@@ -551,6 +593,71 @@ export default function AdminDatabasePage() {
                 </div>
               </>
             )}
+          </section>
+
+          <section aria-label="Reset master data" className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+            <div className="border-b border-gray-100 px-5 py-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-800">Reset Master Data (Global)</h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Khusus admin master — menghapus master NPN untuk SEMUA depo. Data operasional tidak ikut terhapus.
+                  </p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Global</span>
+              </div>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="rounded-xl border border-red-100 bg-red-50/40 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Master NPN</p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Seluruh produk NPN lintas depo. Gunakan ini untuk reset total sebelum import ulang.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">
+                    {masterCounts.npn ?? 0} baris
+                  </span>
+                </div>
+              </div>
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                Referensi NPN pada item Rencana Kirim, Validasi SJ, dan Standarisasi di-set null. Item Rencana/Validasi
+                masih menyimpan kode &amp; nama barang; baris Standarisasi akan kehilangan tautan produk. Setelah reset,
+                import ulang file master NPN.
+              </p>
+              {masterPreview && (
+                <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                  Pratinjau master NPN (tidak ada yang dihapus): {masterPreview.npn ?? 0} baris NPN.
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => void runMasterNpnPurge(true)}
+                  disabled={masterWorking || (masterCounts.npn ?? 0) === 0}
+                  className="btn-secondary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Pratinjau NPN
+                </button>
+                <input
+                  value={masterConfirm}
+                  onChange={(event) => setMasterConfirm(event.target.value)}
+                  placeholder="Ketik HAPUS NPN"
+                  aria-label="Konfirmasi ketik HAPUS NPN"
+                  disabled={masterWorking || (masterCounts.npn ?? 0) === 0}
+                  className="select-field-sm w-44"
+                />
+                <button
+                  type="button"
+                  onClick={() => void runMasterNpnPurge(false)}
+                  disabled={masterWorking || (masterCounts.npn ?? 0) === 0 || masterConfirm.trim() !== 'HAPUS NPN'}
+                  className="btn-danger inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {masterWorking ? 'Memproses…' : 'Kosongkan Master NPN'}
+                </button>
+              </div>
+            </div>
           </section>
 
           <section aria-label="Data legacy tanpa depo" className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">

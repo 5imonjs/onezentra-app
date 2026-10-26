@@ -10,6 +10,7 @@ use App\Models\BiayaRetribusiDocument;
 use App\Models\BiayaThl;
 use App\Models\BiayaThlDetail;
 use App\Models\DepotSetting;
+use App\Models\Npn;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -85,7 +86,7 @@ class AdminDatabasePurgeTest extends TestCase
         ]);
     }
 
-    private function rencanaItem(RencanaKirim $rencana): int
+    private function rencanaItem(RencanaKirim $rencana, ?int $npnId = null): int
     {
         return DB::table('rencana_kirim_items')->insertGetId([
             'rencana_kirim_id' => $rencana->id,
@@ -94,8 +95,21 @@ class AdminDatabasePurgeTest extends TestCase
             'nama_barang' => 'Barang',
             'jumlah' => 10,
             'received_qty' => 0,
+            'npn_id' => $npnId,
             'created_at' => now(),
             'updated_at' => now(),
+        ]);
+    }
+
+    private function npn(string $kodeDepo = 'DPO-A', string $suffix = '1'): Npn
+    {
+        return Npn::create([
+            'kode_depo' => $kodeDepo,
+            'nama_depo' => 'Depo '.$kodeDepo,
+            'BOSnetszProductId' => 'B-NPN-'.$suffix,
+            'SAPszProductId' => 'S-NPN-'.$suffix,
+            'szNickName' => 'NPN '.$suffix,
+            'szStatus' => 'EXISTING',
         ]);
     }
 
@@ -628,5 +642,128 @@ class AdminDatabasePurgeTest extends TestCase
 
         // Baris receiving masih memakai file yang sama — jangan hapus.
         Storage::disk('public')->assertExists('validation-photos/shared.jpg');
+    }
+
+    public function test_summary_menyertakan_jumlah_master_npn_global(): void
+    {
+        $this->depot('DPO-A');
+        $this->depot('DPO-B');
+        $this->npn('DPO-A', 'A');
+        $this->npn('DPO-B', 'B');
+        Npn::create([
+            'BOSnetszProductId' => 'B-NPN-TANPA-DEPO',
+            'szNickName' => 'NPN TANPA DEPO',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        Sanctum::actingAs($this->master());
+
+        // Filter depo hanya berlaku untuk modul operasional; master NPN tetap
+        // menghitung seluruh baris lintas depo.
+        $this->getJson('/api/v1/admin/database/summary?kode_depo=DPO-A')
+            ->assertOk()
+            ->assertJsonPath('master.npn', 3)
+            ->assertJsonPath('data.rencana_kirim', 0);
+    }
+
+    public function test_purge_master_npn_memvalidasi_konfirmasi_dan_allowlist(): void
+    {
+        $this->depot('DPO-A');
+        Sanctum::actingAs($this->master());
+
+        $this->postJson('/api/v1/admin/database/purge-master', [
+            'modules' => ['npn'], 'confirm' => 'HAPUS',
+        ])->assertStatus(422)->assertJsonValidationErrors('confirm');
+
+        $this->postJson('/api/v1/admin/database/purge-master', [
+            'modules' => ['rencana_kirim'], 'confirm' => 'HAPUS NPN',
+        ])->assertStatus(422)->assertJsonValidationErrors('modules.0');
+    }
+
+    public function test_dry_run_master_npn_menghitung_semua_depo_tanpa_menghapus(): void
+    {
+        $this->npn('DPO-A', 'A');
+        $this->npn('DPO-B', 'B');
+        Npn::create([
+            'BOSnetszProductId' => 'B-NPN-TANPA-DEPO',
+            'szNickName' => 'NPN TANPA DEPO',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        Sanctum::actingAs($this->master());
+
+        $this->postJson('/api/v1/admin/database/purge-master', [
+            'modules' => ['npn'], 'confirm' => 'HAPUS NPN', 'dry_run' => true,
+        ])->assertOk()
+            ->assertJsonPath('data.counts.npn', 3);
+
+        $this->assertDatabaseCount('npn', 3);
+    }
+
+    public function test_purge_master_npn_menghapus_semua_dan_melepas_referensi_dokumen(): void
+    {
+        $this->depot('DPO-A');
+        $this->depot('DPO-B');
+
+        $npnA = $this->npn('DPO-A', 'A');
+        $npnB = $this->npn('DPO-B', 'B');
+
+        $rencana = $this->rencana('DPO-A');
+        $itemId = $this->rencanaItem($rencana, $npnA->id);
+        $validation = $this->validation($rencana);
+        $validationItemId = DB::table('sj_validation_items')->insertGetId([
+            'sj_validation_id' => $validation->id,
+            'rencana_kirim_item_id' => $itemId,
+            'npn_id' => $npnA->id,
+            'expected_qty' => 10,
+            'actual_qty' => 10,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $standarisasi = StandarisasiTumpukan::create([
+            'npn_id' => $npnB->id,
+            'kode_depo' => 'DPO-B',
+            'nama_depo' => 'Depo DPO-B',
+            'status' => 'pending',
+        ]);
+
+        Sanctum::actingAs($this->master());
+
+        $this->postJson('/api/v1/admin/database/purge-master', [
+            'modules' => ['npn'], 'confirm' => 'HAPUS NPN',
+        ])->assertOk()
+            ->assertJsonPath('data.deleted.npn', 2)
+            ->assertJsonPath('data.deleted.rencana_kirim_items_npn_nulled', 1)
+            ->assertJsonPath('data.deleted.sj_validation_items_npn_nulled', 1)
+            ->assertJsonPath('data.deleted.standarisasi_tumpukan_npn_nulled', 1);
+
+        $this->assertDatabaseCount('npn', 0);
+        $this->assertDatabaseHas('rencana_kirim', ['id' => $rencana->id]);
+        $this->assertDatabaseHas('sj_validations', ['id' => $validation->id]);
+        $this->assertDatabaseHas('rencana_kirim_items', ['id' => $itemId]);
+        $this->assertDatabaseHas('sj_validation_items', ['id' => $validationItemId]);
+        $this->assertDatabaseHas('standarisasi_tumpukan', ['id' => $standarisasi->id]);
+
+        $this->assertNull(DB::table('rencana_kirim_items')->where('id', $itemId)->value('npn_id'));
+        $this->assertNull(DB::table('sj_validation_items')->where('id', $validationItemId)->value('npn_id'));
+        $this->assertNull(DB::table('standarisasi_tumpukan')->where('id', $standarisasi->id)->value('npn_id'));
+    }
+
+    public function test_non_master_tidak_bisa_purge_master_npn_walau_punya_permission(): void
+    {
+        $user = $this->otherUser();
+        $role = Role::where('slug', 'no_purge')->firstOrFail();
+        $role->permissions()->attach(
+            Permission::firstOrCreate(
+                ['slug' => 'database.purge'],
+                ['name' => 'Reset', 'menu_group' => 'Sistem']
+            )->id
+        );
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/admin/database/purge-master', [
+            'modules' => ['npn'], 'confirm' => 'HAPUS NPN',
+        ])->assertForbidden();
     }
 }
