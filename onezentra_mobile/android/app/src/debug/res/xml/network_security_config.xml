@@ -10,4 +10,11 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">187.77.121.102</domain>
+        <trust-anchors>
+            <certificates src="@raw/onezentra_ip" />
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>
