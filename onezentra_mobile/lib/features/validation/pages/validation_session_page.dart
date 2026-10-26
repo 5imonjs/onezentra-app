@@ -383,10 +383,25 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.07),
           borderRadius: AppTheme.radiusLg,
-          border: Border.all(
-            color: locked
-                ? AppTheme.warningText.withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.08),
+          border: Border(
+            left: BorderSide(
+              color: (!item.isPending && (item.batch?.isPrinted ?? false))
+                  ? AppTheme.success
+                  : (locked ? AppTheme.warningText.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08)),
+              width: 3,
+            ),
+            top: BorderSide(
+              color: locked ? AppTheme.warningText.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08),
+              width: 1,
+            ),
+            right: BorderSide(
+              color: locked ? AppTheme.warningText.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08),
+              width: 1,
+            ),
+            bottom: BorderSide(
+              color: locked ? AppTheme.warningText.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08),
+              width: 1,
+            ),
           ),
         ),
         child: Column(
