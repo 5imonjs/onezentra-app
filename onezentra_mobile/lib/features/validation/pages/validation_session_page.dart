@@ -390,7 +390,6 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             color: locked
                 ? AppTheme.warningText.withValues(alpha: 0.5)
                 : Colors.white.withValues(alpha: 0.15),
-            width: 1,
           ),
         ),
         child: Column(
@@ -1683,7 +1682,6 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                 maximumDate: DateTime(2100),
                 onDateTimeChanged: (DateTime value) => picked = value,
                 backgroundColor: AppTheme.surface,
-                use24hFormat: false,
               ),
             ),
             SafeArea(
