@@ -55,6 +55,46 @@ class NpnExportTest extends TestCase
         $this->assertSame(['DEL'], $statuses);
     }
 
+    public function test_export_search_matches_new_nickname(): void
+    {
+        Npn::create([
+            'szNickName' => 'LAMA',
+            'szNickNameNew' => 'NICKNAME BARU',
+            'BOSnetszProductId' => 'B-1',
+            'szStatus' => 'EXISTING',
+        ]);
+        Npn::create([
+            'szNickName' => 'LAIN',
+            'BOSnetszProductId' => 'B-2',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        $rows = (new NpnExport(search: 'NICKNAME BARU'))->query()->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('LAMA', $rows->first()->szNickName);
+    }
+
+    public function test_export_search_matches_category_description(): void
+    {
+        Npn::create([
+            'szNickName' => 'PRODUK KATEGORI',
+            'szCat1Description' => 'Minyak Goreng Sawit',
+            'BOSnetszProductId' => 'B-1',
+            'szStatus' => 'EXISTING',
+        ]);
+        Npn::create([
+            'szNickName' => 'LAIN',
+            'BOSnetszProductId' => 'B-2',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        $rows = (new NpnExport(search: 'Goreng Sawit'))->query()->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('PRODUK KATEGORI', $rows->first()->szNickName);
+    }
+
     public function test_export_endpoint_forwards_status_filter(): void
     {
         Sanctum::actingAs($this->userWithNpnView());

@@ -77,6 +77,12 @@ class NpnImport implements ToCollection, WithHeadingRow
                     continue;
                 }
                 $dbKey = $this->headingMap[$key];
+                if (is_string($value)) {
+                    // Excel sering menyisakan spasi di ujung kode. Tanpa trim,
+                    // " B-1" tidak cocok dengan "B-1" dan import membuat baris
+                    // duplikat untuk produk yang sama.
+                    $value = trim($value);
+                }
                 if ($value !== null && $value !== '') {
                     $data[$dbKey] = $value;
                 }
@@ -88,16 +94,26 @@ class NpnImport implements ToCollection, WithHeadingRow
 
             $data = $this->user->depotAttributes($data);
 
-            $existing = null;
-            $base = Npn::query();
-            if (! empty($data['BOSnetszProductId'])) {
-                $existing = (clone $base)->where('BOSnetszProductId', $data['BOSnetszProductId'])->first();
+            $bosId = $data['BOSnetszProductId'] ?? null;
+            $sapId = $data['SAPszProductId'] ?? null;
+            $barcode = $data['szBarcode'] ?? null;
+
+            $existing = ! empty($bosId)
+                ? Npn::query()->where('BOSnetszProductId', $bosId)->first()
+                : null;
+
+            // SAP ID dan barcode tidak unik per produk BOSnet: dua produk
+            // berbeda (mis. CSP4OK dan CSP4O) bisa berbagi salah satunya.
+            // Fallback ini hanya boleh mengisi baris legacy yang BOS ID-nya
+            // masih kosong; kalau baris yang cocok sudah punya BOS ID lain,
+            // itu produk berbeda dan harus dibuat sebagai baris baru. Dulu
+            // baris kedua menimpa baris pertama sehingga salah satu produk
+            // hilang dari NPN dan tidak pernah muncul di picker.
+            if (! $existing && ! empty($sapId)) {
+                $existing = $this->findLegacyMatch('SAPszProductId', $sapId, $bosId);
             }
-            if (! $existing && ! empty($data['SAPszProductId'])) {
-                $existing = (clone $base)->where('SAPszProductId', $data['SAPszProductId'])->first();
-            }
-            if (! $existing && ! empty($data['szBarcode'])) {
-                $existing = (clone $base)->where('szBarcode', $data['szBarcode'])->first();
+            if (! $existing && ! empty($barcode)) {
+                $existing = $this->findLegacyMatch('szBarcode', $barcode, $bosId);
             }
 
             if ($existing) {
@@ -109,5 +125,26 @@ class NpnImport implements ToCollection, WithHeadingRow
                 $this->imported++;
             }
         }
+    }
+
+    /**
+     * Cari baris lama yang boleh di-update lewat SAP ID/barcode.
+     *
+     * Kalau file import membawa BOS ID, hanya baris tanpa BOS ID yang boleh
+     * dicocokkan lewat kolom sekunder. Baris dengan BOS ID berbeda adalah
+     * produk lain dan tidak boleh ditimpa.
+     */
+    private function findLegacyMatch(string $column, string $value, ?string $bosId): ?Npn
+    {
+        $query = Npn::query()->where($column, $value);
+
+        if (! empty($bosId)) {
+            $query->where(function ($q): void {
+                $q->whereNull('BOSnetszProductId')
+                    ->orWhere('BOSnetszProductId', '');
+            });
+        }
+
+        return $query->first();
     }
 }

@@ -119,7 +119,7 @@ class RencanaKirimFlowTest extends TestCase
                 'item_number' => 1,
                 'npn_id' => $npn->id,
                 'kode_barang' => $npn->BOSnetszProductId,
-                'nama_barang' => 'AJTM',
+                'nama_barang' => 'Nama Salah',
                 'jumlah' => 10,
                 'satuan' => 'CRT',
             ]],
@@ -128,6 +128,8 @@ class RencanaKirimFlowTest extends TestCase
         $response->assertStatus(201);
         $data = $response->json('data');
         $this->assertSame('CDD', $data['jenis_kendaraan']);
+        // Nama dokumen mengikuti NPN (nickname), bukan teks bebas dari client.
+        $this->assertSame('AJTM', $data['items'][0]['nama_barang']);
         $this->assertDatabaseHas('rencana_kirim', ['jenis_kendaraan' => 'CDD']);
         $this->assertSame(10.0, (float) $data['total_qty']);
 

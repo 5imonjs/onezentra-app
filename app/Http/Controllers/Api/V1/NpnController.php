@@ -30,7 +30,20 @@ class NpnController extends Controller
                     ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('szShortDescription LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\']);
+                    ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\'])
+                    // Samakan dengan picker Rencana Kirim: nama panjang dan
+                    // deskripsi kategori juga sering dipakai sebagai kata kunci.
+                    ->orWhereRaw('szLongDescription LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat1Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat2Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat3Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat4Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat5Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat6Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat7Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat8Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat9Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat10Description LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
         if ($request->filled('kode_depo')) {
@@ -46,7 +59,7 @@ class NpnController extends Controller
             $sort = 'szNickName';
             $direction = 'asc';
         }
-        $npn = $query->orderBy($sort, $direction)->paginate($this->perPage($request, 50));
+        $npn = $query->orderBy($sort, $direction)->orderBy('id')->paginate($this->perPage($request, 50));
 
         return response()->json($npn);
     }
@@ -289,6 +302,7 @@ class NpnController extends Controller
         $products = (clone $base)
             ->select('id', 'BOSnetszProductId', 'SAPszProductId', 'SAPszUomId', 'SAPdecUom', 'decVolume', 'szNickName', 'szNickNameNew', 'szShortDescription', 'decUomConversion1', 'BOSnetdecUom')
             ->orderBy('szNickName')
+            ->orderBy('id')
             ->offset($offset)
             ->limit($limit)
             ->get();

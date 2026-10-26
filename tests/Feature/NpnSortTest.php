@@ -82,6 +82,39 @@ class NpnSortTest extends TestCase
         $this->assertSame(['LAMA'], array_column($res->json('data'), 'szNickName'));
     }
 
+    public function test_npn_index_search_matches_long_description_and_category(): void
+    {
+        Sanctum::actingAs($this->userWithNpnView());
+        Npn::create([
+            'szNickName' => 'PRODUK PANJANG',
+            'szLongDescription' => 'Tepung Terigu Premium',
+            'BOSnetszProductId' => 'B-1',
+            'szStatus' => 'EXISTING',
+        ]);
+        Npn::create([
+            'szNickName' => 'PRODUK KATEGORI',
+            'szCat1Description' => 'Minyak Goreng Sawit',
+            'BOSnetszProductId' => 'B-2',
+            'szStatus' => 'EXISTING',
+        ]);
+        Npn::create(['szNickName' => 'LAIN', 'BOSnetszProductId' => 'B-3', 'szStatus' => 'EXISTING']);
+
+        $this->assertSame(
+            ['PRODUK PANJANG'],
+            array_column(
+                $this->getJson('/api/v1/npn?search='.urlencode('Terigu'))->assertOk()->json('data'),
+                'szNickName'
+            )
+        );
+        $this->assertSame(
+            ['PRODUK KATEGORI'],
+            array_column(
+                $this->getJson('/api/v1/npn?search='.urlencode('Goreng Sawit'))->assertOk()->json('data'),
+                'szNickName'
+            )
+        );
+    }
+
     public function test_npn_index_ignores_unknown_sort_column(): void
     {
         Sanctum::actingAs($this->userWithNpnView());

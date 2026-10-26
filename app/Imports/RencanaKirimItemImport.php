@@ -121,9 +121,9 @@ class RencanaKirimItemImport implements ToCollection, WithHeadingRow
         return [
             'npn_id' => $product->id,
             'kode_barang' => $product->BOSnetszProductId,
-            'nama_barang' => $product->szShortDescription
-                ?: $product->szNickName
+            'nama_barang' => $product->szNickName
                 ?: $product->szNickNameNew
+                ?: $product->szShortDescription
                 ?: ($item['nama_barang'] ?? ''),
             'jumlah' => $item['jumlah'] ?? 0,
             'satuan' => $item['satuan'] ?? 'CRT',

@@ -482,6 +482,14 @@ class RencanaKirimController extends Controller
             if ($product) {
                 $item['npn_id'] = $product->id;
                 $item['kode_barang'] = $product->BOSnetszProductId;
+                // Nama dokumen mengikuti identitas NPN (nickname lama, lalu
+                // nickname baru, baru deskripsi). Jangan percaya teks dari
+                // client: dua produk berbeda bisa punya short description yang
+                // sama, sehingga nama tersimpan tampak seperti produk lain.
+                $item['nama_barang'] = $product->szNickName
+                    ?: $product->szNickNameNew
+                    ?: $product->szShortDescription
+                    ?: ($item['nama_barang'] ?? '');
             }
 
             return $item;

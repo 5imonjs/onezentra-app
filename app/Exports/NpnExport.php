@@ -58,10 +58,22 @@ class NpnExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping,
             $like = LikePattern::contains($this->search);
             $query->where(function ($q) use ($like) {
                 $q->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szNickNameNew LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('szShortDescription LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\']);
+                    ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szLongDescription LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat1Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat2Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat3Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat4Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat5Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat6Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat7Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat8Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat9Description LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('szCat10Description LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
 
@@ -69,7 +81,7 @@ class NpnExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping,
             $query->where('szStatus', $this->szStatus);
         }
 
-        return $query->orderBy($this->sort, $this->direction);
+        return $query->orderBy($this->sort, $this->direction)->orderBy('id');
     }
 
     public function headings(): array
