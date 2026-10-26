@@ -37,6 +37,26 @@ class EvidenceMigrateTest extends TestCase
         Storage::disk('public_legacy')->assertMissing('validation-photos/lama.jpg');
     }
 
+    public function test_apply_tidak_memindahkan_placeholder_git(): void
+    {
+        Storage::fake('public');
+        Storage::fake('public_legacy');
+        Storage::disk('public_legacy')->put('.gitignore', "*\n!.gitignore\n");
+        Storage::disk('public_legacy')->put('.gitkeep', '');
+        Storage::disk('public_legacy')->put('validation-photos/lama.jpg', 'foto');
+
+        $this->artisan('evidence:migrate', [
+            '--apply' => true,
+            '--confirm' => 'MIGRATE EVIDENCE',
+        ])->assertSuccessful();
+
+        Storage::disk('public_legacy')->assertExists('.gitignore');
+        Storage::disk('public_legacy')->assertExists('.gitkeep');
+        Storage::disk('public')->assertMissing('.gitignore');
+        Storage::disk('public')->assertMissing('.gitkeep');
+        Storage::disk('public')->assertExists('validation-photos/lama.jpg');
+    }
+
     public function test_apply_menolak_konfirmasi_salah(): void
     {
         Storage::fake('public');

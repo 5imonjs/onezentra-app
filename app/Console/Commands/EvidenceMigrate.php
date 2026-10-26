@@ -15,10 +15,12 @@ class EvidenceMigrate extends Command
     {
         $legacy = Storage::disk('public_legacy');
         $primary = Storage::disk('public');
-        $files = $legacy->allFiles();
+        $files = collect($legacy->allFiles())
+            ->reject(fn (string $path): bool => in_array(basename($path), ['.gitignore', '.gitkeep'], true))
+            ->values();
         $link = public_path('storage');
 
-        $this->info('File lama: '.count($files).' file.');
+        $this->info('File lama: '.$files->count().' file.');
         $this->line('Symlink public/storage: '.(is_link($link) ? 'ada -> '.readlink($link) : 'tidak ada'));
 
         if (! $this->option('apply')) {
