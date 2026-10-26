@@ -142,14 +142,17 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
 
     load(true);
     const timer = setInterval(() => {
-      // Hemat request saat tab dashboard tidak sedang dilihat.
       if (document.visibilityState === 'visible') {
         load();
       }
     }, POLL_INTERVAL_MS);
 
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+
     return () => {
       clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
       requestSeqRef.current += 1;
       controllerRef.current?.abort();
     };
