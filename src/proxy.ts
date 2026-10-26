@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { buildContentSecurityPolicy } from './lib/csp';
 
 // Nama cookie sesi mengikuti config backend (session.cookie:
 // Str::slug(APP_NAME).'-session'). Bisa dioverride via env SESSION_COOKIE_NAME.
@@ -55,6 +56,24 @@ export function resolveBackendPath(pathname: string): string {
   return pathname.endsWith('/sanctum/csrf-cookie')
     ? '/sanctum/csrf-cookie'
     : pathname;
+}
+
+/**
+ * Respons halaman dengan CSP nonce. Next.js membaca nonce dari header
+ * `x-nonce` + `Content-Security-Policy` pada request dan menyisipkannya ke
+ * script hydration; header yang sama dikirim ke browser.
+ */
+function pageResponse(request: NextRequest): NextResponse {
+  const nonce = crypto.randomUUID().replaceAll('-', '');
+  const csp = buildContentSecurityPolicy(nonce, process.env.NODE_ENV === 'production');
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set('Content-Security-Policy', csp);
+
+  return response;
 }
 
 /**
@@ -156,7 +175,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
     }
-    return NextResponse.next();
+    return pageResponse(request);
   }
 
   // Heuristik server-side: cookie sesi Sanctum tidak ada berarti belum login.
@@ -169,5 +188,5 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  return NextResponse.next();
+  return pageResponse(request);
 }

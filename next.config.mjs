@@ -24,38 +24,12 @@ const backendProtocol = (() => {
   }
 })();
 
-/**
- * Susun header CSP. `unsafe-eval` hanya diperlukan oleh dev server Next
- * (HMR/source map eval); produksi tidak membutuhkannya sehingga dihilangkan
- * untuk menutup celah XSS berbasis eval.
- */
-export function buildContentSecurityPolicy(isProduction) {
-  return [
-    "default-src 'self'",
-    "base-uri 'self'",
-    "frame-ancestors 'none'",
-    // Cetak label batch memuat PDF dari `blob:` ke dalam <iframe> tersembunyi
-    // lalu memanggil contentWindow.print(). Tanpa frame-src, frame jatuh ke
-    // fallback default-src 'self' sehingga blob diblokir, iframe tidak pernah
-    // memuat, dan print() melempar SecurityError lintas-origin.
-    "frame-src 'self' blob:",
-    "form-action 'self'",
-    "img-src 'self' data: blob:",
-    "font-src 'self' data:",
-    "style-src 'self' 'unsafe-inline'",
-    `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"}`,
-    "connect-src 'self'",
-  ].join("; ");
-}
-
+// CSP dikirim per-request oleh src/proxy.ts dengan nonce (bukan header statis
+// di sini) supaya script-src produksi tidak perlu 'unsafe-inline'.
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  {
-    key: "Content-Security-Policy",
-    value: buildContentSecurityPolicy(process.env.NODE_ENV === "production"),
-  },
   { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
   // HSTS hanya di prod — di dev (http://localhost) header ini diabaikan browser.
   ...(process.env.NODE_ENV === "production"

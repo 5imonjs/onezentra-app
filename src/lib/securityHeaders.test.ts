@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import nextConfig, { buildContentSecurityPolicy } from '../../next.config.mjs';
+import { buildContentSecurityPolicy } from './csp';
 
 /**
  * Regresi bug cetak label batch di detail Validasi Dokumen:
@@ -7,32 +7,28 @@ import nextConfig, { buildContentSecurityPolicy } from '../../next.config.mjs';
  * `printBatchLabel` memuat PDF `blob:` ke <iframe> tersembunyi lalu memanggil
  * `contentWindow.print()`. CSP produksi hanya punya `default-src 'self'` dan
  * TIDAK punya `frame-src`, jadi frame blob jatuh ke fallback default-src,
- * diblokir, dan print() melempar:
+ * diblokir, dan print() melempar SecurityError.
  *
- *   Framing 'blob:...' violates ... "default-src 'self'"
- *   Uncaught SecurityError: Blocked a frame ... accessing a cross-origin frame
- *
- * Tes ini menahan konfigurasi agar `frame-src` selalu mengizinkan blob.
+ * Nonce diuji karena CSP sekarang dikirim per-request oleh proxy; script
+ * produksi tidak boleh lagi mengandalkan 'unsafe-inline'.
  */
 describe('Content-Security-Policy', () => {
-  async function cspHeader(): Promise<string> {
-    const groups = (await nextConfig.headers?.()) ?? [];
-    const header = groups
-      .flatMap((group) => group.headers)
-      .find((entry) => entry.key === 'Content-Security-Policy');
-
-    return header?.value ?? '';
-  }
-
-  it('mengizinkan frame blob: agar iframe cetak label bisa dimuat', async () => {
-    const csp = await cspHeader();
+  it('mengizinkan frame blob: agar iframe cetak label bisa dimuat', () => {
+    const csp = buildContentSecurityPolicy('nonce-uji', true);
 
     expect(csp).toContain('frame-src');
     expect(csp).toMatch(/frame-src[^;]*blob:/);
   });
 
-  it('menghilangkan unsafe-eval pada produksi', () => {
-    expect(buildContentSecurityPolicy(true)).not.toContain("'unsafe-eval'");
-    expect(buildContentSecurityPolicy(false)).toContain("'unsafe-eval'");
+  it('memakai nonce dan menghilangkan unsafe-inline script di produksi', () => {
+    const csp = buildContentSecurityPolicy('nonce-uji', true);
+
+    expect(csp).toContain("script-src 'self' 'nonce-nonce-uji' 'strict-dynamic'");
+    expect(csp).not.toContain("script-src 'self' 'unsafe-inline'");
+    expect(csp).not.toContain("'unsafe-eval'");
+  });
+
+  it('tetap mengizinkan unsafe-eval hanya untuk dev server', () => {
+    expect(buildContentSecurityPolicy('nonce-uji', false)).toContain("'unsafe-eval'");
   });
 });

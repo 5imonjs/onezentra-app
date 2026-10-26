@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Roboto } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
@@ -16,7 +17,17 @@ export const metadata: Metadata = {
   description: "Sistem manajemen gudang ONEZENTRA",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// CSP nonce dibuat per-request di proxy.ts. Next hanya menyisipkan nonce ke
+// script hydration pada render dinamis; halaman yang di-prerender statis akan
+// memakai HTML tanpa nonce dan diblokir browser. Karena itu semua halaman app
+// dirender dinamis (data operasional memang selalu butuh sesi terbaru).
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // next-themes menyuntikkan script inline untuk mencegah flash tema. Script
+  // itu juga harus memakai nonce request ini, bukan hanya script milik Next.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   // The theme script mutates <html> before React hydrates, so the
   // server-rendered markup intentionally disagrees with the first client
   // render. suppressHydrationWarning tells React that is expected.
@@ -38,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           {children}
         </ThemeProvider>
