@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -1668,11 +1669,60 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   }
 
   Future<void> _pickDate() async {
-    var picked = await showDatePicker(
+    var initial = _expiredDate ?? DateTime.now().add(const Duration(days: 30));
+    DateTime? picked;
+    await showCupertinoModalPopup(
       context: context,
-      initialDate: _expiredDate ?? DateTime.now().add(const Duration(days: 30)),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      builder: (_) => Container(
+        height: 260,
+        padding: const EdgeInsets.all(AppTheme.space4),
+        color: AppTheme.surface,
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: const BoxDecoration(
+                color: AppTheme.gray300,
+                borderRadius: AppTheme.radiusFull,
+              ),
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: initial,
+                minimumDate: DateTime(2000),
+                maximumDate: DateTime(2100),
+                onDateTimeChanged: (DateTime value) => picked = value,
+                backgroundColor: AppTheme.surface,
+                use24hFormat: false,
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Batal'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primary500,
+                      ),
+                      child: const Text('Pilih'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
     if (picked != null && mounted) {
       setState(() {
