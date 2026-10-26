@@ -1840,6 +1840,14 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          if (item.npnId != null)
+                            Text(
+                              'NPN: #${item.npnId}',
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 11,
+                                color: AppTheme.gray400,
+                              ),
+                            ),
                         ],
                       ),
                     ),
