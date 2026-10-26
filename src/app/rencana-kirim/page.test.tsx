@@ -164,6 +164,32 @@ describe('Rencana Kirim — pencarian Nama Barang (combobox NPN)', () => {
     expect(await screen.findByText(/Deskripsi Lengkap/)).toBeInTheDocument();
   });
 
+  it('menyimpan nickname sebagai nama barang setelah produk dipilih', async () => {
+    searchProduct.mockResolvedValueOnce({
+      data: {
+        data: [
+          {
+            ...product('B-CSP4OK', 'CSP4OK'),
+            szNickNameNew: 'CSP4OK NEW',
+            szShortDescription: 'Deskripsi Sama',
+          },
+        ],
+        total: 1,
+      },
+    });
+
+    const input = await openItemsModal();
+    fireEvent.change(input, { target: { value: 'csp4ok' } });
+
+    fireEvent.click(await screen.findByRole('button', { name: /CSP4OK/ }));
+
+    // Nama yang tersimpan harus identitas yang dicari, bukan short description
+    // yang bisa sama untuk dua produk berbeda.
+    expect(await screen.findByTitle('CSP4OK')).toBeInTheDocument();
+    expect(screen.getByText('B-CSP4OK')).toBeInTheDocument();
+    expect(screen.queryByText('Deskripsi Sama')).not.toBeInTheDocument();
+  });
+
   it('respons pencarian lama tidak menimpa hasil kata kunci terbaru', async () => {
     let resolveStale: ((v: { data: { data: unknown[]; total: number } }) => void) | undefined;
     searchProduct

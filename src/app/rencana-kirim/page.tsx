@@ -1075,7 +1075,11 @@ export default function RencanaKirimPage() {
       ...updated[index],
       npn_id: product.id,
       kode_barang: product.BOSnetszProductId,
-      nama_barang: product.szShortDescription || product.szNickName || product.szNickNameNew || '',
+      // Samakan dengan identitas yang dicari/dipilih di picker. Sebelumnya
+      // szShortDescription didahulukan, sehingga dua produk berbeda yang
+      // deskripsinya sama (atau deskripsinya tidak memuat nickname) tampak
+      // seperti satu produk dan nama yang tersimpan tidak sesuai pencarian.
+      nama_barang: product.szNickName || product.szNickNameNew || product.szShortDescription || '',
       satuan: product.SAPszUomId || updated[index].satuan,
       umur: typeof product.umur === 'number' ? product.umur : null,
       decVolume: product.decVolume != null ? Number(product.decVolume) : null,
