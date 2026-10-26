@@ -219,7 +219,7 @@ class DashboardController extends Controller
             // Satu query agregat untuk total + tren 7 hari, bukan dua count
             // terpisah (memangkas jumlah query dashboard per request).
             $aggregate = (clone $this->moduleQuery($key, $depot, $user))
-                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_7d', [$week])
+                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) as new_7d', [$week])
                 ->toBase()
                 ->first();
             $totals[$key] = (int) ($aggregate->total ?? 0);
