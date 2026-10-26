@@ -22,6 +22,7 @@
 # Backup DB manual (mis. dump role_permission) — artefak lokal, jangan commit.
 /storage/backups/
 !/storage/**/.gitkeep
+/public/storage
 
 # Bootstrap cache
 /bootstrap/cache/*.php
