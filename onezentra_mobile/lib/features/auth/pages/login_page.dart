@@ -486,7 +486,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               style: _fieldTextStyle(theme, isDark),
               cursorColor: isDark ? AppTheme.primary300 : AppTheme.primary600,
               decoration: _inputDecoration(
-                hint: 'https://api.onezentra.sbs',
+                hint: ApiClient.productionBaseUrl,
                 icon: Icons.link_outlined,
                 isDark: isDark,
                 errorText: _serverError,

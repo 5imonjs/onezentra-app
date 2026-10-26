@@ -111,7 +111,7 @@ device dan akan berakhir dengan pesan "Tidak ada koneksi ke server".
 ### Build Produksi (satu ekosistem dengan web)
 
 Build `release` otomatis memakai API produksi di server yang sama dengan web
-(`https://api.onezentra.sbs/api/v1`) — tanpa `--dart-define`:
+(`https://187.77.121.102/api/v1`) — tanpa `--dart-define`:
 
 ```bash
 flutter build apk --release
@@ -130,11 +130,15 @@ flutter build apk --release --dart-define=API_BASE_URL=https://api-lain/api/v1
 ### Ganti server tanpa rebuild
 
 Di layar login ada panel **Server** yang menampilkan alamat API aktif.
-Isi alamat baru (contoh `https://api.onezentra.sbs` atau `http://192.168.1.5:8000`)
+Isi alamat baru (contoh `https://187.77.121.102` atau `http://192.168.1.5:8000`)
 lalu Simpan — app langsung memakai server itu (sesi lama dibuang, login ulang).
 Tombol Bawaan mengembalikan ke default. Prioritas yang dipakai:
 `--dart-define` > pilihan panel Server > default release (API produksi) >
 default debug per platform.
+
+Server trial memakai sertifikat self-signed untuk IP. Aplikasi mem-pin
+sertifikat tersebut di `lib/core/network/api_client.dart`; jika sertifikat
+server diganti, build aplikasi harus diperbarui agar koneksi tidak ditolak.
 
 Catatan tambahan:
 

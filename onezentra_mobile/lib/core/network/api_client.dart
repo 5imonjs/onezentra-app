@@ -5,7 +5,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:onezentra_mobile/core/network/onezentra_ip_certificate.dart';
 
 /// API Client for OneZentra Mobile
 ///
@@ -28,16 +31,30 @@ class ApiClient {
   /// `flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8000/api/v1`
   static const String _overrideBaseUrl = String.fromEnvironment('API_BASE_URL');
 
+  /// Production API during the IP-only trial.
+  ///
+  /// The server uses a self-signed certificate for the IP. The exact
+  /// certificate is pinned in [_httpClient], so normal TLS verification stays
+  /// enabled for every other host.
+  static const String productionBaseUrl = 'https://187.77.121.102/api/v1';
+
+  /// The previous production URL. Existing installs may still have this saved
+  /// as a runtime override; [init] clears it so they move to [productionBaseUrl].
+  static const String _legacyProductionBaseUrl =
+      'https://api.onezentra.sbs/api/v1';
+
+  static const String _productionHost = '187.77.121.102';
+
   /// The Android emulator cannot reach the host machine on `localhost`.
   ///
   /// [kIsWeb] is checked first: `Platform.isAndroid` throws UnsupportedError
   /// in a web build (dart:io is not implemented there).
   static String get _platformBaseUrl {
     // Build release (APK/IPA produksi): langsung ke API produksi di server
-    // yang sama dengan web (api.onezentra.sbs) — tanpa --dart-define.
+    // yang sama dengan web — tanpa --dart-define.
     // Bisa tetap dioverride via API_BASE_URL bila perlu.
     if (kReleaseMode) {
-      return 'https://api.onezentra.sbs/api/v1';
+      return productionBaseUrl;
     }
     if (kIsWeb) {
       return 'http://localhost:8000/api/v1';
@@ -84,6 +101,31 @@ class ApiClient {
   /// Hard limit per request, so a dead network can never leave a loading
   /// indicator (or the login button) spinning forever.
   static const Duration requestTimeout = Duration(seconds: 20);
+
+  static http.Client? _httpClient;
+
+  /// Shared HTTP client that trusts the trial server's self-signed certificate.
+  ///
+  /// The callback only bypasses validation for the pinned production IP and
+  /// only when the certificate is byte-for-byte the one bundled with the app.
+  /// A renewed or replaced server certificate therefore fails closed until the
+  /// app is updated.
+  static http.Client get _client {
+    var cached = _httpClient;
+    if (cached != null) {
+      return cached;
+    }
+
+    var ioClient = HttpClient()
+      ..connectionTimeout = requestTimeout
+      ..badCertificateCallback = (certificate, host, port) =>
+          host == _productionHost &&
+          port == 443 &&
+          certificate.pem.trim() == oneZentraIpCertificatePem.trim();
+    cached = IOClient(ioClient);
+    _httpClient = cached;
+    return cached;
+  }
 
   static const String _tokenKey = 'auth_token';
   static const String _expiresAtKey = 'auth_token_expires_at';
@@ -162,8 +204,15 @@ class ApiClient {
     }
 
     var savedBaseUrl = prefs.getString(_apiBaseUrlKey);
+    _runtimeBaseUrl = null;
     if (savedBaseUrl != null && savedBaseUrl.isNotEmpty) {
-      _runtimeBaseUrl = normalizeBaseUrl(savedBaseUrl);
+      var normalized = normalizeBaseUrl(savedBaseUrl);
+      if (normalized == _legacyProductionBaseUrl) {
+        // Move existing installs from the old API domain to the trial IP.
+        await prefs.remove(_apiBaseUrlKey);
+      } else {
+        _runtimeBaseUrl = normalized;
+      }
     }
   }
 
@@ -180,8 +229,8 @@ class ApiClient {
           !kDebugMode && normalizeBaseUrl(trimmed, allowInsecure: true) != null;
       throw ApiException(
         insecureBlocked
-            ? 'Server harus menggunakan HTTPS. Contoh: https://api.onezentra.sbs'
-            : 'Alamat server tidak valid. Contoh: https://api.onezentra.sbs',
+            ? 'Server harus menggunakan HTTPS. Contoh: $productionBaseUrl'
+            : 'Alamat server tidak valid. Contoh: $productionBaseUrl',
         0,
       );
     }
@@ -372,7 +421,7 @@ class ApiClient {
   /// GET request
   Future<dynamic> get(String endpoint, {bool requireAuth = true}) => _send(
     endpoint,
-    () => http.get(
+    () => _client.get(
       _uri(endpoint),
       headers: _getHeaders(requireAuth: requireAuth),
     ),
@@ -386,7 +435,7 @@ class ApiClient {
     bool requireAuth = true,
   }) => _send(
     endpoint,
-    () => http.post(
+    () => _client.post(
       _uri(endpoint),
       headers: _getHeaders(requireAuth: requireAuth),
       body: jsonEncode(body),
@@ -413,7 +462,7 @@ class ApiClient {
         ..headers.addAll(_getHeaders(requireAuth: requireAuth, json: false))
         ..fields.addAll(fields);
       request.files.add(await http.MultipartFile.fromPath(fileField, filePath));
-      var streamed = await request.send();
+      var streamed = await _client.send(request);
       return http.Response.fromStream(streamed);
     },
     requireAuth: requireAuth,
@@ -427,7 +476,7 @@ class ApiClient {
     bool requireAuth = true,
   }) => _send(
     endpoint,
-    () => http.put(
+    () => _client.put(
       _uri(endpoint),
       headers: _getHeaders(requireAuth: requireAuth),
       body: jsonEncode(body),
@@ -442,7 +491,7 @@ class ApiClient {
     bool requireAuth = true,
   }) => _send(
     endpoint,
-    () => http.patch(
+    () => _client.patch(
       _uri(endpoint),
       headers: _getHeaders(requireAuth: requireAuth),
       body: jsonEncode(body),
@@ -453,7 +502,7 @@ class ApiClient {
   /// DELETE request
   Future<dynamic> delete(String endpoint, {bool requireAuth = true}) => _send(
     endpoint,
-    () => http.delete(
+    () => _client.delete(
       _uri(endpoint),
       headers: _getHeaders(requireAuth: requireAuth),
     ),

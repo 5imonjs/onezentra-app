@@ -14,8 +14,8 @@ void main() {
   group('normalizeBaseUrl', () {
     test('host polos dilengkapi https + /api/v1', () {
       expect(
-        ApiClient.normalizeBaseUrl('api.onezentra.sbs'),
-        'https://api.onezentra.sbs/api/v1',
+        ApiClient.normalizeBaseUrl('187.77.121.102'),
+        'https://187.77.121.102/api/v1',
       );
     });
 
@@ -77,13 +77,28 @@ void main() {
       expect(ApiClient().usesCustomBaseUrl, isFalse);
     });
 
+    test('URL produksi memakai IP trial', () {
+      expect(ApiClient.productionBaseUrl, 'https://187.77.121.102/api/v1');
+    });
+
+    test('override domain lama dimigrasikan ke IP', () async {
+      SharedPreferences.setMockInitialValues({
+        'api_base_url': 'https://api.onezentra.sbs/api/v1',
+      });
+
+      await ApiClient().init();
+
+      expect(ApiClient().usesCustomBaseUrl, isFalse);
+      expect(ApiClient().baseUrl, ApiClient.resolvedBaseUrl);
+    });
+
     test(
       'setBaseUrl tersimpan dan dipakai, reset kembali ke default',
       () async {
         var client = ApiClient();
-        var effective = await client.setBaseUrl('api.onezentra.sbs');
-        expect(effective, 'https://api.onezentra.sbs/api/v1');
-        expect(client.baseUrl, 'https://api.onezentra.sbs/api/v1');
+        var effective = await client.setBaseUrl('187.77.121.102');
+        expect(effective, 'https://187.77.121.102/api/v1');
+        expect(client.baseUrl, 'https://187.77.121.102/api/v1');
         expect(client.usesCustomBaseUrl, isTrue);
 
         // Sesi lama ikut dibuang saat server diganti.
