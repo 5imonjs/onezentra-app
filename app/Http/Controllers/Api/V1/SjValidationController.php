@@ -686,7 +686,8 @@ class SjValidationController extends Controller
 
         $validated = $request->validate([
             'barcode' => 'nullable|string|max:100',
-            'kode_barang' => 'required_without:barcode|nullable|string|max:50',
+            'npn_id' => 'nullable|integer|exists:npn,id',
+            'kode_barang' => 'required_without_all:barcode,npn_id|nullable|string|max:50',
             'nama_barang' => 'nullable|string|max:200',
             'qty' => 'required|numeric|min:0.01|max:999999',
             'satuan' => 'nullable|string|max:20',
@@ -698,10 +699,14 @@ class SjValidationController extends Controller
             ],
         ]);
 
-        // Barcode dipakai mengunci produk ke master data (NPN) — bukan teks
-        // bebas. Hanya NPN yang dikenal boleh mengisi identitas barang.
+        // Identitas barang dikunci ke master data (NPN) — bukan teks bebas.
+        // Prioritas sumber identitas: pilihan pencarian NPN (`npn_id`, pola
+        // combobox Rencana Kirim), lalu lookup barcode, lalu manual kode+nama
+        // untuk barang yang tidak tercatat di master.
         $npn = null;
-        if (! empty($validated['barcode'])) {
+        if (! empty($validated['npn_id'])) {
+            $npn = Npn::find($validated['npn_id']);
+        } elseif (! empty($validated['barcode'])) {
             $barcode = trim($validated['barcode']);
             $npn = Npn::where(function ($q) use ($barcode) {
                 $q->where('BOSnetszProductId', $barcode)

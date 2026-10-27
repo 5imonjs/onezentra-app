@@ -149,6 +149,57 @@ class SjValidationExtraItemTest extends TestCase
         ]);
     }
 
+    public function test_pilihan_npn_id_mengunci_identitas_dan_satuan_dari_master(): void
+    {
+        // Pola combobox Rencana Kirim: klien memilih produk dari pencarian NPN
+        // lalu mengirim `npn_id` — identitas & satuan wajib mengikuti master,
+        // nilai manual yang dikirim bersamanya tidak boleh menimpa.
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']));
+        Storage::fake('public');
+        $rk = $this->rencanaKirim($user);
+        $validation = $this->inProgressValidation($user, $rk);
+
+        $npn = Npn::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'BOSnetszProductId' => 'SKU-NPN-77',
+            'szNickName' => 'Minyak Goreng 2L',
+            'SAPszUomId' => 'CRT',
+        ]);
+
+        $response = $this->post("/api/v1/sj-validations/{$validation->id}/extra-items", [
+            'npn_id' => $npn->id,
+            'kode_barang' => 'Nilai-manual-harus-tertimpa',
+            'nama_barang' => 'Nilai manual',
+            'satuan' => 'SAK',
+            'qty' => 5,
+            'photo' => UploadedFile::fake()->image('bukti.jpg'),
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('sj_validation_extra_items', [
+            'sj_validation_id' => $validation->id,
+            'npn_id' => $npn->id,
+            'kode_barang' => 'SKU-NPN-77',
+            'nama_barang' => 'Minyak Goreng 2L',
+            'satuan' => 'CRT',
+            'qty' => 5,
+        ]);
+    }
+
+    public function test_npn_id_tidak_dikenal_ditolak(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']));
+        $rk = $this->rencanaKirim($user);
+        $validation = $this->inProgressValidation($user, $rk);
+
+        $this->post("/api/v1/sj-validations/{$validation->id}/extra-items", [
+            'npn_id' => 999999,
+            'qty' => 1,
+            'photo' => UploadedFile::fake()->image('bukti.jpg'),
+        ])->assertStatus(422)->assertJsonValidationErrors(['npn_id']);
+    }
+
     public function test_barang_tidak_dikenal_ditolak(): void
     {
         Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']));
