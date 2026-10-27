@@ -674,6 +674,12 @@ export const sjValidations = {
   deleteItem: (id: number, itemId: number) => apiClient.delete(`/sj-validations/${id}/items/${itemId}`),
   complete: (id: number) => apiClient.post(`/sj-validations/${id}/complete`),
   cancel: (id: number) => apiClient.post(`/sj-validations/${id}/cancel`),
+  // Barang di luar rencana kirim (deviation record): foto bukti wajib, jadi
+  // selalu multipart — pola sama dengan `scan` ber-FotoData.
+  reportExtraItem: (id: number, data: FormData) =>
+    apiClient.post(`/sj-validations/${id}/extra-items`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 };
 
 export const reports = {
