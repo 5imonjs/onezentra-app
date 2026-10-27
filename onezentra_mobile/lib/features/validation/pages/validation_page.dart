@@ -9,7 +9,6 @@ import 'package:onezentra_mobile/features/validation/models/validation_models.da
 import 'package:onezentra_mobile/features/validation/pages/validation_session_page.dart';
 import 'package:onezentra_mobile/features/validation/providers/validation_provider.dart';
 import 'package:onezentra_mobile/features/validation/repositories/validation_repository.dart';
-import 'package:onezentra_mobile/features/validation/widgets/validation_history_card.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Resolves a photo path; [fromCamera] selects camera vs gallery.
@@ -170,11 +169,6 @@ class _ValidationPageState extends State<ValidationPage> {
                         _buildScanCard(validation, canCreate: canCreate),
                       ],
                     );
-                    var history = ValidationHistoryCard(
-                      validation: validation,
-                      onOpen: (session) => validation.openSession(session.id),
-                    );
-
                     return SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
@@ -193,7 +187,6 @@ class _ValidationPageState extends State<ValidationPage> {
                               const SizedBox(height: AppTheme.space4),
                               work,
                               const SizedBox(height: AppTheme.space4),
-                              history,
                             ],
                           ),
                         ),
