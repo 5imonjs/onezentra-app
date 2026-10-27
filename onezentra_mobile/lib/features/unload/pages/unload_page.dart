@@ -119,8 +119,6 @@ class _UnloadPageState extends State<UnloadPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildStatsHeader(unload),
-                              const SizedBox(height: AppTheme.space4),
                               _buildCheckoutCard(unload, canEdit: canEdit),
                               const SizedBox(height: AppTheme.space4),
                               _buildReceivingList(unload),
@@ -133,142 +131,6 @@ class _UnloadPageState extends State<UnloadPage> {
                   },
                 ),
               ),
-      ),
-    );
-  }
-
-  Widget _buildStatsHeader(UnloadProvider unload) {
-    var stats = [
-      AppStatTile(
-        label: 'Total',
-        value: unload.stats.total,
-        dotColor: Colors.white,
-      ),
-      AppStatTile(
-        label: 'Menunggu',
-        value: unload.stats.pending,
-        dotColor: AppTheme.warning,
-      ),
-      AppStatTile(
-        label: 'Diproses',
-        value: unload.stats.inProgress,
-        dotColor: AppTheme.primary500,
-      ),
-      AppStatTile(
-        label: 'Selesai',
-        value: unload.stats.completed,
-        dotColor: AppTheme.success,
-      ),
-    ];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.space5),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppTheme.ink900, AppTheme.ink800],
-        ),
-        borderRadius: AppTheme.radius2xl,
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.ink900.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: AppTheme.radiusLg,
-                ),
-                child: const Icon(
-                  Icons.forklift,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: AppTheme.space3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Ringkasan receiving aktif',
-                      style: GoogleFonts.roboto(
-                        fontSize: 18,
-                        height: 1.2,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Pantau status dan konfirmasi penyelesaian bongkar.',
-                      style: GoogleFonts.roboto(
-                        fontSize: 12,
-                        height: 1.4,
-                        color: AppTheme.gray400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.space5),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth < 520) {
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: stats[0]),
-                        const SizedBox(width: AppTheme.space2),
-                        Expanded(child: stats[1]),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.space2),
-                    Row(
-                      children: [
-                        Expanded(child: stats[2]),
-                        const SizedBox(width: AppTheme.space2),
-                        Expanded(child: stats[3]),
-                      ],
-                    ),
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  for (var i = 0; i < stats.length; i++) ...[
-                    if (i > 0) const SizedBox(width: AppTheme.space2),
-                    Expanded(child: stats[i]),
-                  ],
-                ],
-              );
-            },
-          ),
-          if (unload.statsError != null) ...[
-            const SizedBox(height: AppTheme.space3),
-            Text(
-              'Statistik gagal dimuat — tarik untuk mencoba lagi.',
-              style: GoogleFonts.roboto(fontSize: 11, color: AppTheme.gray400),
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -1213,7 +1075,7 @@ class _UnloadPageState extends State<UnloadPage> {
         const Icon(
           Icons.info_outline_rounded,
           size: 16,
-          color: AppTheme.gray400,
+          color: AppTheme.gray200,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -1222,7 +1084,7 @@ class _UnloadPageState extends State<UnloadPage> {
             style: GoogleFonts.roboto(
               fontSize: 12,
               height: 1.4,
-              color: AppTheme.gray300,
+              color: Colors.white,
             ),
           ),
         ),
