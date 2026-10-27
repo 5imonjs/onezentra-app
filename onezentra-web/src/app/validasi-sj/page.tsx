@@ -4,10 +4,13 @@ import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import DashboardLayout from '@/app/dashboard/layout';
-import { getErrorMessage, sjValidations, batches, depo } from '@/lib/api';
+import { getErrorMessage, sjValidations, batches, depo, npn } from '@/lib/api';
 import Modal from '@/components/Modal';
 import BarcodeScanner, { SCAN_FORMATS_1D } from '@/components/BarcodeScanner';
 import SearchInput from '@/components/SearchInput';
+import NpnSearchInput, { type NpnProduct } from '@/components/NpnSearchInput';
+import PhotoEvidenceInput from '@/components/PhotoEvidenceInput';
+import { CONDITION_LABELS } from '@/lib/condition';
 import { notifyGlobal } from '@/store/globalToast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useAuthStore } from '@/store/auth';
@@ -103,15 +106,6 @@ const itemStatusLabel: Record<string, string> = {
   PENDING: 'Menunggu',
   VALIDATED: 'Tervalidasi',
   MISMATCH: 'Selisih',
-};
-
-const conditionLabels: Record<string, string> = {
-  FISIK_BAGUS: 'Fisik Bagus',
-  FISIK_RUSAK: 'Fisik Rusak',
-  QTY_KURANG: 'Qty Kurang',
-  ISI_KEMASAN_KURANG: 'Isi Kemasan Kurang',
-  EXPIRED_TIDAK_STANDAR: 'Expired / Tidak Standar',
-  LAINNYA: 'Lainnya',
 };
 
 const emptyForm = { actual_qty: '', expired_date: '', condition: 'FISIK_BAGUS', notes: '', barcode: '', tier: 1, tinggi_tumpukan: 1 };
@@ -266,11 +260,24 @@ export default function ValidasiSjPage() {
   const [busy, setBusy] = useState(false);
   // Barang di luar rencana kirim (deviation record): modal + form terpisah
   // dari item rencana. Foto bukti selalu wajib — menggantikan catatan kertas.
-  const emptyExtraForm = { barcode: '', kode_barang: '', nama_barang: '', qty: '', satuan: '', condition: 'FISIK_BAGUS', expired_date: '', notes: '' };
+  // Identitas mengikuti pola Rencana Kirim: pilih dari master NPN (npn_id,
+  // kode/nama/satuan ikut master), fallback manual kode+nama bila tidak cocok.
+  const emptyExtraForm: {
+    barcode: string;
+    kode_barang: string;
+    nama_barang: string;
+    qty: string;
+    satuan: string;
+    condition: string;
+    expired_date: string;
+    notes: string;
+    npn_id: number | null;
+  } = { barcode: '', kode_barang: '', nama_barang: '', qty: '', satuan: '', condition: 'FISIK_BAGUS', expired_date: '', notes: '', npn_id: null };
   const [extraOpen, setExtraOpen] = useState(false);
   const [extraForm, setExtraForm] = useState(emptyExtraForm);
   const [extraPhoto, setExtraPhoto] = useState<File | null>(null);
-  const [extraPhotoPreview, setExtraPhotoPreview] = useState('');
+  const [extraNpn, setExtraNpn] = useState<NpnProduct | null>(null);
+  const [extraScannerOpen, setExtraScannerOpen] = useState(false);
   // Target pembatalan = baris tabel (satu PO transporter beserta seluruh
   // itemnya), bukan modal item. `null` = dialog tertutup.
   const [cancelTarget, setCancelTarget] = useState<Validation | null>(null);
@@ -512,11 +519,12 @@ export default function ValidasiSjPage() {
    */
   const saveExtraItem = async () => {
     if (!active || !hasQty(extraForm.qty) || !extraPhoto) return;
-    // Identitas barang harus bisa dilacak: barcode (dikunci ke master NPN di
-    // server) atau kode + nama manual lengkap. Tanpa itu backend menolak dan
-    // pesannya jauh lebih sulit dipahami dari sini.
-    if (!extraForm.barcode && (!extraForm.kode_barang || !extraForm.nama_barang)) {
-      notifyGlobal('Isi barcode, atau kode + nama barang manual.', 'error');
+    // Identitas barang harus bisa dilacak: pilihan master NPN, barcode
+    // (dikunci ke master NPN di server), atau kode + nama manual lengkap.
+    // Tanpa itu backend menolak dan pesannya jauh lebih sulit dipahami
+    // dari sini.
+    if (!extraNpn && !extraForm.barcode && (!extraForm.kode_barang || !extraForm.nama_barang)) {
+      notifyGlobal('Pilih barang dari master NPN, atau isi barcode / kode + nama barang manual.', 'error');
       return;
     }
     setBusy(true);
@@ -524,10 +532,17 @@ export default function ValidasiSjPage() {
       const payload = new FormData();
       payload.append('qty', String(extraForm.qty));
       payload.append('condition', extraForm.condition);
-      if (extraForm.barcode) payload.append('barcode', extraForm.barcode);
-      if (extraForm.kode_barang) payload.append('kode_barang', extraForm.kode_barang);
-      if (extraForm.nama_barang) payload.append('nama_barang', extraForm.nama_barang);
-      if (extraForm.satuan) payload.append('satuan', extraForm.satuan);
+      if (extraNpn) {
+        // Identitas terkunci ke master: npn_id yang memutuskan, server akan
+        // menimpa kode/nama/satuan dengan master — nilai manual tidak dikirim.
+        payload.append('npn_id', String(extraNpn.id));
+        if (extraForm.barcode) payload.append('barcode', extraForm.barcode);
+      } else {
+        if (extraForm.barcode) payload.append('barcode', extraForm.barcode);
+        if (extraForm.kode_barang) payload.append('kode_barang', extraForm.kode_barang);
+        if (extraForm.nama_barang) payload.append('nama_barang', extraForm.nama_barang);
+        if (extraForm.satuan) payload.append('satuan', extraForm.satuan);
+      }
       if (extraForm.expired_date) payload.append('expired_date', extraForm.expired_date);
       if (extraForm.notes) payload.append('notes', extraForm.notes);
       payload.append('photo', extraPhoto);
@@ -537,7 +552,7 @@ export default function ValidasiSjPage() {
       setExtraOpen(false);
       setExtraForm(emptyExtraForm);
       setExtraPhoto(null);
-      setExtraPhotoPreview('');
+      setExtraNpn(null);
       loadItems();
       loadStats();
       notifyGlobal('Barang luar rencana tercatat — planner telah diberi tahu.', 'success');
@@ -545,6 +560,50 @@ export default function ValidasiSjPage() {
       notifyGlobal(getErrorMessage(error, 'Gagal melaporkan barang luar rencana.'), 'error');
     } finally {
       setBusy(false);
+    }
+  };
+
+  /** Pilih barang dari pencarian master NPN — kode/nama/satuan ikut master. */
+  const handleExtraNpnSelect = (product: NpnProduct) => {
+    setExtraNpn(product);
+    setExtraForm((prev) => ({
+      ...prev,
+      npn_id: product.id,
+      kode_barang: product.BOSnetszProductId,
+      nama_barang: product.szNickName || product.szShortDescription || product.szNickNameNew || '',
+      satuan: product.SAPszUomId || prev.satuan,
+    }));
+  };
+
+  /** Buka kunci identitas — kembali ke mode manual/scan. */
+  const handleExtraNpnClear = () => {
+    setExtraNpn(null);
+    setExtraForm((prev) => ({ ...prev, npn_id: null, kode_barang: '', nama_barang: '', satuan: '' }));
+  };
+
+  /**
+   * Barcode hasil kamera diisi ke form, lalu dicocokkan ke master NPN —
+   * mirip perilaku validasi item rencana yang barcode-nya dikunci server.
+   * Ketika tepat satu produk cocok, identitas langsung dikunci; kalau lebih
+   * dari satu atau tidak ada, barcode tetap terisi dan operator memilih/
+   * menulis manual.
+   */
+  const handleExtraScan = async (detected: string) => {
+    setExtraScannerOpen(false);
+    setExtraForm((prev) => ({ ...prev, barcode: detected }));
+    try {
+      const res = await npn.searchProduct(detected, { limit: 50 });
+      const products: NpnProduct[] = res.data?.data ?? [];
+      const byCode = products.filter(
+        (p) => p.BOSnetszProductId === detected || p.SAPszProductId === detected,
+      );
+      const match = byCode.length === 1 ? byCode[0] : products.length === 1 ? products[0] : null;
+      if (match) {
+        handleExtraNpnSelect(match);
+        notifyGlobal(`Barang dikenali: ${match.szNickName || match.BOSnetszProductId}`, 'success');
+      }
+    } catch {
+      // Pencarian gagal (mis. offline): biarkan operator isi manual.
     }
   };
 
@@ -1317,7 +1376,7 @@ export default function ValidasiSjPage() {
                     </div>
                   </div>
                   {active.status === 'IN_PROGRESS' && hasPermission('sj_validation.extra') && (
-                    <button type="button" onClick={() => { setExtraForm(emptyExtraForm); setExtraPhoto(null); setExtraPhotoPreview(''); setExtraOpen(true); }} className="btn-primary inline-flex w-fit items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold">
+                    <button type="button" onClick={() => { setExtraForm(emptyExtraForm); setExtraPhoto(null); setExtraNpn(null); setExtraOpen(true); }} className="btn-primary inline-flex w-fit items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold">
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                       Laporkan Barang
                     </button>
@@ -1332,7 +1391,7 @@ export default function ValidasiSjPage() {
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-sm font-bold text-slate-800">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-slate-500">{extra.kode_barang}</span></p>
                           <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
-                            {extra.qty} {extra.satuan || ''} · {conditionLabels[extra.condition] || extra.condition}
+                            {extra.qty} {extra.satuan || ''} · {CONDITION_LABELS[extra.condition] || extra.condition}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500">
@@ -1455,7 +1514,7 @@ export default function ValidasiSjPage() {
               </div>
               <label className="block text-xs font-bold text-slate-600">Kondisi <span className="text-accent-text">*</span>
                 <select value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className="select-field mt-1.5 w-full py-2.5 text-sm">
-                  {Object.entries(conditionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {Object.entries(CONDITION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </label>
             </div>
@@ -1503,15 +1562,17 @@ export default function ValidasiSjPage() {
         )}
       </Modal>
 
-      {/* Modal Barang di Luar Rencana — foto bukti wajib, rencana tidak diubah. */}
+      {/* Modal Barang di Luar Rencana — foto bukti wajib, rencana tidak diubah.
+          Struktur mengikuti modal Validasi Item: Data pemeriksaan (qty+expired),
+          Identifikasi & kondisi, foto, catatan. */}
       <Modal open={extraOpen} onClose={() => setExtraOpen(false)} title="Barang di Luar Rencana" subtitle="Barang dibawa transporter tapi tidak ada di rencana kirim." size="lg" footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <button type="button" onClick={() => setExtraOpen(false)} className="btn-secondary w-full sm:w-auto">Batal</button>
           <button
             type="button"
             onClick={saveExtraItem}
-            disabled={busy || !hasQty(extraForm.qty) || !extraPhoto || (!extraForm.barcode && (!extraForm.kode_barang || !extraForm.nama_barang))}
-            title={!extraPhoto ? 'Foto bukti wajib diunggah' : ((!extraForm.barcode && (!extraForm.kode_barang || !extraForm.nama_barang)) ? 'Isi barcode, atau kode + nama barang manual' : undefined)}
+            disabled={busy || !hasQty(extraForm.qty) || !extraPhoto || (!extraNpn && !extraForm.barcode && (!extraForm.kode_barang || !extraForm.nama_barang))}
+            title={!extraPhoto ? 'Foto bukti wajib diunggah' : ((!extraNpn && !extraForm.barcode && (!extraForm.kode_barang || !extraForm.nama_barang)) ? 'Pilih barang dari master NPN, atau isi barcode / kode + nama manual' : undefined)}
             className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
@@ -1527,79 +1588,107 @@ export default function ValidasiSjPage() {
             </p>
           </div>
 
+          {/* Identitas dulu — sama seperti modal Validasi Item yang selalu
+              menampilkan identitas barang sebelum form pemeriksaan. */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-              <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Identitas barang</h3>
+              <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Identifikasi &amp; kondisi</h3>
             </div>
+            <label className="block text-xs font-bold text-slate-600">Barang dari master NPN
+              <div className="mt-1.5">
+                <NpnSearchInput
+                  inputId="extra-npn"
+                  namaValue={extraNpn ? (extraNpn.szNickName || extraNpn.szShortDescription || extraNpn.szNickNameNew) : ''}
+                  onSelect={handleExtraNpnSelect}
+                  onClear={handleExtraNpnClear}
+                />
+              </div>
+            </label>
+            {extraNpn && (
+              <p className="text-[11px] text-slate-500">
+                Kode master: <span className="font-mono font-semibold text-slate-700">{extraNpn.BOSnetszProductId}</span>
+                {extraNpn.SAPszUomId ? ` · Satuan: ${extraNpn.SAPszUomId}` : ''}
+              </p>
+            )}
+            {!extraNpn && (
+              <p className="text-[11px] text-slate-500">Cari nama/kode/barcode barang. Tidak ada di master? Lanjutkan dengan barcode/kode + nama manual di bawah.</p>
+            )}
+
+            {!extraNpn && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-bold text-slate-600">Barcode
+                  <div className="mt-1.5 flex gap-2">
+                    <input type="text" value={extraForm.barcode} onChange={(e) => setExtraForm({ ...extraForm, barcode: e.target.value })} placeholder="Scan / ketik barcode kemasan" className="input-field flex-1 py-2.5 font-mono text-sm" />
+                    <button type="button" onClick={() => setExtraScannerOpen(true)} className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-ink-900 px-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98]" title="Pindai barcode dengan kamera">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.5 6.5h2v2h-2v-2zm9 0h2v2h-2v-2zm-9 9h2v2h-2v-2zm9 0h2v2h-2v-2zm-9-4.5h2v2h-2v-2zm4.5-4.5h2v2h-2v-2zm0 4.5h2v2h-2v-2zm-4.5 0h2v2h-2v-2zm9 0h2v2h-2v-2zm0 4.5h2v2h-2v-2zm-4.5 0h2v2h-2v-2zM3 3h3v1.5H4.5V6H3V3zm15 0h3v3h-1.5V4.5H18V3zM3 18h3v1.5H4.5V21H3v-3zm15 0h3v3h-1.5v-1.5H18V18z" /></svg>
+                      Pindai
+                    </button>
+                  </div>
+                </label>
+                <label className="block text-xs font-bold text-slate-600">Satuan <span className="font-medium text-slate-400">(opsional)</span>
+                  <input type="text" value={extraForm.satuan} onChange={(e) => setExtraForm({ ...extraForm, satuan: e.target.value })} placeholder="CRT / ZAK / PCS" className="input-field mt-1.5 py-2.5 text-sm uppercase" />
+                </label>
+                <label className="block text-xs font-bold text-slate-600">Kode Barang <span className={`${extraForm.barcode ? 'font-medium text-slate-400' : 'text-accent-text'}`}>{extraForm.barcode ? '(opsional bila barcode dikenal)' : '*'}</span>
+                  <input type="text" value={extraForm.kode_barang} onChange={(e) => setExtraForm({ ...extraForm, kode_barang: e.target.value })} placeholder="Dari kertas / manual" className="input-field mt-1.5 py-2.5 font-mono text-sm" />
+                </label>
+                <label className="block text-xs font-bold text-slate-600">Nama Barang <span className={`${extraForm.barcode ? 'font-medium text-slate-400' : 'text-accent-text'}`}>{extraForm.barcode ? '(opsional bila barcode dikenal)' : '*'}</span>
+                  <input type="text" value={extraForm.nama_barang} onChange={(e) => setExtraForm({ ...extraForm, nama_barang: e.target.value })} placeholder="Nama barang" className="input-field mt-1.5 py-2.5 text-sm" />
+                </label>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-bold text-slate-600">Barcode
-                <input type="text" value={extraForm.barcode} onChange={(e) => setExtraForm({ ...extraForm, barcode: e.target.value })} placeholder="Scan / ketik barcode kemasan" className="input-field mt-1.5 py-2.5 font-mono text-sm" />
-              </label>
-              <label className="block text-xs font-bold text-slate-600">Satuan <span className="font-medium text-slate-400">(opsional)</span>
-                <input type="text" value={extraForm.satuan} onChange={(e) => setExtraForm({ ...extraForm, satuan: e.target.value })} placeholder="CRT / ZAK / PCS" className="input-field mt-1.5 py-2.5 text-sm uppercase" />
-              </label>
-              <label className="block text-xs font-bold text-slate-600">Kode Barang <span className={`${extraForm.barcode ? 'font-medium text-slate-400' : 'text-accent-text'}`}>{extraForm.barcode ? '(opsional bila barcode dikenal)' : '*'}</span>
-                <input type="text" value={extraForm.kode_barang} onChange={(e) => setExtraForm({ ...extraForm, kode_barang: e.target.value })} placeholder="Dari kertas / manual" className="input-field mt-1.5 py-2.5 font-mono text-sm" />
-              </label>
-              <label className="block text-xs font-bold text-slate-600">Nama Barang <span className={`${extraForm.barcode ? 'font-medium text-slate-400' : 'text-accent-text'}`}>{extraForm.barcode ? '(opsional bila barcode dikenal)' : '*'}</span>
-                <input type="text" value={extraForm.nama_barang} onChange={(e) => setExtraForm({ ...extraForm, nama_barang: e.target.value })} placeholder="Nama barang" className="input-field mt-1.5 py-2.5 text-sm" />
-              </label>
               <label className="block text-xs font-bold text-slate-600">Jumlah <span className="text-accent-text">*</span>
-                <input type="number" min="0.01" value={extraForm.qty} onChange={(e) => setExtraForm({ ...extraForm, qty: e.target.value })} className="input-field mt-1.5 py-2.5 text-sm font-semibold" />
+                <div className="relative mt-1.5">
+                  <input type="number" min="0.01" value={extraForm.qty} onChange={(e) => setExtraForm({ ...extraForm, qty: e.target.value })} className="input-field py-2.5 pr-14 text-sm font-semibold" />
+                  {extraNpn?.SAPszUomId && (
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] font-bold uppercase text-slate-400">{extraNpn.SAPszUomId}</span>
+                  )}
+                </div>
               </label>
               <label className="block text-xs font-bold text-slate-600">Kondisi <span className="text-accent-text">*</span>
                 <select value={extraForm.condition} onChange={(e) => setExtraForm({ ...extraForm, condition: e.target.value })} className="select-field mt-1.5 w-full py-2.5 text-sm">
-                  {Object.entries(conditionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {Object.entries(CONDITION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </label>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
+              <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Data pemeriksaan</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block text-xs font-bold text-slate-600">Expired Date <span className="font-medium text-slate-400">(opsional)</span>
                 <input type="date" value={extraForm.expired_date} onChange={(e) => setExtraForm({ ...extraForm, expired_date: e.target.value })} className="input-field mt-1.5 py-2.5 text-sm" />
               </label>
             </div>
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-amber-200 bg-linear-to-br from-amber-50 to-orange-50/50 p-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
-                <svg className="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-amber-900">Foto bukti wajib <span className="text-accent-text">*</span></p>
-                <p className="text-[11px] text-amber-700 mt-0.5">Menggantikan catatan manual di kertas — ambil langsung atau pilih dari galeri.</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <label className="flex-1 cursor-pointer">
-                <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-surface-card px-3 py-3 text-center transition-colors hover:bg-amber-50">
-                  <svg className="w-6 h-6 text-amber-500 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                  <p className="text-[11px] font-bold text-amber-700">Kamera</p>
-                </div>
-                <input type="file" accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files?.[0] ?? null; setExtraPhoto(f); setExtraPhotoPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return f ? URL.createObjectURL(f) : ''; }); }} className="sr-only" aria-label="Ambil foto dari kamera" />
-              </label>
-              <label className="flex-1 cursor-pointer">
-                <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-surface-card px-3 py-3 text-center transition-colors hover:bg-amber-50">
-                  <svg className="w-6 h-6 text-amber-500 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
-                  <p className="text-[11px] font-bold text-amber-700">Galeri</p>
-                </div>
-                <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0] ?? null; setExtraPhoto(f); setExtraPhotoPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return f ? URL.createObjectURL(f) : ''; }); }} className="sr-only" aria-label="Pilih foto dari galeri" />
-              </label>
-            </div>
-            {extraPhotoPreview && (
-              <div className="relative rounded-xl overflow-hidden border border-amber-200 bg-surface-card">
-                <Image src={extraPhotoPreview} alt="Pratinjau foto bukti" className="w-full h-48 object-cover" width={400} height={200} unoptimized />
-                <button type="button" onClick={() => { setExtraPhoto(null); setExtraPhotoPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return ''; }); }} className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-colors" aria-label="Hapus foto">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
-            )}
-          </div>
+          <PhotoEvidenceInput
+            file={extraPhoto}
+            onChange={setExtraPhoto}
+            title="Foto bukti wajib"
+            subtitle="Menggantikan catatan manual di kertas — ambil langsung atau pilih dari galeri."
+            alt="Pratinjau foto bukti"
+          />
 
           <label className="block text-xs font-bold text-slate-600">Catatan <span className="font-medium text-slate-400">(opsional)</span>
             <textarea value={extraForm.notes} onChange={(e) => setExtraForm({ ...extraForm, notes: e.target.value })} placeholder="Keterangan tambahan..." className="input-field mt-1.5 min-h-22 resize-y py-2.5 text-sm" rows={3} />
           </label>
         </div>
       </Modal>
+
+      <BarcodeScanner
+        open={extraScannerOpen}
+        onClose={() => setExtraScannerOpen(false)}
+        formats={SCAN_FORMATS_1D}
+        title="Pindai Barcode Barang"
+        subtitle="Arahkan kamera ke barcode pada kemasan produk"
+        onDetected={handleExtraScan}
+      />
 
       {/* Standar Umur Popup Overlay */}
       {showUmurPopup && (
