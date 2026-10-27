@@ -1219,4 +1219,113 @@ void main() {
     expect(button.style?.backgroundColor?.resolve({}), AppTheme.warningText);
     expect(button.style?.foregroundColor?.resolve({}), AppTheme.ink900);
   });
+
+  testWidgets('section barang luar rencana menampilkan catatan tersimpan', (
+    tester,
+  ) async {
+    const extraSession = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      document: ValidationDocument(
+        id: 11,
+        poTransporter: 'PO-042',
+        nopol: 'B 9999 ZZ',
+        driverName: 'Andi',
+        status: 'CHECKED_IN',
+      ),
+      items: [
+        SjValidationItem(
+          id: 31,
+          validationId: 9,
+          npnId: 501,
+          kodeBarang: 'BRG-1',
+          namaBarang: 'Gula 50kg',
+          expectedQty: 100,
+          expiredDate: '2027-01-31',
+          actualQty: 100,
+          satuan: 'zak',
+          status: 'VALIDATED',
+          standarisasi: ItemStandarisasi(
+            tier: 4,
+            tinggiTumpukan: 6,
+            status: 'approved',
+          ),
+        ),
+      ],
+      extraItems: [
+        SjValidationExtraItem(
+          id: 71,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-1',
+          namaBarang: 'Kopi Special Grade',
+          qty: 2,
+          satuan: 'CRT',
+          notes: 'Ditulis manual di kertas',
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+    var auth = await _loginAuth(
+      permissions: [..._fullValidationPermissions, 'sj_validation.extra'],
+    );
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpSessionPage(tester, auth, provider, extraSession);
+
+    // Section header + row tersimpan.
+    expect(find.text('Barang luar rencana'), findsOneWidget);
+    expect(find.text('Kopi Special Grade'), findsOneWidget);
+    expect(
+      find.textContaining('SKU-LUAR-1 • Fisik bagus • Ditulis manual'),
+      findsOneWidget,
+    );
+    expect(find.text('2 CRT'), findsOneWidget);
+    // Operator dengan izin bisa melaporkan catatan baru.
+    expect(find.text('Laporkan barang luar rencana'), findsOneWidget);
+  });
+
+  testWidgets('tombol lapor tersembunyi tanpa izin barang luar rencana', (
+    tester,
+  ) async {
+    const extraSession = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      document: ValidationDocument(
+        id: 11,
+        poTransporter: 'PO-042',
+        nopol: 'B 9999 ZZ',
+        driverName: 'Andi',
+        status: 'CHECKED_IN',
+      ),
+      items: [
+        SjValidationItem(
+          id: 31,
+          validationId: 9,
+          npnId: 501,
+          kodeBarang: 'BRG-1',
+          namaBarang: 'Gula 50kg',
+          expectedQty: 100,
+          expiredDate: '2027-01-31',
+          actualQty: 100,
+          satuan: 'zak',
+          status: 'VALIDATED',
+          standarisasi: ItemStandarisasi(
+            tier: 4,
+            tinggiTumpukan: 6,
+            status: 'approved',
+          ),
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+    // Izin default TIDAK memuat sj_validation.extra — sesi berjalan tetap
+    // tampil tanpa tombol lapor.
+    var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpSessionPage(tester, auth, provider, extraSession);
+
+    expect(find.text('Barang luar rencana'), findsNothing);
+    expect(find.text('Laporkan barang luar rencana'), findsNothing);
+  });
 }

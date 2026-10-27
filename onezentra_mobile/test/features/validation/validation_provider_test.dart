@@ -64,6 +64,56 @@ class _SearchRaceRepository extends ValidationRepository {
   Future<ValidationStats> stats() async => const ValidationStats();
 }
 
+class _ExtraFakeRepository extends ValidationRepository {
+  _ExtraFakeRepository(this.session, {this.reportError});
+  SjValidation session;
+  final Object? reportError;
+  final List<String?> reportKodeBarang = [];
+  final List<String?> reportPhotoPath = [];
+  var showCalls = 0;
+
+  @override
+  Future<SjValidation> startByCode(String scanCode) async => session;
+
+  @override
+  Future<SjValidation> show(int id) async {
+    showCalls++;
+    return session;
+  }
+
+  @override
+  Future<SjValidationExtraItem> reportExtraItem({
+    required int validationId,
+    required double qty,
+    required String photoPath,
+    String? barcode,
+    String? kodeBarang,
+    String? namaBarang,
+    String? satuan,
+    String condition = 'FISIK_BAGUS',
+    String? expiredDate,
+    String? notes,
+  }) async {
+    reportKodeBarang.add(kodeBarang);
+    reportPhotoPath.add(photoPath);
+    var error = reportError;
+    if (error != null) {
+      throw error;
+    }
+    return SjValidationExtraItem(
+      id: 71,
+      validationId: validationId,
+      kodeBarang: kodeBarang ?? 'SKU-LUAR-1',
+      namaBarang: namaBarang ?? 'Barang di Luar Rencana',
+      qty: qty,
+      satuan: satuan,
+      condition: condition,
+      expiredDate: expiredDate,
+      notes: notes,
+    );
+  }
+}
+
 void main() {
   test('scan baru membuang sesi lama selama pemindaian berjalan', () async {
     var pending = Completer<SjValidation>();
@@ -168,6 +218,52 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(provider.items.single.scanCode, 'PO-2');
+    provider.dispose();
+  });
+
+  test('reportExtraItem mencatat lalu memuat ulang sesi', () async {
+    var repository = _ExtraFakeRepository(
+      const SjValidation(id: 9, scanCode: 'PO-042'),
+    );
+    var provider = ValidationProvider(repository: repository);
+
+    await provider.start('PO-042');
+    var ok = await provider.reportExtraItem(
+      qty: 7,
+      kodeBarang: 'SKU-LUAR-1',
+      namaBarang: 'Barang di Luar Rencana',
+      photoPath: '/tmp/bukti.jpg',
+    );
+
+    expect(ok, isTrue);
+    expect(repository.reportKodeBarang, ['SKU-LUAR-1']);
+    expect(repository.reportPhotoPath, ['/tmp/bukti.jpg']);
+    expect(repository.showCalls, 1);
+    expect(provider.message?.success, isTrue);
+    expect(provider.message?.message, contains('tercatat'));
+
+    provider.dispose();
+  });
+
+  test('reportExtraItem gagal menyampaikan pesan tanpa melempar', () async {
+    var repository = _ExtraFakeRepository(
+      const SjValidation(id: 9, scanCode: 'PO-042'),
+      reportError: const ApiException('Foto wajib diunggah.', 422),
+    );
+    var provider = ValidationProvider(repository: repository);
+
+    await provider.start('PO-042');
+    var ok = await provider.reportExtraItem(
+      qty: 1,
+      kodeBarang: 'SKU-LUAR-1',
+      namaBarang: 'Barang di Luar Rencana',
+      photoPath: '/tmp/bukti.jpg',
+    );
+
+    expect(ok, isFalse);
+    expect(provider.message?.success, isFalse);
+    expect(provider.message?.message, contains('Foto wajib'));
+
     provider.dispose();
   });
 }

@@ -75,6 +75,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         canValidate || (user?.hasPermission('penerimaan.view') ?? false);
     var canCreateStandarisasi =
         user?.hasPermission('standarisasi.create') ?? false;
+    var canReportExtra = user?.hasPermission('sj_validation.extra') ?? false;
 
     var unapprovedItems = session.items
         .where((item) => item.isPending && !item.canValidate)
@@ -123,6 +124,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 canPrintLabels: canPrintLabels,
                 canCreateStandarisasi: canCreateStandarisasi,
               ),
+              // Barang di luar rencana kirim (deviation record): selalu
+              // tampil bila sudah ada catatan; tombol lapor hanya saat sesi
+              // berjalan dan operator punya izin.
+              if (session.extraItems.isNotEmpty ||
+                  (session.isRunning && canReportExtra)) ...[
+                const SizedBox(height: AppTheme.space4),
+                _buildExtraItemsSection(session, provider, canReportExtra),
+              ],
               if (session.isRunning) ...[
                 const SizedBox(height: AppTheme.space4),
                 _buildCompleteSection(
@@ -691,6 +700,172 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   // ---------------------------------------------------------------------
   // Complete section
   // ---------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------
+  // Barang luar rencana (deviation record)
+  // ---------------------------------------------------------------------
+
+  Widget _buildExtraItemsSection(
+    SjValidation session,
+    ValidationProvider provider,
+    bool canReportExtra,
+  ) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space4),
+    decoration: BoxDecoration(
+      color: AppTheme.ink900,
+      borderRadius: AppTheme.radiusXl,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.warning.withValues(alpha: 0.18),
+                borderRadius: AppTheme.radiusLg,
+              ),
+              child: const Icon(
+                Icons.inventory_2_rounded,
+                size: 18,
+                color: AppTheme.warning,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Barang luar rencana',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    '${session.extraItems.length} catatan — rencana tidak diubah, planner diberi tahu',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      height: 1.4,
+                      color: AppTheme.gray500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space3),
+        for (var i = 0; i < session.extraItems.length; i++) ...[
+          _extraItemTile(session.extraItems[i]),
+          if (i != session.extraItems.length - 1)
+            const SizedBox(height: AppTheme.space2),
+        ],
+        if (session.isRunning && canReportExtra) ...[
+          const SizedBox(height: AppTheme.space3),
+          _darkActionButton(
+            label: 'Laporkan barang luar rencana',
+            background: AppTheme.warning,
+            foreground: AppTheme.ink900,
+            loading: provider.actionBusy,
+            onPressed: () => _showExtraItemSheet(provider),
+          ),
+        ],
+      ],
+    ),
+  );
+
+  Widget _extraItemTile(SjValidationExtraItem item) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.06),
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                item.namaBarang,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.roboto(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.space2,
+                vertical: 2,
+              ),
+              decoration: BoxDecoration(
+                color: AppTheme.warning.withValues(alpha: 0.15),
+                borderRadius: AppTheme.radiusFull,
+              ),
+              child: Text(
+                '${_formatQty(item.qty)}${item.satuan != null ? ' ${item.satuan}' : ''}',
+                style: GoogleFonts.roboto(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.warning,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          '${item.kodeBarang} • ${item.conditionLabel}'
+          '${item.expiredDate != null ? ' • Exp ${_shortDate(item.expiredDate!)}' : ''}'
+          '${item.notes != null ? ' • ${item.notes}' : ''}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.roboto(
+            fontSize: 11.5,
+            height: 1.4,
+            color: AppTheme.gray400,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  static String _shortDate(String value) {
+    var date = DateTime.tryParse(value);
+    if (date == null) {
+      return value;
+    }
+    String two(int part) => part.toString().padLeft(2, '0');
+    return '${two(date.day)}/${two(date.month)}/${date.year}';
+  }
+
+  Future<void> _showExtraItemSheet(ValidationProvider provider) async {
+    if (provider.actionBusy) {
+      return;
+    }
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChangeNotifierProvider<ValidationProvider>.value(
+        value: widget.provider,
+        child: _ExtraItemSheet(pickPhoto: widget.pickPhoto),
+      ),
+    );
+  }
 
   Widget _buildCompleteSection(
     SjValidation session,
@@ -1803,6 +1978,593 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
         _saving = false;
         _error =
             provider.message?.message ?? 'Gagal menyimpan. Silakan coba lagi.';
+      });
+    }
+  }
+}
+
+/// Bottom sheet untuk mencatat barang di luar rencana kirim (deviation
+/// record).
+///
+/// Berbeda dari [_ItemValidationSheet]: baris ini tidak terikat item rencana,
+/// foto bukti selalu wajib (menggantikan catatan kertas), dan rencana tidak
+/// pernah diubah — planner diberi tahu via email oleh server.
+class _ExtraItemSheet extends StatefulWidget {
+  const _ExtraItemSheet({this.pickPhoto});
+  final Future<String?> Function({required bool fromCamera})? pickPhoto;
+
+  @override
+  State<_ExtraItemSheet> createState() => _ExtraItemSheetState();
+}
+
+class _ExtraItemSheetState extends State<_ExtraItemSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _qtyController = TextEditingController();
+  final _barcodeController = TextEditingController();
+  final _kodeController = TextEditingController();
+  final _namaController = TextEditingController();
+  final _satuanController = TextEditingController();
+  final _notesController = TextEditingController();
+  final _expiredController = TextEditingController();
+  String _condition = 'FISIK_BAGUS';
+  DateTime? _expiredDate;
+  String? _photoPath;
+  bool _pickingPhoto = false;
+  bool _saving = false;
+  String? _error;
+  String? _photoError;
+
+  @override
+  void dispose() {
+    _qtyController.dispose();
+    _barcodeController.dispose();
+    _kodeController.dispose();
+    _namaController.dispose();
+    _satuanController.dispose();
+    _notesController.dispose();
+    _expiredController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: AppTheme.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      border: Border.all(color: AppTheme.gray300),
+    ),
+    padding: EdgeInsets.only(
+      left: AppTheme.space5,
+      right: AppTheme.space5,
+      top: AppTheme.space4,
+      bottom: MediaQuery.of(context).viewInsets.bottom + AppTheme.space5,
+    ),
+    child: SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.gray300,
+                    borderRadius: AppTheme.radiusFull,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppTheme.space4),
+              Text(
+                'Barang luar rencana',
+                style: GoogleFonts.roboto(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.foreground,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Barang dibawa transporter tapi tidak ada di rencana. '
+                'Foto bukti wajib; rencana tidak diubah.',
+                style: GoogleFonts.roboto(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: AppTheme.gray500,
+                ),
+              ),
+              const SizedBox(height: AppTheme.space4),
+              AppTextField(
+                controller: _barcodeController,
+                label: 'Barcode produk',
+                hint: 'Scan / ketik barcode kemasan',
+                prefixIcon: Icons.barcode_reader,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppTheme.space3),
+              AppTextField(
+                controller: _kodeController,
+                label: 'Kode barang *',
+                hint: 'Wajib bila barcode tidak dikenal',
+                prefixIcon: Icons.tag_rounded,
+                textInputAction: TextInputAction.next,
+                validator: (value) => _identityValid
+                    ? null
+                    : 'Isi kode & nama barang, atau barcode yang dikenal',
+              ),
+              const SizedBox(height: AppTheme.space3),
+              AppTextField(
+                controller: _namaController,
+                label: 'Nama barang *',
+                hint: 'Wajib bila barcode tidak dikenal',
+                prefixIcon: Icons.abc_rounded,
+                textInputAction: TextInputAction.next,
+                validator: (value) => _identityValid
+                    ? null
+                    : 'Isi kode & nama barang, atau barcode yang dikenal',
+              ),
+              const SizedBox(height: AppTheme.space3),
+              AppTextField(
+                controller: _qtyController,
+                label: 'Jumlah *',
+                hint: '0',
+                prefixIcon: Icons.inventory_rounded,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                textInputAction: TextInputAction.next,
+                validator: (value) {
+                  var qty = double.tryParse((value ?? '').replaceAll(',', '.'));
+                  if (qty == null || qty <= 0) {
+                    return 'Isi jumlah dengan angka > 0';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppTheme.space3),
+              AppTextField(
+                controller: _satuanController,
+                label: 'Satuan',
+                hint: 'CRT / ZAK / PCS',
+                prefixIcon: Icons.square_foot_rounded,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppTheme.space3),
+              Text(
+                'Kondisi',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.gray700,
+                ),
+              ),
+              const SizedBox(height: AppTheme.space2),
+              Wrap(
+                spacing: AppTheme.space2,
+                runSpacing: AppTheme.space2,
+                children: [
+                  for (var value in ValidationCondition.values)
+                    _conditionChip(value),
+                ],
+              ),
+              const SizedBox(height: AppTheme.space3),
+              AppTextField(
+                controller: _expiredController,
+                label: 'Tanggal expired',
+                hint: 'Opsional',
+                prefixIcon: Icons.calendar_today_rounded,
+                readOnly: true,
+                onTap: _pickDate,
+              ),
+              const SizedBox(height: AppTheme.space3),
+              _buildPhotoField(),
+              const SizedBox(height: AppTheme.space3),
+              AppTextField(
+                controller: _notesController,
+                label: 'Catatan',
+                hint: 'Keterangan tambahan',
+                prefixIcon: Icons.note_rounded,
+                maxLines: 2,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: AppTheme.space3),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppTheme.space3),
+                  decoration: BoxDecoration(
+                    color: AppTheme.dangerWell,
+                    borderRadius: AppTheme.radiusLg,
+                    border: Border.all(color: AppTheme.dangerText),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: GoogleFonts.roboto(
+                      fontSize: 12.5,
+                      height: 1.4,
+                      color: AppTheme.dangerText,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppTheme.space4),
+              AppPrimaryButton(
+                text: 'Laporkan',
+                isLoading: _saving,
+                onPressed: _saving || _pickingPhoto || _photoPath == null
+                    ? null
+                    : _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  /// Identitas barang sah bila barcode terisi, atau kode + nama manual
+  /// lengkap. Server tetap memvalidasi ulang terhadap master NPN.
+  bool get _identityValid {
+    var barcode = _barcodeController.text.trim();
+    if (barcode.isNotEmpty) {
+      return true;
+    }
+    return _kodeController.text.trim().isNotEmpty &&
+        _namaController.text.trim().isNotEmpty;
+  }
+
+  Widget _conditionChip(String value) {
+    var selected = _condition == value;
+    return InkWell(
+      onTap: () => setState(() => _condition = value),
+      borderRadius: AppTheme.radiusFull,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.space4,
+          vertical: AppTheme.space2,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary600 : AppTheme.surfaceCard,
+          borderRadius: AppTheme.radiusFull,
+          border: Border.all(
+            color: selected ? AppTheme.primary600 : AppTheme.gray300,
+          ),
+        ),
+        child: Text(
+          ValidationCondition.label(value),
+          style: GoogleFonts.roboto(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppTheme.gray700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoField() => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space3),
+    decoration: BoxDecoration(
+      color: AppTheme.warningWell,
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: AppTheme.warningText),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.photo_camera_rounded,
+              size: 16,
+              color: AppTheme.warningText,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Foto bukti *',
+                style: GoogleFonts.roboto(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.warningText,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'Wajib — menggantikan catatan manual di kertas.',
+          style: GoogleFonts.roboto(
+            fontSize: 11.5,
+            height: 1.4,
+            color: AppTheme.warningText,
+          ),
+        ),
+        const SizedBox(height: AppTheme.space3),
+        if (_photoPath == null)
+          Row(
+            children: [
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Kamera',
+                  height: 44,
+                  leadingIcon: Icons.photo_camera_rounded,
+                  isLoading: _pickingPhoto,
+                  onPressed: _saving || _pickingPhoto
+                      ? null
+                      : () => _pickPhoto(fromCamera: true),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Galeri',
+                  height: 44,
+                  leadingIcon: Icons.photo_library_rounded,
+                  onPressed: _saving || _pickingPhoto
+                      ? null
+                      : () => _pickPhoto(fromCamera: false),
+                ),
+              ),
+            ],
+          )
+        else ...[
+          ClipRRect(
+            borderRadius: AppTheme.radiusLg,
+            child: Image.file(
+              File(_photoPath!),
+              width: double.infinity,
+              height: 160,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: double.infinity,
+                height: 96,
+                alignment: Alignment.center,
+                color: AppTheme.gray100,
+                child: Text(
+                  'Pratinjau tidak tersedia',
+                  style: GoogleFonts.roboto(
+                    fontSize: 12,
+                    color: AppTheme.gray500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Row(
+            children: [
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Ganti',
+                  height: 44,
+                  leadingIcon: Icons.refresh_rounded,
+                  onPressed: _saving || _pickingPhoto
+                      ? null
+                      : () => _pickPhoto(fromCamera: true),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: AppSecondaryButton(
+                  text: 'Hapus',
+                  height: 44,
+                  leadingIcon: Icons.delete_outline_rounded,
+                  onPressed: _saving
+                      ? null
+                      : () => setState(() => _photoPath = null),
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (_photoError != null) ...[
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            _photoError!,
+            style: GoogleFonts.roboto(
+              fontSize: 11.5,
+              height: 1.4,
+              color: AppTheme.dangerText,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+
+  Future<void> _pickPhoto({required bool fromCamera}) async {
+    if (_pickingPhoto || _saving) {
+      return;
+    }
+    setState(() {
+      _pickingPhoto = true;
+      _photoError = null;
+    });
+    try {
+      String? path;
+      var picker = widget.pickPhoto;
+      if (picker != null) {
+        path = await picker(fromCamera: fromCamera);
+      } else {
+        var file = await ImagePicker().pickImage(
+          source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 1280,
+          imageQuality: 80,
+        );
+        path = file?.path;
+      }
+      if (!mounted) {
+        return;
+      }
+      if (path != null && path.isNotEmpty) {
+        setState(() => _photoPath = path);
+      }
+    } on PlatformException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      var denied =
+          error.code == 'camera_access_denied' ||
+          error.code == 'photo_access_denied';
+      setState(() {
+        _photoError = denied
+            ? 'Izin kamera/galeri ditolak. Aktifkan izin di pengaturan '
+                  'perangkat.'
+            : 'Foto tidak dapat diambil. Coba lagi.';
+      });
+    } catch (error, stack) {
+      debugPrint(
+        'ValidationSessionPage._ExtraItemSheet._pickPhoto: '
+        '${error.runtimeType}: $error',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      if (!mounted) {
+        return;
+      }
+      setState(() => _photoError = 'Foto tidak dapat diambil. Coba lagi.');
+    } finally {
+      if (mounted) {
+        setState(() => _pickingPhoto = false);
+      }
+    }
+  }
+
+  Future<void> _pickDate() async {
+    var initial = _expiredDate ?? DateTime.now().add(const Duration(days: 30));
+    DateTime? picked;
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (_) => Container(
+        height: 260,
+        padding: const EdgeInsets.all(AppTheme.space4),
+        color: AppTheme.surface,
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: const BoxDecoration(
+                color: AppTheme.gray300,
+                borderRadius: AppTheme.radiusFull,
+              ),
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: initial,
+                minimumDate: DateTime(2000),
+                maximumDate: DateTime(2100),
+                onDateTimeChanged: (DateTime value) => picked = value,
+                backgroundColor: AppTheme.surface,
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space3,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Batal'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primary500,
+                      ),
+                      child: const Text('Pilih'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _expiredDate = picked;
+        _expiredController.text = _formatDate(picked);
+      });
+      _formKey.currentState?.validate();
+    }
+  }
+
+  static String _formatDate(DateTime? value) {
+    if (value == null) {
+      return '';
+    }
+    String two(int part) => part.toString().padLeft(2, '0');
+    return '${two(value.day)}/${two(value.month)}/${value.year}';
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    if (!_identityValid) {
+      setState(
+        () => _error =
+            'Isi barcode yang dikenal, atau kode + nama barang manual.',
+      );
+      return;
+    }
+    if (_photoPath == null) {
+      setState(
+        () => _error =
+            'Foto bukti wajib. Ambil foto langsung atau pilih dari galeri.',
+      );
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    var provider = context.read<ValidationProvider>();
+    var barcode = _barcodeController.text.trim();
+    var success = await provider.reportExtraItem(
+      barcode: barcode.isEmpty ? null : barcode,
+      kodeBarang: _kodeController.text.trim().isEmpty
+          ? null
+          : _kodeController.text.trim(),
+      namaBarang: _namaController.text.trim().isEmpty
+          ? null
+          : _namaController.text.trim(),
+      qty: double.parse(_qtyController.text.trim().replaceAll(',', '.')),
+      satuan: _satuanController.text.trim().isEmpty
+          ? null
+          : _satuanController.text.trim(),
+      condition: _condition,
+      expiredDate: _expiredDate == null
+          ? null
+          : '${_expiredDate!.year.toString().padLeft(4, '0')}-'
+                '${_expiredDate!.month.toString().padLeft(2, '0')}-'
+                '${_expiredDate!.day.toString().padLeft(2, '0')}',
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
+      photoPath: _photoPath!,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (success) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _saving = false;
+        _error =
+            provider.message?.message ?? 'Gagal melaporkan. Silakan coba lagi.';
       });
     }
   }

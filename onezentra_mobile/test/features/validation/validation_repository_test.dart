@@ -4,7 +4,10 @@ import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/features/validation/repositories/validation_repository.dart';
 
-Map<String, dynamic> _sessionBody({String status = 'IN_PROGRESS'}) => {
+Map<String, dynamic> _sessionBody({
+  String status = 'IN_PROGRESS',
+  bool extraItems = false,
+}) => {
   'data': {
     'id': 9,
     'rencana_kirim_id': 11,
@@ -42,6 +45,20 @@ Map<String, dynamic> _sessionBody({String status = 'IN_PROGRESS'}) => {
         'status': 'VALIDATED',
       },
     ],
+    if (extraItems)
+      'extra_items': [
+        {
+          'id': 71,
+          'sj_validation_id': 9,
+          'kode_barang': 'SKU-LUAR-1',
+          'nama_barang': 'Barang di Luar Rencana',
+          'qty': 2,
+          'satuan': 'CRT',
+          'condition': 'FISIK_BAGUS',
+          'photo': 'validation-photos/extra.jpg',
+          'recorder': {'id': 7, 'full_name': 'Cheker'},
+        },
+      ],
   },
 };
 
@@ -186,6 +203,87 @@ void main() {
       expect(hitFileField, 'photo');
       expect(hitFilePath, '/tmp/bukti.jpg');
       expect(item.hasPhoto, isTrue);
+    });
+
+    test('reportExtraItem selalu multipart dan foto wajib dikirim', () async {
+      String? hitEndpoint;
+      Map<String, String>? hitFields;
+      String? hitFileField;
+      String? hitFilePath;
+      var repository = ValidationRepository(
+        get: (_) async => throw StateError('unexpected GET'),
+        post: (_, _) async => throw StateError('unexpected JSON POST'),
+        postMultipart:
+            (
+              endpoint,
+              fields, {
+              required String fileField,
+              required String filePath,
+            }) async {
+              hitEndpoint = endpoint;
+              hitFields = fields;
+              hitFileField = fileField;
+              hitFilePath = filePath;
+              return {
+                'message': 'Barang luar rencana tercatat',
+                'data': {
+                  'id': 71,
+                  'sj_validation_id': 9,
+                  'kode_barang': 'SKU-LUAR-1',
+                  'nama_barang': 'Barang di Luar Rencana',
+                  'qty': 7,
+                  'satuan': 'CRT',
+                  'condition': 'FISIK_BAGUS',
+                  'photo': 'validation-photos/extra.jpg',
+                  'recorder': {'id': 7, 'full_name': 'Cheker'},
+                },
+              };
+            },
+      );
+
+      var extra = await repository.reportExtraItem(
+        validationId: 9,
+        kodeBarang: 'SKU-LUAR-1',
+        namaBarang: 'Barang di Luar Rencana',
+        qty: 7,
+        satuan: 'CRT',
+        notes: 'Ditulis manual di kertas',
+        photoPath: '/tmp/bukti.jpg',
+      );
+
+      expect(hitEndpoint, '/sj-validations/9/extra-items');
+      expect(hitFields, {
+        'qty': '7.0',
+        'condition': 'FISIK_BAGUS',
+        'kode_barang': 'SKU-LUAR-1',
+        'nama_barang': 'Barang di Luar Rencana',
+        'satuan': 'CRT',
+        'notes': 'Ditulis manual di kertas',
+      });
+      expect(hitFileField, 'photo');
+      expect(hitFilePath, '/tmp/bukti.jpg');
+      expect(extra, isA<SjValidationExtraItem>());
+      expect(extra.kodeBarang, 'SKU-LUAR-1');
+      expect(extra.qty, 7);
+      expect(extra.hasPhoto, isTrue);
+      expect(extra.recorderName, 'Cheker');
+    });
+
+    test('show memparse daftar barang luar rencana', () async {
+      var repository = ValidationRepository(
+        get: (endpoint) {
+          expect(endpoint, '/sj-validations/9');
+          return Future.value(_sessionBody(extraItems: true));
+        },
+        post: (_, _) async => throw StateError('unexpected POST'),
+      );
+
+      var session = await repository.show(9);
+
+      expect(session.extraItems, hasLength(1));
+      expect(session.extraItems.first.kodeBarang, 'SKU-LUAR-1');
+      expect(session.extraItems.first.conditionLabel, 'Fisik bagus');
+      expect(session.extraItems.first.recorderName, 'Cheker');
     });
 
     test('stats tanpa data merosot ke nol, bukan gagal', () async {

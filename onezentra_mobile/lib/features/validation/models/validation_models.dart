@@ -343,6 +343,70 @@ class SjValidationItem {
   }
 }
 
+/// Barang di luar rencana kirim — dibawa transporter tapi tidak ada di
+/// rencana planner (deviation record). Tidak pernah mengubah rencana; foto
+/// bukti wajib karena menggantikan catatan manual di kertas.
+class SjValidationExtraItem {
+  const SjValidationExtraItem({
+    required this.id,
+    required this.validationId,
+    required this.kodeBarang,
+    required this.namaBarang,
+    required this.qty,
+    this.npnId,
+    this.barcode,
+    this.satuan,
+    this.condition = 'FISIK_BAGUS',
+    this.expiredDate,
+    this.hasPhoto = true,
+    this.notes,
+    this.recorderName,
+  });
+
+  factory SjValidationExtraItem.fromJson(Map<String, dynamic> json) =>
+      SjValidationExtraItem(
+        id: _readInt(json['id']) ?? 0,
+        validationId: _readInt(json['sj_validation_id']) ?? 0,
+        npnId: _readInt(json['npn_id']),
+        barcode: _readString(json['barcode']),
+        kodeBarang: _readString(json['kode_barang']) ?? '',
+        namaBarang: _readString(json['nama_barang']) ?? '',
+        qty: _readDouble(json['qty']) ?? 0,
+        satuan: _readString(json['satuan']),
+        condition: _readString(json['condition']) ?? 'FISIK_BAGUS',
+        expiredDate: _readString(json['expired_date']),
+        hasPhoto: _readString(json['photo']) != null,
+        notes: _readString(json['notes']),
+        recorderName: _readString(_readMap(json['recorder'])?['full_name']),
+      );
+  final int id;
+  final int validationId;
+  final int? npnId;
+  final String? barcode;
+  final String kodeBarang;
+  final String namaBarang;
+  final double qty;
+  final String? satuan;
+  final String condition;
+  final String? expiredDate;
+  final bool hasPhoto;
+  final String? notes;
+
+  /// Nama checker yang mencatat (server mengirim relasi `recorder`).
+  final String? recorderName;
+
+  /// Label kondisi persis seperti tile item rencana, supaya satu mapping
+  /// dipakai di seluruh halaman validasi.
+  String get conditionLabel => switch (condition) {
+    'FISIK_RUSAK' => 'Barang rusak',
+    'QTY_KURANG' => 'Qty kurang',
+    'ISI_KEMASAN_KURANG' => 'Isi kemasan kurang',
+    'EXPIRED_TIDAK_STANDAR' => 'Expired tidak standar',
+    'LAINNYA' => 'Lainnya',
+    _ => 'Fisik bagus',
+  };
+}
+
 /// An SJ validation session with its document and lines.
 class SjValidation {
   const SjValidation({
@@ -355,6 +419,7 @@ class SjValidation {
     this.durationSeconds,
     this.document,
     this.items = const [],
+    this.extraItems = const [],
     this.validatorName,
     this.itemsCount,
     this.validatedItemsCount,
@@ -374,6 +439,17 @@ class SjValidation {
               )
               .toList()
         : <SjValidationItem>[];
+    var rawExtraItems = json['extra_items'];
+    var extraItems = rawExtraItems is List
+        ? rawExtraItems
+              .whereType<Map>()
+              .map(
+                (item) => SjValidationExtraItem.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList()
+        : <SjValidationExtraItem>[];
     return SjValidation(
       id: _readInt(json['id']) ?? 0,
       rencanaKirimId: _readInt(json['rencana_kirim_id']),
@@ -384,6 +460,7 @@ class SjValidation {
       durationSeconds: _readInt(json['duration_seconds']),
       document: document == null ? null : ValidationDocument.fromJson(document),
       items: items,
+      extraItems: extraItems,
       validatorName: _readString(validator?['full_name']),
       // `index` hanya mengirim counter (tanpa semua item) agar riwayat tetap
       // ringan. Detail sesi tetap memakai hitungan dari daftar item.
@@ -403,6 +480,10 @@ class SjValidation {
   final int? durationSeconds;
   final ValidationDocument? document;
   final List<SjValidationItem> items;
+
+  /// Barang yang dibawa transporter tapi tidak ada di rencana kirim
+  /// (deviation record). Tidak mengubah rencana — hanya catatan bukti.
+  final List<SjValidationExtraItem> extraItems;
   final String? validatorName;
   final int? itemsCount;
   final int? validatedItemsCount;

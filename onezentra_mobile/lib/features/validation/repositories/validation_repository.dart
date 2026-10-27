@@ -180,6 +180,49 @@ class ValidationRepository {
     return SjValidationItem.fromJson(Map<String, dynamic>.from(data));
   }
 
+  /// Mencatat barang di luar rencana kirim (deviation record) untuk sesi
+  /// yang masih berjalan. Foto bukti wajib — request selalu multipart.
+  /// Barcode mengunci barang ke master data (NPN) di server; bila tidak
+  /// dikenal, kode + nama barang manual yang dipakai.
+  Future<SjValidationExtraItem> reportExtraItem({
+    required int validationId,
+    required double qty,
+    required String photoPath,
+    String? barcode,
+    String? kodeBarang,
+    String? namaBarang,
+    String? satuan,
+    String condition = 'FISIK_BAGUS',
+    String? expiredDate,
+    String? notes,
+  }) async {
+    var fields = <String, String>{
+      'qty': '$qty',
+      'condition': condition,
+      if (barcode?.isNotEmpty ?? false) 'barcode': barcode!,
+      if (kodeBarang?.isNotEmpty ?? false) 'kode_barang': kodeBarang!,
+      if (namaBarang?.isNotEmpty ?? false) 'nama_barang': namaBarang!,
+      if (satuan?.isNotEmpty ?? false) 'satuan': satuan!,
+      if (expiredDate?.isNotEmpty ?? false) 'expired_date': expiredDate!,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+    };
+    var response = await _postMultipart(
+      '/sj-validations/$validationId/extra-items',
+      fields,
+      fileField: 'photo',
+      filePath: photoPath,
+    );
+    var body = _expectObject(response);
+    var data = body['data'];
+    if (data is! Map) {
+      throw const ApiException(
+        'Respons server tidak memuat barang. Silakan coba lagi.',
+        0,
+      );
+    }
+    return SjValidationExtraItem.fromJson(Map<String, dynamic>.from(data));
+  }
+
   /// Finishes the session. The server rejects it while lines are still
   /// `PENDING`; its Indonesian message is surfaced as-is.
   Future<SjValidation> complete(int id) async =>

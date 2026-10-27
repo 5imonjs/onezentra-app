@@ -238,6 +238,65 @@ class ValidationProvider extends ChangeNotifier {
     }
   }
 
+  /// Mencatat barang di luar rencana kirim (deviation record), lalu reload
+  /// sesi supaya daftar barang luar rencana tampil terbaru. Rencana tidak
+  /// pernah diubah — catatan + foto bukti dikirim ke planner via email.
+  Future<bool> reportExtraItem({
+    required double qty,
+    required String photoPath,
+    String? barcode,
+    String? kodeBarang,
+    String? namaBarang,
+    String? satuan,
+    String condition = 'FISIK_BAGUS',
+    String? expiredDate,
+    String? notes,
+  }) async {
+    var active = _active;
+    if (active == null || _actionBusy) {
+      return false;
+    }
+
+    _actionBusy = true;
+    _message = null;
+    _notify();
+
+    try {
+      await _repository.reportExtraItem(
+        validationId: active.id,
+        barcode: barcode,
+        kodeBarang: kodeBarang,
+        namaBarang: namaBarang,
+        qty: qty,
+        satuan: satuan,
+        condition: condition,
+        expiredDate: expiredDate,
+        notes: notes,
+        photoPath: photoPath,
+      );
+      _active = await _repository.show(active.id);
+      _message = const ValidationActionMessage.success(
+        'Barang luar rencana tercatat — planner telah diberi tahu.',
+      );
+      return true;
+    } on ApiException catch (e) {
+      _message = ValidationActionMessage.failure(e.message);
+      return false;
+    } catch (e, stack) {
+      debugPrint(
+        'ValidationProvider.reportExtraItem: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      _message = const ValidationActionMessage.failure(
+        'Terjadi kesalahan tidak terduga. Silakan coba lagi.',
+      );
+      return false;
+    } finally {
+      _actionBusy = false;
+      _notify();
+    }
+  }
+
   /// Validates one line, then reloads the session so progress stays exact.
   Future<bool> validateItem({
     required int itemId,
