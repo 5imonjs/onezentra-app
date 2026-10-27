@@ -864,7 +864,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   );
 
   Future<void> _openPrintSheet(SjValidationItem item) async {
-    final batch = item.batch;
+    var batch = item.batch;
     // Hanya boleh cetak kalau server sudah issued batch untuk item ini.
     if (batch == null || batch.id == 0) {
       if (mounted) {
@@ -880,8 +880,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var printed = await LabelPrintSheet.show(
       context,
       label: BatchLabelData(
-        batchId: batch!.id,
-        batchNumber: batch?.batchNumber,
+        batchId: batch.id,
+        batchNumber: batch.batchNumber,
         barcodeLabel: batch.barcodeLabel,
         kodeBarang: item.kodeBarang,
         namaBarang: item.namaBarang,
@@ -897,7 +897,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     if (printed ?? false) {
       var reported = true;
       String? reportWarning;
-      if (batch != null && batch.id > 0) {
+      if (batch.id > 0) {
         reported = await context.read<ValidationProvider>().markLabelPrinted(
           batch.id,
         );
@@ -916,14 +916,16 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         var v = context.read<ValidationProvider>();
         await v.openSession(v.active?.id ?? 0);
         // Force rebuild so batch/printed status updates visibly
-        if (mounted) setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
       }
       // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             reported
-                ? 'Label ${batch?.barcodeLabel ?? ''} tercetak.'
+                ? 'Label ${batch.barcodeLabel} tercetak.'
                 : (reportWarning ?? 'Label tercetak, status gagal dilaporkan.'),
           ),
           backgroundColor: reported ? AppTheme.success : AppTheme.warning,
