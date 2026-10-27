@@ -693,9 +693,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.roboto(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: highlight
-                    ? AppTheme.primary950.withValues(alpha: 0.65)
-                    : AppTheme.gray400,
+                color: AppTheme.danger,
               ),
             ),
             const SizedBox(height: 2),
