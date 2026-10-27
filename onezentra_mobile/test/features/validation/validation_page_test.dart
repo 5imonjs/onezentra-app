@@ -28,12 +28,17 @@ class _FakeValidationRepository extends ValidationRepository {
     this.cannedStats = const ValidationStats(),
     this.sessionToOpen,
     this.startError,
+    this.searchResults = const [],
   });
 
   final List<SjValidation> history;
   final ValidationStats cannedStats;
   final SjValidation? sessionToOpen;
   final Object? startError;
+  final List<NpnProduct> searchResults;
+
+  int searchCalls = 0;
+  String? lastSearchQuery;
 
   int listCalls = 0;
   int statsCalls = 0;
@@ -86,6 +91,13 @@ class _FakeValidationRepository extends ValidationRepository {
 
   @override
   Future<SjValidation> show(int id) async => _session();
+
+  @override
+  Future<List<NpnProduct>> searchProduct(String query) async {
+    searchCalls++;
+    lastSearchQuery = query.trim();
+    return searchResults;
+  }
 
   @override
   Future<SjValidationItem> scanItem({
@@ -143,6 +155,47 @@ class _FakeValidationRepository extends ValidationRepository {
     lastNpnId = npnId;
     lastTier = tier;
     lastTinggi = tinggiTumpukan;
+  }
+
+  int extraReportCalls = 0;
+  int? lastExtraNpnId;
+  String? lastExtraBarcode;
+  String? lastExtraKode;
+  String? lastExtraNama;
+  double? lastExtraQty;
+
+  @override
+  Future<SjValidationExtraItem> reportExtraItem({
+    required int validationId,
+    required double qty,
+    required String photoPath,
+    String? barcode,
+    int? npnId,
+    String? kodeBarang,
+    String? namaBarang,
+    String? satuan,
+    String condition = 'FISIK_BAGUS',
+    String? expiredDate,
+    String? notes,
+  }) async {
+    extraReportCalls++;
+    lastExtraNpnId = npnId;
+    lastExtraBarcode = barcode;
+    lastExtraKode = kodeBarang;
+    lastExtraNama = namaBarang;
+    lastExtraQty = qty;
+    return SjValidationExtraItem(
+      id: 71,
+      validationId: validationId,
+      npnId: npnId,
+      kodeBarang: kodeBarang ?? 'SKU-LUAR-1',
+      namaBarang: namaBarang ?? 'Barang di Luar Rencana',
+      qty: qty,
+      satuan: satuan,
+      condition: condition,
+      expiredDate: expiredDate,
+      notes: notes,
+    );
   }
 }
 
@@ -234,6 +287,7 @@ Future<void> _pumpSessionPage(
   ValidationProvider provider,
   SjValidation session, {
   ValidationPhotoPicker? pickPhoto,
+  Future<String?> Function()? openScanner,
 }) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<AuthProvider>.value(
@@ -246,6 +300,7 @@ Future<void> _pumpSessionPage(
             provider: provider,
             session: session,
             pickPhoto: pickPhoto,
+            openScanner: openScanner,
           ),
         ),
       ),
@@ -253,6 +308,39 @@ Future<void> _pumpSessionPage(
   );
   await tester.pumpAndSettle();
 }
+
+/// Sesi berjalan dengan satu item tervalidasi — dipakai test barang luar
+/// rencana: section + tombol lapor selalu tampil.
+SjValidation extraSessionFixture() => const SjValidation(
+  id: 9,
+  scanCode: 'PO-042',
+  document: ValidationDocument(
+    id: 11,
+    poTransporter: 'PO-042',
+    nopol: 'B 9999 ZZ',
+    driverName: 'Andi',
+    status: 'CHECKED_IN',
+  ),
+  items: [
+    SjValidationItem(
+      id: 31,
+      validationId: 9,
+      npnId: 501,
+      kodeBarang: 'BRG-1',
+      namaBarang: 'Gula 50kg',
+      expectedQty: 100,
+      expiredDate: '2027-01-31',
+      actualQty: 100,
+      satuan: 'zak',
+      status: 'VALIDATED',
+      standarisasi: ItemStandarisasi(
+        tier: 4,
+        tinggiTumpukan: 6,
+        status: 'approved',
+      ),
+    ),
+  ],
+);
 
 SjValidation _openSession() => const SjValidation(
   id: 9,
@@ -1327,5 +1415,136 @@ void main() {
 
     expect(find.text('Barang luar rencana'), findsNothing);
     expect(find.text('Laporkan barang luar rencana'), findsNothing);
+  });
+
+  testWidgets('pindai kamera mengenali master NPN dan mengunci identitas', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: extraSessionFixture(),
+      searchResults: const [
+        NpnProduct(
+          id: 5,
+          kodeBarang: 'SKU-NPN-77',
+          sapKode: 'MAT-77',
+          satuan: 'CRT',
+          nama: 'Minyak Goreng 2L',
+        ),
+      ],
+    );
+    var auth = await _loginAuth(
+      permissions: [..._fullValidationPermissions, 'sj_validation.extra'],
+    );
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpSessionPage(
+      tester,
+      auth,
+      provider,
+      repository.sessionToOpen!,
+      openScanner: () async => '8991234567890',
+      pickPhoto: ({required bool fromCamera}) async => '/tmp/bukti.jpg',
+    );
+    // Aktifkan sesi di provider agar aksi lapor berjalan (sheet memakai
+    // provider yang sama dengan halaman).
+    await provider.start('PO-042');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Laporkan barang luar rencana'));
+    await tester.pumpAndSettle();
+
+    // Buka kamera: hasil pindai dicocokkan ke master NPN otomatis.
+    await tester.tap(find.text('Pindai'));
+    await tester.pumpAndSettle();
+
+    expect(repository.searchCalls, 1);
+    expect(repository.lastSearchQuery, '8991234567890');
+
+    // Identitas terkunci ke master — kartu menampilkan nama + kode + satuan,
+    // field manual hilang.
+    expect(find.text('Minyak Goreng 2L'), findsOneWidget);
+    expect(find.textContaining('SKU-NPN-77'), findsOneWidget);
+    expect(find.text('Kode barang *'), findsNothing);
+    expect(find.text('Nama barang *'), findsNothing);
+
+    var qtyFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.keyboardType ==
+              const TextInputType.numberWithOptions(decimal: true),
+    );
+    expect(qtyFinder, findsOneWidget);
+    await tester.enterText(qtyFinder, '5');
+    // Ambil foto bukti lewat picker tersuntik; scroll dulu karena tombol
+    // berada di bawah viewport sheet.
+    await tester.ensureVisible(find.text('Kamera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kamera'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Laporkan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laporkan'));
+    await tester.pumpAndSettle();
+
+    // Identitas dikirim sebagai npn_id — nilai manual tidak ikut.
+    expect(repository.extraReportCalls, 1);
+    expect(repository.lastExtraNpnId, 5);
+    expect(repository.lastExtraBarcode, '8991234567890');
+    expect(repository.lastExtraKode, isNull);
+    expect(repository.lastExtraNama, isNull);
+    expect(repository.lastExtraQty, 5);
+  });
+
+  testWidgets('barcode tidak dikenal lanjut input manual tanpa npn_id', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: extraSessionFixture(),
+    );
+    var auth = await _loginAuth(
+      permissions: [..._fullValidationPermissions, 'sj_validation.extra'],
+    );
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpSessionPage(
+      tester,
+      auth,
+      provider,
+      repository.sessionToOpen!,
+      pickPhoto: ({required bool fromCamera}) async => '/tmp/bukti.jpg',
+    );
+    // Aktifkan sesi di provider agar aksi lapor berjalan (sheet memakai
+    // provider yang sama dengan halaman).
+    await provider.start('PO-042');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Laporkan barang luar rencana'));
+    await tester.pumpAndSettle();
+
+    var fields = find.byType(TextFormField);
+    // Barcode, kode, nama, satuan, qty, expired, catatan.
+    expect(fields, findsNWidgets(7));
+    await tester.enterText(fields.at(1), 'SKU-LUAR-1');
+    await tester.enterText(fields.at(2), 'Barang Tak Terencana');
+    await tester.enterText(fields.at(3), 'PCS');
+    await tester.enterText(fields.at(4), '2');
+    // Ambil foto bukti lewat picker tersuntik; scroll dulu karena tombol
+    // berada di bawah viewport sheet.
+    await tester.ensureVisible(find.text('Kamera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kamera'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Laporkan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Laporkan'));
+    await tester.pumpAndSettle();
+
+    // Mode manual: tanpa npn_id/barcode, kode + nama + satuan yang dikirim.
+    expect(repository.extraReportCalls, 1);
+    expect(repository.lastExtraNpnId, isNull);
+    expect(repository.lastExtraBarcode, isNull);
+    expect(repository.lastExtraKode, 'SKU-LUAR-1');
+    expect(repository.lastExtraNama, 'Barang Tak Terencana');
+    expect(repository.lastExtraQty, 2);
   });
 }

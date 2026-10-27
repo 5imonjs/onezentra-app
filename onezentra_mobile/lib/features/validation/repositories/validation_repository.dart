@@ -183,12 +183,15 @@ class ValidationRepository {
   /// Mencatat barang di luar rencana kirim (deviation record) untuk sesi
   /// yang masih berjalan. Foto bukti wajib — request selalu multipart.
   /// Barcode mengunci barang ke master data (NPN) di server; bila tidak
-  /// dikenal, kode + nama barang manual yang dipakai.
+  /// dikenal, kode + nama barang manual yang dipakai. Bila [npnId] dikirim
+  /// (pilihan dari pencarian master), identitas & satuan wajib mengikuti
+  /// master — server menimpa nilai manual ikutan.
   Future<SjValidationExtraItem> reportExtraItem({
     required int validationId,
     required double qty,
     required String photoPath,
     String? barcode,
+    int? npnId,
     String? kodeBarang,
     String? namaBarang,
     String? satuan,
@@ -200,6 +203,7 @@ class ValidationRepository {
       'qty': '$qty',
       'condition': condition,
       if (barcode?.isNotEmpty ?? false) 'barcode': barcode!,
+      if (npnId != null) 'npn_id': '$npnId',
       if (kodeBarang?.isNotEmpty ?? false) 'kode_barang': kodeBarang!,
       if (namaBarang?.isNotEmpty ?? false) 'nama_barang': namaBarang!,
       if (satuan?.isNotEmpty ?? false) 'satuan': satuan!,
@@ -222,6 +226,34 @@ class ValidationRepository {
     }
     return SjValidationExtraItem.fromJson(Map<String, dynamic>.from(data));
   }
+
+  /// Cari produk master NPN (nama / kode / barcode). Dipakai sheet "barang
+  /// luar rencana" untuk mengunci identitas barang ke master setelah barcode
+  /// discan atau diketik — pola yang sama dengan combobox Rencana Kirim web.
+  /// Query kosong tidak memanggil server sama sekali.
+  Future<List<NpnProduct>> searchProduct(String query) async {
+    var q = query.trim();
+    if (q.isEmpty) {
+      return const [];
+    }
+    var body = _expectObject(
+      await _get(
+        '/npn/search-product?q=${Uri.encodeQueryComponent(q)}&limit=50',
+      ),
+    );
+    var payload = _readMapSafe(body['data']);
+    var raw = payload?['data'];
+    if (raw is! List) {
+      return const [];
+    }
+    return raw
+        .whereType<Map>()
+        .map((item) => NpnProduct.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  Map<String, dynamic>? _readMapSafe(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : null;
 
   /// Finishes the session. The server rejects it while lines are still
   /// `PENDING`; its Indonesian message is surfaced as-is.

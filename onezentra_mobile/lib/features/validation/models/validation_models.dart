@@ -36,6 +36,45 @@ DateTime? _readDate(dynamic value) {
 Map<String, dynamic>? _readMap(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : null;
 
+/// Satu produk master NPN dari hasil pencarian `/npn/search-product`.
+///
+/// Dipakai sheet "barang luar rencana" untuk mengunci identitas barang ke
+/// master data — sama seperti pola combobox Rencana Kirim di web: nama,
+/// kode BOSnet, dan satuan selalu diambil dari master, bukan diketik bebas.
+class NpnProduct {
+  const NpnProduct({
+    required this.id,
+    this.kodeBarang,
+    this.sapKode,
+    this.satuan,
+    this.nama,
+    this.namaBaru,
+    this.deskripsi,
+  });
+
+  factory NpnProduct.fromJson(Map<String, dynamic> json) => NpnProduct(
+    id: _readInt(json['id']) ?? 0,
+    kodeBarang: _readString(json['BOSnetszProductId']),
+    sapKode: _readString(json['SAPszProductId']),
+    satuan: _readString(json['SAPszUomId']),
+    nama: _readString(json['szNickName']),
+    namaBaru: _readString(json['szNickNameNew']),
+    deskripsi: _readString(json['szShortDescription']),
+  );
+
+  /// Nama utama yang tampil: nickname lama dulu (identitas yang dipakai
+  /// gudang), lalu short description, lalu nickname baru sebagai cadangan.
+  String get displayName => nama ?? deskripsi ?? namaBaru ?? '';
+
+  final int id;
+  final String? kodeBarang;
+  final String? sapKode;
+  final String? satuan;
+  final String? nama;
+  final String? namaBaru;
+  final String? deskripsi;
+}
+
 /// Status label and progress rules for an SJ validation session.
 ///
 /// Mirrors the web app's `validasi-sj/page.tsx`: a session is created

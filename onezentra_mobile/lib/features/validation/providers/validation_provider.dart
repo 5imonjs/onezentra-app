@@ -241,10 +241,12 @@ class ValidationProvider extends ChangeNotifier {
   /// Mencatat barang di luar rencana kirim (deviation record), lalu reload
   /// sesi supaya daftar barang luar rencana tampil terbaru. Rencana tidak
   /// pernah diubah — catatan + foto bukti dikirim ke planner via email.
+  /// [npnId] mengunci identitas ke master (pilihan pencarian NPN).
   Future<bool> reportExtraItem({
     required double qty,
     required String photoPath,
     String? barcode,
+    int? npnId,
     String? kodeBarang,
     String? namaBarang,
     String? satuan,
@@ -265,6 +267,7 @@ class ValidationProvider extends ChangeNotifier {
       await _repository.reportExtraItem(
         validationId: active.id,
         barcode: barcode,
+        npnId: npnId,
         kodeBarang: kodeBarang,
         namaBarang: namaBarang,
         qty: qty,
@@ -294,6 +297,21 @@ class ValidationProvider extends ChangeNotifier {
     } finally {
       _actionBusy = false;
       _notify();
+    }
+  }
+
+  /// Cari produk master NPN (nama/kode/barcode). Error tidak melempar —
+  /// kembalikan daftar kosong supaya form lanjut ke input manual; pesan
+  /// gagal dicatat di log (autofill hanyalah kenyamanan, bukan penjaga).
+  Future<List<NpnProduct>> searchProduct(String query) async {
+    try {
+      return await _repository.searchProduct(query);
+    } catch (e, stack) {
+      debugPrint(
+        'ValidationProvider.searchProduct: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      return const [];
     }
   }
 

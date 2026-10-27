@@ -1,20 +1,17 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/printer/thermal_label.dart';
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
+import 'package:onezentra_mobile/features/gate/pages/gate_scanner_page.dart';
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/features/validation/providers/validation_provider.dart';
 import 'package:onezentra_mobile/features/validation/widgets/label_print_sheet.dart';
+import 'package:onezentra_mobile/features/validation/widgets/validation_item_fields.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
 /// Halaman pemrosesan sesi validasi yang dibuka SESUDAH operator mengetik /
@@ -33,6 +30,7 @@ class ValidationSessionPage extends StatefulWidget {
     required this.provider,
     required this.session,
     this.pickPhoto,
+    this.openScanner,
     super.key,
   });
 
@@ -45,6 +43,10 @@ class ValidationSessionPage extends StatefulWidget {
 
   /// Injectable photo source so tests never open the camera or gallery.
   final Future<String?> Function({required bool fromCamera})? pickPhoto;
+
+  /// Injectable barcode scanner so tests never open the camera — dipakai
+  /// sheet barang luar rencana untuk memindai barcode produk.
+  final Future<String?> Function()? openScanner;
 
   @override
   State<ValidationSessionPage> createState() => _ValidationSessionPageState();
@@ -862,7 +864,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => ChangeNotifierProvider<ValidationProvider>.value(
         value: widget.provider,
-        child: _ExtraItemSheet(pickPhoto: widget.pickPhoto),
+        child: _ExtraItemSheet(
+          pickPhoto: widget.pickPhoto,
+          openScanner: widget.openScanner,
+        ),
       ),
     );
   }
@@ -1416,10 +1421,8 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
   String _condition = 'FISIK_BAGUS';
   DateTime? _expiredDate;
   String? _photoPath;
-  bool _pickingPhoto = false;
   bool _saving = false;
   String? _error;
-  String? _photoError;
 
   static String _initialActualQty(SjValidationItem item) {
     var value = item.actualQty;
@@ -1438,7 +1441,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
         ? widget.item.condition
         : 'FISIK_BAGUS';
     _expiredDate = DateTime.tryParse(widget.item.expiredDate ?? '');
-    _expiredController.text = _formatDate(_expiredDate);
+    _expiredController.text = formatDateId(_expiredDate);
   }
 
   @override
@@ -1531,27 +1534,24 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   ),
                 ),
                 const SizedBox(height: AppTheme.space2),
-                Wrap(
-                  spacing: AppTheme.space2,
-                  runSpacing: AppTheme.space2,
-                  children: [
-                    for (var value in ValidationCondition.values)
-                      _conditionChip(value),
-                  ],
+                ConditionChipRow(
+                  value: _condition,
+                  onChanged: (value) => setState(() => _condition = value),
                 ),
                 if (ValidationCondition.requiresPhoto.contains(_condition))
                   Padding(
                     padding: const EdgeInsets.only(top: AppTheme.space3),
-                    child: _buildPhotoField(),
+                    child: PhotoEvidenceField(
+                      photoPath: _photoPath,
+                      onChanged: (path) => setState(() => _photoPath = path),
+                      picker: widget.pickPhoto,
+                      enabled: !_saving,
+                    ),
                   ),
                 const SizedBox(height: AppTheme.space3),
-                AppTextField(
+                ExpiredDateField(
                   controller: _expiredController,
-                  label: 'Tanggal expired *',
-                  hint: 'Wajib diisi',
-                  prefixIcon: Icons.calendar_today_rounded,
-                  readOnly: true,
-                  onTap: _pickDate,
+                  onPicked: _onExpiredPicked,
                   validator: (_) => _expiredDate == null
                       ? 'Tanggal expired wajib diisi'
                       : null,
@@ -1614,7 +1614,6 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   isLoading: _saving,
                   onPressed:
                       _saving ||
-                          _pickingPhoto ||
                           (ValidationCondition.requiresPhoto.contains(
                                 _condition,
                               ) &&
@@ -1630,296 +1629,17 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     );
   }
 
-  Widget _conditionChip(String value) {
-    var selected = _condition == value;
-    return InkWell(
-      onTap: () => setState(() => _condition = value),
-      borderRadius: AppTheme.radiusFull,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.space4,
-          vertical: AppTheme.space2,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.primary600 : AppTheme.surfaceCard,
-          borderRadius: AppTheme.radiusFull,
-          border: Border.all(
-            color: selected ? AppTheme.primary600 : AppTheme.gray300,
-          ),
-        ),
-        child: Text(
-          ValidationCondition.label(value),
-          style: GoogleFonts.roboto(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : AppTheme.gray700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPhotoField() => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppTheme.space3),
-    decoration: BoxDecoration(
-      color: AppTheme.warningWell,
-      borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: AppTheme.warningText),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.photo_camera_rounded,
-              size: 16,
-              color: AppTheme.warningText,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                'Foto bukti *',
-                style: GoogleFonts.roboto(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.warningText,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        Text(
-          'Kondisi ini wajib foto. Ambil langsung atau pilih dari galeri.',
-          style: GoogleFonts.roboto(
-            fontSize: 11.5,
-            height: 1.4,
-            color: AppTheme.warningText,
-          ),
-        ),
-        const SizedBox(height: AppTheme.space3),
-        if (_photoPath == null)
-          Row(
-            children: [
-              Expanded(
-                child: AppSecondaryButton(
-                  text: 'Kamera',
-                  height: 44,
-                  leadingIcon: Icons.photo_camera_rounded,
-                  isLoading: _pickingPhoto,
-                  onPressed: _saving || _pickingPhoto
-                      ? null
-                      : () => _pickPhoto(fromCamera: true),
-                ),
-              ),
-              const SizedBox(width: AppTheme.space2),
-              Expanded(
-                child: AppSecondaryButton(
-                  text: 'Galeri',
-                  height: 44,
-                  leadingIcon: Icons.photo_library_rounded,
-                  onPressed: _saving || _pickingPhoto
-                      ? null
-                      : () => _pickPhoto(fromCamera: false),
-                ),
-              ),
-            ],
-          )
-        else ...[
-          ClipRRect(
-            borderRadius: AppTheme.radiusLg,
-            child: Image.file(
-              File(_photoPath!),
-              width: double.infinity,
-              height: 160,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                width: double.infinity,
-                height: 96,
-                alignment: Alignment.center,
-                color: AppTheme.gray100,
-                child: Text(
-                  'Pratinjau tidak tersedia',
-                  style: GoogleFonts.roboto(
-                    fontSize: 12,
-                    color: AppTheme.gray500,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppTheme.space2),
-          Row(
-            children: [
-              Expanded(
-                child: AppSecondaryButton(
-                  text: 'Ganti',
-                  height: 44,
-                  leadingIcon: Icons.refresh_rounded,
-                  onPressed: _saving || _pickingPhoto
-                      ? null
-                      : () => _pickPhoto(fromCamera: true),
-                ),
-              ),
-              const SizedBox(width: AppTheme.space2),
-              Expanded(
-                child: AppSecondaryButton(
-                  text: 'Hapus',
-                  height: 44,
-                  leadingIcon: Icons.delete_outline_rounded,
-                  onPressed: _saving
-                      ? null
-                      : () => setState(() => _photoPath = null),
-                ),
-              ),
-            ],
-          ),
-        ],
-        if (_photoError != null) ...[
-          const SizedBox(height: AppTheme.space2),
-          Text(
-            _photoError!,
-            style: GoogleFonts.roboto(
-              fontSize: 11.5,
-              height: 1.4,
-              color: AppTheme.dangerText,
-            ),
-          ),
-        ],
-      ],
-    ),
-  );
-
-  Future<void> _pickPhoto({required bool fromCamera}) async {
-    if (_pickingPhoto || _saving) {
+  /// Tanggal expired dipilih dari picker bersama — simpan, perbarui teks
+  /// field, lalu validasi ulang form supaya pesan "wajib diisi" hilang.
+  void _onExpiredPicked(DateTime? picked) {
+    if (picked == null) {
       return;
     }
     setState(() {
-      _pickingPhoto = true;
-      _photoError = null;
+      _expiredDate = picked;
+      _expiredController.text = formatDateId(picked);
     });
-    try {
-      String? path;
-      var picker = widget.pickPhoto;
-      if (picker != null) {
-        path = await picker(fromCamera: fromCamera);
-      } else {
-        var file = await ImagePicker().pickImage(
-          source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-          maxWidth: 1280,
-          imageQuality: 80,
-        );
-        path = file?.path;
-      }
-      if (!mounted) {
-        return;
-      }
-      if (path != null && path.isNotEmpty) {
-        setState(() => _photoPath = path);
-      }
-    } on PlatformException catch (error) {
-      if (!mounted) {
-        return;
-      }
-      var denied =
-          error.code == 'camera_access_denied' ||
-          error.code == 'photo_access_denied';
-      setState(() {
-        _photoError = denied
-            ? 'Izin kamera/galeri ditolak. Aktifkan izin di pengaturan '
-                  'perangkat.'
-            : 'Foto tidak dapat diambil. Coba lagi.';
-      });
-    } catch (error, stack) {
-      debugPrint(
-        'ValidationSessionPage._pickPhoto: ${error.runtimeType}: $error',
-      );
-      debugPrintStack(stackTrace: stack, maxFrames: 8);
-      if (!mounted) {
-        return;
-      }
-      setState(() => _photoError = 'Foto tidak dapat diambil. Coba lagi.');
-    } finally {
-      if (mounted) {
-        setState(() => _pickingPhoto = false);
-      }
-    }
-  }
-
-  Future<void> _pickDate() async {
-    var initial = _expiredDate ?? DateTime.now().add(const Duration(days: 30));
-    DateTime? picked;
-    await showCupertinoModalPopup(
-      context: context,
-      builder: (_) => Container(
-        height: 260,
-        padding: const EdgeInsets.all(AppTheme.space4),
-        color: AppTheme.surface,
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: const BoxDecoration(
-                color: AppTheme.gray300,
-                borderRadius: AppTheme.radiusFull,
-              ),
-            ),
-            Expanded(
-              child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date,
-                initialDateTime: initial,
-                minimumDate: DateTime(2000),
-                maximumDate: DateTime(2100),
-                onDateTimeChanged: (DateTime value) => picked = value,
-                backgroundColor: AppTheme.surface,
-              ),
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.space3,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Batal'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.primary500,
-                      ),
-                      child: const Text('Pilih'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        _expiredDate = picked;
-        _expiredController.text = _formatDate(picked);
-      });
-      _formKey.currentState?.validate();
-    }
-  }
-
-  static String _formatDate(DateTime? value) {
-    if (value == null) {
-      return '';
-    }
-    String two(int part) => part.toString().padLeft(2, '0');
-    return '${two(value.day)}/${two(value.month)}/${value.year}';
+    _formKey.currentState?.validate();
   }
 
   static String _formatQty(double? value) {
@@ -1989,9 +1709,22 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
 /// Berbeda dari [_ItemValidationSheet]: baris ini tidak terikat item rencana,
 /// foto bukti selalu wajib (menggantikan catatan kertas), dan rencana tidak
 /// pernah diubah — planner diberi tahu via email oleh server.
+/// Bottom sheet untuk mencatat barang di luar rencana kirim (deviation
+/// record).
+///
+/// Pola input mengikuti [_ItemValidationSheet]: identitas barang diambil dari
+/// master NPN (barcode dipindai/diketik lalu dicocokkan lewat pencarian NPN —
+/// pola combobox Rencana Kirim web), lalu jumlah, kondisi (chips bersama),
+/// foto bukti (widget bersama), tanggal expired (picker bersama). Rencana
+/// tidak pernah diubah — planner diberi tahu via email oleh server.
 class _ExtraItemSheet extends StatefulWidget {
-  const _ExtraItemSheet({this.pickPhoto});
+  const _ExtraItemSheet({this.pickPhoto, this.openScanner});
+
+  /// Overrides ImagePicker untuk test.
   final Future<String?> Function({required bool fromCamera})? pickPhoto;
+
+  /// Overrides scanner kamera untuk test. Default mem-push [GateScannerPage].
+  final Future<String?> Function()? openScanner;
 
   @override
   State<_ExtraItemSheet> createState() => _ExtraItemSheetState();
@@ -2009,10 +1742,13 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
   String _condition = 'FISIK_BAGUS';
   DateTime? _expiredDate;
   String? _photoPath;
-  bool _pickingPhoto = false;
   bool _saving = false;
   String? _error;
-  String? _photoError;
+
+  /// Produk master NPN yang terpilih — identitas & satuan dikunci ke master,
+  /// field manual disembunyikan. null = mode manual/scan bebas.
+  NpnProduct? _npn;
+  bool _resolving = false;
 
   @override
   void dispose() {
@@ -2025,6 +1761,14 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
     _expiredController.dispose();
     super.dispose();
   }
+
+  /// Identitas barang sah bila terkunci ke master NPN, barcode terisi, atau
+  /// kode + nama manual lengkap. Server tetap memvalidasi ulang.
+  bool get _identityValid =>
+      _npn != null ||
+      _barcodeController.text.trim().isNotEmpty ||
+      (_kodeController.text.trim().isNotEmpty &&
+          _namaController.text.trim().isNotEmpty);
 
   @override
   Widget build(BuildContext context) => Container(
@@ -2078,40 +1822,77 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 ),
               ),
               const SizedBox(height: AppTheme.space4),
-              AppTextField(
-                controller: _barcodeController,
-                label: 'Barcode produk',
-                hint: 'Scan / ketik barcode kemasan',
-                prefixIcon: Icons.barcode_reader,
-                textInputAction: TextInputAction.next,
+              // Identitas dulu — barcode + pencarian master NPN, seperti
+              // modal Validasi Item yang identitasnya selalu tampil lebih
+              // dulu sebelum form pemeriksaan.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      controller: _barcodeController,
+                      label: 'Barcode produk',
+                      hint: 'Scan / ketik barcode kemasan',
+                      prefixIcon: Icons.barcode_reader,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _resolveBarcode(),
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.space2),
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppTheme.space5),
+                    child: SizedBox(
+                      width: 104,
+                      child: AppSecondaryButton(
+                        text: 'Pindai',
+                        height: 48,
+                        leadingIcon: Icons.qr_code_scanner_rounded,
+                        isLoading: _resolving,
+                        onPressed: _resolving || _saving ? null : _openScanner,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppTheme.space3),
-              AppTextField(
-                controller: _kodeController,
-                label: 'Kode barang *',
-                hint: 'Wajib bila barcode tidak dikenal',
-                prefixIcon: Icons.tag_rounded,
-                textInputAction: TextInputAction.next,
-                validator: (value) => _identityValid
-                    ? null
-                    : 'Isi kode & nama barang, atau barcode yang dikenal',
-              ),
-              const SizedBox(height: AppTheme.space3),
-              AppTextField(
-                controller: _namaController,
-                label: 'Nama barang *',
-                hint: 'Wajib bila barcode tidak dikenal',
-                prefixIcon: Icons.abc_rounded,
-                textInputAction: TextInputAction.next,
-                validator: (value) => _identityValid
-                    ? null
-                    : 'Isi kode & nama barang, atau barcode yang dikenal',
-              ),
+              if (_npn != null)
+                _npnIdentityCard()
+              else ...[
+                AppTextField(
+                  controller: _kodeController,
+                  label: 'Kode barang *',
+                  hint: 'Wajib bila barcode tidak dikenal',
+                  prefixIcon: Icons.tag_rounded,
+                  textInputAction: TextInputAction.next,
+                  validator: (value) => _identityValid
+                      ? null
+                      : 'Isi kode & nama barang, atau barcode yang dikenal',
+                ),
+                const SizedBox(height: AppTheme.space3),
+                AppTextField(
+                  controller: _namaController,
+                  label: 'Nama barang *',
+                  hint: 'Wajib bila barcode tidak dikenal',
+                  prefixIcon: Icons.abc_rounded,
+                  textInputAction: TextInputAction.next,
+                  validator: (value) => _identityValid
+                      ? null
+                      : 'Isi kode & nama barang, atau barcode yang dikenal',
+                ),
+                const SizedBox(height: AppTheme.space3),
+                AppTextField(
+                  controller: _satuanController,
+                  label: 'Satuan',
+                  hint: 'CRT / ZAK / PCS',
+                  prefixIcon: Icons.square_foot_rounded,
+                  textInputAction: TextInputAction.next,
+                ),
+              ],
               const SizedBox(height: AppTheme.space3),
               AppTextField(
                 controller: _qtyController,
                 label: 'Jumlah *',
-                hint: '0',
+                hint: _npn?.satuan == null ? '0' : '0 ($_npnSatuan)',
                 prefixIcon: Icons.inventory_rounded,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
@@ -2126,14 +1907,6 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 },
               ),
               const SizedBox(height: AppTheme.space3),
-              AppTextField(
-                controller: _satuanController,
-                label: 'Satuan',
-                hint: 'CRT / ZAK / PCS',
-                prefixIcon: Icons.square_foot_rounded,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: AppTheme.space3),
               Text(
                 'Kondisi',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -2142,25 +1915,32 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 ),
               ),
               const SizedBox(height: AppTheme.space2),
-              Wrap(
-                spacing: AppTheme.space2,
-                runSpacing: AppTheme.space2,
-                children: [
-                  for (var value in ValidationCondition.values)
-                    _conditionChip(value),
-                ],
+              ConditionChipRow(
+                value: _condition,
+                onChanged: (value) => setState(() => _condition = value),
               ),
               const SizedBox(height: AppTheme.space3),
-              AppTextField(
+              PhotoEvidenceField(
+                photoPath: _photoPath,
+                onChanged: (path) => setState(() => _photoPath = path),
+                picker: widget.pickPhoto,
+                enabled: !_saving,
+                subtitle: 'Wajib — menggantikan catatan manual di kertas.',
+              ),
+              const SizedBox(height: AppTheme.space3),
+              ExpiredDateField(
                 controller: _expiredController,
-                label: 'Tanggal expired',
-                hint: 'Opsional',
-                prefixIcon: Icons.calendar_today_rounded,
-                readOnly: true,
-                onTap: _pickDate,
+                isRequired: false,
+                onPicked: (picked) {
+                  if (picked == null) {
+                    return;
+                  }
+                  setState(() {
+                    _expiredDate = picked;
+                    _expiredController.text = formatDateId(picked);
+                  });
+                },
               ),
-              const SizedBox(height: AppTheme.space3),
-              _buildPhotoField(),
               const SizedBox(height: AppTheme.space3),
               AppTextField(
                 controller: _notesController,
@@ -2193,9 +1973,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
               AppPrimaryButton(
                 text: 'Laporkan',
                 isLoading: _saving,
-                onPressed: _saving || _pickingPhoto || _photoPath == null
-                    ? null
-                    : _save,
+                onPressed: _saving || _photoPath == null ? null : _save,
               ),
             ],
           ),
@@ -2204,308 +1982,135 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
     ),
   );
 
-  /// Identitas barang sah bila barcode terisi, atau kode + nama manual
-  /// lengkap. Server tetap memvalidasi ulang terhadap master NPN.
-  bool get _identityValid {
-    var barcode = _barcodeController.text.trim();
-    if (barcode.isNotEmpty) {
-      return true;
-    }
-    return _kodeController.text.trim().isNotEmpty &&
-        _namaController.text.trim().isNotEmpty;
-  }
+  String get _npnSatuan => _npn?.satuan ?? '';
 
-  Widget _conditionChip(String value) {
-    var selected = _condition == value;
-    return InkWell(
-      onTap: () => setState(() => _condition = value),
-      borderRadius: AppTheme.radiusFull,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.space4,
-          vertical: AppTheme.space2,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.primary600 : AppTheme.surfaceCard,
-          borderRadius: AppTheme.radiusFull,
-          border: Border.all(
-            color: selected ? AppTheme.primary600 : AppTheme.gray300,
-          ),
-        ),
-        child: Text(
-          ValidationCondition.label(value),
-          style: GoogleFonts.roboto(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : AppTheme.gray700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPhotoField() => Container(
+  /// Kartu identitas terkunci ke master NPN — menampilkan nama, kode, dan
+  /// satuan dari master; tombol membuka kunci untuk kembali ke mode manual.
+  Widget _npnIdentityCard() => Container(
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: AppTheme.warningWell,
+      color: AppTheme.surfaceCard,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: AppTheme.warningText),
+      border: Border.all(color: AppTheme.primary500),
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    child: Row(
       children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.photo_camera_rounded,
-              size: 16,
-              color: AppTheme.warningText,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                'Foto bukti *',
-                style: GoogleFonts.roboto(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.warningText,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        Text(
-          'Wajib — menggantikan catatan manual di kertas.',
-          style: GoogleFonts.roboto(
-            fontSize: 11.5,
-            height: 1.4,
-            color: AppTheme.warningText,
-          ),
-        ),
-        const SizedBox(height: AppTheme.space3),
-        if (_photoPath == null)
-          Row(
-            children: [
-              Expanded(
-                child: AppSecondaryButton(
-                  text: 'Kamera',
-                  height: 44,
-                  leadingIcon: Icons.photo_camera_rounded,
-                  isLoading: _pickingPhoto,
-                  onPressed: _saving || _pickingPhoto
-                      ? null
-                      : () => _pickPhoto(fromCamera: true),
-                ),
-              ),
-              const SizedBox(width: AppTheme.space2),
-              Expanded(
-                child: AppSecondaryButton(
-                  text: 'Galeri',
-                  height: 44,
-                  leadingIcon: Icons.photo_library_rounded,
-                  onPressed: _saving || _pickingPhoto
-                      ? null
-                      : () => _pickPhoto(fromCamera: false),
-                ),
-              ),
-            ],
-          )
-        else ...[
-          ClipRRect(
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppTheme.primary500.withValues(alpha: 0.12),
             borderRadius: AppTheme.radiusLg,
-            child: Image.file(
-              File(_photoPath!),
-              width: double.infinity,
-              height: 160,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                width: double.infinity,
-                height: 96,
-                alignment: Alignment.center,
-                color: AppTheme.gray100,
-                child: Text(
-                  'Pratinjau tidak tersedia',
-                  style: GoogleFonts.roboto(
-                    fontSize: 12,
-                    color: AppTheme.gray500,
-                  ),
-                ),
-              ),
-            ),
           ),
-          const SizedBox(height: AppTheme.space2),
-          Row(
+          child: const Icon(
+            Icons.inventory_2_rounded,
+            color: AppTheme.primary500,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: AppTheme.space3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: AppSecondaryButton(
-                  text: 'Ganti',
-                  height: 44,
-                  leadingIcon: Icons.refresh_rounded,
-                  onPressed: _saving || _pickingPhoto
-                      ? null
-                      : () => _pickPhoto(fromCamera: true),
+              Text(
+                _npn!.displayName,
+                style: GoogleFonts.roboto(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.foreground,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: AppTheme.space2),
-              Expanded(
-                child: AppSecondaryButton(
-                  text: 'Hapus',
-                  height: 44,
-                  leadingIcon: Icons.delete_outline_rounded,
-                  onPressed: _saving
-                      ? null
-                      : () => setState(() => _photoPath = null),
+              const SizedBox(height: 2),
+              Text(
+                '${_npn!.kodeBarang ?? '-'}'
+                '${_npn!.satuan != null ? ' • Satuan ${_npn!.satuan}' : ''}',
+                style: GoogleFonts.robotoMono(
+                  fontSize: 11.5,
+                  color: AppTheme.gray600,
                 ),
               ),
             ],
           ),
-        ],
-        if (_photoError != null) ...[
-          const SizedBox(height: AppTheme.space2),
-          Text(
-            _photoError!,
-            style: GoogleFonts.roboto(
-              fontSize: 11.5,
-              height: 1.4,
-              color: AppTheme.dangerText,
-            ),
-          ),
-        ],
+        ),
+        IconButton(
+          tooltip: 'Ganti barang',
+          icon: const Icon(Icons.close_rounded, size: 18),
+          color: AppTheme.gray500,
+          onPressed: _saving
+              ? null
+              : () => setState(() {
+                  _npn = null;
+                  _kodeController.clear();
+                  _namaController.clear();
+                  _satuanController.clear();
+                }),
+        ),
       ],
     ),
   );
 
-  Future<void> _pickPhoto({required bool fromCamera}) async {
-    if (_pickingPhoto || _saving) {
+  /// Buka scanner kamera dan isi barcode dari hasil pindai, lalu langsung
+  /// dicocokkan ke master NPN — pola halaman Validasi SJ yang hasil pindainya
+  /// diproses otomatis.
+  Future<void> _openScanner() async {
+    var injected = widget.openScanner;
+    var code = await (injected != null
+        ? injected()
+        : Navigator.of(context).push<String>(
+            MaterialPageRoute(
+              builder: (_) => const GateScannerPage(
+                title: 'Pindai Barcode Barang',
+                hint: 'Arahkan kamera ke barcode pada kemasan produk.',
+                subtitle: 'Hasil pindai dicocokkan ke master NPN otomatis.',
+                cameraErrorHint:
+                    'Kamera tidak dapat dijalankan. Ketik barcode produk '
+                    'secara manual.',
+              ),
+            ),
+          ));
+    if (!mounted || code == null || code.trim().isEmpty) {
       return;
     }
+    _barcodeController.text = code.trim();
+    await _resolveBarcode();
+  }
+
+  /// Cocokkan barcode di field ke master NPN. Tepat satu produk cocok =
+  /// identitas terkunci (nama/kode/satuan dari master); selain itu operator
+  /// melanjutkan manual — form tidak pernah terkunci bila ragu.
+  Future<void> _resolveBarcode() async {
+    var code = _barcodeController.text.trim();
+    if (code.isEmpty || _resolving) {
+      return;
+    }
+    setState(() => _resolving = true);
+    var products = await context.read<ValidationProvider>().searchProduct(code);
+    if (!mounted) {
+      return;
+    }
+    var exact = products
+        .where((p) => p.kodeBarang == code || p.sapKode == code)
+        .toList();
+    var match = exact.length == 1
+        ? exact.single
+        : exact.isEmpty && products.length == 1
+        ? products.single
+        : null;
     setState(() {
-      _pickingPhoto = true;
-      _photoError = null;
+      _resolving = false;
+      if (match != null) {
+        _npn = match;
+        _kodeController.text = match.kodeBarang ?? '';
+        _namaController.text = match.displayName;
+        _satuanController.text = match.satuan ?? '';
+        _error = null;
+      }
     });
-    try {
-      String? path;
-      var picker = widget.pickPhoto;
-      if (picker != null) {
-        path = await picker(fromCamera: fromCamera);
-      } else {
-        var file = await ImagePicker().pickImage(
-          source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-          maxWidth: 1280,
-          imageQuality: 80,
-        );
-        path = file?.path;
-      }
-      if (!mounted) {
-        return;
-      }
-      if (path != null && path.isNotEmpty) {
-        setState(() => _photoPath = path);
-      }
-    } on PlatformException catch (error) {
-      if (!mounted) {
-        return;
-      }
-      var denied =
-          error.code == 'camera_access_denied' ||
-          error.code == 'photo_access_denied';
-      setState(() {
-        _photoError = denied
-            ? 'Izin kamera/galeri ditolak. Aktifkan izin di pengaturan '
-                  'perangkat.'
-            : 'Foto tidak dapat diambil. Coba lagi.';
-      });
-    } catch (error, stack) {
-      debugPrint(
-        'ValidationSessionPage._ExtraItemSheet._pickPhoto: '
-        '${error.runtimeType}: $error',
-      );
-      debugPrintStack(stackTrace: stack, maxFrames: 8);
-      if (!mounted) {
-        return;
-      }
-      setState(() => _photoError = 'Foto tidak dapat diambil. Coba lagi.');
-    } finally {
-      if (mounted) {
-        setState(() => _pickingPhoto = false);
-      }
-    }
-  }
-
-  Future<void> _pickDate() async {
-    var initial = _expiredDate ?? DateTime.now().add(const Duration(days: 30));
-    DateTime? picked;
-    await showCupertinoModalPopup(
-      context: context,
-      builder: (_) => Container(
-        height: 260,
-        padding: const EdgeInsets.all(AppTheme.space4),
-        color: AppTheme.surface,
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: const BoxDecoration(
-                color: AppTheme.gray300,
-                borderRadius: AppTheme.radiusFull,
-              ),
-            ),
-            Expanded(
-              child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date,
-                initialDateTime: initial,
-                minimumDate: DateTime(2000),
-                maximumDate: DateTime(2100),
-                onDateTimeChanged: (DateTime value) => picked = value,
-                backgroundColor: AppTheme.surface,
-              ),
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.space3,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Batal'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.primary500,
-                      ),
-                      child: const Text('Pilih'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        _expiredDate = picked;
-        _expiredController.text = _formatDate(picked);
-      });
-      _formKey.currentState?.validate();
-    }
-  }
-
-  static String _formatDate(DateTime? value) {
-    if (value == null) {
-      return '';
-    }
-    String two(int part) => part.toString().padLeft(2, '0');
-    return '${two(value.day)}/${two(value.month)}/${value.year}';
+    _formKey.currentState?.validate();
   }
 
   Future<void> _save() async {
@@ -2534,14 +2139,23 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
     var barcode = _barcodeController.text.trim();
     var success = await provider.reportExtraItem(
       barcode: barcode.isEmpty ? null : barcode,
-      kodeBarang: _kodeController.text.trim().isEmpty
+      npnId: _npn?.id,
+      // Bila terkunci ke master, identitas dipegang npn_id — server menimpa
+      // nilai manual dengan master, jadi nilai manual tidak dikirim.
+      kodeBarang: _npn != null
+          ? null
+          : _kodeController.text.trim().isEmpty
           ? null
           : _kodeController.text.trim(),
-      namaBarang: _namaController.text.trim().isEmpty
+      namaBarang: _npn != null
+          ? null
+          : _namaController.text.trim().isEmpty
           ? null
           : _namaController.text.trim(),
       qty: double.parse(_qtyController.text.trim().replaceAll(',', '.')),
-      satuan: _satuanController.text.trim().isEmpty
+      satuan: _npn != null
+          ? null
+          : _satuanController.text.trim().isEmpty
           ? null
           : _satuanController.text.trim(),
       condition: _condition,

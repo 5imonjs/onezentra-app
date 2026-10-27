@@ -18,6 +18,7 @@ class AppTextField extends StatelessWidget {
     this.onSaved,
     this.onChanged,
     this.onEditingComplete,
+    this.onSubmitted,
     this.onTap,
     this.readOnly = false,
     this.enabled = true,
@@ -38,6 +39,10 @@ class AppTextField extends StatelessWidget {
   final void Function(String?)? onSaved;
   final void Function(String)? onChanged;
   final void Function()? onEditingComplete;
+
+  /// Dipanggil saat user menekan tombol aksi keyboard (mis. "done") —
+  /// dipakai sheet barang luar rencana untuk mencocokkan barcode ke master.
+  final ValueChanged<String>? onSubmitted;
   final void Function()? onTap;
   final bool readOnly;
   final bool enabled;
@@ -72,6 +77,7 @@ class AppTextField extends StatelessWidget {
           onSaved: onSaved,
           onChanged: onChanged,
           onEditingComplete: onEditingComplete,
+          onFieldSubmitted: onSubmitted,
           onTap: onTap,
           readOnly: readOnly,
           enabled: enabled,

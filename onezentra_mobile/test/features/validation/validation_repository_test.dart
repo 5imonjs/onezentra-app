@@ -104,6 +104,55 @@ void main() {
       expect(calls, 0);
     });
 
+    test('searchProduct memanggil endpoint npn dan memparse produk', () async {
+      String? hitEndpoint;
+      var repository = ValidationRepository(
+        get: (endpoint) async {
+          hitEndpoint = endpoint;
+          return {
+            'data': {
+              'data': [
+                {
+                  'id': 5,
+                  'BOSnetszProductId': 'SKU-NPN-77',
+                  'SAPszProductId': 'MAT-77',
+                  'SAPszUomId': 'CRT',
+                  'szNickName': 'Minyak Goreng 2L',
+                  'szNickNameNew': '',
+                  'szShortDescription': '',
+                },
+              ],
+              'total': 1,
+            },
+          };
+        },
+      );
+
+      var products = await repository.searchProduct('8991234567890');
+
+      expect(hitEndpoint, '/npn/search-product?q=8991234567890&limit=50');
+      expect(products, hasLength(1));
+      expect(products.first.id, 5);
+      expect(products.first.kodeBarang, 'SKU-NPN-77');
+      expect(products.first.satuan, 'CRT');
+      expect(products.first.displayName, 'Minyak Goreng 2L');
+    });
+
+    test('searchProduct kosong tidak memanggil API sama sekali', () async {
+      var calls = 0;
+      var repository = ValidationRepository(
+        get: (_) async {
+          calls++;
+          return const {};
+        },
+      );
+
+      var products = await repository.searchProduct('   ');
+
+      expect(products, isEmpty);
+      expect(calls, 0);
+    });
+
     test('scanItem mengirim field validasi dan memparse item', () async {
       Map<String, dynamic>? hitBody;
       var repository = ValidationRepository(
@@ -267,6 +316,47 @@ void main() {
       expect(extra.qty, 7);
       expect(extra.hasPhoto, isTrue);
       expect(extra.recorderName, 'Cheker');
+    });
+
+    test('reportExtraItem mengirim npn_id dari pilihan master NPN', () async {
+      Map<String, String>? hitFields;
+      var repository = ValidationRepository(
+        postMultipart:
+            (endpoint, fields, {required fileField, required filePath}) async {
+              hitFields = fields;
+              return {
+                'data': {
+                  'id': 72,
+                  'sj_validation_id': 9,
+                  'npn_id': 5,
+                  'kode_barang': 'SKU-NPN-77',
+                  'nama_barang': 'Minyak Goreng 2L',
+                  'qty': 5,
+                  'satuan': 'CRT',
+                  'condition': 'FISIK_BAGUS',
+                  'photo': 'validation-photos/extra.jpg',
+                },
+              };
+            },
+      );
+
+      var extra = await repository.reportExtraItem(
+        validationId: 9,
+        npnId: 5,
+        barcode: '8991234567890',
+        qty: 5,
+        photoPath: '/tmp/bukti.jpg',
+      );
+
+      // Identitas dipegang npn_id; nilai manual tidak dikirim.
+      expect(hitFields, {
+        'qty': '5.0',
+        'condition': 'FISIK_BAGUS',
+        'barcode': '8991234567890',
+        'npn_id': '5',
+      });
+      expect(extra.npnId, 5);
+      expect(extra.kodeBarang, 'SKU-NPN-77');
     });
 
     test('show memparse daftar barang luar rencana', () async {

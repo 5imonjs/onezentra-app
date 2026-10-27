@@ -72,6 +72,22 @@ class _ExtraFakeRepository extends ValidationRepository {
   final List<String?> reportPhotoPath = [];
   var showCalls = 0;
 
+  List<NpnProduct> searchResults = const [];
+  Object? searchError;
+  int searchCalls = 0;
+  String? lastSearchQuery;
+
+  @override
+  Future<List<NpnProduct>> searchProduct(String query) async {
+    searchCalls++;
+    lastSearchQuery = query;
+    var error = searchError;
+    if (error != null) {
+      throw error;
+    }
+    return searchResults;
+  }
+
   @override
   Future<SjValidation> startByCode(String scanCode) async => session;
 
@@ -87,6 +103,7 @@ class _ExtraFakeRepository extends ValidationRepository {
     required double qty,
     required String photoPath,
     String? barcode,
+    int? npnId,
     String? kodeBarang,
     String? namaBarang,
     String? satuan,
@@ -263,6 +280,44 @@ void main() {
     expect(ok, isFalse);
     expect(provider.message?.success, isFalse);
     expect(provider.message?.message, contains('Foto wajib'));
+
+    provider.dispose();
+  });
+
+  test('searchProduct meneruskan hasil repository', () async {
+    var repository =
+        _ExtraFakeRepository(const SjValidation(id: 9, scanCode: 'PO-042'))
+          ..searchResults = const [
+            NpnProduct(
+              id: 5,
+              kodeBarang: 'SKU-NPN-77',
+              satuan: 'CRT',
+              nama: 'Minyak Goreng 2L',
+            ),
+          ];
+    var provider = ValidationProvider(repository: repository);
+
+    var products = await provider.searchProduct('8991234567890');
+
+    expect(repository.searchCalls, 1);
+    expect(repository.lastSearchQuery, '8991234567890');
+    expect(products.single.kodeBarang, 'SKU-NPN-77');
+    expect(products.single.displayName, 'Minyak Goreng 2L');
+
+    provider.dispose();
+  });
+
+  test('searchProduct gagal mengembalikan daftar kosong', () async {
+    var repository = _ExtraFakeRepository(
+      const SjValidation(id: 9, scanCode: 'PO-042'),
+    )..searchError = const ApiException('Server tidak merespons.', 503);
+    var provider = ValidationProvider(repository: repository);
+
+    var products = await provider.searchProduct('8991234567890');
+
+    // Autofill hanyalah kenyamanan: gagal pencarian tidak melempar, form
+    // lanjut ke input manual.
+    expect(products, isEmpty);
 
     provider.dispose();
   });
