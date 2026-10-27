@@ -43,7 +43,7 @@ jobs:
         env:
           # Pastikan DB dalam mode testing
           DB_CONNECTION: sqlite
-          DB_DATABASE: :memory:
+          DB_DATABASE: ":memory:"
 
       - name: Audit PHP dependencies
         run: composer audit --no-interaction
