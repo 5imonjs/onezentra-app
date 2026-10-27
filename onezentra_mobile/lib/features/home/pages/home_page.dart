@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
+import 'package:onezentra_mobile/features/auth/models/auth_models.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
@@ -130,111 +131,186 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.space6),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 960),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Adaptive horizontal padding: tight on phones, airier on
+            // tablets and desktop windows (same ramp as workflow pages).
+            var horizontalPadding = constraints.maxWidth >= 900
+                ? AppTheme.space8
+                : constraints.maxWidth >= 600
+                ? AppTheme.space6
+                : AppTheme.space4;
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                AppTheme.space5,
+                horizontalPadding,
+                AppTheme.space8,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.primary100,
-                          borderRadius: AppTheme.radiusXl,
-                        ),
-                        child: const Icon(
-                          Icons.warehouse_rounded,
-                          size: 26,
-                          color: AppTheme.primary600,
-                        ),
-                      ),
-                      const SizedBox(width: AppTheme.space4),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Halo,',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.gray500,
-                              ),
-                            ),
-                            Text(
-                              user?.fullName ?? 'Pengguna',
-                              style: theme.textTheme.headlineMedium?.copyWith(
-                                fontSize: 20,
-                                height: 1.2,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.foreground,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (user?.kodeDepo != null)
-                              Text(
-                                'Depo ${user!.kodeDepo!}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  height: 1.4,
-                                  color: AppTheme.gray500,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
+                      _buildHeroHeader(theme, user),
+                      const SizedBox(height: AppTheme.space6),
+                      if (auth.refreshFailed && hasMenu) ...[
+                        _buildRefreshBanner(theme, auth),
+                        const SizedBox(height: AppTheme.space4),
+                      ],
+                      if (!hasMenu)
+                        user != null &&
+                                user.permissions == null &&
+                                !auth.refreshFailed
+                            ? _buildPermissionLoading(theme)
+                            : _buildEmptyMenu(theme, auth)
+                      else ...[
+                        if (visibleWorkflow.isNotEmpty) ...[
+                          _sectionHeader(
+                            theme,
+                            'Alur kerja',
+                            'Kerjakan berurutan dari Gate IN sampai Check Out.',
+                          ),
+                          const SizedBox(height: AppTheme.space4),
+                          _menuGrid(
+                            context,
+                            theme,
+                            visibleWorkflow,
+                            numbered: true,
+                          ),
+                        ],
+                        if (visibleHistory.isNotEmpty) ...[
+                          if (visibleWorkflow.isNotEmpty)
+                            const SizedBox(height: AppTheme.space6),
+                          _sectionHeader(
+                            theme,
+                            'Catatan aktivitas',
+                            'Riwayat gate, validasi, dan penerimaan dalam satu tempat.',
+                          ),
+                          const SizedBox(height: AppTheme.space4),
+                          _menuCard(context, theme, visibleHistory.first),
+                        ],
+                      ],
+                      const SizedBox(height: AppTheme.space8),
                     ],
                   ),
-                  const SizedBox(height: AppTheme.space6),
-                  if (auth.refreshFailed && hasMenu) ...[
-                    _buildRefreshBanner(theme, auth),
-                    const SizedBox(height: AppTheme.space4),
-                  ],
-                  if (!hasMenu)
-                    user != null &&
-                            user.permissions == null &&
-                            !auth.refreshFailed
-                        ? _buildPermissionLoading(theme)
-                        : _buildEmptyMenu(theme, auth)
-                  else ...[
-                    if (visibleWorkflow.isNotEmpty) ...[
-                      _sectionHeader(
-                        theme,
-                        'Alur kerja',
-                        'Kerjakan berurutan dari Gate IN sampai Check Out.',
-                      ),
-                      const SizedBox(height: AppTheme.space4),
-                      _menuGrid(
-                        context,
-                        theme,
-                        visibleWorkflow,
-                        numbered: true,
-                      ),
-                    ],
-                    if (visibleHistory.isNotEmpty) ...[
-                      if (visibleWorkflow.isNotEmpty)
-                        const SizedBox(height: AppTheme.space6),
-                      _sectionHeader(
-                        theme,
-                        'Catatan aktivitas',
-                        'Riwayat gate, validasi, dan penerimaan dalam satu tempat.',
-                      ),
-                      const SizedBox(height: AppTheme.space4),
-                      _menuCard(context, theme, visibleHistory.first),
-                    ],
-                  ],
-                  const SizedBox(height: AppTheme.space8),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
+
+  /// Aurora hero: greeting + identitas depo di atas panel bergradasi.
+  /// Panel selalu gelap (ink ramp) seperti hero halaman workflow lain.
+  Widget _buildHeroHeader(ThemeData theme, User? user) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space5),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppTheme.primary950, AppTheme.ink900, AppTheme.ink800],
+      ),
+      borderRadius: AppTheme.radius2xl,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      boxShadow: [
+        BoxShadow(
+          color: AppTheme.ink900.withValues(alpha: 0.35),
+          blurRadius: 24,
+          offset: const Offset(0, 10),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppTheme.primary500, AppTheme.primary700],
+            ),
+            borderRadius: AppTheme.radiusXl,
+          ),
+          child: const Icon(
+            Icons.warehouse_rounded,
+            size: 26,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: AppTheme.space4),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Halo,',
+                style: GoogleFonts.roboto(
+                  fontSize: 12,
+                  height: 1.2,
+                  color: AppTheme.gray400,
+                ),
+              ),
+              Text(
+                user?.fullName ?? 'Pengguna',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontSize: 20,
+                  height: 1.2,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.foreground,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (user?.kodeDepo != null) ...[
+                const SizedBox(height: AppTheme.space2),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space3,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary500.withValues(alpha: 0.18),
+                    borderRadius: AppTheme.radiusFull,
+                    border: Border.all(
+                      color: AppTheme.primary500.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.store_rounded,
+                        size: 12,
+                        color: AppTheme.primary200,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Depo ${user!.kodeDepo!}',
+                        style: GoogleFonts.roboto(
+                          fontSize: 11,
+                          height: 1.2,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primary200,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 
   Future<void> _confirmLogout() async {
     var confirmed = await showDialog<bool>(
@@ -393,33 +469,53 @@ class _HomePageState extends State<HomePage> {
     ),
   );
 
-  Widget _sectionHeader(ThemeData theme, String title, String subtitle) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              title,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontSize: 16,
-                height: 1.3,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.foreground,
+  Widget _sectionHeader(ThemeData theme, String title, String subtitle) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Aksen bar kecil — menandai awal setiap section dengan konsisten.
+      Container(
+        width: 3,
+        height: 34,
+        margin: const EdgeInsets.only(right: AppTheme.space3),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppTheme.primary400, AppTheme.accent400],
+          ),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontSize: 16,
+                  height: 1.3,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.foreground,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontSize: 12,
-              height: 1.4,
-              color: AppTheme.gray500,
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 12,
+                height: 1.4,
+                color: AppTheme.gray500,
+              ),
             ),
-          ),
-        ],
-      );
+          ],
+        ),
+      ),
+    ],
+  );
 
   Widget _menuGrid(
     BuildContext context,
@@ -458,6 +554,9 @@ class _HomePageState extends State<HomePage> {
     int? number,
   }) => AppCard(
     padding: const EdgeInsets.all(AppTheme.space5),
+    // Subtle stage tint: blends a hint of the step colour into the card so
+    // the workflow reads as a colored sequence without breaking the theme.
+    color: Color.lerp(AppTheme.surfaceCard, menu.color, 0.05),
     border: Border.all(color: AppTheme.gray400),
     onTap: () => context.push(menu.route),
     child: Row(
@@ -469,8 +568,16 @@ class _HomePageState extends State<HomePage> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: menu.color.withValues(alpha: 0.15),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    menu.color.withValues(alpha: 0.22),
+                    menu.color.withValues(alpha: 0.08),
+                  ],
+                ),
                 borderRadius: AppTheme.radiusXl,
+                border: Border.all(color: menu.color.withValues(alpha: 0.25)),
               ),
               child: Icon(menu.icon, size: 28, color: menu.color),
             ),

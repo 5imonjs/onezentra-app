@@ -1075,7 +1075,7 @@ class _UnloadPageState extends State<UnloadPage> {
         const Icon(
           Icons.info_outline_rounded,
           size: 16,
-          color: AppTheme.gray200,
+          color: AppTheme.primary400,
         ),
         const SizedBox(width: 8),
         Expanded(

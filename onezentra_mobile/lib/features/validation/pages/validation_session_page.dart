@@ -870,7 +870,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Item belum memiliki batch. Silakan validasi ulang atau coba lagi.'),
+            content: Text(
+              'Item belum memiliki batch. Silakan validasi ulang atau coba lagi.',
+            ),
             backgroundColor: AppTheme.warning,
           ),
         );
@@ -1703,7 +1705,9 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
             SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space3,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
