@@ -20,6 +20,14 @@ class PdfCompressor
             $outputPath,
         ]);
 
-        return $process->successful() && file_exists($outputPath);
+        if (! $process->successful() || ! file_exists($outputPath)) {
+            \Log::warning('qpdf gagal mengompres PDF; file disimpan tanpa kompresi', [
+                'error' => $process->errorOutput(),
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 }

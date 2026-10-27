@@ -30,6 +30,11 @@ jobs:
       - name: Generate application key
         run: php artisan key:generate --no-interaction
 
+      - name: Install qpdf
+        # PdfCompressor (upload PDF BiayaRetribusi) memanggil binary qpdf;
+        # tanpa ini kompresi gagal diam-diam dan test ukuran PDF tidak terpenuhi.
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf
+
       - name: Run tests
         run: php artisan test --compact --exclude-group=performance
         env:
