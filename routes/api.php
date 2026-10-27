@@ -389,6 +389,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{sjValidation}', [SjValidationController::class, 'show'])->middleware('permission:sj_validation.view');
         Route::post('/start/{rencanaKirim}', [SjValidationController::class, 'start'])->middleware('permission:sj_validation.create');
         Route::post('/{sjValidation}/scan', [SjValidationController::class, 'scanItem'])->middleware('permission:sj_validation.validate');
+        Route::post('/{sjValidation}/extra-items', [SjValidationController::class, 'storeExtraItem'])->middleware('permission:sj_validation.extra');
         Route::delete('/{sjValidation}/items/{item}', [SjValidationController::class, 'deleteItem'])->middleware('permission:sj_validation.delete');
         Route::post('/{sjValidation}/complete', [SjValidationController::class, 'complete'])->middleware('permission:sj_validation.complete');
         // Gate memakai permission `cancel` (bukan `edit`): membatalkan validasi adalah

@@ -321,11 +321,13 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertNotEmpty($bh, 'Role bh tidak boleh nol permission (lockout)');
         $this->assertSame($adminPlanner, $bh);
 
-        // Total sistem tetap konsisten: 12 role lama + ga + bh, 109 permission
-        // (106 lama + 3 sesi opname), dan grant hasil turunan.
+        // Total sistem tetap konsisten: 12 role lama + ga + bh, 110 permission
+        // (106 lama + 3 sesi opname + 1 barang luar rencana `sj_validation.
+        // extra` — tanpa grant bawaan seeder, dicentang manual), dan grant
+        // hasil turunan.
         // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
-        $this->assertSame(109, Permission::count());
+        $this->assertSame(110, Permission::count());
         $this->assertSame(569, DB::table('role_permission')->count());
     }
 

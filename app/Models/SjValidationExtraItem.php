@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class SjValidationExtraItem extends Model
+{
+    protected $fillable = [
+        'sj_validation_id', 'npn_id', 'barcode', 'kode_barang', 'nama_barang',
+        'qty', 'satuan', 'condition', 'expired_date', 'photo', 'notes',
+        'recorded_by',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'qty' => 'decimal:2',
+            'expired_date' => 'date',
+        ];
+    }
+
+    public function validation(): BelongsTo
+    {
+        return $this->belongsTo(SjValidation::class, 'sj_validation_id');
+    }
+
+    public function npn(): BelongsTo
+    {
+        return $this->belongsTo(Npn::class);
+    }
+
+    public function recorder(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recorded_by');
+    }
+}

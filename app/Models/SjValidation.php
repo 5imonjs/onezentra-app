@@ -39,4 +39,9 @@ class SjValidation extends Model
     {
         return $this->hasMany(SjValidationItem::class);
     }
+
+    public function extraItems(): HasMany
+    {
+        return $this->hasMany(SjValidationExtraItem::class)->orderBy('id');
+    }
 }

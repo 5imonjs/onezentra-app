@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ExtraItemReported;
 use App\Mail\SelisihQtyNotification;
 use App\Mail\SjValidated;
 use App\Models\Batch;
@@ -11,6 +12,7 @@ use App\Models\Receiving;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\SjValidation;
+use App\Models\SjValidationExtraItem;
 use App\Models\SjValidationItem;
 use App\Models\StandarisasiTumpukan;
 use App\Models\StandarUmurProduk;
@@ -107,10 +109,15 @@ class SjValidationController extends Controller
             'rencanaKirim.items.npn',
             'items.npn',
             'items.batch',
+            'extraItems.npn',
+            'extraItems.recorder:id,full_name',
             'validator:id,full_name',
         ]);
         $this->attachStandarUmur($sjValidation->items);
         $this->attachStandarisasiTumpukan($sjValidation->items);
+        // Umur standar juga relevan untuk barang luar rencana (dropdown form
+        // di mobile memakai reminder umur yang sama).
+        $this->attachStandarUmur($sjValidation->extraItems);
 
         // Apakah pengguna ini boleh mengoreksi item pada sesi yang sudah selesai.
         // Dihitung di server karena hanya server yang tahu status Receiving, dan
@@ -124,12 +131,15 @@ class SjValidationController extends Controller
     /**
      * Lampirkan umur standar (bulan) pada setiap item validasi, diambil dari
      * tabel standar_umur_produk melalui npn.SAPszProductId -> standar_umur_produk.material.
+     *
+     * Menerima baris rencana (SjValidationItem) maupun barang luar rencana
+     * (SjValidationExtraItem) — keduanya punya relasi `npn` yang sama.
      */
     protected function attachStandarUmur(Collection|iterable $items): void
     {
         $items = collect($items);
         $materials = $items
-            ->map(fn (SjValidationItem $it) => $it->npn?->SAPszProductId)
+            ->map(fn ($it) => $it->npn?->SAPszProductId)
             ->filter()
             ->unique()
             ->values();
@@ -138,7 +148,6 @@ class SjValidationController extends Controller
             ->pluck('umur', 'material');
 
         foreach ($items as $item) {
-            /** @var SjValidationItem $item */
             $material = $item->npn?->SAPszProductId;
             $item->umur = $material ? ($umurs[$material] ?? null) : null;
         }
@@ -641,6 +650,117 @@ class SjValidationController extends Controller
                 'data' => $item,
             ]);
         });
+    }
+
+    /**
+     * Catat barang di luar rencana kirim (deviation record).
+     *
+     * Fase 1: operator mencatat kenyataan fisik — barang yang dibawa
+     * transporter tetapi tidak ada di rencana planner — tanpa mengedit
+     * rencana. Baris disimpan terpisah dari `sj_validation_items` sehingga
+     * seluruh agregat plan-vs-aktual tetap menghitung hanya baris rencana.
+     * Foto bukti wajib karena menggantikan catatan manual di kertas.
+     */
+    public function storeExtraItem(Request $request, SjValidation $sjValidation): JsonResponse
+    {
+        $this->authorizeDepot($sjValidation);
+        abort_unless(
+            $sjValidation->status === 'IN_PROGRESS',
+            422,
+            'Barang luar rencana hanya dapat dicatat saat sesi masih berjalan.'
+        );
+
+        $expiredDate = $request->input('expired_date');
+        if (is_string($expiredDate) && preg_match('/^\d{8}$/', trim($expiredDate))) {
+            $compactDate = trim($expiredDate);
+            $year = (int) substr($compactDate, 0, 4);
+            $month = (int) substr($compactDate, 4, 2);
+            $day = (int) substr($compactDate, 6, 2);
+
+            if (checkdate($month, $day, $year)) {
+                $request->merge([
+                    'expired_date' => sprintf('%04d-%02d-%02d', $year, $month, $day),
+                ]);
+            }
+        }
+
+        $validated = $request->validate([
+            'barcode' => 'nullable|string|max:100',
+            'kode_barang' => 'required_without:barcode|nullable|string|max:50',
+            'nama_barang' => 'nullable|string|max:200',
+            'qty' => 'required|numeric|min:0.01|max:999999',
+            'satuan' => 'nullable|string|max:20',
+            'condition' => 'nullable|string|in:FISIK_BAGUS,FISIK_RUSAK,QTY_KURANG,ISI_KEMASAN_KURANG,EXPIRED_TIDAK_STANDAR,LAINNYA',
+            'expired_date' => 'nullable|date_format:Y-m-d',
+            'notes' => 'nullable|string|max:2000',
+            'photo' => [
+                'required', 'image', 'mimes:jpg,jpeg,png', 'max:5120',
+            ],
+        ]);
+
+        // Barcode dipakai mengunci produk ke master data (NPN) — bukan teks
+        // bebas. Hanya NPN yang dikenal boleh mengisi identitas barang.
+        $npn = null;
+        if (! empty($validated['barcode'])) {
+            $barcode = trim($validated['barcode']);
+            $npn = Npn::where(function ($q) use ($barcode) {
+                $q->where('BOSnetszProductId', $barcode)
+                    ->orWhere('SAPszProductId', $barcode)
+                    ->orWhere('szBarcode', $barcode)
+                    ->orWhere('szBarcodeSekunder', $barcode)
+                    ->orWhere('szBarcodeTersier', $barcode);
+            })->first();
+        }
+
+        $kodeBarang = $npn?->BOSnetszProductId ?? ($validated['kode_barang'] ?? null);
+        $namaBarang = $npn?->szNickName ?? ($validated['nama_barang'] ?? null);
+        $satuan = $npn?->SAPszUomId ?? ($validated['satuan'] ?? null);
+        if ($kodeBarang === null || $namaBarang === null) {
+            throw ValidationException::withMessages([
+                'kode_barang' => ['Barang tidak dikenal — isi kode dan nama barang dari kertas/manual.'],
+            ]);
+        }
+
+        $extra = DB::transaction(function () use ($request, $sjValidation, $validated, $npn, $kodeBarang, $namaBarang, $satuan) {
+            $photoPath = EvidenceStorage::putFile($request->file('photo'), 'validation-photos');
+
+            return SjValidationExtraItem::create([
+                'sj_validation_id' => $sjValidation->id,
+                'npn_id' => $npn?->id,
+                'barcode' => $validated['barcode'] ?? null,
+                'kode_barang' => $kodeBarang,
+                'nama_barang' => $namaBarang,
+                'qty' => $validated['qty'],
+                'satuan' => $satuan,
+                'condition' => $validated['condition'] ?? 'FISIK_BAGUS',
+                'expired_date' => $validated['expired_date'] ?? null,
+                'photo' => $photoPath,
+                'notes' => $validated['notes'] ?? null,
+                'recorded_by' => $request->user()->id,
+            ]);
+        });
+
+        // Beri tahu planner/supervisor: barang fisik masuk tanpa rencana.
+        // Penerima diatur admin lewat menu Penerima Email (dokumen `sj_ba`,
+        // trigger `extra_item`); tanpa konfigurasi, kirim hanya dicatat log.
+        $rencanaKirim = $sjValidation->rencanaKirim;
+        if ($rencanaKirim) {
+            $extra->setRelation('validation', $sjValidation);
+            $this->emailService->send(
+                'sj_ba',
+                'extra_item',
+                $rencanaKirim->fresh(),
+                new ExtraItemReported($rencanaKirim->fresh(), $sjValidation->fresh(), $extra->fresh()),
+                $rencanaKirim->kode_depo
+            );
+        }
+
+        $extra->load(['npn', 'recorder:id,full_name']);
+
+        return response()->json([
+            'message' => 'Barang luar rencana tercatat',
+            'data' => $extra,
+        ], 201);
     }
 
     /**
