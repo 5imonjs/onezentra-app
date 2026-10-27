@@ -222,8 +222,8 @@ class DashboardController extends Controller
                 ->selectRaw('COUNT(*) as total, SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) as new_7d', [$week])
                 ->toBase()
                 ->first();
-            $totals[$key] = (int) ($aggregate->total ?? 0);
-            $new7d[$key] = (int) ($aggregate->new_7d ?? 0);
+            $totals[$key] = (int) ($aggregate ? $aggregate->total : 0);
+            $new7d[$key] = (int) ($aggregate ? $aggregate->new_7d : 0);
         }
 
         $alerts = [
