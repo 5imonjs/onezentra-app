@@ -127,7 +127,6 @@ class _GatePageState extends State<GatePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildHeader(gate),
                               SizedBox(
                                 height: isWide
                                     ? AppTheme.space5
