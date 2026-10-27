@@ -1,12 +1,14 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
 
-$app = require __DIR__ . '/../bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+require __DIR__.'/../vendor/autoload.php';
+
+$app = require __DIR__.'/../bootstrap/app.php';
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
-use App\Models\SjValidationItem;
 use App\Models\Batch;
+use App\Models\SjValidationItem;
+use Illuminate\Contracts\Console\Kernel;
 
 $items = SjValidationItem::where('status', 'VALIDATED') // atau kondisi validasi
     ->whereDoesntHave('batch')
@@ -31,7 +33,7 @@ foreach ($items as $item) {
         ], 3, 'SJ-');
         $created++;
         echo "Created batch for item {$item->id}\n";
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         echo "Failed item {$item->id}: {$e->getMessage()}\n";
     }
 }
