@@ -864,13 +864,25 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   );
 
   Future<void> _openPrintSheet(SjValidationItem item) async {
-    var batch = item.batch;
+    final batch = item.batch;
+    // Hanya boleh cetak kalau server sudah issued batch untuk item ini.
+    if (batch == null || batch.id == 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Item belum memiliki batch. Silakan validasi ulang atau coba lagi.'),
+            backgroundColor: AppTheme.warning,
+          ),
+        );
+      }
+      return;
+    }
     var printed = await LabelPrintSheet.show(
       context,
       label: BatchLabelData(
-        batchId: batch?.id,
+        batchId: batch!.id,
         batchNumber: batch?.batchNumber,
-        barcodeLabel: batch?.barcodeLabel,
+        barcodeLabel: batch.barcodeLabel,
         kodeBarang: item.kodeBarang,
         namaBarang: item.namaBarang,
         actualQty: item.actualQty,
@@ -903,6 +915,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         // ignore: use_build_context_synchronously
         var v = context.read<ValidationProvider>();
         await v.openSession(v.active?.id ?? 0);
+        // Force rebuild so batch/printed status updates visibly
+        if (mounted) setState(() {});
       }
       // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
