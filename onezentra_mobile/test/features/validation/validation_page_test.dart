@@ -352,7 +352,7 @@ void main() {
     },
   );
 
-  testWidgets('menampilkan statistik dan riwayat validasi', (tester) async {
+  testWidgets('hanya form scan — statistik & riwayat dipindah', (tester) async {
     var repository = _FakeValidationRepository(
       history: [_openSession()],
       cannedStats: const ValidationStats(
@@ -368,15 +368,21 @@ void main() {
 
     expect(find.text('Validasi SJ'), findsWidgets);
     expect(find.text('Scan Dokumen'), findsOneWidget);
-    // Twice: the header stat tile plus the IN_PROGRESS badge of the history row.
-    expect(find.text('Berjalan'), findsNWidgets(2));
-    expect(find.text('1 sesi tercatat'), findsOneWidget);
-    expect(find.text('PO-042'), findsWidgets);
+    // Kartu statistik header dan daftar riwayat sudah dihapus dari halaman
+    // Validasi SJ — riwayat kini hidup di menu Riwayat (ValidationHistoryCard).
+    expect(find.text('Berjalan'), findsNothing);
+    expect(find.text('1 sesi tercatat'), findsNothing);
+    expect(find.text('PO-042'), findsNothing);
+    expect(find.byType(AppStatTile), findsNothing);
+    // Bootstrap masih memuat list + stats lewat refresh() bersama, tapi
+    // halaman ini tidak lagi merender daftar riwayatnya.
     expect(repository.listCalls, greaterThan(0));
     expect(repository.statsCalls, greaterThan(0));
   });
 
-  testWidgets('header statistik tetap rapi di layout tablet', (tester) async {
+  testWidgets('layout tablet tanpa overflow dan tanpa kartu statistik', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(900, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -395,9 +401,10 @@ void main() {
 
     await _pumpValidationPage(tester, auth, repository);
 
-    expect(find.byType(AppStatTile), findsNWidgets(5));
-    expect(find.text('Hari ini'), findsOneWidget);
-    expect(find.text('Total'), findsOneWidget);
+    expect(find.byType(AppStatTile), findsNothing);
+    expect(find.text('Hari ini'), findsNothing);
+    expect(find.text('Total'), findsNothing);
+    expect(find.text('Scan Dokumen'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -1090,29 +1097,6 @@ void main() {
     expect(repository.completeCalls, 0);
   });
 
-  testWidgets('riwayat memakai items_count server, bukan daftar kosong', (
-    tester,
-  ) async {
-    var repository = _FakeValidationRepository(
-      history: const [
-        SjValidation(
-          id: 12,
-          scanCode: 'PO-HISTORY',
-          status: 'COMPLETED',
-          itemsCount: 5,
-          validatedItemsCount: 3,
-        ),
-      ],
-      cannedStats: const ValidationStats(cancelled: 2),
-    );
-    var auth = await _loginAuth();
-
-    await _pumpValidationPage(tester, auth, repository);
-
-    expect(find.text('3/5 item'), findsOneWidget);
-    expect(find.text('Batal'), findsOneWidget);
-  });
-
   testWidgets('form koreksi memuat data yang sudah tersimpan', (tester) async {
     const session = SjValidation(
       id: 9,
@@ -1147,10 +1131,9 @@ void main() {
     var auth = await _loginAuth();
     var provider = ValidationProvider(repository: repository);
 
-    await _pumpValidationPage(tester, auth, repository, provider: provider);
-    await tester.tap(find.text('PO-042'));
-    await tester.pumpAndSettle();
-    // openSession membuka sesi di halaman pemrosesan tersisa.
+    // Riwayat sudah pindah ke menu Riwayat; sesi COMPLETED dengan izin
+    // koreksi dibuka langsung seperti yang dilakukan tile riwayat.
+    await provider.openSession(9);
     await _pumpSessionPage(tester, auth, provider, provider.active!);
 
     var editButton = find.widgetWithText(OutlinedButton, 'Detail Validasi');

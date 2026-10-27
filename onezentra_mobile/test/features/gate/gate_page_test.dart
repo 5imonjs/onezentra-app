@@ -281,11 +281,12 @@ void main() {
 
     await _pumpGatePage(tester, auth, repository);
 
-    // Halaman Check In Point hanya Scan: statistik + form, tanpa daftar
-    // transaksi maupun pintasan riwayat (pindah ke menu Riwayat).
+    // Halaman Check In Point hanya Scan: form saja — kartu statistik header
+    // sudah dihapus dan daftar transaksi/pintasan riwayat pindah ke menu
+    // Riwayat.
     expect(find.text('Check In Point'), findsWidgets);
     expect(find.text('Quick Scan'), findsOneWidget);
-    expect(find.text('Hari ini'), findsOneWidget);
+    expect(find.text('Hari ini'), findsNothing);
     expect(find.text('Riwayat Gate'), findsNothing);
     expect(find.text('PO-TEST-001'), findsNothing);
     expect(find.text('1 transaksi tercatat'), findsNothing);
