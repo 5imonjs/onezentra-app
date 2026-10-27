@@ -26,9 +26,13 @@ interface BarcodeScannerProps {
   onClose: () => void;
   onDetected: (code: string) => void;
   formats?: BarcodeFormat[];
+  /** Judul modal scanner; default scan dokumen PO transporter. */
+  title?: string;
+  /** Instruksi singkat di bawah judul. */
+  subtitle?: string;
 }
 
-export default function BarcodeScanner({ open, onClose, onDetected, formats }: BarcodeScannerProps) {
+export default function BarcodeScanner({ open, onClose, onDetected, formats, title = 'Scan Barcode PO Transporter', subtitle = 'Arahkan kamera ke barcode pada dokumen' }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
   const [error, setError] = useState('');
@@ -103,7 +107,7 @@ export default function BarcodeScanner({ open, onClose, onDetected, formats }: B
   }, [open, onDetectedFn, formats]);
 
   return (
-    <Modal open={open} onClose={onClose} title="Scan Barcode PO Transporter" subtitle="Arahkan kamera ke barcode pada dokumen">
+    <Modal open={open} onClose={onClose} title={title} subtitle={subtitle}>
       <div className="space-y-4">
         <video ref={videoRef} className="w-full rounded-xl bg-black aspect-video object-cover" muted playsInline />
         {scanning && !error && (

@@ -2,13 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ValidasiSjPage from './page';
 
-const { hasPermission, list, get, stats, reportExtraItem, depoList } = vi.hoisted(() => ({
+const { hasPermission, list, get, stats, reportExtraItem, depoList, npnSearch } = vi.hoisted(() => ({
   hasPermission: vi.fn<(permission: string) => boolean>(() => true),
   list: vi.fn(),
   get: vi.fn(),
   stats: vi.fn(),
   reportExtraItem: vi.fn(),
   depoList: vi.fn(),
+  npnSearch: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -29,11 +30,13 @@ vi.mock('@/lib/api', () => ({
   sjValidations: { list, get, stats, reportExtraItem },
   batches: { markPrinted: vi.fn() },
   depo: { list: depoList },
+  npn: { searchProduct: npnSearch },
   getErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
 
 vi.mock('@/components/BarcodeScanner', () => ({
-  default: () => null,
+  default: ({ open, onDetected }: { open: boolean; onDetected: (code: string) => void }) =>
+    open ? <button type="button" onClick={() => onDetected('8991234567890')}>Simulasi Scan</button> : null,
   SCAN_FORMATS_1D: [],
 }));
 
@@ -124,6 +127,7 @@ describe('ValidasiSjPage — barang di luar rencana', () => {
     get.mockResolvedValue(detailPayload([]));
     stats.mockResolvedValue({ data: { data: { today: 0, in_progress: 1, completed: 0, cancelled: 0, total: 1 } } });
     depoList.mockResolvedValue({ data: { data: [] } });
+    npnSearch.mockResolvedValue({ data: { data: [], total: 0 } });
   });
 
   afterEach(() => {
@@ -211,5 +215,86 @@ describe('ValidasiSjPage — barang di luar rencana', () => {
     expect(payload.get('nama_barang')).toBe('Kopi Special Grade');
     expect(payload.get('qty')).toBe('7');
     expect(payload.get('photo')).toBeInstanceOf(File);
+  });
+
+  it('memilih barang dari master NPN mengunci identitas & mengirim npn_id', async () => {
+    reportExtraItem.mockResolvedValue({ data: { data: { id: 72 } } });
+    get.mockResolvedValue(detailPayload([]));
+    npnSearch.mockResolvedValue({
+      data: {
+        data: [{
+          id: 5,
+          BOSnetszProductId: 'SKU-NPN-77',
+          SAPszProductId: 'MAT-77',
+          SAPszUomId: 'CRT',
+          SAPdecUom: null,
+          decVolume: null,
+          szNickName: 'Minyak Goreng 2L',
+          szNickNameNew: '',
+          szShortDescription: '',
+        }],
+        total: 1,
+      },
+    });
+
+    await openDetail([]);
+    fireEvent.click(await screen.findByRole('button', { name: /Laporkan Barang/ }));
+
+    // Ketik di combobox master NPN, tunggu debounce selesai, pilih satu-satunya hasil.
+    fireEvent.change(await screen.findByPlaceholderText('Ketik nama barang...'), { target: { value: 'Minyak' } });
+    await waitFor(() => expect(npnSearch).toHaveBeenCalledWith('Minyak', expect.objectContaining({ limit: 500 })), { timeout: 3000 });
+    fireEvent.click(await screen.findByRole('button', { name: /Minyak Goreng 2L/ }));
+
+    // Identitas terkunci ke master: field manual hilang, satuan jadi suffix qty.
+    await waitFor(() => expect(screen.queryByPlaceholderText('Dari kertas / manual')).not.toBeInTheDocument());
+    expect(screen.getByText('Minyak Goreng 2L')).toBeInTheDocument();
+    expect(screen.getByText('CRT')).toBeInTheDocument();
+
+    const qty = screen.getByLabelText(/Jumlah/);
+    fireEvent.change(qty, { target: { value: '5' } });
+    const photoInput = screen.getByLabelText('Pilih foto dari galeri') as HTMLInputElement;
+    Object.defineProperty(photoInput, 'files', { value: [new File(['bukti'], 'bukti.jpg', { type: 'image/jpeg' })] });
+    fireEvent.change(photoInput);
+    fireEvent.click(screen.getByRole('button', { name: /^Laporkan$/ }));
+
+    await waitFor(() => expect(reportExtraItem).toHaveBeenCalledTimes(1));
+    const [, payload] = reportExtraItem.mock.calls[0] as [number, FormData];
+    // Identitas dipegang npn_id — nilai manual tidak ikut dikirim.
+    expect(payload.get('npn_id')).toBe('5');
+    expect(payload.get('kode_barang')).toBeNull();
+    expect(payload.get('nama_barang')).toBeNull();
+    expect(payload.get('qty')).toBe('5');
+    expect(payload.get('photo')).toBeInstanceOf(File);
+  });
+
+  it('barcode hasil kamera dikenali dari master NPN secara otomatis', async () => {
+    npnSearch.mockResolvedValue({
+      data: {
+        data: [{
+          id: 5,
+          BOSnetszProductId: 'SKU-NPN-77',
+          SAPszProductId: 'MAT-77',
+          SAPszUomId: 'CRT',
+          SAPdecUom: null,
+          decVolume: null,
+          szNickName: 'Minyak Goreng 2L',
+          szNickNameNew: '',
+          szShortDescription: '',
+        }],
+        total: 1,
+      },
+    });
+
+    await openDetail([]);
+    fireEvent.click(await screen.findByRole('button', { name: /Laporkan Barang/ }));
+
+    // Buka kamera lalu terima hasil pindai barcode kemasan.
+    fireEvent.click(await screen.findByRole('button', { name: /Pindai/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Simulasi Scan' }));
+
+    // Satu-satunya produk hasil pencarian langsung dikunci ke identitas.
+    await screen.findByText('Minyak Goreng 2L');
+    expect(screen.getByText('SKU-NPN-77')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Dari kertas / manual')).not.toBeInTheDocument();
   });
 });
