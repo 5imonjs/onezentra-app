@@ -183,8 +183,6 @@ class _ValidationPageState extends State<ValidationPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildHeader(validation),
-                              const SizedBox(height: AppTheme.space4),
                               work,
                               const SizedBox(height: AppTheme.space4),
                             ],
