@@ -1916,6 +1916,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                   hint: 'Wajib bila barcode tidak dikenal',
                   prefixIcon: Icons.tag_rounded,
                   textInputAction: TextInputAction.next,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   validator: (value) => _identityValid
                       ? null
                       : 'Isi kode & nama barang, atau barcode yang dikenal',
@@ -1927,6 +1928,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                   hint: 'Wajib bila barcode tidak dikenal',
                   prefixIcon: Icons.abc_rounded,
                   textInputAction: TextInputAction.next,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   validator: (value) => _identityValid
                       ? null
                       : 'Isi kode & nama barang, atau barcode yang dikenal',
@@ -1950,6 +1952,9 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                   decimal: true,
                 ),
                 textInputAction: TextInputAction.next,
+                // Merah hilang begitu angka sah — dulu error menempel
+                // sampai Simpan ditekan ulang walau jumlah sudah diisi.
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: (value) {
                   var qty = double.tryParse((value ?? '').replaceAll(',', '.'));
                   if (qty == null || qty <= 0) {

@@ -15,6 +15,7 @@ class AppTextField extends StatelessWidget {
     this.keyboardType,
     this.textInputAction,
     this.validator,
+    this.autovalidateMode,
     this.onSaved,
     this.onChanged,
     this.onEditingComplete,
@@ -36,6 +37,13 @@ class AppTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
+
+  /// Kapan validator dijalankan. Bawaan bila null (hanya saat
+  /// form.validate()) membuat pesan error "menempel" — operator sudah
+  /// mengisi kolom dengan benar tetapi merahnya baru hilang setelah menekan
+  /// Simpan lagi. Isi [AutovalidateMode.onUserInteraction] untuk form yang
+  /// errornya harus hilang begitu isian menjadi sah.
+  final AutovalidateMode? autovalidateMode;
   final void Function(String?)? onSaved;
   final void Function(String)? onChanged;
   final void Function()? onEditingComplete;
@@ -74,6 +82,7 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           validator: validator,
+          autovalidateMode: autovalidateMode,
           onSaved: onSaved,
           onChanged: onChanged,
           onEditingComplete: onEditingComplete,
