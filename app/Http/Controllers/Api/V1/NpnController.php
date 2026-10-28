@@ -269,36 +269,88 @@ class NpnController extends Controller
         $limit = (int) ($validated['limit'] ?? 500);
         $offset = (int) ($validated['offset'] ?? 0);
 
-        $like = LikePattern::contains($validated['q']);
-        $base = Npn::query()
-            // Ikut mencari szShortDescription/SAP ID/barcode karena itulah teks yang
-            // benar-benar tampil pada picker, bukan hanya nickname produk.
-            ->where(function ($q) use ($like) {
-                $q->whereRaw('szNickName LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szNickNameNew LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szShortDescription LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('BOSnetszProductId LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('SAPszProductId LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szBarcode LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szBarcodeSekunder LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szBarcodeTersier LIKE ? ESCAPE ?', [$like, '\\'])
-                    // Nama panjang & deskripsi kategori sering jadi kata kunci user
-                    // walau teks itu tidak pernah tampil di baris hasil.
-                    ->orWhereRaw('szLongDescription LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat1Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat2Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat3Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat4Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat5Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat6Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat7Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat8Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat9Description LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('szCat10Description LIKE ? ESCAPE ?', [$like, '\\']);
+        // Multi-kata: setiap kata dicocokkan SENDIRI di kolom mana pun (AND).
+        // Dulu seluruh ketikan jadi SATU frasa LIKE (`%sku ajtm%`) sehingga
+        // dua kata yang dipisah spasi hampir selalu 0 hasil padahal barangnya
+        // ada di master NPN.
+        $tokens = array_values(
+            array_filter(
+                preg_split('/\s+/u', $validated['q']) ?: [],
+                static fn (string $token): bool => $token !== '',
+            )
+        );
+
+        // Kolom yang boleh dicocokkan. Nama panjang & deskripsi kategori
+        // sering jadi kata kunci user walau teks itu tidak pernah tampil di
+        // baris hasil, jadi tetap ikut dicari.
+        $searchable = [
+            'szNickName', 'szNickNameNew', 'szShortDescription', 'BOSnetszProductId',
+            'SAPszProductId', 'szBarcode', 'szBarcodeSekunder', 'szBarcodeTersier',
+            'szLongDescription', 'szCat1Description', 'szCat2Description',
+            'szCat3Description', 'szCat4Description', 'szCat5Description',
+            'szCat6Description', 'szCat7Description', 'szCat8Description',
+            'szCat9Description', 'szCat10Description',
+        ];
+        // Bobot relevansi: kolom yang TAMPIL di baris hasil diutamakan.
+        // Substring seperti "sku" juga ada di dalam kata "Biskuit" — tanpa
+        // bobot ini produk yang kebetulan memuatnya bisa mendahului produk
+        // yang benar-benar bernama demikian, dan hasil terasa "bukan dari
+        // master NPN".
+        $weights = [
+            'szNickName' => 2,
+            'szNickNameNew' => 2,
+            'szShortDescription' => 1,
+            'BOSnetszProductId' => 1,
+            'SAPszProductId' => 1,
+            'szBarcode' => 1,
+            'szBarcodeSekunder' => 1,
+            'szBarcodeTersier' => 1,
+            'szLongDescription' => 0,
+            'szCat1Description' => 0,
+            'szCat2Description' => 0,
+            'szCat3Description' => 0,
+            'szCat4Description' => 0,
+            'szCat5Description' => 0,
+            'szCat6Description' => 0,
+            'szCat7Description' => 0,
+            'szCat8Description' => 0,
+            'szCat9Description' => 0,
+            'szCat10Description' => 0,
+        ];
+
+        $base = Npn::query();
+        foreach ($tokens as $token) {
+            $like = LikePattern::contains($token);
+            $base->where(function ($q) use ($like, $searchable) {
+                foreach ($searchable as $field) {
+                    $q->orWhereRaw("$field LIKE ? ESCAPE ?", [$like, '\\']);
+                }
             });
+        }
+
+        // Urutan relevan: jumlah bobot kecocokan, lalu alfabetis — tetap
+        // deterministik supaya pagination "Muat lebih banyak" tidak mengacak
+        // urutan baris antar halaman.
+        $relevance = [];
+        $relevanceBindings = [];
+        foreach ($tokens as $token) {
+            $like = LikePattern::contains($token);
+            foreach ($weights as $field => $weight) {
+                if ($weight === 0) {
+                    continue;
+                }
+                $relevance[] = "CASE WHEN $field LIKE ? ESCAPE ? THEN $weight ELSE 0 END";
+                $relevanceBindings[] = $like;
+                $relevanceBindings[] = '\\';
+            }
+        }
 
         $products = (clone $base)
             ->select('id', 'BOSnetszProductId', 'SAPszProductId', 'SAPszUomId', 'SAPdecUom', 'decVolume', 'szNickName', 'szNickNameNew', 'szShortDescription', 'decUomConversion1', 'BOSnetdecUom')
+            ->when($relevance !== [], fn ($query) => $query->orderByRaw(
+                implode(' + ', $relevance).' DESC, szNickName ASC, id ASC',
+                $relevanceBindings,
+            ))
             ->orderBy('szNickName')
             ->orderBy('id')
             ->offset($offset)

@@ -210,6 +210,56 @@ class NpnSearchProductTest extends TestCase
         $this->assertSame(['GULA_PASIR'], array_column($underscore->json('data'), 'szNickName'));
     }
 
+    /**
+     * Dulu seluruh ketikan jadi SATU frasa LIKE (`%sku ajtm%`) sehingga dua
+     * kata yang dipisah spasi hampir selalu 0 hasil padahal barangnya ada
+     * di master NPN. Kini tiap kata dicocokkan sendiri (AND), urutan kata
+     * bebas, dan spasi ganda tidak mempengaruhi.
+     */
+    public function test_search_product_matches_each_word_independently(): void
+    {
+        Sanctum::actingAs($this->userWith(['npn.view']));
+
+        $this->product([
+            'szNickName' => 'AJTM',
+            'szLongDescription' => 'SKU Garuda Kacang Atom Original 100g',
+        ]);
+        $this->product(['szNickName' => 'CRSKU5', 'szLongDescription' => 'Chocolatos Kurma']);
+
+        foreach (['sku ajtm', 'ajtm sku', 'sku   ajtm'] as $keyword) {
+            $rows = $this->getJson('/api/v1/npn/search-product?q='.urlencode($keyword))
+                ->assertOk()
+                ->json('data');
+
+            $this->assertCount(1, $rows, "Kata kunci \"{$keyword}\" harus menemukan AJTM.");
+            $this->assertSame('AJTM', $rows[0]['szNickName']);
+        }
+    }
+
+    /**
+     * Substring "sku" juga ada di dalam kata "Biskuit" — produk yang
+     * nickname-nya memuat kata kunci harus lebih dulu daripada yang cocok
+     * hanya lewat substring deskripsi, supaya hasil tidak terasa "bukan
+     * dari master NPN" (laporan lapangan: cari "sku" muncul produk aneh).
+     */
+    public function test_search_product_ranks_displayed_name_matches_first(): void
+    {
+        Sanctum::actingAs($this->userWith(['npn.view']));
+
+        $this->product([
+            'szNickName' => 'COCO2',
+            'szShortDescription' => 'Gery Biskuit Kelapa Kopyor 340g',
+        ]);
+        $this->product(['szNickName' => 'CRSKU5']);
+
+        $names = array_column(
+            $this->getJson('/api/v1/npn/search-product?q=sku')->assertOk()->json('data'),
+            'szNickName'
+        );
+
+        $this->assertSame(['CRSKU5', 'COCO2'], $names);
+    }
+
     public function test_search_product_validates_pagination_bounds(): void
     {
         Sanctum::actingAs($this->userWith(['npn.view']));
