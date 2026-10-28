@@ -2,14 +2,17 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ValidasiSjPage from './page';
 
-const { hasPermission, list, get, stats, reportExtraItem, depoList, npnSearch } = vi.hoisted(() => ({
+const { hasPermission, list, get, stats, reportExtraItem, approveExtraItem, rejectExtraItem, depoList, npnSearch, notifyGlobal } = vi.hoisted(() => ({
   hasPermission: vi.fn<(permission: string) => boolean>(() => true),
   list: vi.fn(),
   get: vi.fn(),
   stats: vi.fn(),
   reportExtraItem: vi.fn(),
+  approveExtraItem: vi.fn(),
+  rejectExtraItem: vi.fn(),
   depoList: vi.fn(),
   npnSearch: vi.fn(),
+  notifyGlobal: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -27,7 +30,7 @@ vi.mock('@/store/auth', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  sjValidations: { list, get, stats, reportExtraItem },
+  sjValidations: { list, get, stats, reportExtraItem, approveExtraItem, rejectExtraItem },
   batches: { markPrinted: vi.fn() },
   depo: { list: depoList },
   npn: { searchProduct: npnSearch },
@@ -47,7 +50,7 @@ vi.mock('@/components/SearchInput', () => ({
 }));
 
 vi.mock('@/store/globalToast', () => ({
-  notifyGlobal: vi.fn(),
+  notifyGlobal,
 }));
 
 vi.mock('@/lib/storageFile', () => ({
@@ -278,5 +281,109 @@ describe('ValidasiSjPage — barang di luar rencana', () => {
     expect(screen.queryByPlaceholderText('Scan / ketik barcode kemasan')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pindai/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Simulasi Scan' })).not.toBeInTheDocument();
+  });
+
+  it('planner menyetujui catatan pending lewat modal keputusan', async () => {
+    approveExtraItem.mockResolvedValue({ data: { data: { id: 71, status: 'APPROVED' } } });
+    const approved = detailPayload([
+      {
+        id: 71,
+        kode_barang: 'SKU-LUAR-1',
+        nama_barang: 'Kopi Special Grade',
+        qty: 2,
+        satuan: 'CRT',
+        condition: 'FISIK_BAGUS',
+        expired_date: null,
+        photo: 'validation-photos/extra.jpg',
+        status: 'APPROVED',
+        approved_at: '2026-10-28T08:00:00.000Z',
+        decision_notes: 'Barang diterima',
+        approver: { full_name: 'Planner' },
+        recorder: { full_name: 'Cheker' },
+      },
+    ]);
+    await openDetail([
+      {
+        id: 71,
+        kode_barang: 'SKU-LUAR-1',
+        nama_barang: 'Kopi Special Grade',
+        qty: 2,
+        satuan: 'CRT',
+        condition: 'FISIK_BAGUS',
+        expired_date: null,
+        photo: 'validation-photos/extra.jpg',
+        status: 'PENDING',
+        recorder: { full_name: 'Cheker' },
+      },
+    ]);
+
+    // Badge PENDING + tombol keputusan tampil.
+    await screen.findByText('Menunggu persetujuan');
+    fireEvent.click(screen.getByRole('button', { name: /Setujui/ }));
+
+    // Modal keputusan terbuka; tombol konfirmasi di dalam modal (kedua).
+    fireEvent.click((await screen.findAllByRole('button', { name: /Setujui/ })).at(-1)!);
+
+    await waitFor(() => expect(approveExtraItem).toHaveBeenCalledWith(9, 71, undefined));
+    // Detail sesi diambil ulang supaya badge status ikut segar.
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    get.mockResolvedValue(approved);
+  });
+
+  it('menolak wajib alasan sebelum dikirim ke server', async () => {
+    rejectExtraItem.mockResolvedValue({ data: { data: { id: 71, status: 'REJECTED' } } });
+    await openDetail([
+      {
+        id: 71,
+        kode_barang: 'SKU-LUAR-1',
+        nama_barang: 'Kopi Special Grade',
+        qty: 2,
+        satuan: 'CRT',
+        condition: 'FISIK_BAGUS',
+        expired_date: null,
+        photo: 'validation-photos/extra.jpg',
+        status: 'PENDING',
+        recorder: { full_name: 'Cheker' },
+      },
+    ]);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Tolak/ }));
+    fireEvent.click((await screen.findAllByRole('button', { name: /Tolak/ })).at(-1)!);
+
+    // Guard frontend: tanpa alasan, server tidak dipanggil.
+    await waitFor(() =>
+      expect(notifyGlobal).toHaveBeenCalledWith('Alasan penolakan wajib diisi.', 'error'));
+    expect(rejectExtraItem).not.toHaveBeenCalled();
+
+    fireEvent.change(await screen.findByPlaceholderText('Contoh: kembalikan ke transporter'), {
+      target: { value: 'Kembalikan ke transporter' },
+    });
+    fireEvent.click((screen.getAllByRole('button', { name: /Tolak/ })).at(-1)!);
+
+    await waitFor(() => expect(rejectExtraItem).toHaveBeenCalledWith(9, 71, 'Kembalikan ke transporter'));
+  });
+
+  it('catatan yang sudah diputuskan menampilkan badge, keputusan & tanpa tombol', async () => {
+    await openDetail([
+      {
+        id: 71,
+        kode_barang: 'SKU-LUAR-1',
+        nama_barang: 'Kopi Special Grade',
+        qty: 2,
+        satuan: 'CRT',
+        condition: 'FISIK_BAGUS',
+        expired_date: null,
+        photo: 'validation-photos/extra.jpg',
+        status: 'REJECTED',
+        decision_notes: 'Barang tidak diterima',
+        approver: { full_name: 'Planner' },
+        recorder: { full_name: 'Cheker' },
+      },
+    ]);
+
+    await screen.findByText('Ditolak');
+    await screen.findByText(/Barang tidak diterima/);
+    expect(screen.queryByRole('button', { name: /Setujui/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Tolak/ })).not.toBeInTheDocument();
   });
 });
