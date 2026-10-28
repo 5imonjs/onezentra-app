@@ -499,8 +499,34 @@ class ValidationProvider extends ChangeNotifier {
   /// (paritas web) — pesannya disampaikan lewat [_message].
   /// Mengembalikan true bila status cetak tersimpan di server.
   Future<bool> markLabelPrinted(int batchId) async {
+    debugPrint(
+      'CetakLabel: markLabelPrinted batch=$batchId '
+      'active=${_active?.id} busy=$_actionBusy',
+    );
     var active = _active;
-    if (active == null || _actionBusy) {
+    if (active == null) {
+      debugPrint('CetakLabel: batal — tidak ada sesi aktif');
+      return false;
+    }
+
+    // Aksi lain mungkin masih berjalan (refresh sesi, simpan item). Dulu
+    // kondisi ini membatalkan laporan DIAM-DIAM — label fisik tercetak tapi
+    // server tidak pernah tahu, dan web selamanya menampilkan "belum
+    // dicetak". Sekarang tunggu sebentar; laporan cetak wajib sampai.
+    var waited = 0;
+    while (_actionBusy && waited < 10) {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      waited++;
+    }
+    if (_actionBusy) {
+      debugPrint(
+        'CetakLabel: provider sibuk ${waited * 300}ms — laporan batal',
+      );
+      _message = const ValidationActionMessage.failure(
+        'Label tercetak, tapi status cetak tertahan (aplikasi sedang sibuk). '
+        'Tekan Cetak Ulang atau buka ulang sesi.',
+      );
+      _notify();
       return false;
     }
 
@@ -509,17 +535,17 @@ class ValidationProvider extends ChangeNotifier {
     _notify();
     try {
       await _repository.markPrinted(batchId);
+      debugPrint('CetakLabel: mark-printed OK batch=$batchId');
       _active = await _repository.show(active.id);
       return true;
     } on ApiException catch (e) {
+      debugPrint('CetakLabel: mark-printed GAGAL batch=$batchId: ${e.message}');
       _message = ValidationActionMessage.failure(
         'Label tercetak, tapi status cetak gagal dilaporkan: ${e.message}',
       );
       return false;
     } catch (e, stack) {
-      debugPrint(
-        'ValidationProvider.markLabelPrinted: unhandled ${e.runtimeType}: $e',
-      );
+      debugPrint('CetakLabel: markLabelPrinted unhandled ${e.runtimeType}: $e');
       debugPrintStack(stackTrace: stack, maxFrames: 8);
       _message = const ValidationActionMessage.failure(
         'Label tercetak, tapi status cetak gagal dilaporkan.',

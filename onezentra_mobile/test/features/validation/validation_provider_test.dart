@@ -19,11 +19,15 @@ class _ScriptedValidationRepository extends ValidationRepository {
 }
 
 class _MarkFakeRepository extends ValidationRepository {
-  _MarkFakeRepository(this.session, {this.markError});
+  _MarkFakeRepository(this.session, {this.markError, this.showGate});
   SjValidation session;
   final Object? markError;
   final List<int> markCalls = [];
   var showCalls = 0;
+
+  /// Bila terisi, [show] ditahan sampai completer selesai — untuk
+  /// menyimulasikan provider yang sibuk saat laporan cetak masuk.
+  Completer<void>? showGate;
 
   @override
   Future<SjValidation> startByCode(String scanCode) async => session;
@@ -31,6 +35,10 @@ class _MarkFakeRepository extends ValidationRepository {
   @override
   Future<SjValidation> show(int id) async {
     showCalls++;
+    var gate = showGate;
+    if (gate != null) {
+      await gate.future;
+    }
     return session;
   }
 
@@ -201,6 +209,37 @@ void main() {
 
     provider.dispose();
   });
+
+  test(
+    'markLabelPrinted menunggu provider sibuk — laporan tidak hilang',
+    () async {
+      // Regression: dulu laporan cetak dibatalkan DIAM-DIAM kalau provider
+      // sedang sibuk — label fisik tercetak tapi server tidak pernah tahu dan
+      // web selamanya menampilkan "belum dicetak".
+      var gate = Completer<void>();
+      var repository = _MarkFakeRepository(
+        const SjValidation(id: 9, scanCode: 'PO-042'),
+        showGate: gate,
+      );
+      var provider = ValidationProvider(repository: repository);
+
+      await provider.start('PO-042');
+
+      // Sibukkan provider dengan refresh sesi yang ditahan.
+      var refresh = provider.openSession(9);
+      var reported = provider.markLabelPrinted(7);
+
+      // Beri waktu laporan menabrak kondisi sibuk, lalu lepaskan.
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      gate.complete();
+      await Future.wait([refresh, reported]);
+
+      // Laporan tetap terkirim setelah provider bebas.
+      expect(repository.markCalls, [7]);
+
+      provider.dispose();
+    },
+  );
 
   test('respons pencarian lama tidak menimpa hasil terbaru', () async {
     var repository = _SearchRaceRepository();

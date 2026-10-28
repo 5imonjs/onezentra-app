@@ -1059,6 +1059,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
 
   Future<void> _openPrintSheet(SjValidationItem item) async {
     var batch = item.batch;
+    debugPrint(
+      'CetakLabel: tombol ditekan item=${item.id} '
+      'batch=${batch?.id} printed=${batch?.isPrinted}',
+    );
     // Hanya boleh cetak kalau server sudah issued batch untuk item ini.
     if (batch == null || batch.id == 0) {
       if (mounted) {
@@ -1087,6 +1091,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         condition: item.condition,
       ),
     );
+    debugPrint('CetakLabel: panel ditutup hasil=$printed');
     if (!mounted) {
       return;
     }
@@ -1097,6 +1102,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         reported = await context.read<ValidationProvider>().markLabelPrinted(
           batch.id,
         );
+        debugPrint('CetakLabel: lapor server -> $reported');
         if (!mounted) {
           return;
         }

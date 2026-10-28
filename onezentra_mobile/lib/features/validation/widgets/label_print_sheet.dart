@@ -52,6 +52,7 @@ class _LabelPrintSheetState extends State<LabelPrintSheet> {
 
   Future<void> _print() async {
     var ok = await _printer.printLabel(widget.label);
+    debugPrint('CetakLabel: printLabel selesai -> $ok');
     if (!mounted) {
       return;
     }
