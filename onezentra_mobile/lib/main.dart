@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
@@ -96,6 +97,18 @@ class _OneZentraAppState extends State<OneZentraApp>
           // correct here — the login card and every Material surface would
           // go light while the pages stay dark (guarded by theme_guard_test).
           themeMode: ThemeMode.dark,
+          // Pin ke bahasa Indonesia: pemilih tanggal (CupertinoDatePicker)
+          // mengikuti locale — tanpa pin ini rodanya berurutan MM/DD/YYYY
+          // (format AS) padahal hasilnya ditampilkan dd/MM/yyyy, ambigu
+          // bagi user lapangan. Dengan locale `id` rodanya tanggal-bulan-
+          // tahun dan nama bulan berbahasa Indonesia.
+          locale: const Locale('id'),
+          supportedLocales: const [Locale('id'), Locale('en')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
           routerConfig: widget.router,
         ),
       );

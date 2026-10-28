@@ -323,13 +323,13 @@ String formatDateId(DateTime? value) {
 
 /// Memunculkan pemilih tanggal expired (popup Cupertino) — pola yang sama di
 /// kedua sheet validasi. Mengembalikan tanggal yang dipilih atau null.
-Future<DateTime?> pickExpiredDate(
-  BuildContext context, {
-  DateTime? initial,
-}) async {
+Future<DateTime?> pickExpiredDate(BuildContext context, {DateTime? initial}) {
   var start = initial ?? DateTime.now().add(const Duration(days: 30));
-  DateTime? picked;
-  await showCupertinoModalPopup(
+  DateTime? changed;
+  // Nilai yang tampil di roda (initial) langsung dianggap dipilih: user yang
+  // menekan "Pilih" tanpa menggeser roda tetap mendapatkan tanggal terlihat,
+  // bukan null yang membuat field diam-diam kosong. "Batal" tetap null.
+  return showCupertinoModalPopup<DateTime?>(
     context: context,
     builder: (_) => Container(
       height: 260,
@@ -351,7 +351,7 @@ Future<DateTime?> pickExpiredDate(
               initialDateTime: start,
               minimumDate: DateTime(2000),
               maximumDate: DateTime(2100),
-              onDateTimeChanged: (DateTime value) => picked = value,
+              onDateTimeChanged: (DateTime value) => changed = value,
               backgroundColor: AppTheme.surface,
             ),
           ),
@@ -367,7 +367,8 @@ Future<DateTime?> pickExpiredDate(
                     child: const Text('Batal'),
                   ),
                   FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () =>
+                        Navigator.of(context).pop(changed ?? start),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.primary500,
                     ),
@@ -381,7 +382,6 @@ Future<DateTime?> pickExpiredDate(
       ),
     ),
   );
-  return picked;
 }
 
 /// Field tanggal expired read-only yang membuka [pickExpiredDate].
