@@ -37,6 +37,7 @@ class BatchLabelData {
     this.condition,
     this.namaDepo,
     this.poTransporter,
+    this.isCopy = false,
   });
 
   /// Id batch server — untuk lapor mark-printed setelah cetak fisik.
@@ -51,6 +52,11 @@ class BatchLabelData {
   final String? condition;
   final String? namaDepo;
   final String? poTransporter;
+
+  /// Label ini cetakan ulang (aslinya sudah pernah dicetak) — kertas
+  /// membawa tanda COPY supaya operator tidak menempelkannya sebagai
+  /// label asli.
+  final bool isCopy;
 }
 
 /// Peta kondisi validasi ke bahasa yang tampil di label.
@@ -91,8 +97,22 @@ String buildLabelText(BatchLabelData data, LabelWidth width) {
     return '$left${' ' * gap}$right';
   }
 
+  String centered(String text) {
+    var pad = (cols - text.length) ~/ 2;
+    if (pad <= 0) {
+      return text;
+    }
+    return ' ' * pad + text;
+  }
+
   buf.writeln(line('BATCH LABEL', data.poTransporter ?? ''));
   buf.writeln('-' * cols);
+
+  // Tanda cetakan ulang: aslinya sudah pernah dicetak — jangan dipakai
+  // sebagai label asli.
+  if (data.isCopy) {
+    buf.writeln(centered('*** COPY ***'));
+  }
 
   // Kode barang dicetak utuh di satu baris — operator membacanya untuk
   // memindai ulang, jadi tidak boleh dipecah. Tapi kalau lebih panjang dari

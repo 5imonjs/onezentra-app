@@ -331,4 +331,37 @@ void main() {
       expect(b.where((e) => e == 0x0A).length, greaterThan(5));
     });
   });
+
+  group('tanda COPY pada cetakan ulang', () {
+    test('label asli tidak membawa tanda COPY', () {
+      var text = buildLabelText(sample, LabelWidth.w58);
+      expect(text, isNot(contains('COPY')));
+      var bytes = String.fromCharCodes(buildLabelBytes(sample, LabelWidth.w58));
+      expect(bytes, isNot(contains('COPY')));
+    });
+
+    test('label cetakan ulang membawa tanda COPY di kedua jalur', () {
+      var copy = const BatchLabelData(
+        batchNumber: 'BATCH-ABC12345',
+        barcodeLabel: 'LBL-XYZ98765',
+        kodeBarang: '000123',
+        namaBarang: 'Indomie Goreng 85g',
+        actualQty: 120,
+        satuan: 'PCS',
+        expiredDate: '2027-01-31',
+        condition: 'FISIK_BAGUS',
+        namaDepo: 'Singkawang',
+        poTransporter: 'PO-042',
+        isCopy: true,
+      );
+      var text = buildLabelText(copy, LabelWidth.w58);
+      expect(text, contains('*** COPY ***'));
+      // Tanda COPY tidak boleh memecah lebar printer.
+      for (var l in text.split('\n')) {
+        expect(l.length, lessThanOrEqualTo(32));
+      }
+      var bytes = String.fromCharCodes(buildLabelBytes(copy, LabelWidth.w58));
+      expect(bytes, contains('*** COPY ***'));
+    });
+  });
 }

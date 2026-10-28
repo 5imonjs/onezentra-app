@@ -37,12 +37,28 @@ Uint8List buildLabelBytes(
     return '$left${' ' * gap}$right';
   }
 
+  String centered(String text) {
+    var pad = (cols - text.length) ~/ 2;
+    if (pad <= 0) {
+      return text;
+    }
+    return ' ' * pad + text;
+  }
+
   // Judul: identitas sistem di kiri, nomor PO di kanan.
   esc.left();
   esc.bold();
   esc.line(line('BATCH LABEL', safe(data.poTransporter)));
   esc.bold(enabled: false);
   esc.line('-' * cols);
+
+  // Tanda cetakan ulang: aslinya sudah pernah dicetak — tebal supaya
+  // operator langsung melihatnya.
+  if (data.isCopy) {
+    esc.bold();
+    esc.line(centered('*** COPY ***'));
+    esc.bold(enabled: false);
+  }
 
   esc.line(safe(data.kodeBarang));
   wrap(safe(data.namaBarang), cols).forEach(esc.line);

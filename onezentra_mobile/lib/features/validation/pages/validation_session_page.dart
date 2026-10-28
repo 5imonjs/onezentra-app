@@ -1090,6 +1090,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         satuan: item.satuan,
         expiredDate: item.expiredDate,
         condition: item.condition,
+        // Label yang sudah pernah dicetak dicetak ulang sebagai salinan:
+        // kertasnya membawa tanda COPY.
+        isCopy: batch.isPrinted,
       ),
       // Paritas web: laporan "tercetak" dikirim saat tombol cetak ditekan
       // (di dalam sheet), bukan hanya saat cetak sukses — dulu hasil cetak
