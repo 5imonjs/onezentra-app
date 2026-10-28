@@ -92,6 +92,8 @@ type ValidationExtraItem = {
   recorder?: { full_name?: string | null } | null;
   approver?: { full_name?: string | null } | null;
   created_at?: string | null;
+  /** Batch label — lahir saat catatan disetujui planner (siap cetak). */
+  batch?: BatchInfo | null;
 };
 
 /** Status keputusan planner (Fase 2) — default PENDING saat belum diputuskan. */
@@ -697,6 +699,36 @@ export default function ValidasiSjPage() {
     }
     if (active) setPrintedLabels(markLabelPrinted(active.id, barcode));
     markBatchPrinted(item.batch);
+  };
+
+  /**
+   * Cetak label catatan barang di luar rencana yang sudah disetujui planner.
+   * Alurnya persis label item rencana: batch milik catatan itu sumbernya,
+   * percetakan dilaporkan ke server (mark-printed) supaya badge "Cetak Ulang"
+   * konsisten lintas device.
+   */
+  const printExtraLabel = async (extra: ValidationExtraItem, viaDownload: boolean) => {
+    const barcode = extra.batch?.barcode_label?.trim() ?? '';
+    if (!barcode || extra.batch?.status === 'CANCELLED') return;
+    const label: BatchLabelData = {
+      batch_number: extra.batch?.batch_number ?? null,
+      barcode_label: barcode,
+      kode_barang: extra.kode_barang,
+      nama_barang: extra.nama_barang,
+      actual_qty: extra.qty,
+      satuan: extra.satuan,
+      expired_date: extra.expired_date,
+      condition: extra.condition,
+      po_transporter: active?.rencana_kirim?.po_transporter ?? null,
+    };
+    if (viaDownload) {
+      downloadBatchLabel(label);
+    } else {
+      const printed = await printBatchLabel(label);
+      if (!printed) return;
+    }
+    if (active) setPrintedLabels(markLabelPrinted(active.id, barcode));
+    markBatchPrinted(extra.batch);
   };
 
   const handlePrintLabel = async () => {
@@ -1412,6 +1444,16 @@ export default function ValidasiSjPage() {
                     {active.extra_items?.map((extra) => {
                       const decision = EXTRA_DECISION_LABELS[extra.status || 'PENDING'] ?? EXTRA_DECISION_LABELS.PENDING;
                       const canDecide = hasPermission('sj_validation.approve') && (extra.status || 'PENDING') === 'PENDING';
+                      // Disetujui + batch tersedia → label siap dicetak seperti
+                      // item rencana kirim (badge "Cetak Ulang" mengikuti jejak).
+                      const canPrintExtra = extra.status === 'APPROVED'
+                        && Boolean(extra.batch?.barcode_label)
+                        && extra.batch?.status !== 'CANCELLED';
+                      const extraPrinted = isLabelPrinted(
+                        // isLabelPrinted generik: cukup id/status/batch.
+                        { id: extra.id, status: extra.status ?? 'PENDING', batch: extra.batch },
+                        printedLabels,
+                      );
                       return (
                       <li key={extra.id} className="flex flex-col gap-1.5 px-5 py-3 even:bg-overlay-30">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1442,6 +1484,22 @@ export default function ValidasiSjPage() {
                             {extra.approved_at ? <> · {fmtDate(extra.approved_at)}</> : null}
                             {extra.decision_notes ? <> — “{extra.decision_notes}”</> : null}
                           </p>
+                        )}
+                        {canPrintExtra && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            {/* Label barang luar rencana yang disetujui — alur
+                                sama dengan item rencana: print dialog (atau
+                                unduh PDF via context menu) + laporan mark-printed. */}
+                            <button
+                              type="button"
+                              onClick={() => { void printExtraLabel(extra, false); }}
+                              title={extraPrinted ? `Cetak ulang label ${extra.batch?.barcode_label}` : `Cetak label ${extra.batch?.barcode_label} (belum pernah dicetak)`}
+                              className={`inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${extraPrinted ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised'}`}
+                            >
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.4 42.4 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.774-2.034-1.856-2.15M6.34 18H5.25a2.25 2.25 0 0 1-2.25-2.25V9.456c0-1.081.774-2.034 1.856-2.15m5.718 0a42.2 42.2 0 0 1 6.39 0m-6.39 0c-.181-.03-.364-.055-.546-.079m4.852.079c.18-.03.363-.055.545-.078" /></svg>
+                              {extraPrinted ? 'Cetak Ulang' : 'Cetak Label'}
+                            </button>
+                          </div>
                         )}
                         {canDecide && (
                           <div className="flex flex-wrap items-center gap-2">
