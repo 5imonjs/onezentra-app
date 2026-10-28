@@ -303,7 +303,9 @@ class LabelPrintProvider extends ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('LabelPrintProvider.printLabel: $e');
-      _error = 'Gagal mencetak label.';
+      // Tampilkan penyebab aslinya — pesan generik menyembunyikan akar
+      // masalah dan diagnosis lapangan jadi buta.
+      _error = 'Gagal mencetak label ($e).';
       return false;
     } finally {
       _printing = false;

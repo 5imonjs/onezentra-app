@@ -123,6 +123,11 @@ Future<void> kirimLabelByte(
     await sink.allSent.timeout(sentTimeout);
   } on TimeoutException {
     // Diabaikan: byte sudah ditulis ke socket — label sudah keluar.
+  } catch (e) {
+    // allSent bisa juga selesai DENGAN error (plugin meneruskan error write
+    // yang sudah terjadi). Byte yang sama sudah keluar di kertas — jangan
+    // batalkan cetakan yang berhasil.
+    debugPrint('kirimLabelByte: allSent error (dianggap terkirim): $e');
   }
 }
 
@@ -228,7 +233,19 @@ class BluetoothLabelPrinter implements LabelPrinter {
       }
       _connection = connection;
 
-      await kirimLabelByte(_PluginSink(connection.output), bytes);
+      // Setelah tersambung dan byte masuk antrian socket, kegagalan pasca-
+      // kirim (konfirmasi yang error/tidak datang) TIDAK membatalkan
+      // cetakan — kertas memang sudah keluar. Dulu error di sini membuat
+      // aplikasi melapor "gagal cetak" padahal label sudah tercetak.
+      try {
+        await kirimLabelByte(_PluginSink(connection.output), bytes);
+      } on PrinterException {
+        rethrow;
+      } catch (e) {
+        debugPrint(
+          'BluetoothLabelPrinter: pasca-kirim — dianggap terkirim: $e',
+        );
+      }
       debugPrint('CetakLabel: byte terkirim (${bytes.length} byte)');
     } on PrinterException {
       rethrow;

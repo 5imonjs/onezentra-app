@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -6,16 +7,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onezentra_mobile/core/printer/label_printer.dart';
 
 /// Sink palsu yang mencatat tiap potongan; [allSent] bisa dibuat tidak
-/// pernah selesai untuk menyimulasikan printer thermal tanpa ACK.
+/// pernah selesai atau berakhir error — menyimulasikan printer thermal
+/// tanpa ACK / plugin yang meneruskan error write.
 class _FakeSink implements LabelSocketSink {
   final List<Uint8List> chunks = [];
   Completer<void>? gate;
+  Object? error;
 
   @override
   void add(List<int> bytes) => chunks.add(Uint8List.fromList(bytes));
 
   @override
   Future<void> get allSent {
+    var failing = error;
+    if (failing != null) {
+      return Future.error(failing);
+    }
     var pending = gate;
     if (pending != null) {
       return pending.future;
@@ -62,6 +69,28 @@ void main() {
       await expectLater(sent, completes);
       // Semua potongan tetap terkirim meski konfirmasi tidak pernah datang.
       expect(sink.chunks.map((c) => c.length), [180, 20]);
+    },
+  );
+
+  test(
+    'allSent yang selesai dengan error tidak membatalkan pengiriman',
+    () async {
+      // Plugin bisa menyelesaikan allSent dengan error write yang sudah
+      // terjadi — byte yang sama sudah keluar di kertas, jadi jangan batalkan
+      // (dulu aplikasi melapor "gagal cetak" padahal label sudah tercetak).
+      var sink = _FakeSink()
+        ..error = const SocketException('koneksi ditutup printer');
+
+      await expectLater(
+        kirimLabelByte(
+          sink,
+          List<int>.filled(100, 65),
+          chunkDelay: Duration.zero,
+          sentTimeout: const Duration(milliseconds: 50),
+        ),
+        completes,
+      );
+      expect(sink.chunks.map((c) => c.length), [100]);
     },
   );
 }
