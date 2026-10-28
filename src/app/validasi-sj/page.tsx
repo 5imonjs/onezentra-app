@@ -86,8 +86,19 @@ type ValidationExtraItem = {
   expired_date: string | null;
   photo: string | null;
   notes?: string | null;
+  status?: string | null;
+  approved_at?: string | null;
+  decision_notes?: string | null;
   recorder?: { full_name?: string | null } | null;
+  approver?: { full_name?: string | null } | null;
   created_at?: string | null;
+};
+
+/** Status keputusan planner (Fase 2) — default PENDING saat belum diputuskan. */
+const EXTRA_DECISION_LABELS: Record<string, { label: string; cls: string }> = {
+  PENDING: { label: 'Menunggu persetujuan', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
+  APPROVED: { label: 'Disetujui', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  REJECTED: { label: 'Ditolak', cls: 'border-red-200 bg-red-50 text-red-700' },
 };
 
 const statusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
@@ -575,6 +586,48 @@ export default function ValidasiSjPage() {
   const handleExtraNpnClear = () => {
     setExtraNpn(null);
     setExtraForm((prev) => ({ ...prev, npn_id: null, kode_barang: '', nama_barang: '', satuan: '' }));
+  };
+
+  /**
+   * Fase 2: keputusan planner atas satu catatan deviasi — Setujui/Tolak.
+   * Alasan wajib saat menolak (dikunci juga di server); keputusan final di
+   * server, jadi modal ini hanya menyampaikan keputusan pertama.
+   */
+  const [extraDecision, setExtraDecision] = useState<{
+    extra: ValidationExtraItem;
+    mode: 'APPROVED' | 'REJECTED';
+    notes: string;
+  } | null>(null);
+
+  const decideExtra = async () => {
+    if (!active || !extraDecision) return;
+    if (extraDecision.mode === 'REJECTED' && !extraDecision.notes.trim()) {
+      notifyGlobal('Alasan penolakan wajib diisi.', 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { mode, notes } = extraDecision;
+      if (mode === 'APPROVED') {
+        await sjValidations.approveExtraItem(active.id, extraDecision.extra.id, notes.trim() || undefined);
+      } else {
+        await sjValidations.rejectExtraItem(active.id, extraDecision.extra.id, notes.trim());
+      }
+      // Endpoint mengembalikan baris deviasi yang diputuskan — detail sesi
+      // diambil ulang supaya badge status & riwayat keputusan ikut segar.
+      const detail = await sjValidations.get(active.id);
+      setActive(detail.data.data);
+      setExtraDecision(null);
+      loadStats();
+      notifyGlobal(
+        mode === 'APPROVED' ? 'Barang luar rencana disetujui.' : 'Barang luar rencana ditolak.',
+        'success',
+      );
+    } catch (error) {
+      notifyGlobal(getErrorMessage(error, 'Gagal menyimpan keputusan.'), 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   /**
@@ -1356,13 +1409,21 @@ export default function ValidasiSjPage() {
                   <p className="px-5 py-6 text-center text-xs text-slate-400">Belum ada catatan barang di luar rencana.</p>
                 ) : (
                   <ul className="divide-y divide-gray-100">
-                    {active.extra_items?.map((extra) => (
+                    {active.extra_items?.map((extra) => {
+                      const decision = EXTRA_DECISION_LABELS[extra.status || 'PENDING'] ?? EXTRA_DECISION_LABELS.PENDING;
+                      const canDecide = hasPermission('sj_validation.approve') && (extra.status || 'PENDING') === 'PENDING';
+                      return (
                       <li key={extra.id} className="flex flex-col gap-1.5 px-5 py-3 even:bg-overlay-30">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-sm font-bold text-slate-800">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-slate-500">{extra.kode_barang}</span></p>
-                          <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
-                            {extra.qty} {extra.satuan || ''} · {CONDITION_LABELS[extra.condition] || extra.condition}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
+                              {extra.qty} {extra.satuan || ''} · {CONDITION_LABELS[extra.condition] || extra.condition}
+                            </span>
+                            <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${decision.cls}`}>
+                              {decision.label}
+                            </span>
+                          </div>
                         </div>
                         <p className="text-[11px] text-slate-500">
                           {extra.expired_date ? <>Expired: <span className="font-semibold">{fmtDate(extra.expired_date)}</span><span className="text-slate-300"> • </span></> : null}
@@ -1375,8 +1436,28 @@ export default function ValidasiSjPage() {
                             </>
                           )}
                         </p>
+                        {(extra.status === 'APPROVED' || extra.status === 'REJECTED') && (
+                          <p className="text-[11px] text-slate-500">
+                            Diputus oleh <span className="font-semibold text-slate-600">{extra.approver?.full_name || '-'}</span>
+                            {extra.approved_at ? <> · {fmtDate(extra.approved_at)}</> : null}
+                            {extra.decision_notes ? <> — “{extra.decision_notes}”</> : null}
+                          </p>
+                        )}
+                        {canDecide && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button type="button" onClick={() => setExtraDecision({ extra, mode: 'APPROVED', notes: '' })} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition-all hover:bg-emerald-100 active:scale-[0.98]">
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>
+                              Setujui
+                            </button>
+                            <button type="button" onClick={() => setExtraDecision({ extra, mode: 'REJECTED', notes: '' })} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-700 transition-all hover:bg-red-100 active:scale-[0.98]">
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                              Tolak
+                            </button>
+                          </div>
+                        )}
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -1638,6 +1719,56 @@ export default function ValidasiSjPage() {
 
           <label className="block text-xs font-bold text-slate-600">Catatan <span className="font-medium text-slate-400">(opsional)</span>
             <textarea value={extraForm.notes} onChange={(e) => setExtraForm({ ...extraForm, notes: e.target.value })} placeholder="Keterangan tambahan..." className="input-field mt-1.5 min-h-22 resize-y py-2.5 text-sm" rows={3} />
+          </label>
+        </div>
+      </Modal>
+
+      {/* Fase 2: keputusan planner atas catatan barang luar rencana.
+          Menolak wajib alasan; keputusan final di server (PENDING saja yang
+          bisa diputuskan). */}
+      <Modal
+        open={!!extraDecision}
+        onClose={() => setExtraDecision(null)}
+        title={extraDecision?.mode === 'APPROVED' ? 'Setujui Barang Luar Rencana' : 'Tolak Barang Luar Rencana'}
+        subtitle={
+          extraDecision
+            ? `${extraDecision.extra.nama_barang} — ${extraDecision.extra.qty} ${extraDecision.extra.satuan || ''}`
+            : undefined
+        }
+        size="sm"
+        footer={
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+            <button type="button" onClick={() => setExtraDecision(null)} className="btn-secondary w-full sm:w-auto">Batal</button>
+            <button
+              type="button"
+              onClick={decideExtra}
+              disabled={busy}
+              className={extraDecision?.mode === 'APPROVED' ? 'btn-primary w-full sm:w-auto' : 'btn-danger w-full sm:w-auto'}
+            >
+              {extraDecision?.mode === 'APPROVED' ? 'Setujui' : 'Tolak'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {extraDecision?.mode === 'APPROVED' ? (
+            <p className="text-xs leading-5 text-slate-600">
+              Catatan akan berstatus <strong>Disetujui</strong>. Rencana kirim tidak diubah — keputusan ini hanya jejak penerimaan barang.
+            </p>
+          ) : (
+            <p className="text-xs leading-5 text-slate-600">
+              Catatan akan berstatus <strong>Ditolak</strong>. Berikan alasan yang jelas — alasan terkirim ke pelapor dan tersimpan sebagai jejak.
+            </p>
+          )}
+          <label className="block text-xs font-bold text-slate-600">
+            {extraDecision?.mode === 'APPROVED' ? 'Catatan keputusan' : 'Alasan penolakan'} <span className={extraDecision?.mode === 'REJECTED' ? 'text-accent-text' : 'font-medium text-slate-400'}>{extraDecision?.mode === 'REJECTED' ? '*' : '(opsional)'}</span>
+            <textarea
+              value={extraDecision?.notes ?? ''}
+              onChange={(e) => setExtraDecision((prev) => prev ? { ...prev, notes: e.target.value } : prev)}
+              placeholder={extraDecision?.mode === 'APPROVED' ? 'Contoh: diterima sebagai tambahan' : 'Contoh: kembalikan ke transporter'}
+              rows={3}
+              className="input-field mt-1.5 min-h-22 resize-y py-2.5 text-sm"
+            />
           </label>
         </div>
       </Modal>

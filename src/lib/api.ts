@@ -680,6 +680,11 @@ export const sjValidations = {
     apiClient.post(`/sj-validations/${id}/extra-items`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  // Fase 2: keputusan planner atas catatan deviasi. `notes` wajib saat tolak.
+  approveExtraItem: (id: number, extraItemId: number, notes?: string) =>
+    apiClient.post(`/sj-validations/${id}/extra-items/${extraItemId}/approve`, { notes }),
+  rejectExtraItem: (id: number, extraItemId: number, notes: string) =>
+    apiClient.post(`/sj-validations/${id}/extra-items/${extraItemId}/reject`, { notes }),
 };
 
 export const reports = {
