@@ -1096,9 +1096,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       // yang salah dibaca membuat laporan tidak pernah terkirim dan status
       // web tidak berubah.
       onPrintAttempted: () async {
-        var reported = await context
-            .read<ValidationProvider>()
-            .markLabelPrinted(batch.id);
+        // Provider dibuat di dalam build (ChangeNotifierProvider.value),
+        // jadi context State TIDAK bisa membacanya — pakai instance yang
+        // di-inject langsung. Dulu `context.read` di sini melempar
+        // ProviderNotFound dan laporan mark-printed tidak pernah terkirim.
+        var reported = await widget.provider.markLabelPrinted(batch.id);
         debugPrint('CetakLabel: lapor server -> $reported');
         if (!reported) {
           reportFailed = true;
@@ -1112,12 +1114,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     if (printed ?? false) {
       String? reportWarning;
       if (reportFailed) {
-        reportWarning = context.read<ValidationProvider>().message?.message;
+        reportWarning = widget.provider.message?.message;
       }
       // Segera refresh provider agar status badge cetak berubah dan
       // tombol Selesaikan dapat aktif jika semua label sudah tercetak.
-      var v = context.read<ValidationProvider>();
-      await v.openSession(v.active?.id ?? 0);
+      await widget.provider.openSession(widget.provider.active?.id ?? 0);
       if (mounted) {
         setState(() {});
       }
