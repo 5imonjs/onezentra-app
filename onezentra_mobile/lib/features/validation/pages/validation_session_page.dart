@@ -1077,6 +1077,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       }
       return;
     }
+    var reportFailed = false;
     var printed = await LabelPrintSheet.show(
       context,
       label: BatchLabelData(
@@ -1090,47 +1091,46 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         expiredDate: item.expiredDate,
         condition: item.condition,
       ),
+      // Paritas web: laporan "tercetak" dikirim saat tombol cetak ditekan
+      // (di dalam sheet), bukan hanya saat cetak sukses — dulu hasil cetak
+      // yang salah dibaca membuat laporan tidak pernah terkirim dan status
+      // web tidak berubah.
+      onPrintAttempted: () async {
+        var reported = await context
+            .read<ValidationProvider>()
+            .markLabelPrinted(batch.id);
+        debugPrint('CetakLabel: lapor server -> $reported');
+        if (!reported) {
+          reportFailed = true;
+        }
+      },
     );
     debugPrint('CetakLabel: panel ditutup hasil=$printed');
     if (!mounted) {
       return;
     }
     if (printed ?? false) {
-      var reported = true;
       String? reportWarning;
-      if (batch.id > 0) {
-        reported = await context.read<ValidationProvider>().markLabelPrinted(
-          batch.id,
-        );
-        debugPrint('CetakLabel: lapor server -> $reported');
-        if (!mounted) {
-          return;
-        }
-        var message = context.read<ValidationProvider>().message;
-        if (!reported && message?.success == false) {
-          reportWarning = message?.message;
-        }
+      if (reportFailed) {
+        reportWarning = context.read<ValidationProvider>().message?.message;
       }
       // Segera refresh provider agar status badge cetak berubah dan
       // tombol Selesaikan dapat aktif jika semua label sudah tercetak.
+      var v = context.read<ValidationProvider>();
+      await v.openSession(v.active?.id ?? 0);
       if (mounted) {
-        // ignore: use_build_context_synchronously
-        var v = context.read<ValidationProvider>();
-        await v.openSession(v.active?.id ?? 0);
-        // Force rebuild so batch/printed status updates visibly
-        if (mounted) {
-          setState(() {});
-        }
+        setState(() {});
       }
       // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            reported
-                ? 'Label ${batch.barcodeLabel} tercetak.'
-                : (reportWarning ?? 'Label tercetak, status gagal dilaporkan.'),
+            reportFailed
+                ? (reportWarning ??
+                      'Label tercetak, status gagal dilaporkan ke server.')
+                : 'Label ${batch.barcodeLabel} tercetak.',
           ),
-          backgroundColor: reported ? AppTheme.success : AppTheme.warning,
+          backgroundColor: reportFailed ? AppTheme.warning : AppTheme.success,
         ),
       );
     }

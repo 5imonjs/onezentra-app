@@ -53,8 +53,9 @@ void main() {
 
   Future<Future<bool?> Function()> openSheet(
     WidgetTester tester,
-    LabelPrintProvider provider,
-  ) async {
+    LabelPrintProvider provider, {
+    Future<void> Function()? onPrintAttempted,
+  }) async {
     late Future<bool?> result;
     await tester.pumpWidget(
       MaterialApp(
@@ -66,6 +67,7 @@ void main() {
                   context,
                   label: _label,
                   printer: provider,
+                  onPrintAttempted: onPrintAttempted,
                 );
               },
               child: const Text('Buka cetak'),
@@ -112,6 +114,29 @@ void main() {
 
     expect(find.byType(LabelPrintSheet), findsOneWidget);
     expect(find.text('Printer tidak merespons.'), findsOneWidget);
+    provider.dispose();
+  });
+
+  testWidgets('laporan server terkirim meski cetak dilaporkan gagal', (
+    tester,
+  ) async {
+    // Paritas web: kertas sudah keluar dari printer bahkan saat aplikasi
+    // salah membaca hasil — jadi status "tercetak" dilaporkan pada setiap
+    // percobaan cetak, bukan hanya saat sukses. Dulu laporan hanya dikirim
+    // setelah sukses, sehingga badge web tidak pernah berubah.
+    var attempts = 0;
+    var provider = LabelPrintProvider(
+      printer: _FakeLabelPrinter(
+        printError: const PrinterException('Printer tidak merespons.'),
+      ),
+      requestPermissions: () async => true,
+    );
+    await openSheet(tester, provider, onPrintAttempted: () async => attempts++);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Cetak Label'));
+    await tester.pumpAndSettle();
+
+    expect(attempts, 1);
     provider.dispose();
   });
 }

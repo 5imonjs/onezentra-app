@@ -12,20 +12,37 @@ import 'package:onezentra_mobile/core/printer/thermal_label.dart';
 /// merender seluruh halaman, dan supaya halaman yang sudah panjang tidak makin
 /// sulit dibaca.
 class LabelPrintSheet extends StatefulWidget {
-  const LabelPrintSheet({required this.label, this.printer, super.key});
+  const LabelPrintSheet({
+    required this.label,
+    this.printer,
+    this.onPrintAttempted,
+    super.key,
+  });
 
   final BatchLabelData label;
   final LabelPrintProvider? printer;
+
+  /// Paritas web: web melaporkan label "tercetak" SAAT tombol cetak
+  /// ditekan, bukan setelah menunggu hasil printer. Mobile mengikuti pola
+  /// yang sama — [onPrintAttempted] dipanggil setelah setiap percobaan
+  /// cetak, apa pun hasil Bluetooth-nya, supaya status tercetak & badge
+  /// web/mobile selalu konsisten.
+  final Future<void> Function()? onPrintAttempted;
 
   /// Buka panel cetak. Mengembalikan true kalau label berhasil dicetak.
   static Future<bool?> show(
     BuildContext context, {
     required BatchLabelData label,
     LabelPrintProvider? printer,
+    Future<void> Function()? onPrintAttempted,
   }) => showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => LabelPrintSheet(label: label, printer: printer),
+    builder: (_) => LabelPrintSheet(
+      label: label,
+      printer: printer,
+      onPrintAttempted: onPrintAttempted,
+    ),
   );
 
   @override
@@ -53,6 +70,14 @@ class _LabelPrintSheetState extends State<LabelPrintSheet> {
   Future<void> _print() async {
     var ok = await _printer.printLabel(widget.label);
     debugPrint('CetakLabel: printLabel selesai -> $ok');
+    // Paritas web: lapor label tercetak apa pun hasil Bluetooth-nya —
+    // kertas memang keluar bahkan saat aplikasi salah membaca hasil, dan
+    // dulu laporan yang hilang di sini membuat status web tidak berubah.
+    try {
+      await widget.onPrintAttempted?.call();
+    } catch (e) {
+      debugPrint('CetakLabel: laporan server gagal: $e');
+    }
     if (!mounted) {
       return;
     }
