@@ -220,6 +220,7 @@ class BluetoothLabelPrinter implements LabelPrinter {
       connection = await BluetoothConnection.toAddress(
         printer.address,
       ).timeout(const Duration(seconds: 10));
+      debugPrint('CetakLabel: tersambung ke ${printer.displayName}');
       if (connection.isConnected != true) {
         throw const PrinterException(
           'Gagal terhubung ke printer. Pastikan printer menyala dan tidak dipakai aplikasi lain.',
@@ -228,6 +229,7 @@ class BluetoothLabelPrinter implements LabelPrinter {
       _connection = connection;
 
       await kirimLabelByte(_PluginSink(connection.output), bytes);
+      debugPrint('CetakLabel: byte terkirim (${bytes.length} byte)');
     } on PrinterException {
       rethrow;
     } on TimeoutException {
@@ -240,12 +242,18 @@ class BluetoothLabelPrinter implements LabelPrinter {
         'Gagal mencetak. Periksa printer dan coba lagi.',
       );
     } finally {
-      // Putuskan koneksi supaya printer tidak terkunci eksklusif dan operator
-      // tetap bisa mencetak dari halaman lain.
-      try {
-        await connection?.close();
-      } catch (_) {
-        // Kegagalan menutup tidak boleh menutupi hasil cetak yang sukses.
+      // Putuskan koneksi supaya printer tidak terkunci eksklusif — TAPI
+      // tidak menunggu: close() menunggu antrian write yang pada printer
+      // tanpa ACK bisa tidak pernah selesai. Dulu `await close()` di sini
+      // membuat tombol Cetak memutar selamanya padahal kertas sudah keluar.
+      var closing = connection;
+      if (closing != null) {
+        unawaited(
+          closing
+              .close()
+              .timeout(const Duration(seconds: 5), onTimeout: () {})
+              .catchError((_) {}),
+        );
       }
       _connection = null;
     }
