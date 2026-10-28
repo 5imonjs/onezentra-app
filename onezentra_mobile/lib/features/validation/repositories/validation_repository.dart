@@ -229,6 +229,12 @@ class ValidationRepository {
   /// luar rencana" untuk mengunci identitas barang ke master setelah barcode
   /// discan atau diketik — pola yang sama dengan combobox Rencana Kirim web.
   /// Query kosong tidak memanggil server sama sekali.
+  ///
+  /// Bentuk respons API: `{data: [produk...], total, limit, offset, has_more}`
+  /// — daftar produk ada di `data` LANGSUNG. Dulu parser membaca
+  /// `data.data` (bentuk fiktif) sehingga dari server asli selalu
+  /// menghasilkan daftar kosong dan pencarian di HP terasa "barangnya tidak
+  /// ada di master NPN".
   Future<List<NpnProduct>> searchProduct(String query) async {
     var q = query.trim();
     if (q.isEmpty) {
@@ -239,8 +245,11 @@ class ValidationRepository {
         '/npn/search-product?q=${Uri.encodeQueryComponent(q)}&limit=50',
       ),
     );
-    var payload = _readMapSafe(body['data']);
-    var raw = payload?['data'];
+    var raw = body['data'];
+    if (raw is Map) {
+      // Toleran terhadap pembungkus objek bila suatu saat API berubah bentuk.
+      raw = raw['data'];
+    }
     if (raw is! List) {
       return const [];
     }
@@ -249,9 +258,6 @@ class ValidationRepository {
         .map((item) => NpnProduct.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
-
-  Map<String, dynamic>? _readMapSafe(dynamic value) =>
-      value is Map ? Map<String, dynamic>.from(value) : null;
 
   /// Finishes the session. The server rejects it while lines are still
   /// `PENDING`; its Indonesian message is surfaced as-is.

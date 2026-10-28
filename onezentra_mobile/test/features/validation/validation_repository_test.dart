@@ -109,21 +109,24 @@ void main() {
       var repository = ValidationRepository(
         get: (endpoint) async {
           hitEndpoint = endpoint;
+          // Bentuk respons API asli: {data: [produk...], total, ...} —
+          // daftar produk ada di `data` LANGSUNG, bukan `data.data`.
+          // Dulu parser membaca `data.data` (bentuk fiktif) sehingga dari
+          // server asli selalu menghasilkan daftar kosong dan pencarian di
+          // HP terasa "barangnya tidak ada di master NPN".
           return {
-            'data': {
-              'data': [
-                {
-                  'id': 5,
-                  'BOSnetszProductId': 'SKU-NPN-77',
-                  'SAPszProductId': 'MAT-77',
-                  'SAPszUomId': 'CRT',
-                  'szNickName': 'Minyak Goreng 2L',
-                  'szNickNameNew': '',
-                  'szShortDescription': '',
-                },
-              ],
-              'total': 1,
-            },
+            'data': [
+              {
+                'id': 5,
+                'BOSnetszProductId': 'SKU-NPN-77',
+                'SAPszProductId': 'MAT-77',
+                'SAPszUomId': 'CRT',
+                'szNickName': 'Minyak Goreng 2L',
+                'szNickNameNew': '',
+                'szShortDescription': '',
+              },
+            ],
+            'total': 1,
           };
         },
       );
@@ -137,6 +140,26 @@ void main() {
       expect(products.first.satuan, 'CRT');
       expect(products.first.displayName, 'Minyak Goreng 2L');
     });
+
+    test(
+      'searchProduct toleran bila API membungkus daftar dalam objek',
+      () async {
+        var repository = ValidationRepository(
+          get: (_) async => {
+            'data': {
+              'data': [
+                {'id': 9, 'BOSnetszProductId': 'B-9', 'szNickName': 'AJTM'},
+              ],
+            },
+          },
+        );
+
+        var products = await repository.searchProduct('ajtm');
+
+        expect(products, hasLength(1));
+        expect(products.first.displayName, 'AJTM');
+      },
+    );
 
     test('searchProduct kosong tidak memanggil API sama sekali', () async {
       var calls = 0;
