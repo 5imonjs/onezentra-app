@@ -260,27 +260,25 @@ class BluetoothLabelPrinter implements LabelPrinter {
       );
     } finally {
       // Putuskan koneksi supaya printer tidak terkunci eksklusif — TAPI
-      // tidak menunggu: close() menunggu antrian write yang pada printer
-      // tanpa ACK bisa tidak pernah selesai. Dulu `await close()` di sini
-      // membuat tombol Cetak memutar selamanya padahal kertas sudah keluar.
+      // tidak menunggu dan tanpa batas waktu dengan callback: close()
+      // menunggu antrian write yang pada printer tanpa ACK bisa tidak
+      // pernah selesai, dan `.timeout(onTimeout:)` di sini pernah melempar
+      // TypeError (tipe internal close() adalah Future<List>) yang membuat
+      // aplikasi melapor "gagal cetak" padahal kertas sudah keluar.
       var closing = connection;
       if (closing != null) {
-        unawaited(
-          closing
-              .close()
-              .timeout(const Duration(seconds: 5), onTimeout: () {})
-              .catchError((_) {}),
-        );
+        unawaited(closing.close().catchError((_) {}));
       }
       _connection = null;
     }
   }
 
   Future<void> dispose() async {
-    try {
-      await _connection?.close();
-    } catch (_) {
-      // Diabaikan: dispose dipanggil saat halaman ditutup.
+    // Sama seperti printLabel: tidak menunggu close() — antrian write yang
+    // menggantung tidak boleh menggantung penutupan halaman.
+    var connection = _connection;
+    if (connection != null) {
+      unawaited(connection.close().catchError((_) {}));
     }
     _connection = null;
   }
