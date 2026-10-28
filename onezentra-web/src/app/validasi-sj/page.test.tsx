@@ -267,34 +267,16 @@ describe('ValidasiSjPage — barang di luar rencana', () => {
     expect(payload.get('photo')).toBeInstanceOf(File);
   });
 
-  it('barcode hasil kamera dikenali dari master NPN secara otomatis', async () => {
-    npnSearch.mockResolvedValue({
-      data: {
-        data: [{
-          id: 5,
-          BOSnetszProductId: 'SKU-NPN-77',
-          SAPszProductId: 'MAT-77',
-          SAPszUomId: 'CRT',
-          SAPdecUom: null,
-          decVolume: null,
-          szNickName: 'Minyak Goreng 2L',
-          szNickNameNew: '',
-          szShortDescription: '',
-        }],
-        total: 1,
-      },
-    });
-
+  it('form barang luar rencana tidak lagi memakai barcode', async () => {
     await openDetail([]);
+
     fireEvent.click(await screen.findByRole('button', { name: /Laporkan Barang/ }));
 
-    // Buka kamera lalu terima hasil pindai barcode kemasan.
-    fireEvent.click(await screen.findByRole('button', { name: /Pindai/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Simulasi Scan' }));
-
-    // Satu-satunya produk hasil pencarian langsung dikunci ke identitas.
-    await screen.findByText('Minyak Goreng 2L');
-    expect(screen.getByText('SKU-NPN-77')).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText('Dari kertas / manual')).not.toBeInTheDocument();
+    // Identifikasi sekarang lewat pencarian nama saja — barcode dihapus
+    // supaya input lebih cepat; tidak ada tombol kamera maupun field barcode.
+    await screen.findByPlaceholderText('Ketik nama barang...');
+    expect(screen.queryByPlaceholderText('Scan / ketik barcode kemasan')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Pindai/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Simulasi Scan' })).not.toBeInTheDocument();
   });
 });
