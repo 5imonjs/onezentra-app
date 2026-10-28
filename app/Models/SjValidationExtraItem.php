@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class SjValidationExtraItem extends Model
 {
@@ -40,5 +41,15 @@ class SjValidationExtraItem extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Batch label yang lahir saat catatan ini disetujui — sumber identitas
+     * cetak (barcode_label) dan jejak printed_at, sama seperti batch milik
+     * item rencana kirim.
+     */
+    public function batch(): HasOne
+    {
+        return $this->hasOne(Batch::class, 'sj_validation_extra_item_id');
     }
 }

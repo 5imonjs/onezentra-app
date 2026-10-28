@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\RencanaKirim;
@@ -358,6 +359,67 @@ class SjValidationExtraItemTest extends TestCase
             'trigger' => 'extra_item_decision',
             'context_id' => $extra->id,
         ]);
+    }
+
+    /**
+     * Disetujui = barang fisik tetap masuk → labelnya wajib bisa dicetak
+     * seperti item rencana kirim. Satu catatan = tepat satu batch; isi
+     * label mengikuti catatan (kode, nama, qty, satuan, kondisi, expired).
+     */
+    public function test_persetujuan_menerbitkan_batch_label_siap_cetak(): void
+    {
+        Sanctum::actingAs($planner = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+        $recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']);
+        $rk = $this->rencanaKirim($planner);
+        $validation = $this->inProgressValidation($planner, $rk);
+        $extra = $this->buatCatatanLuar($recorder, $validation);
+
+        $response = $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", []);
+        $response->assertOk();
+
+        $batch = Batch::where('sj_validation_extra_item_id', $extra->id)->first();
+        $this->assertNotNull($batch, 'Persetujuan harus menerbitkan batch label.');
+        $this->assertSame('ACTIVE', $batch->status);
+        $this->assertStringStartsWith('LBL-', $batch->barcode_label);
+        $this->assertNull($batch->printed_at);
+        // Isi label mengikuti catatan (qty dibanding longgar: JSON menyimpan
+        // 2.0 sebagai 2).
+        $line = $batch->items_json[0];
+        $this->assertSame('SKU-LUAR-1', $line['kode_barang']);
+        $this->assertSame('Barang di Luar Rencana', $line['nama_barang']);
+        $this->assertEquals(2, $line['actual_qty']);
+        $this->assertSame('CRT', $line['satuan']);
+        $this->assertSame('FISIK_BAGUS', $line['condition']);
+
+        // Respons approve dan show sama-sama membawa batch — klien (web &
+        // mobile) bisa langsung menyajikan tombol cetak tanpa fetch kedua.
+        $response->assertJsonPath('data.batch.barcode_label', $batch->barcode_label);
+
+        $show = $this->getJson("/api/v1/sj-validations/{$validation->id}")->assertOk();
+        $extras = $show->json('data.extra_items');
+        $this->assertSame(
+            $batch->barcode_label,
+            $extras[0]['batch']['barcode_label'] ?? null,
+        );
+
+        // Satu catatan = tepat satu batch.
+        $this->assertDatabaseCount('batches', 1);
+    }
+
+    /** Ditolak = barang dikembalikan ke transporter → tidak ada label. */
+    public function test_penolakan_tidak_menerbitkan_batch(): void
+    {
+        Sanctum::actingAs($planner = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+        $recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']);
+        $rk = $this->rencanaKirim($planner);
+        $validation = $this->inProgressValidation($planner, $rk);
+        $extra = $this->buatCatatanLuar($recorder, $validation);
+
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/reject", [
+            'notes' => 'Barang tidak diterima',
+        ])->assertOk();
+
+        $this->assertNull(Batch::where('sj_validation_extra_item_id', $extra->id)->first());
     }
 
     public function test_menolak_wajib_alasan(): void

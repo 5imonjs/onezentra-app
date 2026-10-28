@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 class Batch extends Model
 {
     protected $fillable = [
-        'batch_number', 'receiving_id', 'sj_validation_item_id', 'receiving_item_id', 'barcode_label',
+        'batch_number', 'receiving_id', 'sj_validation_item_id', 'sj_validation_extra_item_id', 'receiving_item_id', 'barcode_label',
         'items_json', 'status', 'printed_at',
     ];
 
@@ -128,6 +128,18 @@ class Batch extends Model
     public function validationItem(): BelongsTo
     {
         return $this->belongsTo(SjValidationItem::class, 'sj_validation_item_id');
+    }
+
+    /**
+     * Catatan deviasi (barang luar rencana) yang disetujui planner —
+     * pemilik batch ini. Lahir di decideExtraItem saat keputusan APPROVED.
+     */
+    public function validationExtraItem(): BelongsTo
+    {
+        return $this->belongsTo(
+            SjValidationExtraItem::class,
+            'sj_validation_extra_item_id',
+        );
     }
 
     /**

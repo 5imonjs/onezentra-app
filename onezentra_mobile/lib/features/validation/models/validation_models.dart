@@ -403,6 +403,7 @@ class SjValidationExtraItem {
     this.status = 'PENDING',
     this.decisionNotes,
     this.approverName,
+    this.batch,
   });
 
   factory SjValidationExtraItem.fromJson(Map<String, dynamic> json) =>
@@ -423,6 +424,13 @@ class SjValidationExtraItem {
         status: _readString(json['status']) ?? 'PENDING',
         decisionNotes: _readString(json['decision_notes']),
         approverName: _readString(_readMap(json['approver'])?['full_name']),
+        // Batch lahir saat catatan disetujui planner — identitas cetak
+        // (barcode_label) dan jejak printed_at, sama seperti item rencana.
+        batch: json['batch'] is Map
+            ? ValidationBatch.fromJson(
+                Map<String, dynamic>.from(json['batch'] as Map),
+              )
+            : null,
       );
   final int id;
   final int validationId;
@@ -445,6 +453,9 @@ class SjValidationExtraItem {
   /// Nama checker yang mencatat (server mengirim relasi `recorder`).
   final String? recorderName;
 
+  /// Batch label siap cetak — hanya ada setelah catatan disetujui.
+  final ValidationBatch? batch;
+
   /// Label kondisi persis seperti tile item rencana, supaya satu mapping
   /// dipakai di seluruh halaman validasi.
   String get conditionLabel => switch (condition) {
@@ -455,6 +466,13 @@ class SjValidationExtraItem {
     'LAINNYA' => 'Lainnya',
     _ => 'Fisik bagus',
   };
+
+  /// Siap dicetak: disetujui, punya batch dengan barcode, dan tidak dibatalkan.
+  bool get canPrint =>
+      status == 'APPROVED' &&
+      batch != null &&
+      batch!.barcodeLabel != null &&
+      !batch!.isCancelled;
 }
 
 /// An SJ validation session with its document and lines.

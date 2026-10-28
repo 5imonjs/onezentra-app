@@ -759,7 +759,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         ),
         const SizedBox(height: AppTheme.space3),
         for (var i = 0; i < session.extraItems.length; i++) ...[
-          _extraItemTile(session.extraItems[i]),
+          _extraItemTile(session.extraItems[i], provider),
           if (i != session.extraItems.length - 1)
             const SizedBox(height: AppTheme.space2),
         ],
@@ -777,7 +777,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     ),
   );
 
-  Widget _extraItemTile(SjValidationExtraItem item) {
+  Widget _extraItemTile(
+    SjValidationExtraItem item,
+    ValidationProvider provider,
+  ) {
     // Keputusan planner (Fase 2): PENDING default, warna mengikuti keputusan.
     var (label, badgeColor) = switch (item.status) {
       'APPROVED' => ('Disetujui', AppTheme.success),
@@ -857,6 +860,41 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               color: badgeColor,
             ),
           ),
+          // Disetujui + batch tersedia → label siap dicetak seperti item
+          // rencana kirim (termasuk jejak "Cetak Ulang" & tanda COPY).
+          if (item.canPrint) ...[
+            const SizedBox(height: AppTheme.space3),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: provider.actionBusy
+                    ? null
+                    : () => _openExtraPrintSheet(item),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: AppTheme.primary600),
+                  backgroundColor: AppTheme.surfaceHover,
+                  minimumSize: const Size(0, 44),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppTheme.radiusLg,
+                  ),
+                  textStyle: GoogleFonts.roboto(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.print_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1077,6 +1115,59 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       }
       return;
     }
+    await _openBatchPrintSheet(
+      batch: batch,
+      kodeBarang: item.kodeBarang,
+      namaBarang: item.namaBarang,
+      actualQty: item.actualQty,
+      satuan: item.satuan,
+      expiredDate: item.expiredDate,
+      condition: item.condition,
+    );
+  }
+
+  /// Cetak label untuk catatan barang luar rencana yang disetujui — alur
+  /// persis item rencana: panel cetak Bluetooth → laporan mark-printed →
+  /// badge "Cetak Ulang" di web & mobile.
+  Future<void> _openExtraPrintSheet(SjValidationExtraItem item) async {
+    var batch = item.batch;
+    debugPrint(
+      'CetakLabel: tombol luar-rencana ditekan item=${item.id} '
+      'batch=${batch?.id} printed=${batch?.isPrinted}',
+    );
+    if (batch == null || batch.id == 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Catatan belum disetujui planner — label tersedia setelah disetujui.',
+            ),
+            backgroundColor: AppTheme.warning,
+          ),
+        );
+      }
+      return;
+    }
+    await _openBatchPrintSheet(
+      batch: batch,
+      kodeBarang: item.kodeBarang,
+      namaBarang: item.namaBarang,
+      actualQty: item.qty,
+      satuan: item.satuan,
+      expiredDate: item.expiredDate,
+      condition: item.condition,
+    );
+  }
+
+  Future<void> _openBatchPrintSheet({
+    required ValidationBatch batch,
+    required String? kodeBarang,
+    required String? namaBarang,
+    required double? actualQty,
+    required String? satuan,
+    required String? expiredDate,
+    required String? condition,
+  }) async {
     var reportFailed = false;
     var printed = await LabelPrintSheet.show(
       context,
@@ -1084,12 +1175,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         batchId: batch.id,
         batchNumber: batch.batchNumber,
         barcodeLabel: batch.barcodeLabel,
-        kodeBarang: item.kodeBarang,
-        namaBarang: item.namaBarang,
-        actualQty: item.actualQty,
-        satuan: item.satuan,
-        expiredDate: item.expiredDate,
-        condition: item.condition,
+        kodeBarang: kodeBarang,
+        namaBarang: namaBarang,
+        actualQty: actualQty,
+        satuan: satuan,
+        expiredDate: expiredDate,
+        condition: condition,
         // Label yang sudah pernah dicetak dicetak ulang sebagai salinan:
         // kertasnya membawa tanda COPY.
         isCopy: batch.isPrinted,

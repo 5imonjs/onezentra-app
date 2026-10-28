@@ -113,6 +113,7 @@ class SjValidationController extends Controller
             'extraItems.npn',
             'extraItems.recorder:id,full_name',
             'extraItems.approver:id,full_name',
+            'extraItems.batch',
             'validator:id,full_name',
         ]);
         $this->attachStandarUmur($sjValidation->items);
@@ -812,12 +813,37 @@ class SjValidationController extends Controller
             'Catatan sudah diputuskan (status '.$extra->status.') — keputusan bersifat final.'
         );
 
-        $extra->update([
-            'status' => $decision,
-            'approved_by' => $request->user()->id,
-            'approved_at' => now(),
-            'decision_notes' => $validated['notes'] ?? null,
-        ]);
+        $extra = DB::transaction(function () use ($extra, $decision, $request, $validated) {
+            // Kunci baris: keputusan final + penerbitan batch harus
+            // serialisasi — dua planner menyetujui bersamaan tidak boleh
+            // melahirkan dua batch.
+            $locked = SjValidationExtraItem::whereKey($extra->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status !== 'PENDING') {
+                abort(
+                    422,
+                    'Catatan sudah diputuskan (status '.$locked->status.') — keputusan bersifat final.'
+                );
+            }
+
+            $locked->update([
+                'status' => $decision,
+                'approved_by' => $request->user()->id,
+                'approved_at' => now(),
+                'decision_notes' => $validated['notes'] ?? null,
+            ]);
+
+            // Disetujui = barang fisik tetap masuk — labelnya wajib bisa
+            // dicetak seperti item rencana kirim (satu catatan = satu batch,
+            // idempoten).
+            if ($decision === 'APPROVED') {
+                $this->issueExtraItemBatch($locked);
+            }
+
+            return $locked;
+        });
 
         $this->emailService->send(
             'sj_ba',
@@ -827,7 +853,7 @@ class SjValidationController extends Controller
             $sjValidation->rencanaKirim?->kode_depo
         );
 
-        $extra->load(['npn', 'recorder:id,full_name', 'approver:id,full_name']);
+        $extra->load(['npn', 'recorder:id,full_name', 'approver:id,full_name', 'batch']);
 
         return response()->json([
             'message' => $decision === 'APPROVED'
@@ -835,6 +861,42 @@ class SjValidationController extends Controller
                 : 'Barang luar rencana ditolak',
             'data' => $extra,
         ]);
+    }
+
+    /**
+     * Terbitkan batch label untuk satu catatan barang luar rencana yang
+     * disetujui. Idempoten — catatan yang sudah berlabel dikembalikan apa
+     * adanya (guard ganda seperti scanItem, mencegah batch dobel saat retry
+     * jaringan / double-tap lolos lock).
+     */
+    private function issueExtraItemBatch(SjValidationExtraItem $extra): void
+    {
+        $existing = Batch::where('sj_validation_extra_item_id', $extra->id)->first();
+        if ($existing) {
+            return;
+        }
+
+        try {
+            Batch::createWithRetry([
+                'sj_validation_extra_item_id' => $extra->id,
+                'items_json' => [[
+                    'kode_barang' => $extra->kode_barang,
+                    'nama_barang' => $extra->nama_barang,
+                    'actual_qty' => (float) $extra->qty,
+                    'satuan' => $extra->satuan,
+                    'barcode' => $extra->barcode,
+                    'condition' => $extra->condition,
+                    'expired_date' => $extra->expired_date?->toDateString(),
+                ]],
+                'status' => 'ACTIVE',
+            ]);
+        } catch (QueryException $e) {
+            // Baris batch sudah dibuat transaksi pesaing — pakai yang ada.
+            if (! in_array($e->getCode(), ['23000', '23505'], true)
+                && $e->errorInfo[0] !== '23000') {
+                throw $e;
+            }
+        }
     }
 
     /**

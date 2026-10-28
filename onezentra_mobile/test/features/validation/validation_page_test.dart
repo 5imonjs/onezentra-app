@@ -1419,6 +1419,67 @@ void main() {
     expect(find.textContaining('Kembalikan ke transporter'), findsOneWidget);
   });
 
+  testWidgets('catatan disetujui dengan batch menampilkan tombol cetak label', (
+    tester,
+  ) async {
+    const extraSession = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      document: ValidationDocument(
+        id: 11,
+        poTransporter: 'PO-042',
+        nopol: 'B 9999 ZZ',
+        driverName: 'Andi',
+        status: 'CHECKED_IN',
+      ),
+      extraItems: [
+        // Disetujui + batch → tombol cetak tampil seperti item rencana.
+        SjValidationExtraItem(
+          id: 71,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-1',
+          namaBarang: 'Kopi Special Grade',
+          qty: 2,
+          satuan: 'CRT',
+          status: 'APPROVED',
+          batch: ValidationBatch(
+            id: 55,
+            batchNumber: 'B-55',
+            barcodeLabel: 'LBL-EXTRA-71',
+          ),
+        ),
+        // Disetujui tapi batch belum terbit → tombol belum muncul.
+        SjValidationExtraItem(
+          id: 72,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-2',
+          namaBarang: 'Teh Celup 1kg',
+          qty: 1,
+          satuan: 'ZAK',
+          status: 'APPROVED',
+        ),
+        // Ditolak → tidak pernah dapat label.
+        SjValidationExtraItem(
+          id: 73,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-3',
+          namaBarang: 'Milo 500g',
+          qty: 3,
+          satuan: 'CRT',
+          status: 'REJECTED',
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+    var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpSessionPage(tester, auth, provider, extraSession);
+
+    // Hanya catatan pertama (disetujui + batch) yang punya tombol cetak.
+    expect(find.text('Cetak Label'), findsOneWidget);
+  });
+
   testWidgets('tombol lapor tersembunyi tanpa izin barang luar rencana', (
     tester,
   ) async {

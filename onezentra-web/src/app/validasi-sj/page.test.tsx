@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ValidasiSjPage from './page';
 
-const { hasPermission, list, get, stats, reportExtraItem, approveExtraItem, rejectExtraItem, depoList, npnSearch, notifyGlobal } = vi.hoisted(() => ({
+const { hasPermission, list, get, stats, reportExtraItem, approveExtraItem, rejectExtraItem, depoList, npnSearch, notifyGlobal, printBatchLabel, downloadBatchLabel, batchesMarkPrinted } = vi.hoisted(() => ({
   hasPermission: vi.fn<(permission: string) => boolean>(() => true),
   list: vi.fn(),
   get: vi.fn(),
@@ -13,6 +13,9 @@ const { hasPermission, list, get, stats, reportExtraItem, approveExtraItem, reje
   depoList: vi.fn(),
   npnSearch: vi.fn(),
   notifyGlobal: vi.fn(),
+  printBatchLabel: vi.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  downloadBatchLabel: vi.fn(),
+  batchesMarkPrinted: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -31,7 +34,7 @@ vi.mock('@/store/auth', () => ({
 
 vi.mock('@/lib/api', () => ({
   sjValidations: { list, get, stats, reportExtraItem, approveExtraItem, rejectExtraItem },
-  batches: { markPrinted: vi.fn() },
+  batches: { markPrinted: batchesMarkPrinted },
   depo: { list: depoList },
   npn: { searchProduct: npnSearch },
   getErrorMessage: (_e: unknown, fallback: string) => fallback,
@@ -51,6 +54,11 @@ vi.mock('@/components/SearchInput', () => ({
 
 vi.mock('@/store/globalToast', () => ({
   notifyGlobal,
+}));
+
+vi.mock('@/lib/batchLabel', () => ({
+  printBatchLabel,
+  downloadBatchLabel,
 }));
 
 vi.mock('@/lib/storageFile', () => ({
@@ -158,6 +166,80 @@ describe('ValidasiSjPage — barang di luar rencana', () => {
     expect(screen.getByText('Kopi Special Grade')).toBeInTheDocument();
     expect(screen.getByText(/SKU-LUAR-1/)).toBeInTheDocument();
     expect(screen.getByText(/Ditulis manual di kertas/)).toBeInTheDocument();
+  });
+
+  it('catatan disetujui dengan batch menampilkan tombol cetak — catatan pending tidak', async () => {
+    await openDetail([
+      {
+        id: 71,
+        kode_barang: 'SKU-LUAR-1',
+        nama_barang: 'Kopi Special Grade',
+        qty: 2,
+        satuan: 'CRT',
+        condition: 'FISIK_BAGUS',
+        expired_date: null,
+        photo: 'validation-photos/extra.jpg',
+        status: 'PENDING',
+        recorder: { full_name: 'Cheker' },
+      },
+      {
+        id: 72,
+        kode_barang: 'SKU-LUAR-2',
+        nama_barang: 'Teh Celup',
+        qty: 4,
+        satuan: 'PAK',
+        condition: 'FISIK_BAGUS',
+        expired_date: null,
+        photo: 'validation-photos/extra2.jpg',
+        status: 'APPROVED',
+        batch: { id: 55, batch_number: 'B-55', barcode_label: 'LBL-EXTRA-72', status: 'ACTIVE', printed_at: null },
+      },
+    ]);
+
+    expect(await screen.findByText('Barang di luar rencana')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cetak Label/ })).not.toBeNull();
+    // Hanya catatan APPROVED dengan batch yang punya tombol.
+    expect(screen.getAllByRole('button', { name: /Cetak Label/ }).length).toBe(1);
+  });
+
+  it('mencetak label barang luar rencana melaporkan mark-printed ke server', async () => {
+    await openDetail([
+      {
+        id: 72,
+        kode_barang: 'SKU-LUAR-2',
+        nama_barang: 'Teh Celup',
+        qty: 4,
+        satuan: 'PAK',
+        condition: 'FISIK_BAGUS',
+        expired_date: null,
+        photo: 'validation-photos/extra2.jpg',
+        status: 'APPROVED',
+        batch: { id: 55, batch_number: 'B-55', barcode_label: 'LBL-EXTRA-72', status: 'ACTIVE', printed_at: null },
+      },
+    ]);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Cetak Label/ }));
+    await waitFor(() => {
+      expect(printBatchLabel).toHaveBeenCalledTimes(1);
+    });
+    expect(printBatchLabel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        batch_number: 'B-55',
+        barcode_label: 'LBL-EXTRA-72',
+        kode_barang: 'SKU-LUAR-2',
+        nama_barang: 'Teh Celup',
+        actual_qty: 4,
+        satuan: 'PAK',
+      }),
+    );
+    // Jejak cetak dilaporkan ke server (mark-printed pada batch 55).
+    await waitFor(() => {
+      expect(batchesMarkPrinted).toHaveBeenCalledWith(55);
+    });
+    // Label sudah terlapor → tombol berubah menjadi cetak ulang.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Cetak Ulang/ })).toBeInTheDocument();
+    });
   });
 
   it('tombol Laporkan Barang hanya untuk sesi berjalan dengan izin', async () => {
