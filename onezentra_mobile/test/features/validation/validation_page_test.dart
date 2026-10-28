@@ -1363,8 +1363,60 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('2 CRT'), findsOneWidget);
+    // Status keputusan planner tampil — catatan baru = menunggu.
+    expect(find.text('Menunggu persetujuan'), findsOneWidget);
     // Operator dengan izin bisa melaporkan catatan baru.
     expect(find.text('Laporkan barang luar rencana'), findsOneWidget);
+  });
+
+  testWidgets('keputusan planner tampil di tile barang luar rencana', (
+    tester,
+  ) async {
+    const extraSession = SjValidation(
+      // extraSessionFixture() dipakai test lain dengan item PENDING; di sini
+      // satu APPROVED dan satu REJECTED supaya kedua label & alasannya tampak.
+      id: 9,
+      scanCode: 'PO-042',
+      document: ValidationDocument(
+        id: 11,
+        poTransporter: 'PO-042',
+        nopol: 'B 9999 ZZ',
+        driverName: 'Andi',
+        status: 'CHECKED_IN',
+      ),
+      extraItems: [
+        SjValidationExtraItem(
+          id: 71,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-1',
+          namaBarang: 'Kopi Special Grade',
+          qty: 2,
+          satuan: 'CRT',
+          status: 'APPROVED',
+          approverName: 'Planner',
+        ),
+        SjValidationExtraItem(
+          id: 72,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-2',
+          namaBarang: 'Teh Celup 1kg',
+          qty: 1,
+          satuan: 'ZAK',
+          status: 'REJECTED',
+          decisionNotes: 'Kembalikan ke transporter',
+          approverName: 'Planner',
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+    var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpSessionPage(tester, auth, provider, extraSession);
+
+    expect(find.text('Disetujui oleh Planner'), findsOneWidget);
+    expect(find.textContaining('Ditolak oleh Planner'), findsOneWidget);
+    expect(find.textContaining('Kembalikan ke transporter'), findsOneWidget);
   });
 
   testWidgets('tombol lapor tersembunyi tanpa izin barang luar rencana', (

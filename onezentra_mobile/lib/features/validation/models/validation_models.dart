@@ -400,6 +400,9 @@ class SjValidationExtraItem {
     this.hasPhoto = true,
     this.notes,
     this.recorderName,
+    this.status = 'PENDING',
+    this.decisionNotes,
+    this.approverName,
   });
 
   factory SjValidationExtraItem.fromJson(Map<String, dynamic> json) =>
@@ -417,6 +420,9 @@ class SjValidationExtraItem {
         hasPhoto: _readString(json['photo']) != null,
         notes: _readString(json['notes']),
         recorderName: _readString(_readMap(json['recorder'])?['full_name']),
+        status: _readString(json['status']) ?? 'PENDING',
+        decisionNotes: _readString(json['decision_notes']),
+        approverName: _readString(_readMap(json['approver'])?['full_name']),
       );
   final int id;
   final int validationId;
@@ -426,6 +432,11 @@ class SjValidationExtraItem {
   final String namaBarang;
   final double qty;
   final String? satuan;
+
+  /// Keputusan planner (Fase 2): PENDING / APPROVED / REJECTED.
+  final String status;
+  final String? decisionNotes;
+  final String? approverName;
   final String condition;
   final String? expiredDate;
   final bool hasPhoto;

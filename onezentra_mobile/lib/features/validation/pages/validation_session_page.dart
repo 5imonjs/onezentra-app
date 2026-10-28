@@ -777,67 +777,90 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     ),
   );
 
-  Widget _extraItemTile(SjValidationExtraItem item) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppTheme.space3),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.06),
-      borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                item.namaBarang,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+  Widget _extraItemTile(SjValidationExtraItem item) {
+    // Keputusan planner (Fase 2): PENDING default, warna mengikuti keputusan.
+    var (label, badgeColor) = switch (item.status) {
+      'APPROVED' => ('Disetujui', AppTheme.success),
+      'REJECTED' => ('Ditolak', AppTheme.danger),
+      _ => ('Menunggu persetujuan', AppTheme.warning),
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space3),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: AppTheme.radiusLg,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.namaBarang,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.space2,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                color: AppTheme.warning.withValues(alpha: 0.15),
-                borderRadius: AppTheme.radiusFull,
-              ),
-              child: Text(
-                '${_formatQty(item.qty)}${item.satuan != null ? ' ${item.satuan}' : ''}',
-                style: GoogleFonts.roboto(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.warning,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space2,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withValues(alpha: 0.15),
+                  borderRadius: AppTheme.radiusFull,
+                ),
+                child: Text(
+                  '${_formatQty(item.qty)}${item.satuan != null ? ' ${item.satuan}' : ''}',
+                  style: GoogleFonts.roboto(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.warning,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        Text(
-          '${item.kodeBarang} • ${item.conditionLabel}'
-          '${item.expiredDate != null ? ' • Exp ${_shortDate(item.expiredDate!)}' : ''}'
-          '${item.notes != null ? ' • ${item.notes}' : ''}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.roboto(
-            fontSize: 11.5,
-            height: 1.4,
-            color: AppTheme.gray400,
+            ],
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 3),
+          Text(
+            '${item.kodeBarang} • ${item.conditionLabel}'
+            '${item.expiredDate != null ? ' • Exp ${_shortDate(item.expiredDate!)}' : ''}'
+            '${item.notes != null ? ' • ${item.notes}' : ''}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              fontSize: 11.5,
+              height: 1.4,
+              color: AppTheme.gray400,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.status == 'REJECTED' && item.decisionNotes != null
+                ? '$label oleh ${item.approverName ?? '-'} • ${item.decisionNotes}'
+                : item.status == 'APPROVED'
+                ? '$label oleh ${item.approverName ?? '-'}'
+                : label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: badgeColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   static String _shortDate(String value) {
     var date = DateTime.tryParse(value);
