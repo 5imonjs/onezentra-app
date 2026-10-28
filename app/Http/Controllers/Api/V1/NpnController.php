@@ -328,6 +328,25 @@ class NpnController extends Controller
             });
         }
 
+        // Fallback: kata kunci operasional sering memakai awalan yang tidak
+        // ada di master (mis. "sku ajtm" — "sku" tidak ada di baris AJTM mana
+        // pun). Kalau SEMUA kata tidak menemukan satu baris pun, longgarkan
+        // jadi SALAH SATU kata supaya operator tetap mendapat kandidat
+        // terbaik di urutan atas, bukan layar kosong yang terasa "barangnya
+        // tidak ada di master NPN".
+        if (count($tokens) > 1 && (clone $base)->count() === 0) {
+            $base = Npn::query()->where(function ($outer) use ($tokens, $searchable) {
+                foreach ($tokens as $token) {
+                    $like = LikePattern::contains($token);
+                    $outer->orWhere(function ($inner) use ($like, $searchable) {
+                        foreach ($searchable as $field) {
+                            $inner->orWhereRaw("$field LIKE ? ESCAPE ?", [$like, '\\']);
+                        }
+                    });
+                }
+            });
+        }
+
         // Urutan relevan: jumlah bobot kecocokan, lalu alfabetis — tetap
         // deterministik supaya pagination "Muat lebih banyak" tidak mengacak
         // urutan baris antar halaman.

@@ -260,6 +260,30 @@ class NpnSearchProductTest extends TestCase
         $this->assertSame(['CRSKU5', 'COCO2'], $names);
     }
 
+    /**
+     * Kata kunci operasional sering memakai awalan yang tidak ada di master
+     * ("sku ajtm" — tidak ada baris AJTM yang memuat kata "sku"). Kalau
+     * SEMUA kata tidak menemukan apa pun, pencarian longgar jadi SALAH SATU
+     * kata dan kandidat terbaik tetap muncul di urutan atas — bukan layar
+     * kosong yang terasa "barangnya tidak ada di master NPN".
+     */
+    public function test_search_product_falls_back_to_any_word_when_all_words_match_nothing(): void
+    {
+        Sanctum::actingAs($this->userWith(['npn.view']));
+
+        $this->product(['szNickName' => 'AJTM', 'szLongDescription' => 'Garuda Kacang Atom 100g']);
+        $this->product(['szNickName' => 'CRSKU5', 'szLongDescription' => 'Chocolatos Kurma']);
+
+        $names = array_column(
+            $this->getJson('/api/v1/npn/search-product?q='.urlencode('sku ajtm'))->assertOk()->json('data'),
+            'szNickName'
+        );
+
+        // Kedua kandidat masuk (satu kata cocok per produk), AJTM lebih dulu
+        // karena bobot kecocokan nickname-nya setinggi CRSKU5 lalu alfabetis.
+        $this->assertSame(['AJTM', 'CRSKU5'], $names);
+    }
+
     public function test_search_product_validates_pagination_bounds(): void
     {
         Sanctum::actingAs($this->userWith(['npn.view']));
