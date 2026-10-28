@@ -55,6 +55,15 @@ class _FakeValidationRepository extends ValidationRepository {
   int? lastTier;
   int? lastTinggi;
 
+  int extraDecisionCalls = 0;
+  bool? lastExtraApprove;
+  int? lastExtraItemId;
+  String? lastExtraNotes;
+
+  int standarisasiDecisionCalls = 0;
+  bool? lastStandarisasiApprove;
+  int? lastStandarisasiId;
+
   SjValidation _session() => sessionToOpen!;
 
   @override
@@ -97,6 +106,38 @@ class _FakeValidationRepository extends ValidationRepository {
     searchCalls++;
     lastSearchQuery = query.trim();
     return searchResults;
+  }
+
+  @override
+  Future<SjValidationExtraItem> decideExtraItem({
+    required int validationId,
+    required int extraItemId,
+    required bool approve,
+    String? notes,
+  }) async {
+    extraDecisionCalls++;
+    lastExtraApprove = approve;
+    lastExtraItemId = extraItemId;
+    lastExtraNotes = notes;
+    return SjValidationExtraItem(
+      id: extraItemId,
+      validationId: validationId,
+      kodeBarang: 'SKU-LUAR-1',
+      namaBarang: 'Barang di Luar Rencana',
+      qty: 1,
+      status: approve ? 'APPROVED' : 'REJECTED',
+      decisionNotes: notes,
+    );
+  }
+
+  @override
+  Future<void> decideStandarisasi({
+    required int standarisasiId,
+    required bool approve,
+  }) async {
+    standarisasiDecisionCalls++;
+    lastStandarisasiApprove = approve;
+    lastStandarisasiId = standarisasiId;
   }
 
   @override
@@ -217,6 +258,36 @@ const List<String> _fullValidationPermissions = [
   'sj_validation.complete',
   'standarisasi.create',
 ];
+
+/// Sesi berjalan dengan satu produk yang standarisasinya masih PENDING —
+/// dipakai test approval BLC di mobile.
+SjValidation _sessionWithPendingStandarisasi() => const SjValidation(
+  id: 9,
+  scanCode: 'PO-042',
+  document: ValidationDocument(
+    id: 11,
+    poTransporter: 'PO-042',
+    nopol: 'B 9999 ZZ',
+    driverName: 'Andi',
+    status: 'CHECKED_IN',
+  ),
+  items: [
+    SjValidationItem(
+      id: 31,
+      validationId: 9,
+      npnId: 501,
+      kodeBarang: 'BRG-1',
+      namaBarang: 'Gula 50kg',
+      expectedQty: 100,
+      standarisasi: ItemStandarisasi(
+        id: 88,
+        tier: 4,
+        tinggiTumpukan: 6,
+        status: 'pending',
+      ),
+    ),
+  ],
+);
 
 Map<String, dynamic> _loginBody({
   List<String> permissions = _fullValidationPermissions,
@@ -1478,6 +1549,166 @@ void main() {
 
     // Hanya catatan pertama (disetujui + batch) yang punya tombol cetak.
     expect(find.text('Cetak Label'), findsOneWidget);
+  });
+
+  testWidgets('planner bisa setujui catatan luar rencana dari mobile', (
+    tester,
+  ) async {
+    const extraSession = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      document: ValidationDocument(
+        id: 11,
+        poTransporter: 'PO-042',
+        nopol: 'B 9999 ZZ',
+        driverName: 'Andi',
+        status: 'CHECKED_IN',
+      ),
+      extraItems: [
+        SjValidationExtraItem(
+          id: 71,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-1',
+          namaBarang: 'Kopi Special Grade',
+          qty: 2,
+          satuan: 'CRT',
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+    var auth = await _loginAuth(
+      permissions: [..._fullValidationPermissions, 'sj_validation.approve'],
+    );
+    var provider = ValidationProvider(repository: repository);
+    // Sesi harus aktif di provider — keputusan divalidasi terhadap sesi
+    // aktif, persis alur asli (halaman dibuka lewat start-by-code).
+    await provider.openSession(9);
+
+    await _pumpSessionPage(tester, auth, provider, extraSession);
+
+    // Tombol keputusan tampil untuk planner.
+    expect(find.widgetWithText(OutlinedButton, 'Setujui'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Tolak'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Setujui'));
+    await tester.pumpAndSettle();
+
+    // Konfirmasi dialog → Setujui.
+    await tester.tap(find.widgetWithText(FilledButton, 'Setujui'));
+    await tester.pumpAndSettle();
+
+    expect(repository.extraDecisionCalls, 1);
+    expect(repository.lastExtraApprove, isTrue);
+    expect(repository.lastExtraItemId, 71);
+  });
+
+  testWidgets('tolak barang luar rencana wajib alasan', (tester) async {
+    const extraSession = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      document: ValidationDocument(
+        id: 11,
+        poTransporter: 'PO-042',
+        nopol: 'B 9999 ZZ',
+        driverName: 'Andi',
+        status: 'CHECKED_IN',
+      ),
+      extraItems: [
+        SjValidationExtraItem(
+          id: 71,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-1',
+          namaBarang: 'Kopi Special Grade',
+          qty: 2,
+          satuan: 'CRT',
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+    var auth = await _loginAuth(
+      permissions: [..._fullValidationPermissions, 'sj_validation.approve'],
+    );
+    var provider = ValidationProvider(repository: repository);
+    await provider.openSession(9);
+
+    await _pumpSessionPage(tester, auth, provider, extraSession);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Tolak'));
+    await tester.pumpAndSettle();
+
+    // Alasan kosong → dialog menolak dan tetap terbuka.
+    await tester.tap(find.widgetWithText(FilledButton, 'Tolak'));
+    await tester.pump();
+    expect(find.text('Alasan penolakan wajib diisi.'), findsOneWidget);
+    expect(repository.extraDecisionCalls, 0);
+
+    // Isi alasan → keputusan terkirim dengan alasan itu.
+    await tester.enterText(find.byType(TextField), 'Kembalikan ke transporter');
+    await tester.tap(find.widgetWithText(FilledButton, 'Tolak'));
+    await tester.pumpAndSettle();
+
+    expect(repository.extraDecisionCalls, 1);
+    expect(repository.lastExtraApprove, isFalse);
+    expect(repository.lastExtraNotes, 'Kembalikan ke transporter');
+  });
+
+  testWidgets('tanpa izin approve, tombol keputusan tidak tampil', (
+    tester,
+  ) async {
+    const extraSession = SjValidation(
+      id: 9,
+      scanCode: 'PO-042',
+      document: ValidationDocument(
+        id: 11,
+        poTransporter: 'PO-042',
+        nopol: 'B 9999 ZZ',
+        driverName: 'Andi',
+        status: 'CHECKED_IN',
+      ),
+      extraItems: [
+        SjValidationExtraItem(
+          id: 71,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-1',
+          namaBarang: 'Kopi Special Grade',
+          qty: 2,
+          satuan: 'CRT',
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+    var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpSessionPage(tester, auth, provider, extraSession);
+
+    expect(find.text('Menunggu persetujuan'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Setujui'), findsNothing);
+    expect(find.widgetWithText(OutlinedButton, 'Tolak'), findsNothing);
+  });
+
+  testWidgets('BLC bisa setujui standarisasi dari mobile', (tester) async {
+    var session = _sessionWithPendingStandarisasi();
+    var repository = _FakeValidationRepository(sessionToOpen: session);
+    var auth = await _loginAuth(
+      permissions: [..._fullValidationPermissions, 'standarisasi.approve'],
+    );
+    var provider = ValidationProvider(repository: repository);
+    await provider.openSession(9);
+
+    await _pumpSessionPage(tester, auth, provider, session);
+
+    expect(find.text('Approval BLC — Standarisasi'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Setujui'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Setujui'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Setujui'));
+    await tester.pumpAndSettle();
+
+    expect(repository.standarisasiDecisionCalls, 1);
+    expect(repository.lastStandarisasiApprove, isTrue);
+    expect(repository.lastStandarisasiId, 88);
   });
 
   testWidgets('tombol lapor tersembunyi tanpa izin barang luar rencana', (

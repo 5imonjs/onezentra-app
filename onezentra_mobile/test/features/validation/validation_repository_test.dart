@@ -380,6 +380,90 @@ void main() {
       expect(extra.kodeBarang, 'SKU-NPN-77');
     });
 
+    test(
+      'decideExtraItem memanggil endpoint approve/reject dengan notes',
+      () async {
+        String? hitEndpoint;
+        Map<String, dynamic>? hitBody;
+        var repository = ValidationRepository(
+          get: (_) async => throw StateError('unexpected GET'),
+          post: (endpoint, body) async {
+            hitEndpoint = endpoint;
+            hitBody = body;
+            var isReject = endpoint.endsWith('/reject');
+            return {
+              'message': isReject
+                  ? 'Barang luar rencana ditolak'
+                  : 'Barang luar rencana disetujui',
+              'data': {
+                'id': 71,
+                'sj_validation_id': 9,
+                'kode_barang': 'SKU-LUAR-1',
+                'nama_barang': 'Barang di Luar Rencana',
+                'qty': 2,
+                'status': isReject ? 'REJECTED' : 'APPROVED',
+                if (!isReject)
+                  'batch': {
+                    'id': 55,
+                    'batch_number': 'B-55',
+                    'barcode_label': 'LBL-EXTRA-71',
+                    'status': 'ACTIVE',
+                    'printed_at': null,
+                  },
+              },
+            };
+          },
+        );
+
+        var approved = await repository.decideExtraItem(
+          validationId: 9,
+          extraItemId: 71,
+          approve: true,
+        );
+
+        expect(hitEndpoint, '/sj-validations/9/extra-items/71/approve');
+        expect(hitBody, {});
+        // Respons membawa batch — sumber tombol cetak di tile.
+        expect(approved.status, 'APPROVED');
+        expect(approved.batch?.barcodeLabel, 'LBL-EXTRA-71');
+        expect(approved.canPrint, isTrue);
+
+        var rejected = await repository.decideExtraItem(
+          validationId: 9,
+          extraItemId: 71,
+          approve: false,
+          notes: 'Kembalikan ke transporter',
+        );
+
+        expect(hitEndpoint, '/sj-validations/9/extra-items/71/reject');
+        expect(hitBody, {'notes': 'Kembalikan ke transporter'});
+        expect(rejected.status, 'REJECTED');
+        expect(rejected.canPrint, isFalse);
+      },
+    );
+
+    test('decideStandarisasi memanggil endpoint approve/reject BLC', () async {
+      var endpoints = <String>[];
+      var repository = ValidationRepository(
+        get: (_) async => throw StateError('unexpected GET'),
+        post: (endpoint, _) async {
+          endpoints.add(endpoint);
+          return {
+            'message': 'ok',
+            'data': {'id': 88, 'status': 'approved'},
+          };
+        },
+      );
+
+      await repository.decideStandarisasi(standarisasiId: 88, approve: true);
+      await repository.decideStandarisasi(standarisasiId: 88, approve: false);
+
+      expect(endpoints, [
+        '/standarisasi-tumpukan/88/approve',
+        '/standarisasi-tumpukan/88/reject',
+      ]);
+    });
+
     test('show memparse daftar barang luar rencana', () async {
       var repository = ValidationRepository(
         get: (endpoint) {

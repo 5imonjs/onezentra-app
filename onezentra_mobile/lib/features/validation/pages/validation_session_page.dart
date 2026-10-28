@@ -72,9 +72,21 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var canCreateStandarisasi =
         user?.hasPermission('standarisasi.create') ?? false;
     var canReportExtra = user?.hasPermission('sj_validation.extra') ?? false;
+    var canApproveExtra = user?.hasPermission('sj_validation.approve') ?? false;
+    var canApproveStandarisasi =
+        user?.hasPermission('standarisasi.approve') ?? false;
 
     var unapprovedItems = session.items
         .where((item) => item.isPending && !item.canValidate)
+        .toList();
+    // Pengajuan standarisasi yang menunggu keputusan BLC — hanya tampil
+    // untuk user dengan izin approve (section approval terpisah di bawah).
+    var pendingStandarisasi = session.items
+        .where(
+          (item) =>
+              item.standarisasi?.status == 'pending' &&
+              item.standarisasi?.id != null,
+        )
         .toList();
 
     return Scaffold(
@@ -112,6 +124,17 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               const SizedBox(height: AppTheme.space2),
               if (provider.message != null)
                 _buildMessageBanner(provider.message!),
+              // Section approval BLC — pengajuan standarisasi yang
+              // menunggu keputusan; hanya tampil untuk user berizin.
+              if (session.isRunning &&
+                  canApproveStandarisasi &&
+                  pendingStandarisasi.isNotEmpty) ...[
+                const SizedBox(height: AppTheme.space4),
+                _buildStandarisasiApprovalSection(
+                  pendingStandarisasi,
+                  provider,
+                ),
+              ],
               const SizedBox(height: AppTheme.space2),
               ..._buildItems(
                 session.items,
@@ -126,7 +149,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               if (session.extraItems.isNotEmpty ||
                   (session.isRunning && canReportExtra)) ...[
                 const SizedBox(height: AppTheme.space4),
-                _buildExtraItemsSection(session, provider, canReportExtra),
+                _buildExtraItemsSection(
+                  session,
+                  provider,
+                  canReportExtra,
+                  canApproveExtra,
+                ),
               ],
               if (session.isRunning) ...[
                 const SizedBox(height: AppTheme.space4),
@@ -310,6 +338,228 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       ],
     ),
   );
+
+  /// Section approval BLC: daftar pengajuan standarisasi tumpukan yang
+  /// masih PENDING. Sebelum disetujui, produk-produk ini terkunci untuk
+  /// validasi — jadi keputusan langsung dari HP tanpa buka web.
+  Widget _buildStandarisasiApprovalSection(
+    List<SjValidationItem> items,
+    ValidationProvider provider,
+  ) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppTheme.space4),
+    decoration: BoxDecoration(
+      color: AppTheme.ink900,
+      borderRadius: AppTheme.radiusXl,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.primary600.withValues(alpha: 0.2),
+                borderRadius: AppTheme.radiusLg,
+              ),
+              child: const Icon(
+                Icons.layers_rounded,
+                size: 18,
+                color: AppTheme.primary400,
+              ),
+            ),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Approval BLC — Standarisasi',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    '${items.length} pengajuan menunggu keputusan',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11.5,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.space3),
+        for (var i = 0; i < items.length; i++) ...[
+          _standarisasiApprovalTile(items[i], provider),
+          if (i != items.length - 1) const SizedBox(height: AppTheme.space2),
+        ],
+      ],
+    ),
+  );
+
+  Widget _standarisasiApprovalTile(
+    SjValidationItem item,
+    ValidationProvider provider,
+  ) {
+    var standarisasi = item.standarisasi;
+    var tier = standarisasi?.tier ?? 0;
+    var tinggi = standarisasi?.tinggiTumpukan ?? 0;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space3),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: AppTheme.radiusLg,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.namaBarang ?? '-',
+            style: GoogleFonts.roboto(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${item.kodeBarang} • Tier $tier × Tinggi $tinggi',
+            style: GoogleFonts.roboto(
+              fontSize: 11.5,
+              color: Colors.white.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: provider.actionBusy
+                      ? null
+                      : () =>
+                            _confirmStandarisasiDecision(item, provider, true),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.successText,
+                    side: const BorderSide(color: AppTheme.success),
+                    backgroundColor: AppTheme.successWell,
+                    minimumSize: const Size(0, 40),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppTheme.radiusLg,
+                    ),
+                    textStyle: GoogleFonts.roboto(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: AppTheme.successText,
+                  ),
+                  label: const Text('Setujui'),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: provider.actionBusy
+                      ? null
+                      : () =>
+                            _confirmStandarisasiDecision(item, provider, false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.dangerText,
+                    side: const BorderSide(color: AppTheme.danger),
+                    backgroundColor: AppTheme.dangerWell,
+                    minimumSize: const Size(0, 40),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppTheme.radiusLg,
+                    ),
+                    textStyle: GoogleFonts.roboto(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: AppTheme.dangerText,
+                  ),
+                  label: const Text('Tolak'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Dialog konfirmasi keputusan standarisasi tumpukan. Keputusan langsung
+  /// dieksekusi — produk yang disetujui terbuka untuk validasi setelah
+  /// sesi dimuat ulang.
+  Future<void> _confirmStandarisasiDecision(
+    SjValidationItem item,
+    ValidationProvider provider,
+    bool approve,
+  ) async {
+    var standarisasiId = item.standarisasi?.id;
+    if (standarisasiId == null) {
+      return;
+    }
+    var confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.ink800,
+        shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusXl),
+        title: Text(
+          approve ? 'Setujui standarisasi?' : 'Tolak standarisasi?',
+          style: GoogleFonts.roboto(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+        content: Text(
+          '${item.namaBarang} — Tier ${item.standarisasi?.tier ?? 0} × '
+          'Tinggi ${item.standarisasi?.tinggiTumpukan ?? 0}',
+          style: GoogleFonts.roboto(
+            fontSize: 13,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: approve ? AppTheme.success : AppTheme.danger,
+            ),
+            child: Text(approve ? 'Setujui' : 'Tolak'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    await provider.decideStandarisasi(
+      standarisasiId: standarisasiId,
+      approve: approve,
+    );
+  }
 
   /// Banner pesan sukses/gagal dari aksi validasi atau standarisasi.
   Widget _buildMessageBanner(ValidationActionMessage message) => Container(
@@ -705,6 +955,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     SjValidation session,
     ValidationProvider provider,
     bool canReportExtra,
+    bool canApproveExtra,
   ) => Container(
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space4),
@@ -759,7 +1010,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         ),
         const SizedBox(height: AppTheme.space3),
         for (var i = 0; i < session.extraItems.length; i++) ...[
-          _extraItemTile(session.extraItems[i], provider),
+          _extraItemTile(session.extraItems[i], provider, canApproveExtra),
           if (i != session.extraItems.length - 1)
             const SizedBox(height: AppTheme.space2),
         ],
@@ -780,6 +1031,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   Widget _extraItemTile(
     SjValidationExtraItem item,
     ValidationProvider provider,
+    bool canApprove,
   ) {
     // Keputusan planner (Fase 2): PENDING default, warna mengikuti keputusan.
     var (label, badgeColor) = switch (item.status) {
@@ -895,8 +1147,171 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               ),
             ),
           ],
+          // Planner yang berizin memutuskan di sini — tanpa harus buka web.
+          if (canApprove && item.status == 'PENDING') ...[
+            const SizedBox(height: AppTheme.space3),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: provider.actionBusy
+                        ? null
+                        : () => _confirmExtraDecision(item, provider, true),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.successText,
+                      side: const BorderSide(color: AppTheme.success),
+                      backgroundColor: AppTheme.successWell,
+                      minimumSize: const Size(0, 44),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AppTheme.radiusLg,
+                      ),
+                      textStyle: GoogleFonts.roboto(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.check_rounded,
+                      size: 18,
+                      color: AppTheme.successText,
+                    ),
+                    label: const Text('Setujui'),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.space2),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: provider.actionBusy
+                        ? null
+                        : () => _confirmExtraDecision(item, provider, false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.dangerText,
+                      side: const BorderSide(color: AppTheme.danger),
+                      backgroundColor: AppTheme.dangerWell,
+                      minimumSize: const Size(0, 44),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AppTheme.radiusLg,
+                      ),
+                      textStyle: GoogleFonts.roboto(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: AppTheme.dangerText,
+                    ),
+                    label: const Text('Tolak'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  /// Dialog konfirmasi keputusan barang luar rencana. Penolakan wajib
+  /// membawa alasan (dipakai di email keputusan); persetujuan boleh
+  /// mencatat catatan opsional.
+  Future<void> _confirmExtraDecision(
+    SjValidationExtraItem item,
+    ValidationProvider provider,
+    bool approve,
+  ) async {
+    var notesController = TextEditingController();
+    var notesError = false;
+    var confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.ink800,
+          shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusXl),
+          title: Text(
+            approve
+                ? 'Setujui barang luar rencana?'
+                : 'Tolak barang luar rencana?',
+            style: GoogleFonts.roboto(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${item.namaBarang} — ${item.qty} ${item.satuan ?? ''}',
+                style: GoogleFonts.roboto(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+              const SizedBox(height: AppTheme.space3),
+              TextField(
+                controller: notesController,
+                maxLines: 3,
+                autofocus: !approve,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: approve
+                      ? 'Catatan (opsional)'
+                      : 'Alasan penolakan (wajib)',
+                  hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 13,
+                  ),
+                  errorText: notesError
+                      ? 'Alasan penolakan wajib diisi.'
+                      : null,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: AppTheme.radiusLg,
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: AppTheme.radiusLg,
+                    borderSide: BorderSide(color: AppTheme.primary600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () {
+                var notes = notesController.text.trim();
+                if (!approve && notes.isEmpty) {
+                  setDialogState(() => notesError = true);
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: approve ? AppTheme.success : AppTheme.danger,
+              ),
+              child: Text(approve ? 'Setujui' : 'Tolak'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    await provider.decideExtraItem(
+      extraItemId: item.id,
+      approve: approve,
+      notes: notesController.text.trim(),
     );
   }
 

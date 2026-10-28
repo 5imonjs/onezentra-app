@@ -214,14 +214,23 @@ class ValidationDocument {
 /// standarisasi is `approved` by BLC. Anything else routes the operator
 /// to the standarisasi input first.
 class ItemStandarisasi {
-  const ItemStandarisasi({this.tier, this.tinggiTumpukan, this.status});
+  const ItemStandarisasi({
+    this.id,
+    this.tier,
+    this.tinggiTumpukan,
+    this.status,
+  });
 
   factory ItemStandarisasi.fromJson(Map<String, dynamic> json) =>
       ItemStandarisasi(
+        id: _readInt(json['id']),
         tier: _readInt(json['tier']),
         tinggiTumpukan: _readInt(json['tinggi_tumpukan']),
         status: _readString(json['status']),
       );
+
+  /// Id baris standarisasi tumpukan — kunci endpoint approve/reject BLC.
+  final int? id;
   final int? tier;
   final int? tinggiTumpukan;
   final String? status;

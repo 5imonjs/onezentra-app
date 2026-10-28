@@ -298,6 +298,102 @@ class ValidationProvider extends ChangeNotifier {
     }
   }
 
+  /// Keputusan planner atas catatan barang luar rencana (setujui/tolak).
+  /// Setelah keputusan, sesi dimuat ulang supaya badge status dan (untuk
+  /// disetujui) batch label untuk tombol cetak ikut segar. Endpoint sama
+  /// dengan web — email keputusan terpicu server.
+  Future<bool> decideExtraItem({
+    required int extraItemId,
+    required bool approve,
+    String? notes,
+  }) async {
+    var active = _active;
+    if (active == null || _actionBusy) {
+      return false;
+    }
+
+    _actionBusy = true;
+    _message = null;
+    _notify();
+
+    try {
+      await _repository.decideExtraItem(
+        validationId: active.id,
+        extraItemId: extraItemId,
+        approve: approve,
+        notes: notes,
+      );
+      _active = await _repository.show(active.id);
+      _message = ValidationActionMessage.success(
+        approve
+            ? 'Barang luar rencana disetujui — label siap dicetak.'
+            : 'Barang luar rencana ditolak.',
+      );
+      return true;
+    } on ApiException catch (e) {
+      _message = ValidationActionMessage.failure(e.message);
+      return false;
+    } catch (e, stack) {
+      debugPrint(
+        'ValidationProvider.decideExtraItem: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      _message = const ValidationActionMessage.failure(
+        'Terjadi kesalahan tidak terduga. Silakan coba lagi.',
+      );
+      return false;
+    } finally {
+      _actionBusy = false;
+      _notify();
+    }
+  }
+
+  /// Keputusan BLC atas pengajuan standarisasi tumpukan (setujui/tolak).
+  /// Sesi dimuat ulang supaya produk yang disetujui langsung terbuka
+  /// untuk validasi dan banner "Belum Disetujui" menghilang.
+  Future<bool> decideStandarisasi({
+    required int standarisasiId,
+    required bool approve,
+  }) async {
+    var active = _active;
+    if (active == null || _actionBusy) {
+      return false;
+    }
+
+    _actionBusy = true;
+    _message = null;
+    _notify();
+
+    try {
+      await _repository.decideStandarisasi(
+        standarisasiId: standarisasiId,
+        approve: approve,
+      );
+      _active = await _repository.show(active.id);
+      _message = ValidationActionMessage.success(
+        approve
+            ? 'Standarisasi disetujui — produk dapat divalidasi.'
+            : 'Standarisasi ditolak.',
+      );
+      return true;
+    } on ApiException catch (e) {
+      _message = ValidationActionMessage.failure(e.message);
+      return false;
+    } catch (e, stack) {
+      debugPrint(
+        'ValidationProvider.decideStandarisasi: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      _message = const ValidationActionMessage.failure(
+        'Terjadi kesalahan tidak terduga. Silakan coba lagi.',
+      );
+      return false;
+    } finally {
+      _actionBusy = false;
+      _notify();
+    }
+  }
+
   /// Cari produk master NPN (nama/kode/barcode). Error tidak melempar —
   /// kembalikan daftar kosong supaya form lanjut ke input manual; pesan
   /// gagal dicatat di log (autofill hanyalah kenyamanan, bukan penjaga).

@@ -286,6 +286,47 @@ class ValidationRepository {
     _expectObject(await _post('/sj-validations/$id/cancel', const {}));
   }
 
+  /// Keputusan planner atas satu catatan barang di luar rencana (Fase 2).
+  /// Disetujui → server menerbitkan batch label; email keputusan terpicu
+  /// server. Endpoint sama dengan web.
+  Future<SjValidationExtraItem> decideExtraItem({
+    required int validationId,
+    required int extraItemId,
+    required bool approve,
+    String? notes,
+  }) async {
+    var body = _expectObject(
+      await _post(
+        '/sj-validations/$validationId/'
+        'extra-items/$extraItemId/${approve ? 'approve' : 'reject'}',
+        {if (notes != null && notes.isNotEmpty) 'notes': notes},
+      ),
+    );
+    var data = body['data'];
+    if (data is! Map) {
+      throw const ApiException(
+        'Respons server tidak memuat keputusan. Silakan coba lagi.',
+        0,
+      );
+    }
+    return SjValidationExtraItem.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  /// Keputusan BLC atas satu pengajuan standarisasi tumpukan. Endpoint
+  /// sama dengan web — email approved/rejected terpicu server, dan produk
+  /// yang disetujui langsung terbuka untuk validasi.
+  Future<void> decideStandarisasi({
+    required int standarisasiId,
+    required bool approve,
+  }) async {
+    _expectObject(
+      await _post(
+        '/standarisasi-tumpukan/$standarisasiId/${approve ? 'approve' : 'reject'}',
+        const {},
+      ),
+    );
+  }
+
   /// Melaporkan label batch sudah tercetak fisik (jejak server lintas
   /// device, paritas tombol Cetak web). Idempoten; batch CANCELLED ditolak
   /// server dengan pesannya sendiri.
