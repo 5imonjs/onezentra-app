@@ -31,7 +31,7 @@ class EmailRecipientController extends Controller
      */
     private const DOCUMENT_TRIGGERS = [
         'rencana_kirim' => ['created', 'cancelled'],
-        'sj_ba' => ['validated', 'extra_item'],
+        'sj_ba' => ['validated', 'extra_item', 'extra_item_decision'],
         'receiving' => ['completed'],
         'selisih' => ['selisih_qty'],
         'standarisasi_tumpukan' => ['submitted', 'approved', 'rejected'],

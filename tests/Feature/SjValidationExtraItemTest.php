@@ -317,4 +317,123 @@ class SjValidationExtraItemTest extends TestCase
             'context_id' => $rk->id,
         ]);
     }
+
+    // === Fase 2: keputusan planner (setujui/tolak) ==========================
+
+    private function buatCatatanLuar(User $recorder, SjValidation $validation): SjValidationExtraItem
+    {
+        return SjValidationExtraItem::create([
+            'sj_validation_id' => $validation->id,
+            'kode_barang' => 'SKU-LUAR-1',
+            'nama_barang' => 'Barang di Luar Rencana',
+            'qty' => 2,
+            'satuan' => 'CRT',
+            'photo' => 'validation-photos/test.jpg',
+            'recorded_by' => $recorder->id,
+        ]);
+    }
+
+    public function test_planner_menyetujui_catatan_luar_rencana(): void
+    {
+        Sanctum::actingAs($planner = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+        $recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']);
+        $rk = $this->rencanaKirim($planner);
+        $validation = $this->inProgressValidation($planner, $rk);
+        $extra = $this->buatCatatanLuar($recorder, $validation);
+
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", [
+            'notes' => 'Barang diterima sebagai tambahan',
+        ])->assertOk()->assertJsonPath('data.status', 'APPROVED');
+
+        $this->assertDatabaseHas('sj_validation_extra_items', [
+            'id' => $extra->id,
+            'status' => 'APPROVED',
+            'approved_by' => $planner->id,
+            'decision_notes' => 'Barang diterima sebagai tambahan',
+        ]);
+
+        // Keputusan tercatat via pipeline penerima email.
+        $this->assertDatabaseHas('email_notification_logs', [
+            'document_type' => 'sj_ba',
+            'trigger' => 'extra_item_decision',
+            'context_id' => $extra->id,
+        ]);
+    }
+
+    public function test_menolak_wajib_alasan(): void
+    {
+        Sanctum::actingAs($planner = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+        $recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']);
+        $rk = $this->rencanaKirim($planner);
+        $validation = $this->inProgressValidation($planner, $rk);
+        $extra = $this->buatCatatanLuar($recorder, $validation);
+
+        // Tanpa alasan → tidak boleh ditolak.
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/reject", [])
+            ->assertJsonValidationErrors(['notes']);
+        $this->assertDatabaseHas('sj_validation_extra_items', ['id' => $extra->id, 'status' => 'PENDING']);
+
+        // Dengan alasan → REJECTED.
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/reject", [
+            'notes' => 'Barang tidak diterima, kembalikan ke transporter',
+        ])->assertOk()->assertJsonPath('data.status', 'REJECTED');
+
+        $this->assertDatabaseHas('sj_validation_extra_items', [
+            'id' => $extra->id,
+            'status' => 'REJECTED',
+            'approved_by' => $planner->id,
+            'decision_notes' => 'Barang tidak diterima, kembalikan ke transporter',
+        ]);
+    }
+
+    public function test_keputusan_bersifat_final_tidak_bisa_diputus_ulang(): void
+    {
+        Sanctum::actingAs($planner = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+        $recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']);
+        $rk = $this->rencanaKirim($planner);
+        $validation = $this->inProgressValidation($planner, $rk);
+        $extra = $this->buatCatatanLuar($recorder, $validation);
+
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", [])
+            ->assertOk();
+
+        // Setujui dua kali atau menolak catatan yang sudah diputuskan → 422.
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", [])
+            ->assertStatus(422);
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/reject", [
+            'notes' => 'Coba ubah keputusan',
+        ])->assertStatus(422);
+
+        // Keputusan pertama tetap.
+        $this->assertDatabaseHas('sj_validation_extra_items', ['id' => $extra->id, 'status' => 'APPROVED']);
+    }
+
+    public function test_tanpa_permission_approve_menolak(): void
+    {
+        Sanctum::actingAs($recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']));
+        $rk = $this->rencanaKirim($recorder);
+        $validation = $this->inProgressValidation($recorder, $rk);
+        $extra = $this->buatCatatanLuar($recorder, $validation);
+
+        // Operator pelapor tidak otomatis boleh menyetujui laporannya sendiri.
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", [])
+            ->assertForbidden();
+        $this->assertDatabaseHas('sj_validation_extra_items', ['id' => $extra->id, 'status' => 'PENDING']);
+    }
+
+    public function test_catatan_dari_validasi_lain_tidak_bisa_diputuskan(): void
+    {
+        Sanctum::actingAs($planner = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+        $recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']);
+        $rk = $this->rencanaKirim($planner);
+        $validation = $this->inProgressValidation($planner, $rk);
+        $rkLain = $this->rencanaKirim($planner);
+        $validationLain = $this->inProgressValidation($planner, $rkLain);
+        $extra = $this->buatCatatanLuar($recorder, $validationLain);
+
+        // id validasi di path tidak cocok dengan pemilik catatan → 404,
+        // bukan memutuskan catatan milik dokumen lain.
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", [])
+            ->assertNotFound();
+    }
 }

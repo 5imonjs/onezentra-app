@@ -10,7 +10,7 @@ class SjValidationExtraItem extends Model
     protected $fillable = [
         'sj_validation_id', 'npn_id', 'barcode', 'kode_barang', 'nama_barang',
         'qty', 'satuan', 'condition', 'expired_date', 'photo', 'notes',
-        'recorded_by',
+        'recorded_by', 'status', 'approved_by', 'approved_at', 'decision_notes',
     ];
 
     protected function casts(): array
@@ -18,6 +18,7 @@ class SjValidationExtraItem extends Model
         return [
             'qty' => 'decimal:2',
             'expired_date' => 'date',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -34,5 +35,10 @@ class SjValidationExtraItem extends Model
     public function recorder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ExtraItemDecision;
 use App\Mail\ExtraItemReported;
 use App\Mail\SelisihQtyNotification;
 use App\Mail\SjValidated;
@@ -111,6 +112,7 @@ class SjValidationController extends Controller
             'items.batch',
             'extraItems.npn',
             'extraItems.recorder:id,full_name',
+            'extraItems.approver:id,full_name',
             'validator:id,full_name',
         ]);
         $this->attachStandarUmur($sjValidation->items);
@@ -766,6 +768,73 @@ class SjValidationController extends Controller
             'message' => 'Barang luar rencana tercatat',
             'data' => $extra,
         ], 201);
+    }
+
+    /**
+     * Fase 2: keputusan planner atas catatan barang luar rencana.
+     *
+     * Setujui/tolak adalah jejak keputusan (audit trail) — rencana kirim
+     * tetap tidak pernah diubah. Hanya catatan PENDING yang bisa diputuskan;
+     * keputusan bersifat final (tanpa unpending) supaya jejaknya lurus.
+     * Pemberitahuan hasil lewat email (trigger `extra_item_decision`,
+     * dokumen `sj_ba`).
+     */
+    public function approveExtraItem(Request $request, SjValidation $sjValidation, int $extraItem): JsonResponse
+    {
+        return $this->decideExtraItem($request, $sjValidation, $extraItem, 'APPROVED');
+    }
+
+    public function rejectExtraItem(Request $request, SjValidation $sjValidation, int $extraItem): JsonResponse
+    {
+        return $this->decideExtraItem($request, $sjValidation, $extraItem, 'REJECTED');
+    }
+
+    private function decideExtraItem(Request $request, SjValidation $sjValidation, int $extraItemId, string $decision): JsonResponse
+    {
+        $this->authorizeDepot($sjValidation);
+
+        $validated = $request->validate([
+            'notes' => $decision === 'REJECTED'
+                ? 'required|string|max:2000'
+                : 'nullable|string|max:2000',
+        ]);
+
+        $extra = SjValidationExtraItem::where('sj_validation_id', $sjValidation->id)
+            ->find($extraItemId);
+        if (! $extra) {
+            // 404 bukan 422: catatan itu bukan milik validasi ini — jangan
+            // bocorkan keberadaannya lewat pesan status yang salah.
+            abort(404, 'Catatan barang luar rencana tidak ditemukan.');
+        }
+        abort_unless(
+            $extra->status === 'PENDING',
+            422,
+            'Catatan sudah diputuskan (status '.$extra->status.') — keputusan bersifat final.'
+        );
+
+        $extra->update([
+            'status' => $decision,
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+            'decision_notes' => $validated['notes'] ?? null,
+        ]);
+
+        $this->emailService->send(
+            'sj_ba',
+            'extra_item_decision',
+            $extra->fresh(),
+            new ExtraItemDecision($extra->fresh(), $decision),
+            $sjValidation->rencanaKirim?->kode_depo
+        );
+
+        $extra->load(['npn', 'recorder:id,full_name', 'approver:id,full_name']);
+
+        return response()->json([
+            'message' => $decision === 'APPROVED'
+                ? 'Barang luar rencana disetujui'
+                : 'Barang luar rencana ditolak',
+            'data' => $extra,
+        ]);
     }
 
     /**
