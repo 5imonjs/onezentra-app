@@ -1,3 +1,8 @@
+// JANGAN dihapus: Flutter 3.47 (dipakai CI) memindahkan
+// CupertinoPageTransitionsBuilder dari material lib ke cupertino lib, jadi
+// import ini wajib untuk kompilasi CI walau analyzer lokal (Flutter 3.41)
+// menandainya "unnecessary" karena material lokal masih re-export.
+// ignore: unnecessary_import
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
