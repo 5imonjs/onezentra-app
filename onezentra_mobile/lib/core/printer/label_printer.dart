@@ -88,6 +88,58 @@ abstract class LabelPrinter {
   Future<void> printLabel(DiscoveredPrinter printer, List<int> bytes);
 }
 
+/// Kontrak minimal sink kirim yang dibutuhkan pengirim label — memisahkan
+/// pengiriman dari tipe privat plugin Bluetooth supaya bisa diuji.
+abstract class LabelSocketSink {
+  void add(List<int> bytes);
+
+  Future<void> get allSent;
+}
+
+/// Kirim byte label per potongan kecil dengan batas waktu.
+///
+/// Write panjang pada Classic Bluetooth sering terpotong di tengah, jadi
+/// dikirim per potongan dengan jeda pendek. `allSent` sengaja diberi batas
+/// waktu: printer thermal tidak mengirim ACK, dan di plugin
+/// flutter_bluetooth_serial `allSent` kadang tidak pernah selesai padahal
+/// byte sudah keluar semua — gejalanya kertas tercetak tapi aplikasi
+/// menganggap cetakan gagal dan laporan "tercetak" tidak pernah dikirim ke
+/// server. Kegagalan menunggu bukan kegagalan cetak.
+Future<void> kirimLabelByte(
+  LabelSocketSink sink,
+  List<int> bytes, {
+  Duration chunkDelay = const Duration(milliseconds: 60),
+  Duration sentTimeout = const Duration(seconds: 5),
+}) async {
+  const chunkSize = 180;
+  for (var offset = 0; offset < bytes.length; offset += chunkSize) {
+    var end = offset + chunkSize < bytes.length
+        ? offset + chunkSize
+        : bytes.length;
+    sink.add(Uint8List.fromList(bytes.sublist(offset, end)));
+    await Future<void>.delayed(chunkDelay);
+  }
+  try {
+    await sink.allSent.timeout(sentTimeout);
+  } on TimeoutException {
+    // Diabaikan: byte sudah ditulis ke socket — label sudah keluar.
+  }
+}
+
+/// Jembatan sink nyata plugin (tipe privat) ke [LabelSocketSink].
+class _PluginSink implements LabelSocketSink {
+  _PluginSink(this._raw);
+
+  // Tipe privat plugin — kontraknya stabil (add + allSent), dinamis saja.
+  final dynamic _raw;
+
+  @override
+  void add(List<int> bytes) => _raw.add(bytes);
+
+  @override
+  Future<void> get allSent => _raw.allSent as Future<void>;
+}
+
 /// Implementasi nyata memakai Bluetooth Classic (SPP/RFCOMM).
 class BluetoothLabelPrinter implements LabelPrinter {
   // Paket ini hanya mengekspos singleton lewat `.instance`; constructor-nya
@@ -163,7 +215,11 @@ class BluetoothLabelPrinter implements LabelPrinter {
   Future<void> printLabel(DiscoveredPrinter printer, List<int> bytes) async {
     BluetoothConnection? connection;
     try {
-      connection = await BluetoothConnection.toAddress(printer.address);
+      // Koneksi yang menggantung (printer mati/jauh) tidak boleh mengunci
+      // tombol Cetak selamanya — TimeoutException diterjemahkan jadi pesan.
+      connection = await BluetoothConnection.toAddress(
+        printer.address,
+      ).timeout(const Duration(seconds: 10));
       if (connection.isConnected != true) {
         throw const PrinterException(
           'Gagal terhubung ke printer. Pastikan printer menyala dan tidak dipakai aplikasi lain.',
@@ -171,23 +227,7 @@ class BluetoothLabelPrinter implements LabelPrinter {
       }
       _connection = connection;
 
-      // Data dikirim per potongan karena write panjang pada Classic Bluetooth
-      // sering terpotong di tengah — label terpotong berarti label salah baca.
-      const chunkSize = 180;
-      for (var offset = 0; offset < bytes.length; offset += chunkSize) {
-        var end = offset + chunkSize < bytes.length
-            ? offset + chunkSize
-            : bytes.length;
-        // `output.add` sengaja TIDAK di-await: sink-nya tidak mengembalikan
-        // Future, jadi `await` di situ akan menunggu `null` selamanya. Beri
-        // jeda pendek agar printer sempat mencerna tiap potongan sebelum
-        // berikutnya dikirim — Classic Bluetooth membelah write panjang menjadi
-        // beberapa frame dan printer thermal sering kehilangan potongan kalau
-        // dikirim rapat-rapat.
-        connection.output.add(Uint8List.fromList(bytes.sublist(offset, end)));
-        await Future<void>.delayed(const Duration(milliseconds: 60));
-      }
-      await connection.output.allSent;
+      await kirimLabelByte(_PluginSink(connection.output), bytes);
     } on PrinterException {
       rethrow;
     } on TimeoutException {
