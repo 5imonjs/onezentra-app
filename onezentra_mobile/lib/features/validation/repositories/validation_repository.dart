@@ -190,7 +190,6 @@ class ValidationRepository {
     required int validationId,
     required double qty,
     required String photoPath,
-    String? barcode,
     int? npnId,
     String? kodeBarang,
     String? namaBarang,
@@ -202,7 +201,6 @@ class ValidationRepository {
     var fields = <String, String>{
       'qty': '$qty',
       'condition': condition,
-      if (barcode?.isNotEmpty ?? false) 'barcode': barcode!,
       if (npnId != null) 'npn_id': '$npnId',
       if (kodeBarang?.isNotEmpty ?? false) 'kode_barang': kodeBarang!,
       if (namaBarang?.isNotEmpty ?? false) 'nama_barang': namaBarang!,

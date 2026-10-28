@@ -245,7 +245,6 @@ class ValidationProvider extends ChangeNotifier {
   Future<bool> reportExtraItem({
     required double qty,
     required String photoPath,
-    String? barcode,
     int? npnId,
     String? kodeBarang,
     String? namaBarang,
@@ -266,7 +265,6 @@ class ValidationProvider extends ChangeNotifier {
     try {
       await _repository.reportExtraItem(
         validationId: active.id,
-        barcode: barcode,
         npnId: npnId,
         kodeBarang: kodeBarang,
         namaBarang: namaBarang,

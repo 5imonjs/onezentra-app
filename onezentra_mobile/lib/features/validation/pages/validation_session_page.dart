@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:onezentra_mobile/core/printer/thermal_label.dart';
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
-import 'package:onezentra_mobile/features/gate/pages/gate_scanner_page.dart';
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/features/validation/providers/validation_provider.dart';
 import 'package:onezentra_mobile/features/validation/widgets/label_print_sheet.dart';
@@ -30,7 +29,6 @@ class ValidationSessionPage extends StatefulWidget {
     required this.provider,
     required this.session,
     this.pickPhoto,
-    this.openScanner,
     super.key,
   });
 
@@ -43,10 +41,6 @@ class ValidationSessionPage extends StatefulWidget {
 
   /// Injectable photo source so tests never open the camera or gallery.
   final Future<String?> Function({required bool fromCamera})? pickPhoto;
-
-  /// Injectable barcode scanner so tests never open the camera — dipakai
-  /// sheet barang luar rencana untuk memindai barcode produk.
-  final Future<String?> Function()? openScanner;
 
   @override
   State<ValidationSessionPage> createState() => _ValidationSessionPageState();
@@ -864,10 +858,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => ChangeNotifierProvider<ValidationProvider>.value(
         value: widget.provider,
-        child: _ExtraItemSheet(
-          pickPhoto: widget.pickPhoto,
-          openScanner: widget.openScanner,
-        ),
+        child: _ExtraItemSheet(pickPhoto: widget.pickPhoto),
       ),
     );
   }
@@ -1718,13 +1709,10 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
 /// foto bukti (widget bersama), tanggal expired (picker bersama). Rencana
 /// tidak pernah diubah — planner diberi tahu via email oleh server.
 class _ExtraItemSheet extends StatefulWidget {
-  const _ExtraItemSheet({this.pickPhoto, this.openScanner});
+  const _ExtraItemSheet({this.pickPhoto});
 
   /// Overrides ImagePicker untuk test.
   final Future<String?> Function({required bool fromCamera})? pickPhoto;
-
-  /// Overrides scanner kamera untuk test. Default mem-push [GateScannerPage].
-  final Future<String?> Function()? openScanner;
 
   @override
   State<_ExtraItemSheet> createState() => _ExtraItemSheetState();
@@ -1733,7 +1721,7 @@ class _ExtraItemSheet extends StatefulWidget {
 class _ExtraItemSheetState extends State<_ExtraItemSheet> {
   final _formKey = GlobalKey<FormState>();
   final _qtyController = TextEditingController();
-  final _barcodeController = TextEditingController();
+  final _searchController = TextEditingController();
   final _kodeController = TextEditingController();
   final _namaController = TextEditingController();
   final _satuanController = TextEditingController();
@@ -1746,27 +1734,32 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
   String? _error;
 
   /// Produk master NPN yang terpilih — identitas & satuan dikunci ke master,
-  /// field manual disembunyikan. null = mode manual/scan bebas.
+  /// field manual disembunyikan. null = mode manual bebas.
   NpnProduct? _npn;
-  bool _resolving = false;
+  bool _searching = false;
+
+  /// Hasil pencarian nama di master NPN — operator memilih satu; kosong =
+  /// lanjut manual. Dibatasi 5 supaya daftar singkat di layar kecil.
+  List<NpnProduct> _suggestions = [];
+  Timer? _searchDebounce;
 
   @override
   void dispose() {
     _qtyController.dispose();
-    _barcodeController.dispose();
+    _searchController.dispose();
     _kodeController.dispose();
     _namaController.dispose();
     _satuanController.dispose();
     _notesController.dispose();
     _expiredController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
-  /// Identitas barang sah bila terkunci ke master NPN, barcode terisi, atau
-  /// kode + nama manual lengkap. Server tetap memvalidasi ulang.
+  /// Identitas barang sah bila terkunci ke master NPN atau kode + nama manual
+  /// lengkap. Server tetap memvalidasi ulang.
   bool get _identityValid =>
       _npn != null ||
-      _barcodeController.text.trim().isNotEmpty ||
       (_kodeController.text.trim().isNotEmpty &&
           _namaController.text.trim().isNotEmpty);
 
@@ -1822,38 +1815,64 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 ),
               ),
               const SizedBox(height: AppTheme.space4),
-              // Identitas dulu — barcode + pencarian master NPN, seperti
-              // modal Validasi Item yang identitasnya selalu tampil lebih
-              // dulu sebelum form pemeriksaan.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      controller: _barcodeController,
-                      label: 'Barcode produk',
-                      hint: 'Scan / ketik barcode kemasan',
-                      prefixIcon: Icons.barcode_reader,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _resolveBarcode(),
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.space2),
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppTheme.space5),
-                    child: SizedBox(
-                      width: 104,
-                      child: AppSecondaryButton(
-                        text: 'Pindai',
-                        height: 48,
-                        leadingIcon: Icons.qr_code_scanner_rounded,
-                        isLoading: _resolving,
-                        onPressed: _resolving || _saving ? null : _openScanner,
-                      ),
-                    ),
-                  ),
-                ],
+              // Identitas dulu — ketik nama barang, kode & satuan terisi
+              // otomatis dari master NPN (pola combobox Rencana Kirim web),
+              // seperti modal Validasi Item yang identitasnya tampil lebih
+              // dulu sebelum form pemeriksaan. Tanpa barcode agar input
+              // lebih cepat.
+              AppTextField(
+                controller: _searchController,
+                label: 'Nama barang',
+                hint: 'Ketik nama barang dari master NPN',
+                prefixIcon: Icons.search_rounded,
+                onChanged: _onSearchChanged,
               ),
+              const SizedBox(height: AppTheme.space2),
+              if (_searching)
+                const Padding(
+                  padding: EdgeInsets.all(AppTheme.space3),
+                  child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (_suggestions.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: AppTheme.space2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceCard,
+                    borderRadius: AppTheme.radiusLg,
+                    border: Border.all(color: AppTheme.gray300),
+                  ),
+                  child: Column(
+                    children: [
+                      for (var (index, product) in _suggestions.indexed) ...[
+                        if (index > 0)
+                          const Divider(height: 1, color: AppTheme.gray300),
+                        _NpnSuggestionTile(
+                          product: product,
+                          enabled: !_saving,
+                          onTap: () => _selectNpn(product),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              else if (_searchController.text.trim().length >= 2 && !_saving)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: AppTheme.space2,
+                    bottom: AppTheme.space2,
+                  ),
+                  child: Text(
+                    'Tidak ada di master NPN — isi kode & nama manual di bawah.',
+                    style: GoogleFonts.roboto(
+                      fontSize: 12,
+                      color: AppTheme.gray500,
+                    ),
+                  ),
+                ),
               const SizedBox(height: AppTheme.space3),
               if (_npn != null)
                 _npnIdentityCard()
@@ -2044,6 +2063,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
               ? null
               : () => setState(() {
                   _npn = null;
+                  _searchController.clear();
                   _kodeController.clear();
                   _namaController.clear();
                   _satuanController.clear();
@@ -2053,62 +2073,45 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
     ),
   );
 
-  /// Buka scanner kamera dan isi barcode dari hasil pindai, lalu langsung
-  /// dicocokkan ke master NPN — pola halaman Validasi SJ yang hasil pindainya
-  /// diproses otomatis.
-  Future<void> _openScanner() async {
-    var injected = widget.openScanner;
-    var code = await (injected != null
-        ? injected()
-        : Navigator.of(context).push<String>(
-            MaterialPageRoute(
-              builder: (_) => const GateScannerPage(
-                title: 'Pindai Barcode Barang',
-                hint: 'Arahkan kamera ke barcode pada kemasan produk.',
-                subtitle: 'Hasil pindai dicocokkan ke master NPN otomatis.',
-                cameraErrorHint:
-                    'Kamera tidak dapat dijalankan. Ketik barcode produk '
-                    'secara manual.',
-              ),
-            ),
-          ));
-    if (!mounted || code == null || code.trim().isEmpty) {
+  /// Pencarian nama barang di master NPN dengan debounce — hasil menjadi
+  /// daftar saran di bawah field. Pencarian gagal (mis. offline) hanya
+  /// menyembunyikan saran: operator lanjut manual, form tidak pernah terkunci.
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    var trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setState(() {
+        _searching = false;
+        _suggestions = [];
+      });
       return;
     }
-    _barcodeController.text = code.trim();
-    await _resolveBarcode();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
+      setState(() => _searching = true);
+      var products = await context.read<ValidationProvider>().searchProduct(
+        trimmed,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _searching = false;
+        _suggestions = products.take(5).toList();
+      });
+    });
   }
 
-  /// Cocokkan barcode di field ke master NPN. Tepat satu produk cocok =
-  /// identitas terkunci (nama/kode/satuan dari master); selain itu operator
-  /// melanjutkan manual — form tidak pernah terkunci bila ragu.
-  Future<void> _resolveBarcode() async {
-    var code = _barcodeController.text.trim();
-    if (code.isEmpty || _resolving) {
-      return;
-    }
-    setState(() => _resolving = true);
-    var products = await context.read<ValidationProvider>().searchProduct(code);
-    if (!mounted) {
-      return;
-    }
-    var exact = products
-        .where((p) => p.kodeBarang == code || p.sapKode == code)
-        .toList();
-    var match = exact.length == 1
-        ? exact.single
-        : exact.isEmpty && products.length == 1
-        ? products.single
-        : null;
+  /// Pilih produk dari daftar saran — identitas terkunci ke master NPN:
+  /// kode & satuan terisi otomatis, field manual disembunyikan.
+  void _selectNpn(NpnProduct product) {
     setState(() {
-      _resolving = false;
-      if (match != null) {
-        _npn = match;
-        _kodeController.text = match.kodeBarang ?? '';
-        _namaController.text = match.displayName;
-        _satuanController.text = match.satuan ?? '';
-        _error = null;
-      }
+      _npn = product;
+      _suggestions = [];
+      _searchController.text = product.displayName;
+      _kodeController.text = product.kodeBarang ?? '';
+      _namaController.text = product.displayName;
+      _satuanController.text = product.satuan ?? '';
+      _error = null;
     });
     _formKey.currentState?.validate();
   }
@@ -2136,9 +2139,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
       _error = null;
     });
     var provider = context.read<ValidationProvider>();
-    var barcode = _barcodeController.text.trim();
     var success = await provider.reportExtraItem(
-      barcode: barcode.isEmpty ? null : barcode,
       npnId: _npn?.id,
       // Bila terkunci ke master, identitas dipegang npn_id — server menimpa
       // nilai manual dengan master, jadi nilai manual tidak dikirim.
@@ -2182,6 +2183,80 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
       });
     }
   }
+}
+
+/// Satu baris saran hasil pencarian nama di master NPN — menampilkan nama
+/// (dan kode) sehingga operator mengetuk pilihan yang benar tanpa membuka
+/// keyboard numerik atau memindai apa pun.
+class _NpnSuggestionTile extends StatelessWidget {
+  const _NpnSuggestionTile({
+    required this.product,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  final NpnProduct product;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: enabled ? onTap : null,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.space3,
+        vertical: AppTheme.space2,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppTheme.primary500.withValues(alpha: 0.12),
+              borderRadius: AppTheme.radiusLg,
+            ),
+            child: const Icon(
+              Icons.inventory_2_rounded,
+              color: AppTheme.primary500,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.displayName,
+                  style: GoogleFonts.roboto(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.foreground,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (product.kodeBarang != null)
+                  Text(
+                    product.kodeBarang!,
+                    style: GoogleFonts.robotoMono(
+                      fontSize: 11,
+                      color: AppTheme.gray600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: AppTheme.gray500,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Bottom sheet untuk input standarisasi tumpukan satu produk.

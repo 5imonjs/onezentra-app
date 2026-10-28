@@ -159,7 +159,6 @@ class _FakeValidationRepository extends ValidationRepository {
 
   int extraReportCalls = 0;
   int? lastExtraNpnId;
-  String? lastExtraBarcode;
   String? lastExtraKode;
   String? lastExtraNama;
   double? lastExtraQty;
@@ -169,7 +168,6 @@ class _FakeValidationRepository extends ValidationRepository {
     required int validationId,
     required double qty,
     required String photoPath,
-    String? barcode,
     int? npnId,
     String? kodeBarang,
     String? namaBarang,
@@ -180,7 +178,6 @@ class _FakeValidationRepository extends ValidationRepository {
   }) async {
     extraReportCalls++;
     lastExtraNpnId = npnId;
-    lastExtraBarcode = barcode;
     lastExtraKode = kodeBarang;
     lastExtraNama = namaBarang;
     lastExtraQty = qty;
@@ -287,7 +284,6 @@ Future<void> _pumpSessionPage(
   ValidationProvider provider,
   SjValidation session, {
   ValidationPhotoPicker? pickPhoto,
-  Future<String?> Function()? openScanner,
 }) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<AuthProvider>.value(
@@ -300,7 +296,6 @@ Future<void> _pumpSessionPage(
             provider: provider,
             session: session,
             pickPhoto: pickPhoto,
-            openScanner: openScanner,
           ),
         ),
       ),
@@ -1417,7 +1412,7 @@ void main() {
     expect(find.text('Laporkan barang luar rencana'), findsNothing);
   });
 
-  testWidgets('pindai kamera mengenali master NPN dan mengunci identitas', (
+  testWidgets('pilih nama barang dari master NPN mengunci identitas', (
     tester,
   ) async {
     var repository = _FakeValidationRepository(
@@ -1442,7 +1437,6 @@ void main() {
       auth,
       provider,
       repository.sessionToOpen!,
-      openScanner: () async => '8991234567890',
       pickPhoto: ({required bool fromCamera}) async => '/tmp/bukti.jpg',
     );
     // Aktifkan sesi di provider agar aksi lapor berjalan (sheet memakai
@@ -1453,16 +1447,19 @@ void main() {
     await tester.tap(find.text('Laporkan barang luar rencana'));
     await tester.pumpAndSettle();
 
-    // Buka kamera: hasil pindai dicocokkan ke master NPN otomatis.
-    await tester.tap(find.text('Pindai'));
+    // Ketik nama barang; setelah debounce selesai saran master muncul.
+    await tester.enterText(find.byType(TextFormField).first, 'Minyak');
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     expect(repository.searchCalls, 1);
-    expect(repository.lastSearchQuery, '8991234567890');
+    expect(repository.lastSearchQuery, 'Minyak');
 
-    // Identitas terkunci ke master — kartu menampilkan nama + kode + satuan,
-    // field manual hilang.
-    expect(find.text('Minyak Goreng 2L'), findsOneWidget);
+    // Pilih satu-satunya saran — identitas terkunci ke master: kartu
+    // menampilkan nama + kode + satuan, field manual hilang.
+    await tester.tap(find.text('Minyak Goreng 2L'));
+    await tester.pumpAndSettle();
+
     expect(find.textContaining('SKU-NPN-77'), findsOneWidget);
     expect(find.text('Kode barang *'), findsNothing);
     expect(find.text('Nama barang *'), findsNothing);
@@ -1489,13 +1486,12 @@ void main() {
     // Identitas dikirim sebagai npn_id — nilai manual tidak ikut.
     expect(repository.extraReportCalls, 1);
     expect(repository.lastExtraNpnId, 5);
-    expect(repository.lastExtraBarcode, '8991234567890');
     expect(repository.lastExtraKode, isNull);
     expect(repository.lastExtraNama, isNull);
     expect(repository.lastExtraQty, 5);
   });
 
-  testWidgets('barcode tidak dikenal lanjut input manual tanpa npn_id', (
+  testWidgets('nama tidak ada di master lanjut input manual tanpa npn_id', (
     tester,
   ) async {
     var repository = _FakeValidationRepository(
@@ -1521,8 +1517,9 @@ void main() {
     await tester.tap(find.text('Laporkan barang luar rencana'));
     await tester.pumpAndSettle();
 
+    // Form tanpa barcode: pencarian nama + kode + nama + satuan + qty +
+    // expired + catatan.
     var fields = find.byType(TextFormField);
-    // Barcode, kode, nama, satuan, qty, expired, catatan.
     expect(fields, findsNWidgets(7));
     await tester.enterText(fields.at(1), 'SKU-LUAR-1');
     await tester.enterText(fields.at(2), 'Barang Tak Terencana');
@@ -1539,10 +1536,9 @@ void main() {
     await tester.tap(find.text('Laporkan'));
     await tester.pumpAndSettle();
 
-    // Mode manual: tanpa npn_id/barcode, kode + nama + satuan yang dikirim.
+    // Mode manual: tanpa npn_id, kode + nama + satuan yang dikirim.
     expect(repository.extraReportCalls, 1);
     expect(repository.lastExtraNpnId, isNull);
-    expect(repository.lastExtraBarcode, isNull);
     expect(repository.lastExtraKode, 'SKU-LUAR-1');
     expect(repository.lastExtraNama, 'Barang Tak Terencana');
     expect(repository.lastExtraQty, 2);

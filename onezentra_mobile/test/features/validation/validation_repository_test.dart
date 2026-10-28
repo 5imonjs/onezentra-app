@@ -343,7 +343,6 @@ void main() {
       var extra = await repository.reportExtraItem(
         validationId: 9,
         npnId: 5,
-        barcode: '8991234567890',
         qty: 5,
         photoPath: '/tmp/bukti.jpg',
       );
@@ -352,7 +351,6 @@ void main() {
       expect(hitFields, {
         'qty': '5.0',
         'condition': 'FISIK_BAGUS',
-        'barcode': '8991234567890',
         'npn_id': '5',
       });
       expect(extra.npnId, 5);
