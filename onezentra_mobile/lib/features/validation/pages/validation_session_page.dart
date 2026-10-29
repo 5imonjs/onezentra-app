@@ -1603,7 +1603,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     required String? expiredDate,
     required String? condition,
   }) async {
-    if (condition == 'FISIK_TIDAK_ADA') return; // Tidak ada fisik = tidak perlu label
+    if (condition == 'FISIK_TIDAK_ADA') {
+      return;
+    }
     var reportFailed = false;
     var printed = await LabelPrintSheet.show(
       context,
