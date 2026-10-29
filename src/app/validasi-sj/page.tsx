@@ -431,6 +431,25 @@ export default function ValidasiSjPage() {
     }
   };
 
+  const openExtraItem = (extra: any) => {
+    if (!canEditItems(active, { canCorrectCompleted: active?.can_correct_completed })) {
+      notifyGlobal('Validasi sudah selesai sehingga hasil item tidak dapat diubah.', 'error');
+      return;
+    }
+    setSelected(extra);
+    setForm({
+      actual_qty: extra.qty != null ? String(extra.qty) : '',
+      expired_date: toDateInput(extra.expired_date),
+      condition: extra.condition || 'FISIK_BAGUS',
+      notes: extra.notes ?? '',
+      barcode: extra.batch?.barcode_label ?? extra.barcode ?? '',
+      tier: 1,
+      tinggi_tumpukan: 1,
+    });
+    setPhoto(null);
+    setPhotoPreview('');
+  };
+
   const openItem = (item: ValidationItem) => {
     // Penjaga lapis kedua: tombol sudah disembunyikan saat dokumen selesai,
     // tapi form ini juga bisa terbuka lewat jalur lain (draft yang dipulihkan,
@@ -1460,7 +1479,7 @@ export default function ValidasiSjPage() {
                       <li key={extra.id} className="flex flex-col gap-1.5 px-5 py-3 even:bg-overlay-30">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-sm font-bold text-slate-800">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-slate-500">{extra.kode_barang}</span></p>
-                          <button type="button" onClick={() => openDetail(active)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-surface-card px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-surface-raised" title="Ubah catatan luar rencana">Ubah</button>
+                          <button type="button" onClick={() => openExtraItem(extra)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-surface-card px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-surface-raised" title="Ubah catatan luar rencana">Ubah</button>
                         </div>
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
