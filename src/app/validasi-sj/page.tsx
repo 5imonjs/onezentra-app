@@ -1599,14 +1599,17 @@ export default function ValidasiSjPage() {
                 <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Data pemeriksaan</h3>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="block text-xs font-bold text-slate-600">Qty Aktual <span className="text-accent-text">*</span>
-                  <div className="relative mt-1.5">
-                    <input type="number" min="0" value={form.actual_qty} onChange={(e) => setForm({ ...form, actual_qty: e.target.value })} className="input-field py-2.5 pr-14 text-sm font-semibold" />
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] font-bold uppercase text-slate-400">{selected.satuan}</span>
-                  </div>
-                </label>
-                <label className="block text-xs font-bold text-slate-600">Expired Date <span className="text-accent-text">*</span>
-                  <input type="date" value={form.expired_date} onChange={(e) => {
+                {form.condition !== 'FISIK_TIDAK_ADA' && (
+                  <label className="block text-xs font-bold text-slate-600">Qty Aktual <span className="text-accent-text">*</span>
+                    <div className="relative mt-1.5">
+                      <input type="number" min="0" value={form.actual_qty} onChange={(e) => setForm({ ...form, actual_qty: e.target.value })} className="input-field py-2.5 pr-14 text-sm font-semibold" />
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] font-bold uppercase text-slate-400">{selected.satuan}</span>
+                    </div>
+                  </label>
+                )}
+                {form.condition !== 'FISIK_TIDAK_ADA' && (
+                  <label className="block text-xs font-bold text-slate-600">Expired Date <span className="text-accent-text">*</span>
+                    <input type="date" value={form.expired_date} onChange={(e) => {
                     const val = e.target.value;
                     setForm({ ...form, expired_date: val });
                     const standar = selected?.umur ?? 0;
@@ -1614,7 +1617,8 @@ export default function ValidasiSjPage() {
                     setSisaUmur(calcUmurInMonths(val) ?? { totalMonths: 0, totalDays: 0 });
                     setShowUmurPopup(true);
                   }} className="input-field mt-1.5 py-2.5 text-sm" />
-                </label>
+                  </label>
+                )}
               </div>
             </div>
 
