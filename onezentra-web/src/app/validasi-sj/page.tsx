@@ -803,7 +803,7 @@ export default function ValidasiSjPage() {
    * tercetak. Selesaikan Validasi terkunci selama daftar ini tidak kosong —
    * label fisik wajib menempel sebelum dokumen boleh selesai.
    */
-  const unprintedItems = unprintedCompleteItems(active?.items, printedLabels);
+  const unprintedItems = unprintedCompleteItems(active?.items?.filter((i: any) => i.condition !== 'FISIK_TIDAK_ADA'), printedLabels);
   const progress = active?.items?.length ? Math.round(((active.items.length - pendingCount) / active.items.length) * 100) : 0;
   const photoRequired = conditionRequiresPhoto(form.condition);
   const umurSelisih = sisaUmur.totalMonths - standarUmur;
