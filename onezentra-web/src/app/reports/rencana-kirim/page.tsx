@@ -555,9 +555,9 @@ export default function RencanaKirimReportPage() {
                         <td className="table-cell whitespace-nowrap">
                           {item.jenis_kendaraan !== '-' ? <span className="inline-flex rounded-md bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{item.jenis_kendaraan}</span> : <span className="text-sm text-ink-400">-</span>}
                         </td>
-                        <td className="table-cell text-sm text-slate-700 whitespace-nowrap">{item.destination_name}</td>
+                        <td className="table-cell text-sm text-ink-700 whitespace-nowrap">{item.destination_name}</td>
                         <td className="table-cell text-sm text-center tabular-nums text-ink-600 whitespace-nowrap">{item.item_count}</td>
-                        <td className="table-cell text-sm text-right font-bold text-slate-800 tabular-nums whitespace-nowrap">{fmtNum(item.total_qty)}</td>
+                        <td className="table-cell text-sm text-right font-bold text-ink-800 tabular-nums whitespace-nowrap">{fmtNum(item.total_qty)}</td>
                         <td className="table-cell text-sm text-right font-semibold text-teal-700 tabular-nums whitespace-nowrap">{Number(item.total_kubikasi).toFixed(2)}</td>
                         <td className="table-cell whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-surface-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
