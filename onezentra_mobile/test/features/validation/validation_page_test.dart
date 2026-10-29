@@ -1551,6 +1551,137 @@ void main() {
     expect(find.text('Cetak Label'), findsOneWidget);
   });
 
+  testWidgets('label luar rencana yang belum dilaporkan mengunci Selesaikan', (
+    tester,
+  ) async {
+    // DateTime tidak bisa const — sesi tidak bisa dideklarasikan const.
+    var extraSession = SjValidation(
+      id: 9,
+      rencanaKirimId: 11,
+      scanCode: 'PO-042',
+      items: [
+        SjValidationItem(
+          id: 31,
+          validationId: 9,
+          kodeBarang: 'BRG-1',
+          namaBarang: 'Gula 50kg',
+          expectedQty: 100,
+          expiredDate: '2027-01-31',
+          actualQty: 100,
+          satuan: 'zak',
+          status: 'VALIDATED',
+          standarisasi: const ItemStandarisasi(
+            tier: 4,
+            tinggiTumpukan: 6,
+            status: 'approved',
+          ),
+          batch: ValidationBatch(
+            id: 7,
+            batchNumber: 'B-1',
+            barcodeLabel: 'LBL-1',
+            printedAt: DateTime(2026, 1, 2, 3, 4),
+          ),
+        ),
+      ],
+      extraItems: [
+        // Disetujui + batch tapi belum dilaporkan tercetak → label ini
+        // ikut mengunci, sama seperti label rencana kirim.
+        const SjValidationExtraItem(
+          id: 71,
+          validationId: 9,
+          kodeBarang: 'SKU-LUAR-1',
+          namaBarang: 'Kopi Special Grade',
+          qty: 2,
+          satuan: 'CRT',
+          status: 'APPROVED',
+          batch: ValidationBatch(
+            id: 55,
+            batchNumber: 'B-55',
+            barcodeLabel: 'LBL-EXTRA-71',
+          ),
+        ),
+      ],
+    );
+    var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+    var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpSessionPage(tester, auth, provider, extraSession);
+
+    expect(find.text('Cetak 1 label dulu'), findsOneWidget);
+    expect(find.text('Selesaikan Validasi ✓'), findsNothing);
+  });
+
+  testWidgets(
+    'label luar rencana sudah tercetak membuka Selesaikan + tombol Cetak Ulang',
+    (tester) async {
+      var extraSession = SjValidation(
+        id: 9,
+        rencanaKirimId: 11,
+        scanCode: 'PO-042',
+        items: [
+          SjValidationItem(
+            id: 31,
+            validationId: 9,
+            kodeBarang: 'BRG-1',
+            namaBarang: 'Gula 50kg',
+            expectedQty: 100,
+            expiredDate: '2027-01-31',
+            actualQty: 100,
+            satuan: 'zak',
+            status: 'VALIDATED',
+            standarisasi: const ItemStandarisasi(
+              tier: 4,
+              tinggiTumpukan: 6,
+              status: 'approved',
+            ),
+            batch: ValidationBatch(
+              id: 7,
+              batchNumber: 'B-1',
+              barcodeLabel: 'LBL-1',
+              printedAt: DateTime(2026, 1, 2, 3, 4),
+            ),
+          ),
+        ],
+        extraItems: [
+          SjValidationExtraItem(
+            id: 71,
+            validationId: 9,
+            kodeBarang: 'SKU-LUAR-1',
+            namaBarang: 'Kopi Special Grade',
+            qty: 2,
+            satuan: 'CRT',
+            status: 'APPROVED',
+            batch: ValidationBatch(
+              id: 55,
+              batchNumber: 'B-55',
+              barcodeLabel: 'LBL-EXTRA-71',
+              printedAt: DateTime(2026, 1, 2, 3, 4),
+            ),
+          ),
+        ],
+      );
+      var repository = _FakeValidationRepository(sessionToOpen: extraSession);
+      var auth = await _loginAuth();
+      var provider = ValidationProvider(repository: repository);
+
+      // Tombol Selesaikan berada di ujung bawah scroll — layar test standar
+      // memotongnya (finder menganggapnya offstage), jadi perbesar viewport.
+      tester.view.physicalSize = const Size(1080, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpSessionPage(tester, auth, provider, extraSession);
+
+      expect(find.text('Selesaikan Validasi ✓'), findsOneWidget);
+      // Label yang sudah pernah tercetak berubah jadi Cetak Ulang
+      // (cetakan berikutnya membawa tanda COPY) — item rencana kirim dan
+      // catatan luar rencana keduanya.
+      expect(find.text('Cetak Ulang'), findsNWidgets(2));
+    },
+  );
+
   testWidgets('planner bisa setujui catatan luar rencana dari mobile', (
     tester,
   ) async {
@@ -1788,6 +1919,8 @@ void main() {
     await provider.start('PO-042');
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Laporkan barang luar rencana'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Laporkan barang luar rencana'));
     await tester.pumpAndSettle();
 
@@ -1858,6 +1991,8 @@ void main() {
     await provider.start('PO-042');
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Laporkan barang luar rencana'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Laporkan barang luar rencana'));
     await tester.pumpAndSettle();
 

@@ -1348,6 +1348,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var missingExpired = session.items
         .where((item) => !item.isPending && !item.hasExpiredDate)
         .length;
+    // Paritas label luar rencana: label yang belum tercetak mengunci
+    // penyelesaian sama seperti label rencana kirim — catatan yang
+    // disetujui tetapi labelnya belum dilaporkan tercetak ikut dihitung.
     var unprinted = session.items
         .where(
           (item) =>
@@ -1356,7 +1359,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               !(item.batch?.isPrinted ?? false),
         )
         .length;
-    var blocked = pending > 0 || missingExpired > 0 || unprinted > 0;
+    var unprintedExtra = session.extraItems
+        .where((extra) => extra.canPrint && extra.batch?.isPrinted != true)
+        .length;
+    var totalUnprinted = unprinted + unprintedExtra;
+    var blocked = pending > 0 || missingExpired > 0 || totalUnprinted > 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1365,8 +1372,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               ? 'Selesaikan ($pending item tersisa)'
               : missingExpired > 0
               ? 'Lengkapi $missingExpired tanggal expired'
-              : unprinted > 0
-              ? 'Cetak $unprinted label dulu'
+              : totalUnprinted > 0
+              ? 'Cetak $totalUnprinted label dulu'
               : 'Selesaikan Validasi ✓',
           background: AppTheme.success,
           foreground: AppTheme.ink900,
@@ -1398,7 +1405,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         ? 'Validasi dulu $pending item di atas — tombol aktif otomatis.'
                         : missingExpired > 0
                         ? 'Isi tanggal expired $missingExpired item di atas — server juga menolak sesi tanpa tanggal expired.'
-                        : 'Cetak label $unprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',
+                        : 'Cetak label $totalUnprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',
                     style: GoogleFonts.roboto(
                       fontSize: 12,
                       height: 1.4,
