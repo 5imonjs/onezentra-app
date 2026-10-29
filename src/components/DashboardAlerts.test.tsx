@@ -20,7 +20,7 @@ const summaryKosong = {
   depot: null,
   totals: {},
   new_7d: {},
-  alerts: { expired_kritis: 0, expired_total: 0, standarisasi_pending: 0 },
+  alerts: { expired_kritis: 0, expired_total: 0, standarisasi_pending: 0, extra_item_pending: 0 },
   opname_at_risk: null,
   quality: { npn_no_volume: 0, npn_no_umur: 0 },
   sla: { avg_gate_to_receiving_hours: null, sj_open_count: 0, sj_oldest_days: null, rk_checked_in_count: 0, rk_checked_in_oldest_days: null },
@@ -93,5 +93,26 @@ describe('DashboardAlerts', () => {
     expect(screen.getByText('3 kurang • 1 lebih')).toBeInTheDocument();
     expect(screen.getByText('RK Tertahan di Gate')).toBeInTheDocument();
     expect(screen.getByText('tertua 5 hari')).toBeInTheDocument();
+  });
+
+  it('kartu barang luar rencana tampil untuk approver dan tersembunyi tanpa izin', () => {
+    useSummary.mockReturnValue({
+      summary: { ...summaryKosong, alerts: { ...summaryKosong.alerts, extra_item_pending: 2 } },
+      loading: false,
+      failed: false,
+      reload: vi.fn(),
+    });
+
+    render(<DashboardAlerts />);
+
+    expect(screen.getByText('Barang Luar Rencana')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText('menunggu keputusan planner')).toBeInTheDocument();
+
+    cleanup();
+    hasPermission.mockImplementation((perm?: string) => perm !== 'sj_validation.approve');
+    render(<DashboardAlerts />);
+
+    expect(screen.queryByText('Barang Luar Rencana')).not.toBeInTheDocument();
   });
 });

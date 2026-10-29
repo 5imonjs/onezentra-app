@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { biayaRetribusi, biayaThl, gateTransactions, rencanaKirim, sjValidations, getErrorMessage } from '@/lib/api';
+import { biayaRetribusi, biayaThl, gateTransactions, rencanaKirim, sjValidations, standarisasiTumpukan, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import DashboardPanel from '@/components/DashboardPanel';
 
@@ -84,6 +84,16 @@ type SjValidationItem = {
 };
 type RkItem = { id: number; nopol?: string; nama_depo?: string; kode_depo?: string };
 type GateItem = { id: number; po_transporter?: string; nopol?: string };
+type SjExtraSession = {
+  id: number;
+  scan_code?: string | null;
+  rencana_kirim?: { po_transporter?: string; nama_depo?: string; kode_depo?: string } | null;
+  pending_extra_items_count?: number;
+};
+type StandarisasiRow = {
+  id: number;
+  npn?: { szShortDescription?: string; szNickName?: string; szNickNameNew?: string } | null;
+};
 
 /**
  * Section "Perlu Tindakan": item kerja yang menunggu aksi user, dikelompokkan
@@ -203,6 +213,50 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
           primary: item.po_transporter || item.nopol || `Transaksi #${item.id}`,
           secondary: item.nopol || '-',
           href: '/gate',
+        }),
+      }));
+    }
+
+    // Barang luar rencana menunggu keputusan planner: sesi berjalan yang
+    // punya catatan PENDING (filter backend has_pending_extra_items) —
+    // keputusan setujui/tolak terjadi di halaman validasi dokumen.
+    if (hasPermission('sj_validation.approve')) {
+      jobs.push(async () => buildGroup<SjExtraSession>({
+        key: 'sj_extra_pending',
+        label: 'Barang luar rencana menunggu keputusan',
+        href: '/validasi-sj',
+        tone: 'amber',
+        response: await sjValidations.list({
+          status: 'IN_PROGRESS', has_pending_extra_items: 1,
+          per_page: MAX_PER_GROUP, sort: 'created_at', dir: 'asc',
+          ...depotFilter(kodeDepo),
+        }),
+        map: (item) => ({
+          id: `sj-extra-${item.id}`,
+          primary: item.rencana_kirim?.po_transporter || item.scan_code || `Validasi #${item.id}`,
+          secondary: `${item.pending_extra_items_count ?? 0} barang menunggu`,
+          href: '/validasi-sj',
+        }),
+      }));
+    }
+
+    // Pengajuan standarisasi tumpukan menunggu keputusan BLC; persetujuan
+    // terjadi di halaman modul standarisasi.
+    if (hasPermission('standarisasi.approve')) {
+      jobs.push(async () => buildGroup<StandarisasiRow>({
+        key: 'standarisasi_pending',
+        label: 'Standarisasi menunggu approval BLC',
+        href: '/standarisasi',
+        tone: 'violet',
+        response: await standarisasiTumpukan.list({
+          status: 'pending', per_page: MAX_PER_GROUP,
+          sort: 'created_at', dir: 'asc', ...depotFilter(kodeDepo),
+        }),
+        map: (item) => ({
+          id: `standarisasi-${item.id}`,
+          primary: item.npn?.szShortDescription || item.npn?.szNickName || item.npn?.szNickNameNew || `Standarisasi #${item.id}`,
+          secondary: 'Menunggu keputusan BLC',
+          href: '/standarisasi',
         }),
       }));
     }
