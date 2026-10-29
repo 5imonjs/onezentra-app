@@ -2336,11 +2336,11 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
   void initState() {
     super.initState();
     if (widget.item != null) {
-      _qtyController.text = widget.item!.qty.toString();
-      _condition = widget.item!.condition ?? 'FISIK_BAGUS';
-      _notesController.text = widget.item!.notes ?? '';
+      _qtyController.text = widget.item.qty.toString();
+      _condition = widget.item.condition ?? 'FISIK_BAGUS';
+      _notesController.text = widget.item.notes ?? '';
       if (widget.item!.expiredDate != null) {
-        _expiredDate = DateTime.tryParse(widget.item!.expiredDate ?? '');
+        _expiredDate = DateTime.tryParse(widget.item.expiredDate ?? '');
         _expiredController.text = formatDateId(_expiredDate);
       }
     }
