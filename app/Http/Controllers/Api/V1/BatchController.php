@@ -50,7 +50,11 @@ class BatchController extends Controller
 
     private function authorizeDepot(Batch $batch): void
     {
-        $rk = $batch->receiving?->rencanaKirim ?? $batch->validationItem?->validation?->rencanaKirim;
+        // Batch barang luar rencana hanya terikat sj_validation_extra_item_id
+        // — tanpa cabang ini mark-printed membalas 403 untuk semua user depo.
+        $rk = $batch->receiving?->rencanaKirim
+            ?? $batch->validationItem?->validation?->rencanaKirim
+            ?? $batch->validationExtraItem?->validation?->rencanaKirim;
         $this->authorizeDepotRow(
             $rk?->kode_depo,
             $rk?->nama_depo,

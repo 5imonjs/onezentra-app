@@ -7,6 +7,8 @@ use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\RencanaKirim;
 use App\Models\Role;
+use App\Models\SjValidation;
+use App\Models\SjValidationExtraItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -122,6 +124,68 @@ class BatchControllerTest extends TestCase
             ->assertJsonPath('data.printed_at', fn ($printedAt) => $printedAt !== null);
 
         $this->assertNotNull($batch->refresh()->printed_at);
+    }
+
+    public function test_mark_printed_extra_item_batch_is_authorized_for_own_depot(): void
+    {
+        // Regresi: batch barang luar rencana hanya terikat
+        // sj_validation_extra_item_id — authorizeDepot tidak mengenalinya,
+        // jadi laporan "sudah dicetak" dari mobile/web membalas 403.
+        $perm = Permission::firstOrCreate(['slug' => 'penerimaan.view'], ['name' => 'penerimaan.view', 'menu_group' => 'Test']);
+        Role::firstWhere('slug', 'batch_admin')->permissions()->syncWithoutDetaching([$perm->id]);
+
+        $rk = RencanaKirim::create(['po_transporter' => 'SJ-EXTRA-PRINT', 'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test', 'status' => 'CHECKED_IN', 'created_by' => $this->user->id]);
+        $validation = SjValidation::create(['rencana_kirim_id' => $rk->id, 'status' => 'IN_PROGRESS', 'scan_code' => 'SJ-EXTRA-PRINT']);
+        $extra = SjValidationExtraItem::create([
+            'sj_validation_id' => $validation->id,
+            'kode_barang' => 'SKU-EXTRA-PRINT',
+            'nama_barang' => 'Barang Luar Rencana',
+            'qty' => 1,
+            'satuan' => 'CRT',
+            'photo' => 'validation-photos/extra-print.jpg',
+            'recorded_by' => $this->user->id,
+        ]);
+        $batch = Batch::create([
+            'batch_number' => 'PRINT-EXTRA',
+            'sj_validation_extra_item_id' => $extra->id,
+            'barcode_label' => 'LBL-PRINT-EXTRA',
+            'status' => 'ACTIVE',
+        ]);
+
+        $this->postJson("/api/v1/batches/{$batch->id}/mark-printed")
+            ->assertOk()
+            ->assertJsonPath('data.printed_at', fn ($printedAt) => $printedAt !== null);
+
+        $this->assertNotNull($batch->refresh()->printed_at);
+    }
+
+    public function test_mark_printed_extra_item_batch_from_other_depot_is_forbidden(): void
+    {
+        $perm = Permission::firstOrCreate(['slug' => 'penerimaan.view'], ['name' => 'penerimaan.view', 'menu_group' => 'Test']);
+        Role::firstWhere('slug', 'batch_admin')->permissions()->syncWithoutDetaching([$perm->id]);
+
+        $rk = RencanaKirim::create(['po_transporter' => 'SJ-EXTRA-LAIN', 'kode_depo' => 'DPO-Z', 'nama_depo' => 'Depo Z', 'status' => 'CHECKED_IN', 'created_by' => $this->user->id]);
+        $validation = SjValidation::create(['rencana_kirim_id' => $rk->id, 'status' => 'IN_PROGRESS', 'scan_code' => 'SJ-EXTRA-LAIN']);
+        $extra = SjValidationExtraItem::create([
+            'sj_validation_id' => $validation->id,
+            'kode_barang' => 'SKU-LAIN',
+            'nama_barang' => 'Barang Depo Lain',
+            'qty' => 1,
+            'satuan' => 'CRT',
+            'photo' => 'validation-photos/extra-lain.jpg',
+            'recorded_by' => $this->user->id,
+        ]);
+        $batch = Batch::create([
+            'batch_number' => 'PRINT-EXTRA-LAIN',
+            'sj_validation_extra_item_id' => $extra->id,
+            'barcode_label' => 'LBL-EXTRA-LAIN',
+            'status' => 'ACTIVE',
+        ]);
+
+        $this->postJson("/api/v1/batches/{$batch->id}/mark-printed")
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Batch tidak ditemukan di depo Anda.');
+        $this->assertNull($batch->refresh()->printed_at);
     }
 
     public function test_mark_printed_is_idempotent_keeps_first_timestamp(): void
