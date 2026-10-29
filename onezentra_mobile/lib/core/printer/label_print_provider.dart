@@ -23,6 +23,9 @@ class LabelPrintProvider extends ChangeNotifier {
   final BluetoothPermissionRequest _requestPermissions;
 
   static const _selectedPrinterKey = 'label_print_selected_printer_address';
+  static const _widthKey = 'label_print_width_index';
+  static const _enableBarcodeKey = 'label_print_enable_barcode';
+  static const _enableCutKey = 'label_print_enable_cut';
 
   List<DiscoveredPrinter> _available = const [];
   DiscoveredPrinter? _selected;
@@ -50,6 +53,9 @@ class LabelPrintProvider extends ChangeNotifier {
   bool get bonding => _bondingAddress != null;
 
   /// Width printer. Bawaan 58 mm — paling umum di gudang.
+  ///
+  /// Persisten: pilihan operator tersimpan sehingga alur cetak-langsung
+  /// selalu memakai settingan yang sudah benar tanpa buka panel.
   LabelWidth _width = LabelWidth.w58;
   LabelWidth get width => _width;
 
@@ -59,13 +65,20 @@ class LabelPrintProvider extends ChangeNotifier {
     }
     _width = value;
     notifyListeners();
+    _save(
+      _widthKey,
+      (preferences) => preferences.setInt(
+        _widthKey,
+        LabelWidth.values.indexOf(value),
+      ),
+    );
   }
 
   /// Cetak barcode sebagai gambar yang bisa discan mesin, atau teks polos.
   ///
   /// Bawaan true. Printer thermal entry-level umumnya mendukung ESC/POS
   /// barcode; yang tidak bisa harus dimatikan karena byte kontrol ESC/POS akan
-  /// tercetak sebagai karakter aneh.
+  /// tercetak sebagai karakter aneh. Persisten — lihat [width].
   bool _enableBarcode = true;
   bool get enableBarcode => _enableBarcode;
 
@@ -75,9 +88,14 @@ class LabelPrintProvider extends ChangeNotifier {
     }
     _enableBarcode = value;
     notifyListeners();
+    _save(
+      _enableBarcodeKey,
+      (preferences) => preferences.setBool(_enableBarcodeKey, value),
+    );
   }
 
   /// Printer tanpa pisau potong tidak boleh diberi perintah potong.
+  /// Persisten — lihat [width].
   bool _enableCut = true;
   bool get enableCut => _enableCut;
 
@@ -87,6 +105,23 @@ class LabelPrintProvider extends ChangeNotifier {
     }
     _enableCut = value;
     notifyListeners();
+    _save(
+      _enableCutKey,
+      (preferences) => preferences.setBool(_enableCutKey, value),
+    );
+  }
+
+  /// Simpan satu preferensi printer; kegagalan storage tidak boleh
+  /// menggagalkan aksi yang sedang berjalan.
+  Future<void> _save(
+    String key,
+    Future<void> Function(SharedPreferences preferences) write,
+  ) async {
+    try {
+      await write(await SharedPreferences.getInstance());
+    } catch (e) {
+      debugPrint('LabelPrintProvider.save($key): $e');
+    }
   }
 
   Future<void> initialize() => _initialization ??= _initialize();
@@ -95,6 +130,16 @@ class LabelPrintProvider extends ChangeNotifier {
     try {
       var preferences = await SharedPreferences.getInstance();
       _preferredAddress = preferences.getString(_selectedPrinterKey);
+      // Settingan cetak ikut dimuat supaya cetak-langsung memakai konfigurasi
+      // yang pernah dipilih operator, bukan bawaan setiap kali aplikasi baru.
+      var widthIndex = preferences.getInt(_widthKey);
+      if (widthIndex != null &&
+          widthIndex >= 0 &&
+          widthIndex < LabelWidth.values.length) {
+        _width = LabelWidth.values[widthIndex];
+      }
+      _enableBarcode = preferences.getBool(_enableBarcodeKey) ?? _enableBarcode;
+      _enableCut = preferences.getBool(_enableCutKey) ?? _enableCut;
     } catch (e) {
       debugPrint('LabelPrintProvider.initialize: $e');
     }
