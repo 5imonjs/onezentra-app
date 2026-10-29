@@ -465,7 +465,8 @@ export default function ValidasiSjPage() {
   };
 
   const saveItem = async () => {
-    if (!active || !selected || !hasQty(form.actual_qty) || !form.expired_date) return;
+    const qtyOk = form.condition === 'FISIK_TIDAK_ADA' ? true : hasQty(form.actual_qty);
+    if (!active || !selected || !qtyOk || (form.condition !== 'FISIK_TIDAK_ADA' && !form.expired_date)) return;
     // Sama seperti openItem: validasi yang sudah COMPLETED tidak bisa diubah.
     // Kirim request sia-sia hanya menghasilkan 422, dan membiarkan form terisi
     // membuat operator mengira perubahan tersimpan padahal receiving_items
@@ -489,7 +490,7 @@ export default function ValidasiSjPage() {
     try {
       const payload = new FormData();
       payload.append('sj_validation_item_id', String(selected.id));
-      payload.append('actual_qty', String(form.actual_qty));
+      payload.append('actual_qty', form.condition === 'FISIK_TIDAK_ADA' ? '0' : String(form.actual_qty));
       payload.append('condition', form.condition);
       if (form.expired_date) payload.append('expired_date', form.expired_date);
       if (form.barcode) payload.append('barcode', form.barcode);
@@ -1547,7 +1548,8 @@ export default function ValidasiSjPage() {
       <Modal open={!!selected} onClose={() => setSelected(null)} title="Validasi Item" subtitle="Lengkapi pemeriksaan fisik sebelum menyimpan hasil validasi." size="lg" footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <button type="button" onClick={() => setSelected(null)} className="btn-secondary w-full sm:w-auto">Batal</button>
-          <button type="button" onClick={saveItem} disabled={busy || !hasQty(form.actual_qty) || !form.expired_date || (photoRequired && !photo) || !hasPermission('sj_validation.validate')} title={!form.expired_date ? 'Isi tanggal expired terlebih dahulu' : undefined} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+          <button type="button" onClick={saveItem} disabled={busy || ((form.condition !== 'FISIK_TIDAK_ADA') ? (!hasQty(form.actual_qty) || !form.expired_date) : false) || (photoRequired && !photo) || !hasPermission('sj_validation.validate')}
+            title={((form.condition !== 'FISIK_TIDAK_ADA') && !form.expired_date) ? 'Isi tanggal expired terlebih dahulu' : undefined} className="btn-primary inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
             {busy ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" /> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>}
             {busy ? 'Menyimpan...' : 'Simpan Validasi'}
           </button>
