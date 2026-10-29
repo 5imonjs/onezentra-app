@@ -114,6 +114,8 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var printer = context.watch<LabelPrintProvider>();
+    // Hanya tampilkan printer selector & pairing kalau belum ada printer terhubung.
+    final showPrinter = printer.selected == null;
     return SafeArea(
       child: SingleChildScrollView(
         child: Column(
@@ -122,10 +124,16 @@ class _Body extends StatelessWidget {
           children: [
             Text('Cetak Label', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
-            _PrinterSelector(printer: printer),
-            const SizedBox(height: 12),
-            _PairingSection(printer: printer),
-            const SizedBox(height: 12),
+            // Hanya tampilkan pilihan printer kalau belum ada yang terhubung.
+            // Kalau sudah ada printer (_selected != null) → langsung cetak.
+            if (showPrinter) ...[
+              _PrinterSelector(printer: printer),
+              const SizedBox(height: 8),
+              _PairingSection(printer: printer),
+              const SizedBox(height: 12),
+            ] else ...[
+              const SizedBox.shrink(),
+            ],
             _WidthSelector(printer: printer),
             _Toggle(
               label: 'Cetak barcode (bisa discan mesin)',
