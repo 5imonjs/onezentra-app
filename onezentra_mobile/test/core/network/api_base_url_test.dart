@@ -49,6 +49,40 @@ void main() {
         'http://192.168.1.5:8000/api/v1',
       );
     });
+
+    test('IP produksi dipaksa https walau debug memasukkan http', () {
+      // POST login via http dibalas redirect 301 nginx — Dart mengikuti
+      // redirect dan mengubah POST→GET, login jadi selalu gagal.
+      expect(
+        ApiClient.normalizeBaseUrl(
+          'http://187.77.121.102/api/v1',
+          allowInsecure: true,
+        ),
+        'https://187.77.121.102/api/v1',
+      );
+      expect(
+        ApiClient.normalizeBaseUrl('http://187.77.121.102'),
+        'https://187.77.121.102/api/v1',
+      );
+      // Mode produksi juga: dinaikkan https, bukan ditolak.
+      expect(
+        ApiClient.normalizeBaseUrl(
+          'http://187.77.121.102/api/v1',
+          allowInsecure: false,
+        ),
+        'https://187.77.121.102/api/v1',
+      );
+    });
+
+    test('override tersimpan ber-http di-upgrade saat init', () async {
+      SharedPreferences.setMockInitialValues({
+        'api_base_url': 'http://187.77.121.102/api/v1',
+      });
+
+      await ApiClient().init();
+
+      expect(ApiClient().baseUrl, 'https://187.77.121.102/api/v1');
+    });
   });
 
   group('error message', () {

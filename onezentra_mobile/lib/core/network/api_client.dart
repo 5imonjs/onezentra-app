@@ -84,6 +84,13 @@ class ApiClient {
       text = 'https://$text';
     }
     var uri = Uri.tryParse(text);
+    // Server trial produksi WAJIB https walau build debug. POST login via
+    // http dibalas redirect 301 nginx, Dart mengikuti redirect dengan
+    // mengubah POST→GET, dan login selalu gagal walau kredensial benar.
+    // http tetap diizinkan untuk server dev lokal (10.0.2.2/localhost/LAN).
+    if (uri != null && uri.host == _productionHost && uri.scheme == 'http') {
+      uri = uri.replace(scheme: 'https');
+    }
     if (uri == null ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
         (uri.scheme == 'http' && !allowHttp) ||
@@ -95,7 +102,9 @@ class ApiClient {
     if (uri.path.isEmpty || uri.path == '/') {
       return '${uri.scheme}://${uri.authority}/api/v1';
     }
-    return text;
+    // Bangun dari uri, bukan text asli — agar penyesuaian skema di atas
+    // (http→https untuk IP produksi) tidak hilang pada URL ber-path.
+    return '${uri.scheme}://${uri.authority}${uri.path}';
   }
 
   /// Hard limit per request, so a dead network can never leave a loading
