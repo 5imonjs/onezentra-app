@@ -1073,14 +1073,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {
-                        // Buka detail validasi sesi untuk catatan luar rencana ini
-                      },
+                      onPressed: () => _showExtraItemSheet(provider),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         backgroundColor: Colors.white.withValues(alpha: 0.1),
                       ),
-                      child: const Text('Detail', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                      child: const Text('Detail Validasi', style: TextStyle(fontSize: 10, color: Colors.white70)),
                     ),
                   ],
                 ),
