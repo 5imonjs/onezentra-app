@@ -1359,7 +1359,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   }) {
     var pending = session.items.where((item) => item.isPending).length;
     var missingExpired = session.items
-        .where((item) => !item.isPending && !item.hasExpiredDate)
+        .where((item) => !item.isPending && item.condition != 'FISIK_TIDAK_ADA' && !item.hasExpiredDate)
         .length;
     // Paritas label luar rencana: label yang belum tercetak mengunci
     // penyelesaian sama seperti label rencana kirim — catatan yang
