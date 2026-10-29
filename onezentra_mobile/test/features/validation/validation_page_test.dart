@@ -1610,6 +1610,9 @@ void main() {
 
     expect(find.text('Cetak 1 label dulu'), findsOneWidget);
     expect(find.text('Selesaikan Validasi ✓'), findsNothing);
+    // Badge Tercetak hanya di tile item rencana kirim — catatan luar
+    // rencana yang labelnya belum dilaporkan belum berhak.
+    expect(find.text('Tercetak'), findsOneWidget);
   });
 
   testWidgets(
@@ -1679,6 +1682,8 @@ void main() {
       // (cetakan berikutnya membawa tanda COPY) — item rencana kirim dan
       // catatan luar rencana keduanya.
       expect(find.text('Cetak Ulang'), findsNWidgets(2));
+      // Badge Tercetak kini tampil di kedua tile, sama seperti rencana kirim.
+      expect(find.text('Tercetak'), findsNWidgets(2));
     },
   );
 

@@ -1039,11 +1039,16 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       'REJECTED' => ('Ditolak', AppTheme.danger),
       _ => ('Menunggu persetujuan', AppTheme.warning),
     };
+    // Paritas tanda tercetak: label yang sudah dilaporkan menandai tile
+    // hijau seperti tile item rencana kirim.
+    var printed = item.canPrint && (item.batch?.isPrinted ?? false);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space3),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: printed
+            ? AppTheme.success.withValues(alpha: 0.12)
+            : Colors.white.withValues(alpha: 0.06),
         borderRadius: AppTheme.radiusLg,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
@@ -1113,9 +1118,17 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             ),
           ),
           // Disetujui + batch tersedia → label siap dicetak seperti item
-          // rencana kirim (termasuk jejak "Cetak Ulang" & tanda COPY).
+          // rencana kirim (termasuk jejak "Cetak Ulang", badge "Tercetak"
+          // & tanda COPY pada cetakan ulang).
           if (item.canPrint) ...[
             const SizedBox(height: AppTheme.space3),
+            if (printed) ...[
+              const AppBadge(
+                text: 'Tercetak',
+                variant: AppBadgeVariant.success,
+              ),
+              const SizedBox(height: AppTheme.space2),
+            ],
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
