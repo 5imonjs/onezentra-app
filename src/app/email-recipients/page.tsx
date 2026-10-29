@@ -130,6 +130,8 @@ const triggerOptions: Record<string, { value: string; label: string; description
   ],
   sj_ba: [
     { value: 'validated', label: 'Validasi SJ/BA selesai', description: 'Terpicu saat dokumen SJ/BA selesai divalidasi (pemroses: modul Validasi Dokumen).' },
+    { value: 'extra_item', label: 'Barang luar rencana dilaporkan', description: 'Terpicu saat checker mencatat barang di luar rencana kirim beserta foto bukti (pemroses: modul Validasi Dokumen).' },
+    { value: 'extra_item_decision', label: 'Keputusan barang luar rencana', description: 'Terpicu saat planner menyetujui atau menolak barang luar rencana — disetujui berarti label batch otomatis diterbitkan (pemroses: modul Validasi Dokumen).' },
   ],
   receiving: [
     { value: 'completed', label: 'Proses bongkar selesai', description: 'Terpicu saat unit dinyatakan selesai bongkar (pemroses: modul Receiving).' },
