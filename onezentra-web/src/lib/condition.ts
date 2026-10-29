@@ -6,6 +6,8 @@ export const CONDITIONS = [
   'QTY_KURANG',
   'ISI_KEMASAN_KURANG',
   'EXPIRED_TIDAK_STANDAR',
+  'SURPLUS',
+  'FISIK_TIDAK_ADA',
   'LAINNYA',
 ] as const;
 
@@ -15,6 +17,8 @@ export const CONDITION_LABELS: Record<string, string> = {
   QTY_KURANG: 'Qty Kurang',
   ISI_KEMASAN_KURANG: 'Isi Kemasan Kurang',
   EXPIRED_TIDAK_STANDAR: 'Expired Tidak Standar',
+  SURPLUS: 'Qty Lebih dari Rencana',
+  FISIK_TIDAK_ADA: 'Fisik Tidak Ada',
   LAINNYA: 'Lainnya',
 };
 
@@ -24,6 +28,8 @@ export const PHOTO_REQUIRED_CONDITIONS = [
   'QTY_KURANG',
   'ISI_KEMASAN_KURANG',
   'EXPIRED_TIDAK_STANDAR',
+  'SURPLUS',
+  'FISIK_TIDAK_ADA',
   'LAINNYA',
 ] as const;
 
@@ -63,6 +69,8 @@ const CONDITION_META: Record<string, ConditionMeta> = {
   LESS: { label: 'Qty Kurang', canonical: 'QTY_KURANG', tone: 'warn' },
   ISI_KEMASAN_KURANG: { label: 'Isi Kemasan Kurang', canonical: 'ISI_KEMASAN_KURANG', tone: 'warn' },
   EXPIRED_TIDAK_STANDAR: { label: 'Expired Tidak Standar', canonical: 'EXPIRED_TIDAK_STANDAR', tone: 'warn' },
+  SURPLUS: { label: 'Qty Lebih dari Rencana', canonical: 'SURPLUS', tone: 'warn' },
+  FISIK_TIDAK_ADA: { label: 'Fisik Tidak Ada', canonical: 'FISIK_TIDAK_ADA', tone: 'bad' },
   MISSING: { label: 'Barang Hilang', canonical: 'LAINNYA', tone: 'bad' },
   LAINNYA: { label: 'Lainnya', canonical: 'LAINNYA', tone: 'neutral' },
 };

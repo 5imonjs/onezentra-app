@@ -119,6 +119,8 @@ class ValidationCondition {
     'QTY_KURANG': 'Qty kurang',
     'ISI_KEMASAN_KURANG': 'Isi kemasan kurang',
     'EXPIRED_TIDAK_STANDAR': 'Expired tidak standar',
+    'SURPLUS': 'Qty lebih dari rencana',
+    'FISIK_TIDAK_ADA': 'Fisik tidak ada',
     'LAINNYA': 'Lainnya',
   };
 
@@ -128,6 +130,8 @@ class ValidationCondition {
     'QTY_KURANG',
     'ISI_KEMASAN_KURANG',
     'EXPIRED_TIDAK_STANDAR',
+    'SURPLUS',
+    'FISIK_TIDAK_ADA',
     'LAINNYA',
   ];
 
@@ -137,6 +141,8 @@ class ValidationCondition {
     'QTY_KURANG',
     'ISI_KEMASAN_KURANG',
     'EXPIRED_TIDAK_STANDAR',
+    'SURPLUS',
+    'FISIK_TIDAK_ADA',
     'LAINNYA',
   ];
 

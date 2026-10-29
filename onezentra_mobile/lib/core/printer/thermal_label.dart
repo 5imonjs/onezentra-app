@@ -66,6 +66,8 @@ const Map<String, String> conditionLabel = {
   'QTY_KURANG': 'Qty Kurang',
   'ISI_KEMASAN_KURANG': 'Isi Kemasan Kurang',
   'EXPIRED_TIDAK_STANDAR': 'Expired/Tdk Standar',
+  'SURPLUS': 'Qty Lebih',
+  'FISIK_TIDAK_ADA': 'Fisik Tidak Ada',
   'LAINNYA': 'Lainnya',
 };
 
