@@ -7,6 +7,7 @@ use App\Models\BiayaRetribusiDocument;
 use App\Models\BiayaThlPhoto;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\ReceivingItem;
+use App\Models\SjValidationExtraItem;
 use App\Models\SjValidationItem;
 use App\Support\EvidenceStorage;
 use Illuminate\Http\Request;
@@ -54,6 +55,16 @@ class StorageController extends Controller
             $sjItem = SjValidationItem::with('validation.rencanaKirim')->where('photo', $path)->first();
             if ($sjItem) {
                 $rencana = $sjItem->validation?->rencanaKirim;
+
+                return ['kode_depo' => $rencana?->kode_depo, 'nama_depo' => $rencana?->nama_depo];
+            }
+
+            // Barang di luar rencana kirim: fotonya di folder yang sama,
+            // tapi barisnya di tabel sendiri — tanpa lookup ini klik foto
+            // dari tile luar rencana membalas 404 ({"message": ""}).
+            $extraItem = SjValidationExtraItem::with('validation.rencanaKirim')->where('photo', $path)->first();
+            if ($extraItem) {
+                $rencana = $extraItem->validation?->rencanaKirim;
 
                 return ['kode_depo' => $rencana?->kode_depo, 'nama_depo' => $rencana?->nama_depo];
             }

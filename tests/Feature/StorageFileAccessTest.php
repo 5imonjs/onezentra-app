@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\ReceivingItem;
+use App\Models\RencanaKirim;
+use App\Models\SjValidation;
+use App\Models\SjValidationExtraItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -63,6 +66,77 @@ class StorageFileAccessTest extends TestCase
 
         $file = $response->baseResponse->getFile();
         $this->assertSame('fake-image-bytes', file_get_contents($file->getPathname()));
+    }
+
+    public function test_storage_serves_extra_item_photo_for_same_depot(): void
+    {
+        // Regresi: foto barang di luar rencana membalas 404 ({"message": ""})
+        // karena resolveOwner tidak mengenali tabel sj_validation_extra_items.
+        Storage::fake('public');
+        Storage::disk('public')->put('validation-photos/extra.jpg', 'fake-extra-bytes');
+
+        $user = $this->makeUser();
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-ST-EXTRA',
+            'status' => 'CHECKED_IN',
+            'kode_depo' => 'DPT-A',
+            'nama_depo' => 'Depo A',
+            'created_by' => $user->id,
+        ]);
+        $validation = SjValidation::create([
+            'rencana_kirim_id' => $rk->id,
+            'status' => 'IN_PROGRESS',
+            'scan_code' => 'PO-ST-EXTRA',
+        ]);
+        SjValidationExtraItem::create([
+            'sj_validation_id' => $validation->id,
+            'kode_barang' => 'SKU-EXTRA',
+            'nama_barang' => 'Barang Luar Rencana',
+            'qty' => 2,
+            'satuan' => 'CRT',
+            'photo' => 'validation-photos/extra.jpg',
+            'recorded_by' => $user->id,
+        ]);
+
+        Sanctum::actingAs($user);
+        $response = $this->get('/api/v1/storage/validation-photos/extra.jpg');
+        $response->assertOk();
+
+        $file = $response->baseResponse->getFile();
+        $this->assertSame('fake-extra-bytes', file_get_contents($file->getPathname()));
+    }
+
+    public function test_storage_rejects_extra_item_photo_from_other_depot(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('validation-photos/depo-lain.jpg', 'rahasia-depo-lain');
+
+        $user = $this->makeUser(); // depo DPT-A
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'PO-ST-LAIN',
+            'status' => 'CHECKED_IN',
+            'kode_depo' => 'DPT-Z',
+            'nama_depo' => 'Depo Z',
+            'created_by' => $user->id,
+        ]);
+        $validation = SjValidation::create([
+            'rencana_kirim_id' => $rk->id,
+            'status' => 'IN_PROGRESS',
+            'scan_code' => 'PO-ST-LAIN',
+        ]);
+        SjValidationExtraItem::create([
+            'sj_validation_id' => $validation->id,
+            'kode_barang' => 'SKU-LAIN',
+            'nama_barang' => 'Barang Depo Lain',
+            'qty' => 1,
+            'satuan' => 'CRT',
+            'photo' => 'validation-photos/depo-lain.jpg',
+            'recorded_by' => $user->id,
+        ]);
+
+        Sanctum::actingAs($user);
+        // Seragam 404 untuk lintas depo (anti enumerasi), bukan 403.
+        $this->get('/api/v1/storage/validation-photos/depo-lain.jpg')->assertNotFound();
     }
 
     public function test_storage_missing_file_returns_404_for_authenticated_user(): void
