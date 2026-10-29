@@ -1073,7 +1073,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => _showExtraItemSheet(provider),
+                      onPressed: () => _showExtraItemSheet(provider, item: item),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         backgroundColor: Colors.white.withValues(alpha: 0.1),
@@ -1351,7 +1351,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     return '${two(date.day)}/${two(date.month)}/${date.year}';
   }
 
-  Future<void> _showExtraItemSheet(ValidationProvider provider) async {
+  Future<void> _showExtraItemSheet(ValidationProvider provider, {SjValidationExtraItem? item}) async {
     if (provider.actionBusy) {
       return;
     }
@@ -1361,7 +1361,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => ChangeNotifierProvider<ValidationProvider>.value(
         value: widget.provider,
-        child: _ExtraItemSheet(pickPhoto: widget.pickPhoto),
+        child: _ExtraItemSheet(pickPhoto: widget.pickPhoto, item: item),
       ),
     );
   }
@@ -2297,10 +2297,11 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
 /// foto bukti (widget bersama), tanggal expired (picker bersama). Rencana
 /// tidak pernah diubah — planner diberi tahu via email oleh server.
 class _ExtraItemSheet extends StatefulWidget {
-  const _ExtraItemSheet({this.pickPhoto});
+  const _ExtraItemSheet({this.pickPhoto, this.item});
 
   /// Overrides ImagePicker untuk test.
   final Future<String?> Function({required bool fromCamera})? pickPhoto;
+  final SjValidationExtraItem? item;
 
   @override
   State<_ExtraItemSheet> createState() => _ExtraItemSheetState();
@@ -2330,6 +2331,20 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
   /// lanjut manual. Dibatasi 5 supaya daftar singkat di layar kecil.
   List<NpnProduct> _suggestions = [];
   Timer? _searchDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.item != null) {
+      _qtyController.text = widget.item!.qty.toString();
+      _condition = widget.item!.condition ?? 'FISIK_BAGUS';
+      _notesController.text = widget.item!.notes ?? '';
+      if (widget.item!.expiredDate != null) {
+        _expiredDate = DateTime.tryParse(widget.item!.expiredDate ?? '');
+        _expiredController.text = formatDateId(_expiredDate);
+      }
+    }
+  }
 
   @override
   void dispose() {
