@@ -795,7 +795,7 @@ export default function ValidasiSjPage() {
   // Item "lengkap": sudah divalidasi + qty terisi + expired terisi.
   // Selesaikan Validasi diblokir sampai semua item lengkap (cegah submit data bolong).
   const isItemComplete = (item: ValidationItem): boolean =>
-    item.status !== 'PENDING' && item.actual_qty != null && !!item.expired_date;
+    item.status !== 'PENDING' && item.actual_qty != null && (item.condition === 'FISIK_TIDAK_ADA' || !!item.expired_date);
   const incompleteItems = active?.items?.filter((item) => !isItemComplete(item)) ?? [];
   const mismatchCount = active?.items?.filter((item) => item.status === 'MISMATCH').length ?? 0;
   /**
