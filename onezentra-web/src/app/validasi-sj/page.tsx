@@ -1470,7 +1470,6 @@ export default function ValidasiSjPage() {
                               {decision.label}
                             </span>
                           </div>
-                        </div>
                         <p className="text-[11px] text-slate-500">
                           {extra.expired_date ? <>Expired: <span className="font-semibold">{fmtDate(extra.expired_date)}</span><span className="text-slate-300"> • </span></> : null}
                           {extra.notes ? <>{extra.notes}<span className="text-slate-300"> • </span></> : null}
