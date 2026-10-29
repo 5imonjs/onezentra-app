@@ -97,6 +97,21 @@ export default function DashboardAlerts({ kodeDepo }: { kodeDepo?: string }) {
       />
     );
   }
+  // Barang luar rencana menunggu keputusan planner (izin approve, bukan
+  // sekadar melihat validasi) — keputusan terjadi di halaman validasi dokumen.
+  if (hasPermission('sj_validation.approve') && summary.alerts.extra_item_pending > 0) {
+    cards.push(
+      <AlertCard
+        key="extra-pending"
+        href="/validasi-sj"
+        label="Barang Luar Rencana"
+        value={summary.alerts.extra_item_pending.toLocaleString('id-ID')}
+        hint="menunggu keputusan planner"
+        tone="amber"
+        icon="package"
+      />
+    );
+  }
   if (hasPermission('sj_validation.view') && summary.sla.sj_open_count > 0) {
     cards.push(
       <AlertCard

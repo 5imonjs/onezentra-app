@@ -2,13 +2,14 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PendingActions from './PendingActions';
 
-const { hasPermission, thlList, retribusiList, sjList, rkList, gateList } = vi.hoisted(() => ({
+const { hasPermission, thlList, retribusiList, sjList, rkList, gateList, standarisasiList } = vi.hoisted(() => ({
   hasPermission: vi.fn((_perm: string) => true),
   thlList: vi.fn(),
   retribusiList: vi.fn(),
   sjList: vi.fn(),
   rkList: vi.fn(),
   gateList: vi.fn(),
+  standarisasiList: vi.fn(),
 }));
 
 vi.mock('@/lib/api', () => ({
@@ -17,6 +18,7 @@ vi.mock('@/lib/api', () => ({
   sjValidations: { list: sjList },
   rencanaKirim: { list: rkList },
   gateTransactions: { list: gateList },
+  standarisasiTumpukan: { list: standarisasiList },
   getErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
@@ -30,7 +32,7 @@ describe('PendingActions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hasPermission.mockReturnValue(true);
-    for (const fn of [thlList, retribusiList, sjList, rkList, gateList]) {
+    for (const fn of [thlList, retribusiList, sjList, rkList, gateList, standarisasiList]) {
       fn.mockResolvedValue(kosong);
     }
   });
@@ -86,5 +88,68 @@ describe('PendingActions', () => {
 
     await waitFor(() => expect(gateList).toHaveBeenCalled());
     await waitFor(() => expect(screen.queryByText('Perlu Tindakan')).not.toBeInTheDocument());
+  });
+
+  it('grup approval barang luar rencana & standarisasi tampil untuk approver', async () => {
+    sjList.mockImplementation((params?: Record<string, unknown>) => {
+      if (params?.has_pending_extra_items) {
+        return Promise.resolve({
+          data: {
+            data: [
+              { id: 7, scan_code: 'PO-042', pending_extra_items_count: 3, rencana_kirim: { po_transporter: 'PO-042' } },
+            ],
+            total: 1,
+          },
+        });
+      }
+      return Promise.resolve(kosong);
+    });
+    standarisasiList.mockResolvedValue({
+      data: {
+        data: [
+          { id: 88, npn: { szShortDescription: null, szNickName: 'MCC8R', szNickNameNew: '' } },
+        ],
+        total: 4,
+      },
+    });
+
+    render(<PendingActions kodeDepo="DPO" />);
+
+    expect(await screen.findByText('Barang luar rencana menunggu keputusan')).toBeInTheDocument();
+    expect(screen.getByText('Standarisasi menunggu approval BLC')).toBeInTheDocument();
+
+    // Grup barang luar rencana: filter spesifik + jumlah barang per sesi.
+    expect(sjList).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'IN_PROGRESS',
+      has_pending_extra_items: 1,
+      kode_depo: 'DPO',
+    }));
+    expect(screen.getByText('PO-042')).toBeInTheDocument();
+    expect(screen.getByText('3 barang menunggu')).toBeInTheDocument();
+
+    // Grup standarisasi: ambil pengajuan PENDING dari master standarisasi.
+    expect(standarisasiList).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'pending',
+      kode_depo: 'DPO',
+    }));
+    expect(screen.getByText('MCC8R')).toBeInTheDocument();
+  });
+
+  it('grup approval tidak memanggil endpoint tanpa izin terkait', async () => {
+    hasPermission.mockImplementation((perm: string) => {
+      if (perm === 'sj_validation.approve' || perm === 'standarisasi.approve') return false;
+      return true;
+    });
+
+    render(<PendingActions kodeDepo="DPO" />);
+
+    await waitFor(() => expect(gateList).toHaveBeenCalled());
+    // Sesi tetap dimuat untuk grup "belum divalidasi" (sj_validation.view),
+    // tapi tanpa filter has_pending_extra_items; endpoint standarisasi kosong.
+    expect(sjList).toHaveBeenCalledTimes(1);
+    expect(sjList).not.toHaveBeenCalledWith(expect.objectContaining({ has_pending_extra_items: 1 }));
+    expect(standarisasiList).not.toHaveBeenCalled();
+    expect(screen.queryByText('Barang luar rencana menunggu keputusan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Standarisasi menunggu approval BLC')).not.toBeInTheDocument();
   });
 });

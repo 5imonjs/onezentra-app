@@ -23,7 +23,7 @@ export interface SummaryData {
   depot: string | null;
   totals: Record<string, number>;
   new_7d: Record<string, number>;
-  alerts: { expired_kritis: number; expired_total: number; standarisasi_pending: number };
+  alerts: { expired_kritis: number; expired_total: number; standarisasi_pending: number; extra_item_pending: number };
   opname_at_risk: SummaryOpnameAtRisk | null;
   quality: { npn_no_volume: number; npn_no_umur: number };
   sla: {
@@ -44,7 +44,7 @@ const EMPTY: SummaryData = {
   depot: null,
   totals: {},
   new_7d: {},
-  alerts: { expired_kritis: 0, expired_total: 0, standarisasi_pending: 0 },
+  alerts: { expired_kritis: 0, expired_total: 0, standarisasi_pending: 0, extra_item_pending: 0 },
   opname_at_risk: null,
   quality: { npn_no_volume: 0, npn_no_umur: 0 },
   sla: {

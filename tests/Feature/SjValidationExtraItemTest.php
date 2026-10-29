@@ -85,6 +85,33 @@ class SjValidationExtraItemTest extends TestCase
         ]);
     }
 
+    public function test_index_filter_has_pending_extra_items_hanya_sesi_terkait(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+
+        $rkPending = $this->rencanaKirim($user);
+        $sesiPending = $this->inProgressValidation($user, $rkPending);
+        $this->buatCatatanLuar($user, $sesiPending);
+
+        // Sesi tanpa barang luar rencana — tidak boleh muncul di filter.
+        $sesiBersih = $this->inProgressValidation($user, $this->rencanaKirim($user));
+
+        // Sesi yang catatannya sudah diputuskan (REJECTED) — tidak dihitung.
+        $rkRejected = $this->rencanaKirim($user);
+        $sesiRejected = $this->inProgressValidation($user, $rkRejected);
+        $this->buatCatatanLuar($user, $sesiRejected)->update(['status' => 'REJECTED']);
+
+        $res = $this->getJson('/api/v1/sj-validations?has_pending_extra_items=1')->assertOk();
+
+        $ids = collect($res->json('data'))->pluck('id');
+        $this->assertContains($sesiPending->id, $ids);
+        $this->assertNotContains($sesiBersih->id, $ids);
+        $this->assertNotContains($sesiRejected->id, $ids);
+
+        $target = $res->collect('data')->firstWhere('id', $sesiPending->id);
+        $this->assertSame(1, $target['pending_extra_items_count']);
+    }
+
     public function test_menyimpan_barang_luar_rencana_dengan_foto_tanpa_mengubah_rencana(): void
     {
         Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']));

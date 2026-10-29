@@ -10,6 +10,7 @@ use App\Models\Receiving;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\SjValidation;
+use App\Models\SjValidationExtraItem;
 use App\Models\StandarisasiTumpukan;
 use App\Models\StandarUmurProduk;
 use App\Models\User;
@@ -240,10 +241,27 @@ class DashboardController extends Controller
             'expired_kritis' => 0,
             'expired_total' => 0,
             'standarisasi_pending' => 0,
+            'extra_item_pending' => 0,
         ];
         if ($can('standarisasi.view')) {
             $alerts['standarisasi_pending'] = $this->moduleQuery('standarisasi', $depot, $user)
                 ->where('standarisasi_tumpukan.status', 'pending')->count();
+        }
+
+        // Barang luar rencana menunggu keputusan planner — kartu dashboard.
+        // Angka = jumlah BARANG (baris), bukan jumlah sesi; depot mengikuti
+        // depo rencana kirim dari sesi validasinya.
+        if ($can('sj_validation.approve')) {
+            $extraPending = SjValidationExtraItem::query()
+                ->where('status', 'PENDING')
+                ->whereHas('validation.rencanaKirim', function ($q) use ($user, $depot) {
+                    if ($user->isDepotScoped()) {
+                        $q->forUserDepot($user);
+                    } else {
+                        $q->when($depot, fn ($s) => $s->where('kode_depo', $depot));
+                    }
+                });
+            $alerts['extra_item_pending'] = $extraPending->count();
         }
         $opnameAtRisk = null;
         if ($can('opname.view')) {

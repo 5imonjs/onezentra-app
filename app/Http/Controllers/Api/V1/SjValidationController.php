@@ -43,6 +43,17 @@ class SjValidationController extends Controller
                 'items',
                 'items as validated_items_count' => fn ($q) => $q->where('status', '!=', 'PENDING'),
             ])
+            // Daftar "Perlu Tindakan" (dashboard web): hanya sesi yang punya
+            // catatan barang luar rencana menunggu keputusan planner. Count
+            // ikut dihitung supaya kartu tahu jumlah baris tanpa detail load.
+            ->when(
+                $request->boolean('has_pending_extra_items'),
+                fn ($q) => $q
+                    ->whereHas('extraItems', fn ($e) => $e->where('status', 'PENDING'))
+                    ->withCount([
+                        'extraItems as pending_extra_items_count' => fn ($e) => $e->where('status', 'PENDING'),
+                    ]),
+            )
             ->when($request->user()->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->forUserDepot($request->user())))
             ->when($request->filled('kode_depo') && ! $request->user()->isDepotScoped(), fn ($q) => $q->whereHas('rencanaKirim', fn ($s) => $s->where('kode_depo', $request->input('kode_depo'))))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))

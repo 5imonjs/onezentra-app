@@ -11,6 +11,7 @@ use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\SjValidation;
+use App\Models\SjValidationExtraItem;
 use App\Models\StandarisasiTumpukan;
 use App\Models\User;
 use App\Models\UserActivityLog;
@@ -110,6 +111,52 @@ class DashboardSummaryTest extends TestCase
         $this->assertSame(1, $data['opname_at_risk']['kritis_rows']);
         $this->assertGreaterThan(0, $data['opname_at_risk']['pcs']);
         $this->assertNotEmpty($data['recent']);
+    }
+
+    public function test_summary_counts_pending_extra_items_for_planner(): void
+    {
+        $user = $this->userWith('dash-extra@example.com', [
+            'dashboard.view', 'sj_validation.view', 'sj_validation.approve',
+        ]);
+        Sanctum::actingAs($user);
+
+        $rk = RencanaKirim::create([
+            'po_transporter' => 'SJ-EX', 'kode_depo' => 'DPO', 'nama_depo' => 'Depo Test',
+            'status' => 'scheduled', 'created_by' => $user->id,
+        ]);
+        $validation = SjValidation::create([
+            'rencana_kirim_id' => $rk->id, 'status' => 'IN_PROGRESS', 'scan_code' => 'SJ-EX',
+        ]);
+        SjValidationExtraItem::create([
+            'sj_validation_id' => $validation->id,
+            'kode_barang' => 'SKU-1', 'nama_barang' => 'Barang Luar 1',
+            'qty' => 2, 'satuan' => 'CRT', 'photo' => 'validation-photos/test.jpg', 'recorded_by' => $user->id,
+        ]);
+        // Baris di depo lain tidak ikut dihitung.
+        $rkLain = RencanaKirim::create([
+            'po_transporter' => 'SJ-OTHER', 'kode_depo' => 'XYZ', 'nama_depo' => 'Depo Lain',
+            'status' => 'scheduled', 'created_by' => $user->id,
+        ]);
+        $validationLain = SjValidation::create([
+            'rencana_kirim_id' => $rkLain->id, 'status' => 'IN_PROGRESS', 'scan_code' => 'SJ-OTHER',
+        ]);
+        SjValidationExtraItem::create([
+            'sj_validation_id' => $validationLain->id,
+            'kode_barang' => 'SKU-2', 'nama_barang' => 'Barang Luar 2',
+            'qty' => 1, 'satuan' => 'CRT', 'photo' => 'validation-photos/test.jpg', 'recorded_by' => $user->id,
+        ]);
+
+        $res = $this->getJson('/api/v1/dashboard/summary')->assertOk();
+        $this->assertSame(1, $res->json('data.alerts.extra_item_pending'));
+    }
+
+    public function test_summary_hides_extra_item_count_without_approve_permission(): void
+    {
+        $user = $this->userWith('dash-noapprove@example.com', ['dashboard.view']);
+        Sanctum::actingAs($user);
+
+        $res = $this->getJson('/api/v1/dashboard/summary')->assertOk();
+        $this->assertSame(0, $res->json('data.alerts.extra_item_pending'));
     }
 
     public function test_summary_requires_dashboard_view(): void
