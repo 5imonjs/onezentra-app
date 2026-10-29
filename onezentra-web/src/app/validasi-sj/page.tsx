@@ -641,7 +641,7 @@ export default function ValidasiSjPage() {
    */
   const buildLastLabel = (): BatchLabelData | null => {
     const item = lastScanned;
-    if (!item || !lastBatch) return null;
+    if (!item || !lastBatch || item.condition === 'FISIK_TIDAK_ADA') return null;
     return {
       batch_number: lastBatch.batch_number,
       barcode_label: lastBatch.barcode_label,
@@ -679,6 +679,7 @@ export default function ValidasiSjPage() {
    * keluar dari printer.
    */
   const printItemLabel = async (item: ValidationItem, viaDownload: boolean) => {
+    if (item.condition === 'FISIK_TIDAK_ADA') return; // Tidak ada fisik = tidak perlu label
     const barcode = item.batch?.barcode_label?.trim() ?? '';
     if (!barcode || item.batch?.status === 'CANCELLED') return;
     const label: BatchLabelData = {
