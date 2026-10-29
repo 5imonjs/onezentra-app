@@ -622,7 +622,7 @@ class SjValidationController extends Controller
             // dua scan bersamaan terserialisasi; tangkapan duplikat di sini
             // menutup celah sisa (retry jaringan / double-tap lolos validasi).
             $existingBatch = Batch::where('sj_validation_item_id', $item->id)->first();
-            if (! $existingBatch) {
+            if (! $existingBatch && ($item->condition ?? null) !== 'FISIK_TIDAK_ADA') {
                 try {
                     Batch::createWithRetry([
                         'sj_validation_item_id' => $item->id,
