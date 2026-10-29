@@ -2,16 +2,33 @@
 
 namespace App\Services;
 
+use App\Jobs\SendEmailNotification;
 use App\Models\EmailDepotSetting;
 use App\Models\EmailNotificationLog;
 use App\Models\EmailRecipient;
 use App\Models\EmailSetting;
+use App\Models\Role;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class EmailNotificationService
 {
+    /**
+     * Permission yang membuat sebuah role memang berwenang lintas depo untuk
+     * jenis dokumen tertentu. Penerima role seperti ini tidak boleh dipotong
+     * oleh `kode_depo` dokumen — mis. BLC pusat harus menerima pengajuan
+     * standarisasi dari depo mana pun.
+     *
+     * @var array<string, string>
+     */
+    private const DOCUMENT_CROSS_DEPOT_PERMISSIONS = [
+        'standarisasi_tumpukan' => 'standarisasi.view_all',
+    ];
+
+    /** Permission global yang berlaku untuk semua jenis dokumen. */
+    private const GLOBAL_DEPOT_PERMISSION = 'depot.view_all';
+
     /**
      * Apply SMTP settings from email_settings to the runtime mail config.
      * Falls back to .env values when from_system_env is true or no setting exists.
@@ -113,7 +130,14 @@ class EmailNotificationService
 
         foreach ($recipients as $recipient) {
             if ($recipient->recipient_type === 'role') {
-                foreach ($recipient->resolveRoleEmailsByDepot($roleDepot) as $email) {
+                // Role yang berwenang lintas depo (mis. BLC untuk standarisasi)
+                // tetap menerima dokumen dari depo mana pun. Role lokal tetap
+                // dibatasi ke depo dokumen agar tidak bocor lintas depo.
+                $roleEmails = $this->roleReachesEveryDepot($documentType, $recipient->role_slug)
+                    ? $recipient->resolveRoleEmails()
+                    : $recipient->resolveRoleEmailsByDepot($roleDepot);
+
+                foreach ($roleEmails as $email) {
                     $emails[] = $email;
                 }
             } else {
@@ -125,6 +149,30 @@ class EmailNotificationService
         }
 
         return array_values(array_unique(array_filter($emails)));
+    }
+
+    /**
+     * Apakah role ini berwenang menerima dokumen dari semua depo?
+     *
+     * Ditentukan oleh permission, bukan daftar slug role, supaya pengecualian
+     * lintas depo tetap satu sumber dengan otorisasi modulnya.
+     */
+    private function roleReachesEveryDepot(string $documentType, ?string $roleSlug): bool
+    {
+        if (blank($roleSlug)) {
+            return false;
+        }
+
+        $permissions = [self::GLOBAL_DEPOT_PERMISSION];
+        $modulePermission = self::DOCUMENT_CROSS_DEPOT_PERMISSIONS[$documentType] ?? null;
+        if ($modulePermission !== null) {
+            $permissions[] = $modulePermission;
+        }
+
+        return Role::query()
+            ->where('slug', $roleSlug)
+            ->whereHas('permissions', fn ($query) => $query->whereIn('permissions.slug', $permissions))
+            ->exists();
     }
 
     /**
@@ -182,10 +230,17 @@ class EmailNotificationService
                 'recipients' => implode(', ', array_merge($to, $cc)) ?: null,
             ];
 
-            // Queue jika mailer mendukung queue, fallback ke send sync (testing/log)
-            if (method_exists($mailable, 'queue') && config('queue.default') !== 'sync' && app()->environment('production')) {
-                Mail::queue($mailable);
-                EmailNotificationLog::create($logContext + ['status' => EmailNotificationLog::STATUS_SENT]);
+            // Produksi ber-antrean: kirim lewat job agar worker menerapkan
+            // ulang setting SMTP dari database. `Mail::queue($mailable)`
+            // kehilangan config runtime tersebut (worker memakai .env).
+            if (config('queue.default') !== 'sync' && app()->environment('production')) {
+                SendEmailNotification::dispatch(
+                    $documentType,
+                    $trigger,
+                    $contextId,
+                    $mailable,
+                    $logContext['recipients'],
+                );
             } else {
                 // afterResponse agar tidak tambah latency walau sync driver; testing mengirim sync agar assertSent berfungsi
                 if (function_exists('dispatch') && ! app()->environment('testing')) {
