@@ -1089,7 +1089,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   vertical: 2,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.warning.withValues(alpha: 0.15),
+                  color: item.condition == 'FISIK_TIDAK_ADA' ? AppTheme.danger.withValues(alpha: 0.15) : AppTheme.warning.withValues(alpha: 0.15),
                   borderRadius: AppTheme.radiusFull,
                 ),
                 child: Text(
@@ -1097,7 +1097,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   style: GoogleFonts.roboto(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.warning,
+                    color: item.condition == 'FISIK_TIDAK_ADA' ? AppTheme.danger : AppTheme.warning,
                   ),
                 ),
               ),
@@ -1105,7 +1105,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           ),
           const SizedBox(height: 3),
           Text(
-            '${item.kodeBarang} • ${item.conditionLabel}'
+            '${item.kodeBarang} • ${item.conditionLabel == "FISIK_TIDAK_ADA" ? "FISIK TIDAK ADA" : item.conditionLabel}'
             '${item.expiredDate != null ? ' • Exp ${_shortDate(item.expiredDate!)}' : ''}'
             '${item.notes != null ? ' • ${item.notes}' : ''}',
             maxLines: 2,
