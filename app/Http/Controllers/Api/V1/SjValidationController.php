@@ -450,6 +450,7 @@ class SjValidationController extends Controller
                 'QTY_KURANG' => 'Qty kurang dari rencana',
                 'ISI_KEMASAN_KURANG' => 'Isi kemasan kurang',
                 'EXPIRED_TIDAK_STANDAR' => 'Expired tidak standar',
+                'SURPLUS' => 'Qty lebih dari rencana',
                 'LAINNYA' => 'Lainnya',
                 default => 'Selisih qty',
             } : null,
@@ -545,7 +546,7 @@ class SjValidationController extends Controller
             'barcode' => 'nullable|string|max:100',
             'actual_qty' => 'required|numeric|min:0|max:999999',
             'expired_date' => 'nullable|date_format:Y-m-d',
-            'condition' => 'nullable|string|in:FISIK_BAGUS,FISIK_RUSAK,QTY_KURANG,ISI_KEMASAN_KURANG,EXPIRED_TIDAK_STANDAR,LAINNYA',
+            'condition' => 'nullable|string|in:FISIK_BAGUS,FISIK_RUSAK,QTY_KURANG,ISI_KEMASAN_KURANG,EXPIRED_TIDAK_STANDAR,SURPLUS,LAINNYA',
             'notes' => 'nullable|string|max:2000',
             'tier' => 'nullable|integer|min:1|max:9999',
             'tinggi_tumpukan' => 'nullable|integer|min:1|max:9999',
@@ -555,7 +556,7 @@ class SjValidationController extends Controller
         ]);
 
         // Validasi wajib foto jika kondisi bermasalah
-        $conditionsRequiringPhoto = ['FISIK_RUSAK', 'QTY_KURANG', 'ISI_KEMASAN_KURANG', 'EXPIRED_TIDAK_STANDAR', 'LAINNYA'];
+        $conditionsRequiringPhoto = ['FISIK_RUSAK', 'QTY_KURANG', 'ISI_KEMASAN_KURANG', 'EXPIRED_TIDAK_STANDAR', 'SURPLUS', 'LAINNYA'];
         if (in_array($validated['condition'] ?? null, $conditionsRequiringPhoto) && ! $request->hasFile('photo')) {
             throw ValidationException::withMessages([
                 'photo' => ['Foto wajib diunggah untuk kondisi ini.'],
@@ -705,7 +706,7 @@ class SjValidationController extends Controller
             'nama_barang' => 'nullable|string|max:200',
             'qty' => 'required|numeric|min:0.01|max:999999',
             'satuan' => 'nullable|string|max:20',
-            'condition' => 'nullable|string|in:FISIK_BAGUS,FISIK_RUSAK,QTY_KURANG,ISI_KEMASAN_KURANG,EXPIRED_TIDAK_STANDAR,LAINNYA',
+            'condition' => 'nullable|string|in:FISIK_BAGUS,FISIK_RUSAK,QTY_KURANG,ISI_KEMASAN_KURANG,EXPIRED_TIDAK_STANDAR,SURPLUS,LAINNYA',
             'expired_date' => 'nullable|date_format:Y-m-d',
             'notes' => 'nullable|string|max:2000',
             'photo' => [
@@ -943,6 +944,7 @@ class SjValidationController extends Controller
             // Tanpa guard di server, client lain bisa menyelesaikan sesi
             // dengan data bolong dan Receiving/Opname Expired ikut kosong.
             $missingExpired = $locked->items()
+                ->where('actual_qty', '>', 0)
                 ->where(fn ($q) => $q->whereNull('expired_date')->orWhere('expired_date', ''))
                 ->count();
             abort_if(
@@ -1130,6 +1132,7 @@ class SjValidationController extends Controller
                 'QTY_KURANG' => 'Qty kurang dari rencana',
                 'ISI_KEMASAN_KURANG' => 'Isi kemasan kurang',
                 'EXPIRED_TIDAK_STANDAR' => 'Expired tidak standar',
+                'SURPLUS' => 'Qty lebih dari rencana',
                 'LAINNYA' => 'Lainnya',
                 default => 'Selisih qty',
             } : null;
