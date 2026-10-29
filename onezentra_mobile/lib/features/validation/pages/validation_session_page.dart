@@ -2056,9 +2056,10 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   ),
                 ),
                 const SizedBox(height: AppTheme.space4),
-                AppTextField(
-                  controller: _qtyController,
-                  label: 'Qty aktual',
+                if (_condition != 'FISIK_TIDAK_ADA') ...[
+                  AppTextField(
+                    controller: _qtyController,
+                    label: 'Qty aktual',
                   hint: '0',
                   prefixIcon: Icons.inventory_rounded,
                   keyboardType: const TextInputType.numberWithOptions(
@@ -2066,6 +2067,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   ),
                   textInputAction: TextInputAction.next,
                   validator: (value) {
+                    if (_condition == 'FISIK_TIDAK_ADA') return null;
                     var qty = double.tryParse(
                       (value ?? '').replaceAll(',', '.'),
                     );
@@ -2075,6 +2077,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                     return null;
                   },
                 ),
+                ],
                 const SizedBox(height: AppTheme.space3),
                 Text(
                   'Kondisi',
@@ -2098,14 +2101,14 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                       enabled: !_saving,
                     ),
                   ),
-                const SizedBox(height: AppTheme.space3),
-                ExpiredDateField(
-                  controller: _expiredController,
-                  onPicked: _onExpiredPicked,
-                  validator: (_) => _expiredDate == null
-                      ? 'Tanggal expired wajib diisi'
-                      : null,
-                ),
+                if (_condition != 'FISIK_TIDAK_ADA') ...[
+                  const SizedBox(height: AppTheme.space3),
+                  ExpiredDateField(
+                    controller: _expiredController,
+                    onPicked: _onExpiredPicked,
+                    validator: (_) => (_condition == 'FISIK_TIDAK_ADA' || _expiredDate != null) ? null : 'Tanggal expired wajib diisi',
+                  ),
+                ],
                 const SizedBox(height: AppTheme.space3),
                 ExpansionTile(
                   title: Text(
@@ -2203,7 +2206,13 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
-    if (_expiredDate == null) {
+    // FISIK_TIDAK_ADA: qty otomatis 0, expired tidak wajib.
+    if (_condition == 'FISIK_TIDAK_ADA') {
+      _qtyController.text = '0';
+      _expiredController.clear();
+      _expiredDate = null;
+    }
+    if (_condition != 'FISIK_TIDAK_ADA' && _expiredDate == null) {
       setState(() => _error = 'Tanggal expired wajib diisi.');
       return;
     }
@@ -2223,7 +2232,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     var provider = context.read<ValidationProvider>();
     var success = await provider.validateItem(
       itemId: widget.item.id,
-      actualQty: double.parse(_qtyController.text.trim().replaceAll(',', '.')),
+      actualQty: _condition == 'FISIK_TIDAK_ADA' ? 0.0 : double.parse(_qtyController.text.trim().replaceAll(',', '.')),
       barcode: _barcodeController.text.trim().isEmpty
           ? null
           : _barcodeController.text.trim(),
