@@ -1482,7 +1482,7 @@ export default function ValidasiSjPage() {
                           <button type="button" onClick={() => openExtraItem(extra)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-surface-card px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-surface-raised" title="Ubah catatan luar rencana">Ubah</button>
                         </div>
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
+                            <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${extra.condition === 'FISIK_TIDAK_ADA' ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
                               {extra.qty} {extra.satuan || ''} · {CONDITION_LABELS[extra.condition] || extra.condition}
                             </span>
                             <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${decision.cls}`}>
