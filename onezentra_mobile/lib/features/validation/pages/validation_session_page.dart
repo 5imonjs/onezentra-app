@@ -2067,7 +2067,9 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   ),
                   textInputAction: TextInputAction.next,
                   validator: (value) {
-                    if (_condition == 'FISIK_TIDAK_ADA') return null;
+                    if (_condition == 'FISIK_TIDAK_ADA') {
+                      return null;
+                    }
                     var qty = double.tryParse(
                       (value ?? '').replaceAll(',', '.'),
                     );
