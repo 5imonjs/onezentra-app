@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\EmailDepotSetting;
 use App\Models\EmailRecipient;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\EmailNotificationService;
@@ -192,6 +193,70 @@ class EmailRecipientResolutionTest extends TestCase
 
         $this->assertSame(
             ['depo-a@example.com'],
+            $this->service()->resolveRecipients('rencana_kirim', 'created', 'TO', 'DPO'),
+        );
+    }
+
+    /**
+     * BLC memegang `standarisasi.view_all`, jadi approver ini memang lintas
+     * depo. Pengajuan dari depo mana pun harus sampai ke BLC pusat — bukan
+     * hanya BLC yang kebetulan punya `kode_depo` sama dengan dokumen.
+     */
+    public function test_global_role_with_cross_depot_module_permission_reaches_all_depots(): void
+    {
+        $role = Role::create(['slug' => 'blc_lintas', 'name' => 'BLC Lintas']);
+        $permission = Permission::firstOrCreate(
+            ['slug' => 'standarisasi.view_all'],
+            ['name' => 'Standarisasi Lintas Depo', 'menu_group' => 'Standarisasi Tumpukan'],
+        );
+        $role->permissions()->attach($permission->id);
+
+        $this->recipient([
+            'document_type' => 'standarisasi_tumpukan',
+            'trigger' => 'submitted',
+            'kode_depo' => null,
+            'recipient_type' => 'role',
+            'role_slug' => 'blc_lintas',
+            'email' => null,
+        ]);
+
+        $this->user('blc-pusat@example.com', 'BLC-01', 'active', $role);
+        $this->user('blc-depo@example.com', 'DPO', 'active', $role);
+
+        $this->assertEqualsCanonicalizing(
+            ['blc-pusat@example.com', 'blc-depo@example.com'],
+            $this->service()->resolveRecipients('standarisasi_tumpukan', 'submitted', 'TO', 'DPO'),
+        );
+    }
+
+    /**
+     * Permission lintas depo hanya berlaku untuk modul yang memberikannya.
+     * BLC tetap tidak boleh menerima dokumen depo lain di modul yang tidak
+     * memberinya akses lintas depo.
+     */
+    public function test_cross_depot_role_permission_does_not_leak_to_other_documents(): void
+    {
+        $role = Role::create(['slug' => 'blc_lintas_dok', 'name' => 'BLC Lintas Dok']);
+        $permission = Permission::firstOrCreate(
+            ['slug' => 'standarisasi.view_all'],
+            ['name' => 'Standarisasi Lintas Depo', 'menu_group' => 'Standarisasi Tumpukan'],
+        );
+        $role->permissions()->attach($permission->id);
+
+        $this->recipient([
+            'document_type' => 'rencana_kirim',
+            'trigger' => 'created',
+            'kode_depo' => null,
+            'recipient_type' => 'role',
+            'role_slug' => 'blc_lintas_dok',
+            'email' => null,
+        ]);
+
+        $this->user('blc-pusat-dok@example.com', 'BLC-01', 'active', $role);
+        $this->user('blc-depo-dok@example.com', 'DPO', 'active', $role);
+
+        $this->assertSame(
+            ['blc-depo-dok@example.com'],
             $this->service()->resolveRecipients('rencana_kirim', 'created', 'TO', 'DPO'),
         );
     }

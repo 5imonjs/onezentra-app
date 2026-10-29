@@ -113,6 +113,18 @@
   members with the document's `kodeDepo`. Passing `null` down to
   `resolveRoleEmailsByDepot()` emailed every depot's members for one document
   (the reported "Singkawang still gets reminders" leak).
+- Exception to the rule above: email follows module authorization. A recipient
+  role that holds the cross-depot permission of the document type
+  (`standarisasi.view_all` for `standarisasi_tumpukan`) or the global
+  `depot.view_all` resolves to its members in EVERY depot — otherwise BLC pusat
+  never receives submissions made from another depot (e.g. mobile). Other roles
+  stay scoped to the document depot. Locked by `EmailRecipientResolutionTest`.
+- Email sent from a queued worker goes through `SendEmailNotification`, not
+  `Mail::queue($mailable)` directly: the worker process does not inherit the
+  runtime `Config::set()` applied by `applySmtpSettings()`, so a direct queued
+  mailable silently uses `.env` MAIL_* and may log "sent" without leaving the
+  server. The job re-applies DB SMTP settings, purges the cached mailer, and
+  records the real `sent`/`failed` result in `email_notification_logs`.
 - "Empty depot" is not "no email": an empty depot inherits the global rows. The
   explicit off-switch is `email_depot_settings` (unique `kode_depo`,
   `is_enabled`). `EmailNotificationService::isDepotEnabled()` treats an absent

@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Mail\StandarisasiStatusNotification;
+use App\Models\EmailRecipient;
 use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\StandarisasiTumpukan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -15,7 +18,7 @@ class StandarisasiTumpukanControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function userWith(array $permSlugs): User
+    private function userWith(array $permSlugs, string $kodeDepo = 'DPT-A'): User
     {
         $role = Role::firstOrCreate(['slug' => 'standarisasi_test'], ['name' => 'Standarisasi Test']);
         foreach ($permSlugs as $slug) {
@@ -24,7 +27,7 @@ class StandarisasiTumpukanControllerTest extends TestCase
         }
         $user = User::create([
             'email' => 'std-'.uniqid().'@test.com', 'password' => 'password', 'full_name' => 'Standarisasi User',
-            'kode_depo' => 'DPT-A', 'nama_depo' => 'Depo A', 'level' => 'staff_logistic', 'status' => 'active',
+            'kode_depo' => $kodeDepo, 'nama_depo' => 'Depo '.$kodeDepo, 'level' => 'staff_logistic', 'status' => 'active',
         ]);
         $role->users()->attach($user->id);
 
@@ -56,6 +59,47 @@ class StandarisasiTumpukanControllerTest extends TestCase
         $this->assertDatabaseHas('standarisasi_tumpukan', [
             'npn_id' => $npn->id, 'requested_by' => $user->id, 'kode_depo' => 'DPT-A',
         ]);
+    }
+
+    /**
+     * Pengajuan dari depo (mis. lewat aplikasi mobile) harus sampai ke BLC
+     * pusat. BLC punya akses lintas depo untuk modul standarisasi, jadi
+     * `kode_depo` dokumen tidak boleh memotong penerima role BLC.
+     */
+    public function test_store_notifies_cross_depot_blc_on_submitted(): void
+    {
+        Mail::fake();
+
+        $submitter = $this->userWith(['standarisasi.create'], 'DPT-A');
+
+        $blcRole = Role::firstOrCreate(['slug' => 'blc'], ['name' => 'BLC', 'description' => 'Approval BLC']);
+        $permission = Permission::firstOrCreate(
+            ['slug' => 'standarisasi.view_all'],
+            ['name' => 'Standarisasi Lintas Depo', 'menu_group' => 'Standarisasi Tumpukan'],
+        );
+        $blcRole->permissions()->syncWithoutDetaching([$permission->id]);
+
+        $blcPusat = User::create([
+            'email' => 'blc-pusat@test.com', 'password' => 'password', 'full_name' => 'BLC Pusat',
+            'kode_depo' => 'BLC-01', 'nama_depo' => 'Depo BLC', 'level' => 'blc', 'status' => 'active',
+        ]);
+        $blcRole->users()->attach($blcPusat->id);
+
+        EmailRecipient::create([
+            'document_type' => 'standarisasi_tumpukan', 'trigger' => 'submitted',
+            'kode_depo' => null, 'recipient_type' => 'role', 'role_slug' => 'blc',
+            'field' => 'TO', 'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($submitter);
+
+        $this->postJson('/api/v1/standarisasi-tumpukan', [
+            'npn_id' => $this->makeNpn()->id, 'tier' => 4, 'tinggi_tumpukan' => 3,
+        ])->assertCreated();
+
+        Mail::assertSent(StandarisasiStatusNotification::class, function (StandarisasiStatusNotification $mail) use ($blcPusat): bool {
+            return $mail->hasTo($blcPusat->email);
+        });
     }
 
     public function test_store_rejects_unknown_npn(): void
