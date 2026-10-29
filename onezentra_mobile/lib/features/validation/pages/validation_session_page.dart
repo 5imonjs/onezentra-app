@@ -1383,6 +1383,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var unprinted = session.items
         .where(
           (item) =>
+              item.condition != 'FISIK_TIDAK_ADA' &&
               !item.isPending &&
               item.hasLabel &&
               !(item.batch?.isPrinted ?? false),
