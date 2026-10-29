@@ -116,6 +116,7 @@ export function unprintedCompleteItems<T extends PrintableItem>(items: T[] | nul
   if (!items?.length) return [];
   return items.filter((item) => {
     if (item.status === 'PENDING') return false;
+    if ((item as any).condition === 'FISIK_TIDAK_ADA') return false;
     const barcode = item.batch?.barcode_label?.trim() ?? '';
     if (!barcode) return false;
     if (item.batch?.status === 'CANCELLED') return false;
