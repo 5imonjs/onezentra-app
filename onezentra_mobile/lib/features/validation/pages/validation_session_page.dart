@@ -1058,15 +1058,31 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  item.namaBarang,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.roboto(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.namaBarang,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.roboto(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        // Buka detail validasi sesi untuk catatan luar rencana ini
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      ),
+                      child: const Text('Detail', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                    ),
+                  ],
                 ),
               ),
               Container(
