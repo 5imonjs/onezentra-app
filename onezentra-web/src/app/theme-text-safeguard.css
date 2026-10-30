@@ -14,3 +14,11 @@
 [data-theme='dark'] .text-gray-400 {
   color: #b0bdcb !important;
 }
+[data-theme='dark'] .text-slate-800,
+[data-theme='dark'] .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+[data-theme='dark'] .text-ink-fg,
+[data-theme='dark'] .text-ink-fg-muted {
+  color: #cbd5e1 !important;
+}
