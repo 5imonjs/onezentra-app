@@ -263,7 +263,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     // Glass card: translucent indigo in dark mode, solid white in light mode.
     var cardColor = isDark
         ? AppTheme.primary950.withValues(alpha: 0.55)
-        : context.colors.foreground;
+        : context.colors.surfaceCard;
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.space6),
@@ -273,7 +273,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         border: Border.all(
           color: isDark
               ? context.colors.foreground.withValues(alpha: 0.14)
-              : context.colors.foreground,
+              : context.colors.border,
         ),
         boxShadow: [AppTheme.shadowXl, if (!isDark) AppTheme.shadowPrimary],
       ),
@@ -548,7 +548,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     var titleColor = isDark
         ? context.colors.foreground
         : context.colors.gray900;
-    var subtitleColor = isDark ? AppTheme.primary200 : context.colors.gray50;
+    var subtitleColor = isDark ? AppTheme.primary200 : context.colors.gray500;
 
     return Column(
       children: [
