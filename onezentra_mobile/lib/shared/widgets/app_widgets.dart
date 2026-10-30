@@ -71,7 +71,7 @@ class AppTextField extends StatelessWidget {
             label!,
             style: theme.textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.w600,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
             ),
           ),
           const SizedBox(height: AppTheme.space2),
@@ -100,7 +100,7 @@ class AppTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, size: 20, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400)
+                ? Icon(prefixIcon, size: 20, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400)
                 : null,
             suffixIcon: suffixIcon,
             counterText: '',
@@ -112,11 +112,11 @@ class AppTextField extends StatelessWidget {
             ),
             border: OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
+              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
+              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
             ),
             focusedBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
@@ -132,20 +132,20 @@ class AppTextField extends StatelessWidget {
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
+              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
             ),
             labelStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
             ),
             hintStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
             ),
             errorStyle: theme.textTheme.bodySmall?.copyWith(
               color: AppTheme.danger,
             ),
             floatingLabelBehavior: FloatingLabelBehavior.auto,
-            prefixIconColor: Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
-            suffixIconColor: Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+            prefixIconColor: Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+            suffixIconColor: Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
           ),
         ),
       ],
@@ -358,7 +358,7 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var radius = borderRadius ?? AppTheme.radius2xl;
-    var cardBorder = border ?? Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300);
+    var cardBorder = border ?? Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300);
     var cardShadow =
         shadows ??
         [
@@ -455,9 +455,9 @@ class AppBadge extends StatelessWidget {
         borderColor = AppTheme.primary700;
         break;
       case AppBadgeVariant.gray:
-        backgroundColor = Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200;
-        textColor = Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700;
-        borderColor = Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300;
+        backgroundColor = Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200;
+        textColor = Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700;
+        borderColor = Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300;
         break;
     }
 
@@ -538,7 +538,7 @@ class AppStatTile extends StatelessWidget {
                 style: GoogleFonts.roboto(
                   fontSize: 10.5,
                   height: 1.2,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                 ),
               ),
             ),
@@ -601,7 +601,7 @@ class AppLoadingOverlay extends StatelessWidget {
                       message!,
                       style: Theme.of(
                         context,
-                      ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600),
+                      ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -731,7 +731,7 @@ class AppEmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -761,7 +761,7 @@ class AppSectionDivider extends StatelessWidget {
       children: [
         Expanded(
           child: Divider(
-            color: color ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200,
+            color: color ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200,
             thickness: 1,
             height: 1,
           ),
@@ -771,14 +771,14 @@ class AppSectionDivider extends StatelessWidget {
           child: Text(
             text,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: color ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+              color: color ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
         Expanded(
           child: Divider(
-            color: color ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200,
+            color: color ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200,
             thickness: 1,
             height: 1,
           ),

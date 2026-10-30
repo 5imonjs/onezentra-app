@@ -197,7 +197,7 @@ class _InboundPageState extends State<InboundPage> {
                 '${inbound.total} penerimaan tercatat',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                 ),
               ),
             ],
@@ -251,7 +251,7 @@ class _InboundPageState extends State<InboundPage> {
               height: 64,
               margin: const EdgeInsets.only(bottom: AppTheme.space3),
               decoration: BoxDecoration(
-                color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+                color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
                 borderRadius: AppTheme.radiusLg,
               ),
             ),
@@ -284,7 +284,7 @@ class _InboundPageState extends State<InboundPage> {
           for (var i = 0; i < items.length; i++) ...[
             _historyTile(items[i], inbound),
             if (i != items.length - 1)
-              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100, indent: 46),
+              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100, indent: 46),
           ],
         ],
       ),
@@ -293,7 +293,7 @@ class _InboundPageState extends State<InboundPage> {
           padding: const EdgeInsets.only(top: AppTheme.space4),
           child: Column(
             children: [
-              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100),
+              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100),
               const SizedBox(height: AppTheme.space3),
               Row(
                 children: [
@@ -312,7 +312,7 @@ class _InboundPageState extends State<InboundPage> {
                     'Halaman ${inbound.currentPage}/${inbound.lastPage}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                     ),
                   ),
                   const SizedBox(width: AppTheme.space2),
@@ -346,13 +346,13 @@ class _InboundPageState extends State<InboundPage> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+              color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
               borderRadius: AppTheme.radiusLg,
             ),
             child: Icon(
               Icons.inventory_2_rounded,
               size: 18,
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
             ),
           ),
           const SizedBox(width: AppTheme.space3),
@@ -389,7 +389,7 @@ class _InboundPageState extends State<InboundPage> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -398,7 +398,7 @@ class _InboundPageState extends State<InboundPage> {
                   ' / ${_formatQty(receiving.totalExpectedQty)}',
                   style: GoogleFonts.robotoMono(
                     fontSize: 11,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                   ),
                 ),
               ],
@@ -485,7 +485,7 @@ class _InboundPageState extends State<InboundPage> {
                 '${receiving.nopol ?? '-'} • ${receiving.driverName ?? '-'}',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                 ),
               ),
               const SizedBox(height: AppTheme.space3),
@@ -514,7 +514,7 @@ class _InboundPageState extends State<InboundPage> {
                   style: GoogleFonts.roboto(
                     fontSize: 12,
                     height: 1.4,
-                    color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+                    color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
                   ),
                 ),
               ],
@@ -541,7 +541,7 @@ class _InboundPageState extends State<InboundPage> {
                   'Tidak ada rincian item.',
                   style: GoogleFonts.roboto(
                     fontSize: 12.5,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                   ),
                 )
               else ...[
@@ -550,7 +550,7 @@ class _InboundPageState extends State<InboundPage> {
                   if (i != receiving.items.length - 1)
                     Divider(
                       height: 1,
-                      color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+                      color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
                       indent: 46,
                     ),
                 ],
@@ -608,7 +608,7 @@ class _InboundPageState extends State<InboundPage> {
                 '${item.satuan != null ? ' ${item.satuan}' : ''}',
                 style: GoogleFonts.robotoMono(
                   fontSize: 11,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                 ),
               ),
               // Same story as the selisih email: signed difference, the
@@ -633,7 +633,7 @@ class _InboundPageState extends State<InboundPage> {
                   ].join(' • '),
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                   ),
                 ),
             ],
@@ -668,8 +668,8 @@ class _InboundPageState extends State<InboundPage> {
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
                 color: highlight
-                    ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50.withValues(alpha: 0.65)
-                    : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50.withValues(alpha: 0.65)
+                    : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
               ),
             ),
             const SizedBox(height: 2),
@@ -680,7 +680,7 @@ class _InboundPageState extends State<InboundPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50 : Colors.white,
+                color: highlight ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50 : Colors.white,
               ),
             ),
           ],

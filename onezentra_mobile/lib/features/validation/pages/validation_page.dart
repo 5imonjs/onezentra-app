@@ -292,7 +292,7 @@ class _ValidationPageState extends State<ValidationPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
                       height: 1.4,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                     ),
                   ),
                 ],
@@ -456,7 +456,7 @@ class _ValidationPageState extends State<ValidationPage> {
             style: GoogleFonts.roboto(
               fontSize: 12.5,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
             ),
           ),
         ),

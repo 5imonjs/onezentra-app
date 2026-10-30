@@ -455,7 +455,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   ) {
     var muted = isDark
         ? Color(0xFF94A3B8) // gray-400
-        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
+        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
     var parsedHost = Uri.tryParse(authProvider.apiBaseUrl)?.host ?? '';
     var host = parsedHost.isEmpty ? authProvider.apiBaseUrl : parsedHost;
 
@@ -544,10 +544,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader(ThemeData theme, bool isDark) {
-    var titleColor = isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900;
+    var titleColor = isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900;
     var subtitleColor = isDark
         ? Color(0xFFC7D2FE) // primary-200
-        : Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500;
+        : Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500;
 
     return Column(
       children: [
@@ -559,7 +559,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           'assets/images/LOGO.png',
           height: 34,
           fit: BoxFit.contain,
-          color: isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
+          color: isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
           colorBlendMode: BlendMode.srcIn,
           semanticLabel: 'ONEZENTRA',
         ),
@@ -682,7 +682,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   ) {
     var iconColor = isDark
         ? Color(0xFF94A3B8) // gray-400
-        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
+        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
 
     return _FieldLabel(
       label: 'Password',
@@ -738,7 +738,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   TextStyle? _fieldTextStyle(ThemeData theme, bool isDark) =>
       theme.textTheme.bodyLarge?.copyWith(
-        color: isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
+        color: isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
         fontWeight: FontWeight.w500,
       );
 
@@ -756,7 +756,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         : AppTheme.primary100;
     var iconColor = isDark
         ? Color(0xFF94A3B8) // gray-400
-        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
+        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
     var focusedColor = isDark ? AppTheme.primary300 : AppTheme.primary500;
 
     OutlineInputBorder pill(Color color, double width) => OutlineInputBorder(
@@ -836,7 +836,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isDisabled
-                      ? [Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400, Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500]
+                      ? [Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400, Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500]
                       : [AppTheme.primary600, AppTheme.primary500],
                 ),
                 borderRadius: AppTheme.radiusFull,
@@ -896,7 +896,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Widget _buildTrustNote(ThemeData theme, bool isDark) {
     var noteColor = isDark
         ? Color(0xFF94A3B8) // gray-400
-        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
+        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -917,7 +917,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Widget _buildFooter(ThemeData theme, bool isDark) {
     var footerColor = isDark
         ? Color(0xFF64748B) // gray-500
-        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
+        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
 
     return Text(
       '© ${DateTime.now().year} ONEZENTRA · Langkau_kami',
@@ -943,7 +943,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     var labelColor = isDark
         ? Color(0xFFC7D2FE) // primary-200
-        : Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600;
+        : Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
