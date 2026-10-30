@@ -49,7 +49,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                 36,
                 AppTheme.primary50,
                 Icons.history_rounded,
-                iconColor: AppTheme.primary600,
+                iconColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
               ),
               const SizedBox(width: AppTheme.space3),
               Expanded(
@@ -215,7 +215,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
             36,
             Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
             Icons.verified_rounded,
-            iconColor: Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500,
+            iconColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           ),
           const SizedBox(width: AppTheme.space3),
           Expanded(

@@ -321,7 +321,7 @@ class _HomePageState extends State<HomePage> {
                           fontSize: 11,
                           height: 1.2,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.primary200,
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                         ),
                       ),
                     ],
