@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_const_constructors
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -984,17 +985,17 @@ class _AuroraBackground extends StatelessWidget {
               Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
               Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
             ],
-            stops: [0, 0.45, 1],
+            stops: const [0, 0.45, 1],
           ),
-        ),
-      ),
+    ),
+    ),
       Align(
-        alignment: Alignment.topRight,
-        child: _Glow(color: Color(0x4D2DD4BF), size: 280), // accent-400
-      ),
+    alignment: Alignment.topRight,
+        child: _Glow(color: const Color(0x4D2DD4BF), size: 280), // accent-400
+    ),
       Align(
-        alignment: Alignment.bottomLeft,
-        child: _Glow(color: Color(0x4D818CF8), size: 320), // primary-400
+    alignment: Alignment.bottomLeft,
+        child: _Glow(color: const Color(0x4D818CF8), size: 320), // primary-400
       ),
     ],
   );
