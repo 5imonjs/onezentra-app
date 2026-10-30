@@ -101,6 +101,8 @@ export default function RencanaKirimReportPage() {
   const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [plannerNote, setPlannerNote] = useState('');
+  const [plannerSaved, setPlannerSaved] = useState(false);
   const reqIdRef = useRef(0);
   const canDelete = hasPermission('reports.delete');
 
@@ -452,6 +454,99 @@ export default function RencanaKirimReportPage() {
             </div>
           </div>
         )}
+
+        {/* 1. Analisis Keterlambatan */}
+        {items.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-black text-ink-900 mb-3 flex items-center gap-2">Analisis Keterlambatan <span className="text-[10px] font-normal text-ink-400">(RKH vs Hari Ini)</span></h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(() => {
+                const todayStr = toLocalISODate(new Date());
+                const overdue = items.filter(i => i.rkh_date && i.rkh_date < todayStr && i.status !== 'COMPLETED' && i.status !== 'CANCELLED');
+                const overdueByStatus: Record<string, number> = {};
+                overdue.forEach(i => { overdueByStatus[i.status] = (overdueByStatus[i.status] || 0) + 1; });
+                return (
+                  <>
+                    <div className="bg-red-50 border border-red-100 rounded-2xl p-5 shadow-sm">
+                      <p className="text-xs font-semibold text-red-600 uppercase tracking-wide">Terlambat</p>
+                      <p className="text-3xl font-black text-red-700 tabular-nums">{overdue.length}</p>
+                      <p className="text-xs text-red-500 mt-1">Dokumen melewati tanggal RKH</p>
+                    </div>
+                    <div className="md:col-span-2 bg-surface-card border border-gray-100 rounded-2xl p-5 shadow-sm">
+                      <p className="text-xs font-semibold text-ink-400 mb-2">Per Status Terlambat</p>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(overdueByStatus).map(([st, c]) => (
+                          <span key={st} className="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> {st}: {c}
+                          </span>
+                        ))}
+                        {Object.keys(overdueByStatus).length === 0 && <span className="text-xs text-ink-300">Tidak ada dokumen terlambat</span>}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* 2. Perbandingan Depo */}
+        {items.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-black text-ink-900 mb-3">Perbandingan Depo</h3>
+            <div className="bg-surface-card border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                {(() => {
+                  const depoStats: Record<string, { qty: number; completed: number; cancelled: number; total: number; name: string }> = {};
+                  items.forEach(i => {
+                    if (!i.kode_depo) return;
+                    if (!depoStats[i.kode_depo]) depoStats[i.kode_depo] = { qty: 0, completed: 0, cancelled: 0, total: 0, name: i.nama_depo || i.kode_depo };
+                    depoStats[i.kode_depo].qty += i.total_qty || 0;
+                    depoStats[i.kode_depo].total += 1;
+                    if (i.status === 'COMPLETED') depoStats[i.kode_depo].completed += 1;
+                    if (i.status === 'CANCELLED') depoStats[i.kode_depo].cancelled += 1;
+                  });
+                  const entries = Object.entries(depoStats);
+                  if (entries.length === 0) return null;
+                  return entries.map(([kode, s]) => (
+                    <div key={kode} className="p-5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-ink-300 mb-1">{s.name}</p>
+                      <p className="text-lg font-black text-ink-900 mb-1">{s.total} dok</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Selesai {s.completed}</span>
+                        <span className="text-[10px] bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium">Batal {s.cancelled}</span>
+                        <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-medium">Qty {fmtNum(s.qty)}</span>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Input Manual Planner */}
+        <div className="mb-6 bg-gradient-to-br from-amber-50 to-amber-50/40 border border-amber-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-sm font-black text-amber-900 mb-1">Catatan / Rekomendasi Planner</h3>
+          <p className="text-xs text-amber-700/80 mb-3">Tulis rekomendasi atau alasan penundaan per laporan ini.</p>
+          <textarea
+            rows={3}
+            className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-ink-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition resize-none"
+            placeholder="Contoh: Depo X sering terlambat karena jalur pengiriman; rekomendasi tambah armada..."
+            value={plannerNote}
+            onChange={(e) => { setPlannerNote(e.target.value); setPlannerSaved(false); }}
+          />
+          <div className="flex items-center justify-between mt-3">
+            <button
+              onClick={() => setPlannerSaved(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold px-4 py-2 shadow-sm transition-colors"
+              disabled={!plannerNote.trim()}
+            >
+              Simpan Rekomendasi
+            </button>
+            {plannerSaved && <span className="text-xs font-semibold text-emerald-700">Rekomendasi tersimpan.</span>}
+          </div>
+        </div>
 
         {/* Table */}
         <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
