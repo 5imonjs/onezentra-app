@@ -441,7 +441,7 @@ export default function StandarUmurPage() {
         </div>
 
         {/* Table Card */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Search Bar */}
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
@@ -575,7 +575,7 @@ export default function StandarUmurPage() {
               </thead>
               <tbody>
                 {items.map((item, index) => (
-                  <tr key={item.id} className={`excel-row ${selectedIds.includes(item.id) ? 'excel-row-selected bg-chip-primary/50' : ''} ${index % 2 === 0 ? 'bg-surface-card' : 'bg-overlay-30'}`}>
+                  <tr key={item.id} className={`excel-row ${selectedIds.includes(item.id) ? 'excel-row-selected bg-chip-primary/50' : ''} ${index % 2 === 0 ? 'bg-card' : 'bg-overlay-30'}`}>
                     {hasPermission('standar_umur.delete') && (
                       <td className="excel-cell text-center">
                         <input
@@ -693,7 +693,7 @@ export default function StandarUmurPage() {
         {viewItem && (
           <div className="grid grid-cols-2 gap-3">
             {viewFields.map(([key, label, full]) => (
-              <div key={key as string} className={`bg-surface-raised rounded-xl p-3 ${full ? 'col-span-2' : ''}`}>
+              <div key={key as string} className={`bg-popover rounded-xl p-3 ${full ? 'col-span-2' : ''}`}>
                 <span className="text-xs font-medium text-gray-400 uppercase">{label as string}</span>
                 <p className="text-sm text-gray-900 mt-1 font-medium">{fmt(viewItem[key as keyof typeof viewItem])}</p>
               </div>
@@ -775,7 +775,7 @@ export default function StandarUmurPage() {
       >
         <div className="space-y-4">
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-chip-primary' : selectedFile ? 'border-primary-300 bg-chip-primary/30' : 'border-gray-300 hover:border-primary-300 hover:bg-surface-raised'}`}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-chip-primary' : selectedFile ? 'border-primary-300 bg-chip-primary/30' : 'border-gray-300 hover:border-primary-300 hover:bg-popover'}`}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}

@@ -43,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // it and report phantom syntax errors.
   return (
     <html lang="id" className={`${roboto.variable} h-full`} suppressHydrationWarning>
-      <body className="min-h-full bg-surface text-foreground font-sans antialiased">
+      <body className="min-h-full bg-background text-foreground font-sans antialiased">
         <ThemeProvider
           attribute="data-theme"
           defaultTheme="light"

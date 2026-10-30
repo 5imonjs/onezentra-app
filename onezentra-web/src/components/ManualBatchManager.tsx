@@ -441,7 +441,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                   <label htmlFor="nama-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Nama Barang *</label>
                   {form.nama_barang && form.kode_barang ? (
                     <div className="flex items-center gap-1">
-                      <input value={form.nama_barang} id="nama-barang" readOnly className="input-field bg-surface-raised flex-1" />
+                      <input value={form.nama_barang} id="nama-barang" readOnly className="input-field bg-popover flex-1" />
                       <button type="button" onClick={() => setForm((p) => ({ ...p, kode_barang: '', nama_barang: '', satuan: 'CRT' }))} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" aria-label="Hapus produk terpilih">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
@@ -487,7 +487,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                         </div>
                       )}
                       {showDropdown && searchResults.length > 0 && (
-                        <div id="nama-barang-options" role="listbox" aria-label="Hasil pencarian barang" className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
+                        <div id="nama-barang-options" role="listbox" aria-label="Hasil pencarian barang" className="absolute z-50 w-full mt-1 bg-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
                           {searchResults.map((product) => (
                             <button
                               key={product.id}
@@ -500,7 +500,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                               className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
                                 searchResults[activeIndex]?.id === product.id
                                   ? 'bg-row-active text-row-active-text'
-                                  : 'hover:bg-surface-hover text-gray-900'
+                                  : 'hover:bg-muted text-gray-900'
                               }`}
                             >
                               <div className="flex items-center gap-3">
@@ -527,7 +527,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <div>
                   {/* Diturunkan otomatis dari pilihan Nama Barang — bukan field yang diketik. */}
                   <label htmlFor="kode-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Kode Barang (otomatis)</label>
-                  <input id="kode-barang" value={form.kode_barang || ''} readOnly className="input-field bg-surface-raised cursor-not-allowed" placeholder="Terisi dari nama barang" required />
+                  <input id="kode-barang" value={form.kode_barang || ''} readOnly className="input-field bg-popover cursor-not-allowed" placeholder="Terisi dari nama barang" required />
                 </div>
                 <div>
                   <label htmlFor="qty-crt" className="block text-sm font-medium text-gray-700 mb-1.5">Qty CRT/ZAK *</label>
@@ -540,7 +540,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <div>
                   {/* Turunan dari pilihan produk (SAPszUomId), default CRT — tidak diketik manual. */}
                   <label htmlFor="satuan" className="block text-sm font-medium text-gray-700 mb-1.5">Satuan (otomatis)</label>
-                  <input id="satuan" value={form.satuan || ''} readOnly placeholder="Terisi dari nama barang" className="input-field bg-surface-raised cursor-not-allowed" />
+                  <input id="satuan" value={form.satuan || ''} readOnly placeholder="Terisi dari nama barang" className="input-field bg-popover cursor-not-allowed" />
                 </div>
                 <div>
                   <label htmlFor="expired-date" className="block text-sm font-medium text-gray-700 mb-1.5">Expired Date *</label>
@@ -617,7 +617,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <table className="w-full min-w-[820px]">
                   <caption className="sr-only">Daftar batch manual tersimpan</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="bg-surface-raised border-b border-gray-300">
+                    <tr className="bg-popover border-b border-gray-300">
                       {hasPermission('penerimaan.delete') && (
                         <th scope="col" className="px-3 py-3 w-10">
                           <input

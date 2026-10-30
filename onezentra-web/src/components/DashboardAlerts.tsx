@@ -60,7 +60,7 @@ export default function DashboardAlerts({ kodeDepo }: { kodeDepo?: string }) {
   // mengira "tidak ada peringatan" padahal datanya tidak terbaca.
   if (failed) {
     return (
-      <section aria-label="Peringatan" className="rounded-2xl border border-gray-100 bg-surface-card p-5 shadow-sm">
+      <section aria-label="Peringatan" className="rounded-2xl border border-gray-100 bg-card p-5 shadow-sm">
         <div className="flex items-center justify-between gap-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
           <span>Gagal memuat peringatan — bisa jadi ada yang terlewat.</span>
           <button type="button" onClick={reload} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>

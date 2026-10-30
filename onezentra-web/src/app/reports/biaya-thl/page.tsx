@@ -66,7 +66,7 @@ const STATUS_TONE: Record<string, { badge: string; dot: string }> = {
 };
 
 const statusTone = (status: string): string => {
-  return STATUS_TONE[status]?.badge ?? 'bg-surface-raised text-gray-600 border-gray-300';
+  return STATUS_TONE[status]?.badge ?? 'bg-popover text-gray-600 border-gray-300';
 };
 
 const statusDot = (status: string): string => {
@@ -312,7 +312,7 @@ export default function BiayaThlReportPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -326,23 +326,23 @@ export default function BiayaThlReportPage() {
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4">
-              <div><label htmlFor="bt-from" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari Tanggal</label><input id="bt-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" /></div>
-              <div><label htmlFor="bt-to" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai Tanggal</label><input id="bt-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" /></div>
-              <div><label htmlFor="bt-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label><select id="bt-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"><option value="">Semua Depo</option>{depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}</select></div>
-              <div><label htmlFor="bt-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label><select id="bt-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card">{STATUS_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}</select></div>
-              <div className="sm:col-span-2 lg:col-span-2"><label htmlFor="bt-search" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span><input id="bt-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Nama THL, SJ, nopol, depo…" className="input-field text-sm py-2 pl-9 bg-surface-raised focus:bg-surface-card" /></div></div>
+              <div><label htmlFor="bt-from" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari Tanggal</label><input id="bt-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" /></div>
+              <div><label htmlFor="bt-to" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai Tanggal</label><input id="bt-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" /></div>
+              <div><label htmlFor="bt-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label><select id="bt-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card"><option value="">Semua Depo</option>{depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}</select></div>
+              <div><label htmlFor="bt-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label><select id="bt-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card">{STATUS_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}</select></div>
+              <div className="sm:col-span-2 lg:col-span-2"><label htmlFor="bt-search" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></span><input id="bt-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Nama THL, SJ, nopol, depo…" className="input-field text-sm py-2 pl-9 bg-popover focus:bg-card" /></div></div>
             </div>
             <div className="mt-4 flex items-center justify-between gap-2">
               <p className="text-xs text-slate-400 tabular-nums" aria-live="polite">
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-surface-raised hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
                 <button onClick={submit} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
@@ -352,7 +352,7 @@ export default function BiayaThlReportPage() {
         {/* Summary Cards */}
         {summary && (
           <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
@@ -365,7 +365,7 @@ export default function BiayaThlReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm shrink-0">
@@ -378,7 +378,7 @@ export default function BiayaThlReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm shrink-0">
@@ -408,8 +408,8 @@ export default function BiayaThlReportPage() {
         )}
 
         {/* Table */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
@@ -496,7 +496,7 @@ export default function BiayaThlReportPage() {
                   </tr>
                 ) : (
                   items.map((item) => (
-                    <tr key={item.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
+                    <tr key={item.id} className="even:bg-overlay-60 hover:bg-popover transition-colors">
                       {canDelete && (
                         <td className="table-cell text-center">
                           <ReportSelectCheckbox
@@ -566,11 +566,11 @@ export default function BiayaThlReportPage() {
                   <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border shrink-0 shadow-sm ${statusTone(item.status)}`}><span className={`w-1.5 h-1.5 rounded-full ${statusDot(item.status)}`} aria-hidden="true" />{statusLabel(item.status)}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                  <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                     <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Posisi</p>
                     <p className="font-black text-slate-900 text-xs truncate" title={item.posisi}>{item.posisi.replace('THL ', '')}</p>
                   </div>
-                  <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                  <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                     <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Type</p>
                     <p className="font-black text-slate-900 text-xs">{item.type_kendaraan || '-'}</p>
                   </div>

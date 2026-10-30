@@ -297,7 +297,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
             {detail.status !== 'CANCELLED' && <FlowStepper status={detail.status} />}
 
             {STATUS_HINTS[detail.status] && (
-              <p className="text-xs text-slate-600 bg-surface-raised/70 border border-gray-200 rounded-lg px-3 py-2">
+              <p className="text-xs text-slate-600 bg-popover/70 border border-gray-200 rounded-lg px-3 py-2">
                 {STATUS_HINTS[detail.status]}
               </p>
             )}
@@ -318,7 +318,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
             )}
 
             <div className="border border-gray-300 rounded-xl overflow-hidden">
-              <div className="flex flex-wrap items-center gap-2 p-3 bg-surface-card/95 backdrop-blur border-b border-gray-100">
+              <div className="flex flex-wrap items-center gap-2 p-3 bg-card/95 backdrop-blur border-b border-gray-100">
                 <div className="relative flex-1 min-w-[200px]">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                   <input
@@ -351,7 +351,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                   <table className="w-full min-w-[900px] border-collapse">
                     <caption className="sr-only">Daftar batch sesi opname</caption>
                     <thead className="sticky top-0 z-10">
-                      <tr className="border-b border-gray-300 bg-surface-raised">
+                      <tr className="border-b border-gray-300 bg-popover">
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Barang</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Batch</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Produk</th>
@@ -385,7 +385,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <span
-                                  className="font-mono text-xs px-1.5 py-0.5 rounded bg-surface-raised text-slate-600"
+                                  className="font-mono text-xs px-1.5 py-0.5 rounded bg-popover text-slate-600"
                                   title={`Batch ${it.batch?.batch_number || '-'} · Barcode ${it.batch?.barcode_label || '-'}`}
                                 >
                                   {it.batch?.batch_number || 'tanpa batch'}
@@ -450,7 +450,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                               </td>
                             </tr>
                             {formOpen && (
-                              <tr className="bg-surface-raised/50">
+                              <tr className="bg-popover/50">
                                 <td colSpan={6} className="px-4 py-3">
                                   {showExpected && expectedCrt != null && (
                                     <p className="text-xs text-slate-500">

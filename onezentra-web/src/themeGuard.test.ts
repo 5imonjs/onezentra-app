@@ -239,7 +239,7 @@ describe('theme token discipline', () => {
     //
     // Tracking is structural rather than textual, and it tracks the *effective*
     // surface, not just the nearest opener. A dark hero frequently contains a
-    // light child — a `bg-surface-card` stat tile, a `bg-*-50` status panel —
+    // light child — a `bg-card` stat tile, a `bg-*-50` status panel —
     // and neutral inks are correct on those. So a child that declares its own
     // surface wins over the ancestor it is nested in, and only genuinely
     // inherited copy is judged against the dark panel.
@@ -253,7 +253,7 @@ describe('theme token discipline', () => {
     // inherited dark one. `gray/slate-50..200` are the light-theme pastels and
     // are deliberately excluded: they are the fills that flare on a dark canvas.
     const LIGHT =
-      /\bbg-(?:surface(?:-card|-raised)?|white)\b|\bbg-(?:primary|emerald|amber|red|blue|orange|cyan|teal|sky|violet|purple|lime|yellow|pink)-(?:50|100|200)\b/;
+      /\bbg-(?:surface(?:-card|-raised)?|card|popover|muted|background|white)\b|\bbg-(?:primary|emerald|amber|red|blue|orange|cyan|teal|sky|violet|purple|lime|yellow|pink)-(?:50|100|200)\b/;
     // 100-200 are surface steps and 300-400 are hairlines/muted inks. Measured
     // against ink-950 in the dark theme they land at 1.7:1 / 2.1:1 / 3.0:1 /
     // 7.3:1, so the first three are unreadable and 400 only just clears AA.
@@ -443,7 +443,7 @@ describe('theme token discipline', () => {
 
   it('never pairs a hairline ink with a surface it cannot be read on', () => {
     // The step pills in the biaya-thl wizard used `text-gray-300` on
-    // `bg-surface-raised`. Because the neutral ramp is role-based, gray-300 is
+    // `bg-popover`. Because the neutral ramp is role-based, gray-300 is
     // the *hairline* step: #cbd5e1 in light and #24324a in dark. On a raised
     // surface that is 1.42:1 and 1.00:1 — the pill looked like an empty box
     // with a missing label, in both themes.
@@ -479,7 +479,7 @@ describe('theme token discipline', () => {
     // a near-white slab. The biaya-thl date field paired it with
     // `text-gray-800`, which resolves to #f1f5f9 in the dark theme — light ink
     // on a light plate, 1.40:1. Use `input-field`, which already carries
-    // `bg-surface-card` + `text-gray-900` and flips with the theme.
+    // `bg-card` + `text-gray-900` and flips with the theme.
     const offenders = files.flatMap((file) =>
       read(file)
         .split('\n')
@@ -491,7 +491,7 @@ describe('theme token discipline', () => {
 
     // Self-check: the guard above must actually fire on the real defect, or it
     // is decoration. `input-field` is the sanctioned class precisely because it
-    // carries `bg-surface-card`; a hand-rolled `bg-white/80` plate is the bug.
+    // carries `bg-card`; a hand-rolled `bg-white/80` plate is the bug.
     const probe = '<input type="date" className="w-full bg-white/80 border-2" />';
     expect(/<(input|select|textarea)\b/.test(probe) && /\bbg-white\//.test(probe)).toBe(true);
     const allowed = '<input type="date" className="input-field w-full border-2" />';

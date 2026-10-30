@@ -272,7 +272,7 @@ export default function NpnSearchInput({
       <div className="flex items-center gap-2">
         <div
           title={namaValue}
-          className="w-full min-w-0 px-3 py-2.5 text-sm font-semibold leading-snug border border-slate-300 rounded-xl bg-surface-raised text-gray-900 cursor-default wrap-break-word"
+          className="w-full min-w-0 px-3 py-2.5 text-sm font-semibold leading-snug border border-slate-300 rounded-xl bg-popover text-gray-900 cursor-default wrap-break-word"
         >
           {namaValue}
         </div>
@@ -312,7 +312,7 @@ export default function NpnSearchInput({
             else if (e.key === 'Escape' && showDropdown) { e.stopPropagation(); setShowDropdown(false); setActiveIndex(-1); }
           }}
           placeholder="Ketik nama barang..."
-          className="w-full px-3 py-2.5 text-sm font-semibold border border-slate-300 rounded-xl bg-surface-card text-gray-900 transition-all focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm pr-9"
+          className="w-full px-3 py-2.5 text-sm font-semibold border border-slate-300 rounded-xl bg-card text-gray-900 transition-all focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm pr-9"
         />
         {loading && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -325,7 +325,7 @@ export default function NpnSearchInput({
       </div>
 
       {dropdownOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-card border border-gray-300 rounded-xl shadow-lg overflow-hidden">
           {results.length > 0 && (
             <ul id={`${listboxId}-listbox`} role="listbox" aria-label="Hasil pencarian barang NPN" className="max-h-60 overflow-auto">
               {results.map((product, i) => {
@@ -349,7 +349,7 @@ export default function NpnSearchInput({
                       className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
                         taken ? 'opacity-45 cursor-not-allowed' : i === activeIndex
                           ? 'bg-row-active text-row-active-text'
-                          : 'hover:bg-surface-hover text-gray-900'
+                          : 'hover:bg-muted text-gray-900'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -371,7 +371,7 @@ export default function NpnSearchInput({
                           </div>
                         </div>
                         {taken && (
-                          <span className="shrink-0 rounded-full bg-surface-raised border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+                          <span className="shrink-0 rounded-full bg-popover border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-gray-500">
                             Sudah dipakai
                           </span>
                         )}
@@ -398,7 +398,7 @@ export default function NpnSearchInput({
                 type="button"
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="shrink-0 rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-semibold text-gray-700 transition-colors hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                className="shrink-0 rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-semibold text-gray-700 transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingMore ? 'Memuat…' : 'Muat lebih banyak'}
               </button>

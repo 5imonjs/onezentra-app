@@ -72,7 +72,7 @@ interface RkStats {
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {
-  DRAFT: { label: 'Draft', color: 'text-gray-600', bg: 'bg-surface-card', dot: 'bg-gray-400', border: 'border-gray-300' },
+  DRAFT: { label: 'Draft', color: 'text-gray-600', bg: 'bg-card', dot: 'bg-gray-400', border: 'border-gray-300' },
   SCHEDULED: { label: 'Dijadwalkan', color: 'text-blue-700', bg: 'bg-blue-50', dot: 'bg-blue-500', border: 'border-blue-100' },
   CHECKED_IN: { label: 'Check In', color: 'text-yellow-700', bg: 'bg-yellow-50', dot: 'bg-yellow-500', border: 'border-yellow-100' },
   VERIFIED: { label: 'Terverifikasi', color: 'text-purple-700', bg: 'bg-purple-50', dot: 'bg-purple-500', border: 'border-purple-100' },
@@ -192,7 +192,7 @@ function NamaDepoInput({
         </button>
       )}
       {showDropdown && filtered.length > 0 && (
-        <ul id={`${listboxId}-listbox`} role="listbox" aria-label="Daftar depo" className="absolute z-50 w-full mt-1 bg-surface-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
+        <ul id={`${listboxId}-listbox`} role="listbox" aria-label="Daftar depo" className="absolute z-50 w-full mt-1 bg-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
           {filtered.map((d, i) => (
             <li key={d.kode_depo} role="option" id={`${listboxId}-option-${i}`} aria-selected={i === activeIndex}>
             <button
@@ -201,7 +201,7 @@ function NamaDepoInput({
               className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
                 i === activeIndex
                   ? 'bg-row-active text-row-active-text'
-                  : 'hover:bg-surface-hover text-gray-900'
+                  : 'hover:bg-muted text-gray-900'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -816,7 +816,7 @@ export default function RencanaKirimPage() {
           {/* Table */}
           <div className="lg:col-span-2">
             {/* Table Card */}
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100">
                 <div className="flex flex-col gap-4">
                   {/* Baris judul + aksi utama */}
@@ -851,7 +851,7 @@ export default function RencanaKirimPage() {
                           aria-label="Filter status"
                           value={filterStatus ?? ''}
                           onChange={(e) => { setFilterStatus(e.target.value || null); setPage(1); }}
-                          className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-surface-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[140px]"
+                          className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[140px]"
                         >
                           <option value="">Semua</option>
                           <option value="DRAFT">Draft</option>
@@ -869,7 +869,7 @@ export default function RencanaKirimPage() {
                           aria-label="Filter depo"
                           value={filterKodeDepo ?? ''}
                           onChange={(e) => { setFilterKodeDepo(e.target.value || null); setPage(1); }}
-                          className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-surface-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
+                          className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
                         >
                           <option value="">Semua Depo</option>
                           {depoList.map((d) => (
@@ -889,7 +889,7 @@ export default function RencanaKirimPage() {
             <table className="w-full min-w-[980px] border-collapse">
               <caption className="sr-only">Daftar rencana pengiriman</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-surface-raised border-b border-slate-300 shadow-sm">
+                <tr className="bg-popover border-b border-slate-300 shadow-sm">
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">No</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
                   <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
@@ -937,7 +937,7 @@ export default function RencanaKirimPage() {
                         : '-'}
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium shadow-sm ${statusConfig[item.status]?.bg || 'bg-surface-card'} ${statusConfig[item.status]?.color || 'text-gray-600'} ${statusConfig[item.status]?.border || 'border-gray-300'}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium shadow-sm ${statusConfig[item.status]?.bg || 'bg-card'} ${statusConfig[item.status]?.color || 'text-gray-600'} ${statusConfig[item.status]?.border || 'border-gray-300'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${statusConfig[item.status]?.dot || 'bg-gray-400'}`} />
                         {statusConfig[item.status]?.label || item.status}
                       </span>
@@ -966,7 +966,7 @@ export default function RencanaKirimPage() {
                             Batalkan
                           </button>
                         )}
-                        <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-300 bg-surface-card p-0.5 ml-1 shadow-sm">
+                        <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-300 bg-card p-0.5 ml-1 shadow-sm">
                           <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
                             <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                           </button>
@@ -1042,7 +1042,7 @@ export default function RencanaKirimPage() {
                       <p className="font-mono text-sm font-bold text-slate-800 truncate">{fmt(item.po_transporter)}</p>
                       <p className="mt-0.5 text-xs text-slate-400">RK {item.rkh_date?.split('T')[0] || '-'} • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
                     </div>
-                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-surface-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
+                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} />
                       {st?.label || item.status}
                     </span>
@@ -1069,7 +1069,7 @@ export default function RencanaKirimPage() {
                         Batalkan
                       </button>
                     )}
-                    <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-300 bg-surface-card p-0.5 ml-auto">
+                    <div className="inline-flex items-center gap-0.5 rounded-lg border border-slate-300 bg-card p-0.5 ml-auto">
                       <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
                         <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       </button>
@@ -1138,7 +1138,7 @@ export default function RencanaKirimPage() {
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
               {hasPermission('rencana_kirim.view') && (
-              <button onClick={() => viewItem && previewSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface-card border border-slate-300 text-sm font-bold text-slate-700 hover:bg-surface-raised">
+              <button onClick={() => viewItem && previewSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-card border border-slate-300 text-sm font-bold text-slate-700 hover:bg-popover">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 Preview
               </button>
@@ -1150,7 +1150,7 @@ export default function RencanaKirimPage() {
               </button>
               )}
             </div>
-            <button onClick={() => setViewItem(null)} className="px-4 py-2 rounded-xl bg-surface-card border border-slate-300 text-sm font-bold text-slate-600 hover:bg-surface-raised">Tutup</button>
+            <button onClick={() => setViewItem(null)} className="px-4 py-2 rounded-xl bg-card border border-slate-300 text-sm font-bold text-slate-600 hover:bg-popover">Tutup</button>
           </div>
         }
       >
@@ -1163,7 +1163,7 @@ export default function RencanaKirimPage() {
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
                   <p className="mt-1 text-xs text-white/70"><span className="font-semibold">RK:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-card px-3 py-1 text-xs font-black text-gray-900 ring-1 ring-inset ring-gray-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1 text-xs font-black text-gray-900 ring-1 ring-inset ring-gray-300">
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}
                 </span>
               </div>
@@ -1176,7 +1176,7 @@ export default function RencanaKirimPage() {
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">Kubikasi</p>
                   <p className="text-lg font-black">{typeof viewItem.total_kubikasi === 'number' ? `${Number(viewItem.total_kubikasi).toFixed(2)}` : '-'} <span className="text-xs font-normal">m³</span></p>
                 </div>
-                <div className="rounded-xl bg-surface-card text-slate-900 p-3 text-center">
+                <div className="rounded-xl bg-card text-slate-900 p-3 text-center">
                   <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Tujuan</p>
                   <p className="text-sm font-black truncate">{fmt(viewItem.destination_name)}</p>
                 </div>
@@ -1184,7 +1184,7 @@ export default function RencanaKirimPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-100 bg-surface-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
+              <div className="rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
                 <div className="space-y-2.5 text-sm">
                   <div className="flex justify-between"><span className="text-slate-400">Driver</span><span className="font-bold text-slate-900">{fmt(viewItem.driver_name)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-400">Nopol</span><span className="font-mono font-bold">{fmt(viewItem.nopol)}</span></div>
@@ -1192,7 +1192,7 @@ export default function RencanaKirimPage() {
                   <div className="flex justify-between"><span className="text-slate-400">Jenis</span><span className="rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{fmt(viewItem.jenis_kendaraan)}</span></div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-surface-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
+              <div className="rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
                 <div className="space-y-2.5 text-sm">
                   <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Pengirim</p><p className="font-bold text-slate-900">{fmt(viewItem.shipper_name)}</p><p className="text-xs text-slate-500">{fmt(viewItem.shipper_address)}</p></div>
                   <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Kepada</p><p className="font-bold text-slate-900">{fmt(viewItem.destination_name)}</p><p className="text-xs text-slate-500">{fmt(viewItem.destination_address) || '-'}</p></div>
@@ -1200,14 +1200,14 @@ export default function RencanaKirimPage() {
               </div>
             </div>
             {viewItem.items && viewItem.items.length > 0 && (
-              <div className="overflow-hidden rounded-2xl border border-slate-100 bg-surface-card shadow-sm">
-                <div className="flex items-center justify-between px-4 py-3 bg-surface-raised border-b border-slate-100">
+              <div className="overflow-hidden rounded-2xl border border-slate-100 bg-card shadow-sm">
+                <div className="flex items-center justify-between px-4 py-3 bg-popover border-b border-slate-100">
                   <h4 className="text-xs font-black tracking-widest text-slate-500 uppercase">Daftar barang • {viewItem.items.length}</h4>
                   <span className="text-xs font-mono text-slate-500">{viewItem.items.reduce((s, i) => s + Number(i.jumlah || 0), 0).toLocaleString('id-ID')} qty</span>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-64 overflow-auto">
                   {viewItem.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-raised">
+                    <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-popover">
                       <span className="w-6 h-6 rounded-lg bg-ink-900 text-white text-xs font-black flex items-center justify-center shrink-0">{item.item_number}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-slate-900 truncate">{item.nama_barang}</p>
@@ -1273,7 +1273,7 @@ export default function RencanaKirimPage() {
             </div>
           )}
           {/* Modern Stepper */}
-          <div className="rounded-2xl border border-gray-100 bg-surface-card p-4 shadow-sm">
+          <div className="rounded-2xl border border-gray-100 bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               {[
                 { n: 1, label: 'Dokumen', key: 'dokumen', icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25' },
@@ -1316,7 +1316,7 @@ export default function RencanaKirimPage() {
           </div>
 
           {currentStep === 1 && (
-          <div className="bg-surface-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
+          <div className="bg-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-chip-primary flex items-center justify-center text-accent-text text-xs font-bold">1</span> Informasi Dokumen</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -1337,7 +1337,7 @@ export default function RencanaKirimPage() {
           )}
 
           {currentStep === 2 && (
-          <div className="bg-surface-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
+          <div className="bg-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">2</span> Kendaraan & Driver</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -1364,7 +1364,7 @@ export default function RencanaKirimPage() {
           )}
 
           {currentStep === 3 && (
-          <div className="bg-surface-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
+          <div className="bg-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs font-bold">3</span> Alamat Pengiriman & Tujuan</h3>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
@@ -1420,8 +1420,8 @@ export default function RencanaKirimPage() {
                     <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Daftar Barang</h3>
                     <p className="text-xs text-gray-500 mt-0.5">Kelola produk NPN • auto hitung umur & kubikasi</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm' : 'bg-surface-card text-amber-700 border-amber-200'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-surface-card' : 'bg-amber-500'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm' : 'bg-card text-amber-700 border-amber-200'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-card' : 'bg-amber-500'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
                       </span>
                       {sectionComplete.barang && (
                         <>
@@ -1432,7 +1432,7 @@ export default function RencanaKirimPage() {
                     </div>
                   </div>
                 </div>
-                <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border shadow-sm ${sectionComplete.barang ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-surface-card text-gray-400 border-gray-300'}`}>
+                <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border shadow-sm ${sectionComplete.barang ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-card text-gray-400 border-gray-300'}`}>
                   {sectionComplete.barang ? '✓ Lengkap' : '• Belum'}
                 </span>
               </div>
@@ -1445,7 +1445,7 @@ export default function RencanaKirimPage() {
               </div>
             ) : itemCount === 0 ? (
               <div className="rounded-2xl border-2 border-dashed border-gray-300 bg-overlay-50 p-8 text-center">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-surface-card border border-gray-100 shadow-sm flex items-center justify-center mb-3">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-card border border-gray-100 shadow-sm flex items-center justify-center mb-3">
                   <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
                 <h4 className="text-sm font-bold text-gray-800">Belum ada barang</h4>
@@ -1456,7 +1456,7 @@ export default function RencanaKirimPage() {
                     Tambah Barang
                   </button>
                   {hasPermission('rencana_kirim.import') && (
-                  <button onClick={() => { setShowBarangModal(true); setTimeout(()=>{ setShowImport(true); }, 150); }} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-surface-raised">
+                  <button onClick={() => { setShowBarangModal(true); setTimeout(()=>{ setShowImport(true); }, 150); }} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-popover">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                     Import Excel
                   </button>
@@ -1464,8 +1464,8 @@ export default function RencanaKirimPage() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-gray-300 bg-surface-card shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-surface-raised border-b border-gray-100">
+              <div className="rounded-2xl border border-gray-300 bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 bg-popover border-b border-gray-100">
                   <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Ringkasan barang</span>
                   <button onClick={() => setShowBarangModal(true)} className="text-xs font-semibold text-accent-text hover:text-accent-text flex items-center gap-1">
                     Kelola <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -1473,7 +1473,7 @@ export default function RencanaKirimPage() {
                 </div>
                 <div className="divide-y divide-gray-100 max-h-52 overflow-auto">
                   {createItems.filter(i=>i.kode_barang).map((it, idx) => (
-                    <div key={idx} className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-raised">
+                    <div key={idx} className="flex items-center gap-3 px-4 py-2.5 hover:bg-popover">
                       <span className="w-6 h-6 rounded-lg bg-ink-900 text-white text-xs font-bold flex items-center justify-center shrink-0">{idx+1}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-900 truncate">{it.nama_barang}</p>
@@ -1495,7 +1495,7 @@ export default function RencanaKirimPage() {
           )}
 
           {currentStep === 5 && (
-          <div className="bg-surface-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
+          <div className="bg-card border border-gray-300 rounded-xl p-5 shadow-sm animate-fade-in">
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-bold">5</span> Catatan</h3>
             <textarea id="f-notes" aria-label="Catatan tambahan" value={createForm.notes ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Catatan tambahan untuk pengiriman ini..." rows={3} className="input-field text-sm py-2 w-full resize-none" />
           </div>
@@ -1577,9 +1577,9 @@ export default function RencanaKirimPage() {
               const needsAttention = typingItems.has(index) || (item.nama_barang.trim().length > 0 && !item.kode_barang) || isDuplicate;
               const rowKubikasi = itemKubikasi(item);
               return (
-              <div key={index} className={`group relative rounded-2xl border bg-surface-card p-5 shadow-sm transition-all ${needsAttention ? 'border-amber-200 bg-amber-50/20' : 'border-slate-100 hover:border-slate-300 hover:shadow-md'}`}>
+              <div key={index} className={`group relative rounded-2xl border bg-card p-5 shadow-sm transition-all ${needsAttention ? 'border-amber-200 bg-amber-50/20' : 'border-slate-100 hover:border-slate-300 hover:shadow-md'}`}>
                 <div className="flex items-start gap-3">
-                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-amber-500 text-white' : 'bg-surface-card border border-slate-300 text-slate-700 shadow-sm'}`}>{item.item_number}</span>
+                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-amber-500 text-white' : 'bg-card border border-slate-300 text-slate-700 shadow-sm'}`}>{item.item_number}</span>
                   <div className="flex-1 min-w-0 space-y-3">
                     <div>
                       <label htmlFor={`item-nama-${index}`} className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Barang <span className="text-red-500">*</span></label>
@@ -1612,31 +1612,31 @@ export default function RencanaKirimPage() {
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-2 sm:col-span-1">
                         <label htmlFor={`item-jumlah-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Jumlah <span className="text-red-500">*</span></label>
-                        <input id={`item-jumlah-${index}`} type="number" value={item.jumlah || ''} onChange={(e) => updateItem(index, 'jumlah', parseFloat(e.target.value) || 0)} placeholder="0" min="0" className="w-full px-3 py-2.5 text-center text-base font-black text-slate-900 bg-surface-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm" />
+                        <input id={`item-jumlah-${index}`} type="number" value={item.jumlah || ''} onChange={(e) => updateItem(index, 'jumlah', parseFloat(e.target.value) || 0)} placeholder="0" min="0" className="w-full px-3 py-2.5 text-center text-base font-black text-slate-900 bg-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm" />
                       </div>
                       <div>
                         <label htmlFor={`item-satuan-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Satuan</label>
-                        <select id={`item-satuan-${index}`} value={item.satuan} onChange={(e) => updateItem(index, 'satuan', e.target.value)} className="w-full px-3 py-2.5 text-sm font-bold bg-surface-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 text-center">
+                        <select id={`item-satuan-${index}`} value={item.satuan} onChange={(e) => updateItem(index, 'satuan', e.target.value)} className="w-full px-3 py-2.5 text-sm font-bold bg-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 text-center">
                           <option value="CRT">CRT</option><option value="PCS">PCS</option><option value="DUS">DUS</option><option value="BOX">BOX</option><option value="KG">KG</option><option value="LUSIN">LUSIN</option><option value="ZAK">ZAK</option>
                         </select>
                       </div>
                       <div className="hidden sm:block">
                         <label htmlFor={`item-ket-${index}`} className="block text-xs font-semibold text-slate-600 mb-1">Keterangan</label>
-                        <input id={`item-ket-${index}`} type="text" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Opsional" className="w-full px-3 py-2.5 text-sm bg-surface-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500" />
+                        <input id={`item-ket-${index}`} type="text" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Opsional" className="w-full px-3 py-2.5 text-sm bg-card border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500" />
                       </div>
                     </div>
                     <div className="sm:hidden">
-                      <input type="text" aria-label="Keterangan barang (opsional)" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-surface-raised border border-slate-300 rounded-xl focus:bg-surface-card focus:ring-2 focus:ring-primary-500" />
+                      <input type="text" aria-label="Keterangan barang (opsional)" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-popover border border-slate-300 rounded-xl focus:bg-card focus:ring-2 focus:ring-primary-500" />
                     </div>
                   </div>
-                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} aria-label={`Hapus barang ${item.item_number}`} className="w-8 h-8 rounded-xl bg-surface-card border border-slate-300 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-30 shrink-0 transition-colors">
+                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} aria-label={`Hapus barang ${item.item_number}`} className="w-8 h-8 rounded-xl bg-card border border-slate-300 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-30 shrink-0 transition-colors">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
               </div>
               );
             })}
-            <button onClick={addItem} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-slate-300 bg-surface-card text-sm font-bold text-slate-600 hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text transition-colors">
+            <button onClick={addItem} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-slate-300 bg-card text-sm font-bold text-slate-600 hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text transition-colors">
               <span className="w-7 h-7 rounded-xl bg-ink-900 text-white flex items-center justify-center"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></span>
               Tambah barang lagi
             </button>
@@ -1683,7 +1683,7 @@ export default function RencanaKirimPage() {
             </button>
           </div>
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${selectedFile ? 'border-amber-300 bg-amber-50/30' : 'border-gray-300 hover:border-amber-300 hover:bg-surface-raised'}`}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${selectedFile ? 'border-amber-300 bg-amber-50/30' : 'border-gray-300 hover:border-amber-300 hover:bg-popover'}`}
             onClick={() => fileInputRef.current?.click()}
           >
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="hidden" />

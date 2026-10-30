@@ -150,7 +150,7 @@ export default function TarifRetribusiPage() {
     return (
       <DashboardLayout>
         <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="max-w-sm rounded-2xl border border-gray-100 bg-surface-card p-8 text-center shadow-sm">
+          <div className="max-w-sm rounded-2xl border border-gray-100 bg-card p-8 text-center shadow-sm">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
               <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
             </div>
@@ -177,7 +177,7 @@ export default function TarifRetribusiPage() {
           </div>
         </header>
 
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
           <div className="border-b border-gray-100 px-5 py-4">
             <p className="text-sm font-semibold text-slate-800">Tarif khusus per depo</p>
             <p className="mt-1 text-xs text-slate-500">

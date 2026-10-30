@@ -393,12 +393,12 @@ export default function AdminDatabasePage() {
         </header>
 
         {!allowed ? (
-          <section className="rounded-2xl border border-gray-100 bg-surface-card p-6 text-sm text-slate-600 shadow-sm">
+          <section className="rounded-2xl border border-gray-100 bg-card p-6 text-sm text-slate-600 shadow-sm">
             Hanya akun level admin master yang boleh membuka halaman ini.
           </section>
         ) : (
           <>
-          <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+          <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
             <div className="border-b border-gray-100 px-5 py-4">
               <label htmlFor="reset-depot" className="text-sm font-semibold text-slate-800">Depo yang direset</label>
               <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -431,7 +431,7 @@ export default function AdminDatabasePage() {
                     onClick={() => changeMode('depot')}
                     aria-pressed={mode === 'depot'}
                     disabled={working}
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'depot' ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'depot' ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     Per Depo
                   </button>
@@ -440,7 +440,7 @@ export default function AdminDatabasePage() {
                     onClick={() => changeMode('documents')}
                     aria-pressed={mode === 'documents'}
                     disabled={working}
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'documents' ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'documents' ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     Pilih Dokumen
                   </button>
@@ -595,7 +595,7 @@ export default function AdminDatabasePage() {
             )}
           </section>
 
-          <section aria-label="Reset master data" className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+          <section aria-label="Reset master data" className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
             <div className="border-b border-gray-100 px-5 py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -660,7 +660,7 @@ export default function AdminDatabasePage() {
             </div>
           </section>
 
-          <section aria-label="Data legacy tanpa depo" className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+          <section aria-label="Data legacy tanpa depo" className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
             <div className="border-b border-gray-100 px-5 py-4">
               <h2 className="text-sm font-semibold text-slate-800">Data Legacy Tanpa Depo</h2>
               <p className="mt-1 text-xs text-slate-500">

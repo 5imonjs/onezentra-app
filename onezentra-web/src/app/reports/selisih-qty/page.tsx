@@ -250,7 +250,7 @@ export default function SelisihQtyReportPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -264,22 +264,22 @@ export default function SelisihQtyReportPage() {
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
               <div>
                 <label htmlFor="sq-from" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari Tanggal</label>
-                <input id="sq-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" />
+                <input id="sq-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
               </div>
               <div>
                 <label htmlFor="sq-to" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai Tanggal</label>
-                <input id="sq-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" />
+                <input id="sq-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="sq-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label>
-                <select id="sq-depo" value={kodeDepo} onChange={(e) => setKodeDepo(e.target.value)} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"><option value="">Semua Depo</option>{depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}</select>
+                <select id="sq-depo" value={kodeDepo} onChange={(e) => setKodeDepo(e.target.value)} className="select-field w-full text-sm py-2 bg-popover focus:bg-card"><option value="">Semua Depo</option>{depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}</select>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between gap-2">
@@ -287,7 +287,7 @@ export default function SelisihQtyReportPage() {
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-surface-raised hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
                 <button onClick={fetchData} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
@@ -297,7 +297,7 @@ export default function SelisihQtyReportPage() {
         {/* Summary Cards */}
         {summary && (
           <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
@@ -323,7 +323,7 @@ export default function SelisihQtyReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-red-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-red-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
@@ -336,7 +336,7 @@ export default function SelisihQtyReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
@@ -353,8 +353,8 @@ export default function SelisihQtyReportPage() {
         )}
 
         {/* Table */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
@@ -442,7 +442,7 @@ export default function SelisihQtyReportPage() {
                     const minus = item.selisih_qty < 0;
                     const plus = item.selisih_qty > 0;
                     return (
-                      <tr key={item.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
+                      <tr key={item.id} className="even:bg-overlay-60 hover:bg-popover transition-colors">
                         {canDelete && (
                           <td className="table-cell text-center">
                             <ReportSelectCheckbox
@@ -525,15 +525,15 @@ export default function SelisihQtyReportPage() {
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                       <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Plan</p>
                       <p className="font-black text-slate-600 text-sm tabular-nums">{fmtNum(item.expected_qty)}</p>
                     </div>
-                    <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                       <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Aktual</p>
                       <p className="font-black text-slate-900 text-sm tabular-nums">{fmtNum(item.actual_qty)}</p>
                     </div>
-                    <div className={`rounded-xl p-2 text-center border ${minus ? 'bg-red-50 border-red-200' : plus ? 'bg-emerald-50 border-emerald-200' : 'bg-surface-raised border-slate-100'}`}>
+                    <div className={`rounded-xl p-2 text-center border ${minus ? 'bg-red-50 border-red-200' : plus ? 'bg-emerald-50 border-emerald-200' : 'bg-popover border-slate-100'}`}>
                       <p className={`font-bold tracking-widest uppercase text-[9px] ${minus ? 'text-red-500' : plus ? 'text-emerald-600' : 'text-slate-400'}`}>Selisih</p>
                       <p className={`font-black text-sm tabular-nums ${minus ? 'text-red-700' : plus ? 'text-emerald-700' : 'text-slate-500'}`}>{item.selisih_qty > 0 ? '+' : ''}{fmtNum(item.selisih_qty)}</p>
                     </div>

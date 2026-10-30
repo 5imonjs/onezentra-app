@@ -21,7 +21,7 @@ export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
   // Gagal memuat harus terlihat, bukan lenyap diam-diam (lihat DashboardAlerts).
   if (failed) {
     return (
-      <section aria-label="Aktivitas terbaru" className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+      <section aria-label="Aktivitas terbaru" className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between gap-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
           <span>Gagal memuat aktivitas terbaru.</span>
           <button type="button" onClick={reload} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
@@ -42,7 +42,7 @@ export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
       <ul className="divide-y divide-gray-100">
         {summary.recent.map((item, i) => (
           <li key={`${item.type}-${item.title}-${i}`}>
-            <Link href={item.href} className="flex items-center gap-3 px-5 py-3 hover:bg-surface-raised transition-colors">
+            <Link href={item.href} className="flex items-center gap-3 px-5 py-3 hover:bg-popover transition-colors">
               <span className={`shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold ${TYPE_TONES[item.type] ?? 'bg-slate-100 text-slate-600'}`}>
                 {item.type}
               </span>

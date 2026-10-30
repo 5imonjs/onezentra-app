@@ -35,7 +35,7 @@ export default function DashboardPanel({
   children,
 }: DashboardPanelProps) {
   return (
-    <section aria-label={ariaLabel} className={`overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm ${className}`}>
+    <section aria-label={ariaLabel} className={`overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm ${className}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card px-5 py-3.5">
         {icon && (
           <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">

@@ -335,7 +335,7 @@ export default function RencanaKirimReportPage() {
         )}
 
         {/* Filter */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -349,28 +349,28 @@ export default function RencanaKirimReportPage() {
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-surface-card text-gray-900 shadow-sm' : 'text-gray-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-gray-900 shadow-sm' : 'text-gray-500 hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4">
               <div>
                 <label htmlFor="rf-from" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Dari Tanggal</label>
-                <input id="rf-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" />
+                <input id="rf-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
               </div>
               <div>
                 <label htmlFor="rf-to" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Sampai Tanggal</label>
-                <input id="rf-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" />
+                <input id="rf-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
               </div>
               <div>
                 <label htmlFor="rf-status" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Status</label>
-                <select id="rf-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card">
+                <select id="rf-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card">
                   {STATUS_FILTERS.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
                 </select>
               </div>
               <div>
                 <label htmlFor="rf-depo" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Depo</label>
-                <select id="rf-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card">
+                <select id="rf-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card">
                   <option value="">Semua Depo</option>
                   {depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}
                 </select>
@@ -381,7 +381,7 @@ export default function RencanaKirimReportPage() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                   </span>
-                  <input id="rf-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }} placeholder="PO / driver / nopol / tujuan" className="input-field text-sm py-2 pl-9 bg-surface-raised focus:bg-surface-card" />
+                  <input id="rf-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }} placeholder="PO / driver / nopol / tujuan" className="input-field text-sm py-2 pl-9 bg-popover focus:bg-card" />
                 </div>
               </div>
             </div>
@@ -390,7 +390,7 @@ export default function RencanaKirimReportPage() {
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-surface-raised hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
                 <button onClick={handleApply} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
@@ -400,7 +400,7 @@ export default function RencanaKirimReportPage() {
         {/* Summary Cards */}
         {summary && (
           <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
@@ -426,7 +426,7 @@ export default function RencanaKirimReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
@@ -439,7 +439,7 @@ export default function RencanaKirimReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-red-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-red-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
@@ -472,7 +472,7 @@ export default function RencanaKirimReportPage() {
                       <p className="text-3xl font-black text-red-700 tabular-nums">{overdue.length}</p>
                       <p className="text-xs text-red-500 mt-1">Dokumen melewati tanggal RKH</p>
                     </div>
-                    <div className="md:col-span-2 bg-surface-card border border-gray-100 rounded-2xl p-5 shadow-sm">
+                    <div className="md:col-span-2 bg-card border border-gray-100 rounded-2xl p-5 shadow-sm">
                       <p className="text-xs font-semibold text-gray-400 mb-2">Per Status Terlambat</p>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(overdueByStatus).map(([st, c]) => (
@@ -494,7 +494,7 @@ export default function RencanaKirimReportPage() {
         {items.length > 0 && (
           <div className="mb-6">
             <h3 className="text-sm font-black text-gray-900 mb-3">Perbandingan Depo</h3>
-            <div className="bg-surface-card border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-card border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
               <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
                 {(() => {
                   const depoStats: Record<string, { qty: number; completed: number; cancelled: number; total: number; name: string }> = {};
@@ -531,7 +531,7 @@ export default function RencanaKirimReportPage() {
           <p className="text-xs text-amber-700/80 mb-3">Tulis rekomendasi atau alasan penundaan per laporan ini.</p>
           <textarea
             rows={3}
-            className="w-full rounded-xl border border-amber-200 bg-surface-card px-4 py-3 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition resize-none"
+            className="w-full rounded-xl border border-amber-200 bg-card px-4 py-3 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition resize-none"
             placeholder="Contoh: Depo X sering terlambat karena jalur pengiriman; rekomendasi tambah armada..."
             value={plannerNote}
             onChange={(e) => { setPlannerNote(e.target.value); setPlannerSaved(false); }}
@@ -549,8 +549,8 @@ export default function RencanaKirimReportPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
@@ -627,7 +627,7 @@ export default function RencanaKirimReportPage() {
                   items.map((item) => {
                     const st = STATUS_STYLE[item.status];
                     return (
-                      <tr key={item.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
+                      <tr key={item.id} className="even:bg-overlay-60 hover:bg-popover transition-colors">
                         {canDelete && (
                           <td className="table-cell text-center">
                             <ReportSelectCheckbox
@@ -655,7 +655,7 @@ export default function RencanaKirimReportPage() {
                         <td className="table-cell text-sm text-right font-bold text-gray-800 tabular-nums whitespace-nowrap">{fmtNum(item.total_qty)}</td>
                         <td className="table-cell text-sm text-right font-semibold text-teal-700 tabular-nums whitespace-nowrap">{Number(item.total_kubikasi).toFixed(2)}</td>
                         <td className="table-cell whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-surface-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
+                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} aria-hidden="true" />
                             {summary?.status_counts[item.status]?.label || item.status}
                           </span>
@@ -704,13 +704,13 @@ export default function RencanaKirimReportPage() {
                       <p className="font-mono text-sm font-bold text-slate-800 truncate">{item.po_transporter}</p>
                       <p className="mt-0.5 text-xs text-gray-400">RK {fmtDate(item.rkh_date)} • Tujuan {item.destination_name}</p>
                     </div>
-                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-surface-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
+                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} aria-hidden="true" />
                       {summary?.status_counts[item.status]?.label || item.status}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                       <p className="font-bold tracking-widest text-gray-400 uppercase text-[9px]">Qty</p>
                       <p className="font-black text-gray-900 text-sm tabular-nums">{fmtNum(item.total_qty)}</p>
                     </div>
@@ -718,7 +718,7 @@ export default function RencanaKirimReportPage() {
                       <p className="font-bold tracking-widest text-teal-600/70 uppercase text-[9px]">m³</p>
                       <p className="font-black text-teal-700 text-sm tabular-nums">{Number(item.total_kubikasi).toFixed(2)}</p>
                     </div>
-                    <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                       <p className="font-bold tracking-widest text-gray-400 uppercase text-[9px]">Item</p>
                       <p className="font-black text-gray-900 text-sm tabular-nums">{item.item_count}</p>
                     </div>

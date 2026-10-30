@@ -134,7 +134,7 @@ const normalizeBiayaRetribusiItem = (item: BiayaRetribusiItem): BiayaRetribusiIt
 };
 
 const STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
-  draft: { label: 'Draft', badge: 'bg-surface-raised text-gray-600 ring-gray-200', dot: 'bg-gray-400' },
+  draft: { label: 'Draft', badge: 'bg-popover text-gray-600 ring-gray-200', dot: 'bg-gray-400' },
   pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-500' },
   checked: { label: 'Checked', badge: 'bg-blue-50 text-blue-700 ring-blue-200', dot: 'bg-blue-500' },
   rlh_approved: { label: 'Disetujui RLH', badge: 'bg-chip-primary text-accent-text ring-brand-wash-strong', dot: 'bg-primary-500' },
@@ -253,7 +253,7 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
       </div>
       <ol className="space-y-0">
         {histories.map((h, i) => {
-          const meta = APPROVAL_ACTION_META[h.action] ?? { label: h.action, badge: 'bg-surface-raised text-gray-600 border-gray-300' };
+          const meta = APPROVAL_ACTION_META[h.action] ?? { label: h.action, badge: 'bg-popover text-gray-600 border-gray-300' };
           return (
             <li key={h.id} className="relative flex gap-3 pb-4 last:pb-0">
               {i < histories.length - 1 && (
@@ -272,7 +272,7 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
                 <p className="mt-0.5 text-xs text-slate-400">
                   {h.actor?.full_name ? <span className="font-medium text-slate-600">{h.actor.full_name}</span> : null}{h.actor?.full_name && ' · '}{formatDateTime(h.created_at)}
                 </p>
-                {h.reason ? <p className="mt-1 text-xs text-slate-600 whitespace-pre-line rounded-lg bg-surface-raised border border-slate-100 px-2.5 py-1.5">{h.reason}</p> : null}
+                {h.reason ? <p className="mt-1 text-xs text-slate-600 whitespace-pre-line rounded-lg bg-popover border border-slate-100 px-2.5 py-1.5">{h.reason}</p> : null}
               </div>
             </li>
           );
@@ -314,7 +314,7 @@ function ApprovalStepper({ item, rfahThreshold }: { item: BiayaRetribusiItem; rf
   };
 
   return (
-    <div className="sticky top-0 z-10 rounded-2xl border border-slate-300 overflow-hidden shadow-sm bg-surface-card">
+    <div className="sticky top-0 z-10 rounded-2xl border border-slate-300 overflow-hidden shadow-sm bg-card">
       <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-slate-50 to-surface-card border-b border-slate-100">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 8H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M7 17L21 3m0 0h-5.5M21 3v5.5" /></svg>
@@ -323,7 +323,7 @@ function ApprovalStepper({ item, rfahThreshold }: { item: BiayaRetribusiItem; rf
           <h3 className="text-sm font-black text-slate-800">Alur Persetujuan</h3>
           <p className="text-[11px] text-slate-400">Tahapan approval pengajuan ini</p>
         </div>
-        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${revised ? 'bg-orange-50 text-orange-700 border-orange-200' : rejected ? 'bg-red-50 text-red-700 border-red-200' : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : item.status === 'rlh_approved' ? 'bg-chip-primary text-accent-text border-chip-primary-border' : item.status === 'checked' ? 'bg-blue-50 text-blue-700 border-blue-200' : item.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-surface-raised text-gray-600 border-gray-300'}`}>
+        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${revised ? 'bg-orange-50 text-orange-700 border-orange-200' : rejected ? 'bg-red-50 text-red-700 border-red-200' : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : item.status === 'rlh_approved' ? 'bg-chip-primary text-accent-text border-chip-primary-border' : item.status === 'checked' ? 'bg-blue-50 text-blue-700 border-blue-200' : item.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-popover text-gray-600 border-gray-300'}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'rlh_approved' ? 'bg-primary-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
           {revised ? 'Perlu Revisi' : rejected ? 'Ditolak' : STATUS_META[item.status]?.label ?? item.status}
         </span>
@@ -1444,7 +1444,7 @@ export default function BiayaRetribusiPage() {
           </div>
         )}
 
-        <div className={`rounded-2xl border border-gray-100 bg-surface-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
+        <div className={`rounded-2xl border border-gray-100 bg-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <div className="px-2 py-1">
               <p className="text-xs text-slate-500">Total Nominal</p>
@@ -1469,7 +1469,7 @@ export default function BiayaRetribusiPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
           <div className="flex flex-col items-start gap-3 border-b border-gray-100 px-5 py-3 sm:flex-row sm:items-center">
             <div className="flex-1 w-full sm:w-auto">
               <SearchInput value={search} onChange={(v) => { setSearch(v); }} placeholder="Cari nopol, SJ, type, depo..." />
@@ -1520,7 +1520,7 @@ export default function BiayaRetribusiPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b border-slate-300 bg-surface-raised">
+                <tr className="border-b border-slate-300 bg-popover">
                   <th scope="col" className="table-header cursor-pointer select-none" onClick={() => handleSort('tanggal_pengajuan')}>
                     Tanggal {sortIndicator('tanggal_pengajuan')}
                   </th>
@@ -1626,14 +1626,14 @@ export default function BiayaRetribusiPage() {
         {/* Cards - Mobile */}
         <div className="md:hidden space-y-3">
           {loading ? (
-            <div className="bg-surface-card rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
               <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                 <svg className="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                 <span className="text-sm font-medium">Memuat data...</span>
               </div>
             </div>
           ) : items.length === 0 ? (
-            <div className="bg-surface-card rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
               <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                 <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 <span className="text-sm font-medium">Tidak ada data</span>
@@ -1647,7 +1647,7 @@ export default function BiayaRetribusiPage() {
             items.map((item) => {
               const rowBlockers = viewBlockers(item);
               return (
-              <div key={item.id} className="bg-surface-card rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
+              <div key={item.id} className="bg-card rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-chip-primary flex items-center justify-center shrink-0">
@@ -1712,7 +1712,7 @@ export default function BiayaRetribusiPage() {
             {pageWindow(page, totalPages).map((p, idx) => p === '…' ? (
               <span key={`e${idx}`} className="text-xs text-slate-400 px-1" aria-hidden="true">…</span>
             ) : (
-              <button key={p} onClick={() => setPage(p)} className={`min-h-11 min-w-11 rounded-xl text-sm font-medium transition-all ${page === p ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-surface-card border border-gray-300 text-gray-600 hover:bg-surface-raised'}`}>{p}</button>
+              <button key={p} onClick={() => setPage(p)} className={`min-h-11 min-w-11 rounded-xl text-sm font-medium transition-all ${page === p ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-card border border-gray-300 text-gray-600 hover:bg-popover'}`}>{p}</button>
             ))}
           </div>
         )}
@@ -1839,7 +1839,7 @@ export default function BiayaRetribusiPage() {
             </aside>
             <div className="min-w-0">
           <div className="space-y-4 sm:space-y-5">
-            <div className="sticky top-0 z-10 lg:hidden rounded-2xl border border-slate-300 bg-surface-card px-4 py-3 shadow-sm">
+            <div className="sticky top-0 z-10 lg:hidden rounded-2xl border border-slate-300 bg-card px-4 py-3 shadow-sm">
               <div className="flex items-center gap-1.5">
                 {WIZARD_LABELS.map((label, i) => {
                   const stepNo = i + 1;
@@ -1855,7 +1855,7 @@ export default function BiayaRetribusiPage() {
                 })}
               </div>
             </div>
-            <div className="sticky top-0 z-10 hidden rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm lg:block">
+            <div className="sticky top-0 z-10 hidden rounded-2xl border border-slate-300 bg-card p-4 shadow-sm lg:block">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Alur pengajuan</p>
@@ -1900,7 +1900,7 @@ export default function BiayaRetribusiPage() {
             <div className="grid gap-3 sm:grid-cols-2">
             {/* Depo Badge */}
             <div className="flex flex-col gap-3 rounded-2xl border border-chip-primary-border bg-linear-to-r from-brand-wash via-brand-wash to-surface-card p-4 shadow-sm sm:flex-row sm:items-center">
-              <div className="w-10 h-10 rounded-xl bg-surface-card shadow-sm ring-1 ring-chip-primary-border flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-card shadow-sm ring-1 ring-chip-primary-border flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
               </div>
               <div className="min-w-0">
@@ -1911,7 +1911,7 @@ export default function BiayaRetribusiPage() {
             </div>
 
             {/* Tanggal */}
-            <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
+            <div className="rounded-2xl border border-slate-300 bg-card p-4 shadow-sm">
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2" htmlFor="tanggal-pengajuan">
                 <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                 Tanggal Pengajuan <span className="text-red-500">*</span>
@@ -1922,7 +1922,7 @@ export default function BiayaRetribusiPage() {
             )}
 
             {!editingId && formStep === 1 && (
-              <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-300 bg-card p-4 shadow-sm">
                 <p className="text-sm font-bold text-gray-700">Pilih tipe pengajuan dulu <span className="text-red-400">*</span></p>
                 <p className="mt-1 text-[11px] text-slate-400">Dua cara isi biaya — pilih yang sesuai, form berikutnya menyesuaikan otomatis.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -1930,7 +1930,7 @@ export default function BiayaRetribusiPage() {
                     <span className="mt-2 block text-sm font-black text-slate-900">Otomatis dari Receiving</span>
                     <span className="mt-1 block text-[11px] leading-5 text-slate-500">Qty zak/crt & tanggal terisi sendiri dari receiving COMPLETED. Nominal mengikuti tarif koli depo.</span>
                   </button>
-                  <button type="button" aria-pressed={sourceType === 'manual'} onClick={() => switchSourceType('manual')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'manual' ? 'border-slate-700 bg-surface-raised shadow-md' : 'border-slate-300 bg-surface-card hover:border-slate-400'}`}>
+                  <button type="button" aria-pressed={sourceType === 'manual'} onClick={() => switchSourceType('manual')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'manual' ? 'border-slate-700 bg-popover shadow-md' : 'border-slate-300 bg-card hover:border-slate-400'}`}>
                     <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-600">MANUAL</span>
                     <span className="mt-2 block text-sm font-black text-slate-900">Borongan / Manual</span>
                     <span className="mt-1 block text-[11px] leading-5 text-slate-500">Ketik nopol, qty, dan nominal sendiri. Cocok untuk biaya satuan borongan.</span>
@@ -1942,13 +1942,13 @@ export default function BiayaRetribusiPage() {
             {/* Ringkasan tipe & panel tarif hanya untuk koli/otomatis receiving.
                     Borongan/Manual tidak menampilkan kartu ini — nominal diisi manual. */}
             {!editingId && sourceType === 'receiving' && formStep === 2 && (
-              <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-300 bg-card p-4 shadow-sm">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-sm font-bold text-gray-700">Otomatis dari Receiving</p>
                   <button type="button" onClick={() => switchSourceType(null)} className="shrink-0 text-[11px] font-bold text-accent-text hover:text-accent-text hover:underline">‹ Ganti tipe</button>
                 </div>
                 {isKoliMode && (
-                <div className="mt-3 rounded-xl bg-surface-raised border border-slate-300 px-3 py-2.5">
+                <div className="mt-3 rounded-xl bg-popover border border-slate-300 px-3 py-2.5">
                   <button type="button" onClick={() => setTariffOpen((v) => !v)} aria-expanded={tariffOpen} className="flex w-full flex-wrap items-center gap-2 text-left">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tarif berlaku</span>
                     <span className="text-xs font-bold text-slate-800">{targetDepoLabel}</span>
@@ -2016,7 +2016,7 @@ export default function BiayaRetribusiPage() {
                 <p className="mb-3 text-[11px] text-slate-400">Hanya receiving COMPLETED yang sudah divalidasi checker dan belum diklaim. Qty zak/crt dan tanggal pengajuan terisi otomatis dari receiving — tanpa input ulang.</p>
                 {candidates.length === 0 && !busy && (
                   <div className="rounded-xl border-2 border-dashed border-slate-300 bg-overlay-60 p-6 text-center">
-                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-surface-card shadow-sm ring-1 ring-gray-300">
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm ring-1 ring-gray-300">
                       <svg className="h-5 w-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M10 3v18" /></svg>
                     </div>
                     <p className="mt-2 text-sm font-semibold text-slate-600">Belum ada data receiving</p>
@@ -2027,7 +2027,7 @@ export default function BiayaRetribusiPage() {
                   <>
                   <div className="max-h-72 overflow-auto rounded-xl border border-gray-300 shadow-sm hidden sm:block">
                     <table className="min-w-170 w-full text-xs">
-                      <thead className="sticky top-0 bg-surface-raised">
+                      <thead className="sticky top-0 bg-popover">
                         <tr>
                           <th className="table-header text-center w-10">
                             <input type="checkbox" checked={selectedCandidates.length === candidates.length} onChange={() => setSelectedCandidates(selectedCandidates.length === candidates.length ? [] : candidates.map(c => c.id))} className="rounded border-gray-300 text-accent-text w-4 h-4" />
@@ -2071,7 +2071,7 @@ export default function BiayaRetribusiPage() {
                     {candidates.map((c) => {
                       const checked = selectedCandidates.includes(c.id);
                       return (
-                        <div key={c.id} onClick={() => toggleCandidate(c.id)} className={`rounded-xl border p-3 transition-colors ${checked ? 'border-primary-300 bg-chip-primary/50' : 'border-gray-300 bg-surface-card'}`}>
+                        <div key={c.id} onClick={() => toggleCandidate(c.id)} className={`rounded-xl border p-3 transition-colors ${checked ? 'border-primary-300 bg-chip-primary/50' : 'border-gray-300 bg-card'}`}>
                           <div className="flex items-center gap-2">
                             <input type="checkbox" checked={checked} onChange={() => toggleCandidate(c.id)} onClick={(e) => e.stopPropagation()} className="rounded border-gray-300 text-accent-text w-4 h-4 shrink-0" aria-label={`Pilih ${c.nopol_kendaraan}`} />
                             <p className="font-mono font-bold text-sm text-slate-800">{upper(c.nopol_kendaraan)}</p>
@@ -2109,8 +2109,8 @@ export default function BiayaRetribusiPage() {
               </div>
               <div className="space-y-2">
                 {formData.details.map((d, i) => (
-                  <details key={i} open className="group relative rounded-lg border border-gray-100 bg-surface-card">
-                    <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-raised rounded-lg transition-colors list-none">
+                  <details key={i} open className="group relative rounded-lg border border-gray-100 bg-card">
+                    <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-popover rounded-lg transition-colors list-none">
                       <div className="w-6 h-6 rounded-md bg-emerald-100 border border-emerald-200 flex items-center justify-center text-[10px] font-bold text-emerald-700 shrink-0">
                         {i + 1}
                       </div>
@@ -2192,7 +2192,7 @@ export default function BiayaRetribusiPage() {
               </div>
 
               {manualDetails.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-surface-card p-4 shadow-sm">
+                <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-card p-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                       <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="plat-kendaraan">
@@ -2242,8 +2242,8 @@ export default function BiayaRetribusiPage() {
               ) : (
                 <div className="space-y-2">
                   {manualDetails.map((md, i) => (
-                    <details key={i} open className="group relative rounded-lg border border-gray-100 bg-surface-card">
-                      <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-raised rounded-lg transition-colors list-none">
+                    <details key={i} open className="group relative rounded-lg border border-gray-100 bg-card">
+                      <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-popover rounded-lg transition-colors list-none">
                         <div className="w-6 h-6 rounded-md bg-chip-primary border border-chip-primary-border flex items-center justify-center text-[10px] font-bold text-accent-text shrink-0">
                           {i + 1}
                         </div>
@@ -2325,7 +2325,7 @@ export default function BiayaRetribusiPage() {
               </div>
 
               {formData.documents.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-surface-card p-4 shadow-sm">
+                <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-card p-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="tipe-dokumen">
@@ -2345,7 +2345,7 @@ export default function BiayaRetribusiPage() {
                         if (file) startDocument('file', file);
                         e.target.value = '';
                       }} />
-                      <label htmlFor="doc-file-start" className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-surface-raised px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-chip-primary/50 cursor-pointer transition-colors">
+                      <label htmlFor="doc-file-start" className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-popover px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-chip-primary/50 cursor-pointer transition-colors">
                         <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A4 4 0 1118.8 7.372l-10.94 10.938a2.5 2.5 0 01-3.536-3.536l10.94-10.938a1 1 0 011.414 1.414l-10.94 10.938a.5.5 0 01-.707-.707l7.693-7.693a1 1 0 011.414 1.414z" /></svg>
                         <span className="min-w-0 flex-1 truncate">Pilih file (PDF, JPG, PNG, WEBP — maks 20 MB)</span>
                       </label>
@@ -2359,8 +2359,8 @@ export default function BiayaRetribusiPage() {
               ) : (
                 <div className="space-y-2">
                   {formData.documents.map((doc, i) => (
-                    <details key={i} open className={`group relative rounded-lg border bg-surface-card ${!doc.file && !doc.file_path ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-100'}`}>
-                      <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-surface-raised rounded-lg transition-colors list-none">
+                    <details key={i} open className={`group relative rounded-lg border bg-card ${!doc.file && !doc.file_path ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-100'}`}>
+                      <summary className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-popover rounded-lg transition-colors list-none">
                         <div className={`w-6 h-6 rounded-md border flex items-center justify-center text-[10px] font-bold shrink-0 ${!doc.file && !doc.file_path ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
                           {i + 1}
                         </div>
@@ -2395,7 +2395,7 @@ export default function BiayaRetribusiPage() {
                               if (file) void handleDocFile(i, file);
                               e.target.value = '';
                             }} />
-                            <label htmlFor={`doc-file-${i}`} className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-surface-raised px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-chip-primary/50 cursor-pointer transition-colors">
+                            <label htmlFor={`doc-file-${i}`} className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-popover px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-chip-primary/50 cursor-pointer transition-colors">
                               <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A4 4 0 1118.8 7.372l-10.94 10.938a2.5 2.5 0 01-3.536-3.536l10.94-10.938a1 1 0 011.414 1.414l-10.94 10.938a.5.5 0 01-.707-.707l7.693-7.693a1 1 0 011.414 1.414z" /></svg>
                               <span className="min-w-0 flex-1 truncate">{doc.file_name || 'Pilih file (PDF, JPG, PNG, WEBP — maks 20 MB)'}</span>
                               {doc.file && <span className="shrink-0 text-[11px] font-bold text-slate-500 tabular-nums">{formatBytes(doc.file.size)}</span>}
@@ -2412,7 +2412,7 @@ export default function BiayaRetribusiPage() {
 
             {/* Review ringkasan */}
             {formStep === 4 && (
-              <div className="rounded-2xl border border-slate-300 bg-surface-card p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-300 bg-card p-4 shadow-sm">
                 <p className="text-sm font-bold text-gray-700">Periksa kembali sebelum dikirim</p>
                 <dl className="mt-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
@@ -2562,7 +2562,7 @@ export default function BiayaRetribusiPage() {
 
               {/* Info ringkas */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl bg-surface-card border border-gray-100 shadow-sm p-4">
+                <div className="rounded-xl bg-card border border-gray-100 shadow-sm p-4">
                   <div className="flex items-center gap-2">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
@@ -2571,7 +2571,7 @@ export default function BiayaRetribusiPage() {
                   </div>
                   <p className="text-sm font-bold text-slate-800 mt-2.5">{formatDate(viewItem.tanggal_pengajuan)}</p>
                 </div>
-                <div className="rounded-xl bg-surface-card border border-gray-100 shadow-sm p-4">
+                <div className="rounded-xl bg-card border border-gray-100 shadow-sm p-4">
                   <div className="flex items-center gap-2">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
@@ -2627,7 +2627,7 @@ export default function BiayaRetribusiPage() {
                   <div className="overflow-x-auto rounded-2xl border border-slate-300 shadow-sm">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="bg-surface-raised">
+                        <tr className="bg-popover">
                           <th className="table-header text-center w-8">#</th>
                           <th className="table-header">Nopol</th>
                           <th className="table-header">Type</th>
@@ -2683,7 +2683,7 @@ export default function BiayaRetribusiPage() {
                     {(viewItem.documents as { id?: number; document_type: string; file_name: string; file_path?: string }[]).map((doc, i) => {
                       const url = docUrl(doc);
                       return (
-                      <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-300 bg-surface-card shadow-sm p-3 hover:border-chip-primary-border hover:shadow transition-all">
+                      <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-300 bg-card shadow-sm p-3 hover:border-chip-primary-border hover:shadow transition-all">
                         <div className="w-9 h-9 rounded-lg bg-chip-primary ring-1 ring-chip-primary-border flex items-center justify-center shrink-0">
                           <svg className="w-4 h-4 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                         </div>
@@ -2761,7 +2761,7 @@ export default function BiayaRetribusiPage() {
                   </div>
                   <span className="ml-auto shrink-0">{badge(decision.item.status)}</span>
                 </div>
-                <div className="divide-y divide-slate-100 bg-surface-card text-sm">
+                <div className="divide-y divide-slate-100 bg-card text-sm">
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <span className="text-slate-500">Depo</span>
                     <span className="font-semibold text-slate-800 font-mono">{decision.item.nama_depo}</span>
