@@ -303,7 +303,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     decoration: BoxDecoration(
       color: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.border ?? AppTheme.border),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.border ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
