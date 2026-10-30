@@ -815,7 +815,7 @@ class _GatePageState extends State<GatePage> {
       children: [
         Text(
           label,
-          style: GoogleFonts.roboto(fontSize: 11.5, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500),
+          style: GoogleFonts.roboto(fontSize: 11.5, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500),
         ),
         const SizedBox(height: 2),
         Text(

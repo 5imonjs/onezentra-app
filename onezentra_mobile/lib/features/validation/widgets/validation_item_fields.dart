@@ -260,12 +260,12 @@ class _PhotoEvidenceFieldState extends State<PhotoEvidenceField> {
                 width: double.infinity,
                 height: 96,
                 alignment: Alignment.center,
-                color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+                color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
                 child: Text(
                   'Pratinjau tidak tersedia',
                   style: GoogleFonts.roboto(
                     fontSize: 12,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
               ),

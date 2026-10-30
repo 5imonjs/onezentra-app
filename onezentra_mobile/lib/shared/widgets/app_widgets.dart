@@ -731,7 +731,7 @@ class AppEmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -771,7 +771,7 @@ class AppSectionDivider extends StatelessWidget {
           child: Text(
             text,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: color ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+              color: color ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500,
               fontWeight: FontWeight.w500,
             ),
           ),

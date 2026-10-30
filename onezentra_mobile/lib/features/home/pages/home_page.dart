@@ -404,7 +404,7 @@ class _HomePageState extends State<HomePage> {
             'Memuat izin...',
             style: theme.textTheme.bodyMedium?.copyWith(
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
             ),
           ),
         ),
@@ -531,7 +531,7 @@ class _HomePageState extends State<HomePage> {
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: 12,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
               ),
             ),
           ],
@@ -652,7 +652,7 @@ class _HomePageState extends State<HomePage> {
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontSize: 13,
                   height: 1.4,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

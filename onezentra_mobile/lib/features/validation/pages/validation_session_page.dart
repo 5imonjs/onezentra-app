@@ -1000,7 +1000,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11,
                       height: 1.4,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                 ],
@@ -1752,7 +1752,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.roboto(
                 fontSize: 12.5,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
               ),
             ),
           ],
@@ -2062,7 +2062,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   '${item.satuan != null ? ' ${item.satuan}' : ''}',
                   style: GoogleFonts.robotoMono(
                     fontSize: 12,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: AppTheme.space4),
@@ -2145,8 +2145,8 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                       color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
                     ),
                   ),
-                  iconColor: Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
-                  collapsedIconColor: Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                  iconColor: Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500,
+                  collapsedIconColor: Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500,
                   tilePadding: EdgeInsets.zero,
                   childrenPadding: EdgeInsets.zero,
                   shape: const Border(),
@@ -2448,7 +2448,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.4,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                 ),
               ),
               const SizedBox(height: AppTheme.space4),
@@ -2506,7 +2506,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                     'Tidak ada di master NPN — isi kode & nama manual di bawah.',
                     style: GoogleFonts.roboto(
                       fontSize: 12,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                 ),
@@ -2700,7 +2700,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
         IconButton(
           tooltip: 'Ganti barang',
           icon: const Icon(Icons.close_rounded, size: 18),
-          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           onPressed: _saving
               ? null
               : () => setState(() {
@@ -2893,7 +2893,7 @@ class _NpnSuggestionTile extends StatelessWidget {
           Icon(
             Icons.chevron_right_rounded,
             size: 18,
-            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           ),
         ],
       ),
@@ -2999,7 +2999,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                             item.namaBarang ?? item.kodeBarang ?? 'Produk',
                             style: GoogleFonts.robotoMono(
                               fontSize: 12,
-                              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
