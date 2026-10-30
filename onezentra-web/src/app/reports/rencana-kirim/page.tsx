@@ -526,12 +526,12 @@ export default function RencanaKirimReportPage() {
         )}
 
         {/* 3. Input Manual Planner */}
-        <div className="mb-6 bg-gradient-to-br from-amber-50 to-amber-50/40 dark:from-amber-950 dark:to-amber-900/30 border border-amber-100 dark:border-amber-800/60 rounded-2xl p-6 shadow-sm">
-          <h3 className="text-sm font-black text-amber-900 dark:text-amber-100 mb-1">Catatan / Rekomendasi Planner</h3>
-          <p className="text-xs text-amber-700/80 dark:text-amber-300/80 mb-3">Tulis rekomendasi atau alasan penundaan per laporan ini.</p>
+        <div className="mb-6 bg-gradient-to-br from-amber-50 to-amber-50/40 border border-amber-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-sm font-black text-amber-900 mb-1">Catatan / Rekomendasi Planner</h3>
+          <p className="text-xs text-amber-700/80 mb-3">Tulis rekomendasi atau alasan penundaan per laporan ini.</p>
           <textarea
             rows={3}
-            className="w-full rounded-xl border border-amber-200 dark:border-amber-700 bg-white dark:bg-amber-950/40 px-4 py-3 text-sm text-ink-900 dark:text-ink-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 dark:focus:ring-amber-700 focus:border-amber-400 dark:focus:border-amber-600 transition resize-none"
+            className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-ink-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition resize-none"
             placeholder="Contoh: Depo X sering terlambat karena jalur pengiriman; rekomendasi tambah armada..."
             value={plannerNote}
             onChange={(e) => { setPlannerNote(e.target.value); setPlannerSaved(false); }}
@@ -539,12 +539,12 @@ export default function RencanaKirimReportPage() {
           <div className="flex items-center justify-between mt-3">
             <button
               onClick={() => setPlannerSaved(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800 text-white text-sm font-bold px-4 py-2 shadow-sm transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold px-4 py-2 shadow-sm transition-colors"
               disabled={!plannerNote.trim()}
             >
               Simpan Rekomendasi
             </button>
-            {plannerSaved && <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Rekomendasi tersimpan.</span>}
+            {plannerSaved && <span className="text-xs font-semibold text-emerald-700">Rekomendasi tersimpan.</span>}
           </div>
         </div>
 
