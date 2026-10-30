@@ -2091,17 +2091,31 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                 ),
                 ],
                 const SizedBox(height: AppTheme.space3),
-                Text(
-                  'Kondisi',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.gray700,
+                DropdownButtonFormField<String>(
+                  initialValue: _condition,
+                  decoration: const InputDecoration(
+                    labelText: 'Kondisi',
+                    border: OutlineInputBorder(
+                      borderRadius: AppTheme.radiusLg,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: AppTheme.space3,
+                      vertical: AppTheme.space2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppTheme.space2),
-                ConditionChipRow(
-                  value: _condition,
-                  onChanged: (value) => setState(() => _condition = value),
+                  items: ValidationCondition.values
+                      .map(
+                        (c) => DropdownMenuItem<String>(
+                          value: c,
+                          child: Text(ValidationCondition.label(c)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _condition = value);
+                    }
+                  },
                 ),
                 if (ValidationCondition.requiresPhoto.contains(_condition))
                   Padding(
@@ -2184,7 +2198,31 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                               ) &&
                               _photoPath == null)
                       ? null
-                      : _save,
+                      : () async {
+                          var confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Konfirmasi'),
+                              content: const Text(
+                                'Yakin data validasi sudah sesuai? '
+                                'Setelah disimpan tidak bisa diubah (kecuali koreksi).',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                  child: const Text('Batal'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true && mounted) {
+                            await _save();
+                          }
+                        },
                 ),
               ],
             ),
