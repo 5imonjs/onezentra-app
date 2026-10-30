@@ -455,7 +455,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     AuthProvider authProvider,
   ) {
     var muted = isDark
-        ? const Color(0xFF94A3B8) // gray-400
+        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
     var parsedHost = Uri.tryParse(authProvider.apiBaseUrl)?.host ?? '';
     var host = parsedHost.isEmpty ? authProvider.apiBaseUrl : parsedHost;
@@ -598,7 +598,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ? AppTheme.danger.withValues(alpha: 0.45)
         : AppTheme.dangerText; // red-200
     var textColor = isDark
-        ? const Color(0xFFFCA5A5) // red-300
+        ? AppTheme.dangerText
         : AppTheme.dangerText; // red-700
 
     // `liveRegion` makes screen readers announce the error as soon as it shows.
@@ -682,7 +682,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     AuthProvider authProvider,
   ) {
     var iconColor = isDark
-        ? const Color(0xFF94A3B8) // gray-400
+        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
 
     return _FieldLabel(
@@ -756,7 +756,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.14)
         : AppTheme.primary100;
     var iconColor = isDark
-        ? const Color(0xFF94A3B8) // gray-400
+        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
     var focusedColor = isDark ? AppTheme.primary300 : AppTheme.primary500;
 
@@ -796,7 +796,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       errorBorder: pill(AppTheme.danger, 1.2),
       focusedErrorBorder: pill(AppTheme.danger, 1.6),
       errorStyle: theme.textTheme.bodySmall?.copyWith(
-        color: isDark ? const Color(0xFFFCA5A5) : AppTheme.danger,
+        color: isDark ? AppTheme.danger : AppTheme.danger,
       ),
     );
   }
@@ -895,7 +895,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   Widget _buildTrustNote(ThemeData theme, bool isDark) {
     var noteColor = isDark
-        ? const Color(0xFF94A3B8) // gray-400
+        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
 
     return Row(
