@@ -486,6 +486,14 @@ export default function ValidasiSjPage() {
   const saveItem = async () => {
     const qtyOk = form.condition === 'FISIK_TIDAK_ADA' ? true : hasQty(form.actual_qty);
     if (!active || !selected || !qtyOk || (form.condition !== 'FISIK_TIDAK_ADA' && !form.expired_date)) return;
+    // Barang luar rencana (extra item) tidak bisa diubah lewat endpoint scan;
+    // backend menolak dengan 422 "Item tidak sesuai validasi ini".
+    const isExtra = (active.extra_items ?? []).some((e) => e.id === selected.id);
+    if (isExtra) {
+      notifyGlobal('Barang luar rencana tidak dapat diubah setelah dilaporkan. Hapus & laporkan ulang jika perlu.', 'error');
+      setSelected(null);
+      return;
+    }
     // Sama seperti openItem: validasi yang sudah COMPLETED tidak bisa diubah.
     // Kirim request sia-sia hanya menghasilkan 422, dan membiarkan form terisi
     // membuat operator mengira perubahan tersimpan padahal receiving_items
