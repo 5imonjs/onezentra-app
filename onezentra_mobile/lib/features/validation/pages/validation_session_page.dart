@@ -451,7 +451,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.successText,
                     side: const BorderSide(color: AppTheme.success),
-                    backgroundColor: AppTheme.successWell,
+                    backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
                     minimumSize: const Size(0, 40),
                     shape: const RoundedRectangleBorder(
                       borderRadius: AppTheme.radiusLg,
@@ -479,7 +479,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.dangerText,
                     side: const BorderSide(color: AppTheme.danger),
-                    backgroundColor: AppTheme.dangerWell,
+                    backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
                     minimumSize: const Size(0, 40),
                     shape: const RoundedRectangleBorder(
                       borderRadius: AppTheme.radiusLg,
@@ -519,7 +519,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.ink800,
+        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusXl),
         title: Text(
           approve ? 'Setujui standarisasi?' : 'Tolak standarisasi?',
@@ -1179,7 +1179,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.successText,
                       side: const BorderSide(color: AppTheme.success),
-                      backgroundColor: AppTheme.successWell,
+                      backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
                       minimumSize: const Size(0, 44),
                       shape: const RoundedRectangleBorder(
                         borderRadius: AppTheme.radiusLg,
@@ -1206,7 +1206,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.dangerText,
                       side: const BorderSide(color: AppTheme.danger),
-                      backgroundColor: AppTheme.dangerWell,
+                      backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
                       minimumSize: const Size(0, 44),
                       shape: const RoundedRectangleBorder(
                         borderRadius: AppTheme.radiusLg,
@@ -1246,7 +1246,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.ink800,
+          backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
           shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusXl),
           title: Text(
             approve
