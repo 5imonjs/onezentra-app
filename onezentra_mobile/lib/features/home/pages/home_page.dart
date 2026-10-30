@@ -278,7 +278,7 @@ class _HomePageState extends State<HomePage> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.2,
-                  color: Colors.white70,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray500,
                 ),
               ),
               Text(
@@ -287,7 +287,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 20,
                   height: 1.2,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
