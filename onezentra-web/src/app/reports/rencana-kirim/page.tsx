@@ -531,7 +531,7 @@ export default function RencanaKirimReportPage() {
           <p className="text-xs text-amber-700/80 mb-3">Tulis rekomendasi atau alasan penundaan per laporan ini.</p>
           <textarea
             rows={3}
-            className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition resize-none"
+            className="w-full rounded-xl border border-amber-200 bg-surface-card px-4 py-3 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition resize-none"
             placeholder="Contoh: Depo X sering terlambat karena jalur pengiriman; rekomendasi tambah armada..."
             value={plannerNote}
             onChange={(e) => { setPlannerNote(e.target.value); setPlannerSaved(false); }}
@@ -539,7 +539,7 @@ export default function RencanaKirimReportPage() {
           <div className="flex items-center justify-between mt-3">
             <button
               onClick={() => setPlannerSaved(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold px-4 py-2 shadow-sm transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-amber-950 text-sm font-bold px-4 py-2 shadow-sm transition-colors"
               disabled={!plannerNote.trim()}
             >
               Simpan Rekomendasi
