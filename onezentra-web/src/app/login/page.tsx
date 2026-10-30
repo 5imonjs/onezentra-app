@@ -64,7 +64,7 @@ export default function LoginPage() {
           {/* Tanpa priority: hanya LCP yang boleh preload (lihat splash di
               dashboard/layout). loading="eager" tidak membuat preload —
               ia hanya menaikkan prioritas fetch gambar in-viewport ini. */}
-          <Image src="/garuda-logo.png" alt="" width={560} height={560} loading="eager" className="w-full max-w-lg h-auto mb-8" />
+          <Image src="/LOGO.png" alt="" width={560} height={560} loading="eager" className="w-full max-w-lg h-auto mb-8" />
           <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">ONEZENTRA</h1>
           
           <div className="grid grid-cols-2 gap-6 max-w-md w-full">
@@ -121,7 +121,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-fade-in">
           <div className="lg:hidden text-center mb-8">
             <div className="relative w-44 h-16 bg-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-600/30 px-3 overflow-hidden">
-              <Image src="/garuda-logo.png" alt="" fill className="object-contain" />
+              <Image src="/LOGO.png" alt="" fill className="object-contain" />
             </div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">ONEZENTRA</h1>
           </div>
