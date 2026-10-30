@@ -772,7 +772,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       filled: true,
       fillColor: isDark
           ? Colors.white.withValues(alpha: 0.08)
-          : AppTheme.surfaceHover,
+          : Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
       // The pill keeps its own border as the focus affordance, so the hover /
       // focus overlays stay translucent. An opaque overlay is painted on top of
       // the fill and swallows the typed text (white on white in dark mode).

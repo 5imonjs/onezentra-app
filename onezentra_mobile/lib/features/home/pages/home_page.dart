@@ -103,7 +103,7 @@ class _HomePageState extends State<HomePage> {
     var hasMenu = visibleWorkflow.isNotEmpty || visibleHistory.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
       appBar: AppBar(
         title: const Text('ONEZENTRA'),
         elevation: 0,
@@ -282,7 +282,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 20,
                   height: 1.2,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.foreground,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -334,7 +334,7 @@ class _HomePageState extends State<HomePage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceCard,
+        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
         title: Text(
           'Keluar dari akun?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -379,7 +379,7 @@ class _HomePageState extends State<HomePage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space5),
     decoration: BoxDecoration(
-      color: AppTheme.surfaceCard,
+      color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
       borderRadius: AppTheme.radiusXl,
       border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
     ),
@@ -516,7 +516,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 16,
                   height: 1.3,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.foreground,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
               ),
             ),
@@ -574,7 +574,7 @@ class _HomePageState extends State<HomePage> {
     padding: const EdgeInsets.all(AppTheme.space5),
     // Subtle stage tint: blends a hint of the step colour into the card so
     // the workflow reads as a colored sequence without breaking the theme.
-    color: Color.lerp(AppTheme.surfaceCard, menu.color, 0.05),
+    color: Color.lerp(Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard, menu.color, 0.05),
     border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
     onTap: () => context.push(menu.route),
     child: Row(
@@ -610,7 +610,7 @@ class _HomePageState extends State<HomePage> {
                   decoration: BoxDecoration(
                     color: menu.color,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.background, width: 2),
+                    border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background, width: 2),
                   ),
                   child: Text(
                     '$number',
@@ -638,7 +638,7 @@ class _HomePageState extends State<HomePage> {
                   height: 1.3,
                   letterSpacing: 0,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.foreground,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
               ),
               const SizedBox(height: 2),

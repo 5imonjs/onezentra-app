@@ -90,7 +90,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         .toList();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
       appBar: AppBar(
         title: Text(
           doc?.poTransporter ?? session.scanCode ?? 'Sesi #${session.id}',
@@ -862,13 +862,13 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       var confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          backgroundColor: AppTheme.surfaceCard,
+          backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
           title: Text(
             'Produk Belum Disetujui BLC',
             style: GoogleFonts.roboto(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppTheme.foreground,
+              color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
             ),
           ),
           content: Column(
@@ -1144,7 +1144,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: const BorderSide(color: AppTheme.primary600),
-                  backgroundColor: AppTheme.surfaceHover,
+                  backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
                   minimumSize: const Size(0, 44),
                   shape: const RoundedRectangleBorder(
                     borderRadius: AppTheme.radiusLg,
@@ -1509,7 +1509,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     style: OutlinedButton.styleFrom(
       foregroundColor: Colors.white,
       side: const BorderSide(color: AppTheme.primary600),
-      backgroundColor: AppTheme.surfaceHover,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
@@ -1524,7 +1524,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     style: OutlinedButton.styleFrom(
       foregroundColor: Colors.white,
       side: const BorderSide(color: AppTheme.primary600),
-      backgroundColor: AppTheme.surfaceHover,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
@@ -1715,7 +1715,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceCard,
+        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
         title: Text(
           'Selesaikan validasi?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -2018,8 +2018,8 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     var item = widget.item;
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
       ),
       padding: EdgeInsets.only(
@@ -2053,7 +2053,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.foreground,
+                    color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -2403,8 +2403,8 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: AppTheme.surface,
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
     ),
     padding: EdgeInsets.only(
@@ -2438,7 +2438,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 style: GoogleFonts.roboto(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.foreground,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
               ),
               const SizedBox(height: 4),
@@ -2478,7 +2478,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 Container(
                   margin: const EdgeInsets.only(top: AppTheme.space2),
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceCard,
+                    color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
                     borderRadius: AppTheme.radiusLg,
                     border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
                   ),
@@ -2651,7 +2651,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: AppTheme.surfaceCard,
+      color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
       borderRadius: AppTheme.radiusLg,
       border: Border.all(color: AppTheme.primary500),
     ),
@@ -2680,7 +2680,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 style: GoogleFonts.roboto(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.foreground,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -2699,7 +2699,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
         ),
         IconButton(
           tooltip: 'Ganti barang',
-          icon: Icon(Icons.close_rounded, size: 18),
+          icon: const Icon(Icons.close_rounded, size: 18),
           color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
           onPressed: _saving
               ? null
@@ -2874,7 +2874,7 @@ class _NpnSuggestionTile extends StatelessWidget {
                   style: GoogleFonts.roboto(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.foreground,
+                    color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2937,8 +2937,8 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
       ),
       padding: EdgeInsets.only(
@@ -2992,7 +2992,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                             style: GoogleFonts.roboto(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: AppTheme.foreground,
+                              color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                             ),
                           ),
                           Text(

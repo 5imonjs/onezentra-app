@@ -84,7 +84,7 @@ class _GatePageState extends State<GatePage> {
     var gate = context.watch<GateProvider>();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
       appBar: AppBar(
         title: const Text('Check In Point'),
         elevation: 0,
@@ -254,7 +254,7 @@ class _GatePageState extends State<GatePage> {
                       fontSize: 15,
                       height: 1.25,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.foreground,
+                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -686,7 +686,7 @@ class _GatePageState extends State<GatePage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceCard,
+        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
         insetPadding: const EdgeInsets.symmetric(
           horizontal: AppTheme.space4,
           vertical: AppTheme.space6,
@@ -879,7 +879,7 @@ class _GatePageState extends State<GatePage> {
                   fontSize: 15,
                   height: 1.25,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.foreground,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
               ),
             ),
@@ -934,7 +934,7 @@ class _GatePageState extends State<GatePage> {
                 fontSize: 12.5,
                 height: 1.3,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.foreground,
+                color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
               ),
             ),
             const SizedBox(height: 2),

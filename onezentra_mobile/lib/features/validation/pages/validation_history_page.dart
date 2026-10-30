@@ -88,7 +88,7 @@ class _ValidationHistoryPageState extends State<ValidationHistoryPage> {
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
       appBar: AppBar(
         title: const Text('Riwayat Validasi'),
         elevation: 0,

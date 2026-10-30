@@ -76,7 +76,7 @@ class _UnloadPageState extends State<UnloadPage> {
     var unload = context.watch<UnloadProvider>();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
       appBar: AppBar(
         title: const Text('Check Out Point'),
         elevation: 0,
@@ -182,7 +182,7 @@ class _UnloadPageState extends State<UnloadPage> {
           style: GoogleFonts.roboto(
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: AppTheme.foreground,
+            color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
           ),
         ),
         const SizedBox(height: AppTheme.space1),
@@ -338,7 +338,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.foreground,
+                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                     ),
                   ),
                   const SizedBox(height: AppTheme.space1),
@@ -445,7 +445,7 @@ class _UnloadPageState extends State<UnloadPage> {
       child: Container(
         padding: const EdgeInsets.all(AppTheme.space3),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary950 : AppTheme.surfaceCard,
+          color: selected ? AppTheme.primary950 : Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
           borderRadius: AppTheme.radiusLg,
           border: Border.all(
             color: selected ? AppTheme.primary400 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
@@ -467,7 +467,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.foreground,
+                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -980,7 +980,7 @@ class _UnloadPageState extends State<UnloadPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceCard,
+        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
         title: Text(
           'Selesaikan bongkar?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -1027,7 +1027,7 @@ class _UnloadPageState extends State<UnloadPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceCard,
+        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
         title: Text(
           'Batalkan bongkar?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -1262,8 +1262,8 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
     var line = widget.line;
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
       ),
       padding: EdgeInsets.only(
@@ -1297,7 +1297,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
                   style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.foreground,
+                    color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1406,7 +1406,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
           vertical: AppTheme.space2,
         ),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary600 : AppTheme.surfaceCard,
+          color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
           borderRadius: AppTheme.radiusFull,
           border: Border.all(
             color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,

@@ -95,7 +95,7 @@ class AppTextField extends StatelessWidget {
           focusNode: focusNode,
           autofocus: autofocus,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.foreground,
+            color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
           ),
           decoration: InputDecoration(
             hintText: hint,
@@ -105,7 +105,7 @@ class AppTextField extends StatelessWidget {
             suffixIcon: suffixIcon,
             counterText: '',
             filled: true,
-            fillColor: AppTheme.surfaceCard,
+            fillColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: AppTheme.space4,
               vertical: AppTheme.space3,
@@ -375,7 +375,7 @@ class AppCard extends StatelessWidget {
         padding: padding ?? const EdgeInsets.all(AppTheme.space6),
         margin: margin,
         decoration: BoxDecoration(
-          color: color ?? AppTheme.surfaceCard,
+          color: color ?? Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
           borderRadius: radius,
           border: cardBorder,
           boxShadow: cardShadow,
@@ -391,7 +391,7 @@ class AppCard extends StatelessWidget {
       margin: margin,
       decoration: BoxDecoration(borderRadius: radius, boxShadow: cardShadow),
       child: Material(
-        color: color ?? AppTheme.surfaceCard,
+        color: color ?? Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
         borderRadius: radius,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -581,10 +581,10 @@ class AppLoadingOverlay extends StatelessWidget {
           child: Center(
             child: Container(
               padding: const EdgeInsets.all(AppTheme.space6),
-              decoration: const BoxDecoration(
-                color: AppTheme.surfaceCard,
+              decoration: BoxDecoration(
+                color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
                 borderRadius: AppTheme.radiusXl,
-                boxShadow: [AppTheme.shadowXl],
+                boxShadow: const [AppTheme.shadowXl],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -722,7 +722,7 @@ class AppEmptyState extends StatelessWidget {
               title,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: AppTheme.foreground,
+                color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
               ),
               textAlign: TextAlign.center,
             ),

@@ -61,7 +61,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                       style: GoogleFonts.roboto(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.foreground,
+                        color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -234,7 +234,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                         style: GoogleFonts.robotoMono(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.foreground,
+                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                         ),
                       ),
                     ),

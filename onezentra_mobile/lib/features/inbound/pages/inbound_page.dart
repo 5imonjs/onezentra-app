@@ -98,7 +98,7 @@ class _InboundPageState extends State<InboundPage> {
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
       appBar: AppBar(
         title: const Text('Penerimaan'),
         elevation: 0,
@@ -371,7 +371,7 @@ class _InboundPageState extends State<InboundPage> {
                         style: GoogleFonts.robotoMono(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.foreground,
+                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                         ),
                       ),
                     ),
@@ -532,7 +532,7 @@ class _InboundPageState extends State<InboundPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.foreground,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
               ),
               const SizedBox(height: AppTheme.space3),
@@ -598,7 +598,7 @@ class _InboundPageState extends State<InboundPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.foreground,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
               ),
               const SizedBox(height: 2),

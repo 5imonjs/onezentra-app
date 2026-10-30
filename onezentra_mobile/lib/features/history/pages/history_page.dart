@@ -60,7 +60,7 @@ class HistoryPage extends StatelessWidget {
 
     if (tabs.isEmpty) {
       return Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
         appBar: AppBar(title: const Text('Riwayat'), elevation: 0),
         body: SafeArea(child: _buildNoAccess()),
       );
@@ -69,7 +69,7 @@ class HistoryPage extends StatelessWidget {
     return DefaultTabController(
       length: tabs.length,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
         appBar: AppBar(
           title: const Text('Riwayat'),
           elevation: 0,

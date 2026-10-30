@@ -71,7 +71,7 @@ class _ConditionChip extends StatelessWidget {
         vertical: AppTheme.space2,
       ),
       decoration: BoxDecoration(
-        color: selected ? AppTheme.primary600 : AppTheme.surfaceCard,
+        color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
         borderRadius: AppTheme.radiusFull,
         border: Border.all(
           color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
@@ -334,7 +334,7 @@ Future<DateTime?> pickExpiredDate(BuildContext context, {DateTime? initial}) {
     builder: (_) => Container(
       height: 260,
       padding: const EdgeInsets.all(AppTheme.space4),
-      color: AppTheme.surface,
+      color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
       child: Column(
         children: [
           Container(
@@ -352,7 +352,7 @@ Future<DateTime?> pickExpiredDate(BuildContext context, {DateTime? initial}) {
               minimumDate: DateTime(2000),
               maximumDate: DateTime(2100),
               onDateTimeChanged: (DateTime value) => changed = value,
-              backgroundColor: AppTheme.surface,
+              backgroundColor: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
             ),
           ),
           SafeArea(

@@ -94,7 +94,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
       appBar: AppBar(
         title: const Text('Riwayat Gate'),
         elevation: 0,
@@ -164,7 +164,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.foreground,
+                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -223,7 +223,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.foreground,
+                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -376,7 +376,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                         style: GoogleFonts.robotoMono(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.foreground,
+                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                         ),
                       ),
                     ),

@@ -31,6 +31,8 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
   final Color textPrimary;
   final Color textSecondary;
   final Color textMuted;
+  final Color background;
+  final Color foreground;
 
   const ThemeColors({
     required this.gray50,
@@ -50,6 +52,8 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     required this.textPrimary,
     required this.textSecondary,
     required this.textMuted,
+    required this.background,
+    required this.foreground,
   });
 
   static const dark = ThemeColors(
@@ -70,6 +74,8 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     textPrimary: Color(0xFFF1F5F9),
     textSecondary: Color(0xFFE2E8F0),
     textMuted: Color(0xFF94A3B8),
+    background: Color(0xFF0F172A),
+    foreground: Color(0xFFF1F5F9),
   );
 
   static const light = ThemeColors(
@@ -90,6 +96,8 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     textPrimary: Color(0xFF0F172A),
     textSecondary: Color(0xFF1E293B),
     textMuted: Color(0xFF64748B),
+    background: Color(0xFFF1F5F9),
+    foreground: Color(0xFF0F172A),
   );
 
   @override
@@ -111,6 +119,8 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     Color? textPrimary,
     Color? textSecondary,
     Color? textMuted,
+    Color? background,
+    Color? foreground,
   }) =>
       ThemeColors(
         gray50: gray50 ?? this.gray50,
@@ -130,6 +140,8 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
         textPrimary: textPrimary ?? this.textPrimary,
         textSecondary: textSecondary ?? this.textSecondary,
         textMuted: textMuted ?? this.textMuted,
+        background: background ?? this.background,
+        foreground: foreground ?? this.foreground,
       );
 
   @override
@@ -155,6 +167,8 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
       textMuted: Color.lerp(textMuted, other.textMuted, t)!,
+      background: Color.lerp(background, other.background, t)!,
+      foreground: Color.lerp(foreground, other.foreground, t)!,
     );
   }
 }
