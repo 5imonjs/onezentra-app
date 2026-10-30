@@ -197,7 +197,7 @@ class _InboundPageState extends State<InboundPage> {
                 '${inbound.total} penerimaan tercatat',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                 ),
               ),
             ],
@@ -398,7 +398,7 @@ class _InboundPageState extends State<InboundPage> {
                   ' / ${_formatQty(receiving.totalExpectedQty)}',
                   style: GoogleFonts.robotoMono(
                     fontSize: 11,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                   ),
                 ),
               ],
@@ -485,7 +485,7 @@ class _InboundPageState extends State<InboundPage> {
                 '${receiving.nopol ?? '-'} • ${receiving.driverName ?? '-'}',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                 ),
               ),
               const SizedBox(height: AppTheme.space3),
@@ -514,7 +514,7 @@ class _InboundPageState extends State<InboundPage> {
                   style: GoogleFonts.roboto(
                     fontSize: 12,
                     height: 1.4,
-                    color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+                    color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
                   ),
                 ),
               ],
@@ -633,7 +633,7 @@ class _InboundPageState extends State<InboundPage> {
                   ].join(' • '),
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                   ),
                 ),
             ],
@@ -668,8 +668,8 @@ class _InboundPageState extends State<InboundPage> {
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
                 color: highlight
-                    ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50.withValues(alpha: 0.65)
-                    : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50.withValues(alpha: 0.65)
+                    : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
               ),
             ),
             const SizedBox(height: 2),
@@ -680,7 +680,7 @@ class _InboundPageState extends State<InboundPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50 : Colors.white,
+                color: highlight ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50 : Colors.white,
               ),
             ),
           ],

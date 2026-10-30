@@ -263,7 +263,7 @@ class _GatePageState extends State<GatePage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
                       height: 1.4,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                     ),
                   ),
                 ],
@@ -391,7 +391,7 @@ class _GatePageState extends State<GatePage> {
             style: GoogleFonts.roboto(
               fontSize: 12.5,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
             ),
           ),
         ),
@@ -437,7 +437,7 @@ class _GatePageState extends State<GatePage> {
                         height: 1.3,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
-                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                       ),
                     ),
                     const SizedBox(height: AppTheme.space2),
@@ -592,7 +592,7 @@ class _GatePageState extends State<GatePage> {
         Icon(
           Icons.info_outline_rounded,
           size: 16,
-          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -601,7 +601,7 @@ class _GatePageState extends State<GatePage> {
             style: GoogleFonts.roboto(
               fontSize: 12,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+              color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
             ),
           ),
         ),
@@ -731,7 +731,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
               ),
             ),
           ),
@@ -943,7 +943,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.roboto(
                 fontSize: 11.5,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
               ),
             ),
           ],

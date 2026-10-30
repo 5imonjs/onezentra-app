@@ -172,7 +172,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     'Nopol / PO / nama driver',
                     style: GoogleFonts.roboto(
                       fontSize: 11,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                     ),
                   ),
                 ],
@@ -231,7 +231,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     '${gate.total} transaksi tercatat',
                     style: GoogleFonts.roboto(
                       fontSize: 11,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                     ),
                   ),
                 ],
@@ -404,7 +404,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.robotoMono(
                           fontSize: 11,
-                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                         ),
                       ),
                     ),

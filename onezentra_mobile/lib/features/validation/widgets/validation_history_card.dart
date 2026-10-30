@@ -69,7 +69,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                       '${validation.total} sesi tercatat',
                       style: GoogleFonts.roboto(
                         fontSize: 11,
-                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                       ),
                     ),
                   ],

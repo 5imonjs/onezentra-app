@@ -74,7 +74,7 @@ class _ConditionChip extends StatelessWidget {
         color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
         borderRadius: AppTheme.radiusFull,
         border: Border.all(
-          color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+          color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
         ),
       ),
       child: Text(
@@ -82,7 +82,7 @@ class _ConditionChip extends StatelessWidget {
         style: GoogleFonts.roboto(
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
-          color: selected ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+          color: selected ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
         ),
       ),
     ),
@@ -341,7 +341,7 @@ Future<DateTime?> pickExpiredDate(BuildContext context, {DateTime? initial}) {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+              color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
               borderRadius: AppTheme.radiusFull,
             ),
           ),
