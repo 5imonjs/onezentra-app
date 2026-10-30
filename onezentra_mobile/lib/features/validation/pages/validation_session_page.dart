@@ -388,7 +388,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     '${items.length} pengajuan menunggu keputusan',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.6),
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -428,7 +428,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 13,
               fontWeight: FontWeight.w800,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
             ),
           ),
           const SizedBox(height: 2),
@@ -436,7 +436,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             '${item.kodeBarang} • Tier $tier × Tinggi $tinggi',
             style: GoogleFonts.roboto(
               fontSize: 11.5,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.6),
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: AppTheme.space3),
@@ -534,7 +534,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           'Tinggi ${item.standarisasi?.tinggiTumpukan ?? 0}',
           style: GoogleFonts.roboto(
             fontSize: 13,
-            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.9),
+            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.9),
           ),
         ),
         actions: [
@@ -696,7 +696,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         style: GoogleFonts.roboto(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(
                             alpha: locked ? 0.6 : 1.0,
                           ),
                         ),
@@ -882,7 +882,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   height: 1.4,
-                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
                 ),
               ),
               if (item.standarisasi?.status == 'pending') ...[
@@ -1000,7 +1000,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11,
                       height: 1.4,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
                     ),
                   ),
                 ],
@@ -1068,7 +1068,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         style: GoogleFonts.roboto(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
                         ),
                       ),
                     ),
@@ -1142,7 +1142,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     ? null
                     : () => _openExtraPrintSheet(item),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                  foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
                   side: const BorderSide(color: AppTheme.primary600),
                   backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
                   minimumSize: const Size(0, 44),
@@ -1157,11 +1157,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 icon: Icon(
                   Icons.print_rounded,
                   size: 18,
-                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
                 ),
                 label: Text(
                   item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
-                  style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700),
+                  style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700),
                 ),
               ),
             ),
@@ -1267,7 +1267,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.9),
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.9),
                 ),
               ),
               const SizedBox(height: AppTheme.space3),
@@ -1281,7 +1281,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       ? 'Catatan (opsional)'
                       : 'Alasan penolakan (wajib)',
                   hintStyle: TextStyle(
-                    color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.4),
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.4),
                     fontSize: 13,
                   ),
                   errorText: notesError
@@ -1290,7 +1290,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: AppTheme.radiusLg,
                     borderSide: BorderSide(
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.2),
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.2),
                     ),
                   ),
                   focusedBorder: const OutlineInputBorder(
@@ -1507,7 +1507,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   Widget _editButton(SjValidationItem item) => OutlinedButton.icon(
     onPressed: () => _openItemSheet(item),
     style: OutlinedButton.styleFrom(
-      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
       side: const BorderSide(color: AppTheme.primary600),
       backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
       minimumSize: const Size(0, 44),
@@ -1515,14 +1515,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: Icon(Icons.description_rounded, size: 18, color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700),
-    label: Text('Detail Validasi', style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700)),
+    icon: Icon(Icons.description_rounded, size: 18, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700),
+    label: Text('Detail Validasi', style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700)),
   );
 
   Widget _printLabelButton(SjValidationItem item) => OutlinedButton.icon(
     onPressed: () => _openPrintSheet(item),
     style: OutlinedButton.styleFrom(
-      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
       side: const BorderSide(color: AppTheme.primary600),
       backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
       minimumSize: const Size(0, 44),
@@ -1530,10 +1530,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: Icon(Icons.print_rounded, size: 18, color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700),
+    icon: Icon(Icons.print_rounded, size: 18, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700),
     label: Text(
       item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
-      style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700),
+      style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700),
     ),
   );
 
@@ -1729,7 +1729,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
               ),
             ),
             if (mismatches.isNotEmpty) ...[
@@ -1826,7 +1826,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.primary950 : Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                color: highlight ? AppTheme.primary950 : Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
               ),
             ),
           ],
@@ -1878,7 +1878,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         disabledForegroundColor: foreground.withValues(alpha: 0.5),
         minimumSize: const Size(0, 48),
         side: outline
-            ? BorderSide(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.4))
+            ? BorderSide(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.4))
             : null,
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(
@@ -2142,7 +2142,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                     style: GoogleFonts.roboto(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
                     ),
                   ),
                   iconColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
@@ -2691,7 +2691,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 '${_npn!.satuan != null ? ' • Satuan ${_npn!.satuan}' : ''}',
                 style: GoogleFonts.robotoMono(
                   fontSize: 11.5,
-                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
                 ),
               ),
             ],
@@ -2700,7 +2700,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
         IconButton(
           tooltip: 'Ganti barang',
           icon: const Icon(Icons.close_rounded, size: 18),
-          color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
           onPressed: _saving
               ? null
               : () => setState(() {
@@ -2884,7 +2884,7 @@ class _NpnSuggestionTile extends StatelessWidget {
                     product.kodeBarang!,
                     style: GoogleFonts.robotoMono(
                       fontSize: 11,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
                     ),
                   ),
               ],
