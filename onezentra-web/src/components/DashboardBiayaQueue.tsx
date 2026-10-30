@@ -131,7 +131,7 @@ export default function DashboardBiayaQueue({ kodeDepo }: { kodeDepo?: string })
     <section aria-label="Antrean persetujuan biaya">
       <div className="mb-3 flex items-center gap-2 px-1">
         <span aria-hidden="true" className="h-4 w-1 rounded-full bg-blue-500" />
-        <h2 className="text-sm font-bold tracking-tight text-gray-900">Antrean Persetujuan Biaya</h2>
+        <h2 className="text-sm font-bold tracking-tight text-foreground">Antrean Persetujuan Biaya</h2>
         {failed && (
           <button type="button" onClick={load} className="ml-auto text-[11px] font-semibold text-amber-700 hover:underline">
             Sebagian gagal dimuat — coba lagi

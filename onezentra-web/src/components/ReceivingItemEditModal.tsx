@@ -156,16 +156,16 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
       <form id="edit-receiving-item" onSubmit={handleSave} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="riem-qty-crt" className="block text-sm font-medium text-gray-700 mb-1.5">Qty CRT *</label>
+            <label htmlFor="riem-qty-crt" className="block text-sm font-medium text-foreground mb-1.5">Qty CRT *</label>
             <input id="riem-qty-crt" type="number" step="1" min="0" value={form.qty_crt || ''} onChange={set('qty_crt')} className="input-field" required />
           </div>
           <div>
-            <label htmlFor="riem-qty-pcs" className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label htmlFor="riem-qty-pcs" className="block text-sm font-medium text-foreground mb-1.5">
               Qty PCS {item?.conversion_factor != null ? '(otomatis)' : '(opsional)'}
             </label>
             {item?.conversion_factor != null ? (
-              <div className="rounded-xl border border-gray-300 bg-popover px-3 py-2.5">
-                <p className="text-sm font-semibold text-gray-800 tabular-nums">
+              <div className="rounded-xl border border-border bg-popover px-3 py-2.5">
+                <p className="text-sm font-semibold text-foreground tabular-nums">
                   {parseFloat(form.qty_crt || '0') * item.conversion_factor}
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5">
@@ -177,7 +177,7 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
             )}
           </div>
           <div>
-            <label htmlFor="riem-satuan" className="block text-sm font-medium text-gray-700 mb-1.5">Satuan</label>
+            <label htmlFor="riem-satuan" className="block text-sm font-medium text-foreground mb-1.5">Satuan</label>
             <select id="riem-satuan" value={form.satuan || 'CRT'} onChange={set('satuan')} className="select-field">
               <option value="CRT">CRT</option>
               <option value="ZAK">ZAK</option>
@@ -188,15 +188,15 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
             </select>
           </div>
           <div>
-            <label htmlFor="riem-expired-date" className="block text-sm font-medium text-gray-700 mb-1.5">Expired Date *</label>
+            <label htmlFor="riem-expired-date" className="block text-sm font-medium text-foreground mb-1.5">Expired Date *</label>
             <input id="riem-expired-date" type="date" value={form.expired_date || ''} onChange={set('expired_date')} className="input-field" required />
           </div>
           <div>
-            <label htmlFor="riem-tanggal-penerimaan" className="block text-sm font-medium text-gray-700 mb-1.5">Tanggal Penerimaan</label>
+            <label htmlFor="riem-tanggal-penerimaan" className="block text-sm font-medium text-foreground mb-1.5">Tanggal Penerimaan</label>
             <input id="riem-tanggal-penerimaan" type="date" value={form.tanggal_penerimaan || ''} onChange={set('tanggal_penerimaan')} className="input-field" />
           </div>
           <div>
-            <label htmlFor="riem-condition" className="block text-sm font-medium text-gray-700 mb-1.5">Kondisi</label>
+            <label htmlFor="riem-condition" className="block text-sm font-medium text-foreground mb-1.5">Kondisi</label>
             <select id="riem-condition" value={form.condition || 'FISIK_BAGUS'} onChange={set('condition')} className="select-field">
               {CONDITIONS.map((c) => (
                 <option key={c} value={c}>{CONDITION_LABELS[c]}</option>
@@ -204,7 +204,7 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
             </select>
           </div>
           <div className="col-span-2">
-            <span className="block text-sm font-medium text-gray-700 mb-1.5">Bukti Foto {photoRequired && <span className="text-red-500">* wajib untuk kondisi ini</span>}</span>
+            <span className="block text-sm font-medium text-foreground mb-1.5">Bukti Foto {photoRequired && <span className="text-red-500">* wajib untuk kondisi ini</span>}</span>
             {photoRequired && !photoSatisfied && (
               <div className="mb-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
                 <p className="text-xs font-bold text-amber-900">Bukti fotografi kondisi wajib</p>
@@ -249,19 +249,19 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
             )}
           </div>
           <div className="col-span-2">
-            <label htmlFor="riem-sumber-material" className="block text-sm font-medium text-gray-700 mb-1.5">Sumber Material</label>
+            <label htmlFor="riem-sumber-material" className="block text-sm font-medium text-foreground mb-1.5">Sumber Material</label>
             <input id="riem-sumber-material" value={form.sumber_material || ''} onChange={set('sumber_material')} className="input-field" />
           </div>
           <div>
-            <label htmlFor="riem-kode-depo" className="block text-sm font-medium text-gray-700 mb-1.5">Kode Depo</label>
+            <label htmlFor="riem-kode-depo" className="block text-sm font-medium text-foreground mb-1.5">Kode Depo</label>
             <input id="riem-kode-depo" value={form.kode_depo || ''} onChange={set('kode_depo')} className="input-field" />
           </div>
           <div className="col-span-2">
-            <label htmlFor="riem-nama-depo" className="block text-sm font-medium text-gray-700 mb-1.5">Nama Depo</label>
+            <label htmlFor="riem-nama-depo" className="block text-sm font-medium text-foreground mb-1.5">Nama Depo</label>
             <input id="riem-nama-depo" value={form.nama_depo || ''} onChange={set('nama_depo')} className="input-field" />
           </div>
           <div className="col-span-2">
-            <label htmlFor="riem-notes" className="block text-sm font-medium text-gray-700 mb-1.5">Catatan</label>
+            <label htmlFor="riem-notes" className="block text-sm font-medium text-foreground mb-1.5">Catatan</label>
             <textarea id="riem-notes" value={form.notes || ''} onChange={set('notes')} className="input-field" rows={2} />
           </div>
         </div>

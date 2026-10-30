@@ -89,10 +89,10 @@ export default function ProfilePage() {
         </div>
 
         {/* Profile Info Card */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border bg-linear-to-r from-gray-50 to-surface-card">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Informasi Profil</h2>
+              <h2 className="text-lg font-semibold text-foreground">Informasi Profil</h2>
               {!editing && (
                 <button onClick={() => { setForm({ full_name: user.full_name, email: user.email }); setEditing(true); }} className="btn-secondary text-sm">
                   <span className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export default function ProfilePage() {
             {editing ? (
               <div className="space-y-5 max-w-lg">
                 <div>
-                  <label htmlFor="profile-full-name" className="block text-sm font-medium text-gray-700 mb-1.5">Nama Lengkap</label>
+                  <label htmlFor="profile-full-name" className="block text-sm font-medium text-foreground mb-1.5">Nama Lengkap</label>
                   <input
                     id="profile-full-name"
                     type="text"
@@ -119,7 +119,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                  <label htmlFor="profile-email" className="block text-sm font-medium text-foreground mb-1.5">Email</label>
                   <input
                     id="profile-email"
                     type="email"
@@ -147,15 +147,15 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="bg-popover rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Nama Lengkap</span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{user.full_name}</p>
+                  <p className="text-sm font-medium text-foreground mt-1">{user.full_name}</p>
                 </div>
                 <div className="bg-popover rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Email</span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{user.email}</p>
+                  <p className="text-sm font-medium text-foreground mt-1">{user.email}</p>
                 </div>
                 <div className="bg-popover rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Level</span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{user.level}</p>
+                  <p className="text-sm font-medium text-foreground mt-1">{user.level}</p>
                 </div>
                 <div className="bg-popover rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Status</span>
@@ -168,11 +168,11 @@ export default function ProfilePage() {
                 </div>
                 <div className="bg-popover rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Depo</span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{user.nama_depo || '-'} ({user.kode_depo || '-'})</p>
+                  <p className="text-sm font-medium text-foreground mt-1">{user.nama_depo || '-'} ({user.kode_depo || '-'})</p>
                 </div>
                 <div className="bg-popover rounded-xl p-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Roles</span>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-foreground mt-1">
                     {user.roles?.length > 0 ? user.roles.map(r => r.name).join(', ') : user.level}
                   </p>
                 </div>
@@ -182,14 +182,14 @@ export default function ProfilePage() {
         </div>
 
         {/* Security Card */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card">
-            <h2 className="text-lg font-semibold text-gray-900">Keamanan</h2>
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border bg-linear-to-r from-gray-50 to-surface-card">
+            <h2 className="text-lg font-semibold text-foreground">Keamanan</h2>
           </div>
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-900">Ubah Password</p>
+                <p className="text-sm font-medium text-foreground">Ubah Password</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Perbarui password akun Anda secara berkala</p>
               </div>
               <button onClick={() => setShowPasswordModal(true)} className="btn-secondary text-sm">
@@ -205,9 +205,9 @@ export default function ProfilePage() {
         {/* Appearance — theme preference. Lives on the profile page rather than
             the sidebar so the choice is a deliberate setting, not a stray
             toggle, and it persists per browser via localStorage. */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card">
-            <h2 className="text-lg font-semibold text-gray-900">Tampilan</h2>
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-border bg-linear-to-r from-gray-50 to-surface-card">
+            <h2 className="text-lg font-semibold text-foreground">Tampilan</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
               Pilih tema terang atau gelap. Pilihan ini tersimpan di browser Anda.
             </p>
@@ -244,7 +244,7 @@ export default function ProfilePage() {
         >
           <div className="space-y-4">
             <div>
-              <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1.5">Password Saat Ini</label>
+              <label htmlFor="current-password" className="block text-sm font-medium text-foreground mb-1.5">Password Saat Ini</label>
               <input
                 id="current-password"
                 type="password"
@@ -255,7 +255,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1.5">Password Baru</label>
+              <label htmlFor="new-password" className="block text-sm font-medium text-foreground mb-1.5">Password Baru</label>
               <input
                 id="new-password"
                 type="password"
@@ -267,7 +267,7 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1.5">Konfirmasi Password Baru</label>
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-foreground mb-1.5">Konfirmasi Password Baru</label>
               <input
                 id="confirm-password"
                 type="password"

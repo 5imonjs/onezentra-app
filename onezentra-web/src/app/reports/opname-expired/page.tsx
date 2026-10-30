@@ -266,7 +266,7 @@ export default function OpnameExpiredReportPage() {
 
   const badge = (status?: string | null, meta?: { label: string; badge: string; dot: string }) => {
     const s = status || '-';
-    const m = meta || STATUS_META[s] || { label: s, badge: 'bg-popover text-gray-600 ring-gray-200', dot: 'bg-gray-400' };
+    const m = meta || STATUS_META[s] || { label: s, badge: 'bg-popover text-foreground ring-gray-200', dot: 'bg-gray-400' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium shadow-sm ${m.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} aria-hidden="true" />
@@ -297,7 +297,7 @@ export default function OpnameExpiredReportPage() {
     return (
       <td className="table-cell text-right whitespace-nowrap tabular-nums">
         <div className="flex flex-col items-end">
-          <span className="text-sm font-semibold text-slate-800">{fnum(crt)} CRT</span>
+          <span className="text-sm font-semibold text-foreground">{fnum(crt)} CRT</span>
           {pcs > 0 && <span className="text-xs text-slate-400">/ {fnum(pcs)} PCS</span>}
           {koreksiCrt !== 0 && (
             <span className="text-xs text-accent-text tabular-nums mt-0.5">koreksi {fnum(koreksiCrt)} CRT / {fnum(koreksiPcs)} PCS</span>
@@ -382,15 +382,15 @@ export default function OpnameExpiredReportPage() {
         )}
 
         {/* Filter panel */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-linear-to-br from-ink-900 to-slate-700 text-white flex items-center justify-center shadow">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
+                  <h2 className="text-base font-bold text-foreground">Filter Laporan</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">Minggu opname, depo, dan status batch</p>
                 </div>
               </div>
@@ -440,7 +440,7 @@ export default function OpnameExpiredReportPage() {
                 </select>
               </div>
               <div className="flex items-end gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-popover hover:border-border transition-all">Reset</button>
                 <button
                   onClick={handleExport}
                   disabled={!canExport}
@@ -465,7 +465,7 @@ export default function OpnameExpiredReportPage() {
 
         {/* KPI Cards */}
         <div className={`grid grid-cols-2 gap-4 xl:grid-cols-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
@@ -473,7 +473,7 @@ export default function OpnameExpiredReportPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Batch</p>
-                <p className="text-2xl font-black text-slate-900 tabular-nums">{fnum(summary.totalBatch)}</p>
+                <p className="text-2xl font-black text-foreground tabular-nums">{fnum(summary.totalBatch)}</p>
                 <p className="text-[11px] text-slate-400 tabular-nums">{fnum(summary.totalCrt)} CRT</p>
               </div>
             </div>
@@ -491,7 +491,7 @@ export default function OpnameExpiredReportPage() {
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/20 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm shrink-0">
@@ -499,12 +499,12 @@ export default function OpnameExpiredReportPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">% Berisiko</p>
-                <p className="text-2xl font-black text-slate-900 tabular-nums">{summary.pctBerisiko}%</p>
+                <p className="text-2xl font-black text-foreground tabular-nums">{summary.pctBerisiko}%</p>
                 <p className="text-[11px] text-slate-400">dari total batch</p>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-primary-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-primary-500/20 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-chip-primary text-accent-text flex items-center justify-center shadow-sm shrink-0">
@@ -512,7 +512,7 @@ export default function OpnameExpiredReportPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total CRT</p>
-                <p className="text-2xl font-black text-slate-900 tabular-nums">{fnum(summary.totalCrt)}</p>
+                <p className="text-2xl font-black text-foreground tabular-nums">{fnum(summary.totalCrt)}</p>
                 <p className="text-[11px] text-slate-400 tabular-nums">{fnum(summary.totalBatch)} batch</p>
               </div>
             </div>
@@ -520,12 +520,12 @@ export default function OpnameExpiredReportPage() {
         </div>
 
         {/* Rekap per depo */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ringkasan distribusi</p>
-                <h2 className="text-base font-bold text-slate-900">Rekap per Depo</h2>
+                <h2 className="text-base font-bold text-foreground">Rekap per Depo</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{fnum(depotRows.length)} depo • {fnum(summary.totalBatch)} batch</p>
               </div>
             </div>
@@ -535,7 +535,7 @@ export default function OpnameExpiredReportPage() {
             <table className="w-full min-w-190 border-collapse">
               <caption className="sr-only">Rekap per depo</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-border">
                   <th scope="col" className="table-header">Depo</th>
                   {STATUS_ORDER.map((s) => (
                     <th key={s} scope="col" className="table-header text-right">
@@ -561,7 +561,7 @@ export default function OpnameExpiredReportPage() {
                 ) : depotRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="table-cell text-center py-12">
-                      <p className="text-sm text-slate-600 font-bold">Belum ada data untuk periode ini.</p>
+                      <p className="text-sm text-foreground font-bold">Belum ada data untuk periode ini.</p>
                       {activeFilterCount > 0 && (
                         <button onClick={resetFilters} className="mt-2 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold hover:bg-ink-800 transition-colors">Reset filter</button>
                       )}
@@ -574,7 +574,7 @@ export default function OpnameExpiredReportPage() {
                     return (
                       <tr key={row.kode} className="even:bg-overlay-60 hover:bg-popover transition-colors">
                         <td className="table-cell whitespace-nowrap">
-                          <span className="text-sm font-semibold text-slate-700">{row.nama}</span>
+                          <span className="text-sm font-semibold text-foreground">{row.nama}</span>
                           <span className="ml-1.5 text-xs text-slate-400 font-mono">{row.kode}</span>
                         </td>
                         {STATUS_ORDER.map((s) => {
@@ -582,7 +582,7 @@ export default function OpnameExpiredReportPage() {
                           return (
                             <td key={s} className="table-cell text-right whitespace-nowrap tabular-nums">
                               {c ? (
-                                <span className="text-sm font-medium text-slate-700">{fnum(c.count)}</span>
+                                <span className="text-sm font-medium text-foreground">{fnum(c.count)}</span>
                               ) : (
                                 <span className="text-sm text-slate-200">0</span>
                               )}
@@ -590,8 +590,8 @@ export default function OpnameExpiredReportPage() {
                             </td>
                           );
                         })}
-                        <td className="table-cell text-right text-sm font-semibold tabular-nums text-slate-800 whitespace-nowrap">{fnum(totalCount)}</td>
-                        <td className="table-cell text-right text-sm font-semibold tabular-nums text-slate-800 whitespace-nowrap">{fnum(totalCrt)}</td>
+                        <td className="table-cell text-right text-sm font-semibold tabular-nums text-foreground whitespace-nowrap">{fnum(totalCount)}</td>
+                        <td className="table-cell text-right text-sm font-semibold tabular-nums text-foreground whitespace-nowrap">{fnum(totalCrt)}</td>
                       </tr>
                     );
                   })
@@ -604,7 +604,7 @@ export default function OpnameExpiredReportPage() {
             {loading && depotRows.length === 0 && (
               <div className="p-4 space-y-3" aria-hidden="true">
                 {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-overlay-60 p-4 space-y-2">
+                  <div key={i} className="animate-pulse rounded-2xl border border-border bg-overlay-60 p-4 space-y-2">
                     <div className="h-4 w-32 bg-slate-200 rounded" />
                     <div className="grid grid-cols-4 gap-2 pt-1">
                       <div className="h-12 bg-slate-200 rounded-xl" />
@@ -618,7 +618,7 @@ export default function OpnameExpiredReportPage() {
             )}
             {!loading && depotRows.length === 0 && (
               <div className="p-10 text-center">
-                <p className="text-sm text-slate-600 font-bold">Belum ada data untuk periode ini.</p>
+                <p className="text-sm text-foreground font-bold">Belum ada data untuk periode ini.</p>
                 {activeFilterCount > 0 && (
                   <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold">Reset filter</button>
                 )}
@@ -630,19 +630,19 @@ export default function OpnameExpiredReportPage() {
               return (
                 <div key={row.kode} className="p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-slate-900 truncate">{row.nama} <span className="ml-1 text-xs font-mono font-medium text-slate-400">{row.kode}</span></p>
+                    <p className="text-sm font-bold text-foreground truncate">{row.nama} <span className="ml-1 text-xs font-mono font-medium text-slate-400">{row.kode}</span></p>
                     <p className="text-xs text-muted-foreground tabular-nums shrink-0">{fnum(totalCount)} batch • {fnum(totalCrt)} CRT</p>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     {STATUS_ORDER.map((s) => {
                       const c = row.status[s];
                       return (
-                        <div key={s} className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                        <div key={s} className="rounded-xl bg-popover p-2 text-center border border-border">
                           <p className="font-bold tracking-widest uppercase text-[9px] text-slate-400 inline-flex items-center gap-1">
                             <span className={`w-1.5 h-1.5 rounded-full ${STATUS_META[s].dot}`} aria-hidden="true" />
                             {STATUS_META[s].label}
                           </p>
-                          <p className="font-black text-slate-900 text-sm tabular-nums">{fnum(c?.count ?? 0)}</p>
+                          <p className="font-black text-foreground text-sm tabular-nums">{fnum(c?.count ?? 0)}</p>
                           <p className="text-[10px] text-slate-400 tabular-nums">{fnum(c?.qty_crt ?? 0)} CRT</p>
                         </div>
                       );
@@ -655,11 +655,11 @@ export default function OpnameExpiredReportPage() {
         </div>
 
         {/* Detail batch */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-card flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-card flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Data detail</p>
-              <h2 className="text-base font-bold text-slate-900">Detail Batch</h2>
+              <h2 className="text-base font-bold text-foreground">Detail Batch</h2>
               <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                 {statusFilter ? `Status: ${STATUS_META[statusFilter].label}` : 'Semua status'}
                 {selectedDepo ? ` · ${selectedDepo.nama_depo}` : ''}
@@ -667,7 +667,7 @@ export default function OpnameExpiredReportPage() {
               </p>
             </div>
             {pagination && (
-              <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-600 tabular-nums">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-foreground tabular-nums">
                 {fnum(pagination.total)} batch
               </span>
             )}
@@ -690,7 +690,7 @@ export default function OpnameExpiredReportPage() {
                   <svg className="w-7 h-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 font-bold">Belum ada data batch pada kombinasi filter ini.</p>
+                  <p className="text-sm text-foreground font-bold">Belum ada data batch pada kombinasi filter ini.</p>
                   <p className="text-xs text-slate-400 mt-1">Coba ubah minggu, depo, atau status</p>
                 </div>
                 {activeFilterCount > 0 && (
@@ -705,7 +705,7 @@ export default function OpnameExpiredReportPage() {
                 <table className="w-full min-w-225 border-collapse">
                   <caption className="sr-only">Laporan opname expired</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                    <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-border">
                       {canDelete && (
                         <th scope="col" className="table-header w-10 text-center">
                           <ReportSelectCheckbox
@@ -740,19 +740,19 @@ export default function OpnameExpiredReportPage() {
                           )}
                           <td className="table-cell whitespace-nowrap">{badge(w.status_ini)}</td>
                           <td className="table-cell min-w-50 max-w-75">
-                            <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
+                            <span className="block font-mono text-sm font-medium text-foreground">{w.kode_barang}</span>
                             <span className="block text-xs text-muted-foreground line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
                           </td>
-                          <td className="table-cell whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
+                          <td className="table-cell whitespace-nowrap text-sm text-foreground">{w.nama_depo || w.kode_depo || '-'}</td>
                           {renderQtyCell(w)}
-                          <td className="table-cell whitespace-nowrap text-sm text-slate-700 font-mono">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
+                          <td className="table-cell whitespace-nowrap text-sm text-foreground font-mono">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
                           <td className="table-cell whitespace-nowrap">
-                            <span className="text-sm text-slate-700 font-mono">{fmtDate(w.expired_date_ini)}</span>
-                            <span className={`mt-0.5 inline-flex px-2 py-0.5 rounded-md text-xs font-semibold tabular-nums border ${meta ? meta.chip : 'bg-slate-100 text-slate-600 border-slate-300'}`}>
+                            <span className="text-sm text-foreground font-mono">{fmtDate(w.expired_date_ini)}</span>
+                            <span className={`mt-0.5 inline-flex px-2 py-0.5 rounded-md text-xs font-semibold tabular-nums border ${meta ? meta.chip : 'bg-slate-100 text-foreground border-border'}`}>
                               {w.sisa_hari} hr
                             </span>
                           </td>
-                          <td className="table-cell max-w-50 text-xs text-slate-600 wrap-break-word">{w.perubahan || '-'}</td>
+                          <td className="table-cell max-w-50 text-xs text-foreground wrap-break-word">{w.perubahan || '-'}</td>
                         </tr>
                       );
                     })}
@@ -775,32 +775,32 @@ export default function OpnameExpiredReportPage() {
                           />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-900 truncate" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
+                          <p className="text-sm font-bold text-foreground truncate" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
                           <p className="text-xs font-mono text-muted-foreground mt-0.5 truncate">{w.kode_barang}</p>
                         </div>
                         {badge(w.status_ini)}
                       </div>
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                        <div className="rounded-xl bg-popover p-2 text-center border border-border">
                           <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Qty</p>
-                          <p className="font-black text-slate-900 text-sm tabular-nums">{fnum(num(w.qty_ini_crt))} <span className="text-[10px] font-bold text-slate-400">CRT</span></p>
+                          <p className="font-black text-foreground text-sm tabular-nums">{fnum(num(w.qty_ini_crt))} <span className="text-[10px] font-bold text-slate-400">CRT</span></p>
                           {num(w.qty_ini_pcs) > 0 && <p className="text-[10px] text-slate-400 tabular-nums">/ {fnum(num(w.qty_ini_pcs))} PCS</p>}
                         </div>
-                        <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                        <div className="rounded-xl bg-popover p-2 text-center border border-border">
                           <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Sisa</p>
-                          <p className="font-black text-slate-900 text-sm tabular-nums">{w.sisa_hari} <span className="text-[10px] font-bold text-slate-400">hr</span></p>
+                          <p className="font-black text-foreground text-sm tabular-nums">{w.sisa_hari} <span className="text-[10px] font-bold text-slate-400">hr</span></p>
                         </div>
-                        <div className={`rounded-xl p-2 text-center border ${meta ? meta.chip : 'bg-popover border-slate-100'}`}>
+                        <div className={`rounded-xl p-2 text-center border ${meta ? meta.chip : 'bg-popover border-border'}`}>
                           <p className="font-bold tracking-widest uppercase text-[9px] opacity-70">Expired</p>
                           <p className="font-black text-xs">{fmtDate(w.expired_date_ini)}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                        <div><span className="text-slate-400">Depo: </span><span className="font-medium text-slate-700">{w.nama_depo || w.kode_depo || '-'}</span></div>
-                        <div><span className="text-slate-400">Diterima: </span><span className="font-mono font-medium text-slate-700">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</span></div>
-                        <div className="col-span-2"><span className="text-slate-400">Perubahan: </span><span className="font-medium text-slate-700">{w.perubahan || '-'}</span></div>
+                        <div><span className="text-slate-400">Depo: </span><span className="font-medium text-foreground">{w.nama_depo || w.kode_depo || '-'}</span></div>
+                        <div><span className="text-slate-400">Diterima: </span><span className="font-mono font-medium text-foreground">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</span></div>
+                        <div className="col-span-2"><span className="text-slate-400">Perubahan: </span><span className="font-medium text-foreground">{w.perubahan || '-'}</span></div>
                         {(num(w.qty_lalu_crt) > 0 || num(w.qty_lalu_pcs) > 0) && (
-                          <div className="col-span-2"><span className="text-slate-400">Sebelumnya: </span><span className="font-medium text-slate-700 tabular-nums">{fnum(num(w.qty_lalu_crt))} CRT / {fnum(num(w.qty_lalu_pcs))} PCS</span></div>
+                          <div className="col-span-2"><span className="text-slate-400">Sebelumnya: </span><span className="font-medium text-foreground tabular-nums">{fnum(num(w.qty_lalu_crt))} CRT / {fnum(num(w.qty_lalu_pcs))} PCS</span></div>
                         )}
                         {num(w.qty_koreksi_crt) !== 0 && (
                           <div className="col-span-2"><span className="text-slate-400">Koreksi: </span><span className="font-medium text-accent-text tabular-nums">{fnum(num(w.qty_koreksi_crt))} CRT / {fnum(num(w.qty_koreksi_pcs))} PCS</span></div>
@@ -812,7 +812,7 @@ export default function OpnameExpiredReportPage() {
               </div>
 
               {pagination && pagination.total > ITEMS_PER_PAGE && (
-                <div className="p-4 border-t border-gray-100 bg-overlay-50">
+                <div className="p-4 border-t border-border bg-overlay-50">
                   <div className="flex flex-wrap justify-between items-center gap-3">
                     <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pagination.current_page <= 1 || loading} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
                       <span className="flex items-center gap-2 text-sm">

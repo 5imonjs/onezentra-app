@@ -433,12 +433,12 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
             </div>
           )}
 
-          <div className="rounded-2xl border border-gray-300 p-4">
+          <div className="rounded-2xl border border-border p-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">Tambah Baris Manual</p>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="nama-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Nama Barang *</label>
+                  <label htmlFor="nama-barang" className="block text-sm font-medium text-foreground mb-1.5">Nama Barang *</label>
                   {form.nama_barang && form.kode_barang ? (
                     <div className="flex items-center gap-1">
                       <input value={form.nama_barang} id="nama-barang" readOnly className="input-field bg-popover flex-1" />
@@ -487,7 +487,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                         </div>
                       )}
                       {showDropdown && searchResults.length > 0 && (
-                        <div id="nama-barang-options" role="listbox" aria-label="Hasil pencarian barang" className="absolute z-50 w-full mt-1 bg-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
+                        <div id="nama-barang-options" role="listbox" aria-label="Hasil pencarian barang" className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-60 overflow-auto">
                           {searchResults.map((product) => (
                             <button
                               key={product.id}
@@ -497,10 +497,10 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                               aria-selected={searchResults[activeIndex]?.id === product.id}
                               onClick={() => handleSelectProduct(product)}
                               onMouseEnter={() => setActiveIndex(searchResults.findIndex((p) => p.id === product.id))}
-                              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-gray-300 last:border-0 ${
+                              className={`w-full px-3 py-2.5 text-left transition-colors border-b border-border last:border-0 ${
                                 searchResults[activeIndex]?.id === product.id
                                   ? 'bg-row-active text-row-active-text'
-                                  : 'hover:bg-muted text-gray-900'
+                                  : 'hover:bg-muted text-foreground'
                               }`}
                             >
                               <div className="flex items-center gap-3">
@@ -526,33 +526,33 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 </div>
                 <div>
                   {/* Diturunkan otomatis dari pilihan Nama Barang — bukan field yang diketik. */}
-                  <label htmlFor="kode-barang" className="block text-sm font-medium text-gray-700 mb-1.5">Kode Barang (otomatis)</label>
+                  <label htmlFor="kode-barang" className="block text-sm font-medium text-foreground mb-1.5">Kode Barang (otomatis)</label>
                   <input id="kode-barang" value={form.kode_barang || ''} readOnly className="input-field bg-popover cursor-not-allowed" placeholder="Terisi dari nama barang" required />
                 </div>
                 <div>
-                  <label htmlFor="qty-crt" className="block text-sm font-medium text-gray-700 mb-1.5">Qty CRT/ZAK *</label>
+                  <label htmlFor="qty-crt" className="block text-sm font-medium text-foreground mb-1.5">Qty CRT/ZAK *</label>
                   <input id="qty-crt" type="number" step="1" min="1" value={form.qty_crt || ''} onChange={(e) => setForm((p) => ({ ...p, qty_crt: e.target.value }))} className="input-field" required />
                 </div>
                 <div>
-                  <label htmlFor="qty-pcs" className="block text-sm font-medium text-gray-700 mb-1.5">PCS</label>
+                  <label htmlFor="qty-pcs" className="block text-sm font-medium text-foreground mb-1.5">PCS</label>
                   <input id="qty-pcs" type="number" step="1" min="0" value={form.qty_pcs || ''} onChange={(e) => setForm((p) => ({ ...p, qty_pcs: e.target.value }))} className="input-field" />
                 </div>
                 <div>
                   {/* Turunan dari pilihan produk (SAPszUomId), default CRT — tidak diketik manual. */}
-                  <label htmlFor="satuan" className="block text-sm font-medium text-gray-700 mb-1.5">Satuan (otomatis)</label>
+                  <label htmlFor="satuan" className="block text-sm font-medium text-foreground mb-1.5">Satuan (otomatis)</label>
                   <input id="satuan" value={form.satuan || ''} readOnly placeholder="Terisi dari nama barang" className="input-field bg-popover cursor-not-allowed" />
                 </div>
                 <div>
-                  <label htmlFor="expired-date" className="block text-sm font-medium text-gray-700 mb-1.5">Expired Date *</label>
+                  <label htmlFor="expired-date" className="block text-sm font-medium text-foreground mb-1.5">Expired Date *</label>
                   <input id="expired-date" type="date" value={form.expired_date || ''} onChange={(e) => setForm((p) => ({ ...p, expired_date: e.target.value }))} className="input-field" required />
                 </div>
                 <div>
-                  <label htmlFor="tanggal-penerimaan" className="block text-sm font-medium text-gray-700 mb-1.5">Tanggal Penerimaan</label>
+                  <label htmlFor="tanggal-penerimaan" className="block text-sm font-medium text-foreground mb-1.5">Tanggal Penerimaan</label>
                   <input id="tanggal-penerimaan" type="date" value={form.tanggal_penerimaan || ''} onChange={(e) => setForm((p) => ({ ...p, tanggal_penerimaan: e.target.value }))} className="input-field" />
                   <p className="text-[11px] text-slate-400 mt-1">Info historis saja — tidak menentukan minggu analisa opname (batch dipantau sesuai minggu import, bukan tanggal ini).</p>
                 </div>
                 <div>
-                  <label htmlFor="sumber-material" className="block text-sm font-medium text-gray-700 mb-1.5">Sumber Material</label>
+                  <label htmlFor="sumber-material" className="block text-sm font-medium text-foreground mb-1.5">Sumber Material</label>
                   <input id="sumber-material" value={form.sumber_material || ''} onChange={(e) => setForm((p) => ({ ...p, sumber_material: e.target.value }))} className="input-field" />
                 </div>
               </div>
@@ -613,11 +613,11 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
               </div>
             ) : items.length > 0 ? (
-              <div className="max-h-[560px] overflow-x-auto overflow-y-auto border border-gray-300 rounded-xl">
+              <div className="max-h-[560px] overflow-x-auto overflow-y-auto border border-border rounded-xl">
                 <table className="w-full min-w-[820px]">
                   <caption className="sr-only">Daftar batch manual tersimpan</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="bg-popover border-b border-gray-300">
+                    <tr className="bg-popover border-b border-border">
                       {hasPermission('penerimaan.delete') && (
                         <th scope="col" className="px-3 py-3 w-10">
                           <input
@@ -653,13 +653,13 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                             />
                           </td>
                         )}
-                        <td className="px-4 py-3 text-sm text-gray-900 font-medium whitespace-nowrap"><span className="font-mono">{it.kode_barang}</span></td>
-                        <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><span className="font-mono">{it.batch?.batch_number ?? it.verifiedBatch?.batch_number ?? '-'}</span></td>
-                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{it.nama_barang || '-'}</td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-gray-900 whitespace-nowrap">{num(it.actual_qty)}</td>
-                        <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-600 whitespace-nowrap">{it.qty_pcs != null ? num(it.qty_pcs) : '-'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{fmtDate(it.expired_date)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{it.sumber_material || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-foreground font-medium whitespace-nowrap"><span className="font-mono">{it.kode_barang}</span></td>
+                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{it.batch?.batch_number ?? it.verifiedBatch?.batch_number ?? '-'}</span></td>
+                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{it.nama_barang || '-'}</td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-foreground whitespace-nowrap">{num(it.actual_qty)}</td>
+                        <td className="px-4 py-3 text-right text-sm tabular-nums text-foreground whitespace-nowrap">{it.qty_pcs != null ? num(it.qty_pcs) : '-'}</td>
+                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{fmtDate(it.expired_date)}</td>
+                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{it.sumber_material || '-'}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           {hasPermission('penerimaan.edit') && (
                             <button onClick={() => setEditing(it)} className="p-1.5 text-gray-400 hover:text-accent-text hover:bg-chip-primary rounded-md transition-all" aria-label="Edit batch manual">
@@ -678,7 +678,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 </table>
               </div>
             ) : (
-              <div className="border border-dashed border-gray-300 rounded-xl py-8 text-center">
+              <div className="border border-dashed border-border rounded-xl py-8 text-center">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
                     <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>

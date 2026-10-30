@@ -150,11 +150,11 @@ export default function TarifRetribusiPage() {
     return (
       <DashboardLayout>
         <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="max-w-sm rounded-2xl border border-gray-100 bg-card p-8 text-center shadow-sm">
+          <div className="max-w-sm rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
               <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
             </div>
-            <h1 className="mt-4 text-lg font-bold text-slate-800">Akses terbatas</h1>
+            <h1 className="mt-4 text-lg font-bold text-foreground">Akses terbatas</h1>
             <p className="mt-1 text-sm text-muted-foreground">Hanya Admin Master dan Admin Distribusi yang dapat mengelola tarif retribusi.</p>
           </div>
         </div>
@@ -177,9 +177,9 @@ export default function TarifRetribusiPage() {
           </div>
         </header>
 
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-          <div className="border-b border-gray-100 px-5 py-4">
-            <p className="text-sm font-semibold text-slate-800">Tarif khusus per depo</p>
+        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <p className="text-sm font-semibold text-foreground">Tarif khusus per depo</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Depo tanpa baris tersimpan memakai bawaan config. Simpan baris untuk meng-override, atau reset untuk kembali ke bawaan.
             </p>
@@ -192,14 +192,14 @@ export default function TarifRetribusiPage() {
             </div>
           ) : rows.length === 0 ? (
             <div className="p-10 text-center">
-              <p className="text-sm font-semibold text-slate-600">Belum ada data depo</p>
+              <p className="text-sm font-semibold text-foreground">Belum ada data depo</p>
               <p className="mt-1 text-xs text-slate-400">Data depo diturunkan dari akun user yang terdaftar.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-overlay-60 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-b border-border bg-overlay-60 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     <th className="px-5 py-3">Depo</th>
                     <th className="px-3 py-3">Mode</th>
                     <th className="px-3 py-3 text-right">Tarif / zak (Rp)</th>
@@ -217,7 +217,7 @@ export default function TarifRetribusiPage() {
                       <tr key={depot.kode_depo} className="border-b border-gray-50 last:border-0">
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-800">{depot.kode_depo}</span>
+                            <span className="font-bold text-foreground">{depot.kode_depo}</span>
                             {depot.nama_depo && <span className="truncate text-xs text-slate-400">{depot.nama_depo}</span>}
                           </div>
                           {!draft.hasOverride && (
@@ -269,7 +269,7 @@ export default function TarifRetribusiPage() {
                             checked={draft.is_active}
                             onChange={(e) => updateDraft(depot.kode_depo, { is_active: e.target.checked })}
                             aria-label={`Aktif ${depot.kode_depo}`}
-                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500"
                           />
                         </td>
                         <td className="px-5 py-3 text-right">
@@ -288,7 +288,7 @@ export default function TarifRetribusiPage() {
                                 onClick={() => void resetRow(depot.kode_depo)}
                                 disabled={isSaving}
                                 title="Kembalikan ke nilai bawaan config"
-                                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-lg border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Reset
                               </button>
@@ -303,9 +303,9 @@ export default function TarifRetribusiPage() {
             </div>
           )}
 
-          <div className="border-t border-gray-100 bg-overlay-60 px-5 py-3">
+          <div className="border-t border-border bg-overlay-60 px-5 py-3">
             <p className="text-xs text-muted-foreground">
-              Rumus mode koli: <span className="font-semibold text-slate-700">nominal = qty zak × tarif zak + qty crt × tarif crt</span>. Mode borongan memakai nominal manual saat input biaya.
+              Rumus mode koli: <span className="font-semibold text-foreground">nominal = qty zak × tarif zak + qty crt × tarif crt</span>. Mode borongan memakai nominal manual saat input biaya.
             </p>
           </div>
         </section>

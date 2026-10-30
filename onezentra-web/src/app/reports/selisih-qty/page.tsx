@@ -250,21 +250,21 @@ export default function SelisihQtyReportPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-linear-to-br from-ink-900 to-slate-700 text-white flex items-center justify-center shadow">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
+                  <h2 className="text-base font-bold text-foreground">Filter Laporan</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">Filter berdasarkan tanggal dan depo</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -287,7 +287,7 @@ export default function SelisihQtyReportPage() {
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-popover hover:border-border transition-all">Reset</button>
                 <button onClick={fetchData} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
@@ -297,7 +297,7 @@ export default function SelisihQtyReportPage() {
         {/* Summary Cards */}
         {summary && (
           <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
@@ -305,7 +305,7 @@ export default function SelisihQtyReportPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Item</p>
-                  <p className="text-2xl font-black text-slate-900 tabular-nums">{fmtNum(summary.total_item)}</p>
+                  <p className="text-2xl font-black text-foreground tabular-nums">{fmtNum(summary.total_item)}</p>
                   <p className="text-[11px] text-slate-400 tabular-nums">item berselisih</p>
                 </div>
               </div>
@@ -323,7 +323,7 @@ export default function SelisihQtyReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-red-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-red-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
@@ -336,7 +336,7 @@ export default function SelisihQtyReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
@@ -353,15 +353,15 @@ export default function SelisihQtyReportPage() {
         )}
 
         {/* Table */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Detail Selisih</h2>
+                  <h2 className="text-base font-bold text-foreground">Detail Selisih</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{fmtNum(items.length)} item selisih ditemukan{truncated ? ' (dibatasi 2000 terbaru — persempit rentang atau unduh export)' : ''}</p>
                 </div>
               </div>
@@ -382,7 +382,7 @@ export default function SelisihQtyReportPage() {
             <table className="w-full min-w-[1100px] border-collapse">
               <caption className="sr-only">Laporan selisih kuantitas</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-border">
                   {canDelete && (
                     <th scope="col" className="table-header w-10 text-center">
                       <ReportSelectCheckbox
@@ -428,7 +428,7 @@ export default function SelisihQtyReportPage() {
                           <svg className="w-7 h-7 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
                         <div>
-                          <p className="text-sm text-slate-600 font-bold">Tidak ada data selisih</p>
+                          <p className="text-sm text-foreground font-bold">Tidak ada data selisih</p>
                           <p className="text-xs text-slate-400 mt-1">Semua qty sesuai dengan rencana</p>
                         </div>
                         {activeFilterCount > 0 && (
@@ -452,27 +452,27 @@ export default function SelisihQtyReportPage() {
                             />
                           </td>
                         )}
-                        <td className="table-cell text-sm text-slate-600 whitespace-nowrap font-mono">{formatTanggal(item.created_at)}</td>
-                        <td className="table-cell text-sm font-mono font-medium text-slate-800 whitespace-nowrap">{item.po_transporter}</td>
-                        <td className="table-cell text-sm font-mono text-slate-600 whitespace-nowrap">{item.kode_barang}</td>
-                        <td className="table-cell text-sm text-slate-800 min-w-55 max-w-75">
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap font-mono">{formatTanggal(item.created_at)}</td>
+                        <td className="table-cell text-sm font-mono font-medium text-foreground whitespace-nowrap">{item.po_transporter}</td>
+                        <td className="table-cell text-sm font-mono text-foreground whitespace-nowrap">{item.kode_barang}</td>
+                        <td className="table-cell text-sm text-foreground min-w-55 max-w-75">
                           <span className="block line-clamp-2 wrap-break-word" title={item.nama_barang}>{item.nama_barang}</span>
                         </td>
-                        <td className="table-cell text-sm text-right text-slate-600 tabular-nums">{fmtNum(item.expected_qty)}</td>
-                        <td className="table-cell text-sm text-right text-slate-800 tabular-nums font-bold">{fmtNum(item.actual_qty)}</td>
+                        <td className="table-cell text-sm text-right text-foreground tabular-nums">{fmtNum(item.expected_qty)}</td>
+                        <td className="table-cell text-sm text-right text-foreground tabular-nums font-bold">{fmtNum(item.actual_qty)}</td>
                         <td className="table-cell text-sm text-right whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm tabular-nums ${minus ? 'bg-red-50 text-red-700' : plus ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm tabular-nums ${minus ? 'bg-red-50 text-red-700' : plus ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-foreground'}`}>
                             <svg className={`w-3 h-3 ${plus ? 'order-last' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                               <path strokeLinecap="round" strokeLinejoin="round" d={minus ? 'M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3' : 'M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18'} />
                             </svg>
                             {item.selisih_qty > 0 ? '+' : ''}{fmtNum(item.selisih_qty)}
                           </span>
                         </td>
-                        <td className="table-cell text-sm text-slate-600 min-w-[160px] max-w-[220px]">
+                        <td className="table-cell text-sm text-foreground min-w-[160px] max-w-[220px]">
                           <span className="block wrap-break-word" title={item.selisih_reason}>{item.selisih_reason}</span>
                         </td>
                         <td className="table-cell text-xs text-muted-foreground max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
-                        <td className="table-cell text-sm text-slate-600 whitespace-nowrap">{item.validator_name}</td>
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.validator_name}</td>
                       </tr>
                     );
                   })
@@ -486,7 +486,7 @@ export default function SelisihQtyReportPage() {
             {loading && (
               <div className="p-4 space-y-3" aria-hidden="true">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-overlay-60 p-4 space-y-2">
+                  <div key={i} className="animate-pulse rounded-2xl border border-border bg-overlay-60 p-4 space-y-2">
                     <div className="h-4 w-40 bg-slate-200 rounded" />
                     <div className="h-3 w-56 bg-slate-200 rounded" />
                     <div className="grid grid-cols-3 gap-2 pt-1">
@@ -500,7 +500,7 @@ export default function SelisihQtyReportPage() {
             )}
             {!loading && items.length === 0 && (
               <div className="p-10 text-center">
-                <p className="text-sm text-slate-600 font-bold">Tidak ada data selisih</p>
+                <p className="text-sm text-foreground font-bold">Tidak ada data selisih</p>
                 <p className="text-xs text-slate-400 mt-1">Semua qty sesuai dengan rencana</p>
                 {activeFilterCount > 0 && (
                   <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold">Reset filter</button>
@@ -514,10 +514,10 @@ export default function SelisihQtyReportPage() {
                 <article key={item.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900 truncate" title={item.nama_barang}>{item.nama_barang}</p>
+                      <p className="text-sm font-bold text-foreground truncate" title={item.nama_barang}>{item.nama_barang}</p>
                       <p className="mt-0.5 text-xs font-mono text-muted-foreground truncate">{item.kode_barang} • {item.po_transporter}</p>
                     </div>
-                    <span className={`inline-flex shrink-0 items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shadow-sm tabular-nums ${minus ? 'bg-red-50 text-red-700' : plus ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                    <span className={`inline-flex shrink-0 items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shadow-sm tabular-nums ${minus ? 'bg-red-50 text-red-700' : plus ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-foreground'}`}>
                       <svg className={`w-3 h-3 ${plus ? 'order-last' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d={minus ? 'M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3' : 'M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18'} />
                       </svg>
@@ -525,23 +525,23 @@ export default function SelisihQtyReportPage() {
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-border">
                       <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Plan</p>
-                      <p className="font-black text-slate-600 text-sm tabular-nums">{fmtNum(item.expected_qty)}</p>
+                      <p className="font-black text-foreground text-sm tabular-nums">{fmtNum(item.expected_qty)}</p>
                     </div>
-                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-border">
                       <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Aktual</p>
-                      <p className="font-black text-slate-900 text-sm tabular-nums">{fmtNum(item.actual_qty)}</p>
+                      <p className="font-black text-foreground text-sm tabular-nums">{fmtNum(item.actual_qty)}</p>
                     </div>
-                    <div className={`rounded-xl p-2 text-center border ${minus ? 'bg-red-50 border-red-200' : plus ? 'bg-emerald-50 border-emerald-200' : 'bg-popover border-slate-100'}`}>
+                    <div className={`rounded-xl p-2 text-center border ${minus ? 'bg-red-50 border-red-200' : plus ? 'bg-emerald-50 border-emerald-200' : 'bg-popover border-border'}`}>
                       <p className={`font-bold tracking-widest uppercase text-[9px] ${minus ? 'text-red-500' : plus ? 'text-emerald-600' : 'text-slate-400'}`}>Selisih</p>
                       <p className={`font-black text-sm tabular-nums ${minus ? 'text-red-700' : plus ? 'text-emerald-700' : 'text-muted-foreground'}`}>{item.selisih_qty > 0 ? '+' : ''}{fmtNum(item.selisih_qty)}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                    <div className="col-span-2"><span className="text-slate-400">Waktu: </span><span className="font-mono font-medium text-slate-700">{formatTanggal(item.created_at)}</span></div>
-                    <div className="col-span-2"><span className="text-slate-400">Alasan: </span><span className="font-medium text-slate-700">{item.selisih_reason || '-'}</span></div>
-                    <div className="col-span-2"><span className="text-slate-400">Validator: </span><span className="font-medium text-slate-700">{item.validator_name || '-'}</span></div>
+                    <div className="col-span-2"><span className="text-slate-400">Waktu: </span><span className="font-mono font-medium text-foreground">{formatTanggal(item.created_at)}</span></div>
+                    <div className="col-span-2"><span className="text-slate-400">Alasan: </span><span className="font-medium text-foreground">{item.selisih_reason || '-'}</span></div>
+                    <div className="col-span-2"><span className="text-slate-400">Validator: </span><span className="font-medium text-foreground">{item.validator_name || '-'}</span></div>
                   </div>
                   {item.notes && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">Catatan: {item.notes}</p>}
                 </article>

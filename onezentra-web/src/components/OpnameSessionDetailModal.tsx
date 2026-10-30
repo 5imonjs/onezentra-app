@@ -55,7 +55,7 @@ export interface SessionDetail {
 }
 
 const STATUS_META: Record<string, string> = {
-  OPEN: 'bg-slate-100 text-slate-700',
+  OPEN: 'bg-slate-100 text-foreground',
   IN_PROGRESS: 'bg-blue-50 text-blue-700',
   COMPLETED: 'bg-emerald-50 text-emerald-700',
   CANCELLED: 'bg-red-50 text-red-700',
@@ -91,7 +91,7 @@ function FlowStepper({ status }: { status: string }) {
             >
               {state === 'done' ? '✓' : idx}
             </span>
-            <span className={state === 'current' ? 'font-bold text-slate-800' : state === 'done' ? 'text-slate-600' : 'text-slate-400'}>
+            <span className={state === 'current' ? 'font-bold text-foreground' : state === 'done' ? 'text-foreground' : 'text-slate-400'}>
               {s.label}
             </span>
             {idx < FLOW_STEPS.length && <span className="text-slate-300" aria-hidden="true">→</span>}
@@ -285,7 +285,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
               )}
               {canCount && remaining > 0 && (
                 <label
-                  className="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer ml-auto"
+                  className="inline-flex items-center gap-2 text-xs text-foreground cursor-pointer ml-auto"
                   title="Hitung buta: angka acuan disembunyikan agar petugas menghitung sungguhan. Centang untuk menampilkannya di baris yang sedang dihitung (pola Show Expected Quantity)."
                 >
                   <input type="checkbox" checked={showExpected} onChange={(e) => setShowExpected(e.target.checked)} className="w-4 h-4 accent-primary-600" />
@@ -297,7 +297,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
             {detail.status !== 'CANCELLED' && <FlowStepper status={detail.status} />}
 
             {STATUS_HINTS[detail.status] && (
-              <p className="text-xs text-slate-600 bg-popover/70 border border-border rounded-lg px-3 py-2">
+              <p className="text-xs text-foreground bg-popover/70 border border-border rounded-lg px-3 py-2">
                 {STATUS_HINTS[detail.status]}
               </p>
             )}
@@ -317,8 +317,8 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
               </div>
             )}
 
-            <div className="border border-gray-300 rounded-xl overflow-hidden">
-              <div className="flex flex-wrap items-center gap-2 p-3 bg-card/95 backdrop-blur border-b border-gray-100">
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="flex flex-wrap items-center gap-2 p-3 bg-card/95 backdrop-blur border-b border-border">
                 <div className="relative flex-1 min-w-[200px]">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                   <input
@@ -351,7 +351,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                   <table className="w-full min-w-[900px] border-collapse">
                     <caption className="sr-only">Daftar batch sesi opname</caption>
                     <thead className="sticky top-0 z-10">
-                      <tr className="border-b border-gray-300 bg-popover">
+                      <tr className="border-b border-border bg-popover">
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kode Barang</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Produk</th>
@@ -385,13 +385,13 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <span
-                                  className="font-mono text-xs px-1.5 py-0.5 rounded bg-popover text-slate-600"
+                                  className="font-mono text-xs px-1.5 py-0.5 rounded bg-popover text-foreground"
                                   title={`Batch ${it.batch?.batch_number || '-'} · Barcode ${it.batch?.barcode_label || '-'}`}
                                 >
                                   {it.batch?.batch_number || 'tanpa batch'}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-xs text-gray-600 max-w-[280px]">
+                              <td className="px-4 py-3 text-xs text-foreground max-w-[280px]">
                                 <span className="block truncate">{it.wave?.nama_barang || '-'}</span>
                                 <span className="text-gray-400">exp {fmtDate(it.wave?.expired_date_ini)}</span>
                               </td>
@@ -403,7 +403,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                               <td className="px-4 py-3 text-xs whitespace-nowrap">
                                 {isVerified && expectedCrt != null ? (
                                   <div className="space-y-0.5">
-                                    <span className="block text-gray-700">
+                                    <span className="block text-foreground">
                                       Fisik {it.qty_fisik_crt} CRT{it.qty_fisik_pcs != null ? ` / ${it.qty_fisik_pcs} PCS` : ''}{it.condition ? ` · ${it.condition}` : ''}
                                     </span>
                                     <span className="block text-muted-foreground">Acuan {expectedCrt} CRT{expectedPcs != null ? ` / ${expectedPcs} PCS` : ''}</span>
@@ -437,7 +437,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                                             type="button"
                                             onClick={() => identify(it.id, 'manual')}
                                             title="Hanya bila label fisik rusak tak terbaca — tercatat sebagai identifikasi manual"
-                                            className="text-xs font-semibold text-muted-foreground underline hover:text-slate-700"
+                                            className="text-xs font-semibold text-muted-foreground underline hover:text-foreground"
                                           >
                                             Label rusak — identifikasi manual
                                           </button>
@@ -608,7 +608,7 @@ function AddWavesModal({ session, onClose, onAdded }: {
       {loading ? <p className="text-sm text-muted-foreground">Memuat wave...</p> : waves.length === 0 ? (
         <p className="text-sm text-muted-foreground">Semua wave minggu ini sudah masuk sesi.</p>
       ) : (
-        <div className="max-h-80 overflow-auto border border-gray-300 rounded-xl divide-y divide-gray-100">
+        <div className="max-h-80 overflow-auto border border-border rounded-xl divide-y divide-gray-100">
           {waves.map((w) => (
             <label key={w.id} className="flex items-center gap-3 px-3 py-2 hover:bg-overlay-50 cursor-pointer">
               <input type="checkbox" checked={picked.has(w.id)} onChange={() => setPicked((p) => {

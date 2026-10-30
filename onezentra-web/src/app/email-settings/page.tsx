@@ -68,7 +68,7 @@ function NotificationLogPanel() {
   return (
     <div className="bg-card rounded-2xl shadow-sm border border-amber-200 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <h3 className="text-base font-bold text-gray-800">Notifikasi Gagal / Terlewat</h3>
+        <h3 className="text-base font-bold text-foreground">Notifikasi Gagal / Terlewat</h3>
         <select value={filter} onChange={(e) => setFilter(e.target.value)} className="input-field text-xs py-1.5" aria-label="Filter status log">
           <option value="">Semua</option>
           <option value="failed">Gagal</option>
@@ -87,9 +87,9 @@ function NotificationLogPanel() {
       ) : (
         <ul className="space-y-2 max-h-64 overflow-auto">
           {logs.map((l) => (
-            <li key={l.id} className="text-xs border border-gray-100 rounded-lg px-3 py-2">
+            <li key={l.id} className="text-xs border border-border rounded-lg px-3 py-2">
               <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold mr-2 ${l.status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{l.status}</span>
-              <span className="font-semibold text-gray-700">{l.document_type} · {l.trigger}</span>
+              <span className="font-semibold text-foreground">{l.document_type} · {l.trigger}</span>
               <span className="text-gray-400"> #{l.context_id ?? '-'} · {formatDateId(l.created_at)}</span>
               {l.error && <p className="text-muted-foreground mt-1 wrap-break-word">{l.error}</p>}
             </li>
@@ -205,8 +205,8 @@ export default function EmailSettingsPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-base font-bold text-gray-800 mb-1">SMTP Server</h2>
+              <div className="bg-card rounded-2xl shadow-sm border border-border p-6">
+                <h2 className="text-base font-bold text-foreground mb-1">SMTP Server</h2>
                 <p className="text-xs text-gray-400 mb-5">Atur kredensial server email. Jika &quot;Gunakan .env&quot; aktif, kredensial SMTP diambil dari file .env.</p>
 
                 <fieldset disabled={!canEdit} className="space-y-4">
@@ -250,8 +250,8 @@ export default function EmailSettingsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 border-t border-gray-100 pt-5">
-                    <h3 className="text-sm font-bold text-gray-800 mb-3">Pengirim (From)</h3>
+                  <div className="mt-6 border-t border-border pt-5">
+                    <h3 className="text-sm font-bold text-foreground mb-3">Pengirim (From)</h3>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div>
                         <label htmlFor="from_address" className="block text-xs font-medium text-muted-foreground mb-1">From Address</label>
@@ -267,10 +267,10 @@ export default function EmailSettingsPage() {
                   <div className="flex flex-col gap-3 rounded-xl bg-popover p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <input type="checkbox" id="from_system_env" checked={form.from_system_env} onChange={(e) => input('from_system_env', e.target.checked)} className="w-4 h-4 accent-primary-600" />
-                      <label htmlFor="from_system_env" className="text-sm text-gray-600"><strong>Gunakan kredensial dari .env</strong><br /><span className="text-xs text-gray-400">Mengabaikan host/port/username di atas</span></label>
+                      <label htmlFor="from_system_env" className="text-sm text-foreground"><strong>Gunakan kredensial dari .env</strong><br /><span className="text-xs text-gray-400">Mengabaikan host/port/username di atas</span></label>
                     </div>
                     <div className="flex items-center gap-3">
-                      <label htmlFor="is_active" className="text-sm text-gray-600">Aktifkan pengiriman</label>
+                      <label htmlFor="is_active" className="text-sm text-foreground">Aktifkan pengiriman</label>
                       <input type="checkbox" id="is_active" checked={form.is_active} onChange={(e) => input('is_active', e.target.checked)} className="w-4 h-4 accent-primary-600" />
                     </div>
                   </div>
@@ -279,8 +279,8 @@ export default function EmailSettingsPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-base font-bold text-gray-800 mb-4">Kirim Email Test</h3>
+              <div className="bg-card rounded-2xl shadow-sm border border-border p-6">
+                <h3 className="text-base font-bold text-foreground mb-4">Kirim Email Test</h3>
                 <label htmlFor="test-email" className="block text-xs font-medium text-muted-foreground mb-1">Alamat Email Test</label>
                 <input id="test-email" type="email" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} disabled={!canEdit} placeholder="alamat@penerima.com" className="input-field text-sm py-2 mb-3" />
                 <button onClick={handleTest} disabled={!testEmail || sendingTest || !canEdit} className="btn-secondary w-full disabled:opacity-50">
@@ -288,8 +288,8 @@ export default function EmailSettingsPage() {
                 </button>
               </div>
 
-              <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-base font-bold text-gray-800 mb-3">Informasi</h3>
+              <div className="bg-card rounded-2xl shadow-sm border border-border p-6">
+                <h3 className="text-base font-bold text-foreground mb-3">Informasi</h3>
                 <ul className="text-xs text-muted-foreground space-y-2 list-disc pl-4">
                   <li>Notifikasi dikirim otomatis saat rencana kirim dibuat.</li>
                   <li>Notifikasi hasil validasi dokumen dikirim ke BLC & CC.</li>

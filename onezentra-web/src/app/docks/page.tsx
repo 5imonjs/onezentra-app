@@ -202,7 +202,7 @@ export default function DocksPage() {
   };
 
   const badge = (status: string) => {
-    const meta = STATUS_CONFIG[status] || { label: status, badge: 'bg-slate-100 text-slate-600 border-slate-300', dot: 'bg-slate-400' };
+    const meta = STATUS_CONFIG[status] || { label: status, badge: 'bg-slate-100 text-foreground border-border', dot: 'bg-slate-400' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
@@ -262,8 +262,8 @@ export default function DocksPage() {
         )}
 
         {/* Table Card */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <SearchInput
@@ -292,7 +292,7 @@ export default function DocksPage() {
             <table className="w-full border-collapse">
               <caption className="sr-only">Daftar dock</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-popover border-b border-slate-300">
+                <tr className="bg-popover border-b border-border">
                   <th scope="col" className="table-header">Nama</th>
                   <th scope="col" className="table-header">Kode</th>
                   <th scope="col" className="table-header">Depo</th>
@@ -316,16 +316,16 @@ export default function DocksPage() {
                 ) : items.map((item) => (
                   <tr key={item.id} className="hover:bg-overlay-50 transition-colors">
                     <td className="table-cell">
-                      <span className="text-sm font-medium text-slate-800">{item.name}</span>
+                      <span className="text-sm font-medium text-foreground">{item.name}</span>
                     </td>
                     <td className="table-cell">
-                      <span className="text-sm text-slate-600 font-mono">{item.code || '-'}</span>
+                      <span className="text-sm text-foreground font-mono">{item.code || '-'}</span>
                     </td>
                     <td className="table-cell">
-                      <span className="text-sm text-slate-600">{item.nama_depo || item.kode_depo || '-'}</span>
+                      <span className="text-sm text-foreground">{item.nama_depo || item.kode_depo || '-'}</span>
                     </td>
                     <td className="table-cell text-center">
-                      <span className="text-sm text-slate-600">{item.capacity ?? '-'}</span>
+                      <span className="text-sm text-foreground">{item.capacity ?? '-'}</span>
                     </td>
                     <td className="table-cell text-center">{badge(item.status)}</td>
                     <td className="table-cell text-right">
@@ -361,7 +361,7 @@ export default function DocksPage() {
           </div>
 
           {/* Pagination */}
-          <div className="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="px-5 py-3 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground tabular-nums">Halaman {page} dari {lastPage}</p>
             <div className="flex items-center gap-1.5">
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary px-3 py-1.5 text-xs disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">

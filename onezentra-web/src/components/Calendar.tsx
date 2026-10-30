@@ -58,7 +58,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
   }, [firstDay, daysInMonth]);
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm border border-slate-100 p-5 sticky top-6" role="region" aria-label="Kalender pengiriman">
+    <div className="bg-card rounded-2xl shadow-sm border border-border p-5 sticky top-6" role="region" aria-label="Kalender pengiriman">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2.5">
@@ -66,7 +66,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
             <svg className="w-4 h-4 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-800">Kalender Kirim</h3>
+            <h3 className="text-base font-bold text-foreground">Kalender Kirim</h3>
             <p className="text-[11px] text-muted-foreground">Jadwal per tanggal</p>
           </div>
         </div>
@@ -74,7 +74,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
           <button
             onClick={prevMonth}
             aria-label={`Bulan sebelumnya: ${MONTHS[month === 0 ? 11 : month - 1]}`}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-muted-foreground hover:text-slate-700 min-w-9 min-h-9 flex items-center justify-center"
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-muted-foreground hover:text-foreground min-w-9 min-h-9 flex items-center justify-center"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -83,7 +83,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
           <button
             onClick={nextMonth}
             aria-label={`Bulan berikutnya: ${MONTHS[month === 11 ? 0 : month + 1]}`}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-muted-foreground hover:text-slate-700 min-w-9 min-h-9 flex items-center justify-center"
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-muted-foreground hover:text-foreground min-w-9 min-h-9 flex items-center justify-center"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -94,7 +94,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
 
       {/* Month label */}
       <div className="mb-3">
-        <p className="text-sm font-bold text-slate-800">{MONTHS[month]} {year}</p>
+        <p className="text-sm font-bold text-foreground">{MONTHS[month]} {year}</p>
       </div>
 
       {/* Day Headers */}
@@ -129,7 +129,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
                   ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-600/30'
                   : isSelected(day)
                   ? 'bg-chip-primary text-accent-text ring-2 ring-primary-500 font-semibold'
-                  : 'hover:bg-slate-100 text-slate-700'
+                  : 'hover:bg-slate-100 text-foreground'
               }`}
             >
               <span className={`text-sm ${isToday(day) ? 'font-bold' : 'font-medium'}`}>
@@ -170,22 +170,22 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 mt-5 pt-4 border-t border-slate-100" aria-label="Legenda warna status">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 mt-5 pt-4 border-t border-border" aria-label="Legenda warna status">
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-gray-400" aria-hidden="true" />
-          <span className="text-[11px] text-slate-600">Draft</span>
+          <span className="text-[11px] text-foreground">Draft</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />
-          <span className="text-[11px] text-slate-600">Dijadwalkan</span>
+          <span className="text-[11px] text-foreground">Dijadwalkan</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-          <span className="text-[11px] text-slate-600">Completed</span>
+          <span className="text-[11px] text-foreground">Completed</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" />
-          <span className="text-[11px] text-slate-600">Cancelled</span>
+          <span className="text-[11px] text-foreground">Cancelled</span>
         </div>
       </div>
     </div>

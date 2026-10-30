@@ -153,13 +153,13 @@ export default function DashboardLayout({
             aria-label="Buka navigasi"
             aria-expanded={mobileOpen}
             aria-controls="primary-navigation"
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 active:scale-95"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-foreground transition-all hover:bg-slate-100 hover:text-foreground active:scale-95"
           >
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-          <p className="text-sm font-black tracking-[0.18em] text-slate-900">ONEZENTRA</p>
+          <p className="text-sm font-black tracking-[0.18em] text-foreground">ONEZENTRA</p>
           <Link
             href="/dashboard/profile"
             aria-label="Buka profil saya"

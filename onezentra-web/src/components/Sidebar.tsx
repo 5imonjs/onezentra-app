@@ -111,8 +111,8 @@ function NavItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
         !isExpanded ? 'justify-center p-3' : 'px-3 py-2.5 gap-3'
       } ${
         isActive
-          ? 'bg-primary-500/10 text-gray-900'
-          : 'text-slate-400 hover:bg-overlay-60 hover:text-gray-700'
+          ? 'bg-primary-500/10 text-foreground'
+          : 'text-slate-400 hover:bg-overlay-60 hover:text-foreground'
       }`}
     >
       {isActive && (
@@ -139,8 +139,8 @@ function NavSubItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
       aria-current={isActive ? 'page' : undefined}
       className={`group relative flex items-center gap-2.5 rounded-lg py-2 pr-3 text-[13px] font-medium transition-colors duration-150 ${
         isActive
-          ? 'bg-linear-to-r from-primary-500/15 to-primary-500/5 text-gray-900'
-          : 'text-slate-400 hover:bg-overlay-60 hover:text-gray-700'
+          ? 'bg-linear-to-r from-primary-500/15 to-primary-500/5 text-foreground'
+          : 'text-slate-400 hover:bg-overlay-60 hover:text-foreground'
       }`}
     >
       {isActive && (
@@ -198,7 +198,7 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
         className={`relative flex justify-center w-full p-3 rounded-lg transition-colors duration-150 ${
           isActiveAny
             ? 'bg-primary-500/10 text-accent-text'
-            : 'text-muted-foreground hover:bg-overlay-60 hover:text-gray-700'
+            : 'text-muted-foreground hover:bg-overlay-60 hover:text-foreground'
         }`}
       >
         {isActiveAny && (
@@ -218,10 +218,10 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
           accent
             ? 'bg-emerald-500/10 text-emerald-700 border-l-2 border-emerald-500'
             : open
-              ? 'bg-overlay-60 text-gray-900'
+              ? 'bg-overlay-60 text-foreground'
               : isActiveAny
-                ? 'text-gray-900 hover:bg-overlay-60'
-                : 'text-slate-400 hover:bg-overlay-60 hover:text-gray-700'
+                ? 'text-foreground hover:bg-overlay-60'
+                : 'text-slate-400 hover:bg-overlay-60 hover:text-foreground'
         }`}
       >
         <Icon
@@ -341,13 +341,13 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       aria-label="Navigasi utama"
-      className={`fixed top-0 left-0 h-dvh bg-linear-to-b from-gray-100 via-gray-100 to-gray-50 text-gray-900 flex flex-col z-40 sidebar-transition shadow-2xl lg:shadow-none ${
+      className={`fixed top-0 left-0 h-dvh bg-linear-to-b from-gray-100 via-gray-100 to-gray-50 text-foreground flex flex-col z-40 sidebar-transition shadow-2xl lg:shadow-none ${
         mobileOpen ? 'translate-x-0 visible' : '-translate-x-full invisible lg:visible lg:translate-x-0'
       } ${
         isExpanded ? 'w-70 max-w-[85vw] lg:max-w-none lg:w-65' : 'w-70 max-w-[85vw] lg:max-w-none lg:w-18'
       }`}
     >
-      <div className={`border-b border-gray-300 flex items-center ${isExpanded ? 'justify-between px-5 py-4' : 'justify-center py-4'}`}>
+      <div className={`border-b border-border flex items-center ${isExpanded ? 'justify-between px-5 py-4' : 'justify-center py-4'}`}>
         {isExpanded ? (
           <div className="sidebar-logo relative h-14 flex-1 min-w-0 animate-fade-in">
             <Image src="/LOGO.png" alt="ONEZENTRA" fill sizes="200px" className="object-contain object-left" />
@@ -362,7 +362,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             <button
               onClick={onClose}
               aria-label="Tutup navigasi"
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-gray-900 hover:bg-overlay-60 transition-colors min-w-11 min-h-11"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-foreground hover:bg-overlay-60 transition-colors min-w-11 min-h-11"
             >
               <Icon name="menuOpen" className="w-5 h-5" />
             </button>
@@ -370,7 +370,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
             <button
               onClick={onToggle}
               aria-label="Sembunyikan sidebar"
-              className="w-9 h-9 hidden lg:flex items-center justify-center rounded-lg text-slate-400 hover:text-gray-900 hover:bg-overlay-60 transition-colors min-w-11 min-h-11"
+              className="w-9 h-9 hidden lg:flex items-center justify-center rounded-lg text-slate-400 hover:text-foreground hover:bg-overlay-60 transition-colors min-w-11 min-h-11"
             >
               <Icon name="menu" className="w-5 h-5" />
             </button>
@@ -482,7 +482,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
       </nav>
 
       {user && !mobileOpen && (
-        <div className="border-t border-gray-300 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="border-t border-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className={`flex items-center gap-3 ${!isExpanded ? 'justify-center' : 'px-2 py-1.5 rounded-xl bg-overlay-50 ring-1 ring-gray-300/60'}`}>
             <Link href="/dashboard/profile" aria-label="Buka profil saya" className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-9 h-9 bg-linear-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-lg shadow-primary-600/20 ring-1 ring-white/10">
@@ -490,7 +490,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
               </div>
               {isExpanded && (
                 <div className="flex-1 min-w-0 animate-fade-in">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{user.full_name}</p>
+                  <p className="text-sm font-semibold text-foreground truncate">{user.full_name}</p>
                   <p className="text-xs text-slate-400 truncate">{user.roles?.[0]?.name || user.level}</p>
                 </div>
               )}

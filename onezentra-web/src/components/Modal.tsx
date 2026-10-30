@@ -120,12 +120,12 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
         onClick={(e) => e.stopPropagation()}
       >
         {(title || subtitle) && (
-          <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-4 py-4 sm:px-6">
+          <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4 sm:px-6">
             <div className="min-w-0">
-              {title && <h2 id={titleId} className="text-lg font-bold text-gray-900">{title}</h2>}
+              {title && <h2 id={titleId} className="text-lg font-bold text-foreground">{title}</h2>}
               {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
             </div>
-            <button onClick={onClose} aria-label="Tutup dialog" className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors min-w-11 min-h-11 flex items-center justify-center">
+            <button onClick={onClose} aria-label="Tutup dialog" className="p-2 text-gray-400 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors min-w-11 min-h-11 flex items-center justify-center">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -136,7 +136,7 @@ export default function Modal({ open, onClose, onCloseRequest, title, subtitle, 
           {children}
         </div>
         {footer && (
-          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-card px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-card px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
             {footer}
           </div>
         )}

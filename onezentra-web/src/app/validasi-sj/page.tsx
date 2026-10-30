@@ -154,7 +154,7 @@ function BatchCell({ batch, printed }: { batch?: BatchInfo | null; printed?: boo
 
   return (
     <div className="min-w-37.5">
-      <p className="font-mono text-xs font-bold text-slate-800">{state.number}</p>
+      <p className="font-mono text-xs font-bold text-foreground">{state.number}</p>
       {state.barcode && <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{state.barcode}</p>}
       {printed ? (
         <span className="mt-0.5 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -913,14 +913,14 @@ export default function ValidasiSjPage() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
           {/* Scan Panel */}
           <div className="xl:col-span-1 space-y-5">
-            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-              <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-white shadow-sm">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-900">Quick Scan</h2>
+                    <h2 className="text-sm font-bold text-foreground">Quick Scan</h2>
                     <p className="mt-0.5 text-xs text-slate-400">Cari PO transporter untuk memulai validasi</p>
                   </div>
                 </div>
@@ -932,12 +932,12 @@ export default function ValidasiSjPage() {
                     <input id="validation-code" placeholder="Scan atau ketik PO..." className="input-field pl-9 bg-popover text-sm py-2.5 focus:bg-card" value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && findDocument()} aria-label="Kode validasi" />
                   </div>
                   <button type="button" onClick={() => findDocument()} disabled={busy || !code.trim()} className="btn-primary text-sm px-4 py-2.5 disabled:opacity-50 shrink-0">{busy ? '...' : 'Cari'}</button>
-                  <button type="button" onClick={() => setShowScanner(true)} aria-label="Buka scanner barcode" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-slate-700 transition-colors hover:bg-popover shrink-0">
+                  <button type="button" onClick={() => setShowScanner(true)} aria-label="Buka scanner barcode" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-card px-3 py-2.5 text-foreground transition-colors hover:bg-popover shrink-0">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   </button>
                 </div>
                 {lookup && (
-                  <div className="mt-4 space-y-3 rounded-xl border border-gray-100 bg-overlay-70 p-4 animate-fade-in">
+                  <div className="mt-4 space-y-3 rounded-xl border border-border bg-overlay-70 p-4 animate-fade-in">
                     <div className="grid grid-cols-2 gap-2.5">
                       {[
                         { label: 'PO', value: lookup.po_transporter, mono: true },
@@ -945,7 +945,7 @@ export default function ValidasiSjPage() {
                         { label: 'Nopol', value: lookup.nopol || '-', mono: true },
                         { label: 'Tujuan', value: lookup.destination_name || '-', mono: false },
                       ].map((item) => (
-                        <div key={item.label}><p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">{item.label}</p><p className={`text-sm ${item.mono ? 'font-mono font-bold text-slate-800' : 'text-slate-700'}`}>{item.value}</p></div>
+                        <div key={item.label}><p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">{item.label}</p><p className={`text-sm ${item.mono ? 'font-mono font-bold text-foreground' : 'text-foreground'}`}>{item.value}</p></div>
                       ))}
                     </div>
                     <button type="button" onClick={startValidation} disabled={busy || !hasPermission('sj_validation.create')} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98] disabled:opacity-50">
@@ -969,7 +969,7 @@ export default function ValidasiSjPage() {
 
             {/* Progress Ring */}
             {svTotal > 0 && (
-              <section className="bg-card rounded-2xl border border-gray-100 shadow-sm p-5">
+              <section className="bg-card rounded-2xl border border-border shadow-sm p-5">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Ringkasan Status</h3>
                 <div className="flex items-center gap-4">
                   <div className="relative w-24 h-24 shrink-0 text-gray-300">
@@ -984,7 +984,7 @@ export default function ValidasiSjPage() {
                       {svCancelled > 0 && <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--oz-red-500)" strokeWidth="3" strokeDasharray={`${(svCancelled / svTotal) * 100}, 100`} strokeDashoffset={`${-((svInProgress + svCompleted) / svTotal) * 100}`} strokeLinecap="round" className="transition-all duration-1000" />}
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-black text-slate-800">{svTotal}</span>
+                      <span className="text-xl font-black text-foreground">{svTotal}</span>
                       <span className="text-[9px] text-slate-400 uppercase">Total</span>
                     </div>
                   </div>
@@ -997,7 +997,7 @@ export default function ValidasiSjPage() {
                       <div key={item.label} className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-                          <span className="text-xs text-slate-600">{item.label}</span>
+                          <span className="text-xs text-foreground">{item.label}</span>
                         </div>
                         <span className={`text-xs font-black ${item.textColor}`}>{item.count}</span>
                       </div>
@@ -1010,14 +1010,14 @@ export default function ValidasiSjPage() {
 
           {/* Table Section */}
           <div className="xl:col-span-2">
-            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-              <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-chip-primary">
                     <svg className="h-5 w-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-900">Daftar Validasi</h2>
+                    <h2 className="text-sm font-bold text-foreground">Daftar Validasi</h2>
                     <p className="mt-0.5 text-xs text-slate-400">{totalRows} entri ditemukan</p>
                   </div>
                 </div>
@@ -1031,7 +1031,7 @@ export default function ValidasiSjPage() {
                       id="sj-depo"
                       value={kodeDepo}
                       onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
-                      className="w-full appearance-none rounded-xl border border-gray-300 bg-card px-3 pr-9 py-2 text-sm text-gray-900 leading-tight shadow-sm cursor-pointer focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                      className="w-full appearance-none rounded-xl border border-border bg-card px-3 pr-9 py-2 text-sm text-foreground leading-tight shadow-sm cursor-pointer focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                     >
                       <option value="">Semua Depo</option>
                       {depots.map((d) => (
@@ -1048,7 +1048,7 @@ export default function ValidasiSjPage() {
                 <table className="w-full min-w-180 border-collapse">
                   <caption className="sr-only">Daftar validasi dokumen</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-300 bg-popover">
+                    <tr className="border-b border-border bg-popover">
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">PO Transporter</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Driver</th>
@@ -1077,17 +1077,17 @@ export default function ValidasiSjPage() {
                         </tr>
                       ))
                     ) : items.map((item, index) => {
-                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-popover', text: 'text-gray-600', dot: 'bg-gray-400' };
+                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-popover', text: 'text-foreground', dot: 'bg-gray-400' };
                       return (
                         <tr key={item.id} className="transition-colors even:bg-overlay-30 hover:bg-overlay-70">
                           <td className="px-5 py-3 text-center font-mono text-xs text-slate-400">{(page - 1) * 20 + index + 1}</td>
-                          <td className="px-5 py-3"><span className="font-mono text-sm font-bold text-slate-900">{item.rencana_kirim?.po_transporter || item.scan_code}</span></td>
-                          <td className="px-5 py-3 text-sm text-slate-600">{item.rencana_kirim?.driver_name || '-'}</td>
-                          <td className="px-5 py-3 text-sm text-slate-600">{item.rencana_kirim?.destination_name || '-'}</td>
+                          <td className="px-5 py-3"><span className="font-mono text-sm font-bold text-foreground">{item.rencana_kirim?.po_transporter || item.scan_code}</span></td>
+                          <td className="px-5 py-3 text-sm text-foreground">{item.rencana_kirim?.driver_name || '-'}</td>
+                          <td className="px-5 py-3 text-sm text-foreground">{item.rencana_kirim?.destination_name || '-'}</td>
                           <td className="px-5 py-3 text-center"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span></td>
-                          <td className="px-5 py-3 text-center text-xs tabular-nums text-slate-600">{fmtDateTime(item.started_at)}</td>
-                          <td className="px-5 py-3 text-center text-xs tabular-nums text-slate-600">{fmtDateTime(item.completed_at)}</td>
-                          <td className="px-5 py-3 text-center text-xs tabular-nums text-slate-600">{validationDuration(item, nowIso)}</td>
+                          <td className="px-5 py-3 text-center text-xs tabular-nums text-foreground">{fmtDateTime(item.started_at)}</td>
+                          <td className="px-5 py-3 text-center text-xs tabular-nums text-foreground">{fmtDateTime(item.completed_at)}</td>
+                          <td className="px-5 py-3 text-center text-xs tabular-nums text-foreground">{validationDuration(item, nowIso)}</td>
                           <td className="px-5 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
                               {/* Pembatalan berlevel PO, bukan per-item: satu baris
@@ -1106,7 +1106,7 @@ export default function ValidasiSjPage() {
                                   Batalkan
                                 </button>
                               )}
-                              <button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-slate-300 bg-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button>
+                              <button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground transition-colors hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button>
                             </div>
                           </td>
                         </tr>
@@ -1168,12 +1168,12 @@ export default function ValidasiSjPage() {
                     )}
                   </div>
                 ) : items.map((item) => {
-                  const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-popover', text: 'text-gray-600', dot: 'bg-gray-400' };
+                  const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-popover', text: 'text-foreground', dot: 'bg-gray-400' };
                   return (
                     <div key={item.id} className="flex flex-col gap-2.5 p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate font-mono text-sm font-bold text-slate-900">{item.rencana_kirim?.po_transporter || item.scan_code}</p>
+                          <p className="truncate font-mono text-sm font-bold text-foreground">{item.rencana_kirim?.po_transporter || item.scan_code}</p>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.rencana_kirim?.driver_name || '-'} <span className="text-slate-300">•</span> {item.rencana_kirim?.destination_name || '-'}</p>
                         </div>
                         <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span>
@@ -1182,9 +1182,9 @@ export default function ValidasiSjPage() {
                         <p className="text-xs text-muted-foreground">
                           Selesai: <span className="tabular-nums">{fmtDateTime(item.completed_at)}</span>
                           <span className="text-slate-300"> • </span>
-                          Durasi: <span className="tabular-nums font-semibold text-slate-600">{validationDuration(item, nowIso)}</span>
+                          Durasi: <span className="tabular-nums font-semibold text-foreground">{validationDuration(item, nowIso)}</span>
                         </p>
-                        <button type="button" onClick={() => openDetail(item)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-popover">
+                        <button type="button" onClick={() => openDetail(item)} className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-popover">
                           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                           Detail
                         </button>
@@ -1195,10 +1195,10 @@ export default function ValidasiSjPage() {
               </div>
 
               {lastPage > 1 && (
-                <div className="border-t border-gray-100 bg-overlay-50 px-5 py-4">
+                <div className="border-t border-border bg-overlay-50 px-5 py-4">
                   <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
                     <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="btn-secondary w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed sm:w-auto">Sebelumnya</button>
-                    <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
+                    <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="text-foreground">{page}</strong> dari {lastPage}</span>
                     <button type="button" disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))} className="btn-secondary w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed sm:w-auto">Selanjutnya</button>
                   </div>
                 </div>
@@ -1241,13 +1241,13 @@ export default function ValidasiSjPage() {
             {detailLoading ? (
               <div className="space-y-5 animate-pulse">
                 <div className="rounded-2xl bg-slate-200 h-40" />
-                <div className="rounded-2xl border border-slate-300 bg-card p-5 space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-slate-200" />
                     <div className="space-y-2"><div className="h-4 w-32 rounded bg-slate-200" /><div className="h-3 w-48 rounded bg-slate-200" /></div>
                   </div>
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex gap-4 py-3 border-t border-slate-100">
+                    <div key={i} className="flex gap-4 py-3 border-t border-border">
                       <div className="h-4 w-24 rounded bg-slate-200" />
                       <div className="h-4 flex-1 rounded bg-slate-200" />
                       <div className="h-4 w-16 rounded bg-slate-200" />
@@ -1327,13 +1327,13 @@ export default function ValidasiSjPage() {
               </div>
             )}
 
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-              <div className="flex flex-col gap-3 border-b border-gray-100 bg-overlay-60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-border bg-overlay-60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-white shadow-sm">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
                 </div>
-                <div><h3 className="text-sm font-black text-slate-900">Daftar Barang</h3><p className="text-[11px] text-slate-400">Tinjau hasil aktual setiap item</p></div>
+                <div><h3 className="text-sm font-black text-foreground">Daftar Barang</h3><p className="text-[11px] text-slate-400">Tinjau hasil aktual setiap item</p></div>
                 </div>
                 <span className="w-fit rounded-full bg-chip-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-text">{active.items?.length ?? 0} item</span>
               </div>
@@ -1341,7 +1341,7 @@ export default function ValidasiSjPage() {
                 <table className="w-full min-w-[1100px] border-collapse">
                   <caption className="sr-only">Rincian item dan hasil validasi dokumen {active.rencana_kirim?.po_transporter}</caption>
                   <thead>
-                    <tr className="bg-popover border-b border-gray-300">
+                    <tr className="bg-popover border-b border-border">
                       <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Kode</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Nama Barang</th>
                       <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Plan</th>
@@ -1357,18 +1357,18 @@ export default function ValidasiSjPage() {
                   <tbody className="divide-y divide-gray-100">
                     {active.items?.map((item) => (
                       <tr key={item.id} className="even:bg-overlay-30 hover:bg-overlay-60 transition-all duration-150">
-                        <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.kode_barang}</td>
-                        <td className="px-4 py-3 text-sm text-slate-800 font-medium">{item.nama_barang}</td>
-                        <td className="px-4 py-3 text-right text-sm text-slate-600">{item.expected_qty} {item.satuan}</td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">{item.status === 'PENDING' ? '-' : (item.actual_qty ?? '-')}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-4 py-3 font-mono text-xs text-foreground">{item.kode_barang}</td>
+                        <td className="px-4 py-3 text-sm text-foreground font-medium">{item.nama_barang}</td>
+                        <td className="px-4 py-3 text-right text-sm text-foreground">{item.expected_qty} {item.satuan}</td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold text-foreground">{item.status === 'PENDING' ? '-' : (item.actual_qty ?? '-')}</td>
+                        <td className="px-4 py-3 text-sm text-foreground">
                           {item.expired_date ? fmtDate(item.expired_date) : (
                             <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
                               Belum diisi
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-4 py-3 text-sm text-foreground">
                           <BatchCell batch={item.batch} printed={isLabelPrinted(item, printedLabels)} />
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
@@ -1382,7 +1382,7 @@ export default function ValidasiSjPage() {
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-center"><span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${itemStatusStyle[item.status] || 'bg-gray-100 text-gray-600'} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full mr-1 ${item.status === 'PENDING' ? 'bg-amber-500' : item.status === 'VALIDATED' ? 'bg-emerald-500' : 'bg-red-500'}`} />{itemStatusLabel[item.status] || item.status}</span></td>
+                        <td className="px-4 py-3 text-center"><span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${itemStatusStyle[item.status] || 'bg-gray-100 text-foreground'} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full mr-1 ${item.status === 'PENDING' ? 'bg-amber-500' : item.status === 'VALIDATED' ? 'bg-emerald-500' : 'bg-red-500'}`} />{itemStatusLabel[item.status] || item.status}</span></td>
                         <td className="px-4 py-3 text-right">
                           {canEditItems(active, { canCorrectCompleted: active?.can_correct_completed }) && hasPermission('sj_validation.validate') ? (
                             <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -1394,7 +1394,7 @@ export default function ValidasiSjPage() {
                                   type="button"
                                   onClick={() => { void printItemLabel(item, false); }}
                                   title={isLabelPrinted(item, printedLabels) ? `Cetak ulang label ${item.batch.barcode_label}` : `Cetak label ${item.batch.barcode_label} (belum pernah dicetak)`}
-                                  className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isLabelPrinted(item, printedLabels) ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-300 bg-card text-slate-600 hover:bg-popover'}`}
+                                  className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isLabelPrinted(item, printedLabels) ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-border bg-card text-foreground hover:bg-popover'}`}
                                 >
                                   <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
                                   {isLabelPrinted(item, printedLabels) ? 'Cetak Ulang' : 'Cetak'}
@@ -1406,14 +1406,14 @@ export default function ValidasiSjPage() {
                                 onClick={() => openItem(item)}
                                 disabled={item.standarisasi?.status === 'pending'}
                                 title={item.standarisasi?.status === 'pending' ? 'Standarisasi tumpukan sudah diajukan dan menunggu approval. Silakan tunggu atau buka halaman Standarisasi.' : undefined}
-                                className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${item.standarisasi?.status === 'pending' ? 'border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed' : item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-chip-primary-border bg-chip-primary text-accent-text hover:bg-chip-primary'}`}
+                                className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${item.standarisasi?.status === 'pending' ? 'border-border bg-slate-100 text-slate-400 cursor-not-allowed' : item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-chip-primary-border bg-chip-primary text-accent-text hover:bg-chip-primary'}`}
                               >
                                 {item.standarisasi?.status && item.standarisasi.status !== 'approved' && <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
                                 {item.standarisasi?.status === 'pending' ? 'Menunggu Approval' : 'Validasi'}
                               </button>
                             ) : (
                               (active.status === 'IN_PROGRESS' || active?.can_correct_completed) ? (
-                                <button type="button" onClick={() => openItem(item)} title="Ubah hasil validasi item ini" className="inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 bg-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-popover">
+                                <button type="button" onClick={() => openItem(item)} title="Ubah hasil validasi item ini" className="inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-popover">
                                   <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                                   Ubah
                                 </button>
@@ -1455,7 +1455,7 @@ export default function ValidasiSjPage() {
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.62 10.226a2.25 2.25 0 0 1-2.247 2.146H6.617a2.25 2.25 0 0 1-2.247-2.146L3.75 7.5m6 4.125h4.5M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" /></svg>
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-slate-900">Barang di luar rencana</h3>
+                      <h3 className="text-sm font-black text-foreground">Barang di luar rencana</h3>
                       <p className="text-[11px] text-amber-700">Rencana tidak diubah — planner diberi tahu setiap catatan baru.</p>
                     </div>
                   </div>
@@ -1486,8 +1486,8 @@ export default function ValidasiSjPage() {
                       return (
                       <li key={extra.id} className="flex flex-col gap-1.5 px-5 py-3 even:bg-overlay-30">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-bold text-slate-800">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-muted-foreground">{extra.kode_barang}</span></p>
-                          <button type="button" onClick={() => openExtraItem(extra)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-card px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-popover" title="Ubah catatan luar rencana">Ubah</button>
+                          <p className="text-sm font-bold text-foreground">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-muted-foreground">{extra.kode_barang}</span></p>
+                          <button type="button" onClick={() => openExtraItem(extra)} className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-popover" title="Ubah catatan luar rencana">Ubah</button>
                         </div>
                           <div className="flex items-center gap-2">
                             <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${extra.condition === 'FISIK_TIDAK_ADA' ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
@@ -1500,7 +1500,7 @@ export default function ValidasiSjPage() {
                         <p className="text-[11px] text-muted-foreground">
                           {extra.expired_date ? <>Expired: <span className="font-semibold">{fmtDate(extra.expired_date)}</span><span className="text-slate-300"> • </span></> : null}
                           {extra.notes ? <>{extra.notes}<span className="text-slate-300"> • </span></> : null}
-                          Dicatat oleh <span className="font-semibold text-slate-600">{extra.recorder?.full_name || '-'}</span>
+                          Dicatat oleh <span className="font-semibold text-foreground">{extra.recorder?.full_name || '-'}</span>
                           {extra.photo && (
                             <>
                               <span className="text-slate-300"> • </span>
@@ -1510,7 +1510,7 @@ export default function ValidasiSjPage() {
                         </p>
                         {(extra.status === 'APPROVED' || extra.status === 'REJECTED') && (
                           <p className="text-[11px] text-muted-foreground">
-                            Diputus oleh <span className="font-semibold text-slate-600">{extra.approver?.full_name || '-'}</span>
+                            Diputus oleh <span className="font-semibold text-foreground">{extra.approver?.full_name || '-'}</span>
                             {extra.approved_at ? <> · {fmtDate(extra.approved_at)}</> : null}
                             {extra.decision_notes ? <> — “{extra.decision_notes}”</> : null}
                           </p>
@@ -1524,7 +1524,7 @@ export default function ValidasiSjPage() {
                               type="button"
                               onClick={() => { void printExtraLabel(extra, false); }}
                               title={extraPrinted ? `Cetak ulang label ${extra.batch?.barcode_label}` : `Cetak label ${extra.batch?.barcode_label} (belum pernah dicetak)`}
-                              className={`inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${extraPrinted ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-300 bg-card text-slate-600 hover:bg-popover'}`}
+                              className={`inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${extraPrinted ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-border bg-card text-foreground hover:bg-popover'}`}
                             >
                               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.4 42.4 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.774-2.034-1.856-2.15M6.34 18H5.25a2.25 2.25 0 0 1-2.25-2.25V9.456c0-1.081.774-2.034 1.856-2.15m5.718 0a42.2 42.2 0 0 1 6.39 0m-6.39 0c-.181-.03-.364-.055-.546-.079m4.852.079c.18-.03.363-.055.545-.078" /></svg>
                               {extraPrinted ? 'Cetak Ulang' : 'Cetak Label'}
@@ -1613,11 +1613,11 @@ export default function ValidasiSjPage() {
                 <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold text-accent-text shadow-sm">DATABASE</span>
               </div>
               <div className="mt-3 grid grid-cols-3 divide-x divide-slate-200/80">
-                <div className="pr-3"><p className="text-[10px] text-muted-foreground">Standar</p><p className="mt-1 text-xl font-black text-slate-900">{itemStandarUmur}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
+                <div className="pr-3"><p className="text-[10px] text-muted-foreground">Standar</p><p className="mt-1 text-xl font-black text-foreground">{itemStandarUmur}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
                 <div className="px-3"><p className="text-[10px] text-muted-foreground">Sisa simpan</p><p className={`mt-1 text-xl font-black ${itemSisaUmur && itemSisaUmur.totalDays <= 0 ? 'text-red-600' : itemSisaUmur && itemSisaUmur.totalMonths < itemStandarUmur ? 'text-amber-600' : 'text-emerald-600'}`}>{itemSisaUmur ? itemSisaUmur.totalMonths : '-'}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
                 <div className="pl-3"><p className="text-[10px] text-muted-foreground">Selisih</p><p className={`mt-1 text-sm font-black leading-5 ${itemUmurSelisih !== null && itemUmurSelisih < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{itemUmurSelisihDetail || '-'}</p><p className="text-[10px] text-muted-foreground">hari · bulan · tahun</p></div>
               </div>
-              <p className="mt-3 border-t border-border/80 pt-3 text-[11px] font-semibold text-slate-600">
+              <p className="mt-3 border-t border-border/80 pt-3 text-[11px] font-semibold text-foreground">
                 {!itemSisaUmur ? 'Isi tanggal expired untuk melihat perbandingan.' : itemSisaUmur.totalDays <= 0 ? 'Produk sudah kadaluarsa.' : itemUmurSelisih !== null && itemUmurSelisih < 0 ? `Sisa simpan kurang dari standar (${itemUmurSelisihDetail}).` : `Sisa simpan memenuhi standar (${itemUmurSelisihDetail}).`}
               </p>
             </div>
@@ -1625,11 +1625,11 @@ export default function ValidasiSjPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-                <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Data pemeriksaan</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.14em] text-foreground">Data pemeriksaan</h3>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {form.condition !== 'FISIK_TIDAK_ADA' && (
-                  <label className="block text-xs font-bold text-slate-600">Qty Aktual <span className="text-accent-text">*</span>
+                  <label className="block text-xs font-bold text-foreground">Qty Aktual <span className="text-accent-text">*</span>
                     <div className="relative mt-1.5">
                       <input type="number" min="0" value={form.actual_qty} onChange={(e) => setForm({ ...form, actual_qty: e.target.value })} className="input-field py-2.5 pr-14 text-sm font-semibold" />
                       <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] font-bold uppercase text-slate-400">{selected.satuan}</span>
@@ -1637,7 +1637,7 @@ export default function ValidasiSjPage() {
                   </label>
                 )}
                 {form.condition !== 'FISIK_TIDAK_ADA' && (
-                  <label className="block text-xs font-bold text-slate-600">Expired Date <span className="text-accent-text">*</span>
+                  <label className="block text-xs font-bold text-foreground">Expired Date <span className="text-accent-text">*</span>
                     <input type="date" value={form.expired_date} onChange={(e) => {
                     const val = e.target.value;
                     setForm({ ...form, expired_date: val });
@@ -1654,9 +1654,9 @@ export default function ValidasiSjPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-                <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Identifikasi & kondisi</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.14em] text-foreground">Identifikasi & kondisi</h3>
               </div>
-              <label className="block text-xs font-bold text-slate-600">Kondisi <span className="text-accent-text">*</span>
+              <label className="block text-xs font-bold text-foreground">Kondisi <span className="text-accent-text">*</span>
                 <select value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className="select-field mt-1.5 w-full py-2.5 text-sm">
                   {Object.entries(CONDITION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
@@ -1699,7 +1699,7 @@ export default function ValidasiSjPage() {
                 )}
               </div>
             )}
-            <label className="block text-xs font-bold text-slate-600">Catatan <span className="font-medium text-slate-400">(opsional)</span>
+            <label className="block text-xs font-bold text-foreground">Catatan <span className="font-medium text-slate-400">(opsional)</span>
               <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Tambahkan catatan pemeriksaan..." className="input-field mt-1.5 min-h-22 resize-y py-2.5 text-sm" rows={3} />
             </label>
           </div>
@@ -1737,9 +1737,9 @@ export default function ValidasiSjPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-              <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Identifikasi &amp; kondisi</h3>
+              <h3 className="text-xs font-black uppercase tracking-[0.14em] text-foreground">Identifikasi &amp; kondisi</h3>
             </div>
-            <label className="block text-xs font-bold text-slate-600">Nama barang dari master NPN
+            <label className="block text-xs font-bold text-foreground">Nama barang dari master NPN
               <div className="mt-1.5">
                 <NpnSearchInput
                   inputId="extra-npn"
@@ -1751,7 +1751,7 @@ export default function ValidasiSjPage() {
             </label>
             {extraNpn && (
               <p className="text-[11px] text-muted-foreground">
-                Kode master: <span className="font-mono font-semibold text-slate-700">{extraNpn.BOSnetszProductId}</span>
+                Kode master: <span className="font-mono font-semibold text-foreground">{extraNpn.BOSnetszProductId}</span>
                 {extraNpn.SAPszUomId ? ` · Satuan: ${extraNpn.SAPszUomId}` : ''}
               </p>
             )}
@@ -1761,20 +1761,20 @@ export default function ValidasiSjPage() {
 
             {!extraNpn && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="block text-xs font-bold text-slate-600">Kode Barang <span className="text-accent-text">*</span>
+                <label className="block text-xs font-bold text-foreground">Kode Barang <span className="text-accent-text">*</span>
                   <input type="text" value={extraForm.kode_barang} onChange={(e) => setExtraForm({ ...extraForm, kode_barang: e.target.value })} placeholder="Dari kertas / manual" className="input-field mt-1.5 py-2.5 font-mono text-sm" />
                 </label>
-                <label className="block text-xs font-bold text-slate-600">Nama Barang <span className="text-accent-text">*</span>
+                <label className="block text-xs font-bold text-foreground">Nama Barang <span className="text-accent-text">*</span>
                   <input type="text" value={extraForm.nama_barang} onChange={(e) => setExtraForm({ ...extraForm, nama_barang: e.target.value })} placeholder="Nama barang" className="input-field mt-1.5 py-2.5 text-sm" />
                 </label>
-                <label className="block text-xs font-bold text-slate-600">Satuan <span className="font-medium text-slate-400">(opsional)</span>
+                <label className="block text-xs font-bold text-foreground">Satuan <span className="font-medium text-slate-400">(opsional)</span>
                   <input type="text" value={extraForm.satuan} onChange={(e) => setExtraForm({ ...extraForm, satuan: e.target.value })} placeholder="CRT / ZAK / PCS" className="input-field mt-1.5 py-2.5 text-sm uppercase" />
                 </label>
               </div>
             )}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-bold text-slate-600">Jumlah <span className="text-accent-text">*</span>
+              <label className="block text-xs font-bold text-foreground">Jumlah <span className="text-accent-text">*</span>
                 <div className="relative mt-1.5">
                   <input type="number" min="0.01" value={extraForm.qty} onChange={(e) => setExtraForm({ ...extraForm, qty: e.target.value })} className="input-field py-2.5 pr-14 text-sm font-semibold" />
                   {extraNpn?.SAPszUomId && (
@@ -1782,7 +1782,7 @@ export default function ValidasiSjPage() {
                   )}
                 </div>
               </label>
-              <label className="block text-xs font-bold text-slate-600">Kondisi <span className="text-accent-text">*</span>
+              <label className="block text-xs font-bold text-foreground">Kondisi <span className="text-accent-text">*</span>
                 <select value={extraForm.condition} onChange={(e) => setExtraForm({ ...extraForm, condition: e.target.value })} className="select-field mt-1.5 w-full py-2.5 text-sm">
                   {Object.entries(CONDITION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
@@ -1793,10 +1793,10 @@ export default function ValidasiSjPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="h-5 w-1 rounded-full bg-primary-500" aria-hidden="true" />
-              <h3 className="text-xs font-black uppercase tracking-[0.14em] text-slate-800">Data pemeriksaan</h3>
+              <h3 className="text-xs font-black uppercase tracking-[0.14em] text-foreground">Data pemeriksaan</h3>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-bold text-slate-600">Expired Date <span className="font-medium text-slate-400">(opsional)</span>
+              <label className="block text-xs font-bold text-foreground">Expired Date <span className="font-medium text-slate-400">(opsional)</span>
                 <input type="date" value={extraForm.expired_date} onChange={(e) => setExtraForm({ ...extraForm, expired_date: e.target.value })} className="input-field mt-1.5 py-2.5 text-sm" />
               </label>
             </div>
@@ -1810,7 +1810,7 @@ export default function ValidasiSjPage() {
             alt="Pratinjau foto bukti"
           />
 
-          <label className="block text-xs font-bold text-slate-600">Catatan <span className="font-medium text-slate-400">(opsional)</span>
+          <label className="block text-xs font-bold text-foreground">Catatan <span className="font-medium text-slate-400">(opsional)</span>
             <textarea value={extraForm.notes} onChange={(e) => setExtraForm({ ...extraForm, notes: e.target.value })} placeholder="Keterangan tambahan..." className="input-field mt-1.5 min-h-22 resize-y py-2.5 text-sm" rows={3} />
           </label>
         </div>
@@ -1845,15 +1845,15 @@ export default function ValidasiSjPage() {
       >
         <div className="space-y-3">
           {extraDecision?.mode === 'APPROVED' ? (
-            <p className="text-xs leading-5 text-slate-600">
+            <p className="text-xs leading-5 text-foreground">
               Catatan akan berstatus <strong>Disetujui</strong>. Rencana kirim tidak diubah — keputusan ini hanya jejak penerimaan barang.
             </p>
           ) : (
-            <p className="text-xs leading-5 text-slate-600">
+            <p className="text-xs leading-5 text-foreground">
               Catatan akan berstatus <strong>Ditolak</strong>. Berikan alasan yang jelas — alasan terkirim ke pelapor dan tersimpan sebagai jejak.
             </p>
           )}
-          <label className="block text-xs font-bold text-slate-600">
+          <label className="block text-xs font-bold text-foreground">
             {extraDecision?.mode === 'APPROVED' ? 'Catatan keputusan' : 'Alasan penolakan'} <span className={extraDecision?.mode === 'REJECTED' ? 'text-accent-text' : 'font-medium text-slate-400'}>{extraDecision?.mode === 'REJECTED' ? '*' : '(opsional)'}</span>
             <textarea
               value={extraDecision?.notes ?? ''}
@@ -1894,24 +1894,24 @@ export default function ValidasiSjPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-chip-primary-border bg-chip-primary/60 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-accent-text">Standar database</p>
-                  <div className="mt-2 flex items-baseline gap-1.5"><span className="text-3xl font-black text-slate-900">{standarUmur || '-'}</span><span className="text-xs font-bold text-muted-foreground">bulan</span></div>
+                  <div className="mt-2 flex items-baseline gap-1.5"><span className="text-3xl font-black text-foreground">{standarUmur || '-'}</span><span className="text-xs font-bold text-muted-foreground">bulan</span></div>
                   <p className="mt-1 text-[11px] text-muted-foreground">{standarUmur > 0 ? 'Standar minimum dalam bulan' : 'Data tidak tersedia'}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-300 bg-popover p-4">
+                <div className="rounded-2xl border border-border bg-popover p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tanggal expired</p>
-                  <p className="mt-2 text-lg font-black text-slate-900">{formatDateDmy(form.expired_date)}</p>
+                  <p className="mt-2 text-lg font-black text-foreground">{formatDateDmy(form.expired_date)}</p>
                   <p className="mt-1 text-[11px] text-muted-foreground">Tanggal acuan perhitungan</p>
                 </div>
               </div>
 
               <div className={`rounded-2xl border p-4 ${standarUmur <= 0 ? 'border-amber-200 bg-amber-50' : sisaUmur.totalDays <= 0 ? 'border-red-200 bg-red-50' : sisaUmur.totalMonths < standarUmur ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
                 <div className="flex items-center justify-between gap-3">
-                  <div><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Hasil pemeriksaan</p><p className="mt-1 text-sm font-bold text-slate-800">Sisa umur produk</p></div>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${standarUmur <= 0 ? 'bg-slate-200 text-slate-700' : sisaUmur.totalDays <= 0 ? 'bg-red-200 text-red-700' : sisaUmur.totalMonths < standarUmur ? 'bg-amber-200 text-amber-700' : 'bg-emerald-200 text-emerald-700'}`}>{standarUmur <= 0 ? 'DATA LENGKAP' : sisaUmur.totalDays <= 0 ? 'KADALUARSA' : sisaUmur.totalMonths < standarUmur ? 'PERLU PERHATIAN' : 'AMAN'}</span>
+                  <div><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Hasil pemeriksaan</p><p className="mt-1 text-sm font-bold text-foreground">Sisa umur produk</p></div>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${standarUmur <= 0 ? 'bg-slate-200 text-foreground' : sisaUmur.totalDays <= 0 ? 'bg-red-200 text-red-700' : sisaUmur.totalMonths < standarUmur ? 'bg-amber-200 text-amber-700' : 'bg-emerald-200 text-emerald-700'}`}>{standarUmur <= 0 ? 'DATA LENGKAP' : sisaUmur.totalDays <= 0 ? 'KADALUARSA' : sisaUmur.totalMonths < standarUmur ? 'PERLU PERHATIAN' : 'AMAN'}</span>
                 </div>
                 <div className="mt-4 grid grid-cols-3 divide-x divide-slate-200/80">
                   <div className="pr-3"><p className="text-[10px] text-muted-foreground">Sisa simpan</p><p className={`mt-1 text-xl font-black ${sisaUmur.totalDays <= 0 ? 'text-red-600' : sisaUmur.totalMonths < standarUmur ? 'text-amber-600' : 'text-emerald-600'}`}>{sisaUmur.totalMonths}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
-                  <div className="px-3"><p className="text-[10px] text-muted-foreground">Standar</p><p className={`mt-1 text-xl font-black ${standarUmur <= 0 ? 'text-slate-300' : 'text-slate-800'}`}>{standarUmur || '-'}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
+                  <div className="px-3"><p className="text-[10px] text-muted-foreground">Standar</p><p className={`mt-1 text-xl font-black ${standarUmur <= 0 ? 'text-slate-300' : 'text-foreground'}`}>{standarUmur || '-'}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
                   <div className="pl-3"><p className="text-[10px] text-muted-foreground">Selisih</p><p className={`mt-1 text-sm font-black leading-5 ${standarUmur <= 0 ? 'text-slate-400' : sisaUmur.totalDays <= 0 ? 'text-red-600' : umurSelisih < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{standarUmur <= 0 ? '-' : popupUmurSelisihDetail || '-'}</p><p className="text-[10px] text-muted-foreground">hari · bulan · tahun</p></div>
                 </div>
                 {standarUmur <= 0 ? (
@@ -1925,14 +1925,14 @@ export default function ValidasiSjPage() {
                 )}
               </div>
 
-<div className="rounded-2xl border border-slate-300 bg-card p-4">
+<div className="rounded-2xl border border-border bg-card p-4">
                   <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400"><span>Perbandingan terhadap standar</span><span>{standarUmur > 0 ? `${umurRatio.toFixed(0)}%` : '-'}</span></div>
                   <div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all duration-700 ${standarUmur <= 0 ? 'bg-slate-400' : sisaUmur.totalDays <= 0 ? 'bg-red-500' : sisaUmur.totalMonths < standarUmur ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${standarUmur > 0 ? umurRatio : 0}%` }} /></div>
                   <div className="mt-2 flex justify-between text-[10px] text-slate-400"><span>0 bulan</span><span>{standarUmur > 0 ? `Standar ${standarUmur} bulan` : 'Data standar tidak tersedia'}</span></div>
                 </div>
             </div>
 
-            <div className="border-t border-slate-100 bg-overlay-70 p-4 sm:flex sm:justify-end">
+            <div className="border-t border-border bg-overlay-70 p-4 sm:flex sm:justify-end">
               <button type="button" onClick={() => setShowUmurPopup(false)} className="btn-primary w-full sm:w-auto">Pahami</button>
             </div>
           </div>

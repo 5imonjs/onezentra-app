@@ -35,8 +35,8 @@ export default function DashboardPanel({
   children,
 }: DashboardPanelProps) {
   return (
-    <section aria-label={ariaLabel} className={`overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm ${className}`}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card px-5 py-3.5">
+    <section aria-label={ariaLabel} className={`overflow-hidden rounded-2xl border border-border bg-card shadow-sm ${className}`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-linear-to-r from-gray-50 to-surface-card px-5 py-3.5">
         {icon && (
           <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -45,7 +45,7 @@ export default function DashboardPanel({
           </span>
         )}
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold text-gray-900">{title}</h2>
+          <h2 className="truncate text-sm font-semibold text-foreground">{title}</h2>
           {subtitle != null && (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">{subtitle}</div>
           )}

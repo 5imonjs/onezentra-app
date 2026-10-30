@@ -63,7 +63,7 @@ export default function ConfirmDialog({
         <div className={`w-14 h-14 ${style.bg} rounded-2xl flex items-center justify-center mb-4`}>
           {style.icon}
         </div>
-        <h3 id="confirm-title" className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
+        <h3 id="confirm-title" className="text-lg font-bold text-foreground mb-2">{title}</h3>
         <p id="confirm-message" className="text-sm text-muted-foreground max-w-sm">{message}</p>
       </div>
       <div className="flex items-center justify-center gap-3 mt-6">

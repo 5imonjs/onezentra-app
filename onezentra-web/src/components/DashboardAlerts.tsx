@@ -60,7 +60,7 @@ export default function DashboardAlerts({ kodeDepo }: { kodeDepo?: string }) {
   // mengira "tidak ada peringatan" padahal datanya tidak terbaca.
   if (failed) {
     return (
-      <section aria-label="Peringatan" className="rounded-2xl border border-gray-100 bg-card p-5 shadow-sm">
+      <section aria-label="Peringatan" className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center justify-between gap-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
           <span>Gagal memuat peringatan — bisa jadi ada yang terlewat.</span>
           <button type="button" onClick={reload} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
@@ -187,7 +187,7 @@ export default function DashboardAlerts({ kodeDepo }: { kodeDepo?: string }) {
     <section aria-label="Peringatan">
       <div className="mb-3 flex items-center gap-2 px-1">
         <span aria-hidden="true" className="h-4 w-1 rounded-full bg-red-500" />
-        <h2 className="text-sm font-bold tracking-tight text-gray-900">Perlu Perhatian</h2>
+        <h2 className="text-sm font-bold tracking-tight text-foreground">Perlu Perhatian</h2>
         <span className="text-xs text-gray-400">· {cards.length} item</span>
       </div>
       <DashboardCardGrid>{cards}</DashboardCardGrid>

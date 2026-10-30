@@ -265,15 +265,15 @@ export default function PenerimaanBatchExpiredReportPage() {
           </div>
         )}
         {/* Filter Laporan */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-linear-to-br from-slate-900 to-slate-700 text-white flex items-center justify-center shadow">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
+                  <h2 className="text-base font-bold text-foreground">Filter Laporan</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">Tanggal • Cluster • Status • Depo • Cari</p>
                 </div>
               </div>
@@ -283,7 +283,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                   { key: '7d', label: '7 Hari' },
                   { key: 'month', label: 'Bulan Ini' },
                 ].map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-popover hover:border-border transition-all">Reset</button>
                 <button onClick={submit} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
@@ -336,19 +336,19 @@ export default function PenerimaanBatchExpiredReportPage() {
         </div>
         {summary && (
           <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
+            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-border">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total Penerimaan</p>
-              <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_item)}</p>
+              <p className="text-2xl font-black tabular-nums text-foreground mt-1">{fmtNumber(summary.total_item)}</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">{fmtNumber(summary.total_cluster)} cluster</p>
             </div>
-            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
+            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-border">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qty Dus/Ball</p>
-              <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_qty_dus)}</p>
+              <p className="text-2xl font-black tabular-nums text-foreground mt-1">{fmtNumber(summary.total_qty_dus)}</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">satuan CRT/ZAK</p>
             </div>
-            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
+            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-border">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qty PCS</p>
-              <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_qty_pcs)}</p>
+              <p className="text-2xl font-black tabular-nums text-foreground mt-1">{fmtNumber(summary.total_qty_pcs)}</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">pcs-equivalent</p>
             </div>
             <div className={`rounded-2xl shadow-sm border p-5 card-hover ${summary.item_expired > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
@@ -358,15 +358,15 @@ export default function PenerimaanBatchExpiredReportPage() {
             </div>
           </div>
         )}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Detail Penerimaan &amp; Expired</h2>
+                  <h2 className="text-base font-bold text-foreground">Detail Penerimaan &amp; Expired</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{rangeText}</p>
                 </div>
               </div>
@@ -386,7 +386,7 @@ export default function PenerimaanBatchExpiredReportPage() {
             <table className="w-full min-w-325 border-collapse">
               <caption className="sr-only">Laporan penerimaan produk dan status batch expired, dikelompokkan per cluster</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-border">
                   {canDelete && (
                     <th scope="col" className="table-header w-10 text-center">
                       <ReportSelectCheckbox
@@ -430,7 +430,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                 {!loading && rows.length === 0 && (
                   <tr>
                     <td colSpan={canDelete ? 13 : 12} className="p-10 text-center">
-                      <p className="text-sm text-slate-600 font-bold">Tidak ada data</p>
+                      <p className="text-sm text-foreground font-bold">Tidak ada data</p>
                       <p className="text-xs text-slate-400 mt-1">Belum ada penerimaan pada filter ini</p>
                       {activeFilterCount > 0 && (
                         <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold">Reset filter</button>
@@ -463,24 +463,24 @@ export default function PenerimaanBatchExpiredReportPage() {
                         <span className="text-xs text-slate-400" aria-hidden="true">〃</span>
                       )}
                     </td>
-                    <td className="table-cell text-sm text-slate-800 font-mono whitespace-nowrap" title={row.kode_barang}>{row.sku ?? row.kode_barang}</td>
-                    <td className="table-cell text-sm text-slate-600 min-w-55 max-w-75">
+                    <td className="table-cell text-sm text-foreground font-mono whitespace-nowrap" title={row.kode_barang}>{row.sku ?? row.kode_barang}</td>
+                    <td className="table-cell text-sm text-foreground min-w-55 max-w-75">
                       <span className="block line-clamp-2 wrap-break-word" title={row.nama_barang}>{row.nama_barang}</span>
                     </td>
-                    <td className="table-cell text-sm text-slate-700 whitespace-nowrap">{row.principal_1 ?? '-'}</td>
-                    <td className="table-cell text-sm text-slate-600 whitespace-nowrap">{row.principal_2 ?? '-'}</td>
-                    <td className="table-cell text-sm text-right text-slate-800 tabular-nums font-bold">{fmtNumber(row.qty_dus_ball)}</td>
-                    <td className="table-cell text-sm text-right text-slate-600 tabular-nums">{fmtNumber(row.qty_pcs)}</td>
-                    <td className={`table-cell text-sm tabular-nums whitespace-nowrap ${row.is_expired ? 'text-red-700 font-bold' : 'text-slate-600'}`}>
+                    <td className="table-cell text-sm text-foreground whitespace-nowrap">{row.principal_1 ?? '-'}</td>
+                    <td className="table-cell text-sm text-foreground whitespace-nowrap">{row.principal_2 ?? '-'}</td>
+                    <td className="table-cell text-sm text-right text-foreground tabular-nums font-bold">{fmtNumber(row.qty_dus_ball)}</td>
+                    <td className="table-cell text-sm text-right text-foreground tabular-nums">{fmtNumber(row.qty_pcs)}</td>
+                    <td className={`table-cell text-sm tabular-nums whitespace-nowrap ${row.is_expired ? 'text-red-700 font-bold' : 'text-foreground'}`}>
                       {fmtDate(row.tanggal_expired)}
                     </td>
-                    <td className="table-cell text-sm text-slate-600 tabular-nums whitespace-nowrap">{fmtDate(row.tanggal_penerimaan)}</td>
+                    <td className="table-cell text-sm text-foreground tabular-nums whitespace-nowrap">{fmtDate(row.tanggal_penerimaan)}</td>
                     <td className="table-cell whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${row.weekday === 'Future' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : row.weekday === 'Past' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-muted-foreground border-border'}`}>
                         {row.weekday}
                       </span>
                     </td>
-                    <td className="table-cell text-sm text-slate-600 tabular-nums whitespace-nowrap">
+                    <td className="table-cell text-sm text-foreground tabular-nums whitespace-nowrap">
                       <span className="block">{row.sisa_simpan}</span>
                       <span className={`block text-[11px] ${(row.sisa_hari ?? 0) < 0 ? 'text-red-600' : 'text-slate-400'}`}>
                         {(row.sisa_hari ?? 0) < 0 ? `lewat ${Math.abs(row.sisa_hari ?? 0)} hari` : `${row.sisa_hari ?? 0} hari lagi`}
@@ -494,7 +494,7 @@ export default function PenerimaanBatchExpiredReportPage() {
           <div className="lg:hidden divide-y divide-gray-100">
             {!loading && rows.length === 0 && (
               <div className="p-10 text-center">
-                <p className="text-sm text-slate-600 font-bold">Tidak ada data</p>
+                <p className="text-sm text-foreground font-bold">Tidak ada data</p>
                 <p className="text-xs text-slate-400 mt-1">Belum ada penerimaan pada filter ini</p>
               </div>
             )}
@@ -503,7 +503,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-muted-foreground">{row.cluster}</p>
-                    <p className="text-sm font-bold text-slate-900 font-mono truncate" title={row.kode_barang}>{row.sku ?? row.kode_barang}</p>
+                    <p className="text-sm font-bold text-foreground font-mono truncate" title={row.kode_barang}>{row.sku ?? row.kode_barang}</p>
                     <p className="text-[11px] text-muted-foreground truncate">{row.principal_1 ?? '-'}{(row.principal_2 ?? '-') !== '-' ? ` / ${row.principal_2}` : ''}</p>
                   </div>
                   <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${row.weekday === 'Future' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : row.weekday === 'Past' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-muted-foreground border-border'}`}>
@@ -514,15 +514,15 @@ export default function PenerimaanBatchExpiredReportPage() {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-xl bg-popover p-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Dus/Ball</p>
-                    <p className="text-sm font-black tabular-nums text-slate-900">{fmtNumber(row.qty_dus_ball)}</p>
+                    <p className="text-sm font-black tabular-nums text-foreground">{fmtNumber(row.qty_dus_ball)}</p>
                   </div>
                   <div className="rounded-xl bg-popover p-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">PCS</p>
-                    <p className="text-sm font-black tabular-nums text-slate-900">{fmtNumber(row.qty_pcs)}</p>
+                    <p className="text-sm font-black tabular-nums text-foreground">{fmtNumber(row.qty_pcs)}</p>
                   </div>
                   <div className="rounded-xl bg-popover p-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Sisa Simpan</p>
-                    <p className="text-sm font-black tabular-nums text-slate-900">{row.sisa_simpan}</p>
+                    <p className="text-sm font-black tabular-nums text-foreground">{row.sisa_simpan}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground tabular-nums">
@@ -534,20 +534,20 @@ export default function PenerimaanBatchExpiredReportPage() {
           </div>
 
           {lastPage > 1 && (
-            <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+            <div className="px-5 py-4 border-t border-border flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground tabular-nums">Halaman {page} dari {lastPage}</p>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1 || loading}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-card border border-gray-300 text-slate-600 hover:bg-popover disabled:opacity-40 transition-all"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-popover disabled:opacity-40 transition-all"
                 >
                   Sebelumnya
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
                   disabled={page >= lastPage || loading}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-card border border-gray-300 text-slate-600 hover:bg-popover disabled:opacity-40 transition-all"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-card border border-border text-foreground hover:bg-popover disabled:opacity-40 transition-all"
                 >
                   Berikutnya
                 </button>

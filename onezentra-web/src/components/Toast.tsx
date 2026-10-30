@@ -70,7 +70,7 @@ export default function Toast({ message, type = 'success', onClose, stackIndex =
     >
       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg ${bgColors[type]}`}>
         {icons[type]}
-        <span className="text-sm font-medium text-gray-700 whitespace-pre-line">{message}</span>
+        <span className="text-sm font-medium text-foreground whitespace-pre-line">{message}</span>
         <button onClick={() => { setVisible(false); setTimeout(onClose, 300); }} aria-label="Tutup notifikasi" className="ml-2 p-1 hover:bg-white/50 rounded-lg transition-colors min-w-8 min-h-8 flex items-center justify-center">
           <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
