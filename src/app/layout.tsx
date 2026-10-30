@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 import { Roboto } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
-import "./theme-text-safeguard.css";
 
 const roboto = Roboto({
   variable: "--font-roboto",
