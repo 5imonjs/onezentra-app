@@ -427,7 +427,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
     double size,
     Color background,
     IconData icon, {
-    Color iconColor = Colors.white,
+    Color iconColor = AppTheme.gray500,
   }) => Container(
     width: size,
     height: size,

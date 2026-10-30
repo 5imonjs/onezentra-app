@@ -202,7 +202,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           colors: [AppTheme.ink900, AppTheme.ink800],
         ),
         borderRadius: AppTheme.radius2xl,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,7 +231,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 icon: Icon(
                   Icons.arrow_back_rounded,
                   size: 18,
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -265,7 +265,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   ? 0
                   : session.validatedCount / session.totalItemCount,
               minHeight: 6,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              backgroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1),
               valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
             ),
           ),
@@ -351,7 +351,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     decoration: BoxDecoration(
       color: AppTheme.ink900,
       borderRadius: AppTheme.radiusXl,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.08)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,14 +381,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                   Text(
                     '${items.length} pengajuan menunggu keputusan',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -416,9 +416,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space3),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.06),
         borderRadius: AppTheme.radiusLg,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,7 +428,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 13,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
             ),
           ),
           const SizedBox(height: 2),
@@ -436,7 +436,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             '${item.kodeBarang} • Tier $tier × Tinggi $tinggi',
             style: GoogleFonts.roboto(
               fontSize: 11.5,
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: AppTheme.space3),
@@ -461,7 +461,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.check_rounded,
                     size: 16,
                     color: AppTheme.successText,
@@ -489,7 +489,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
                     size: 16,
                     color: AppTheme.dangerText,
@@ -526,7 +526,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           style: GoogleFonts.roboto(
             fontSize: 16,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           ),
         ),
         content: Text(
@@ -534,7 +534,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           'Tinggi ${item.standarisasi?.tinggiTumpukan ?? 0}',
           style: GoogleFonts.roboto(
             fontSize: 13,
-            color: Colors.white.withValues(alpha: 0.9),
+            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.9),
           ),
         ),
         actions: [
@@ -639,12 +639,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         decoration: BoxDecoration(
           color: (!item.isPending && (item.batch?.isPrinted ?? false))
               ? AppTheme.success.withValues(alpha: 0.12)
-              : Colors.white.withValues(alpha: 0.07),
+              : Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.07),
           borderRadius: AppTheme.radiusLg,
           border: Border.all(
             color: locked
                 ? AppTheme.warningText.withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.15),
+                : Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.15),
           ),
         ),
         child: Column(
@@ -660,7 +660,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     color: locked
                         ? AppTheme.warningDark.withValues(alpha: 0.4)
                         : item.isPending
-                        ? Colors.white.withValues(alpha: 0.1)
+                        ? Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1)
                         : AppTheme.success.withValues(alpha: 0.2),
                     borderRadius: AppTheme.radiusLg,
                   ),
@@ -696,7 +696,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         style: GoogleFonts.roboto(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white.withValues(
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(
                             alpha: locked ? 0.6 : 1.0,
                           ),
                         ),
@@ -962,7 +962,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     decoration: BoxDecoration(
       color: AppTheme.ink900,
       borderRadius: AppTheme.radiusXl,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.08)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -992,7 +992,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                   Text(
@@ -1048,9 +1048,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       decoration: BoxDecoration(
         color: printed
             ? AppTheme.success.withValues(alpha: 0.12)
-            : Colors.white.withValues(alpha: 0.06),
+            : Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.06),
         borderRadius: AppTheme.radiusLg,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1068,7 +1068,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         style: GoogleFonts.roboto(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                         ),
                       ),
                     ),
@@ -1142,7 +1142,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     ? null
                     : () => _openExtraPrintSheet(item),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
+                  foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   side: const BorderSide(color: AppTheme.primary600),
                   backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
                   minimumSize: const Size(0, 44),
@@ -1154,14 +1154,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                icon: const Icon(
+                icon: Icon(
                   Icons.print_rounded,
                   size: 18,
-                  color: Colors.white,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                 ),
                 label: Text(
                   item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500),
                 ),
               ),
             ),
@@ -1189,7 +1189,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.check_rounded,
                       size: 18,
                       color: AppTheme.successText,
@@ -1216,7 +1216,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close_rounded,
                       size: 18,
                       color: AppTheme.dangerText,
@@ -1255,7 +1255,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
             ),
           ),
           content: Column(
@@ -1267,7 +1267,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.9),
                 ),
               ),
               const SizedBox(height: AppTheme.space3),
@@ -1275,13 +1275,13 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 controller: notesController,
                 maxLines: 3,
                 autofocus: !approve,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: approve
                       ? 'Catatan (opsional)'
                       : 'Alasan penolakan (wajib)',
                   hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.4),
                     fontSize: 13,
                   ),
                   errorText: notesError
@@ -1290,7 +1290,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: AppTheme.radiusLg,
                     borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.2),
                     ),
                   ),
                   focusedBorder: const OutlineInputBorder(
@@ -1507,7 +1507,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   Widget _editButton(SjValidationItem item) => OutlinedButton.icon(
     onPressed: () => _openItemSheet(item),
     style: OutlinedButton.styleFrom(
-      foregroundColor: Colors.white,
+      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
       side: const BorderSide(color: AppTheme.primary600),
       backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
       minimumSize: const Size(0, 44),
@@ -1515,14 +1515,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: const Icon(Icons.description_rounded, size: 18, color: Colors.white),
-    label: const Text('Detail Validasi', style: TextStyle(color: Colors.white)),
+    icon: Icon(Icons.description_rounded, size: 18, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500),
+    label: Text('Detail Validasi', style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500)),
   );
 
   Widget _printLabelButton(SjValidationItem item) => OutlinedButton.icon(
     onPressed: () => _openPrintSheet(item),
     style: OutlinedButton.styleFrom(
-      foregroundColor: Colors.white,
+      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
       side: const BorderSide(color: AppTheme.primary600),
       backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
       minimumSize: const Size(0, 44),
@@ -1530,10 +1530,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: const Icon(Icons.print_rounded, size: 18, color: Colors.white),
+    icon: Icon(Icons.print_rounded, size: 18, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500),
     label: Text(
       item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500),
     ),
   );
 
@@ -1803,9 +1803,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.07),
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.08)),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1826,7 +1826,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.primary950 : Colors.white,
+                color: highlight ? AppTheme.primary950 : Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
               ),
             ),
           ],
@@ -1839,7 +1839,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     decoration: BoxDecoration(
       color: AppTheme.warningDark,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1878,7 +1878,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         disabledForegroundColor: foreground.withValues(alpha: 0.5),
         minimumSize: const Size(0, 48),
         side: outline
-            ? BorderSide(color: Colors.white.withValues(alpha: 0.4))
+            ? BorderSide(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.4))
             : null,
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(

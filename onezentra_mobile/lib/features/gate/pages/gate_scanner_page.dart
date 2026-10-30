@@ -74,7 +74,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
     backgroundColor: Colors.black,
     appBar: AppBar(
       backgroundColor: Colors.black,
-      foregroundColor: Colors.white,
+      foregroundColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
       elevation: 0,
       title: Text(
         widget.title,
@@ -134,7 +134,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
                 : widget.cameraErrorHint,
             textAlign: TextAlign.center,
             style: GoogleFonts.roboto(
-              color: Colors.white70,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.7),
               fontSize: 14.5,
               height: 1.5,
             ),
@@ -165,7 +165,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
                 decoration: BoxDecoration(
                   borderRadius: AppTheme.radiusLg,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.9),
                     width: 2,
                   ),
                   boxShadow: [
@@ -190,7 +190,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
                     widget.hint,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.roboto(
-                      color: Colors.white,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                       fontSize: 14.5,
                       fontWeight: FontWeight.w500,
                       height: 1.4,
@@ -201,7 +201,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
                     widget.subtitle,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.roboto(
-                      color: Colors.white70,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.7),
                       fontSize: 12.5,
                       height: 1.4,
                     ),
