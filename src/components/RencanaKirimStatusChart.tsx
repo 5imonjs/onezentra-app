@@ -34,7 +34,7 @@ interface StatusDef {
  * "Antrean Persetujuan Biaya" supaya dua blok di dashboard terlihat satu gaya.
  */
 const STATUSES: StatusDef[] = [
-  { key: 'DRAFT',       label: 'Rencana Kirim',     dot: 'bg-slate-400', box: 'border-border bg-popover', num: 'text-slate-700', name: 'text-muted-foreground' },
+  { key: 'DRAFT',       label: 'Rencana Kirim',     dot: 'bg-slate-400', box: 'border-border bg-popover', num: 'text-foreground', name: 'text-muted-foreground' },
   { key: 'SCHEDULED',   label: 'Dijadwalkan',       dot: 'bg-blue-300',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
   { key: 'CHECKED_IN',  label: 'Gate Check-in',     dot: 'bg-blue-400',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
   { key: 'VERIFIED',    label: 'Verifikasi',        dot: 'bg-blue-500',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
@@ -129,7 +129,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
           onClick={load}
           disabled={loading}
           aria-label="Muat ulang data"
-          className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 min-w-11 min-h-11 flex items-center justify-center border border-transparent hover:border-slate-300"
+          className="p-2 text-slate-400 hover:text-foreground hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 min-w-11 min-h-11 flex items-center justify-center border border-transparent hover:border-border"
         >
           <svg
             className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}
@@ -161,7 +161,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
             <div className="w-14 h-14 rounded-2xl bg-popover flex items-center justify-center mb-4">
               <svg className="w-7 h-7 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
             </div>
-            <p className="text-sm font-semibold text-slate-700">Belum ada rencana kirim</p>
+            <p className="text-sm font-semibold text-foreground">Belum ada rencana kirim</p>
             <p className="mt-1 text-xs text-slate-400 max-w-xs">Buat rencana kirim pertama untuk melihat progresnya di sini.</p>
           </div>
         ) : (
@@ -244,7 +244,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
                   })}
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-black text-slate-800">
+                  <span className="text-sm font-black text-foreground">
                     {total > 0 ? Math.round((counts.COMPLETED / total) * 100) : 0}%
                   </span>
                 </div>

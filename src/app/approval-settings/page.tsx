@@ -103,7 +103,7 @@ export default function ApprovalSettingsPage() {
                 { key: 'biaya_thl', label: 'Biaya THL' },
                 { key: 'biaya_retribusi', label: 'Biaya Retribusi' },
               ] as const).map((tab) => (
-                <button key={tab.key} role="tab" aria-selected={module === tab.key} onClick={() => { setModule(tab.key); setSelected({}); setAssignments({}); }} className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${module === tab.key ? 'bg-card text-slate-900 shadow' : 'text-ink-fg-muted hover:text-ink-fg'}`}>
+                <button key={tab.key} role="tab" aria-selected={module === tab.key} onClick={() => { setModule(tab.key); setSelected({}); setAssignments({}); }} className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${module === tab.key ? 'bg-card text-foreground shadow' : 'text-ink-fg-muted hover:text-ink-fg'}`}>
                   {tab.label}
                 </button>
               ))}
@@ -111,14 +111,14 @@ export default function ApprovalSettingsPage() {
           </div>
         </header>
 
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-          <div className="border-b border-gray-100 px-5 py-4">
-            <p className="text-sm font-semibold text-slate-800">Approver {module === 'biaya_thl' ? 'Biaya THL' : 'Biaya Retribusi'} per depo</p>
+        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <p className="text-sm font-semibold text-foreground">Approver {module === 'biaya_thl' ? 'Biaya THL' : 'Biaya Retribusi'} per depo</p>
             <p className="mt-1 text-xs text-muted-foreground">Berlaku khusus modul ini — tidak memengaruhi modul lainnya. Nama pada PDF diambil dari akun user aktif yang dipilih di sini.</p>
           </div>
           <div className="space-y-4 p-5">
             <label className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
-              <span><span className="block text-sm font-semibold text-slate-800">Depo BLC/BAC</span><span className="text-xs text-muted-foreground">Pilih depo yang akan diatur</span></span>
+              <span><span className="block text-sm font-semibold text-foreground">Depo BLC/BAC</span><span className="text-xs text-muted-foreground">Pilih depo yang akan diatur</span></span>
               <select value={effectiveDepot} onChange={(event) => setSelectedDepot(event.target.value)} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
                 {depots.map((depot) => <option key={depot.kode_depo} value={depot.kode_depo}>{depot.nama_depo || depot.kode_depo} ({depot.kode_depo})</option>)}
               </select>
@@ -164,7 +164,7 @@ export default function ApprovalSettingsPage() {
 
               return (
               <label key={key} className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
-                <span><span className="block text-sm font-semibold text-slate-800">{title}</span><span className="text-xs text-muted-foreground">{description} ({key})</span></span>
+                <span><span className="block text-sm font-semibold text-foreground">{title}</span><span className="text-xs text-muted-foreground">{description} ({key})</span></span>
                 <select value={selected[key] || ''} onChange={(event) => setSelected((current) => ({ ...current, [key]: event.target.value }))} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
                   <option value="">Pilih user aktif</option>
                   {options.map((approver) => <option key={approver.id} value={approver.id}>{approver.full_name} - {approver.email}</option>)}
@@ -173,7 +173,7 @@ export default function ApprovalSettingsPage() {
               );
             })}
           </div>
-          <div className="flex justify-end border-t border-gray-100 px-5 py-4">
+          <div className="flex justify-end border-t border-border px-5 py-4">
             <button type="button" onClick={() => void save()} disabled={loading || saving || !hasPermission('approval.manage')} className="btn-primary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
             </button>

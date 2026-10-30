@@ -294,21 +294,21 @@ export default function PenerimaanReportPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-linear-to-br from-ink-900 to-slate-700 text-white flex items-center justify-center shadow">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
+                  <h2 className="text-base font-bold text-foreground">Filter Laporan</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">Tanggal • Depo • Sumber • Cari</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -324,7 +324,7 @@ export default function PenerimaanReportPage() {
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-popover hover:border-border transition-all">Reset</button>
                 <button onClick={submit} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
@@ -334,7 +334,7 @@ export default function PenerimaanReportPage() {
         {/* Summary Cards */}
         {summary && (
           <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
@@ -342,7 +342,7 @@ export default function PenerimaanReportPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Item</p>
-                  <p className="text-2xl font-black text-slate-900 tabular-nums">{summary.total_item.toLocaleString('id-ID')}</p>
+                  <p className="text-2xl font-black text-foreground tabular-nums">{summary.total_item.toLocaleString('id-ID')}</p>
                   <p className="text-[11px] text-slate-400 tabular-nums">{summary.item_sj.toLocaleString('id-ID')} SJ • {summary.item_manual.toLocaleString('id-ID')} manual</p>
                 </div>
               </div>
@@ -360,7 +360,7 @@ export default function PenerimaanReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm shrink-0">
@@ -368,7 +368,7 @@ export default function PenerimaanReportPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Qty PCS</p>
-                  <p className="text-2xl font-black text-slate-900 tabular-nums">{summary.total_qty_pcs.toLocaleString('id-ID')}</p>
+                  <p className="text-2xl font-black text-foreground tabular-nums">{summary.total_qty_pcs.toLocaleString('id-ID')}</p>
                   <p className="text-[11px] text-slate-400 tabular-nums">satuan pcs</p>
                 </div>
               </div>
@@ -390,15 +390,15 @@ export default function PenerimaanReportPage() {
         )}
 
         {/* Table */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Detail Inbound</h2>
+                  <h2 className="text-base font-bold text-foreground">Detail Inbound</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{rangeText}</p>
                 </div>
               </div>
@@ -418,7 +418,7 @@ export default function PenerimaanReportPage() {
             <table className="w-full min-w-[1200px] border-collapse">
               <caption className="sr-only">Laporan penerimaan</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-border">
                   {canDelete && (
                     <th scope="col" className="table-header w-10 text-center">
                       <ReportSelectCheckbox
@@ -470,7 +470,7 @@ export default function PenerimaanReportPage() {
                           <svg className="w-7 h-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                         </div>
                         <div>
-                          <p className="text-sm text-slate-600 font-bold">Tidak ada data penerimaan</p>
+                          <p className="text-sm text-foreground font-bold">Tidak ada data penerimaan</p>
                           <p className="text-xs text-slate-400 mt-1">Belum ada receiving pada rentang filter ini</p>
                         </div>
                         {activeFilterCount > 0 && (
@@ -493,17 +493,17 @@ export default function PenerimaanReportPage() {
                             />
                           </td>
                         )}
-                        <td className="table-cell text-sm text-slate-600 whitespace-nowrap font-mono">{item.tanggal_penerimaan}</td>
-                        <td className="table-cell text-sm text-slate-600 whitespace-nowrap">{item.nama_depo} <span className="text-slate-400 text-xs">({item.kode_depo})</span></td>
-                        <td className="table-cell text-sm text-slate-600 whitespace-nowrap">{item.sumber_material}</td>
-                        <td className="table-cell text-sm font-mono font-medium text-slate-800 whitespace-nowrap">{item.po_transporter}</td>
-                        <td className="table-cell text-sm font-mono text-slate-600 whitespace-nowrap">{item.kode_barang}</td>
-                        <td className="table-cell text-sm text-slate-800 min-w-55 max-w-75">
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap font-mono">{item.tanggal_penerimaan}</td>
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.nama_depo} <span className="text-slate-400 text-xs">({item.kode_depo})</span></td>
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.sumber_material}</td>
+                        <td className="table-cell text-sm font-mono font-medium text-foreground whitespace-nowrap">{item.po_transporter}</td>
+                        <td className="table-cell text-sm font-mono text-foreground whitespace-nowrap">{item.kode_barang}</td>
+                        <td className="table-cell text-sm text-foreground min-w-55 max-w-75">
                           <span className="block line-clamp-2 wrap-break-word" title={item.nama_barang}>{item.nama_barang}</span>
                         </td>
-                        <td className="table-cell text-sm text-right text-slate-800 tabular-nums font-bold">{item.qty_crt.toLocaleString('id-ID')}</td>
-                        <td className="table-cell text-sm text-right text-slate-600 tabular-nums">{item.qty_pcs.toLocaleString('id-ID')}</td>
-                        <td className="table-cell text-sm text-slate-600 whitespace-nowrap font-mono">{item.expired_date}</td>
+                        <td className="table-cell text-sm text-right text-foreground tabular-nums font-bold">{item.qty_crt.toLocaleString('id-ID')}</td>
+                        <td className="table-cell text-sm text-right text-foreground tabular-nums">{item.qty_pcs.toLocaleString('id-ID')}</td>
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap font-mono">{item.expired_date}</td>
                         <td className="table-cell whitespace-nowrap"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${tone.badge}`}><span className={`w-1.5 h-1.5 rounded-full ${tone.dot}`} aria-hidden="true" />{tone.label}</span></td>
                         <td className="table-cell whitespace-nowrap"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border ${item.sumber === 'VALIDASI_SJ' ? 'bg-chip-primary text-accent-text border-chip-primary-border' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>{item.sumber === 'VALIDASI_SJ' ? 'SJ' : 'Manual'}</span></td>
                         <td className="table-cell text-sm text-right whitespace-nowrap">
@@ -528,7 +528,7 @@ export default function PenerimaanReportPage() {
             {loading && (
               <div className="p-4 space-y-3" aria-hidden="true">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-overlay-60 p-4 space-y-2">
+                  <div key={i} className="animate-pulse rounded-2xl border border-border bg-overlay-60 p-4 space-y-2">
                     <div className="h-4 w-40 bg-slate-200 rounded" />
                     <div className="h-3 w-56 bg-slate-200 rounded" />
                     <div className="grid grid-cols-3 gap-2 pt-1">
@@ -542,7 +542,7 @@ export default function PenerimaanReportPage() {
             )}
             {!loading && items.length === 0 && (
               <div className="p-10 text-center">
-                <p className="text-sm text-slate-600 font-bold">Tidak ada data penerimaan</p>
+                <p className="text-sm text-foreground font-bold">Tidak ada data penerimaan</p>
                 <p className="text-xs text-slate-400 mt-1">Belum ada receiving pada rentang filter ini</p>
                 {activeFilterCount > 0 && (
                   <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold">Reset filter</button>
@@ -558,19 +558,19 @@ export default function PenerimaanReportPage() {
                 <article key={item.id} className="p-4 flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 truncate" title={item.nama_barang}>{item.nama_barang}</p>
+                      <p className="text-sm font-bold text-foreground truncate" title={item.nama_barang}>{item.nama_barang}</p>
                       <p className="text-xs font-mono text-muted-foreground mt-0.5 truncate">{item.kode_barang} • {item.po_transporter}</p>
                     </div>
                     <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border shrink-0 ${tone.badge}`}><span className={`w-1.5 h-1.5 rounded-full ${tone.dot}`} aria-hidden="true" />{tone.label}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-border">
                       <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">CRT</p>
-                      <p className="font-black text-slate-900 text-sm tabular-nums">{item.qty_crt.toLocaleString('id-ID')}</p>
+                      <p className="font-black text-foreground text-sm tabular-nums">{item.qty_crt.toLocaleString('id-ID')}</p>
                     </div>
-                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-border">
                       <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">PCS</p>
-                      <p className="font-black text-slate-900 text-sm tabular-nums">{item.qty_pcs.toLocaleString('id-ID')}</p>
+                      <p className="font-black text-foreground text-sm tabular-nums">{item.qty_pcs.toLocaleString('id-ID')}</p>
                     </div>
                     <div className={`rounded-xl p-2 text-center ${selisihTone}`}>
                       <p className={`font-bold tracking-widest uppercase text-[9px] ${item.selisih_qty === 0 ? 'text-white/60' : 'text-current opacity-70'}`}>Selisih</p>
@@ -578,12 +578,12 @@ export default function PenerimaanReportPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                    <div><span className="text-slate-400">Tgl: </span><span className="font-mono font-medium text-slate-700">{item.tanggal_penerimaan} <span className="text-slate-300">({fmtDay(item.tanggal_penerimaan)})</span></span></div>
-                    <div><span className="text-slate-400">Expired: </span><span className="font-mono font-medium text-slate-700">{item.expired_date || '-'}</span></div>
-                    <div><span className="text-slate-400">Depo: </span><span className="font-medium text-slate-700">{item.nama_depo}</span></div>
+                    <div><span className="text-slate-400">Tgl: </span><span className="font-mono font-medium text-foreground">{item.tanggal_penerimaan} <span className="text-slate-300">({fmtDay(item.tanggal_penerimaan)})</span></span></div>
+                    <div><span className="text-slate-400">Expired: </span><span className="font-mono font-medium text-foreground">{item.expired_date || '-'}</span></div>
+                    <div><span className="text-slate-400">Depo: </span><span className="font-medium text-foreground">{item.nama_depo}</span></div>
                     <div><span className="text-slate-400">Sumber: </span><span className={`font-semibold ${item.sumber === 'VALIDASI_SJ' ? 'text-accent-text' : 'text-purple-700'}`}>{item.sumber === 'VALIDASI_SJ' ? 'SJ' : 'Manual'}</span></div>
-                    <div className="col-span-2"><span className="text-slate-400">Material: </span><span className="font-medium text-slate-700">{item.sumber_material}</span></div>
-                    {item.selisih_reason && <div className="col-span-2"><span className="text-slate-400">Alasan selisih: </span><span className="font-medium text-slate-700">{item.selisih_reason}</span></div>}
+                    <div className="col-span-2"><span className="text-slate-400">Material: </span><span className="font-medium text-foreground">{item.sumber_material}</span></div>
+                    {item.selisih_reason && <div className="col-span-2"><span className="text-slate-400">Alasan selisih: </span><span className="font-medium text-foreground">{item.selisih_reason}</span></div>}
                   </div>
                   {item.notes && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">Catatan: {item.notes}</p>}
                 </article>
@@ -591,7 +591,7 @@ export default function PenerimaanReportPage() {
             })}
           </div>
           {lastPage > 1 && (
-            <div className="p-4 border-t border-gray-100 bg-overlay-50">
+            <div className="p-4 border-t border-border bg-overlay-50">
               <div className="flex flex-wrap justify-between items-center gap-3">
                 <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1 || loading} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
                   <span className="flex items-center gap-2 text-sm">

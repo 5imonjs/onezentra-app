@@ -15,7 +15,7 @@ export function ReportSelectCheckbox({
       checked={checked}
       onChange={onChange}
       aria-label={label}
-      className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+      className="h-4 w-4 rounded border-border text-red-600 focus:ring-red-500"
     />
   );
 }

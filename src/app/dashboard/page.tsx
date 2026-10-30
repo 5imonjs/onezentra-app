@@ -134,7 +134,7 @@ export default function DashboardPage() {
                 value={kodeDepo}
                 onChange={(e) => setKodeDepo(e.target.value)}
                 aria-label="Filter depo dashboard"
-                className="min-h-8 cursor-pointer bg-transparent pr-1 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 [&>option]:text-slate-900"
+                className="min-h-8 cursor-pointer bg-transparent pr-1 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 [&>option]:text-foreground"
               >
                 <option value="">Semua depo</option>
                 {depos.map((d) => (

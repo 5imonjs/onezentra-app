@@ -393,14 +393,14 @@ export default function AdminDatabasePage() {
         </header>
 
         {!allowed ? (
-          <section className="rounded-2xl border border-gray-100 bg-card p-6 text-sm text-slate-600 shadow-sm">
+          <section className="rounded-2xl border border-border bg-card p-6 text-sm text-foreground shadow-sm">
             Hanya akun level admin master yang boleh membuka halaman ini.
           </section>
         ) : (
           <>
-          <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-            <div className="border-b border-gray-100 px-5 py-4">
-              <label htmlFor="reset-depot" className="text-sm font-semibold text-slate-800">Depo yang direset</label>
+          <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border px-5 py-4">
+              <label htmlFor="reset-depot" className="text-sm font-semibold text-foreground">Depo yang direset</label>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <select
                   id="reset-depot"
@@ -416,22 +416,22 @@ export default function AdminDatabasePage() {
                     </option>
                   ))}
                 </select>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-foreground">
                   {effectiveDepot ? `Hanya data ${selectedName}` : 'Pilih depo'}
                 </span>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
                 Reset bersifat per depo: baris depo lain tidak tersentuh. Baris lama tanpa kode depo tidak ikut terhapus.
               </p>
-              <div className="mt-4 border-t border-gray-100 pt-4">
-                <p className="text-sm font-semibold text-slate-800">Mode reset</p>
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-sm font-semibold text-foreground">Mode reset</p>
                 <div className="mt-2 inline-flex rounded-lg border border-border bg-slate-50 p-1">
                   <button
                     type="button"
                     onClick={() => changeMode('depot')}
                     aria-pressed={mode === 'depot'}
                     disabled={working}
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'depot' ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-800'}`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'depot' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   >
                     Per Depo
                   </button>
@@ -440,7 +440,7 @@ export default function AdminDatabasePage() {
                     onClick={() => changeMode('documents')}
                     aria-pressed={mode === 'documents'}
                     disabled={working}
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'documents' ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-800'}`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'documents' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   >
                     Pilih Dokumen
                   </button>
@@ -454,8 +454,8 @@ export default function AdminDatabasePage() {
             </div>
             {mode === 'depot' ? (
               <>
-                <div className="border-b border-gray-100 px-5 py-4">
-                  <p className="text-sm font-semibold text-slate-800">Pilih modul yang akan dikosongkan</p>
+                <div className="border-b border-border px-5 py-4">
+                  <p className="text-sm font-semibold text-foreground">Pilih modul yang akan dikosongkan</p>
                   <p className="mt-1 text-xs text-muted-foreground">Angka = jumlah baris depo ini saat ini. Pratinjau dulu (dry-run), lalu ketik HAPUS untuk eksekusi.</p>
                 </div>
                 <div className="space-y-3 p-5">
@@ -463,7 +463,7 @@ export default function AdminDatabasePage() {
                     <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
                   ) : (
                     MODULES.map((module) => (
-                      <label key={module.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-100 px-4 py-3 hover:border-border">
+                      <label key={module.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-border px-4 py-3 hover:border-border">
                         <input
                           type="checkbox"
                           checked={checked.includes(module.key)}
@@ -472,9 +472,9 @@ export default function AdminDatabasePage() {
                           className="mt-1 h-4 w-4 accent-red-600"
                         />
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold text-slate-800">
+                          <span className="block text-sm font-semibold text-foreground">
                             {module.label}
-                            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">{counts[module.key] ?? 0} baris</span>
+                            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-foreground">{counts[module.key] ?? 0} baris</span>
                           </span>
                           <span className="text-xs text-muted-foreground">{module.note}</span>
                         </span>
@@ -507,10 +507,10 @@ export default function AdminDatabasePage() {
               </>
             ) : (
               <>
-                <div className="border-b border-gray-100 px-5 py-4">
+                <div className="border-b border-border px-5 py-4">
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_1fr]">
                     <div>
-                      <label htmlFor="document-module" className="text-sm font-semibold text-slate-800">Jenis dokumen</label>
+                      <label htmlFor="document-module" className="text-sm font-semibold text-foreground">Jenis dokumen</label>
                       <select
                         id="document-module"
                         value={docModule}
@@ -525,7 +525,7 @@ export default function AdminDatabasePage() {
                     </div>
                     <form onSubmit={(event) => { event.preventDefault(); submitDocSearch(); }} className="flex items-end gap-2">
                       <div className="min-w-0 flex-1">
-                        <label htmlFor="document-search" className="text-sm font-semibold text-slate-800">Cari nomor PO / SJ / dokumen</label>
+                        <label htmlFor="document-search" className="text-sm font-semibold text-foreground">Cari nomor PO / SJ / dokumen</label>
                         <input
                           id="document-search"
                           value={docSearchInput}
@@ -546,9 +546,9 @@ export default function AdminDatabasePage() {
                   {documentsLoading ? (
                     <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
                   ) : documents.length === 0 ? (
-                    <p className="text-sm text-slate-600">Tidak ada dokumen yang cocok untuk depo dan modul ini.</p>
+                    <p className="text-sm text-foreground">Tidak ada dokumen yang cocok untuk depo dan modul ini.</p>
                   ) : (
-                    <div className="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-gray-100">
+                    <div className="max-h-80 divide-y divide-gray-100 overflow-y-auto rounded-xl border border-border">
                       {documents.map((document) => (
                         <label key={document.id} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-slate-50">
                           <input
@@ -559,7 +559,7 @@ export default function AdminDatabasePage() {
                             className="mt-1 h-4 w-4 accent-red-600"
                           />
                           <span className="min-w-0 flex-1">
-                            <span className="block font-mono text-sm font-semibold text-slate-800">{document.label}</span>
+                            <span className="block font-mono text-sm font-semibold text-foreground">{document.label}</span>
                             {document.subtitle && <span className="block text-xs text-muted-foreground">{document.subtitle}</span>}
                             <span className="block text-xs text-slate-400">{[document.date, document.status].filter(Boolean).join(' · ') || '—'}</span>
                           </span>
@@ -595,24 +595,24 @@ export default function AdminDatabasePage() {
             )}
           </section>
 
-          <section aria-label="Reset master data" className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-            <div className="border-b border-gray-100 px-5 py-4">
+          <section aria-label="Reset master data" className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border px-5 py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-800">Reset Master Data (Global)</h2>
+                  <h2 className="text-sm font-semibold text-foreground">Reset Master Data (Global)</h2>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Khusus admin master — menghapus master NPN untuk SEMUA depo. Data operasional tidak ikut terhapus.
                   </p>
                 </div>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Global</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-foreground">Global</span>
               </div>
             </div>
             <div className="space-y-4 p-5">
               <div className="rounded-xl border border-red-100 bg-red-50/40 px-4 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">Master NPN</p>
-                    <p className="mt-1 text-xs text-slate-600">
+                    <p className="text-sm font-semibold text-foreground">Master NPN</p>
+                    <p className="mt-1 text-xs text-foreground">
                       Seluruh produk NPN lintas depo. Gunakan ini untuk reset total sebelum import ulang.
                     </p>
                   </div>
@@ -660,9 +660,9 @@ export default function AdminDatabasePage() {
             </div>
           </section>
 
-          <section aria-label="Data legacy tanpa depo" className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-            <div className="border-b border-gray-100 px-5 py-4">
-              <h2 className="text-sm font-semibold text-slate-800">Data Legacy Tanpa Depo</h2>
+          <section aria-label="Data legacy tanpa depo" className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="text-sm font-semibold text-foreground">Data Legacy Tanpa Depo</h2>
               <p className="mt-1 text-xs text-muted-foreground">
                 Baris lama dengan kode depo kosong tidak ikut reset per depo. Backfill hanya mengisi baris kosong dari relasi dokumen atau nama depo yang cocok unik; kode yang sudah terisi tidak pernah ditimpa.
               </p>
@@ -673,19 +673,19 @@ export default function AdminDatabasePage() {
               ) : legacyError ? (
                 <p className="text-sm text-red-600">Gagal memuat pratinjau data legacy.</p>
               ) : legacy === null || legacyTotals.total === 0 ? (
-                <p className="text-sm text-slate-600">Tidak ada data legacy tanpa kode depo.</p>
+                <p className="text-sm text-foreground">Tidak ada data legacy tanpa kode depo.</p>
               ) : (
                 <>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-gray-100 px-4 py-3">
+                    <div className="rounded-xl border border-border px-4 py-3">
                       <p className="text-xs text-muted-foreground">Baris tanpa depo</p>
-                      <p className="text-xl font-bold text-slate-800">{legacyTotals.total}</p>
+                      <p className="text-xl font-bold text-foreground">{legacyTotals.total}</p>
                     </div>
-                    <div className="rounded-xl border border-gray-100 px-4 py-3">
+                    <div className="rounded-xl border border-border px-4 py-3">
                       <p className="text-xs text-muted-foreground">Bisa diisi otomatis</p>
                       <p className="text-xl font-bold text-emerald-700">{legacyTotals.resolved}</p>
                     </div>
-                    <div className="rounded-xl border border-gray-100 px-4 py-3">
+                    <div className="rounded-xl border border-border px-4 py-3">
                       <p className="text-xs text-muted-foreground">Perlu dicek manual</p>
                       <p className="text-xl font-bold text-amber-700">{legacyTotals.unresolved}</p>
                     </div>
@@ -704,7 +704,7 @@ export default function AdminDatabasePage() {
                       <tbody>
                         {legacyTables.map(([table, stat]) => (
                           <tr key={table} className="border-b border-gray-50">
-                            <td className="py-2 pr-4 font-medium text-slate-700">{LEGACY_TABLE_LABELS[table] ?? table}</td>
+                            <td className="py-2 pr-4 font-medium text-foreground">{LEGACY_TABLE_LABELS[table] ?? table}</td>
                             <td className="py-2 pr-4">{stat.total}</td>
                             <td className="py-2 pr-4 text-emerald-700">{stat.resolved}</td>
                             <td className="py-2 text-amber-700">{stat.unresolved}</td>
@@ -717,7 +717,7 @@ export default function AdminDatabasePage() {
                   {legacyResolvedSamples.length > 0 && (
                     <div>
                       <p className="text-xs font-semibold uppercase text-muted-foreground">Contoh yang akan diisi</p>
-                      <ul className="mt-1 space-y-1 text-xs text-slate-600">
+                      <ul className="mt-1 space-y-1 text-xs text-foreground">
                         {legacyResolvedSamples.map((sample) => (
                           <li key={`${sample.table}-${sample.id}`}>
                             {LEGACY_TABLE_LABELS[sample.table] ?? sample.table} #{sample.id}
@@ -743,7 +743,7 @@ export default function AdminDatabasePage() {
                   )}
 
                   {legacyTotals.resolved > 0 && (
-                    <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
+                    <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
                       <input
                         value={legacyConfirm}
                         onChange={(event) => setLegacyConfirm(event.target.value)}

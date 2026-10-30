@@ -63,7 +63,7 @@ function InfoItem({ label, children, bare = false }: { label: string; children: 
       {bare ? (
         <div className="mt-1">{children}</div>
       ) : (
-        <p className="text-sm text-slate-800 mt-1 font-medium wrap-break-word">{children}</p>
+        <p className="text-sm text-foreground mt-1 font-medium wrap-break-word">{children}</p>
       )}
     </div>
   );
@@ -127,8 +127,8 @@ function NpnProductPicker({
   if (selected) {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-xl border border-gray-300 bg-popover px-3 py-2.5">
-          <p className="text-sm font-medium text-gray-900 truncate">
+        <div className="flex-1 rounded-xl border border-border bg-popover px-3 py-2.5">
+          <p className="text-sm font-medium text-foreground truncate">
             {selected.szShortDescription || selected.szNickName || selected.szNickNameNew || '-'}
           </p>
           <p className="text-xs font-mono text-gray-400">{selected.BOSnetszProductId || '-'}</p>
@@ -164,14 +164,14 @@ function NpnProductPicker({
         </div>
       )}
       {showDropdown && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-card border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-60 overflow-auto">
           {results.map((product) => (
             <button
               key={product.id}
               onClick={() => { setSearch(''); setResults([]); setShowDropdown(false); onSelect(product); }}
-              className="w-full px-3 py-2.5 text-left hover:bg-chip-primary transition-colors border-b border-gray-100 last:border-0"
+              className="w-full px-3 py-2.5 text-left hover:bg-chip-primary transition-colors border-b border-border last:border-0"
             >
-              <p className="text-sm text-gray-900 truncate">{product.szShortDescription || product.szNickName || product.szNickNameNew || '-'}</p>
+              <p className="text-sm text-foreground truncate">{product.szShortDescription || product.szNickName || product.szNickNameNew || '-'}</p>
               <span className="text-xs font-mono text-gray-400">{product.BOSnetszProductId} · {product.SAPszProductId || '-'}</span>
             </button>
           ))}
@@ -460,7 +460,7 @@ const confirmApprove = async () => {
 
 
   const badge = (status: string) => {
-    const meta = STATUS_META[status] || { label: status, badge: 'bg-slate-100 text-slate-600 border-slate-300', dot: 'bg-slate-400' };
+    const meta = STATUS_META[status] || { label: status, badge: 'bg-slate-100 text-foreground border-border', dot: 'bg-slate-400' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
@@ -542,18 +542,18 @@ const confirmApprove = async () => {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-4 card-hover">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L2.25 12l4.179 2.25m0 0l5.571 3 5.571-3m-11.142 0L2.25 17.25 12 22.5l9.75-5.25-4.179-2.25" /></svg>
+                <svg className="w-5 h-5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L2.25 12l4.179 2.25m0 0l5.571 3 5.571-3m-11.142 0L2.25 17.25 12 22.5l9.75-5.25-4.179-2.25" /></svg>
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total</p>
-                <p className="text-xl font-bold text-slate-800 tabular-nums">{stats.total}</p>
+                <p className="text-xl font-bold text-foreground tabular-nums">{stats.total}</p>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-4 card-hover">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -564,7 +564,7 @@ const confirmApprove = async () => {
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-4 card-hover">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
@@ -575,7 +575,7 @@ const confirmApprove = async () => {
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4 card-hover">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-4 card-hover">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -589,8 +589,8 @@ const confirmApprove = async () => {
         </div>
 
         {/* Table Card */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <SearchInput
@@ -626,14 +626,14 @@ const confirmApprove = async () => {
             <table className="w-full border-collapse">
               <caption className="sr-only">Daftar standarisasi tumpukan</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-popover border-b border-slate-300">
+                <tr className="bg-popover border-b border-border">
                   <th scope="col" className="table-header w-10">
                     {hasPermission('standarisasi.delete') && (
                       <input
                         type="checkbox"
                         checked={items.length > 0 && items.every((i) => selectedIds.includes(i.id))}
                         onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
+                        className="rounded border-border text-accent-text focus:ring-primary-500"
                       />
                     )}
                   </th>
@@ -674,19 +674,19 @@ const confirmApprove = async () => {
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
                           onChange={() => toggleSelect(item.id)}
-                          className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
+                          className="rounded border-border text-accent-text focus:ring-primary-500"
                         />
                       )}
                     </td>
                     <td className="table-cell text-sm text-muted-foreground text-center">{(page - 1) * 20 + index + 1}</td>
                     <td className="table-cell">
-                      <span className="font-mono text-sm font-medium text-slate-800">{item.npn?.BOSnetszProductId || '-'}</span>
+                      <span className="font-mono text-sm font-medium text-foreground">{item.npn?.BOSnetszProductId || '-'}</span>
                     </td>
                     <td className="table-cell">
-                      <span className="text-sm text-slate-600">{item.npn?.szShortDescription || item.npn?.szNickName || item.npn?.szNickNameNew || '-'}</span>
+                      <span className="text-sm text-foreground">{item.npn?.szShortDescription || item.npn?.szNickName || item.npn?.szNickNameNew || '-'}</span>
                     </td>
                     <td className="table-cell">
-                      <span className="text-sm text-slate-600 font-mono">{item.npn?.szBarcode || '-'}</span>
+                      <span className="text-sm text-foreground font-mono">{item.npn?.szBarcode || '-'}</span>
                     </td>
                     <td className="table-cell text-center">
                       <span className="text-sm font-semibold text-accent-text">{item.tier ?? '-'}</span>
@@ -701,7 +701,7 @@ const confirmApprove = async () => {
                       {badge(item.status || 'pending')}
                     </td>
                     <td className="table-cell">
-                      <span className="text-sm text-slate-600">{item.requested_by_email || '-'}</span>
+                      <span className="text-sm text-foreground">{item.requested_by_email || '-'}</span>
                     </td>
 <td className="table-cell text-right">
                        <div className="flex items-center justify-end gap-1">
@@ -756,7 +756,7 @@ const confirmApprove = async () => {
           </div>
 
           {/* Pagination */}
-          <div className="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="px-5 py-3 border-t border-border flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground tabular-nums">
               Halaman {page} dari {lastPage}
             </p>
@@ -817,16 +817,16 @@ const confirmApprove = async () => {
               <InfoItem label="Kode Depo">{fmt(viewItem.kode_depo)}</InfoItem>
               <InfoItem label="Nama Depo">{fmt(viewItem.nama_depo)}</InfoItem>
             </div>
-            <div className="border-t border-slate-100 pt-4 mt-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Perhitungan Tumpukan</h3>
+            <div className="border-t border-border pt-4 mt-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Perhitungan Tumpukan</h3>
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-popover rounded-xl p-4 border border-slate-300 text-center">
+                <div className="bg-popover rounded-xl p-4 border border-border text-center">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tier</span>
-                  <p className="text-2xl font-bold text-slate-700 mt-1 tabular-nums">{viewItem.tier ?? '-'}</p>
+                  <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">{viewItem.tier ?? '-'}</p>
                 </div>
-                <div className="bg-popover rounded-xl p-4 border border-slate-300 text-center">
+                <div className="bg-popover rounded-xl p-4 border border-border text-center">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tinggi</span>
-                  <p className="text-2xl font-bold text-slate-700 mt-1 tabular-nums">{viewItem.tinggi_tumpukan ?? '-'}</p>
+                  <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">{viewItem.tinggi_tumpukan ?? '-'}</p>
                 </div>
                 <div className="bg-chip-primary rounded-xl p-4 border border-chip-primary-border text-center">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-primary-500">Total</span>
@@ -839,8 +839,8 @@ const confirmApprove = async () => {
                 </p>
               )}
             </div>
-            <div className="border-t border-slate-100 pt-4 mt-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Status & Approval</h3>
+            <div className="border-t border-border pt-4 mt-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Status & Approval</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <InfoItem label="Status" bare>{badge(viewItem.status || 'pending')}</InfoItem>
                 <InfoItem label="Diajukan Oleh">{fmt(viewItem.requested_by_email)}</InfoItem>
@@ -928,7 +928,7 @@ const confirmApprove = async () => {
             </div>
             <div className="bg-popover rounded-xl p-4 mt-4">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Preview Perhitungan</span>
-              <p className="text-sm text-slate-800 mt-1">
+              <p className="text-sm text-foreground mt-1">
                 {editForm.tier || 1} tier x {editForm.tinggi_tumpukan || 1} tinggi = <span className="font-bold text-accent-text">{(editForm.tier || 1) * (editForm.tinggi_tumpukan || 1)}</span> total
               </p>
             </div>
@@ -984,7 +984,7 @@ const confirmApprove = async () => {
         </div>
         <div className="bg-popover rounded-xl p-4 mt-4">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Preview Perhitungan</span>
-          <p className="text-sm text-slate-800 mt-1">
+          <p className="text-sm text-foreground mt-1">
             {createForm.tier || 1} tier x {createForm.tinggi_tumpukan || 1} tinggi = <span className="font-bold text-accent-text">{(createForm.tier || 1) * (createForm.tinggi_tumpukan || 1)}</span> total
           </p>
         </div>

@@ -121,19 +121,19 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
       footer={<><button onClick={onClose} className="btn-secondary">Batal</button><button onClick={save} disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Menyimpan...' : 'Buat Sesi'}</button></>}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="cs-week" className="block text-sm font-medium text-gray-700 mb-1.5">Minggu (Senin) *</label>
+          <label htmlFor="cs-week" className="block text-sm font-medium text-foreground mb-1.5">Minggu (Senin) *</label>
           <input id="cs-week" type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="input-field" required />
         </div>
         <div>
-          <label htmlFor="cs-depo" className="block text-sm font-medium text-gray-700 mb-1.5">Kode Depo *</label>
+          <label htmlFor="cs-depo" className="block text-sm font-medium text-foreground mb-1.5">Kode Depo *</label>
           <input id="cs-depo" value={kodeDepo} onChange={(e) => setKodeDepo(e.target.value)} className="input-field" required />
         </div>
         <div>
-          <label htmlFor="cs-nama-depo" className="block text-sm font-medium text-gray-700 mb-1.5">Nama Depo</label>
+          <label htmlFor="cs-nama-depo" className="block text-sm font-medium text-foreground mb-1.5">Nama Depo</label>
           <input id="cs-nama-depo" value={namaDepo} onChange={(e) => setNamaDepo(e.target.value)} className="input-field" />
         </div>
         <div>
-          <label htmlFor="cs-assigned" className="block text-sm font-medium text-gray-700 mb-1.5">Petugas *</label>
+          <label htmlFor="cs-assigned" className="block text-sm font-medium text-foreground mb-1.5">Petugas *</label>
           <select
             id="cs-assigned"
             value={assignedTo}
@@ -160,7 +160,7 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
         {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat wave...</p> : waves.length === 0 ? (
           <p className="text-sm text-muted-foreground">Tidak ada wave minggu ini — Generate dulu di Batch Expired.</p>
         ) : (
-          <div className="max-h-64 overflow-auto border border-gray-300 rounded-xl divide-y divide-gray-100">
+          <div className="max-h-64 overflow-auto border border-border rounded-xl divide-y divide-gray-100">
             {waves.map((w) => (
               <label key={w.id} className="flex items-center gap-3 px-3 py-2 hover:bg-overlay-50 cursor-pointer">
                 <input type="checkbox" checked={picked.has(w.id)} onChange={() => setPicked((p) => {

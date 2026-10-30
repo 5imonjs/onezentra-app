@@ -40,7 +40,7 @@ interface ReportSummary {
 }
 
 const STATUS_STYLE: Record<string, { color: string; bg: string; border: string; dot: string }> = {
-  DRAFT: { color: 'text-gray-600', bg: 'bg-slate-100', border: 'border-slate-300', dot: 'bg-slate-400' },
+  DRAFT: { color: 'text-foreground', bg: 'bg-slate-100', border: 'border-border', dot: 'bg-slate-400' },
   SCHEDULED: { color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100', dot: 'bg-blue-500' },
   CHECKED_IN: { color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-100', dot: 'bg-yellow-500' },
   VERIFIED: { color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-100', dot: 'bg-purple-500' },
@@ -335,21 +335,21 @@ export default function RencanaKirimReportPage() {
         )}
 
         {/* Filter */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-linear-to-br from-ink-900 to-slate-700 text-white flex items-center justify-center shadow">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-gray-900">Filter Laporan</h2>
+                  <h2 className="text-base font-bold text-foreground">Filter Laporan</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">Rentang tanggal RKH, status, depo, dan pencarian</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-gray-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -390,7 +390,7 @@ export default function RencanaKirimReportPage() {
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-popover hover:border-border transition-all">Reset</button>
                 <button onClick={handleApply} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
@@ -400,7 +400,7 @@ export default function RencanaKirimReportPage() {
         {/* Summary Cards */}
         {summary && (
           <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
@@ -408,7 +408,7 @@ export default function RencanaKirimReportPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Total Qty</p>
-                  <p className="text-2xl font-black text-gray-900 tabular-nums">{fmtNum(summary.total_qty)}</p>
+                  <p className="text-2xl font-black text-foreground tabular-nums">{fmtNum(summary.total_qty)}</p>
                   <p className="text-[11px] text-gray-400 tabular-nums">dari {fmtNum(summary.total)} dokumen</p>
                 </div>
               </div>
@@ -426,7 +426,7 @@ export default function RencanaKirimReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
@@ -439,7 +439,7 @@ export default function RencanaKirimReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-5 card-hover relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-20 h-20 bg-red-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-red-500/20 transition-colors" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
@@ -458,7 +458,7 @@ export default function RencanaKirimReportPage() {
         {/* 1. Analisis Keterlambatan */}
         {items.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-sm font-black text-gray-900 mb-3 flex items-center gap-2">Analisis Keterlambatan <span className="text-[10px] font-normal text-gray-400">(RKH vs Hari Ini)</span></h3>
+            <h3 className="text-sm font-black text-foreground mb-3 flex items-center gap-2">Analisis Keterlambatan <span className="text-[10px] font-normal text-gray-400">(RKH vs Hari Ini)</span></h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {(() => {
                 const todayStr = toLocalISODate(new Date());
@@ -472,7 +472,7 @@ export default function RencanaKirimReportPage() {
                       <p className="text-3xl font-black text-red-700 tabular-nums">{overdue.length}</p>
                       <p className="text-xs text-red-500 mt-1">Dokumen melewati tanggal RKH</p>
                     </div>
-                    <div className="md:col-span-2 bg-card border border-gray-100 rounded-2xl p-5 shadow-sm">
+                    <div className="md:col-span-2 bg-card border border-border rounded-2xl p-5 shadow-sm">
                       <p className="text-xs font-semibold text-gray-400 mb-2">Per Status Terlambat</p>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(overdueByStatus).map(([st, c]) => (
@@ -493,8 +493,8 @@ export default function RencanaKirimReportPage() {
         {/* 2. Perbandingan Depo */}
         {items.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-sm font-black text-gray-900 mb-3">Perbandingan Depo</h3>
-            <div className="bg-card border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+            <h3 className="text-sm font-black text-foreground mb-3">Perbandingan Depo</h3>
+            <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
               <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
                 {(() => {
                   const depoStats: Record<string, { qty: number; completed: number; cancelled: number; total: number; name: string }> = {};
@@ -511,7 +511,7 @@ export default function RencanaKirimReportPage() {
                   return entries.map(([kode, s]) => (
                     <div key={kode} className="p-5">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-300 mb-1">{s.name}</p>
-                      <p className="text-lg font-black text-gray-900 mb-1">{s.total} dok</p>
+                      <p className="text-lg font-black text-foreground mb-1">{s.total} dok</p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Selesai {s.completed}</span>
                         <span className="text-[10px] bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium">Batal {s.cancelled}</span>
@@ -531,7 +531,7 @@ export default function RencanaKirimReportPage() {
           <p className="text-xs text-amber-700/80 mb-3">Tulis rekomendasi atau alasan penundaan per laporan ini.</p>
           <textarea
             rows={3}
-            className="w-full rounded-xl border border-amber-200 bg-card px-4 py-3 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition resize-none"
+            className="w-full rounded-xl border border-amber-200 bg-card px-4 py-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition resize-none"
             placeholder="Contoh: Depo X sering terlambat karena jalur pengiriman; rekomendasi tambah armada..."
             value={plannerNote}
             onChange={(e) => { setPlannerNote(e.target.value); setPlannerSaved(false); }}
@@ -549,15 +549,15 @@ export default function RencanaKirimReportPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-gray-900">Detail Replenishment</h2>
+                  <h2 className="text-base font-bold text-foreground">Detail Replenishment</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{rangeText}</p>
                 </div>
               </div>
@@ -573,7 +573,7 @@ export default function RencanaKirimReportPage() {
             <table className="w-full min-w-[1140px] border-collapse">
               <caption className="sr-only">Laporan rencana kirim</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-gray-300">
+                <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-border">
                   {canDelete && (
                     <th scope="col" className="table-header w-10 text-center">
                       <ReportSelectCheckbox
@@ -614,7 +614,7 @@ export default function RencanaKirimReportPage() {
                           <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                         </div>
                         <div>
-                          <p className="text-sm text-gray-600 font-bold">Tidak ada data rencana kirim</p>
+                          <p className="text-sm text-foreground font-bold">Tidak ada data rencana kirim</p>
                           <p className="text-xs text-gray-400 mt-1">Coba ubah filter tanggal, status, atau depo</p>
                         </div>
                         {activeFilterCount > 0 && (
@@ -637,30 +637,30 @@ export default function RencanaKirimReportPage() {
                             />
                           </td>
                         )}
-                        <td className="table-cell text-sm font-mono text-gray-600 whitespace-nowrap">{fmtDate(item.rkh_date)}</td>
-                        <td className="table-cell text-sm font-mono font-medium text-slate-800 whitespace-nowrap">{item.po_transporter}</td>
-                        <td className="table-cell text-sm text-slate-700 whitespace-nowrap">
+                        <td className="table-cell text-sm font-mono text-foreground whitespace-nowrap">{fmtDate(item.rkh_date)}</td>
+                        <td className="table-cell text-sm font-mono font-medium text-foreground whitespace-nowrap">{item.po_transporter}</td>
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap">
                           <span className="inline-flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-slate-100 text-gray-600 flex items-center justify-center text-[10px] font-black uppercase shrink-0" aria-hidden="true">{(item.driver_name || '?').charAt(0)}</span>
+                            <span className="w-6 h-6 rounded-full bg-slate-100 text-foreground flex items-center justify-center text-[10px] font-black uppercase shrink-0" aria-hidden="true">{(item.driver_name || '?').charAt(0)}</span>
                             {item.driver_name}
                           </span>
                         </td>
-                        <td className="table-cell text-sm font-mono text-gray-600 whitespace-nowrap">{item.nopol}</td>
-                        <td className="table-cell text-sm text-gray-600 whitespace-nowrap">{item.expedisi}</td>
+                        <td className="table-cell text-sm font-mono text-foreground whitespace-nowrap">{item.nopol}</td>
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.expedisi}</td>
                         <td className="table-cell whitespace-nowrap">
                           {item.jenis_kendaraan !== '-' ? <span className="inline-flex rounded-md bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{item.jenis_kendaraan}</span> : <span className="text-sm text-gray-400">-</span>}
                         </td>
-                        <td className="table-cell text-sm text-gray-700 whitespace-nowrap">{item.destination_name}</td>
-                        <td className="table-cell text-sm text-center tabular-nums text-gray-600 whitespace-nowrap">{item.item_count}</td>
-                        <td className="table-cell text-sm text-right font-bold text-gray-800 tabular-nums whitespace-nowrap">{fmtNum(item.total_qty)}</td>
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.destination_name}</td>
+                        <td className="table-cell text-sm text-center tabular-nums text-foreground whitespace-nowrap">{item.item_count}</td>
+                        <td className="table-cell text-sm text-right font-bold text-foreground tabular-nums whitespace-nowrap">{fmtNum(item.total_qty)}</td>
                         <td className="table-cell text-sm text-right font-semibold text-teal-700 tabular-nums whitespace-nowrap">{Number(item.total_kubikasi).toFixed(2)}</td>
                         <td className="table-cell whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
+                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} aria-hidden="true" />
                             {summary?.status_counts[item.status]?.label || item.status}
                           </span>
                         </td>
-                        <td className="table-cell text-sm text-gray-600 whitespace-nowrap">{item.nama_depo || item.kode_depo}</td>
+                        <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.nama_depo || item.kode_depo}</td>
                       </tr>
                     );
                   })
@@ -674,7 +674,7 @@ export default function RencanaKirimReportPage() {
             {loading && (
               <div className="p-4 space-y-3" aria-hidden="true">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-overlay-60 p-4 space-y-2">
+                  <div key={i} className="animate-pulse rounded-2xl border border-border bg-overlay-60 p-4 space-y-2">
                     <div className="h-4 w-32 bg-slate-200 rounded" />
                     <div className="h-3 w-48 bg-slate-200 rounded" />
                     <div className="grid grid-cols-3 gap-2 pt-1">
@@ -688,7 +688,7 @@ export default function RencanaKirimReportPage() {
             )}
             {!loading && items.length === 0 && (
               <div className="p-10 text-center">
-                <p className="text-sm text-gray-600 font-bold">Tidak ada data rencana kirim</p>
+                <p className="text-sm text-foreground font-bold">Tidak ada data rencana kirim</p>
                 <p className="text-xs text-gray-400 mt-1">Coba ubah filter tanggal, status, atau depo</p>
                 {activeFilterCount > 0 && (
                   <button onClick={resetFilters} className="mt-3 px-4 py-2 rounded-xl bg-ink-900 text-white text-xs font-bold">Reset filter</button>
@@ -701,30 +701,30 @@ export default function RencanaKirimReportPage() {
                 <article key={item.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-mono text-sm font-bold text-slate-800 truncate">{item.po_transporter}</p>
+                      <p className="font-mono text-sm font-bold text-foreground truncate">{item.po_transporter}</p>
                       <p className="mt-0.5 text-xs text-gray-400">RK {fmtDate(item.rkh_date)} • Tujuan {item.destination_name}</p>
                     </div>
-                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-card'} ${st?.color || 'text-gray-600'} ${st?.border || 'border-gray-300'}`}>
+                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} aria-hidden="true" />
                       {summary?.status_counts[item.status]?.label || item.status}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-border">
                       <p className="font-bold tracking-widest text-gray-400 uppercase text-[9px]">Qty</p>
-                      <p className="font-black text-gray-900 text-sm tabular-nums">{fmtNum(item.total_qty)}</p>
+                      <p className="font-black text-foreground text-sm tabular-nums">{fmtNum(item.total_qty)}</p>
                     </div>
                     <div className="rounded-xl bg-teal-50 p-2 text-center border border-teal-100">
                       <p className="font-bold tracking-widest text-teal-600/70 uppercase text-[9px]">m³</p>
                       <p className="font-black text-teal-700 text-sm tabular-nums">{Number(item.total_kubikasi).toFixed(2)}</p>
                     </div>
-                    <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
+                    <div className="rounded-xl bg-popover p-2 text-center border border-border">
                       <p className="font-bold tracking-widest text-gray-400 uppercase text-[9px]">Item</p>
-                      <p className="font-black text-gray-900 text-sm tabular-nums">{item.item_count}</p>
+                      <p className="font-black text-foreground text-sm tabular-nums">{item.item_count}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-slate-100 text-gray-600 flex items-center justify-center text-[9px] font-black uppercase" aria-hidden="true">{(item.driver_name || '?').charAt(0)}</span><span className="font-medium text-slate-700">{item.driver_name}</span></span>
+                    <span className="inline-flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-slate-100 text-foreground flex items-center justify-center text-[9px] font-black uppercase" aria-hidden="true">{(item.driver_name || '?').charAt(0)}</span><span className="font-medium text-foreground">{item.driver_name}</span></span>
                     <span className="font-mono">{item.nopol}</span>
                     <span>{item.jenis_kendaraan}</span>
                     <span>{item.expedisi}</span>
@@ -737,7 +737,7 @@ export default function RencanaKirimReportPage() {
 
           {/* Pagination — ringkasan di atas selalu mencakup seluruh filter */}
           {lastPage > 1 && (
-            <div className="p-4 border-t border-gray-100 bg-overlay-50">
+            <div className="p-4 border-t border-border bg-overlay-50">
               <div className="flex flex-wrap justify-between items-center gap-3">
                 <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1 || loading} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
                   <span className="flex items-center gap-2 text-sm">

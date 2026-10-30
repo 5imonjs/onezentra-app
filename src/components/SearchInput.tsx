@@ -73,7 +73,7 @@ export default function SearchInput({
           className={`input-field pl-10 ${activeFilter && value ? 'pl-28' : activeFilter ? 'pl-24' : ''}`}
         />
         {showDropdown && filters.length > 0 && (
-          <div role="listbox" aria-label="Filter pencarian" className="absolute top-full left-0 mt-1 w-56 bg-card rounded-xl shadow-lg border border-gray-300 py-1 z-50">
+          <div role="listbox" aria-label="Filter pencarian" className="absolute top-full left-0 mt-1 w-56 bg-card rounded-xl shadow-lg border border-border py-1 z-50">
             <button
               role="option"
               aria-selected={!activeFilter}
@@ -82,7 +82,7 @@ export default function SearchInput({
                 setShowDropdown(false);
               }}
               className={`w-full text-left px-4 py-2.5 text-sm hover:bg-popover transition-colors flex items-center gap-2 min-h-10 ${
-                !activeFilter ? 'text-accent-text bg-chip-primary' : 'text-gray-700'
+                !activeFilter ? 'text-accent-text bg-chip-primary' : 'text-foreground'
               }`}
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -100,7 +100,7 @@ export default function SearchInput({
                   setShowDropdown(false);
                 }}
                 className={`w-full text-left px-4 py-2.5 text-sm hover:bg-popover transition-colors flex items-center gap-2 min-h-10 ${
-                  activeFilter === filter.key ? 'text-accent-text bg-chip-primary' : 'text-gray-700'
+                  activeFilter === filter.key ? 'text-accent-text bg-chip-primary' : 'text-foreground'
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 ${

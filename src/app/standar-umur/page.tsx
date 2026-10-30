@@ -441,9 +441,9 @@ export default function StandarUmurPage() {
         </div>
 
         {/* Table Card */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           {/* Search Bar */}
-          <div className="p-4 border-b border-gray-100">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <SearchInput
@@ -514,7 +514,7 @@ export default function StandarUmurPage() {
                         type="checkbox"
                         checked={items.length > 0 && items.every((i) => selectedIds.includes(i.id))}
                         onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
+                        className="rounded border-border text-accent-text focus:ring-primary-500"
                       />
                     </th>
                   )}
@@ -582,7 +582,7 @@ export default function StandarUmurPage() {
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
                           onChange={() => toggleSelect(item.id)}
-                          className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
+                          className="rounded border-border text-accent-text focus:ring-primary-500"
                         />
                       </td>
                     )}
@@ -666,7 +666,7 @@ export default function StandarUmurPage() {
           </div>
 
           {/* Pagination */}
-          <div className="p-4 border-t border-gray-100 bg-overlay-50">
+          <div className="p-4 border-t border-border bg-overlay-50">
             <div className="flex justify-between items-center">
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
                 <span className="flex items-center gap-2">
@@ -674,7 +674,7 @@ export default function StandarUmurPage() {
                   Sebelumnya
                 </span>
               </button>
-              <span className="text-sm text-gray-600 font-medium">
+              <span className="text-sm text-foreground font-medium">
                 Halaman {page} dari {lastPage}
               </span>
               <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Halaman berikutnya">
@@ -695,7 +695,7 @@ export default function StandarUmurPage() {
             {viewFields.map(([key, label, full]) => (
               <div key={key as string} className={`bg-popover rounded-xl p-3 ${full ? 'col-span-2' : ''}`}>
                 <span className="text-xs font-medium text-gray-400 uppercase">{label as string}</span>
-                <p className="text-sm text-gray-900 mt-1 font-medium">{fmt(viewItem[key as keyof typeof viewItem])}</p>
+                <p className="text-sm text-foreground mt-1 font-medium">{fmt(viewItem[key as keyof typeof viewItem])}</p>
               </div>
             ))}
           </div>
@@ -775,7 +775,7 @@ export default function StandarUmurPage() {
       >
         <div className="space-y-4">
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-chip-primary' : selectedFile ? 'border-primary-300 bg-chip-primary/30' : 'border-gray-300 hover:border-primary-300 hover:bg-popover'}`}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${isDragging ? 'border-primary-400 bg-chip-primary' : selectedFile ? 'border-primary-300 bg-chip-primary/30' : 'border-border hover:border-primary-300 hover:bg-popover'}`}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
@@ -795,7 +795,7 @@ export default function StandarUmurPage() {
             <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
-            <p className="text-sm text-gray-600 mb-2">
+            <p className="text-sm text-foreground mb-2">
               {selectedFile ? `${selectedFile.name} (${formatFileSize(selectedFile.size)})` : 'Klik untuk pilih file atau taruh file di sini'}
             </p>
             <p className="text-xs text-gray-400">Format: .xlsx, .xls, .csv (maks 10 MB)</p>

@@ -546,7 +546,7 @@ export default function UsersPage() {
       ga: 'bg-violet-100 text-violet-700',
       bh: 'bg-indigo-100 text-indigo-700',
     };
-    return colors[level] || 'bg-gray-100 text-gray-700';
+    return colors[level] || 'bg-gray-100 text-foreground';
   };
 
   const fromCount = totalCount === 0 ? 0 : (page - 1) * 20 + 1;
@@ -589,7 +589,7 @@ export default function UsersPage() {
         className={`inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
           hasRegionPermission
             ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-            : 'bg-slate-100 text-slate-600 ring-slate-200'
+            : 'bg-slate-100 text-foreground ring-slate-200'
         }`}
       >
         <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -612,7 +612,7 @@ export default function UsersPage() {
               const depot = depotOptions.find(option => option.kode_depo === code);
               return (
                 <span key={code} className="mr-1 inline-block">
-                  <span className="font-mono font-medium text-gray-700">{code}</span>
+                  <span className="font-mono font-medium text-foreground">{code}</span>
                   {(depot?.nama_depo || (code === item.kode_depo ? item.nama_depo : '')) && (
                     <span className="ml-1 text-gray-400">· {depot?.nama_depo || item.nama_depo}</span>
                   )}
@@ -656,11 +656,11 @@ export default function UsersPage() {
             <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-gray-900">{item.full_name}</p>
+            <p className="font-medium text-foreground">{item.full_name}</p>
             <p className="text-xs text-muted-foreground">{item.email}</p>
           </div>
         </div>
-        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-muted-foreground border-gray-300'}`}>
+        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-muted-foreground border-border'}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
           {item.status === 'active' ? 'Active' : 'Inactive'}
         </span>
@@ -672,9 +672,9 @@ export default function UsersPage() {
           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{roleLabel(item.level)}</span>
         </span>
       </div>
-      <div className="flex items-center gap-2 border-t border-gray-100 pt-2">
+      <div className="flex items-center gap-2 border-t border-border pt-2">
         {hasPermission('users.edit') && (
-          <button onClick={() => handleEdit(item)} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-800">
+          <button onClick={() => handleEdit(item)} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-slate-200 hover:text-foreground">
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
             Edit
           </button>
@@ -719,54 +719,54 @@ export default function UsersPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-chip-primary flex items-center justify-center">
               <svg className="w-6 h-6 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
               <p className="text-sm text-muted-foreground">Total User</p>
             </div>
           </div>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
               <svg className="w-6 h-6 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.active}</p>
               <p className="text-sm text-muted-foreground">User Aktif</p>
             </div>
           </div>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
               <svg className="w-6 h-6 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
             </div>
             <div>
-<p className="text-2xl font-bold text-gray-900">{stats.admin_master}</p>
+<p className="text-2xl font-bold text-foreground">{stats.admin_master}</p>
                 <p className="text-sm text-muted-foreground">Admin Master</p>
             </div>
           </div>
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
               <svg className="w-6 h-6 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.inactive}</p>
+              <p className="text-2xl font-bold text-foreground">{stats.inactive}</p>
               <p className="text-sm text-muted-foreground">User Nonaktif</p>
             </div>
           </div>
         </div>
 
         {/* Search & Filter */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             <div className="flex-1 min-w-0">
               <SearchInput
@@ -804,7 +804,7 @@ export default function UsersPage() {
               <button
                 type="button"
                 onClick={() => setGroupByDepo(prev => !prev)}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${groupByDepo ? 'border-chip-primary-border bg-chip-primary text-accent-text' : 'border-gray-300 bg-card text-gray-600 hover:bg-popover'}`}
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${groupByDepo ? 'border-chip-primary-border bg-chip-primary text-accent-text' : 'border-border bg-card text-foreground hover:bg-popover'}`}
                 aria-pressed={groupByDepo}
                 title="Kelompokkan user berdasarkan nama depo"
               >
@@ -859,10 +859,10 @@ export default function UsersPage() {
           </div>
         </div>
         {/* Region and depot overview */}
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-semibold text-gray-900">Pemetaan Induk Region → Anak Depo</h2>
+              <h2 className="font-semibold text-foreground">Pemetaan Induk Region → Anak Depo</h2>
               <p className="mt-1 text-sm text-muted-foreground">Setiap depo terdaftar di satu region. Akses user tetap dibatasi ke depo yang ditetapkan.</p>
             </div>
             {isMasterScope && (
@@ -892,7 +892,7 @@ export default function UsersPage() {
                 <tbody className="divide-y divide-gray-100">
                   {Object.entries(regionDepotGroups).sort(([regionA], [regionB]) => regionA.localeCompare(regionB)).map(([region, depots]) => (
                     <tr key={region} className="hover:bg-overlay-70">
-                      <th scope="row" className="px-5 py-4 text-left align-top text-sm font-semibold text-gray-900">
+                      <th scope="row" className="px-5 py-4 text-left align-top text-sm font-semibold text-foreground">
                         {regionOptions.find(option => option.code === region)?.name
                           ? `${region} · ${regionOptions.find(option => option.code === region)?.name}`
                           : region}
@@ -900,7 +900,7 @@ export default function UsersPage() {
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-2">
                           {depots.map(depot => (
-                            <span key={depot.kode_depo} className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                            <span key={depot.kode_depo} className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-foreground">
                               <span className="font-mono font-semibold">{depot.kode_depo}</span>
                               <span className="text-muted-foreground">· {depot.nama_depo}</span>
                             </span>
@@ -908,7 +908,7 @@ export default function UsersPage() {
                           {depots.length === 0 && <span className="text-sm text-gray-400">Belum ada depo</span>}
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-right text-sm font-medium text-gray-600">{depots.length}</td>
+                      <td className="px-5 py-4 text-right text-sm font-medium text-foreground">{depots.length}</td>
                     </tr>
                   ))}
                   {Object.keys(regionDepotGroups).length === 0 && (
@@ -921,7 +921,7 @@ export default function UsersPage() {
             </div>
           )}
           {showRegionMapping && isMasterScope && !depotLoadError && (
-            <div className="border-t border-gray-100 p-5">
+            <div className="border-t border-border p-5">
               <div className="mb-4 rounded-lg border border-chip-primary-border bg-brand-wash px-4 py-3 text-sm text-primary-900">
                 <p className="font-semibold">Tetapkan region induk untuk setiap depo</p>
                 <p className="mt-1 text-xs leading-relaxed">Pilih region dari master region. Jika belum tersedia, buat region terlebih dahulu melalui form tambah user. Setiap depo hanya memiliki satu region induk.</p>
@@ -929,7 +929,7 @@ export default function UsersPage() {
               </div>
               {regionMappingError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{regionMappingError}</p>}
               <div className="mb-5 grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                <label className="text-xs font-medium text-gray-700">Region master
+                <label className="text-xs font-medium text-foreground">Region master
                   <select
                     aria-label="Pilih region untuk ubah nama"
                     value={regionNameEditCode}
@@ -944,7 +944,7 @@ export default function UsersPage() {
                     {regionOptions.map(region => <option key={region.code} value={region.code}>{region.code} · {region.name}</option>)}
                   </select>
                 </label>
-                <label className="text-xs font-medium text-gray-700">Nama region
+                <label className="text-xs font-medium text-foreground">Nama region
                   <input aria-label="Nama region master" value={regionNameEditValue} onChange={event => setRegionNameEditValue(event.target.value)} maxLength={100} className="input-field mt-1" disabled={!regionNameEditCode} />
                 </label>
                 <button type="button" onClick={handleSaveRegionName} disabled={!regionNameEditCode || savingRegionName} className="btn-secondary disabled:opacity-50">
@@ -965,8 +965,8 @@ export default function UsersPage() {
                   <tbody className="divide-y divide-gray-100">
                     {depotOptions.map(depot => (
                       <tr key={depot.kode_depo}>
-                        <td className="px-4 py-3 font-mono text-sm font-medium text-gray-900">{depot.kode_depo}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{depot.nama_depo}</td>
+                        <td className="px-4 py-3 font-mono text-sm font-medium text-foreground">{depot.kode_depo}</td>
+                        <td className="px-4 py-3 text-sm text-foreground">{depot.nama_depo}</td>
                         <td className="px-4 py-3">
                           <select
                             aria-label={`Kode region untuk depo ${depot.kode_depo}`}
@@ -1007,7 +1007,7 @@ export default function UsersPage() {
         )}
 
         {/* Table */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           {/* Desktop table */}
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px]">
@@ -1033,7 +1033,7 @@ export default function UsersPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21M8.25 8.25h.008v.008H8.25V8.25zm0 3.75h.008v.008H8.25V12zm0 3.75h.008v.008H8.25v-.008zm3.75-7.5h.008v.008H12V8.25zm0 3.75h.008v.008H12V12zm0 3.75h.008v.008H12v-.008zM15.75 8.25h.008v.008h-.008V8.25zm0 3.75h.008v.008h-.008V12zm0 3.75h.008v.008h-.008v-.008z" />
                             </svg>
                           </span>
-                          <span className="font-bold text-slate-700">{depoName}</span>
+                          <span className="font-bold text-foreground">{depoName}</span>
                         </div>
                         <span className="rounded-full bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-gray-300">
                           {depoItems.length} user
@@ -1053,7 +1053,7 @@ export default function UsersPage() {
                           <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{item.full_name}</div>
+                          <div className="font-medium text-foreground">{item.full_name}</div>
                           <div className="text-xs text-muted-foreground">{item.email}</div>
                         </div>
                       </div>
@@ -1070,7 +1070,7 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-muted-foreground border-gray-300'}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-muted-foreground border-border'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
                         {item.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
@@ -1103,14 +1103,14 @@ export default function UsersPage() {
                           <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{item.full_name}</div>
+                          <div className="font-medium text-foreground">{item.full_name}</div>
                           <div className="text-xs text-muted-foreground">{item.email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="table-cell">{depotCellContent(item)}</td>
                     <td className="table-cell"><div className="flex flex-col items-start gap-1"><span className="rounded bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">{scopeLabel(item.scope_level)}</span><span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${getLevelBadge(item.level)}`}>{roleLabel(item.level)}</span></div></td>
-                    <td className="table-cell"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-muted-foreground border-gray-300'}`}><span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>{item.status === 'active' ? 'Active' : 'Inactive'}</span></td>
+                    <td className="table-cell"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${item.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-muted-foreground border-border'}`}><span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>{item.status === 'active' ? 'Active' : 'Inactive'}</span></td>
                     <td className="table-cell"><div className="flex items-center justify-end gap-1">{hasPermission('users.edit') && (<button onClick={() => handleEdit(item)} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200" title="Edit" aria-label="Edit"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg></button>)}{hasPermission('users.delete') && (<button onClick={() => handleDelete(item.id)} className="p-2 min-h-11 min-w-11 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200" title="Hapus" aria-label="Hapus"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button>)}</div></td>
                   </tr>
                 )))}
@@ -1137,7 +1137,7 @@ export default function UsersPage() {
                     <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-chip-primary text-accent-text">
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21M8.25 8.25h.008v.008H8.25V8.25zm0 3.75h.008v.008H8.25V12zm0 3.75h.008v.008H8.25v-.008zm3.75-7.5h.008v.008H12V8.25zm0 3.75h.008v.008H12V12zm0 3.75h.008v.008H12v-.008zM15.75 8.25h.008v.008h-.008V8.25zm0 3.75h.008v.008h-.008V12zm0 3.75h.008v.008h-.008v-.008z" /></svg>
                     </span>
-                    <span className="font-bold text-slate-700 text-sm">{depoName}</span>
+                    <span className="font-bold text-foreground text-sm">{depoName}</span>
                   </div>
                   <span className="rounded-full bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-inset ring-gray-300">{depoItems.length} user</span>
                 </div>,
@@ -1148,15 +1148,15 @@ export default function UsersPage() {
 
           {/* Pagination */}
           {lastPage > 1 && (
-            <div className="border-t border-gray-100 bg-overlay-50 px-5 py-4">
+            <div className="border-t border-border bg-overlay-50 px-5 py-4">
               <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
               <p className="text-xs text-muted-foreground">
-                Menampilkan <span className="font-medium text-slate-700">{fromCount}</span>–<span className="font-medium text-slate-700">{toCount}</span> dari <span className="font-medium text-slate-700">{totalCount}</span> user
+                Menampilkan <span className="font-medium text-foreground">{fromCount}</span>–<span className="font-medium text-foreground">{toCount}</span> dari <span className="font-medium text-foreground">{totalCount}</span> user
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="rounded-lg border border-gray-300 bg-card px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed">← Sebelumnya</button>
-                <span className="text-xs text-muted-foreground">Halaman <span className="font-medium text-gray-700">{page}</span> / <span className="font-medium text-gray-700">{lastPage}</span></span>
-                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="rounded-lg border border-gray-300 bg-card px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed">Selanjutnya →</button>
+                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed">← Sebelumnya</button>
+                <span className="text-xs text-muted-foreground">Halaman <span className="font-medium text-foreground">{page}</span> / <span className="font-medium text-foreground">{lastPage}</span></span>
+                <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed">Selanjutnya →</button>
               </div>
               </div>
             </div>
@@ -1196,21 +1196,21 @@ export default function UsersPage() {
             <h3 id="create-account-heading" className="text-sm font-bold uppercase tracking-wide text-muted-foreground">1. Akun User</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="full-name">Full Name *</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="full-name">Full Name *</label>
               <input id="full-name" value={createForm.full_name} onChange={(e) => setCreateForm(prev => ({ ...prev, full_name: e.target.value }))} className="input-field" placeholder="Nama lengkap" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="email">Email *</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="email">Email *</label>
               <input id="email" type="email" value={createForm.email} onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))} className="input-field" placeholder="email@contoh.com" />
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password">Password *</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="password">Password *</label>
               <input id="password" type="password" autoComplete="new-password" minLength={8} value={createForm.password} onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password">Konfirmasi Password *</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="konfirmasi-password">Konfirmasi Password *</label>
               <input id="konfirmasi-password" type="password" autoComplete="new-password" value={createForm.password_confirmation} onChange={(e) => setCreateForm(prev => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
             </div>
           </div>
@@ -1221,7 +1221,7 @@ export default function UsersPage() {
             <p className="mt-1 text-xs text-muted-foreground">Scope menentukan entitas yang dapat dikelola. Setiap akun harus memiliki satu region dan satu depo.</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="scope-level">Scope hierarki *</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="scope-level">Scope hierarki *</label>
             <select
               id="scope-level"
               value={createForm.scope_level}
@@ -1243,7 +1243,7 @@ export default function UsersPage() {
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="region">Region User</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="region">Region User</label>
             <select id="region" value={createForm.region_id} onChange={(e) => {
               const regionId = e.target.value;
               setCreateForm(prev => ({ ...prev, region_id: regionId, kode_depo: '', nama_depo: '', kode_ps: '' }));
@@ -1265,10 +1265,10 @@ export default function UsersPage() {
               <div className="mt-3 space-y-3 rounded-lg border border-chip-primary-border bg-brand-wash p-3">
                 <p className="text-sm font-semibold text-primary-900">Buat master region</p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="text-xs font-medium text-gray-700">Kode region
+                  <label className="text-xs font-medium text-foreground">Kode region
                     <input aria-label="Kode region baru" value={newRegionCode} onChange={event => setNewRegionCode(event.target.value)} maxLength={20} className="input-field mt-1" placeholder="Contoh: REG-A" />
                   </label>
-                  <label className="text-xs font-medium text-gray-700">Nama region
+                  <label className="text-xs font-medium text-foreground">Nama region
                     <input aria-label="Nama region baru" value={newRegionName} onChange={event => setNewRegionName(event.target.value)} maxLength={100} className="input-field mt-1" placeholder="Contoh: Region Kalimantan Barat" />
                   </label>
                 </div>
@@ -1283,7 +1283,7 @@ export default function UsersPage() {
           <div className="rounded-xl border border-border overflow-hidden">
             <div className="flex items-center justify-between gap-3 bg-gray-50 px-4 py-3">
               <div>
-                <p className="font-medium text-gray-900">Pilih satu depo akun</p>
+                <p className="font-medium text-foreground">Pilih satu depo akun</p>
                 <p className="text-xs text-muted-foreground">{createForm.region_id ? regionLabel(createForm.region_id) : 'Pilih region terlebih dahulu'}</p>
               </div>
               <div className="flex items-center gap-3">
@@ -1301,10 +1301,10 @@ export default function UsersPage() {
               <div className="space-y-3 border-b border-border bg-brand-wash p-4">
                 <p className="text-sm font-semibold text-primary-900">Buat depo baru di {regionLabel(createForm.region_id)}</p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="text-xs font-medium text-gray-700">Kode depo
+                  <label className="text-xs font-medium text-foreground">Kode depo
                     <input aria-label="Kode depo baru" value={newDepotCode} onChange={event => setNewDepotCode(event.target.value)} maxLength={20} className="input-field mt-1" placeholder="Contoh: A-ABC" />
                   </label>
-                  <label className="text-xs font-medium text-gray-700">Nama depo
+                  <label className="text-xs font-medium text-foreground">Nama depo
                     <input aria-label="Nama depo baru" value={newDepotName} onChange={event => setNewDepotName(event.target.value)} maxLength={100} className="input-field mt-1" placeholder="Contoh: Depo ABC" />
                   </label>
                 </div>
@@ -1337,15 +1337,15 @@ export default function UsersPage() {
                           kode_ps: '',
                         }));
                       }}
-                      className="h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="h-4 w-4 border-border text-primary-600 focus:ring-primary-500"
                     />
-                    <span className="font-mono text-sm font-medium text-gray-900">{depot.kode_depo}</span>
+                    <span className="font-mono text-sm font-medium text-foreground">{depot.kode_depo}</span>
                     <span className="text-sm text-muted-foreground">{depot.nama_depo}</span>
                   </label>
                 ))}
               </div>
             )}
-            <p className="border-t border-gray-100 bg-card px-4 py-2 text-xs text-muted-foreground">
+            <p className="border-t border-border bg-card px-4 py-2 text-xs text-muted-foreground">
               Pilih tepat satu depo untuk akun ini.
             </p>
           </div>
@@ -1358,10 +1358,10 @@ export default function UsersPage() {
                 <div className="space-y-3 rounded-lg border border-chip-primary-border bg-brand-wash p-3">
                   <p className="text-sm font-semibold text-primary-900">Buat PS baru di depo {createForm.kode_depo}</p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="text-xs font-medium text-gray-700">Kode PS
+                    <label className="text-xs font-medium text-foreground">Kode PS
                       <input aria-label="Kode PS baru" value={newPartnerSiteCode} onChange={event => setNewPartnerSiteCode(event.target.value)} maxLength={20} className="input-field mt-1" />
                     </label>
-                    <label className="text-xs font-medium text-gray-700">Nama PS
+                    <label className="text-xs font-medium text-foreground">Nama PS
                       <input aria-label="Nama PS baru" value={newPartnerSiteName} onChange={event => setNewPartnerSiteName(event.target.value)} maxLength={100} className="input-field mt-1" />
                     </label>
                   </div>
@@ -1374,7 +1374,7 @@ export default function UsersPage() {
           )}
           {createForm.scope_level === 'ps' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-ps">Partner Site *</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="kode-ps">Partner Site *</label>
               <select id="kode-ps" value={createForm.kode_ps} required onChange={event => setCreateForm(current => ({ ...current, kode_ps: event.target.value }))} className="select-field">
                 <option value="">— Pilih Partner Site —</option>
                 {createPartnerSites.map(site => <option key={site.kode_ps} value={site.kode_ps}>{site.kode_ps} · {site.nama_ps}</option>)}
@@ -1388,12 +1388,12 @@ export default function UsersPage() {
             <p className="mt-1 text-xs text-muted-foreground">Role menentukan menu dan tindakan yang boleh dilakukan. Role tidak memilih depo user.</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat">Alamat</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="alamat">Alamat</label>
             <textarea id="alamat" value={createForm.alamat} onChange={(e) => setCreateForm(prev => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="level">Role / Peran *</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="level">Role / Peran *</label>
               <select id="level" value={createForm.level} onChange={(e) => setCreateForm(prev => ({ ...prev, level: e.target.value }))} className="select-field" disabled={activeRoleOptions.length === 0 || roleOptionsError !== null} required>
                 <option value="">{roleOptionsError ? 'Role tidak tersedia' : 'Pilih role'}</option>
                 {activeRoleOptions.map(role => <option key={role.id} value={role.slug}>{role.name}</option>)}
@@ -1405,7 +1405,7 @@ export default function UsersPage() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="status">Status</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="status">Status</label>
               <select id="status" value={createForm.status} onChange={(e) => setCreateForm(prev => ({ ...prev, status: e.target.value }))} className="select-field">
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -1418,7 +1418,7 @@ export default function UsersPage() {
               <p className="mt-1 text-xs leading-relaxed">Hak mengelola Region, Depo, dan Partner Site tetap dibatasi oleh Scope hierarki; role ini tidak memperluas hak kelola entitas.</p>
             </div>
           )}
-          <div aria-label="Ringkasan akses user baru" className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <div aria-label="Ringkasan akses user baru" className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm text-foreground">
             <p className="font-semibold">Periksa sebelum menyimpan</p>
             <p className="mt-1 text-xs">Scope hierarki: {scopeLabel(createForm.scope_level as UserItem['scope_level'])} · Region: {createForm.region_id || 'Belum dipilih'} · Depo: {createDepotCodes.length ? createDepotCodes.join(', ') : 'Belum dipilih'}</p>
             <p className="mt-1 text-xs">Role operasional: {createRole?.name || 'Belum dipilih'} · Akses data: {createRole?.has_global_depot_access ? 'Lintas depo' : 'Sesuai izin role dalam scope akun'}</p>
@@ -1445,11 +1445,11 @@ export default function UsersPage() {
       >
         <div className="space-y-4">
           <div
-            className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-primary-300"
+            className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary-300"
             onClick={() => fileInputRef.current?.click()}
           >
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-            <p className="text-sm font-medium text-gray-700">{selectedFile?.name || 'Klik untuk memilih file'}</p>
+            <p className="text-sm font-medium text-foreground">{selectedFile?.name || 'Klik untuk memilih file'}</p>
             <p className="text-xs text-muted-foreground mt-2">
               Kolom: email, full_name, alamat, scope_level, region_id, kode_depo, kode_ps, level, status. Setiap akun wajib memiliki satu region dan tepat satu depo aktif. Untuk scope PS, kode_ps harus berada di depo yang sama. Import hanya dapat dilakukan oleh scope Master; level harus memakai slug role aktif.
             </p>
@@ -1499,7 +1499,7 @@ export default function UsersPage() {
                 className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
                   editTab === 'profile'
                     ? 'bg-card text-primary-600 border-b-2 border-primary-600 -mb-px'
-                    : 'text-muted-foreground hover:text-gray-700 hover:bg-gray-50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-gray-50'
                 }`}
               >
                 1. Profil &amp; Role
@@ -1512,7 +1512,7 @@ export default function UsersPage() {
                 className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
                   editTab === 'depots'
                     ? 'bg-card text-primary-600 border-b-2 border-primary-600 -mb-px'
-                    : 'text-muted-foreground hover:text-gray-700 hover:bg-gray-50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-gray-50'
                 }`}
               >
                 <svg className="w-4 h-4 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -1534,11 +1534,11 @@ export default function UsersPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="full-name-2">Full Name</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="full-name-2">Full Name</label>
                     <input id="full-name-2" value={editForm.full_name || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, full_name: e.target.value }))} className="input-field" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="email-2">Email</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="email-2">Email</label>
                     <input id="email-2" type="email" value={editForm.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, email: e.target.value }))} className="input-field" />
                   </div>
                 </div>
@@ -1546,17 +1546,17 @@ export default function UsersPage() {
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password-kosongkan-jika-tidak-diubah">Password (kosongkan jika tidak diubah)</label>
+                        <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="password-kosongkan-jika-tidak-diubah">Password (kosongkan jika tidak diubah)</label>
                         <input id="password-kosongkan-jika-tidak-diubah" type="password" autoComplete="new-password" minLength={8} value={editForm.password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password: e.target.value }))} className="input-field" placeholder="Minimal 8 karakter" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="konfirmasi-password-2">Konfirmasi Password</label>
+                        <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="konfirmasi-password-2">Konfirmasi Password</label>
                         <input id="konfirmasi-password-2" type="password" autoComplete="new-password" required={Boolean(editForm.password)} value={editForm.password_confirmation || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, password_confirmation: e.target.value }))} className="input-field" placeholder="Ulangi password" />
                       </div>
                     </div>
                     {isEditingOwnAccount && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password-saat-ini">Password saat ini</label>
+                        <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="password-saat-ini">Password saat ini</label>
                         <input id="password-saat-ini" type="password" autoComplete="current-password" required={Boolean(editForm.password)} value={editForm.current_password || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, current_password: e.target.value }))} className="input-field" />
                         <p className="mt-1 text-xs text-muted-foreground">Wajib diisi untuk mengganti password akun sendiri.</p>
                       </div>
@@ -1565,7 +1565,7 @@ export default function UsersPage() {
                 )}
                 {isMasterScope ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="scope-level-2">Scope hierarki</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="scope-level-2">Scope hierarki</label>
                     <select
                       id="scope-level-2"
                       value={editForm.scope_level || 'depot'}
@@ -1583,10 +1583,10 @@ export default function UsersPage() {
                     </select>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-700">Scope hierarki: <strong>{editForm.scope_level}</strong></p>
+                  <p className="text-sm text-foreground">Scope hierarki: <strong>{editForm.scope_level}</strong></p>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="region-2">Region akun</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="region-2">Region akun</label>
                   <select id="region-2" value={editForm.region_id || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                     const regionId = e.target.value;
                     setEditForm((prev: Record<string, string>) => ({
@@ -1617,7 +1617,7 @@ export default function UsersPage() {
                 </div>
                 {editForm.scope_level === 'ps' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="kode-ps-2">Partner Site *</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="kode-ps-2">Partner Site *</label>
                     <select id="kode-ps-2" value={editForm.kode_ps || ''} required onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setEditForm(current => ({ ...current, kode_ps: event.target.value }))} className="select-field">
                       <option value="">— Pilih Partner Site —</option>
                       {editPartnerSites.map(site => <option key={site.kode_ps} value={site.kode_ps}>{site.kode_ps} · {site.nama_ps}</option>)}
@@ -1625,12 +1625,12 @@ export default function UsersPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="alamat-2">Alamat</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="alamat-2">Alamat</label>
                   <textarea id="alamat-2" value={editForm.alamat || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, alamat: e.target.value }))} className="input-field" rows={2} placeholder="Alamat domisili" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="level-2">Role / Peran</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="level-2">Role / Peran</label>
                     <select id="level-2" value={editForm.level || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, level: e.target.value }))} className="select-field" disabled={!isMasterScope || roleOptions.length === 0 || roleOptionsError !== null}>
                       {!activeRoleOptions.some(role => role.slug === editForm.level) && editForm.level && (
                         <option value={editForm.level}>{roleOptions.find(role => role.slug === editForm.level)?.name || editItem?.roles?.find(role => role.slug === editForm.level)?.name || editForm.level} (nonaktif)</option>
@@ -1644,7 +1644,7 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="status-2">Status</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="status-2">Status</label>
                     <select id="status-2" value={editForm.status || 'active'} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm((prev: Record<string, string>) => ({ ...prev, status: e.target.value }))} className="select-field" disabled={!isMasterScope}>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -1657,7 +1657,7 @@ export default function UsersPage() {
                     <p className="mt-1 text-xs leading-relaxed">Hak mengelola Region, Depo, dan Partner Site tetap dibatasi oleh Scope hierarki; role ini tidak memperluas hak kelola entitas.</p>
                   </div>
                 )}
-                <div aria-label="Ringkasan akses user" className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <div aria-label="Ringkasan akses user" className="rounded-lg border border-border bg-slate-50 px-4 py-3 text-sm text-foreground">
                   <p className="font-semibold">Ringkasan akses</p>
                   <p className="mt-1 text-xs">Scope hierarki: {scopeLabel((editForm.scope_level || 'depot') as UserItem['scope_level'])} · Region: {editForm.region_id || 'Belum dipilih'} · Depo: {editDepotCodes.length ? editDepotCodes.join(', ') : 'Belum dipilih'}</p>
                   <p className="mt-1 text-xs">Role operasional: {editRole?.name || editItem?.roles?.find(role => role.slug === editForm.level)?.name || editForm.level || 'Belum dipilih'} · Akses data: {editRoleHasGlobalAccess ? 'Lintas depo' : 'Sesuai izin role dalam scope akun'}</p>
@@ -1698,7 +1698,7 @@ export default function UsersPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">Pilih satu depo akun</h3>
+                  <h3 className="font-semibold text-foreground">Pilih satu depo akun</h3>
                   {loadingDepots && <span className="text-xs text-muted-foreground animate-pulse">Memuat...</span>}
                 </div>
 
@@ -1718,7 +1718,7 @@ export default function UsersPage() {
                             <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M5.25 21V5.25L12 3l6.75 2.25V21M8.25 8.25h.008v.008H8.25V8.25zm0 3.75h.008v.008H8.25V12zm0 3.75h.008v.008H8.25v-.008zm3.75-7.5h.008v.008H12V8.25zm0 3.75h.008v.008H12V12zm0 3.75h.008v.008H12v-.008zM15.75 8.25h.008v.008h-.008V8.25zm0 3.75h.008v.008h-.008V12zm0 3.75h.008v.008h-.008v-.008z" />
                             </svg>
-                            <span className="font-medium text-gray-900">{regionId}</span>
+                            <span className="font-medium text-foreground">{regionId}</span>
                           </div>
                           <span className="text-xs text-muted-foreground">Pilih satu</span>
                         </div>
@@ -1732,10 +1732,10 @@ export default function UsersPage() {
                                   required
                                   checked={editDepotCodes.includes(depot.kode_depo)}
                                   onChange={event => handleToggleDepot(depot.kode_depo, event.target.checked)}
-                                  className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 focus:ring-2"
+                                  className="w-4 h-4 text-primary-600 border-border focus:ring-primary-500 focus:ring-2"
                                 />
                                 <div>
-                                  <p className="font-mono font-medium text-gray-900">{depot.kode_depo}</p>
+                                  <p className="font-mono font-medium text-foreground">{depot.kode_depo}</p>
                                   <p className="text-sm text-muted-foreground">{depot.nama_depo}</p>
                                 </div>
                               </div>

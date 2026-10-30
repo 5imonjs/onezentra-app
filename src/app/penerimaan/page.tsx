@@ -418,8 +418,8 @@ export default function PenerimaanPage() {
         </header>
 
         {/* Worklist table */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <SearchInput
                 value={search}
@@ -435,7 +435,7 @@ export default function PenerimaanPage() {
                     id="penerimaan-depo"
                     value={kodeDepo}
                     onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
-                    className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
+                    className="appearance-none py-2 pl-3 pr-9 border border-border rounded-xl bg-card text-foreground text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
                   >
                     <option value="">Semua Depo</option>
                     {depots.map((d) => (
@@ -484,7 +484,7 @@ export default function PenerimaanPage() {
               <div className="hidden overflow-x-auto p-5 md:block">
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={'skel-' + i} className="animate-pulse rounded-xl border border-gray-100 bg-card p-4">
+                    <div key={'skel-' + i} className="animate-pulse rounded-xl border border-border bg-card p-4">
                       <div className="h-4 w-1/3 rounded bg-gray-100" />
                       <div className="mt-3 h-3 w-2/3 rounded bg-gray-100" />
                       <div className="mt-2 h-3 w-1/2 rounded bg-gray-100" />
@@ -494,7 +494,7 @@ export default function PenerimaanPage() {
               </div>
               <div className="space-y-3 p-5 md:hidden">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={'skel-m-' + i} className="animate-pulse rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">
+                  <div key={'skel-m-' + i} className="animate-pulse rounded-2xl border border-border bg-card p-4 shadow-sm">
                     <div className="h-4 w-32 rounded bg-slate-100" />
                     <div className="mt-3 h-3 w-48 rounded bg-slate-100" />
                     <div className="mt-2 h-3 w-40 rounded bg-slate-100" />
@@ -509,7 +509,7 @@ export default function PenerimaanPage() {
               </div>
               {search.trim() ? (
                 <>
-                  <p className="text-slate-600 font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
+                  <p className="text-foreground font-medium">Tidak ada hasil untuk &quot;{search}&quot;</p>
                   <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="mt-2 text-xs font-semibold text-accent-text hover:underline">Hapus pencarian</button>
                 </>
               ) : (
@@ -539,7 +539,7 @@ export default function PenerimaanPage() {
                 <table className="w-full min-w-230 border-collapse">
                   <caption className="sr-only">Daftar penerimaan barang</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-300 bg-popover">
+                    <tr className="border-b border-border bg-popover">
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Kode Barang</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Nama Barang</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Qty CRT</th>
@@ -577,12 +577,12 @@ export default function PenerimaanPage() {
           )}
 
           {pagination && pagination.total > GROUPS_PER_PAGE && (
-            <div className="border-t border-gray-100 bg-overlay-60 px-4 py-3.5 sm:px-5">
+            <div className="border-t border-border bg-overlay-60 px-4 py-3.5 sm:px-5">
               <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
                 <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pagination.current_page <= 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">
                   Sebelumnya
                 </button>
-                <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="text-slate-800">{pagination.current_page}</strong> dari <strong className="text-slate-800">{pagination.last_page}</strong></span>
+                <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="text-foreground">{pagination.current_page}</strong> dari <strong className="text-foreground">{pagination.last_page}</strong></span>
                 <button onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))} disabled={pagination.current_page >= pagination.last_page} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman berikutnya">
                   Selanjutnya
                 </button>
@@ -633,9 +633,9 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <svg className={`h-4 w-4 text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-              <span className="font-mono text-sm font-bold text-gray-800">{group.po}</span>
+              <span className="font-mono text-sm font-bold text-foreground">{group.po}</span>
               {group.receivingId && (
-                <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700">#{group.receivingId}</span>
+                <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-foreground">#{group.receivingId}</span>
               )}
               <span className="hidden sm:inline text-xs text-muted-foreground">{group.driver}{group.nopol !== '-' ? ` · ${group.nopol}` : ''}</span>
               <span className="hidden lg:inline text-xs text-muted-foreground">{group.depo}</span>
@@ -644,7 +644,7 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
               <span className="text-xs text-gray-400">{group.items.length} item</span>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <span className="text-xs font-semibold text-gray-600 tabular-nums">{fnum(group.totalCrt)} CRT</span>
+              <span className="text-xs font-semibold text-foreground tabular-nums">{fnum(group.totalCrt)} CRT</span>
               <span className="text-xs font-semibold text-muted-foreground tabular-nums">{fnum(group.totalPcs)} PCS</span>
             </div>
           </div>
@@ -654,16 +654,16 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
          const cf = (item as ReceivingItem & { resolvedConversionFactor: number | null }).resolvedConversionFactor;
          return (
            <tr key={item.id} className={`transition-colors hover:bg-chip-primary/30 ${itemIndex % 2 === 0 ? 'bg-card' : 'bg-overlay-30'}`}>
-             <td className="px-5 py-3 whitespace-nowrap"><span className="font-mono text-sm font-medium text-gray-800">{item.kode_barang}</span></td>
+             <td className="px-5 py-3 whitespace-nowrap"><span className="font-mono text-sm font-medium text-foreground">{item.kode_barang}</span></td>
              <td className="px-5 py-3 min-w-60 max-w-85">
-               <span className="block line-clamp-2 wrap-break-word text-sm text-gray-700" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
+               <span className="block line-clamp-2 wrap-break-word text-sm text-foreground" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
              </td>
-             <td className="px-5 py-3 text-right text-sm font-medium tabular-nums text-gray-800">{num(item.actual_qty)}</td>
+             <td className="px-5 py-3 text-right text-sm font-medium tabular-nums text-foreground">{num(item.actual_qty)}</td>
              <td className="px-5 py-3 text-right text-sm tabular-nums text-muted-foreground" title={cf != null ? `QTY CRT × faktor konversi ${cf}` : undefined}>
                  {item.qty_pcs != null ? num(item.qty_pcs) : (cf != null ? num(item.actual_qty * cf) : '-')}
                </td>
-             <td className="px-5 py-3 whitespace-nowrap text-sm text-gray-600">{item.satuan || '-'}</td>
-             <td className="px-5 py-3 whitespace-nowrap text-sm text-gray-700">{fmtDate(item.expired_date)}</td>
+             <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{item.satuan || '-'}</td>
+             <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{fmtDate(item.expired_date)}</td>
               <td className="px-5 py-3 whitespace-nowrap">
                 <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
               </td>
@@ -695,7 +695,7 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
   num: (v: unknown) => number;
 }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-card shadow-sm transition-colors ${isOpen ? 'border-chip-primary-border' : 'border-slate-100'}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-card shadow-sm transition-colors ${isOpen ? 'border-chip-primary-border' : 'border-border'}`}>
       <button
         onClick={onToggle}
         tabIndex={0}
@@ -706,13 +706,13 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <svg className={`h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-            <span className="truncate font-mono text-sm font-bold text-gray-800">{group.po}</span>
+            <span className="truncate font-mono text-sm font-bold text-foreground">{group.po}</span>
             {group.receivingId && (
-              <span className="inline-flex shrink-0 items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700">#{group.receivingId}</span>
+              <span className="inline-flex shrink-0 items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-foreground">#{group.receivingId}</span>
             )}
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-sm font-bold text-gray-800 tabular-nums">{fnum(group.totalCrt)} <span className="text-xs font-medium text-gray-400">CRT</span></p>
+            <p className="text-sm font-bold text-foreground tabular-nums">{fnum(group.totalCrt)} <span className="text-xs font-medium text-gray-400">CRT</span></p>
             <p className="text-xs font-semibold text-muted-foreground tabular-nums">{fnum(group.totalPcs)} PCS</p>
           </div>
         </div>
@@ -726,19 +726,19 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
       </button>
 
       {isOpen && (
-        <div className="border-t border-gray-100 divide-y divide-gray-100">
+        <div className="border-t border-border divide-y divide-gray-100">
           {group.items.map((item) => {
             const cf = (item as ReceivingItem & { resolvedConversionFactor: number | null }).resolvedConversionFactor;
             return (
               <div key={item.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-mono text-sm font-medium text-gray-800">{item.kode_barang}</p>
-                    <p className="mt-0.5 line-clamp-2 wrap-break-word text-xs text-gray-600" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</p>
+                    <p className="truncate font-mono text-sm font-medium text-foreground">{item.kode_barang}</p>
+                    <p className="mt-0.5 line-clamp-2 wrap-break-word text-xs text-foreground" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</p>
                     <p className="mt-1 text-[11px] text-gray-400">{item.satuan || '-'} · Exp {fmtDate(item.expired_date)}</p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-sm font-semibold tabular-nums text-gray-800">{num(item.actual_qty)} <span className="text-[11px] font-medium text-gray-400">CRT</span></p>
+                    <p className="text-sm font-semibold tabular-nums text-foreground">{num(item.actual_qty)} <span className="text-[11px] font-medium text-gray-400">CRT</span></p>
                     <p className="text-xs tabular-nums text-muted-foreground">{item.qty_pcs != null ? num(item.qty_pcs) : (cf != null ? num(item.actual_qty * cf) : '-')} PCS</p>
                   </div>
                 </div>

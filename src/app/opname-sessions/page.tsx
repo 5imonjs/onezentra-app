@@ -10,7 +10,7 @@ import { CreateSessionModal } from '@/components/OpnameCreateSessionModal';
 import { SessionDetailModal, type SessionDetail } from '@/components/OpnameSessionDetailModal';
 
 const STATUS_META: Record<string, string> = {
-  OPEN: 'bg-slate-100 text-slate-700',
+  OPEN: 'bg-slate-100 text-foreground',
   IN_PROGRESS: 'bg-blue-50 text-blue-700',
   COMPLETED: 'bg-emerald-50 text-emerald-700',
   CANCELLED: 'bg-red-50 text-red-700',
@@ -110,7 +110,7 @@ export default function OpnameSessionsPage() {
           )}
         </div>
 
-        <div className="bg-card rounded-2xl border border-gray-100 p-4 flex flex-wrap items-end gap-3">
+        <div className="bg-card rounded-2xl border border-border p-4 flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="ss-week" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Minggu</label>
             <input id="ss-week" type="date" value={week} onChange={(e) => setWeek(e.target.value)} className="input-field text-sm" />
@@ -143,7 +143,7 @@ export default function OpnameSessionsPage() {
               </select>
             </div>
           )}
-          <label className="inline-flex items-center gap-2 text-sm text-gray-700 pb-2.5 cursor-pointer">
+          <label className="inline-flex items-center gap-2 text-sm text-foreground pb-2.5 cursor-pointer">
             <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="w-4 h-4 accent-primary-600" />
             Tugas saya
           </label>
@@ -160,17 +160,17 @@ export default function OpnameSessionsPage() {
         ) : loading && sessions.length === 0 ? (
           <p className="text-sm text-muted-foreground">Memuat...</p>
         ) : sessions.length === 0 ? (
-          <div className="border border-dashed border-gray-300 rounded-2xl py-12 text-center">
+          <div className="border border-dashed border-border rounded-2xl py-12 text-center">
             <p className="text-sm text-muted-foreground font-medium">Belum ada sesi opname.</p>
             <p className="text-xs text-gray-400 mt-1">Buat sesi dari wave Batch Expired, tugaskan ke petugas lapangan.</p>
           </div>
         ) : (
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
             <div className="max-h-[560px] overflow-x-auto overflow-y-auto">
               <table className="w-full min-w-[860px] border-collapse">
                 <caption className="sr-only">Daftar sesi opname</caption>
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-300 bg-popover">
+                  <tr className="border-b border-border bg-popover">
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Depo</th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Petugas</th>
@@ -185,9 +185,9 @@ export default function OpnameSessionsPage() {
                     const total = s.items?.length ?? 0;
                     return (
                       <tr key={s.id} className="hover:bg-overlay-50 transition-colors">
-                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{fmtDate(s.week_start)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{s.nama_depo || s.kode_depo}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{s.assignee?.full_name || `#${s.assigned_to}`}</td>
+                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{fmtDate(s.week_start)}</td>
+                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{s.nama_depo || s.kode_depo}</td>
+                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{s.assignee?.full_name || `#${s.assigned_to}`}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold ${STATUS_META[s.status] || STATUS_META.OPEN}`}>{s.status}</span>
                         </td>
@@ -207,7 +207,7 @@ export default function OpnameSessionsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
-                          <button onClick={() => loadDetail(s.id)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">Buka</button>
+                          <button onClick={() => loadDetail(s.id)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-foreground hover:bg-slate-200 transition-colors">Buka</button>
                         </td>
                       </tr>
                     );

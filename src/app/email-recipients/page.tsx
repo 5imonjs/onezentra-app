@@ -507,13 +507,13 @@ export default function EmailRecipientsPage() {
   const renderRow = (r: Recipient) => {
     const problem = resolveProblem(r);
     return (
-      <div key={r.id} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-popover p-3">
-        <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
+      <div key={r.id} className="flex items-start gap-3 rounded-xl border border-border bg-popover p-3">
+        <div className="w-8 h-8 rounded-full bg-gray-100 border border-border flex items-center justify-center text-xs font-bold text-foreground shrink-0">
           {recipientInitial(r)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-gray-900 wrap-break-word">{describe(r)}</span>
+            <span className="text-sm font-medium text-foreground wrap-break-word">{describe(r)}</span>
             {problem && (
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200" title={problem} role="img" aria-label="Peringatan: penerima tidak akan terkirim">
                 <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
@@ -547,7 +547,7 @@ export default function EmailRecipientsPage() {
   };
 
   const renderColumn = (depoKey: string | null, field: 'TO' | 'CC', list: Recipient[]) => (
-    <div className="rounded-xl border border-slate-100 bg-card p-3">
+    <div className="rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between mb-2">
         <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-inset ring-black/5 ${fieldBadge(field)}`}>
           {field}
@@ -595,9 +595,9 @@ export default function EmailRecipientsPage() {
 
         {/* Audit ringkasan */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
             <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Total Penerima</p>
-            <p className="text-2xl font-bold text-gray-900">{totals.total}</p>
+            <p className="text-2xl font-bold text-foreground">{totals.total}</p>
           </div>
           <div className="bg-card rounded-2xl shadow-sm border border-blue-100 p-5">
             <p className="text-xs text-blue-600 uppercase font-bold tracking-wider mb-1">TO</p>
@@ -637,7 +637,7 @@ export default function EmailRecipientsPage() {
         )}
 
         {/* Kontrol filter + aksi */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1 min-w-0">
               <SearchInput value={searchInput} onChange={(v) => setSearchInput(v)} placeholder="Cari email, nama, role, atau kode depo..." resultCount={totals.total} resultLabel="penerima" />
@@ -680,9 +680,9 @@ export default function EmailRecipientsPage() {
 
         {/* Saklar email per depo */}
         {options.depots.length > 0 && (
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
             <div className="mb-3">
-              <p className="text-sm font-bold text-gray-900">Status Email per Depo</p>
+              <p className="text-sm font-bold text-foreground">Status Email per Depo</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Depo <strong>nonaktif</strong> tidak menerima email apa pun, walau penerima Global terisi. Depo tanpa baris
                 penerima sendiri tetap memakai Global selama statusnya aktif.
@@ -715,10 +715,10 @@ export default function EmailRecipientsPage() {
 
         {/* Paginasi per depo */}
         {meta && meta.last_page > 1 && (
-          <nav className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-card px-5 py-3" aria-label="Paginasi depo">
+          <nav className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-3" aria-label="Paginasi depo">
             <p className="text-xs text-muted-foreground">
-              Depo halaman <strong className="text-gray-700">{meta.page}</strong> dari{' '}
-              <strong className="text-gray-700">{meta.last_page}</strong> · {meta.total_groups} depo · {meta.total_rows} penerima
+              Depo halaman <strong className="text-foreground">{meta.page}</strong> dari{' '}
+              <strong className="text-foreground">{meta.last_page}</strong> · {meta.total_groups} depo · {meta.total_rows} penerima
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -743,9 +743,9 @@ export default function EmailRecipientsPage() {
 
         {/* Daftar per depo */}
         {depoGroups.length === 0 ? (
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 px-5 py-16 text-center">
+          <div className="bg-card rounded-2xl shadow-sm border border-border px-5 py-16 text-center">
             <div className="flex flex-col items-center gap-3" role="status">
-              <div className="w-14 h-14 rounded-2xl bg-popover border border-gray-100 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl bg-popover border border-border flex items-center justify-center">
                 <svg className="w-7 h-7 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
               </div>
               <p className="text-sm text-muted-foreground">{hasSearch ? 'Tidak ada penerima sesuai filter' : 'Belum ada penerima email'}</p>
@@ -762,14 +762,14 @@ export default function EmailRecipientsPage() {
               const global = depoKey === null;
               const depotOff = !global && !isDepotEnabled(depoKey);
               return (
-                <section key={depoKey ?? 'global'} className={`rounded-2xl shadow-sm border overflow-hidden ${broken > 0 || depotOff ? 'border-amber-200' : 'border-gray-100'} ${global ? 'ring-1 ring-amber-100' : ''}`}>
+                <section key={depoKey ?? 'global'} className={`rounded-2xl shadow-sm border overflow-hidden ${broken > 0 || depotOff ? 'border-amber-200' : 'border-border'} ${global ? 'ring-1 ring-amber-100' : ''}`}>
                   <header className={`flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 ${global ? 'bg-amber-50' : 'bg-popover'}`}>
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${global ? 'bg-amber-100 text-amber-700' : 'bg-primary-500/10 text-accent-text'}`}>
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15" /></svg>
                       </span>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">{depotLabel(depoKey)}</p>
+                        <p className="text-sm font-bold text-foreground truncate">{depotLabel(depoKey)}</p>
                         <p className="text-xs text-muted-foreground">{total} penerima · TO {g.to.length} · CC {g.cc.length}</p>
                       </div>
                     </div>
@@ -885,7 +885,7 @@ export default function EmailRecipientsPage() {
             </div>
             <div className="flex items-center gap-3">
               <input type="checkbox" id="ef-active" checked={editForm.is_active} onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })} className="w-4 h-4 accent-primary-600" />
-              <label htmlFor="ef-active" className="text-sm text-gray-600">Aktif</label>
+              <label htmlFor="ef-active" className="text-sm text-foreground">Aktif</label>
             </div>
           </div>
         ) : (
@@ -894,7 +894,7 @@ export default function EmailRecipientsPage() {
             <div className={`rounded-xl px-4 py-3 text-sm ${depoLocked || fieldLocked ? 'bg-brand-wash border border-chip-primary-border' : 'bg-popover'}`}>
               <p className="text-xs text-muted-foreground mb-1">Penerima ini akan dibuat untuk:</p>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-card border border-border px-2.5 py-1 text-xs font-semibold text-gray-700">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-card border border-border px-2.5 py-1 text-xs font-semibold text-foreground">
                   <svg className="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15" /></svg>
                   {depotLabel(createForm.kode_depo)}
                 </span>
@@ -960,7 +960,7 @@ export default function EmailRecipientsPage() {
             </div>
 
             <div className="rounded-xl border border-border p-4 space-y-3">
-              <p className="text-sm font-bold text-slate-700">Penerima {createForm.field}</p>
+              <p className="text-sm font-bold text-foreground">Penerima {createForm.field}</p>
               <div>
                 <label htmlFor="cf-users" className="block text-xs font-medium text-muted-foreground mb-1">Pengguna (bisa lebih dari satu)</label>
                 <select id="cf-users" multiple value={createForm.user_ids.map(String)} onChange={(e) => {
@@ -989,7 +989,7 @@ export default function EmailRecipientsPage() {
             </div>
             <div className="flex items-center gap-3">
               <input type="checkbox" id="cf-active" checked={createForm.is_active} onChange={(e) => setCreateForm({ ...createForm, is_active: e.target.checked })} className="w-4 h-4 accent-primary-600" />
-              <label htmlFor="cf-active" className="text-sm text-gray-600">Aktif</label>
+              <label htmlFor="cf-active" className="text-sm text-foreground">Aktif</label>
             </div>
           </div>
         )}

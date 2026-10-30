@@ -122,7 +122,7 @@ export default function AccessManagementPage() {
         </div>
 
         {/* How it works banner */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               { step: 1, title: 'Buat role sesuai pekerjaan', desc: 'Contoh: Cheker atau Admin Distribusi. Satu role dapat dipakai banyak user.' },
@@ -134,14 +134,14 @@ export default function AccessManagementPage() {
                   {item.step}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">{item.title}</p>
+                  <p className="text-sm font-semibold text-foreground">{item.title}</p>
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 md:grid-cols-2">
-            <div className="rounded-lg bg-popover px-4 py-3 text-sm text-slate-700">
+          <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 md:grid-cols-2">
+            <div className="rounded-lg bg-popover px-4 py-3 text-sm text-foreground">
               <p className="font-semibold">Cakupan data: assignment user</p>
               <p className="mt-1 text-xs leading-relaxed">Scope hierarki menentukan entitas yang boleh dikelola. Untuk data operasional, user biasa dibatasi ke depo profilnya; <code>depot.view_region</code> tidak memperluas akses ke depo lain.</p>
             </div>
@@ -154,7 +154,7 @@ export default function AccessManagementPage() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-1.5">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-1.5">
           <div className="flex gap-1" role="tablist">
             <button
               onClick={() => switchTab('roles')}
@@ -163,7 +163,7 @@ export default function AccessManagementPage() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 activeTab === 'roles'
                   ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20'
-                  : 'text-muted-foreground hover:bg-popover hover:text-gray-700'
+                  : 'text-muted-foreground hover:bg-popover hover:text-foreground'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -178,7 +178,7 @@ export default function AccessManagementPage() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 activeTab === 'permissions'
                   ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20'
-                  : 'text-muted-foreground hover:bg-popover hover:text-gray-700'
+                  : 'text-muted-foreground hover:bg-popover hover:text-foreground'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -503,7 +503,7 @@ function RolesTab() {
   return (
     <>
       {/* Toolbar: Search + Action Buttons */}
-      <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
+      <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           <div className="flex-1 min-w-0">
             <div className="relative">
@@ -564,7 +564,7 @@ function RolesTab() {
       {/* Roles Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {roleList.map((role) => (
-          <div key={role.id} className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all duration-200">
+          <div key={role.id} className="bg-card rounded-2xl shadow-sm border border-border p-5 hover:shadow-md transition-all duration-200">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-chip-primary flex items-center justify-center">
@@ -573,7 +573,7 @@ function RolesTab() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">{role.name}</h3>
+                  <h3 className="font-semibold text-foreground">{role.name}</h3>
                   <span className="text-xs font-mono text-gray-400">{role.slug}</span>
                 </div>
               </div>
@@ -609,7 +609,7 @@ function RolesTab() {
                   <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                   </svg>
-                  <span className="text-sm font-medium text-gray-700">{role.users_count} user</span>
+                  <span className="text-sm font-medium text-foreground">{role.users_count} user</span>
                 </div>
                 <span className="text-xs font-semibold text-accent-text">
                   {role.permissions_count ?? 0}/{totalPermissions || '…'} akses
@@ -674,7 +674,7 @@ function RolesTab() {
 
         {roleList.length === 0 && !loading && (
           <div className="col-span-full">
-            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-12 text-center" role="status">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-12 text-center" role="status">
               <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
@@ -704,7 +704,7 @@ function RolesTab() {
       >
         <form id="role-form" onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="role-name" className="block text-sm font-semibold text-gray-700 mb-2">Nama Role</label>
+            <label htmlFor="role-name" className="block text-sm font-semibold text-foreground mb-2">Nama Role</label>
             <input
               id="role-name"
               value={form.name}
@@ -715,7 +715,7 @@ function RolesTab() {
             />
           </div>
           <div>
-            <label htmlFor="role-slug" className="block text-sm font-semibold text-gray-700 mb-2">Slug</label>
+            <label htmlFor="role-slug" className="block text-sm font-semibold text-foreground mb-2">Slug</label>
             <input
               id="role-slug"
               value={form.slug}
@@ -726,7 +726,7 @@ function RolesTab() {
             />
           </div>
           <div>
-            <label htmlFor="role-description" className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label>
+            <label htmlFor="role-description" className="block text-sm font-semibold text-foreground mb-2">Deskripsi</label>
             <textarea
               id="role-description"
               value={form.description}
@@ -788,12 +788,12 @@ function RolesTab() {
             <div className="flex items-center justify-between p-3 bg-popover rounded-xl">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">Total:</span>
-                <span className="text-sm font-semibold text-gray-900">{totalAssigned}/{totalPerms} aktif</span>
+                <span className="text-sm font-semibold text-foreground">{totalAssigned}/{totalPerms} aktif</span>
               </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setAllPermGroupsCollapsed(collapsedGroups.size < Object.keys(allPermissions).length)}
-                  className="text-sm font-medium text-muted-foreground hover:text-gray-700"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
                 >
                   {collapsedGroups.size < Object.keys(allPermissions).length ? 'Ciutkan Semua' : 'Bentangkan Semua'}
                 </button>
@@ -827,9 +827,9 @@ function RolesTab() {
               const assignedCount = perms.filter(p => assignedIds.includes(p.id)).length;
               const collapsed = !permSearchLower && collapsedGroups.has(groupName);
               return (
-              <div key={groupName} className="border border-gray-100 rounded-xl overflow-hidden">
+              <div key={groupName} className="border border-border rounded-xl overflow-hidden">
                 {/* Group Header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-popover border-b border-gray-100">
+                <div className="flex items-center justify-between px-4 py-3 bg-popover border-b border-border">
                   <button
                     type="button"
                     onClick={() => togglePermGroupExpand(groupName)}
@@ -841,7 +841,7 @@ function RolesTab() {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-700">{groupName}</h3>
+                      <h3 className="text-sm font-semibold text-foreground">{groupName}</h3>
                       <span className="text-xs text-gray-400">{assignedCount}/{perms.length} aktif</span>
                     </div>
                     <svg
@@ -892,7 +892,7 @@ function RolesTab() {
                           )}
                           <div>
                             <div className="flex flex-wrap items-center gap-x-2">
-                              <span className="text-sm font-medium text-gray-700">{perm.name}</span>
+                              <span className="text-sm font-medium text-foreground">{perm.name}</span>
                               <span className="text-xs text-gray-400 font-mono">{perm.slug}</span>
                               {isBranch && (
                                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -976,11 +976,11 @@ function RolesTab() {
       >
         <div className="space-y-4">
           <div
-            className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-primary-300"
+            className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary-300"
             onClick={() => fileInputRef.current?.click()}
           >
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-            <p className="text-sm font-medium text-gray-700">{selectedFile?.name || 'Klik untuk memilih file'}</p>
+            <p className="text-sm font-medium text-foreground">{selectedFile?.name || 'Klik untuk memilih file'}</p>
             <p className="text-xs text-gray-400 mt-1">Kolom: Nama, Slug, Deskripsi, Aktif (true/false)</p>
           </div>
           {importResult && (
@@ -1134,7 +1134,7 @@ function PermissionsTab() {
     <>
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-chip-primary flex items-center justify-center">
               <svg className="w-6 h-6 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1142,12 +1142,12 @@ function PermissionsTab() {
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{totalPerms}</p>
+              <p className="text-2xl font-bold text-foreground">{totalPerms}</p>
               <p className="text-sm text-muted-foreground">Total Permission</p>
             </div>
           </div>
         </div>
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
               <svg className="w-6 h-6 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1155,12 +1155,12 @@ function PermissionsTab() {
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{activePerms}</p>
+              <p className="text-2xl font-bold text-foreground">{activePerms}</p>
               <p className="text-sm text-muted-foreground">Aktif</p>
             </div>
           </div>
         </div>
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
               <svg className="w-6 h-6 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1168,7 +1168,7 @@ function PermissionsTab() {
                 </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{uniqueGroups}</p>
+              <p className="text-2xl font-bold text-foreground">{uniqueGroups}</p>
               <p className="text-sm text-muted-foreground">Menu Group</p>
             </div>
           </div>
@@ -1177,7 +1177,7 @@ function PermissionsTab() {
 
       {/* Add Permission Button & Search */}
       <div className="flex items-center gap-4">
-        <div className="flex-1 bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="flex-1 bg-card rounded-2xl shadow-sm border border-border p-4">
           <div className="relative">
             <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -1209,7 +1209,7 @@ function PermissionsTab() {
       {/* Permission Groups */}
       <div className="space-y-4">
         {filteredGroups.map(([groupName, perms]) => (
-          <div key={groupName} className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div key={groupName} className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
             {/* Group Header */}
             <button
               onClick={() => toggleGroupExpand(groupName)}
@@ -1222,14 +1222,14 @@ function PermissionsTab() {
                   </svg>
                 </div>
                 <div className="text-left">
-                  <h2 className="text-base font-semibold text-gray-900">{groupName}</h2>
+                  <h2 className="text-base font-semibold text-foreground">{groupName}</h2>
                   <p className="text-sm text-muted-foreground">
                     {(perms as Permission[]).filter(p => p.is_active).length}/{perms.length} aktif
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-medium text-gray-600">
+                <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-medium text-foreground">
                   {perms.length}
                 </span>
                 <svg
@@ -1246,9 +1246,9 @@ function PermissionsTab() {
 
             {/* Permission Items */}
             {expandedGroups.has(groupName) && (
-              <div className="border-t border-gray-100">
+              <div className="border-t border-border">
                 {/* Table Header */}
-                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-popover border-b border-gray-100">
+                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-popover border-b border-border">
                   <div className="col-span-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nama</div>
                   <div className="col-span-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Slug</div>
                   <div className="col-span-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Route</div>
@@ -1262,7 +1262,7 @@ function PermissionsTab() {
                   {(perms as Permission[]).map((perm) => (
                     <div key={perm.id} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-overlay-50 transition-colors items-center">
                       <div className="col-span-4">
-                        <div className={`font-medium text-gray-900 ${perm.parent_id ? 'pl-4 border-l-2 border-border' : ''}`}>
+                        <div className={`font-medium text-foreground ${perm.parent_id ? 'pl-4 border-l-2 border-border' : ''}`}>
                           {perm.name}
                         </div>
                         {perm.parent && (
@@ -1343,7 +1343,7 @@ function PermissionsTab() {
         ))}
 
             {filteredGroups.length === 0 && !loading && (
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-12 text-center" role="status">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-12 text-center" role="status">
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
@@ -1372,7 +1372,7 @@ function PermissionsTab() {
       >
         <form id="permission-form" onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="perm-name" className="block text-sm font-semibold text-gray-700 mb-2">Nama Permission</label>
+            <label htmlFor="perm-name" className="block text-sm font-semibold text-foreground mb-2">Nama Permission</label>
             <input
               id="perm-name"
               value={form.name}
@@ -1383,7 +1383,7 @@ function PermissionsTab() {
             />
           </div>
           <div>
-            <label htmlFor="perm-slug" className="block text-sm font-semibold text-gray-700 mb-2">Slug</label>
+            <label htmlFor="perm-slug" className="block text-sm font-semibold text-foreground mb-2">Slug</label>
             <input
               id="perm-slug"
               value={form.slug}
@@ -1394,7 +1394,7 @@ function PermissionsTab() {
             />
           </div>
           <div>
-            <label htmlFor="perm-menu-group" className="block text-sm font-semibold text-gray-700 mb-2">Menu Group</label>
+            <label htmlFor="perm-menu-group" className="block text-sm font-semibold text-foreground mb-2">Menu Group</label>
             <input
               id="perm-menu-group"
               value={form.menu_group}
@@ -1404,7 +1404,7 @@ function PermissionsTab() {
             />
           </div>
           <div>
-            <label htmlFor="perm-parent" className="block text-sm font-semibold text-gray-700 mb-2">Induk Permission (opsional)</label>
+            <label htmlFor="perm-parent" className="block text-sm font-semibold text-foreground mb-2">Induk Permission (opsional)</label>
             <select
               id="perm-parent"
               value={String(form.parent_id ?? '')}
@@ -1432,7 +1432,7 @@ function PermissionsTab() {
             </p>
           </div>
           <div>
-            <label htmlFor="perm-route" className="block text-sm font-semibold text-gray-700 mb-2">Route</label>
+            <label htmlFor="perm-route" className="block text-sm font-semibold text-foreground mb-2">Route</label>
             <input
               id="perm-route"
               value={form.route}
@@ -1442,7 +1442,7 @@ function PermissionsTab() {
             />
           </div>
           <div>
-            <label htmlFor="perm-description" className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label>
+            <label htmlFor="perm-description" className="block text-sm font-semibold text-foreground mb-2">Deskripsi</label>
             <textarea
               id="perm-description"
               value={form.description}

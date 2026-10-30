@@ -123,12 +123,12 @@ export default function LoginPage() {
             <div className="relative w-44 h-16 bg-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-600/30 px-3 overflow-hidden">
               <Image src="/LOGO.png" alt="" fill className="object-contain" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">ONEZENTRA</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">ONEZENTRA</h1>
           </div>
 
-          <div className="bg-card rounded-3xl shadow-2xl shadow-black/10 p-8 border border-gray-100">
+          <div className="bg-card rounded-3xl shadow-2xl shadow-black/10 p-8 border border-border">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Hallo, Welcome Back</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Hallo, Welcome Back</h2>
               <p className="text-muted-foreground">Welcome Back to ONEZENTRA</p>
             </div>
 
@@ -145,7 +145,7 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="login-email" className="block text-sm font-semibold text-gray-700 mb-2">Email address</label>
+                <label htmlFor="login-email" className="block text-sm font-semibold text-foreground mb-2">Email address</label>
                 <input
                   id="login-email"
                   type="email"
@@ -159,7 +159,7 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label htmlFor="login-password" className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                <label htmlFor="login-password" className="block text-sm font-semibold text-foreground mb-2">Password</label>
                 <div className="relative">
                   <input
                     id="login-password"
@@ -176,7 +176,7 @@ export default function LoginPage() {
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                     aria-pressed={showPassword}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors min-w-11 min-h-11 flex items-center justify-center -mr-2"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-foreground transition-colors min-w-11 min-h-11 flex items-center justify-center -mr-2"
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

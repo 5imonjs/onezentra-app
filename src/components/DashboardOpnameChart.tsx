@@ -69,7 +69,7 @@ export default function DashboardOpnameChart() {
             disabled={loading}
             aria-label="Muat ulang progres opname"
             aria-describedby={error ? 'opname-chart-error' : undefined}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 min-w-11 min-h-11 flex items-center justify-center"
+            className="p-2 text-gray-400 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 min-w-11 min-h-11 flex items-center justify-center"
           >
             <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
           </button>
@@ -98,7 +98,7 @@ export default function DashboardOpnameChart() {
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <span className="flex items-center gap-2 min-w-0">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${d.submitted ? 'bg-emerald-500' : 'bg-amber-500'}`} aria-hidden="true" />
-                      <span className="font-semibold text-slate-700 truncate">{d.nama_depo || d.kode_depo}</span>
+                      <span className="font-semibold text-foreground truncate">{d.nama_depo || d.kode_depo}</span>
                     </span>
                     <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">{d.validated}/{d.total} · {pct}%</span>
                   </div>

@@ -318,8 +318,8 @@ return (
           <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-          <div className="p-4 border-b border-gray-100">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <SearchInput
@@ -409,7 +409,7 @@ return (
                         aria-label="Pilih semua"
                         checked={items.length > 0 && items.every((i) => selectedIds.includes(i.id))}
                         onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
+                        className="rounded border-border text-accent-text focus:ring-primary-500"
                       />
                     </th>
                   )}
@@ -455,7 +455,7 @@ return (
                           aria-label={`Pilih ${row.product_sku}`}
                           checked={selectedIds.includes(row.id)}
                           onChange={() => toggleSelect(row.id)}
-                          className="rounded border-gray-300 text-accent-text focus:ring-primary-500"
+                          className="rounded border-border text-accent-text focus:ring-primary-500"
                         />
                       </td>
                     )}
@@ -465,8 +465,8 @@ return (
                         key={col.key}
                         className={`px-5 py-3 text-sm ${
                           col.key === 'product_sku'
-                            ? 'font-mono font-medium text-gray-900'
-                            : 'text-gray-600'
+                            ? 'font-mono font-medium text-foreground'
+                            : 'text-foreground'
                         }`}
                       >
                         {row[col.key] || <span className="text-gray-400">-</span>}
@@ -495,21 +495,21 @@ return (
           {/* Mobile cards */}
           <div className="md:hidden space-y-2 p-3">
             {items.map((row) => (
-              <div key={row.id} className="bg-popover rounded-xl p-4 border border-slate-100">
+              <div key={row.id} className="bg-popover rounded-xl p-4 border border-border">
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <p className="font-mono font-medium text-gray-900 text-sm">{row.product_sku}</p>
+                    <p className="font-mono font-medium text-foreground text-sm">{row.product_sku}</p>
                     <p className="text-xs text-muted-foreground">{row.principal_1 || row.principal_2 || '-'}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <p className="text-muted-foreground">LOB: <span className="text-slate-700">{row.lob || '-'}</span></p>
-                  <p className="text-muted-foreground">Category: <span className="text-slate-700">{row.product_category || '-'}</span></p>
-                  <p className="text-muted-foreground">Group: <span className="text-slate-700">{row.product_group || '-'}</span></p>
-                  <p className="text-muted-foreground">Class: <span className="text-slate-700">{row.product_class || '-'}</span></p>
-                  <p className="text-muted-foreground col-span-2">Principal 2: <span className="text-slate-700">{row.principal_2 || '-'}</span></p>
+                  <p className="text-muted-foreground">LOB: <span className="text-foreground">{row.lob || '-'}</span></p>
+                  <p className="text-muted-foreground">Category: <span className="text-foreground">{row.product_category || '-'}</span></p>
+                  <p className="text-muted-foreground">Group: <span className="text-foreground">{row.product_group || '-'}</span></p>
+                  <p className="text-muted-foreground">Class: <span className="text-foreground">{row.product_class || '-'}</span></p>
+                  <p className="text-muted-foreground col-span-2">Principal 2: <span className="text-foreground">{row.principal_2 || '-'}</span></p>
                 </div>
-                <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-border">
                   {hasPermission('cluster_principal.edit') && <button onClick={() => handleEdit(row)} className="min-h-9 px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label={`Edit ${row.product_sku}`}>Edit</button>}
                   {hasPermission('cluster_principal.delete') && <button onClick={() => { setEditItem(row); setShowDeleteConfirm(true); }} className="min-h-9 px-2 text-xs text-red-600 hover:bg-red-50 rounded transition-colors" aria-label={`Hapus ${row.product_sku}`}>Hapus</button>}
                 </div>
@@ -525,18 +525,18 @@ return (
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3">
+          <div className="flex items-center justify-between border-t border-border px-5 py-3">
             <p className="text-sm text-muted-foreground">
-              Menampilkan <span className="font-medium text-slate-800">{items.length > 0 ? (page - 1) * 20 + 1 : 0}-{Math.min(page * 20, totalCount)}</span> dari <span className="font-medium text-slate-800">{totalCount}</span>
+              Menampilkan <span className="font-medium text-foreground">{items.length > 0 ? (page - 1) * 20 + 1 : 0}-{Math.min(page * 20, totalCount)}</span> dari <span className="font-medium text-foreground">{totalCount}</span>
             </p>
             <div className="flex items-center gap-2">
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-card text-slate-600 hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-border bg-card text-foreground hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
                 Sebelumnya
               </button>
               <span className="text-sm text-muted-foreground">
-                Halaman <span className="font-medium text-slate-800">{page}</span> dari <span className="font-medium text-slate-800">{lastPage}</span>
+                Halaman <span className="font-medium text-foreground">{page}</span> dari <span className="font-medium text-foreground">{lastPage}</span>
               </span>
-              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-card text-slate-600 hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
+              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-border bg-card text-foreground hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
                 Berikutnya
               </button>
             </div>
@@ -551,7 +551,7 @@ return (
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); setIsDragging(false); pickFile(e.dataTransfer.files[0]); }}
-            className={`rounded-xl border-2 border-dashed p-6 text-center ${isDragging ? 'border-primary-500 bg-chip-primary' : 'border-gray-300'}`}
+            className={`rounded-xl border-2 border-dashed p-6 text-center ${isDragging ? 'border-primary-500 bg-chip-primary' : 'border-border'}`}
           >
             <input
               ref={fileInputRef}
@@ -560,9 +560,9 @@ return (
               className="hidden"
               onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
             />
-            <p className="text-sm text-slate-600">Tarik file Excel ke sini, atau</p>
+            <p className="text-sm text-foreground">Tarik file Excel ke sini, atau</p>
             <button type="button" onClick={() => fileInputRef.current?.click()} className="btn-secondary mt-2 rounded-lg px-3 py-1.5 text-xs font-bold">Pilih File</button>
-            {selectedFile && <p className="mt-2 text-xs font-bold text-slate-700">{selectedFile.name}</p>}
+            {selectedFile && <p className="mt-2 text-xs font-bold text-foreground">{selectedFile.name}</p>}
           </div>
 
           {importResult && (
@@ -585,7 +585,7 @@ return (
         <div className="space-y-3">
           {COLUMNS.map((col) => (
             <label key={col.key} className="block">
-              <span className="mb-1 block text-xs font-bold text-slate-600">{col.label}</span>
+              <span className="mb-1 block text-xs font-bold text-foreground">{col.label}</span>
               <input
                 value={editForm[col.key] ?? ''}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, [col.key]: e.target.value }))}

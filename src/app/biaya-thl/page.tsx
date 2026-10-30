@@ -126,7 +126,7 @@ const normalizeBiayaThlItem = (item: BiayaThlItem): BiayaThlItem => ({
 });
 
 const STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
-  draft: { label: 'Draft', badge: 'bg-popover text-gray-600 border-gray-300', dot: 'bg-gray-400' },
+  draft: { label: 'Draft', badge: 'bg-popover text-foreground border-border', dot: 'bg-gray-400' },
   pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
   checked: { label: 'Checked', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
   rlh_approved: { label: 'Disetujui RLH', badge: 'bg-chip-primary text-accent-text border-chip-primary-border', dot: 'bg-primary-500' },
@@ -479,14 +479,14 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </span>
         <div>
-          <h3 className="text-sm font-black text-slate-800">Riwayat Persetujuan</h3>
+          <h3 className="text-sm font-black text-foreground">Riwayat Persetujuan</h3>
           <p className="text-[11px] text-slate-400">Jejak aksi tiap tahap approval</p>
         </div>
         <span className="ml-auto inline-flex items-center rounded-full bg-chip-primary border border-chip-primary-border px-2.5 py-0.5 text-[11px] font-bold text-accent-text">{histories.length} aktivitas</span>
       </div>
       <ol className="space-y-0">
         {histories.map((h, i) => {
-          const meta = APPROVAL_ACTION_META[h.action] ?? { label: h.action, badge: 'bg-popover text-gray-600 border-gray-300' };
+          const meta = APPROVAL_ACTION_META[h.action] ?? { label: h.action, badge: 'bg-popover text-foreground border-border' };
           return (
             <li key={h.id} className="relative flex gap-3 pb-4 last:pb-0">
               {i < histories.length - 1 && (
@@ -499,13 +499,13 @@ function ApprovalHistoryList({ histories }: { histories?: ApprovalHistoryItem[] 
               </div>
               <div className="min-w-0 flex-1 pt-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold text-slate-800">{meta.label}</p>
+                  <p className="text-sm font-semibold text-foreground">{meta.label}</p>
                   {h.from_status ? <span className="text-[10px] font-mono text-slate-400">{h.from_status} → {h.to_status}</span> : null}
                 </div>
                 <p className="mt-0.5 text-xs text-slate-400">
-                  {h.actor?.full_name ? <span className="font-medium text-slate-600">{h.actor.full_name}</span> : null}{h.actor?.full_name && ' · '}{formatDateTime(h.created_at)}
+                  {h.actor?.full_name ? <span className="font-medium text-foreground">{h.actor.full_name}</span> : null}{h.actor?.full_name && ' · '}{formatDateTime(h.created_at)}
                 </p>
-                {h.reason ? <p className="mt-1 text-xs text-slate-600 whitespace-pre-line rounded-lg bg-popover border border-slate-100 px-2.5 py-1.5">{h.reason}</p> : null}
+                {h.reason ? <p className="mt-1 text-xs text-foreground whitespace-pre-line rounded-lg bg-popover border border-border px-2.5 py-1.5">{h.reason}</p> : null}
               </div>
             </li>
           );
@@ -565,16 +565,16 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-300 overflow-hidden shadow-sm">
-      <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-slate-50 to-surface-card border-b border-slate-100">
+    <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+      <div className="flex items-center gap-2.5 px-4 py-3 bg-linear-to-r from-slate-50 to-surface-card border-b border-border">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 8H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M7 17L21 3m0 0h-5.5M21 3v5.5" /></svg>
         </span>
         <div>
-          <h3 className="text-sm font-black text-slate-800">Alur Persetujuan</h3>
+          <h3 className="text-sm font-black text-foreground">Alur Persetujuan</h3>
           <p className="text-[11px] text-slate-400">Tahapan approval pengajuan ini</p>
         </div>
-        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${revised ? 'bg-orange-50 text-orange-700 border-orange-200' : rejected ? 'bg-red-50 text-red-700 border-red-200' : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : item.status === 'rlh_approved' ? 'bg-chip-primary text-accent-text border-chip-primary-border' : item.status === 'checked' ? 'bg-blue-50 text-blue-700 border-blue-200' : item.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-popover text-gray-600 border-gray-300'}`}>
+        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${revised ? 'bg-orange-50 text-orange-700 border-orange-200' : rejected ? 'bg-red-50 text-red-700 border-red-200' : item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : item.status === 'rlh_approved' ? 'bg-chip-primary text-accent-text border-chip-primary-border' : item.status === 'checked' ? 'bg-blue-50 text-blue-700 border-blue-200' : item.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-popover text-foreground border-border'}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${revised ? 'bg-orange-500' : rejected ? 'bg-red-500' : item.status === 'approved' ? 'bg-emerald-500' : item.status === 'rlh_approved' ? 'bg-primary-500' : item.status === 'checked' ? 'bg-blue-500' : item.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`} />
           {revised ? revisionLabel : awaitingRecheck && recheckLabel ? recheckLabel : rejected ? 'Ditolak' : STATUS_META[item.status]?.label ?? item.status}
         </span>
@@ -602,20 +602,20 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
                       <span className="relative block h-2.5 w-2.5 rounded-full bg-primary-500" />
                     </span>
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 border border-slate-300 text-slate-400">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 border border-border text-slate-400">
                       <span className="block h-2 w-2 rounded-full bg-slate-300" />
                     </span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`text-sm font-semibold ${state === 'done' ? 'text-slate-900' : state === 'current' ? 'text-accent-text' : 'text-muted-foreground'}`}>{step.label}</p>
-                    <span className="inline-flex rounded-md bg-slate-100 border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground">{step.role}</span>
+                    <p className={`text-sm font-semibold ${state === 'done' ? 'text-foreground' : state === 'current' ? 'text-accent-text' : 'text-muted-foreground'}`}>{step.label}</p>
+                    <span className="inline-flex rounded-md bg-slate-100 border border-border px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground">{step.role}</span>
                   </div>
                   <p className="mt-0.5 text-xs text-slate-400">
                     {step.at ? (
                       <>
-                        {step.by ? <span className="font-medium text-slate-600">{step.by}</span> : null}{step.by && ' · '}{formatDateTime(step.at)}
+                        {step.by ? <span className="font-medium text-foreground">{step.by}</span> : null}{step.by && ' · '}{formatDateTime(step.at)}
                         {revised && i === revisionIndex && item.revisi_reason ? (
                           <span className="block font-medium text-orange-700 whitespace-pre-line">Catatan revisi: {item.revisi_reason}</span>
                         ) : null}
@@ -746,10 +746,10 @@ export default function BiayaThlPage() {
     return (
       <span className="flex flex-wrap gap-1" title={fullTitle}>
         {shown.map((v) => (
-          <span key={v} className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">{v}</span>
+          <span key={v} className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-foreground">{v}</span>
         ))}
         {rest > 0 && (
-          <span className="inline-flex items-center rounded-md bg-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-600">+{rest}</span>
+          <span className="inline-flex items-center rounded-md bg-slate-200 px-1.5 py-0.5 text-xs font-bold text-foreground">+{rest}</span>
         )}
       </span>
     );
@@ -1668,33 +1668,33 @@ export default function BiayaThlPage() {
           </div>
         )}
 
-        <div className={`rounded-2xl border border-gray-100 bg-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
+        <div className={`rounded-2xl border border-border bg-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           <div className="px-2 py-1">
             <p className="text-xs text-muted-foreground">Total Nominal</p>
-            <p className="mt-1 text-2xl font-bold text-slate-800 tabular-nums">{formatCurrency(summary?.total_nominal ?? 0)}</p>
+            <p className="mt-1 text-2xl font-bold text-foreground tabular-nums">{formatCurrency(summary?.total_nominal ?? 0)}</p>
           </div>
-          <div onClick={() => { setStatusFilter(statusFilter === 'pending' ? '' : 'pending'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-amber-50/50 rounded-lg transition-colors">
+          <div onClick={() => { setStatusFilter(statusFilter === 'pending' ? '' : 'pending'); setPage(1); }} className="border-l border-border px-2 py-1 sm:pl-5 cursor-pointer hover:bg-amber-50/50 rounded-lg transition-colors">
             <p className="text-xs text-muted-foreground">Menunggu</p>
             <p className="mt-1 text-2xl font-bold text-amber-600 tabular-nums">{summary?.pending ?? 0}</p>
           </div>
-          <div onClick={() => { setStatusFilter(statusFilter === 'approved' ? '' : 'approved'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-emerald-50/50 rounded-lg transition-colors">
+          <div onClick={() => { setStatusFilter(statusFilter === 'approved' ? '' : 'approved'); setPage(1); }} className="border-l border-border px-2 py-1 sm:pl-5 cursor-pointer hover:bg-emerald-50/50 rounded-lg transition-colors">
             <p className="text-xs text-muted-foreground">Disetujui</p>
             <p className="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">{summary?.approved ?? 0}</p>
           </div>
-          <div onClick={() => { setStatusFilter(statusFilter === 'revisi' ? '' : 'revisi'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-orange-50/50 rounded-lg transition-colors">
+          <div onClick={() => { setStatusFilter(statusFilter === 'revisi' ? '' : 'revisi'); setPage(1); }} className="border-l border-border px-2 py-1 sm:pl-5 cursor-pointer hover:bg-orange-50/50 rounded-lg transition-colors">
             <p className="text-xs text-muted-foreground">Revisi</p>
             <p className="mt-1 text-2xl font-bold text-orange-600 tabular-nums">{summary?.revisi ?? 0}</p>
           </div>
-          <div onClick={() => { setStatusFilter(statusFilter === 'rejected' ? '' : 'rejected'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-red-50/50 rounded-lg transition-colors">
+          <div onClick={() => { setStatusFilter(statusFilter === 'rejected' ? '' : 'rejected'); setPage(1); }} className="border-l border-border px-2 py-1 sm:pl-5 cursor-pointer hover:bg-red-50/50 rounded-lg transition-colors">
             <p className="text-xs text-muted-foreground">Ditolak</p>
             <p className="mt-1 text-2xl font-bold text-red-600 tabular-nums">{summary?.rejected ?? 0}</p>
           </div>
         </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
-          <div className="flex flex-col items-start gap-3 border-b border-gray-100 px-5 py-3 sm:flex-row sm:items-center">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex flex-col items-start gap-3 border-b border-border px-5 py-3 sm:flex-row sm:items-center">
             <div className="flex-1 w-full sm:w-auto">
               <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Cari no kendaraan, depo..." />
             </div>
@@ -1744,7 +1744,7 @@ export default function BiayaThlPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10">
-                <tr className="border-b border-slate-300 bg-popover">
+                <tr className="border-b border-border bg-popover">
                   <th scope="col" className="table-header cursor-pointer select-none" onClick={() => handleSort('tanggal_pengajuan')}>
                     Tanggal {sortIndicator('tanggal_pengajuan')}
                   </th>
@@ -1797,13 +1797,13 @@ export default function BiayaThlPage() {
                 ) : (
                   items.map((item) => (
                     <tr key={item.id} className="hover:bg-overlay-50 transition-colors">
-                      <td className="px-5 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(item.tanggal_pengajuan)}</td>
-                      <td className="px-5 py-3 text-sm text-slate-600">{renderChips(getSJShorts(item), getSJFull(item))}</td>
-                      <td className="px-5 py-3 text-sm text-slate-600">{renderChips(getKendaraanTypes(item), getKendaraanTypes(item).join(', ') || '-')}</td>
-                      <td className="px-5 py-3 text-sm font-medium text-slate-800">{renderChips(getNopols(item), getNopols(item).join(', ') || '-')}</td>
-                      <td className="px-5 py-3 text-sm text-slate-600">{item.nama_depo}</td>
-                      <td className="px-5 py-3 text-sm text-slate-600 text-center whitespace-nowrap">{getWorkerCount(item)} orang</td>
-                      <td className="px-5 py-3 text-right text-sm font-semibold text-slate-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</td>
+                      <td className="px-5 py-3 text-sm text-foreground whitespace-nowrap">{formatDate(item.tanggal_pengajuan)}</td>
+                      <td className="px-5 py-3 text-sm text-foreground">{renderChips(getSJShorts(item), getSJFull(item))}</td>
+                      <td className="px-5 py-3 text-sm text-foreground">{renderChips(getKendaraanTypes(item), getKendaraanTypes(item).join(', ') || '-')}</td>
+                      <td className="px-5 py-3 text-sm font-medium text-foreground">{renderChips(getNopols(item), getNopols(item).join(', ') || '-')}</td>
+                      <td className="px-5 py-3 text-sm text-foreground">{item.nama_depo}</td>
+                      <td className="px-5 py-3 text-sm text-foreground text-center whitespace-nowrap">{getWorkerCount(item)} orang</td>
+                      <td className="px-5 py-3 text-right text-sm font-semibold text-foreground tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</td>
                       <td className="px-5 py-3">
                         <div className="flex flex-col items-start gap-1.5">
                           {badge(item.status, item)}
@@ -1844,14 +1844,14 @@ export default function BiayaThlPage() {
         {/* Cards - Mobile */}
         <div className="md:hidden space-y-3">
           {loading ? (
-            <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-10 text-center">
               <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                 <svg className="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                 <span className="text-sm font-medium">Memuat data...</span>
               </div>
             </div>
           ) : items.length === 0 ? (
-            <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-10 text-center">
               <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                 <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 <span className="text-sm font-medium">Tidak ada data</span>
@@ -1863,14 +1863,14 @@ export default function BiayaThlPage() {
             </div>
           ) : (
             items.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-slate-300 bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+              <div key={item.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-chip-primary flex items-center justify-center shrink-0">
                       <svg className="w-5 h-5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659 1.171-1.671a4.5 4.5 0 0 1 5.07-1.651 3 3 0 0 1 1.482 5.369L12 12" /></svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800">{item.no_kendaraan || '-'}</p>
+                      <p className="text-sm font-bold text-foreground">{item.no_kendaraan || '-'}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(item.tanggal_pengajuan)}</p>
                     </div>
                   </div>
@@ -1891,9 +1891,9 @@ export default function BiayaThlPage() {
                     {item.nama_depo}
                     </span>
                   </div>
-                  <span className="text-sm font-bold text-gray-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</span>
+                  <span className="text-sm font-bold text-foreground tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</span>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-border">
                   <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full" title={getSJFull(item)}>SJ: {getSJShorts(item).join(', ') || '-'}</span>
                   <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full">{getKendaraanTypes(item).join(', ') || '-'}</span>
                   <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full">{getWorkerCount(item)} tenaga kerja</span>
@@ -1930,7 +1930,7 @@ export default function BiayaThlPage() {
             {pageWindow(page, totalPages).map((p, idx) => p === '…' ? (
               <span key={`e${idx}`} className="text-xs text-slate-400 px-1" aria-hidden="true">…</span>
             ) : (
-              <button key={p} onClick={() => setPage(p)} className={`min-h-11 min-w-11 rounded-xl text-sm font-medium transition-all ${page === p ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-card border border-gray-300 text-gray-600 hover:bg-popover'}`}>{p}</button>
+              <button key={p} onClick={() => setPage(p)} className={`min-h-11 min-w-11 rounded-xl text-sm font-medium transition-all ${page === p ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20' : 'bg-card border border-border text-foreground hover:bg-popover'}`}>{p}</button>
             ))}
           </div>
         )}
@@ -2013,7 +2013,7 @@ export default function BiayaThlPage() {
                 ].map((item) => {
                   const blockedReason = isStepBlocked(item.step);
                   return (
-                  <button key={item.step} type="button" onClick={() => goToStep(item.step)} disabled={!!blockedReason} title={blockedReason ?? undefined} aria-current={formStep === item.step ? 'step' : undefined} aria-disabled={!!blockedReason} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-all ${formStep === item.step ? 'bg-card text-slate-900 shadow-lg' : blockedReason ? 'text-ink-fg-muted cursor-not-allowed' : 'text-ink-fg hover:bg-white/10'}`}>
+                  <button key={item.step} type="button" onClick={() => goToStep(item.step)} disabled={!!blockedReason} title={blockedReason ?? undefined} aria-current={formStep === item.step ? 'step' : undefined} aria-disabled={!!blockedReason} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-all ${formStep === item.step ? 'bg-card text-foreground shadow-lg' : blockedReason ? 'text-ink-fg-muted cursor-not-allowed' : 'text-ink-fg hover:bg-white/10'}`}>
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black ${formStep === item.step ? 'bg-primary-600 text-white' : blockedReason ? 'bg-white/10 text-ink-fg-muted' : 'bg-white/10 text-white'}`}>{item.step}</span>
                     <span className="min-w-0">
                       <span className="block text-xs font-black">{item.label}</span>
@@ -2044,7 +2044,7 @@ export default function BiayaThlPage() {
             </aside>
             <div className="min-w-0">
           {/* Step Indicator */}
-          <div className="sticky top-0 z-20 mb-6 rounded-2xl border border-slate-300 bg-card/90 backdrop-blur-md p-2 sm:p-3">
+          <div className="sticky top-0 z-20 mb-6 rounded-2xl border border-border bg-card/90 backdrop-blur-md p-2 sm:p-3">
             <div className="mb-2 flex items-center justify-between px-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
               <span>Progress pengajuan</span>
               <span className="text-accent-text">Langkah {formStep} dari 3</span>
@@ -2058,8 +2058,8 @@ export default function BiayaThlPage() {
               const blockedReason = isStepBlocked(s.step);
               return (
               <Fragment key={s.step}>
-                <button type="button" onClick={() => goToStep(s.step)} disabled={!!blockedReason} title={blockedReason ?? undefined} aria-current={formStep === s.step ? 'step' : undefined} aria-disabled={!!blockedReason} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${formStep === s.step ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : formStep > s.step ? 'bg-chip-primary text-accent-text' : blockedReason ? 'bg-popover text-muted-foreground cursor-not-allowed' : 'bg-popover text-gray-700'}`}>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${formStep === s.step ? 'bg-card text-accent-text' : formStep > s.step ? 'bg-brand-wash-strong text-accent-text' : blockedReason ? 'bg-card text-muted-foreground' : 'bg-card text-gray-700'}`}>
+                <button type="button" onClick={() => goToStep(s.step)} disabled={!!blockedReason} title={blockedReason ?? undefined} aria-current={formStep === s.step ? 'step' : undefined} aria-disabled={!!blockedReason} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${formStep === s.step ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : formStep > s.step ? 'bg-chip-primary text-accent-text' : blockedReason ? 'bg-popover text-muted-foreground cursor-not-allowed' : 'bg-popover text-foreground'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${formStep === s.step ? 'bg-card text-accent-text' : formStep > s.step ? 'bg-brand-wash-strong text-accent-text' : blockedReason ? 'bg-card text-muted-foreground' : 'bg-card text-foreground'}`}>
                     {formStep > s.step ? <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> : s.step}
                   </div>
                   <span className="text-xs font-bold hidden sm:inline">{s.label}</span>
@@ -2091,7 +2091,7 @@ export default function BiayaThlPage() {
                 </label>
               </div>
 
-              <p className="rounded-xl bg-popover border border-slate-300 px-4 py-3 text-xs text-muted-foreground">Gunakan tombol <span className="font-bold text-slate-700">Lanjut ke Data Pekerja</span> di bawah dialog untuk melanjutkan.</p>
+              <p className="rounded-xl bg-popover border border-border px-4 py-3 text-xs text-muted-foreground">Gunakan tombol <span className="font-bold text-foreground">Lanjut ke Data Pekerja</span> di bawah dialog untuk melanjutkan.</p>
             </div>
           )}
 
@@ -2099,11 +2099,11 @@ export default function BiayaThlPage() {
           {formStep === 2 && (
             <div className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <button type="button" onClick={() => goToStep(1)} className="h-10 w-10 inline-flex items-center justify-center rounded-xl border border-gray-300 bg-card text-muted-foreground hover:bg-popover hover:text-accent-text transition-colors shrink-0" aria-label="Kembali ke Informasi">
+                <button type="button" onClick={() => goToStep(1)} className="h-10 w-10 inline-flex items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-popover hover:text-accent-text transition-colors shrink-0" aria-label="Kembali ke Informasi">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 </button>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-black text-gray-900">Data Pekerja</h3>
+                  <h3 className="text-base font-black text-foreground">Data Pekerja</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">1 baris = 1 pekerja × 1 bongkaran — pekerja yang sama boleh muncul di SJ berbeda</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -2113,7 +2113,7 @@ export default function BiayaThlPage() {
                       {formData.details.length} pekerja
                     </span>
                   )}
-                  <button type="button" onClick={addSjGroup} className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-colors shrink-0 ${formData.details.length === 0 ? 'border border-gray-300 bg-card text-muted-foreground hover:border-primary-300 hover:text-accent-text' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-200'}`}>
+                  <button type="button" onClick={addSjGroup} className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-colors shrink-0 ${formData.details.length === 0 ? 'border border-border bg-card text-muted-foreground hover:border-primary-300 hover:text-accent-text' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-200'}`}>
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah Surat Jalan
                   </button>
@@ -2121,13 +2121,13 @@ export default function BiayaThlPage() {
               </div>
 
               {formData.details.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-popover border border-slate-300 px-3 py-2">
-                  <label className="inline-flex cursor-pointer items-center gap-2 text-[11px] font-bold text-slate-600">
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-popover border border-border px-3 py-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-[11px] font-bold text-foreground">
                     <input
                       type="checkbox"
                       checked={showIncompleteOnly}
                       onChange={(e) => setShowIncompleteOnly(e.target.checked)}
-                      className="rounded border-gray-300 text-accent-text focus:ring-primary-500 w-4 h-4"
+                      className="rounded border-border text-accent-text focus:ring-primary-500 w-4 h-4"
                     />
                     Hanya yang belum lengkap
                   </label>
@@ -2143,11 +2143,11 @@ export default function BiayaThlPage() {
               )}
 
               {formData.details.length === 0 ? (
-                <div className="rounded-2xl border-2 border-dashed border-gray-300 bg-card p-10 text-center">
+                <div className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-chip-primary border border-chip-primary-border flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                  <p className="text-base font-black text-gray-800">Belum ada data pekerja</p>
+                  <p className="text-base font-black text-foreground">Belum ada data pekerja</p>
                   <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">Mulai dengan menambahkan Surat Jalan pertama, lalu isi detail masing-masing pekerja</p>
                   <button type="button" onClick={addSjGroup} className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-5 py-2.5 text-xs font-black text-white hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200 mx-auto">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
@@ -2164,24 +2164,24 @@ export default function BiayaThlPage() {
                       <Fragment key={group.groupId}>
                         {gIdx > 0 && (
                           <div className="flex items-center gap-3 py-1">
-                            <div className="h-px flex-1 border-t-2 border-dashed border-gray-300" />
-                            <button type="button" onClick={() => { const gid = insertSjGroupBefore(group.groupId); focusSjInput(gid); }} title={`Sisipkan Surat Jalan sebelum nomor ${gIdx + 1}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-card px-3 py-1 text-[11px] font-black text-muted-foreground hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
+                            <div className="h-px flex-1 border-t-2 border-dashed border-border" />
+                            <button type="button" onClick={() => { const gid = insertSjGroupBefore(group.groupId); focusSjInput(gid); }} title={`Sisipkan Surat Jalan sebelum nomor ${gIdx + 1}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-border bg-card px-3 py-1 text-[11px] font-black text-muted-foreground hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
 
                               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                               Tambah Surat Jalan di sini
                             </button>
-                            <div className="h-px flex-1 border-t-2 border-dashed border-gray-300" />
+                            <div className="h-px flex-1 border-t-2 border-dashed border-border" />
                           </div>
                         )}
-                    <div key={group.groupId} id={`sj-group-${gIdx}`} className={`rounded-2xl border bg-card overflow-hidden shadow-sm scroll-mt-2 ${errorSJGroupIndex === gIdx ? 'border-red-300 ring-2 ring-red-200' : 'border-gray-300'}`}>
+                    <div key={group.groupId} id={`sj-group-${gIdx}`} className={`rounded-2xl border bg-card overflow-hidden shadow-sm scroll-mt-2 ${errorSJGroupIndex === gIdx ? 'border-red-300 ring-2 ring-red-200' : 'border-border'}`}>
                       <div className={`h-1 bg-linear-to-r ${accent.bar}`} aria-hidden="true" />
-                      <div className="sticky top-0 z-10 flex items-center gap-3 px-4 sm:px-5 py-4 bg-card border-b border-gray-100">
+                      <div className="sticky top-0 z-10 flex items-center gap-3 px-4 sm:px-5 py-4 bg-card border-b border-border">
                         <div className={`w-8 h-8 rounded-lg ${accent.solid} text-white flex items-center justify-center text-xs font-black shadow-sm shrink-0`} aria-hidden="true">
                           {gIdx + 1}
                         </div>
                         <div className="flex-1 min-w-0">
                           <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1" htmlFor={`nomor-surat-jalan-${gIdx}`}>Nomor Surat Jalan <span className="text-red-400">*</span></label>
-                          <input id={`nomor-surat-jalan-${gIdx}`} type="text" data-sj-group-id={group.groupId} value={group.sj} onChange={(e) => updateSjNumber(group.groupId, e.target.value)} onBlur={(e) => commitSjNumber(group.groupId, e.target.value)} placeholder="Contoh: SJ-2025-0001" className={`w-full rounded-xl border px-3 py-2 font-mono text-sm font-bold text-gray-800 placeholder:text-gray-300 transition-colors focus:outline-none focus:ring-4 bg-card ${errorSJGroupIndex === gIdx ? 'border-red-400 focus:border-red-400 focus:ring-red-50' : 'border-slate-300 focus:border-primary-400 focus:ring-brand-wash'}`} />
+                          <input id={`nomor-surat-jalan-${gIdx}`} type="text" data-sj-group-id={group.groupId} value={group.sj} onChange={(e) => updateSjNumber(group.groupId, e.target.value)} onBlur={(e) => commitSjNumber(group.groupId, e.target.value)} placeholder="Contoh: SJ-2025-0001" className={`w-full rounded-xl border px-3 py-2 font-mono text-sm font-bold text-foreground placeholder:text-gray-300 transition-colors focus:outline-none focus:ring-4 bg-card ${errorSJGroupIndex === gIdx ? 'border-red-400 focus:border-red-400 focus:ring-red-50' : 'border-border focus:border-primary-400 focus:ring-brand-wash'}`} />
 
                         </div>
                         <span className={`inline-flex items-center rounded-full ${accent.soft} ${accent.text} px-2.5 py-1 text-[11px] font-bold whitespace-nowrap shrink-0`}>{group.indices.length} pekerja</span>
@@ -2192,7 +2192,7 @@ export default function BiayaThlPage() {
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                         </button>
                       </div>
-                      <div className="flex items-center gap-2 border-b border-gray-100 bg-card px-4 sm:px-5 py-1.5" aria-hidden="true">
+                      <div className="flex items-center gap-2 border-b border-border bg-card px-4 sm:px-5 py-1.5" aria-hidden="true">
                         <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100">
                           <div className={`h-1 rounded-full bg-linear-to-r ${accent.bar} transition-all`} style={{ width: `${group.indices.length === 0 ? 0 : Math.round((readyCount / group.indices.length) * 100)}%` }} />
                         </div>
@@ -2200,14 +2200,14 @@ export default function BiayaThlPage() {
                       </div>
 <div className="p-3 sm:p-4 space-y-2">
                         {isGudangGroup(group.groupId) && (
-                          <div id={`sj-vehicle-${group.groupId}`} className={`rounded-2xl border bg-card overflow-hidden shadow-sm scroll-mt-2 ${(sjVehicle[group.groupId] ?? []).length > 0 ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-300'}`}>
+                          <div id={`sj-vehicle-${group.groupId}`} className={`rounded-2xl border bg-card overflow-hidden shadow-sm scroll-mt-2 ${(sjVehicle[group.groupId] ?? []).length > 0 ? 'border-amber-300 ring-1 ring-amber-200' : 'border-border'}`}>
                             <div className="flex items-center justify-between px-4 py-3.5 sm:px-5">
                               <div className="flex items-center gap-3">
                                 <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${(sjVehicle[group.groupId] ?? []).length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
                                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
                                 </span>
                                 <span className="flex-1 min-w-0">
-                                  <span className="block text-sm font-black text-slate-900">Kendaraan tambahan <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">opsional</span></span>
+                                  <span className="block text-sm font-black text-foreground">Kendaraan tambahan <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">opsional</span></span>
                                   <span className="block text-[11px] text-muted-foreground">Hanya jika 1 kru membongkar 2+ kendaraan — boleh dikosongkan</span>
                                 </span>
                               </div>
@@ -2248,21 +2248,21 @@ export default function BiayaThlPage() {
                             <Fragment key={idx}>
                               {rowNum > 1 && (
                                 <div className="flex items-center gap-3 py-1">
-                                  <div className="h-px flex-1 border-t-2 border-dashed border-gray-300" />
-                                  <button type="button" onClick={() => insertDetailBefore(group.groupId, idx)} title={`Sisipkan pekerja sebelum nomor ${rowNum}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-card px-3 py-1 text-[11px] font-black text-muted-foreground hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
+                                  <div className="h-px flex-1 border-t-2 border-dashed border-border" />
+                                  <button type="button" onClick={() => insertDetailBefore(group.groupId, idx)} title={`Sisipkan pekerja sebelum nomor ${rowNum}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-border bg-card px-3 py-1 text-[11px] font-black text-muted-foreground hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                                     Sisipkan di sini
                                   </button>
-                                  <div className="h-px flex-1 border-t-2 border-dashed border-gray-300" />
+                                  <div className="h-px flex-1 border-t-2 border-dashed border-border" />
                                 </div>
                               )}
-                            <div id={`worker-card-${idx}`} className={`rounded-2xl border bg-card overflow-hidden shadow-sm scroll-mt-2 ${showIncompleteOnly && isDetailReady(detail) ? 'hidden' : ''} ${errorWorkerIndex === idx ? 'border-red-300 ring-2 ring-red-200' : 'border-slate-300'}`}>
-                              <div className="flex items-center gap-3 border-b border-slate-100 bg-overlay-70 px-4 py-4 sm:px-5">
+                            <div id={`worker-card-${idx}`} className={`rounded-2xl border bg-card overflow-hidden shadow-sm scroll-mt-2 ${showIncompleteOnly && isDetailReady(detail) ? 'hidden' : ''} ${errorWorkerIndex === idx ? 'border-red-300 ring-2 ring-red-200' : 'border-border'}`}>
+                              <div className="flex items-center gap-3 border-b border-border bg-overlay-70 px-4 py-4 sm:px-5">
                                 <div className={`w-9 h-9 rounded-xl ${accent.solid} flex items-center justify-center text-xs font-black text-white shadow-sm shrink-0`}>
                                   {rowNum}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-black text-slate-900 truncate">
+                                  <span className="text-sm font-black text-foreground truncate">
                                     {detail.nama_thl || `Data pekerja ${rowNum}`}
                                     {(() => {
                                       const nm = detail.nama_thl.trim().toLowerCase();
@@ -2301,7 +2301,7 @@ export default function BiayaThlPage() {
                               </div>
                               {!collapsedCards.has(idx) && (
                               <>
-                              <nav aria-label="Lompat ke bagian" className="flex flex-wrap gap-1.5 border-b border-slate-100 bg-card px-4 py-2 sm:px-5">
+                              <nav aria-label="Lompat ke bagian" className="flex flex-wrap gap-1.5 border-b border-border bg-card px-4 py-2 sm:px-5">
                                 {[
                                   ['Data', `wp-${idx}-data`],
                                   ['Kendaraan', `wp-${idx}-kendaraan`],
@@ -2309,7 +2309,7 @@ export default function BiayaThlPage() {
                                   ['Jam', `wp-${idx}-jam`],
                                   ['Foto', `wp-${idx}-foto`],
                                 ].map(([label, href]) => (
-                                  <a key={href} href={`#${href}`} className="rounded-full border border-slate-300 bg-popover px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:border-primary-300 hover:text-accent-text transition-colors">
+                                  <a key={href} href={`#${href}`} className="rounded-full border border-border bg-popover px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:border-primary-300 hover:text-accent-text transition-colors">
                                     {label}
                                   </a>
                                 ))}
@@ -2322,7 +2322,7 @@ export default function BiayaThlPage() {
                                     <div className="w-7 h-7 rounded-lg bg-chip-primary border border-chip-primary-border flex items-center justify-center shrink-0">
                                       <svg className="w-3.5 h-3.5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
                                     </div>
-                                    <h4 id={`wp-${idx}-data`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Data Pekerja</h4>
+                                    <h4 id={`wp-${idx}-data`} className="text-[11px] font-black text-foreground uppercase tracking-wider scroll-mt-2">Data Pekerja</h4>
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
@@ -2369,7 +2369,7 @@ export default function BiayaThlPage() {
                     <div className="w-7 h-7 rounded-lg bg-chip-primary border border-chip-primary-border flex items-center justify-center shrink-0">
                       <svg className="w-3.5 h-3.5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
                     </div>
-                    <h4 id={`wp-${idx}-kendaraan`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Kendaraan</h4>
+                    <h4 id={`wp-${idx}-kendaraan`} className="text-[11px] font-black text-foreground uppercase tracking-wider scroll-mt-2">Kendaraan</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 <div>
@@ -2404,7 +2404,7 @@ export default function BiayaThlPage() {
                                     <div className="w-7 h-7 rounded-lg bg-chip-primary border border-chip-primary-border flex items-center justify-center shrink-0">
                                       <svg className="w-3.5 h-3.5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
                                     </div>
-                                    <h4 id={`wp-${idx}-biaya`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Biaya & Muatan</h4>
+                                    <h4 id={`wp-${idx}-biaya`} className="text-[11px] font-black text-foreground uppercase tracking-wider scroll-mt-2">Biaya & Muatan</h4>
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     <div>
@@ -2437,7 +2437,7 @@ export default function BiayaThlPage() {
                                       <div className="w-7 h-7 rounded-lg bg-chip-primary border border-chip-primary-border flex items-center justify-center shrink-0">
                                         <svg className="w-3.5 h-3.5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                       </div>
-                                      <h4 id={`wp-${idx}-jam`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Jam Kerja</h4>
+                                      <h4 id={`wp-${idx}-jam`} className="text-[11px] font-black text-foreground uppercase tracking-wider scroll-mt-2">Jam Kerja</h4>
                                     </div>
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                       <div>
@@ -2456,18 +2456,18 @@ export default function BiayaThlPage() {
                                   </div>
 
                                 {/* Foto */}
-                                <div className="pt-1 border-t border-slate-100">
+                                <div className="pt-1 border-t border-border">
                                   <div className="flex items-center gap-2 mb-3">
                                     <div className="w-7 h-7 rounded-lg bg-chip-primary border border-chip-primary-border flex items-center justify-center shrink-0">
                                       <svg className="w-3.5 h-3.5 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
                                     </div>
-                                    <h4 id={`wp-${idx}-foto`} className="text-[11px] font-black text-gray-600 uppercase tracking-wider scroll-mt-2">Foto Bukti <span className="text-red-400">*</span></h4>
+                                    <h4 id={`wp-${idx}-foto`} className="text-[11px] font-black text-foreground uppercase tracking-wider scroll-mt-2">Foto Bukti <span className="text-red-400">*</span></h4>
                                     <span className={`ml-auto text-[10px] font-black rounded-full px-2 py-0.5 ${detail.photos.length === 0 ? 'text-red-600 bg-red-100' : 'text-gray-400 bg-gray-100'}`}>{detail.photos.length}/{MAX_PHOTOS_PER_DETAIL}</span>
                                   </div>
                                   <div className="flex items-start gap-3">
                                     {detail.photos.length > 0 && (
                                       <div className="relative w-24 h-24 shrink-0">
-                                        <div className="w-full h-full rounded-xl border-2 border-gray-300 bg-gray-100 overflow-hidden">
+                                        <div className="w-full h-full rounded-xl border-2 border-border bg-gray-100 overflow-hidden">
                                           <DetailPhotoThumb photo={detail.photos[0]} />
                                         </div>
                                         <button type="button" onClick={() => removeDetailPhoto(idx, 0)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors" title="Hapus foto" aria-label="Hapus foto">
@@ -2476,7 +2476,7 @@ export default function BiayaThlPage() {
                                       </div>
                                     )}
                                     <label className="block cursor-pointer grow">
-                                      <div className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-center transition-colors ${detail.photos.length > 0 ? 'border-primary-300 bg-chip-primary/40 hover:bg-chip-primary' : 'border-gray-300 bg-popover hover:border-primary-300 hover:bg-chip-primary/50'}`}>
+                                      <div className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-center transition-colors ${detail.photos.length > 0 ? 'border-primary-300 bg-chip-primary/40 hover:bg-chip-primary' : 'border-border bg-popover hover:border-primary-300 hover:bg-chip-primary/50'}`}>
                                         <svg className={`w-5 h-5 ${detail.photos.length > 0 ? 'text-primary-400' : 'text-gray-400'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                                         <span className="text-xs font-bold text-muted-foreground">{detail.photos.length > 0 ? 'Ganti foto' : 'Upload foto bukti *'}</span>
                                       </div>
@@ -2530,7 +2530,7 @@ export default function BiayaThlPage() {
                 </div>
               )}
               {formData.details.length > 0 && (
-                <p className="rounded-xl bg-popover border border-slate-300 px-4 py-3 text-xs text-muted-foreground">Gunakan tombol <span className="font-bold text-slate-700">Lanjut ke Review</span> di bawah dialog untuk melanjutkan.</p>
+                <p className="rounded-xl bg-popover border border-border px-4 py-3 text-xs text-muted-foreground">Gunakan tombol <span className="font-bold text-foreground">Lanjut ke Review</span> di bawah dialog untuk melanjutkan.</p>
               )}
             </div>
           )}
@@ -2539,18 +2539,18 @@ export default function BiayaThlPage() {
           {formStep === 3 && (
             <div className="space-y-5">
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-sm font-black text-gray-800">Ringkasan Pengajuan</h3>
+                <h3 className="text-sm font-black text-foreground">Ringkasan Pengajuan</h3>
                 <span className="text-[11px] font-bold text-gray-400">Langkah 3 • periksa total sebelum dikirim</span>
               </div>
 
-              <div className={`rounded-2xl p-5 transition-all ${isRfahRequired ? 'bg-linear-to-br from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-300 shadow-lg shadow-amber-100/50' : 'bg-popover border border-gray-300'}`}>
+              <div className={`rounded-2xl p-5 transition-all ${isRfahRequired ? 'bg-linear-to-br from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-300 shadow-lg shadow-amber-100/50' : 'bg-popover border border-border'}`}>
                 <div className="flex items-center gap-4">
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isRfahRequired ? 'bg-amber-100 text-amber-600' : 'bg-gray-200 text-muted-foreground'}`}>
                     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659 1.171-1.671a4.5 4.5 0 015.07-1.651 3 3 0 011.482 5.369L12 12" /></svg>
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Pengajuan</p>
-                    <p className="text-3xl font-black text-gray-900 tabular-nums mt-1">{formatCurrency(totalNominal)}</p>
+                    <p className="text-3xl font-black text-foreground tabular-nums mt-1">{formatCurrency(totalNominal)}</p>
                     <p className="text-xs text-gray-400 mt-1">{formData.details.length} pekerja · {totalKubikasi > 0 ? `${totalKubikasi} m³` : 'tanpa kubikasi'}</p>
                   </div>
                 </div>
@@ -2568,7 +2568,7 @@ export default function BiayaThlPage() {
                 )}
               </div>
 
-              <div className="rounded-xl bg-card border border-gray-100 p-4 space-y-2">
+              <div className="rounded-xl bg-card border border-border p-4 space-y-2">
                 <h4 className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-3">Detail Pekerja</h4>
                 {(['THL GUDANG', 'THL HELPER', 'THL DRIVER'] as const).map((pos) => {
                   const rows = formData.details
@@ -2584,7 +2584,7 @@ export default function BiayaThlPage() {
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : 'bg-amber-50 text-amber-700 border-amber-200';
                   return (
-                    <div key={pos} className="rounded-xl border border-slate-300 overflow-hidden">
+                    <div key={pos} className="rounded-xl border border-border overflow-hidden">
                       <button
                         type="button"
                         onClick={() => toggleReviewGroup(pos)}
@@ -2594,12 +2594,12 @@ export default function BiayaThlPage() {
                       >
                         <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-lg border px-1.5 text-[11px] font-black ${badge}`}>{rows.length}</span>
                         <span className="flex-1 min-w-0">
-                          <span className="block text-xs font-black text-slate-800">{pos}</span>
+                          <span className="block text-xs font-black text-foreground">{pos}</span>
                           <span className="block truncate text-[10px] text-slate-400">
                             {rows.length} pekerja{ kubikasi > 0 ? ` · ${kubikasi} m³` : ''}
                           </span>
                         </span>
-                        <span className="text-xs font-black tabular-nums text-slate-800">{formatCurrency(subtotal)}</span>
+                        <span className="text-xs font-black tabular-nums text-foreground">{formatCurrency(subtotal)}</span>
                         <svg className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                       </button>
                       {open && (
@@ -2618,7 +2618,7 @@ export default function BiayaThlPage() {
                             <div key={i} className="flex items-center gap-3 py-2">
                               <span className="w-6 h-6 rounded-md bg-chip-primary text-accent-text flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
                               <div className="flex-1 min-w-0">
-                                <span className="text-sm font-bold text-gray-800 block truncate">{d.nama_thl || `Pekerja ${i + 1}`}</span>
+                                <span className="text-sm font-bold text-foreground block truncate">{d.nama_thl || `Pekerja ${i + 1}`}</span>
                                 <span className="text-[11px] text-gray-400 block truncate">{d.nopol_kendaraan} · {d.no_surat_jalan || '—'}</span>
                                 {extras.map((v, vi) => (
                                   <span key={vi} className="mt-0.5 mr-1 inline-flex items-center rounded-md bg-amber-50 border border-amber-200 px-1.5 py-px text-[10px] font-bold text-amber-700">+ Kendaraan ke-{vi + 2} ({v.nopol || '?'} · {v.sj || 'SJ?'})</span>
@@ -2627,7 +2627,7 @@ export default function BiayaThlPage() {
                                   <span className="mt-0.5 inline-flex items-center rounded-md bg-amber-50 border border-amber-200 px-1.5 py-px text-[10px] font-bold text-amber-700">+ Kendaraan ke-2 ({d.kendaraan_sj || 'SJ?'})</span>
                                 ) : null}
                               </div>
-                              <span className="text-xs font-bold text-gray-600 tabular-nums">{formatCurrency(Number(d.nominal_biaya))}</span>
+                              <span className="text-xs font-bold text-foreground tabular-nums">{formatCurrency(Number(d.nominal_biaya))}</span>
                             </div>
                             );
                           })}
@@ -2701,23 +2701,23 @@ export default function BiayaThlPage() {
 
               {/* Info ringkas */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl bg-card border border-gray-100 shadow-sm p-4">
+                <div className="rounded-xl bg-card border border-border shadow-sm p-4">
                   <div className="flex items-center gap-2">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tanggal Pengajuan</span>
                   </div>
-                  <p className="text-sm font-bold text-slate-800 mt-2.5">{formatDate(viewItem.tanggal_pengajuan)}</p>
+                  <p className="text-sm font-bold text-foreground mt-2.5">{formatDate(viewItem.tanggal_pengajuan)}</p>
                 </div>
-                <div className="rounded-xl bg-card border border-gray-100 shadow-sm p-4">
+                <div className="rounded-xl bg-card border border-border shadow-sm p-4">
                   <div className="flex items-center gap-2">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">No Surat Jalan</span>
                   </div>
-                  <div className="mt-2.5 space-y-0.5 text-sm font-bold font-mono text-slate-800">
+                  <div className="mt-2.5 space-y-0.5 text-sm font-bold font-mono text-foreground">
                     {[...new Set((viewItem.details || []).flatMap((d: DetailRow) => [
                       ...(d.no_surat_jalan || '').split(/[,;\n]+/),
                       ...(d.kendaraan_sj || '').split(/[,;\n]+/),
@@ -2753,14 +2753,14 @@ export default function BiayaThlPage() {
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
                     </span>
                     <div>
-                      <h3 className="text-sm font-black text-slate-800">Daftar Pekerja</h3>
+                      <h3 className="text-sm font-black text-foreground">Daftar Pekerja</h3>
                       <p className="text-[11px] text-slate-400">Per baris surat jalan dengan bukti foto</p>
                     </div>
                     <span className="ml-auto inline-flex items-center rounded-full bg-chip-primary border border-chip-primary-border px-2.5 py-0.5 text-[11px] font-bold text-accent-text">
                       {groupWorkersBySuratJalan(viewItem.details).length} SJ · {viewItem.details.length} pekerja
                     </span>
                   </div>
-                  <div className="overflow-x-auto rounded-2xl border border-slate-300 shadow-sm">
+                  <div className="overflow-x-auto rounded-2xl border border-border shadow-sm">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-popover">
@@ -2780,7 +2780,7 @@ export default function BiayaThlPage() {
                               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-muted-foreground mx-auto">{i + 1}</span>
                             </td>
                             <td className="table-cell font-mono">
-                              <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">{group.no_surat_jalan}</span>
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-foreground">{group.no_surat_jalan}</span>
                               {group.extras.map((v, vi) => v.sj.trim() ? (
                                 <span key={`s-${v.sj}-${vi}`} className="mt-0.5 block w-fit rounded-md bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">+{v.sj}</span>
                               ) : null)}
@@ -2790,7 +2790,7 @@ export default function BiayaThlPage() {
                                 {group.workers.map((worker, workerIndex) => (
                                   <div key={`${worker.nama_thl}-${workerIndex}`} className="flex items-center gap-2">
                                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-chip-primary text-[10px] font-black text-accent-text">{worker.nama_thl.slice(0, 1).toUpperCase()}</span>
-                                    <span className="font-semibold text-slate-800">{worker.nama_thl}</span>
+                                    <span className="font-semibold text-foreground">{worker.nama_thl}</span>
                                   </div>
                                 ))}
                               </div>
@@ -2806,7 +2806,7 @@ export default function BiayaThlPage() {
                               <div className="space-y-1">
                                 {group.workers.map((worker, workerIndex) => (
                                   <div key={`${worker.nopol_kendaraan}-${workerIndex}`} className="space-y-0.5">
-                                    <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium font-mono text-slate-700">{worker.nopol_kendaraan}</span>
+                                    <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium font-mono text-foreground">{worker.nopol_kendaraan}</span>
                                     <span className="block text-[10px] text-slate-400">{worker.type_kendaraan}</span>
                                   </div>
                                 ))}
@@ -2826,14 +2826,14 @@ export default function BiayaThlPage() {
                                   return (
                                     <div key={`foto-${workerIndex}`} className="flex justify-center">
                                       {src ? (
-                                        <a href={src} target="_blank" rel={AUTHENTICATED_FILE_REL} title="Lihat foto bukti" className="group relative block h-10 w-10 overflow-hidden rounded-lg border border-slate-300 bg-slate-100 shadow-sm hover:ring-2 hover:ring-primary-400 transition-all">
+                                        <a href={src} target="_blank" rel={AUTHENTICATED_FILE_REL} title="Lihat foto bukti" className="group relative block h-10 w-10 overflow-hidden rounded-lg border border-border bg-slate-100 shadow-sm hover:ring-2 hover:ring-primary-400 transition-all">
                                           <Image src={src} alt={`Foto ${worker.nama_thl}`} className="h-full w-full object-cover" width={40} height={40} unoptimized />
                                           {worker.photos.length > 1 && (
                                             <span className="absolute -right-0.5 -bottom-0.5 rounded-md bg-ink-900/90 px-1 text-[9px] font-bold text-white">+{worker.photos.length - 1}</span>
                                           )}
                                         </a>
                                       ) : (
-                                        <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-300">
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-border text-slate-300">
                                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25z" /></svg>
                                         </span>
                                       )}
@@ -2845,9 +2845,9 @@ export default function BiayaThlPage() {
                             <td className="table-cell text-right">
                               <div className="space-y-1">
                                 {group.workers.map((worker, workerIndex) => (
-                                  <div key={`${worker.nominal_biaya}-${workerIndex}`} className="font-bold text-slate-800 tabular-nums">{formatCurrency(worker.nominal_biaya)}</div>
+                                  <div key={`${worker.nominal_biaya}-${workerIndex}`} className="font-bold text-foreground tabular-nums">{formatCurrency(worker.nominal_biaya)}</div>
                                 ))}
-                                <div className="border-t border-slate-300 pt-1 text-[11px] font-black text-slate-600">Total {formatCurrency(group.nominal_biaya)}</div>
+                                <div className="border-t border-border pt-1 text-[11px] font-black text-foreground">Total {formatCurrency(group.nominal_biaya)}</div>
                               </div>
                             </td>
                           </tr>
@@ -2859,7 +2859,7 @@ export default function BiayaThlPage() {
               )}
 
               {/* Status footer */}
-              <div className="rounded-2xl border border-slate-300 bg-overlay-70 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="rounded-2xl border border-border bg-overlay-70 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-xs font-semibold text-muted-foreground">Status pengajuan</p>
                   {badge(viewItem.status, viewItem)}
               </div>
@@ -2898,7 +2898,7 @@ export default function BiayaThlPage() {
         >
           {decision && (
             <div className="space-y-4">
-              <div className="rounded-xl overflow-hidden border border-slate-300">
+              <div className="rounded-xl overflow-hidden border border-border">
                 <div className="bg-ink-900 px-4 py-3 text-white flex items-center gap-2.5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/10 text-primary-300">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659 1.171-1.671a4.5 4.5 0 0 1 5.07-1.651 3 3 0 0 1 1.482 5.369L12 12" /></svg>
@@ -2912,11 +2912,11 @@ export default function BiayaThlPage() {
                 <div className="divide-y divide-slate-100 bg-card text-sm">
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <span className="text-muted-foreground">Depo</span>
-                    <span className="font-semibold text-slate-800 font-mono">{decision.item.nama_depo}</span>
+                    <span className="font-semibold text-foreground font-mono">{decision.item.nama_depo}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <span className="text-muted-foreground">Total Biaya</span>
-                    <span className="font-black text-slate-800 tabular-nums">{formatCurrency(decision.item.nominal_biaya)}</span>
+                    <span className="font-black text-foreground tabular-nums">{formatCurrency(decision.item.nominal_biaya)}</span>
                   </div>
                   {decision.item.is_rfah_required && (
                     <div className="flex items-center justify-between gap-3 px-4 py-2.5">
@@ -2929,7 +2929,7 @@ export default function BiayaThlPage() {
 
               {decision.action === 'reject' ? (
                 <div>
-                  <label htmlFor="reject-reason" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  <label htmlFor="reject-reason" className="block text-xs font-semibold text-foreground mb-1.5">
                     Alasan penolakan <span className="text-red-500">*</span>
                   </label>
                   <textarea
@@ -2939,12 +2939,12 @@ export default function BiayaThlPage() {
                     rows={4}
                     disabled={decisionBusy}
                     placeholder="Jelaskan alasan pengajuan ditolak (wajib)"
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/60 focus:border-red-400 resize-none"
+                    className="w-full rounded-xl border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/60 focus:border-red-400 resize-none"
                   />
                 </div>
               ) : decision.action === 'revise' ? (
                 <div>
-                  <label htmlFor="revise-reason" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  <label htmlFor="revise-reason" className="block text-xs font-semibold text-foreground mb-1.5">
                     Catatan revisi <span className="text-orange-500">*</span>
                   </label>
                   <textarea
@@ -2954,12 +2954,12 @@ export default function BiayaThlPage() {
                     rows={4}
                     disabled={decisionBusy}
                     placeholder="Jelaskan apa yang harus diperbaiki pengaju (wajib)"
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:border-orange-400 resize-none"
+                    className="w-full rounded-xl border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:border-orange-400 resize-none"
                   />
                   <p className="mt-1.5 text-xs text-slate-400">Pengajuan akan dikembalikan ke pengaju dengan status <strong className="text-orange-600">Revisi</strong>. Pengaju dapat memperbaiki lalu mengirim ulang.</p>
                 </div>
               ) : (
-                <p className="text-sm text-slate-600 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+                <p className="text-sm text-foreground rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5">
                   {decision.item.is_rfah_required ? (
                     <>Pengajuan ini akan <strong className="text-emerald-700">disetujui RLH</strong> lalu diteruskan ke tahap <strong className="text-amber-700">RFAH</strong>.</>
                   ) : (

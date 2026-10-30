@@ -34,7 +34,7 @@ type LiveResponse = { data?: { data?: LivePayload } };
 
 const METHOD_TONES: Record<string, string> = {
   LOGIN: 'bg-emerald-50 text-emerald-700',
-  LOGOUT: 'bg-slate-100 text-slate-600',
+  LOGOUT: 'bg-slate-100 text-foreground',
   GET: 'bg-sky-50 text-sky-700',
   POST: 'bg-indigo-50 text-indigo-700',
   PUT: 'bg-amber-50 text-amber-700',
@@ -53,7 +53,7 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 function methodTone(method: string): string {
-  return METHOD_TONES[method.toUpperCase()] ?? 'bg-popover text-gray-600';
+  return METHOD_TONES[method.toUpperCase()] ?? 'bg-popover text-foreground';
 }
 
 function methodLabel(method: string): string {
@@ -175,7 +175,7 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
       title="Aktivitas Real-time"
       subtitle={
         <>
-          <span className="inline-flex items-center gap-1.5 font-semibold text-gray-600">
+          <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
             <span aria-hidden="true" className={`h-2 w-2 rounded-full ${connectionDot}`} />
             {connectionLabel}
           </span>
@@ -196,7 +196,7 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
           onClick={() => load(true)}
           disabled={loading}
           aria-label="Muat ulang aktivitas real-time"
-          className="flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-foreground disabled:opacity-50"
         >
           <svg className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -229,7 +229,7 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
 
       {!loading && !error && events.length === 0 && (
         <div className="flex flex-col items-center justify-center px-5 py-12 text-center">
-          <p className="text-sm font-semibold text-gray-700">Belum ada aktivitas terbaru</p>
+          <p className="text-sm font-semibold text-foreground">Belum ada aktivitas terbaru</p>
           <p className="mt-1 max-w-xs text-xs text-gray-400">
             Aktivitas pengguna akan muncul di sini saat mereka membuka menu atau memproses data.
           </p>
@@ -255,12 +255,12 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm leading-5 text-gray-800">
+                  <p className="text-sm leading-5 text-foreground">
                     <span className="font-semibold">{event.user_name}</span>{' '}
-                    <span className="text-gray-600">{event.action}</span>
+                    <span className="text-foreground">{event.action}</span>
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-400">
-                    <span className="rounded-full bg-popover px-2 py-0.5 font-semibold text-gray-600">
+                    <span className="rounded-full bg-popover px-2 py-0.5 font-semibold text-foreground">
                       {event.module}
                     </span>
                     <span>{event.level}</span>
@@ -288,7 +288,7 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
             ))}
           </ul>
 
-          <div className="border-t border-gray-100 px-5 py-2.5 text-[11px] text-gray-400">
+          <div className="border-t border-border px-5 py-2.5 text-[11px] text-gray-400">
             Menampilkan maksimal {MAX_EVENTS} aktivitas terbaru dari pengguna operasional.
           </div>
         </>

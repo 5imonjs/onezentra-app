@@ -67,7 +67,7 @@ describe('palette families are registered in @theme', () => {
   // warna yang TIDAK terdaftar di sana (mis. `green`) diam-diam jatuh ke palet
   // default Tailwind: nilainya hex/oklch statis yang tidak bergerak saat ganti
   // tema. Digabung ramp netral yang membalik, hasilnya teks terang di atas
-  // latar terang — toast sukses `bg-green-50` + `text-gray-700` hanya 1.18:1
+  // latar terang — toast sukses `bg-green-50` + `text-foreground` hanya 1.18:1
   // di dark tapi 9.89:1 di light, jadi temanya gelap saja yang rusak dan
   // penyebabnya tak terlihat kalau hanya salah satu tema yang dicek.
   const registered = new Set([...css.matchAll(/--color-([a-z]+)-\d+:/g)].map((m) => m[1]));

@@ -131,7 +131,7 @@ const fnum = (v: number) => v.toLocaleString('id-ID');
 
 function badge(status?: string | null) {
   const s = status || '-';
-  const meta = STATUS_META[s] || { label: s, badge: 'bg-popover text-gray-600', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-gray-600' };
+  const meta = STATUS_META[s] || { label: s, badge: 'bg-popover text-foreground', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-foreground' };
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
@@ -175,27 +175,27 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
         </div>
       </td>
       <td className="px-5 py-3 min-w-50 max-w-80">
-        <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
+        <span className="block font-mono text-sm font-medium text-foreground">{w.kode_barang}</span>
         <span className="block text-xs text-muted-foreground line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
       </td>
-      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.nama_depo || w.kode_depo || '-'}</td>
       <td className="px-5 py-3 whitespace-nowrap">{sourceBadge(w.source_mix)}</td>
-      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_1 || '-'}</td>
-      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.principal_2 || '-'}</td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.principal_1 || '-'}</td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.principal_2 || '-'}</td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
-        <span className="text-sm font-semibold tabular-nums text-slate-800">{fnum(num(w.qty_ini_crt))}</span>
+        <span className="text-sm font-semibold tabular-nums text-foreground">{fnum(num(w.qty_ini_crt))}</span>
         {num(w.qty_koreksi_crt) !== 0 && (
           <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_crt)}</span>
         )}
       </td>
       <td className="px-5 py-3 text-right whitespace-nowrap">
-        <span className="text-sm tabular-nums text-slate-600">{fnum(num(w.qty_ini_pcs))}</span>
+        <span className="text-sm tabular-nums text-foreground">{fnum(num(w.qty_ini_pcs))}</span>
         {num(w.qty_koreksi_pcs) !== 0 && (
           <span className="block text-[11px] text-blue-600 tabular-nums">koreksi {num(w.qty_koreksi_pcs)}</span>
         )}
       </td>
-      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-700">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
-      <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-700">{fmtDate(w.expired_date_ini)}</td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</td>
+      <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{fmtDate(w.expired_date_ini)}</td>
       <td className="px-5 py-3 whitespace-nowrap">
         <div className="flex items-center gap-2">
           <DaysBar sisaHari={w.sisa_hari} maxHari={maxHari} status={w.status_ini} />
@@ -207,7 +207,7 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
       <td className="px-5 py-3 text-right whitespace-nowrap">
         <button
           onClick={() => onOpen(w)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-foreground hover:bg-slate-200 hover:text-foreground transition-colors"
         >
           Detail
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -236,7 +236,7 @@ function sourceBadge(mix?: { sj: number; import: number } | null) {
   }
   if (imp > 0) {
     return (
-      <span title={`${imp} baris import`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600 whitespace-nowrap">Import</span>
+      <span title={`${imp} baris import`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-foreground whitespace-nowrap">Import</span>
     );
   }
   if (sj > 0) {
@@ -263,7 +263,7 @@ function SortHeader({ label, sortKey, sort, onSort, align = 'left' }: {
       type="button"
       onClick={() => onSort(sortKey)}
       aria-label={`Urutkan ${label} ${active && sort.dir === 'asc' ? 'menurun' : 'menaik'}`}
-      className={`inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[11px] transition-colors hover:text-slate-800 ${active ? 'text-slate-800' : 'text-muted-foreground'} ${align === 'right' ? 'flex-row-reverse' : ''}`}
+      className={`inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[11px] transition-colors hover:text-foreground ${active ? 'text-foreground' : 'text-muted-foreground'} ${align === 'right' ? 'flex-row-reverse' : ''}`}
     >
       <span>{label}</span>
       <span aria-hidden="true" className={`text-[10px] leading-none ${active ? 'text-primary-500' : 'text-slate-300'}`}>
@@ -652,16 +652,16 @@ export default function OpnameExpiredPage() {
         </div>
 
         {/* KPI strip */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
+        <div className="bg-card rounded-2xl shadow-sm border border-border px-5 py-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-x-4 gap-y-4">
             <div className="px-2 py-1">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>
+                  <svg className="w-5 h-5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Total Batch</p>
-                  <p className="text-2xl font-bold text-slate-800 tabular-nums mt-1">{fnum(totalBatch)}</p>
+                  <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{fnum(totalBatch)}</p>
                 </div>
               </div>
               <p className="text-[11px] text-slate-400 tabular-nums mt-0.5 truncate">{weekStart ? `${new Date(weekStart).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - ${weekEndLabel(weekStart)} ${new Date(weekStart).getFullYear()}` : '—'}</p>
@@ -699,7 +699,7 @@ export default function OpnameExpiredPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">CRT Berisiko</p>
-                  <p className="text-2xl font-bold tabular-nums mt-1 text-slate-800">{fnum(berisikoCrt)}</p>
+                  <p className="text-2xl font-bold tabular-nums mt-1 text-foreground">{fnum(berisikoCrt)}</p>
                 </div>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5 truncate">Expired + Kritis + Perhatian</p>
@@ -715,9 +715,9 @@ export default function OpnameExpiredPage() {
           </div>
         )}
         {depoProgress !== null && depoProgress.length > 0 && (
-          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 px-5 py-4">
+          <div className="bg-card rounded-2xl shadow-sm border border-border px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h2 className="text-sm font-bold text-slate-800">
+              <h2 className="text-sm font-bold text-foreground">
                 Progres Depo
                 <span className="ml-2 font-medium text-slate-400">
                   {depoProgress.filter((d) => d.submitted).length}/{depoProgress.length} sudah kirim
@@ -739,10 +739,10 @@ export default function OpnameExpiredPage() {
               {depoProgress.map((d) => {
                 const pct = d.total > 0 ? Math.round((d.validated / d.total) * 100) : 100;
                 return (
-                  <div key={d.kode_depo} className="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2">
+                  <div key={d.kode_depo} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${d.submitted ? 'bg-emerald-500' : 'bg-amber-500'}`} aria-hidden="true" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-700 truncate">{d.nama_depo || d.kode_depo}</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{d.nama_depo || d.kode_depo}</p>
                       <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
                         <div className={`h-full rounded-full ${d.submitted ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
                       </div>
@@ -756,9 +756,9 @@ export default function OpnameExpiredPage() {
         )}
 
         {/* Filter + Tabs + Table */}
-        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           {/* Toolbar: week + search */}
-          <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-gray-100">
+          <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-border">
             <label htmlFor="week-start" className="flex items-center gap-2">
               <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</span>
               <select id="week-start" value={weekStart} onChange={(e) => { setWeekStart(e.target.value); setPage(1); }} className="select-field-sm min-w-[210px]">
@@ -810,7 +810,7 @@ export default function OpnameExpiredPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex flex-wrap items-center gap-1 border-b border-gray-100 px-2 py-2">
+          <div className="flex flex-wrap items-center gap-1 border-b border-border px-2 py-2">
             <div className="flex flex-wrap items-center gap-1" role="tablist" ref={tablistRef} onKeyDown={handleTabKeyDown}>
               {tabList.map((tab) => {
                 const active = tabKey === tab.key;
@@ -826,7 +826,7 @@ export default function OpnameExpiredPage() {
                     aria-selected={active}
                     aria-controls="opname-table-panel"
                     id={`tab-${tab.key}`}
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${active ? 'bg-ink-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${active ? 'bg-ink-900 text-white shadow' : 'text-foreground hover:bg-slate-100'}`}
                   >
                     {tab.label}
                     <span className={`px-1.5 py-0.5 rounded-md text-[11px] tabular-nums ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-muted-foreground'}`}>
@@ -933,7 +933,7 @@ export default function OpnameExpiredPage() {
                 </div>
                 {hasSearch ? (
                   <>
-                    <p className="text-sm font-medium text-slate-600">Tidak ada hasil untuk &quot;{searchApply}&quot;</p>
+                    <p className="text-sm font-medium text-foreground">Tidak ada hasil untuk &quot;{searchApply}&quot;</p>
                     <p className="text-xs text-slate-400">Coba kata kunci lain atau hapus pencarian.</p>
                     <button type="button" onClick={() => { setSearchApply(''); setPage(1); }} className="btn-secondary text-xs">Hapus pencarian</button>
                   </>
@@ -953,7 +953,7 @@ export default function OpnameExpiredPage() {
                 <table className="w-full min-w-[1040px] border-collapse">
                   <caption className="sr-only">Daftar opname expired</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-300 bg-popover">
+                    <tr className="border-b border-border bg-popover">
                       {hasPermission('opname.delete') && (
                         <th scope="col" className="px-3 py-3 w-10">
                           <input
@@ -1008,7 +1008,7 @@ export default function OpnameExpiredPage() {
                     <div key={w.id} className="flex flex-col gap-3 p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate font-mono text-sm font-bold text-slate-800">{w.kode_barang}</p>
+                          <p className="truncate font-mono text-sm font-bold text-foreground">{w.kode_barang}</p>
                           <p className="mt-0.5 line-clamp-1 wrap-break-word text-xs text-muted-foreground" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -1021,32 +1021,32 @@ export default function OpnameExpiredPage() {
                           <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                           {w.nama_depo || w.kode_depo || '-'}
                         </span>
-                        <span className="tabular-nums text-slate-700"><span className="text-slate-400">CRT/Ball:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt))}</span></span>
-                        <span className="tabular-nums text-slate-700"><span className="text-slate-400">PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs))}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">CRT/Ball:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt))}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs))}</span></span>
                         {sourceBadge(w.source_mix)}
-                        <span className="tabular-nums text-slate-700"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
-                        <span className="tabular-nums text-slate-700"><span className="text-slate-400">Principal 1:</span> <span className="font-semibold">{w.principal_1 || '-'}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 1:</span> <span className="font-semibold">{w.principal_1 || '-'}</span></span>
                         {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi CRT {num(w.qty_koreksi_crt)}</span>}
                         {num(w.qty_koreksi_pcs) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi PCS {num(w.qty_koreksi_pcs)}</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded-lg bg-popover px-2.5 py-2">
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Penerimaan</p>
-                          <p className="mt-0.5 font-medium text-slate-700">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</p>
+                          <p className="mt-0.5 font-medium text-foreground">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</p>
                         </div>
                         <div className="rounded-lg bg-popover px-2.5 py-2">
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Expired</p>
-                          <p className="mt-0.5 font-medium text-slate-700">{fmtDate(w.expired_date_ini)}</p>
+                          <p className="mt-0.5 font-medium text-foreground">{fmtDate(w.expired_date_ini)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <DaysBar sisaHari={w.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={w.status_ini} />
                         <span title={`${w.sisa_hari} hari`} className={`whitespace-nowrap text-sm font-bold tabular-nums ${meta.text}`}>{formatDurationId(w.sisa_hari)}</span>
                       </div>
-                      <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
+                      <div className="flex items-center gap-2 border-t border-border pt-3">
                         <button
                           onClick={() => openItem(w)}
-                          className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-800"
+                          className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-slate-200 hover:text-foreground"
                         >
                           Detail
                           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -1068,7 +1068,7 @@ export default function OpnameExpiredPage() {
               </div>
 
               {pagination && pagination.total > ITEMS_PER_PAGE && (
-                <div className="border-t border-gray-100 bg-overlay-50 px-5 py-4">
+                <div className="border-t border-border bg-overlay-50 px-5 py-4">
                   <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
                   <p className="text-xs text-muted-foreground tabular-nums">
                     Menampilkan {pagination.from ?? 0}–{pagination.to ?? 0} dari {pagination.total} baris
@@ -1077,16 +1077,16 @@ export default function OpnameExpiredPage() {
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={pagination.current_page <= 1}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-foreground hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       aria-label="Halaman sebelumnya"
                     >
                       Sebelumnya
                     </button>
-                    <span className="text-xs text-slate-600 tabular-nums">Hal {pagination.current_page} / {pagination.last_page}</span>
+                    <span className="text-xs text-foreground tabular-nums">Hal {pagination.current_page} / {pagination.last_page}</span>
                     <button
                       onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
                       disabled={pagination.current_page >= pagination.last_page}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-foreground hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       aria-label="Halaman berikutnya"
                     >
                       Berikutnya
@@ -1111,15 +1111,15 @@ export default function OpnameExpiredPage() {
           {current && (
             <>
               {/* Drawer header */}
-              <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+              <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-base font-bold text-slate-800 truncate">{current.nama_barang || current.kode_barang}</h2>
+                    <h2 className="text-base font-bold text-foreground truncate">{current.nama_barang || current.kode_barang}</h2>
                     {badge(current.status_ini)}
                   </div>
                   <p className="font-mono text-xs text-slate-400 mt-0.5">{current.kode_barang}</p>
                 </div>
-                <button onClick={() => setSelectedId(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Tutup detail">
+                <button onClick={() => setSelectedId(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-foreground hover:bg-slate-100 transition-colors" aria-label="Tutup detail">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
@@ -1129,7 +1129,7 @@ export default function OpnameExpiredPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-popover rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qty Minggu Ini</p>
-                    <p className="text-lg font-bold text-slate-800 tabular-nums mt-1">{fnum(num(current.qty_ini_crt))} CRT</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums mt-1">{fnum(num(current.qty_ini_crt))} CRT</p>
                     {num(current.qty_ini_pcs) > 0 && <p className="text-xs text-muted-foreground tabular-nums">{fnum(num(current.qty_ini_pcs))} PCS</p>}
                     {num(current.qty_koreksi_crt) !== 0 && (
                       <p className="text-[11px] text-blue-600 tabular-nums mt-0.5">koreksi {num(current.qty_koreksi_crt)} CRT / {num(current.qty_koreksi_pcs)} PCS</p>
@@ -1137,7 +1137,7 @@ export default function OpnameExpiredPage() {
                   </div>
                   <div className="bg-popover rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Expired Date</p>
-                    <p className="text-lg font-bold text-slate-800 mt-1">{fmtDate(current.expired_date_ini)}</p>
+                    <p className="text-lg font-bold text-foreground mt-1">{fmtDate(current.expired_date_ini)}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <DaysBar sisaHari={current.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={current.status_ini} />
                       <span title={`${current.sisa_hari} hari`} className={`text-xs font-bold tabular-nums ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).text}`}>{formatDurationId(current.sisa_hari)}</span>
@@ -1145,22 +1145,22 @@ export default function OpnameExpiredPage() {
                   </div>
                   <div className="bg-popover rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Depo</p>
-                    <p className="text-sm font-semibold text-slate-800 mt-1">{current.nama_depo || current.kode_depo || '-'}</p>
+                    <p className="text-sm font-semibold text-foreground mt-1">{current.nama_depo || current.kode_depo || '-'}</p>
                   </div>
                   <div className="bg-popover rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber Material</p>
-                    <p className="text-sm font-semibold text-slate-800 mt-1 wrap-break-word">{current.sumber_material || '-'}</p>
+                    <p className="text-sm font-semibold text-foreground mt-1 wrap-break-word">{current.sumber_material || '-'}</p>
                   </div>
                 </div>
 
                 {/* Rekomendasi */}
                 <div className={`rounded-xl border px-4 py-3 ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).badge}`}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rekomendasi</p>
-                  <p className="text-sm text-slate-800 mt-0.5 leading-snug">{current.rekomendasi || '-'}</p>
+                  <p className="text-sm text-foreground mt-0.5 leading-snug">{current.rekomendasi || '-'}</p>
                 </div>
 
                 {/* Batch penyusun: jejak identitas tiap baris ledger agregat ini */}
-                <div className="rounded-xl border border-gray-300 px-4 py-3">
+                <div className="rounded-xl border border-border px-4 py-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Batch Penyusun ({(current.batch_numbers || []).length}) · Sumber: {num(current.source_mix?.sj) > 0 && num(current.source_mix?.import) > 0
                       ? `Campuran (${current.source_mix?.sj} SJ + ${current.source_mix?.import} import)`
@@ -1169,7 +1169,7 @@ export default function OpnameExpiredPage() {
                   {(current.batch_numbers || []).length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {(current.batch_numbers || []).map((b) => (
-                        <span key={b} className="font-mono text-xs px-2 py-0.5 rounded-md bg-popover text-slate-700">{b}</span>
+                        <span key={b} className="font-mono text-xs px-2 py-0.5 rounded-md bg-popover text-foreground">{b}</span>
                       ))}
                     </div>
                   ) : (
@@ -1180,7 +1180,7 @@ export default function OpnameExpiredPage() {
                 {/* Perbandingan mingguan */}
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Perbandingan Minggu</h3>
-                  <div className="rounded-xl border border-gray-300 overflow-hidden">
+                  <div className="rounded-xl border border-border overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-popover text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1192,12 +1192,12 @@ export default function OpnameExpiredPage() {
                       <tbody className="divide-y divide-gray-100">
                         <tr>
                           <td className="px-3 py-2 text-muted-foreground text-xs">Qty (CRT / PCS)</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-slate-700">{fnum(num(current.qty_ini_crt))} / {fnum(num(current.qty_ini_pcs))}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-foreground">{fnum(num(current.qty_ini_crt))} / {fnum(num(current.qty_ini_pcs))}</td>
                           <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{num(current.qty_lalu_crt) > 0 || num(current.qty_lalu_pcs) > 0 ? `${fnum(num(current.qty_lalu_crt))} / ${fnum(num(current.qty_lalu_pcs))}` : '—'}</td>
                         </tr>
                         <tr>
                           <td className="px-3 py-2 text-muted-foreground text-xs">Expired Date</td>
-                          <td className="px-3 py-2 text-right text-slate-700">{fmtDate(current.expired_date_ini)}</td>
+                          <td className="px-3 py-2 text-right text-foreground">{fmtDate(current.expired_date_ini)}</td>
                           <td className="px-3 py-2 text-right text-muted-foreground">{fmtDate(current.expired_date_lalu)}</td>
                         </tr>
                         <tr>
@@ -1207,13 +1207,13 @@ export default function OpnameExpiredPage() {
                         </tr>
                         <tr>
                           <td className="px-3 py-2 text-muted-foreground text-xs">Selisih Expired</td>
-                          <td colSpan={2} className="px-3 py-2 text-right tabular-nums text-slate-700">
+                          <td colSpan={2} className="px-3 py-2 text-right tabular-nums text-foreground">
                             {current.selisih_expired_date === null ? '—' : `${current.selisih_expired_date > 0 ? '+' : ''}${current.selisih_expired_date} hari`}
                           </td>
                         </tr>
                         <tr>
                           <td className="px-3 py-2 text-muted-foreground text-xs font-semibold">Perubahan</td>
-                          <td colSpan={2} className="px-3 py-2 text-right text-slate-700 font-medium">{current.perubahan || '—'}</td>
+                          <td colSpan={2} className="px-3 py-2 text-right text-foreground font-medium">{current.perubahan || '—'}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1223,31 +1223,31 @@ export default function OpnameExpiredPage() {
                 {/* Validasi info */}
                 {current.validated_at && (
                   <div className="text-xs text-muted-foreground bg-popover rounded-xl px-3 py-2.5">
-                    <span className="font-semibold text-slate-700">Divalidasi:</span> oleh {current.validator?.full_name || '-'} · {fmtDate(current.validated_at)}
+                    <span className="font-semibold text-foreground">Divalidasi:</span> oleh {current.validator?.full_name || '-'} · {fmtDate(current.validated_at)}
                   </div>
                 )}
               </div>
 
               {/* Drawer footer */}
-              <div className="px-5 py-3 border-t border-slate-100 flex items-center gap-2">
+              <div className="px-5 py-3 border-t border-border flex items-center gap-2">
                 <button
                   onClick={() => navNext(-1)}
                   disabled={currentIndex <= 0}
-                  className="p-2.5 rounded-xl border border-gray-300 text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label="Batch sebelumnya"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                 </button>
                 <button
                   onClick={() => setSelectedId(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 text-xs font-semibold text-foreground hover:bg-slate-200 transition-colors"
                 >
                   Tutup
                 </button>
                 <button
                   onClick={() => navNext(1)}
                   disabled={currentIndex >= waves.length - 1}
-                  className="p-2.5 rounded-xl border border-gray-300 text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label="Batch berikutnya"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
