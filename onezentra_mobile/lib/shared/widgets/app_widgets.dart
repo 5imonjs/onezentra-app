@@ -71,7 +71,7 @@ class AppTextField extends StatelessWidget {
             label!,
             style: theme.textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppTheme.gray700,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
             ),
           ),
           const SizedBox(height: AppTheme.space2),
@@ -100,7 +100,7 @@ class AppTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, size: 20, color: AppTheme.gray400)
+                ? Icon(prefixIcon, size: 20, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400)
                 : null,
             suffixIcon: suffixIcon,
             counterText: '',
@@ -135,10 +135,10 @@ class AppTextField extends StatelessWidget {
               borderSide: BorderSide(color: AppTheme.gray200),
             ),
             labelStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.gray600,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
             ),
             hintStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.gray400,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
             ),
             errorStyle: theme.textTheme.bodySmall?.copyWith(
               color: AppTheme.danger,
@@ -538,7 +538,7 @@ class AppStatTile extends StatelessWidget {
                 style: GoogleFonts.roboto(
                   fontSize: 10.5,
                   height: 1.2,
-                  color: AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                 ),
               ),
             ),
@@ -601,7 +601,7 @@ class AppLoadingOverlay extends StatelessWidget {
                       message!,
                       style: Theme.of(
                         context,
-                      ).textTheme.bodyMedium?.copyWith(color: AppTheme.gray600),
+                      ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -731,7 +731,7 @@ class AppEmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                 ),
                 textAlign: TextAlign.center,
               ),

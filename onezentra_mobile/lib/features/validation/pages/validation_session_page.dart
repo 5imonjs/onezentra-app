@@ -216,7 +216,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.8,
-                    color: AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                   ),
                 ),
               ),
@@ -281,7 +281,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 ].join(' • '),
                 style: GoogleFonts.roboto(
                   fontSize: 10.5,
-                  color: AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                 ),
               ),
             ),
@@ -588,7 +588,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 12.5,
               height: 1.4,
-              color: AppTheme.gray700,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
             ),
           ),
         ),
@@ -709,7 +709,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         ' • ${ValidationItemStatus.label(item.status)}',
                         style: GoogleFonts.robotoMono(
                           fontSize: 11,
-                          color: AppTheme.gray400.withValues(
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400.withValues(
                             alpha: locked ? 0.6 : 1.0,
                           ),
                         ),
@@ -882,7 +882,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   height: 1.4,
-                  color: AppTheme.gray600,
+                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
                 ),
               ),
               if (item.standarisasi?.status == 'pending') ...[
@@ -1000,7 +1000,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11,
                       height: 1.4,
-                      color: AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                 ],
@@ -1105,7 +1105,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 11.5,
               height: 1.4,
-              color: AppTheme.gray400,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
             ),
           ),
           const SizedBox(height: 4),
@@ -1729,7 +1729,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
-                color: AppTheme.gray600,
+                color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
               ),
             ),
             if (mismatches.isNotEmpty) ...[
@@ -1752,7 +1752,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.roboto(
                 fontSize: 12.5,
                 height: 1.4,
-                color: AppTheme.gray500,
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
               ),
             ),
           ],
@@ -2062,7 +2062,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   '${item.satuan != null ? ' ${item.satuan}' : ''}',
                   style: GoogleFonts.robotoMono(
                     fontSize: 12,
-                    color: AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: AppTheme.space4),
@@ -2142,7 +2142,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                     style: GoogleFonts.roboto(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.gray600,
+                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
                     ),
                   ),
                   iconColor: AppTheme.gray500,
@@ -2448,7 +2448,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.4,
-                  color: AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                 ),
               ),
               const SizedBox(height: AppTheme.space4),
@@ -2506,7 +2506,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                     'Tidak ada di master NPN — isi kode & nama manual di bawah.',
                     style: GoogleFonts.roboto(
                       fontSize: 12,
-                      color: AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                 ),
@@ -2572,7 +2572,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 'Kondisi',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.gray700,
+                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
                 ),
               ),
               const SizedBox(height: AppTheme.space2),
@@ -2691,7 +2691,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 '${_npn!.satuan != null ? ' • Satuan ${_npn!.satuan}' : ''}',
                 style: GoogleFonts.robotoMono(
                   fontSize: 11.5,
-                  color: AppTheme.gray600,
+                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
                 ),
               ),
             ],
@@ -2700,7 +2700,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
         IconButton(
           tooltip: 'Ganti barang',
           icon: const Icon(Icons.close_rounded, size: 18),
-          color: AppTheme.gray500,
+          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           onPressed: _saving
               ? null
               : () => setState(() {
@@ -2884,16 +2884,16 @@ class _NpnSuggestionTile extends StatelessWidget {
                     product.kodeBarang!,
                     style: GoogleFonts.robotoMono(
                       fontSize: 11,
-                      color: AppTheme.gray600,
+                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
                     ),
                   ),
               ],
             ),
           ),
-          const Icon(
+          Icon(
             Icons.chevron_right_rounded,
             size: 18,
-            color: AppTheme.gray500,
+            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           ),
         ],
       ),
@@ -2999,7 +2999,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                             item.namaBarang ?? item.kodeBarang ?? 'Produk',
                             style: GoogleFonts.robotoMono(
                               fontSize: 12,
-                              color: AppTheme.gray500,
+                              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -3009,7 +3009,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                               'NPN: #${item.npnId}',
                               style: GoogleFonts.robotoMono(
                                 fontSize: 11,
-                                color: AppTheme.gray400,
+                                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                               ),
                             ),
                         ],
@@ -3045,7 +3045,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                     style: GoogleFonts.roboto(
                       fontSize: 12.5,
                       height: 1.4,
-                      color: AppTheme.gray600,
+                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
                     ),
                   ),
                   const SizedBox(height: AppTheme.space4),

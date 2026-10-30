@@ -69,7 +69,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                       '${validation.total} sesi tercatat',
                       style: GoogleFonts.roboto(
                         fontSize: 11,
-                        color: AppTheme.gray400,
+                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                       ),
                     ),
                   ],
@@ -176,7 +176,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                     'Halaman ${validation.currentPage}/${validation.lastPage}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                   const SizedBox(width: AppTheme.space2),
@@ -253,7 +253,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: 1),
@@ -268,7 +268,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 10.5,
-                    color: AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
               ],

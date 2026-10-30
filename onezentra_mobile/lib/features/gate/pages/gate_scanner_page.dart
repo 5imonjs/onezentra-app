@@ -124,7 +124,7 @@ class _GateScannerPageState extends State<GateScannerPage> {
           Icon(
             denied ? Icons.no_photography_rounded : Icons.videocam_off_rounded,
             size: 56,
-            color: AppTheme.gray500,
+            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           ),
           const SizedBox(height: AppTheme.space4),
           Text(

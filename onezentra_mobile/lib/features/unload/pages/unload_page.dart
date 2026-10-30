@@ -191,7 +191,7 @@ class _UnloadPageState extends State<UnloadPage> {
           style: GoogleFonts.roboto(
             fontSize: 12,
             height: 1.4,
-            color: AppTheme.gray500,
+            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           ),
         ),
         const SizedBox(height: AppTheme.space4),
@@ -314,7 +314,7 @@ class _UnloadPageState extends State<UnloadPage> {
             style: GoogleFonts.roboto(
               fontSize: 12.5,
               height: 1.4,
-              color: AppTheme.gray700,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
             ),
           ),
         ),
@@ -347,7 +347,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     '${unload.activeTotal} receiving aktif',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                 ],
@@ -409,7 +409,7 @@ class _UnloadPageState extends State<UnloadPage> {
                 '${unload.activePage}/${unload.activeLastPage}',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                 ),
               ),
               const SizedBox(width: AppTheme.space2),
@@ -475,7 +475,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     '${session.driverName ?? '-'} • ${session.nopol ?? '-'}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                 ],
@@ -535,7 +535,7 @@ class _UnloadPageState extends State<UnloadPage> {
                   'Progres bongkar',
                   style: GoogleFonts.roboto(
                     fontSize: 12,
-                    color: AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                   ),
                 ),
               ),
@@ -661,7 +661,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.8,
-                    color: AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                   ),
                 ),
               ),
@@ -860,7 +860,7 @@ class _UnloadPageState extends State<UnloadPage> {
                               '${line.satuan != null ? ' ${line.satuan}' : ''}',
                     style: GoogleFonts.robotoMono(
                       fontSize: 11,
-                      color: AppTheme.gray400,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                     ),
                   ),
                 ],
@@ -961,7 +961,7 @@ class _UnloadPageState extends State<UnloadPage> {
           Text(
             'Pindai dulu minimal 1 produk — tombol aktif otomatis.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.roboto(fontSize: 11.5, color: AppTheme.gray400),
+            style: GoogleFonts.roboto(fontSize: 11.5, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400),
           ),
         ],
       ],
@@ -994,7 +994,7 @@ class _UnloadPageState extends State<UnloadPage> {
           style: GoogleFonts.roboto(
             fontSize: 13,
             height: 1.4,
-            color: AppTheme.gray600,
+            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
           ),
         ),
         actions: [
@@ -1037,7 +1037,7 @@ class _UnloadPageState extends State<UnloadPage> {
           style: GoogleFonts.roboto(
             fontSize: 13,
             height: 1.4,
-            color: AppTheme.gray600,
+            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray600,
           ),
         ),
         actions: [
@@ -1306,7 +1306,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
                   '${line.satuan != null ? ' ${line.satuan}' : ''}',
                   style: GoogleFonts.robotoMono(
                     fontSize: 12,
-                    color: AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: AppTheme.space4),
@@ -1334,7 +1334,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
                   'Kondisi',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.gray700,
+                    color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
                   ),
                 ),
                 const SizedBox(height: AppTheme.space2),

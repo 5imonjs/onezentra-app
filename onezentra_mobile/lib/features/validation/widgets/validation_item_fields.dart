@@ -265,7 +265,7 @@ class _PhotoEvidenceFieldState extends State<PhotoEvidenceField> {
                   'Pratinjau tidak tersedia',
                   style: GoogleFonts.roboto(
                     fontSize: 12,
-                    color: AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
               ),

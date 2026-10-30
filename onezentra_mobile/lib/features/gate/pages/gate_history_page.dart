@@ -172,7 +172,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     'Nopol / PO / nama driver',
                     style: GoogleFonts.roboto(
                       fontSize: 11,
-                      color: AppTheme.gray400,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                     ),
                   ),
                 ],
@@ -231,7 +231,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     '${gate.total} transaksi tercatat',
                     style: GoogleFonts.roboto(
                       fontSize: 11,
-                      color: AppTheme.gray400,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                     ),
                   ),
                 ],
@@ -326,7 +326,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     'Halaman ${gate.currentPage}/${gate.lastPage}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                   const SizedBox(width: AppTheme.space2),
@@ -391,7 +391,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -404,7 +404,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.robotoMono(
                           fontSize: 11,
-                          color: AppTheme.gray400,
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                         ),
                       ),
                     ),

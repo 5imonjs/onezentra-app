@@ -197,7 +197,7 @@ class _InboundPageState extends State<InboundPage> {
                 '${inbound.total} penerimaan tercatat',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                 ),
               ),
             ],
@@ -312,7 +312,7 @@ class _InboundPageState extends State<InboundPage> {
                     'Halaman ${inbound.currentPage}/${inbound.lastPage}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                     ),
                   ),
                   const SizedBox(width: AppTheme.space2),
@@ -349,10 +349,10 @@ class _InboundPageState extends State<InboundPage> {
               color: AppTheme.gray100,
               borderRadius: AppTheme.radiusLg,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.inventory_2_rounded,
               size: 18,
-              color: AppTheme.gray500,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
             ),
           ),
           const SizedBox(width: AppTheme.space3),
@@ -389,7 +389,7 @@ class _InboundPageState extends State<InboundPage> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -398,7 +398,7 @@ class _InboundPageState extends State<InboundPage> {
                   ' / ${_formatQty(receiving.totalExpectedQty)}',
                   style: GoogleFonts.robotoMono(
                     fontSize: 11,
-                    color: AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                   ),
                 ),
               ],
@@ -485,7 +485,7 @@ class _InboundPageState extends State<InboundPage> {
                 '${receiving.nopol ?? '-'} • ${receiving.driverName ?? '-'}',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: AppTheme.gray400,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                 ),
               ),
               const SizedBox(height: AppTheme.space3),
@@ -541,7 +541,7 @@ class _InboundPageState extends State<InboundPage> {
                   'Tidak ada rincian item.',
                   style: GoogleFonts.roboto(
                     fontSize: 12.5,
-                    color: AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                   ),
                 )
               else ...[
@@ -608,7 +608,7 @@ class _InboundPageState extends State<InboundPage> {
                 '${item.satuan != null ? ' ${item.satuan}' : ''}',
                 style: GoogleFonts.robotoMono(
                   fontSize: 11,
-                  color: AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
                 ),
               ),
               // Same story as the selisih email: signed difference, the
@@ -633,7 +633,7 @@ class _InboundPageState extends State<InboundPage> {
                   ].join(' • '),
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
                   ),
                 ),
             ],
