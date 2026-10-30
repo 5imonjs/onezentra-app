@@ -103,7 +103,7 @@ export default function ApprovalSettingsPage() {
                 { key: 'biaya_thl', label: 'Biaya THL' },
                 { key: 'biaya_retribusi', label: 'Biaya Retribusi' },
               ] as const).map((tab) => (
-                <button key={tab.key} role="tab" aria-selected={module === tab.key} onClick={() => { setModule(tab.key); setSelected({}); setAssignments({}); }} className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${module === tab.key ? 'bg-surface-card text-slate-900 shadow' : 'text-ink-fg-muted hover:text-ink-fg'}`}>
+                <button key={tab.key} role="tab" aria-selected={module === tab.key} onClick={() => { setModule(tab.key); setSelected({}); setAssignments({}); }} className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${module === tab.key ? 'bg-card text-slate-900 shadow' : 'text-ink-fg-muted hover:text-ink-fg'}`}>
                   {tab.label}
                 </button>
               ))}
@@ -111,7 +111,7 @@ export default function ApprovalSettingsPage() {
           </div>
         </header>
 
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
           <div className="border-b border-gray-100 px-5 py-4">
             <p className="text-sm font-semibold text-slate-800">Approver {module === 'biaya_thl' ? 'Biaya THL' : 'Biaya Retribusi'} per depo</p>
             <p className="mt-1 text-xs text-slate-500">Berlaku khusus modul ini — tidak memengaruhi modul lainnya. Nama pada PDF diambil dari akun user aktif yang dipilih di sini.</p>

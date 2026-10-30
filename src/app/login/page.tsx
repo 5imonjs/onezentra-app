@@ -126,7 +126,7 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">ONEZENTRA</h1>
           </div>
 
-          <div className="bg-surface-card rounded-3xl shadow-2xl shadow-black/10 p-8 border border-gray-100">
+          <div className="bg-card rounded-3xl shadow-2xl shadow-black/10 p-8 border border-gray-100">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Hallo, Welcome Back</h2>
               <p className="text-gray-500">Welcome Back to ONEZENTRA</p>

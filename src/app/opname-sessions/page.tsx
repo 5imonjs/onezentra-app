@@ -110,7 +110,7 @@ export default function OpnameSessionsPage() {
           )}
         </div>
 
-        <div className="bg-surface-card rounded-2xl border border-gray-100 p-4 flex flex-wrap items-end gap-3">
+        <div className="bg-card rounded-2xl border border-gray-100 p-4 flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="ss-week" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Minggu</label>
             <input id="ss-week" type="date" value={week} onChange={(e) => setWeek(e.target.value)} className="input-field text-sm" />
@@ -165,12 +165,12 @@ export default function OpnameSessionsPage() {
             <p className="text-xs text-gray-400 mt-1">Buat sesi dari wave Batch Expired, tugaskan ke petugas lapangan.</p>
           </div>
         ) : (
-          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="max-h-[560px] overflow-x-auto overflow-y-auto">
               <table className="w-full min-w-[860px] border-collapse">
                 <caption className="sr-only">Daftar sesi opname</caption>
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-300 bg-surface-raised">
+                  <tr className="border-b border-slate-300 bg-popover">
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Minggu</th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Depo</th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Petugas</th>

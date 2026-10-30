@@ -58,7 +58,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
   }, [firstDay, daysInMonth]);
 
   return (
-    <div className="bg-surface-card rounded-2xl shadow-sm border border-slate-100 p-5 sticky top-6" role="region" aria-label="Kalender pengiriman">
+    <div className="bg-card rounded-2xl shadow-sm border border-slate-100 p-5 sticky top-6" role="region" aria-label="Kalender pengiriman">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2.5">
@@ -142,7 +142,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
                       key={i}
                       className={`w-1 h-1 rounded-full ${
                         isToday(day)
-                          ? 'bg-surface-card'
+                          ? 'bg-card'
                           : event.status === 'DRAFT'
                           ? 'bg-gray-400'
                           : event.status === 'SCHEDULED'
@@ -159,7 +159,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
               )}
               {hasEvents && (
                 <span className={`absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-[1.25rem] px-1 text-[10px] font-bold rounded-full flex items-center justify-center border-2 ${
-                  isToday(day) ? 'bg-surface-card text-accent-text border-chip-primary-border' : 'bg-primary-500 text-white border-white'
+                  isToday(day) ? 'bg-card text-accent-text border-chip-primary-border' : 'bg-primary-500 text-white border-white'
                 }`}>
                   {dayEvents.length}
                 </span>

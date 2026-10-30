@@ -73,7 +73,7 @@ export default function SearchInput({
           className={`input-field pl-10 ${activeFilter && value ? 'pl-28' : activeFilter ? 'pl-24' : ''}`}
         />
         {showDropdown && filters.length > 0 && (
-          <div role="listbox" aria-label="Filter pencarian" className="absolute top-full left-0 mt-1 w-56 bg-surface-card rounded-xl shadow-lg border border-gray-300 py-1 z-50">
+          <div role="listbox" aria-label="Filter pencarian" className="absolute top-full left-0 mt-1 w-56 bg-card rounded-xl shadow-lg border border-gray-300 py-1 z-50">
             <button
               role="option"
               aria-selected={!activeFilter}
@@ -81,7 +81,7 @@ export default function SearchInput({
                 onFilterChange?.('');
                 setShowDropdown(false);
               }}
-              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-surface-raised transition-colors flex items-center gap-2 min-h-10 ${
+              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-popover transition-colors flex items-center gap-2 min-h-10 ${
                 !activeFilter ? 'text-accent-text bg-chip-primary' : 'text-gray-700'
               }`}
             >
@@ -99,7 +99,7 @@ export default function SearchInput({
                   onFilterChange?.(filter.key);
                   setShowDropdown(false);
                 }}
-                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-surface-raised transition-colors flex items-center gap-2 min-h-10 ${
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-popover transition-colors flex items-center gap-2 min-h-10 ${
                   activeFilter === filter.key ? 'text-accent-text bg-chip-primary' : 'text-gray-700'
                 }`}
               >

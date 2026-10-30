@@ -262,7 +262,7 @@ export default function DocksPage() {
         )}
 
         {/* Table Card */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center gap-4">
               <div className="flex-1">
@@ -292,7 +292,7 @@ export default function DocksPage() {
             <table className="w-full border-collapse">
               <caption className="sr-only">Daftar dock</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-surface-raised border-b border-slate-300">
+                <tr className="bg-popover border-b border-slate-300">
                   <th scope="col" className="table-header">Nama</th>
                   <th scope="col" className="table-header">Kode</th>
                   <th scope="col" className="table-header">Depo</th>

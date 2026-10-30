@@ -53,7 +53,7 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 function methodTone(method: string): string {
-  return METHOD_TONES[method.toUpperCase()] ?? 'bg-surface-raised text-gray-600';
+  return METHOD_TONES[method.toUpperCase()] ?? 'bg-popover text-gray-600';
 }
 
 function methodLabel(method: string): string {
@@ -208,10 +208,10 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
         <div className="space-y-3 p-5" aria-label="Memuat aktivitas real-time">
           {[0, 1, 2, 3, 4].map((row) => (
             <div key={row} className="flex items-center gap-3">
-              <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-surface-raised" />
+              <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-popover" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 w-2/3 animate-pulse rounded bg-surface-raised" />
-                <div className="h-2.5 w-1/2 animate-pulse rounded bg-surface-raised" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-popover" />
+                <div className="h-2.5 w-1/2 animate-pulse rounded bg-popover" />
               </div>
             </div>
           ))}
@@ -246,7 +246,7 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
 
           <ul className="max-h-[30rem] divide-y divide-gray-100 overflow-y-auto" aria-label="Daftar aktivitas real-time">
             {events.map((event) => (
-              <li key={event.id} className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-surface-raised">
+              <li key={event.id} className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-popover">
                 <span
                   aria-hidden="true"
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-linear-to-br from-primary-500 to-primary-600 text-xs font-bold text-white"
@@ -260,7 +260,7 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
                     <span className="text-gray-600">{event.action}</span>
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-400">
-                    <span className="rounded-full bg-surface-raised px-2 py-0.5 font-semibold text-gray-600">
+                    <span className="rounded-full bg-popover px-2 py-0.5 font-semibold text-gray-600">
                       {event.module}
                     </span>
                     <span>{event.level}</span>

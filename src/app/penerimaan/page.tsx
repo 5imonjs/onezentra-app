@@ -418,7 +418,7 @@ export default function PenerimaanPage() {
         </header>
 
         {/* Worklist table */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <SearchInput
@@ -435,7 +435,7 @@ export default function PenerimaanPage() {
                     id="penerimaan-depo"
                     value={kodeDepo}
                     onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
-                    className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-surface-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
+                    className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
                   >
                     <option value="">Semua Depo</option>
                     {depots.map((d) => (
@@ -484,7 +484,7 @@ export default function PenerimaanPage() {
               <div className="hidden overflow-x-auto p-5 md:block">
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={'skel-' + i} className="animate-pulse rounded-xl border border-gray-100 bg-surface-card p-4">
+                    <div key={'skel-' + i} className="animate-pulse rounded-xl border border-gray-100 bg-card p-4">
                       <div className="h-4 w-1/3 rounded bg-gray-100" />
                       <div className="mt-3 h-3 w-2/3 rounded bg-gray-100" />
                       <div className="mt-2 h-3 w-1/2 rounded bg-gray-100" />
@@ -494,7 +494,7 @@ export default function PenerimaanPage() {
               </div>
               <div className="space-y-3 p-5 md:hidden">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={'skel-m-' + i} className="animate-pulse rounded-2xl border border-slate-100 bg-surface-card p-4 shadow-sm">
+                  <div key={'skel-m-' + i} className="animate-pulse rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">
                     <div className="h-4 w-32 rounded bg-slate-100" />
                     <div className="mt-3 h-3 w-48 rounded bg-slate-100" />
                     <div className="mt-2 h-3 w-40 rounded bg-slate-100" />
@@ -539,7 +539,7 @@ export default function PenerimaanPage() {
                 <table className="w-full min-w-230 border-collapse">
                   <caption className="sr-only">Daftar penerimaan barang</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-300 bg-surface-raised">
+                    <tr className="border-b border-slate-300 bg-popover">
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode Barang</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Barang</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Qty CRT</th>
@@ -653,7 +653,7 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
        {isOpen && group.items.map((item, itemIndex) => {
          const cf = (item as ReceivingItem & { resolvedConversionFactor: number | null }).resolvedConversionFactor;
          return (
-           <tr key={item.id} className={`transition-colors hover:bg-chip-primary/30 ${itemIndex % 2 === 0 ? 'bg-surface-card' : 'bg-overlay-30'}`}>
+           <tr key={item.id} className={`transition-colors hover:bg-chip-primary/30 ${itemIndex % 2 === 0 ? 'bg-card' : 'bg-overlay-30'}`}>
              <td className="px-5 py-3 whitespace-nowrap"><span className="font-mono text-sm font-medium text-gray-800">{item.kode_barang}</span></td>
              <td className="px-5 py-3 min-w-60 max-w-85">
                <span className="block line-clamp-2 wrap-break-word text-sm text-gray-700" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
@@ -695,7 +695,7 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
   num: (v: unknown) => number;
 }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-surface-card shadow-sm transition-colors ${isOpen ? 'border-chip-primary-border' : 'border-slate-100'}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-card shadow-sm transition-colors ${isOpen ? 'border-chip-primary-border' : 'border-slate-100'}`}>
       <button
         onClick={onToggle}
         tabIndex={0}

@@ -66,7 +66,7 @@ function NotificationLogPanel() {
   if (logs.length === 0 && !filter && !logsError) return null;
 
   return (
-    <div className="bg-surface-card rounded-2xl shadow-sm border border-amber-200 p-6">
+    <div className="bg-card rounded-2xl shadow-sm border border-amber-200 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h3 className="text-base font-bold text-gray-800">Notifikasi Gagal / Terlewat</h3>
         <select value={filter} onChange={(e) => setFilter(e.target.value)} className="input-field text-xs py-1.5" aria-label="Filter status log">
@@ -205,7 +205,7 @@ export default function EmailSettingsPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-base font-bold text-gray-800 mb-1">SMTP Server</h2>
                 <p className="text-xs text-gray-400 mb-5">Atur kredensial server email. Jika &quot;Gunakan .env&quot; aktif, kredensial SMTP diambil dari file .env.</p>
 
@@ -264,7 +264,7 @@ export default function EmailSettingsPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 rounded-xl bg-surface-raised p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-3 rounded-xl bg-popover p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <input type="checkbox" id="from_system_env" checked={form.from_system_env} onChange={(e) => input('from_system_env', e.target.checked)} className="w-4 h-4 accent-primary-600" />
                       <label htmlFor="from_system_env" className="text-sm text-gray-600"><strong>Gunakan kredensial dari .env</strong><br /><span className="text-xs text-gray-400">Mengabaikan host/port/username di atas</span></label>
@@ -279,7 +279,7 @@ export default function EmailSettingsPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-base font-bold text-gray-800 mb-4">Kirim Email Test</h3>
                 <label htmlFor="test-email" className="block text-xs font-medium text-gray-500 mb-1">Alamat Email Test</label>
                 <input id="test-email" type="email" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} disabled={!canEdit} placeholder="alamat@penerima.com" className="input-field text-sm py-2 mb-3" />
@@ -288,7 +288,7 @@ export default function EmailSettingsPage() {
                 </button>
               </div>
 
-              <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-base font-bold text-gray-800 mb-3">Informasi</h3>
                 <ul className="text-xs text-gray-500 space-y-2 list-disc pl-4">
                   <li>Notifikasi dikirim otomatis saat rencana kirim dibuat.</li>

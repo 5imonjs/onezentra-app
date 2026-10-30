@@ -894,7 +894,7 @@ export default function ValidasiSjPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {[
-                { label: 'Hari ini', value: svToday, badge: 'bg-white/20 text-white', dot: 'bg-surface-card' },
+                { label: 'Hari ini', value: svToday, badge: 'bg-white/20 text-white', dot: 'bg-card' },
                 { label: 'Berjalan', value: svInProgress, badge: 'bg-blue-400 text-blue-950', dot: 'bg-blue-400' },
                 { label: 'Selesai', value: svCompleted, badge: 'bg-emerald-400 text-emerald-950', dot: 'bg-emerald-400' },
                 { label: 'Total', value: svTotal, badge: 'bg-white/20 text-white', dot: 'bg-gray-300' },
@@ -913,7 +913,7 @@ export default function ValidasiSjPage() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
           {/* Scan Panel */}
           <div className="xl:col-span-1 space-y-5">
-            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-white shadow-sm">
@@ -929,10 +929,10 @@ export default function ValidasiSjPage() {
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
-                    <input id="validation-code" placeholder="Scan atau ketik PO..." className="input-field pl-9 bg-surface-raised text-sm py-2.5 focus:bg-surface-card" value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && findDocument()} aria-label="Kode validasi" />
+                    <input id="validation-code" placeholder="Scan atau ketik PO..." className="input-field pl-9 bg-popover text-sm py-2.5 focus:bg-card" value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && findDocument()} aria-label="Kode validasi" />
                   </div>
                   <button type="button" onClick={() => findDocument()} disabled={busy || !code.trim()} className="btn-primary text-sm px-4 py-2.5 disabled:opacity-50 shrink-0">{busy ? '...' : 'Cari'}</button>
-                  <button type="button" onClick={() => setShowScanner(true)} aria-label="Buka scanner barcode" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-surface-card px-3 py-2.5 text-slate-700 transition-colors hover:bg-surface-raised shrink-0">
+                  <button type="button" onClick={() => setShowScanner(true)} aria-label="Buka scanner barcode" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-card px-3 py-2.5 text-slate-700 transition-colors hover:bg-popover shrink-0">
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   </button>
                 </div>
@@ -969,7 +969,7 @@ export default function ValidasiSjPage() {
 
             {/* Progress Ring */}
             {svTotal > 0 && (
-              <section className="bg-surface-card rounded-2xl border border-gray-100 shadow-sm p-5">
+              <section className="bg-card rounded-2xl border border-gray-100 shadow-sm p-5">
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Ringkasan Status</h3>
                 <div className="flex items-center gap-4">
                   <div className="relative w-24 h-24 shrink-0 text-gray-300">
@@ -1010,7 +1010,7 @@ export default function ValidasiSjPage() {
 
           {/* Table Section */}
           <div className="xl:col-span-2">
-            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-chip-primary">
@@ -1031,7 +1031,7 @@ export default function ValidasiSjPage() {
                       id="sj-depo"
                       value={kodeDepo}
                       onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
-                      className="w-full appearance-none rounded-xl border border-gray-300 bg-surface-card px-3 pr-9 py-2 text-sm text-gray-900 leading-tight shadow-sm cursor-pointer focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                      className="w-full appearance-none rounded-xl border border-gray-300 bg-card px-3 pr-9 py-2 text-sm text-gray-900 leading-tight shadow-sm cursor-pointer focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                     >
                       <option value="">Semua Depo</option>
                       {depots.map((d) => (
@@ -1048,7 +1048,7 @@ export default function ValidasiSjPage() {
                 <table className="w-full min-w-180 border-collapse">
                   <caption className="sr-only">Daftar validasi dokumen</caption>
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-slate-300 bg-surface-raised">
+                    <tr className="border-b border-slate-300 bg-popover">
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
@@ -1077,7 +1077,7 @@ export default function ValidasiSjPage() {
                         </tr>
                       ))
                     ) : items.map((item, index) => {
-                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-surface-raised', text: 'text-gray-600', dot: 'bg-gray-400' };
+                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-popover', text: 'text-gray-600', dot: 'bg-gray-400' };
                       return (
                         <tr key={item.id} className="transition-colors even:bg-overlay-30 hover:bg-overlay-70">
                           <td className="px-5 py-3 text-center font-mono text-xs text-slate-400">{(page - 1) * 20 + index + 1}</td>
@@ -1106,7 +1106,7 @@ export default function ValidasiSjPage() {
                                   Batalkan
                                 </button>
                               )}
-                              <button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-slate-300 bg-surface-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button>
+                              <button type="button" onClick={() => openDetail(item)} className="inline-flex min-h-8 items-center gap-1 rounded-lg border border-slate-300 bg-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Detail</button>
                             </div>
                           </td>
                         </tr>
@@ -1168,7 +1168,7 @@ export default function ValidasiSjPage() {
                     )}
                   </div>
                 ) : items.map((item) => {
-                  const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-surface-raised', text: 'text-gray-600', dot: 'bg-gray-400' };
+                  const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-popover', text: 'text-gray-600', dot: 'bg-gray-400' };
                   return (
                     <div key={item.id} className="flex flex-col gap-2.5 p-4">
                       <div className="flex items-start justify-between gap-2">
@@ -1184,7 +1184,7 @@ export default function ValidasiSjPage() {
                           <span className="text-slate-300"> • </span>
                           Durasi: <span className="tabular-nums font-semibold text-slate-600">{validationDuration(item, nowIso)}</span>
                         </p>
-                        <button type="button" onClick={() => openDetail(item)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-surface-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-surface-raised">
+                        <button type="button" onClick={() => openDetail(item)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-popover">
                           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                           Detail
                         </button>
@@ -1241,7 +1241,7 @@ export default function ValidasiSjPage() {
             {detailLoading ? (
               <div className="space-y-5 animate-pulse">
                 <div className="rounded-2xl bg-slate-200 h-40" />
-                <div className="rounded-2xl border border-slate-300 bg-surface-card p-5 space-y-4">
+                <div className="rounded-2xl border border-slate-300 bg-card p-5 space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-slate-200" />
                     <div className="space-y-2"><div className="h-4 w-32 rounded bg-slate-200" /><div className="h-3 w-48 rounded bg-slate-200" /></div>
@@ -1327,7 +1327,7 @@ export default function ValidasiSjPage() {
               </div>
             )}
 
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
               <div className="flex flex-col gap-3 border-b border-gray-100 bg-overlay-60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-white shadow-sm">
@@ -1341,7 +1341,7 @@ export default function ValidasiSjPage() {
                 <table className="w-full min-w-[1100px] border-collapse">
                   <caption className="sr-only">Rincian item dan hasil validasi dokumen {active.rencana_kirim?.po_transporter}</caption>
                   <thead>
-                    <tr className="bg-surface-raised border-b border-gray-300">
+                    <tr className="bg-popover border-b border-gray-300">
                       <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode</th>
                       <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Barang</th>
                       <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Plan</th>
@@ -1394,7 +1394,7 @@ export default function ValidasiSjPage() {
                                   type="button"
                                   onClick={() => { void printItemLabel(item, false); }}
                                   title={isLabelPrinted(item, printedLabels) ? `Cetak ulang label ${item.batch.barcode_label}` : `Cetak label ${item.batch.barcode_label} (belum pernah dicetak)`}
-                                  className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isLabelPrinted(item, printedLabels) ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised'}`}
+                                  className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${isLabelPrinted(item, printedLabels) ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-300 bg-card text-slate-600 hover:bg-popover'}`}
                                 >
                                   <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
                                   {isLabelPrinted(item, printedLabels) ? 'Cetak Ulang' : 'Cetak'}
@@ -1413,7 +1413,7 @@ export default function ValidasiSjPage() {
                               </button>
                             ) : (
                               (active.status === 'IN_PROGRESS' || active?.can_correct_completed) ? (
-                                <button type="button" onClick={() => openItem(item)} title="Ubah hasil validasi item ini" className="inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 bg-surface-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-surface-raised">
+                                <button type="button" onClick={() => openItem(item)} title="Ubah hasil validasi item ini" className="inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 bg-card px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-popover">
                                   <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                                   Ubah
                                 </button>
@@ -1448,7 +1448,7 @@ export default function ValidasiSjPage() {
                 diubah oleh catatan ini — planner menerima notifikasi email
                 dan memutuskan tindak lanjutnya (fase approval). */}
             {((active.extra_items?.length ?? 0) > 0 || (active.status === 'IN_PROGRESS' && hasPermission('sj_validation.extra'))) && (
-              <div className="overflow-hidden rounded-2xl border border-amber-200 bg-surface-card shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-amber-200 bg-card shadow-sm">
                 <div className="flex flex-col gap-3 border-b border-amber-100 bg-linear-to-br from-amber-50 to-orange-50/50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600">
@@ -1487,7 +1487,7 @@ export default function ValidasiSjPage() {
                       <li key={extra.id} className="flex flex-col gap-1.5 px-5 py-3 even:bg-overlay-30">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-sm font-bold text-slate-800">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-slate-500">{extra.kode_barang}</span></p>
-                          <button type="button" onClick={() => openExtraItem(extra)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-surface-card px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-surface-raised" title="Ubah catatan luar rencana">Ubah</button>
+                          <button type="button" onClick={() => openExtraItem(extra)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-card px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-popover" title="Ubah catatan luar rencana">Ubah</button>
                         </div>
                           <div className="flex items-center gap-2">
                             <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${extra.condition === 'FISIK_TIDAK_ADA' ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
@@ -1524,7 +1524,7 @@ export default function ValidasiSjPage() {
                               type="button"
                               onClick={() => { void printExtraLabel(extra, false); }}
                               title={extraPrinted ? `Cetak ulang label ${extra.batch?.barcode_label}` : `Cetak label ${extra.batch?.barcode_label} (belum pernah dicetak)`}
-                              className={`inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${extraPrinted ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised'}`}
+                              className={`inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${extraPrinted ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-300 bg-card text-slate-600 hover:bg-popover'}`}
                             >
                               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.4 42.4 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.774-2.034-1.856-2.15M6.34 18H5.25a2.25 2.25 0 0 1-2.25-2.25V9.456c0-1.081.774-2.034 1.856-2.15m5.718 0a42.2 42.2 0 0 1 6.39 0m-6.39 0c-.181-.03-.364-.055-.546-.079m4.852.079c.18-.03.363-.055.545-.078" /></svg>
                               {extraPrinted ? 'Cetak Ulang' : 'Cetak Label'}
@@ -1675,14 +1675,14 @@ export default function ValidasiSjPage() {
                 </div>
                 <div className="flex gap-2">
                   <label className="flex-1 cursor-pointer">
-                    <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-surface-card px-3 py-3 text-center transition-colors hover:bg-amber-50">
+                    <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-card px-3 py-3 text-center transition-colors hover:bg-amber-50">
                       <svg className="w-6 h-6 text-amber-500 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                       <p className="text-[11px] font-bold text-amber-700">Kamera</p>
                     </div>
                     <input type="file" accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhoto(f); setPhotoPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return f ? URL.createObjectURL(f) : ''; }); }} className="sr-only" aria-label="Ambil foto dari kamera" />
                   </label>
                   <label className="flex-1 cursor-pointer">
-                    <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-surface-card px-3 py-3 text-center transition-colors hover:bg-amber-50">
+                    <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-card px-3 py-3 text-center transition-colors hover:bg-amber-50">
                       <svg className="w-6 h-6 text-amber-500 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
                       <p className="text-[11px] font-bold text-amber-700">Galeri</p>
                     </div>
@@ -1690,7 +1690,7 @@ export default function ValidasiSjPage() {
                   </label>
                 </div>
                 {photoPreview && (
-                  <div className="relative rounded-xl overflow-hidden border border-amber-200 bg-surface-card">
+                  <div className="relative rounded-xl overflow-hidden border border-amber-200 bg-card">
                     <Image src={photoPreview} alt="Pratinjau foto kondisi" className="w-full h-48 object-cover" width={400} height={200} unoptimized />
                     <button type="button" onClick={() => { setPhoto(null); setPhotoPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return ''; }); }} className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-colors" aria-label="Hapus foto">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1869,7 +1869,7 @@ export default function ValidasiSjPage() {
       {/* Standar Umur Popup Overlay */}
       {showUmurPopup && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-950/45 p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowUmurPopup(false)}>
-          <div className="flex max-h-[min(680px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-surface-card shadow-2xl animate-slide-up" onClick={(e) => e.stopPropagation()}>
+          <div className="flex max-h-[min(680px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-card shadow-2xl animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="relative overflow-hidden bg-linear-to-br from-ink-900 via-ink-900 to-ink-800 px-5 py-5 text-white">
               <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[20px] border-primary-400/10" aria-hidden="true" />
               <div className="relative flex items-start justify-between gap-4">
@@ -1897,7 +1897,7 @@ export default function ValidasiSjPage() {
                   <div className="mt-2 flex items-baseline gap-1.5"><span className="text-3xl font-black text-slate-900">{standarUmur || '-'}</span><span className="text-xs font-bold text-slate-500">bulan</span></div>
                   <p className="mt-1 text-[11px] text-slate-500">{standarUmur > 0 ? 'Standar minimum dalam bulan' : 'Data tidak tersedia'}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-300 bg-surface-raised p-4">
+                <div className="rounded-2xl border border-slate-300 bg-popover p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tanggal expired</p>
                   <p className="mt-2 text-lg font-black text-slate-900">{formatDateDmy(form.expired_date)}</p>
                   <p className="mt-1 text-[11px] text-slate-500">Tanggal acuan perhitungan</p>
@@ -1925,7 +1925,7 @@ export default function ValidasiSjPage() {
                 )}
               </div>
 
-<div className="rounded-2xl border border-slate-300 bg-surface-card p-4">
+<div className="rounded-2xl border border-slate-300 bg-card p-4">
                   <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400"><span>Perbandingan terhadap standar</span><span>{standarUmur > 0 ? `${umurRatio.toFixed(0)}%` : '-'}</span></div>
                   <div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all duration-700 ${standarUmur <= 0 ? 'bg-slate-400' : sisaUmur.totalDays <= 0 ? 'bg-red-500' : sisaUmur.totalMonths < standarUmur ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${standarUmur > 0 ? umurRatio : 0}%` }} /></div>
                   <div className="mt-2 flex justify-between text-[10px] text-slate-400"><span>0 bulan</span><span>{standarUmur > 0 ? `Standar ${standarUmur} bulan` : 'Data standar tidak tersedia'}</span></div>

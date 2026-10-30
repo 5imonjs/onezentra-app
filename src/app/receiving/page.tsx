@@ -345,7 +345,7 @@ export default function ReceivingPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {[
-                { label: 'Total', value: statusTotals.total, badge: 'bg-white/20 text-white', dot: 'bg-surface-card' },
+                { label: 'Total', value: statusTotals.total, badge: 'bg-white/20 text-white', dot: 'bg-card' },
                 { label: 'Menunggu', value: statusTotals.pending, badge: 'bg-amber-400 text-amber-950', dot: 'bg-amber-400' },
                 { label: 'Diproses', value: statusTotals.inProgress, badge: 'bg-blue-400 text-blue-950', dot: 'bg-blue-400' },
                 { label: 'Selesai', value: statusTotals.completed, badge: 'bg-emerald-400 text-emerald-950', dot: 'bg-emerald-400' },
@@ -361,7 +361,7 @@ export default function ReceivingPage() {
         </header>
 
         {/* Konfirmasi Selesai Bongkar */}
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Konfirmasi Selesai Bongkar</h2>
@@ -377,7 +377,7 @@ export default function ReceivingPage() {
           <div className="p-5">
             {!foundReceiving ? (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-linear-to-br from-slate-50/80 to-brand-wash/40 px-6 py-10 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-card shadow-sm ring-1 ring-slate-200">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-card shadow-sm ring-1 ring-slate-200">
                   <svg className="h-6 w-6 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
                 <h3 className="text-sm font-bold text-slate-800">Belum ada receiving dipilih</h3>
@@ -424,7 +424,7 @@ export default function ReceivingPage() {
                 </div>
                 <div className="relative flex flex-wrap gap-2">
                   {['PENDING', 'IN_PROGRESS'].includes(foundReceiving.status) && canFinish && (
-                    <button onClick={() => setShowFinishConfirm(true)} disabled={scanning} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-surface-card px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50">
+                    <button onClick={() => setShowFinishConfirm(true)} disabled={scanning} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-card px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50">
                       {scanning ? 'Memproses...' : 'Selesai Bongkar'}
                     </button>
                   )}
@@ -453,7 +453,7 @@ export default function ReceivingPage() {
                   </p>
                 </div>
                 {scanResult.success && notifiedRecipients && (
-                  <div className="border-t border-emerald-100 px-4 py-3 bg-surface-card">
+                  <div className="border-t border-emerald-100 px-4 py-3 bg-card">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email dikirim ke:</p>
                     <div className="flex flex-wrap gap-2">
                       {notifiedRecipients.to.map((r) => (
@@ -477,7 +477,7 @@ export default function ReceivingPage() {
         </section>
 
         {/* Daftar Receiving */}
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Daftar Receiving</h2>
@@ -492,7 +492,7 @@ export default function ReceivingPage() {
                     id="receiving-depo"
                     value={kodeDepo}
                     onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
-                    className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-surface-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
+                    className="appearance-none py-2 pl-3 pr-9 border border-slate-300 rounded-xl bg-card text-gray-900 text-sm leading-tight shadow-sm cursor-pointer focus:outline-none focus:ring-primary-500 focus:border-primary-500 min-w-[160px]"
                   >
                     <option value="">Semua Depo</option>
                     {depots.map((d) => (
@@ -535,7 +535,7 @@ export default function ReceivingPage() {
               <table className="w-full min-w-[720px] border-collapse">
                 <caption className="sr-only">Daftar receiving</caption>
                 <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-300 bg-surface-raised">
+                  <tr className="border-b border-slate-300 bg-popover">
                     <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
                     <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No. PO Transporter</th>
                     <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
@@ -580,7 +580,7 @@ export default function ReceivingPage() {
                     </tr>
                   ) : (
                     items.map((item, index) => {
-                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-surface-raised', text: 'text-gray-600', dot: 'bg-gray-400' };
+                      const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-popover', text: 'text-gray-600', dot: 'bg-gray-400' };
                       const isActive = foundReceiving?.id === item.id;
                       return (
                         <tr
@@ -613,22 +613,22 @@ export default function ReceivingPage() {
             {loading ? (
               <div className="animate-pulse space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={`skel-m-${i}`} className="rounded-2xl border border-slate-100 bg-surface-card p-4 shadow-sm">
+                  <div key={`skel-m-${i}`} className="rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">
                     <div className="h-4 w-28 rounded bg-slate-100" />
                     <div className="mt-3 h-4 w-40 rounded bg-slate-100" />
                   </div>
                 ))}
               </div>
             ) : items.length === 0 ? (
-              <div className="rounded-2xl border border-slate-100 bg-surface-card p-10 text-center text-sm text-slate-400">
+              <div className="rounded-2xl border border-slate-100 bg-card p-10 text-center text-sm text-slate-400">
                 {hasSearch ? 'Tidak ada hasil untuk pencarian Anda.' : 'Belum ada receiving'}
               </div>
             ) : (
               items.map((item) => {
-                const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-surface-raised', text: 'text-gray-600', dot: 'bg-gray-400' };
+                const cfg = statusConfig[item.status] || { label: item.status, bg: 'bg-popover', text: 'text-gray-600', dot: 'bg-gray-400' };
                 const isActive = foundReceiving?.id === item.id;
                 return (
-                  <div key={item.id} onClick={() => handleSelect(item)} className={`cursor-pointer rounded-2xl border bg-surface-card p-4 shadow-sm transition-all hover:shadow-md ${isActive ? 'border-chip-primary-border ring-1 ring-brand-wash-strong' : 'border-slate-100'}`}>
+                  <div key={item.id} onClick={() => handleSelect(item)} className={`cursor-pointer rounded-2xl border bg-card p-4 shadow-sm transition-all hover:shadow-md ${isActive ? 'border-chip-primary-border ring-1 ring-brand-wash-strong' : 'border-slate-100'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-mono text-sm font-bold text-slate-800">{fmt(item.rencana_kirim?.po_transporter)}</p>
@@ -683,7 +683,7 @@ export default function ReceivingPage() {
           {viewItem && (
             <div className="space-y-5">
               {/* Ringkasan */}
-              <div className="rounded-2xl border border-slate-300 bg-surface-raised p-5">
+              <div className="rounded-2xl border border-slate-300 bg-popover p-5">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">PO Transporter</p>
@@ -691,11 +691,11 @@ export default function ReceivingPage() {
                     <p className="text-xs text-slate-500 mt-0.5">{viewItem.rencana_kirim?.driver_name || '-'} · {viewItem.rencana_kirim?.nopol || '-'}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-surface-card border border-slate-300 p-3 text-center min-w-[76px]">
+                    <div className="rounded-xl bg-card border border-slate-300 p-3 text-center min-w-[76px]">
                       <p className="text-[9px] font-bold tracking-widest text-slate-400 uppercase">Expected</p>
                       <p className="text-lg font-bold mt-0.5 text-slate-700 tabular-nums">{viewItem.total_expected_qty}</p>
                     </div>
-                    <div className="rounded-xl bg-surface-card border border-slate-300 p-3 text-center min-w-[76px]">
+                    <div className="rounded-xl bg-card border border-slate-300 p-3 text-center min-w-[76px]">
                       <p className="text-[9px] font-bold tracking-widest text-slate-400 uppercase">Received</p>
                       <p className="text-lg font-bold mt-0.5 text-emerald-600 tabular-nums">{viewItem.total_received_qty}</p>
                     </div>
@@ -713,7 +713,7 @@ export default function ReceivingPage() {
               </div>
 
               {/* Items Table */}
-              <div className="bg-surface-card rounded-2xl border border-slate-300 overflow-hidden">
+              <div className="bg-card rounded-2xl border border-slate-300 overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-900">Daftar Barang</h3>
                   <span className="text-[11px] text-slate-400">{viewItem.items?.length ?? 0} item</span>
@@ -723,7 +723,7 @@ export default function ReceivingPage() {
                     <table className="w-full min-w-[1020px] border-collapse">
                       <caption className="sr-only">Detail item receiving</caption>
                       <thead>
-                        <tr className="bg-surface-raised border-b border-slate-300">
+                        <tr className="bg-popover border-b border-slate-300">
                           <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode</th>
                           <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama</th>
                           <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Expected</th>
@@ -738,7 +738,7 @@ export default function ReceivingPage() {
                         {viewItem.items.map((item) => {
                           const selisih = Number(item.actual_qty) - Number(item.expected_qty);
                           return (
-                          <tr key={item.id} className="even:bg-overlay-40 hover:bg-surface-raised transition-colors">
+                          <tr key={item.id} className="even:bg-overlay-40 hover:bg-popover transition-colors">
                             <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.kode_barang}</td>
                             <td className="px-4 py-3 text-sm text-slate-800 font-medium">{item.nama_barang}</td>
                             <td className="px-4 py-3 text-right text-sm text-slate-600 tabular-nums">{item.expected_qty}</td>

@@ -265,7 +265,7 @@ export default function PenerimaanBatchExpiredReportPage() {
           </div>
         )}
         {/* Filter Laporan */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -283,29 +283,29 @@ export default function PenerimaanBatchExpiredReportPage() {
                   { key: '7d', label: '7 Hari' },
                   { key: 'month', label: 'Bulan Ini' },
                 ].map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-surface-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4">
               <div>
                 <label htmlFor="pe-from" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari Tanggal</label>
-                <input id="pe-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" />
+                <input id="pe-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
               </div>
               <div>
                 <label htmlFor="pe-to" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai Tanggal</label>
-                <input id="pe-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" />
+                <input id="pe-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setRangePreset(''); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
               </div>
               <div>
                 <label htmlFor="pe-cluster" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cluster</label>
-                <select id="pe-cluster" value={cluster} onChange={(e) => { setCluster(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card">
+                <select id="pe-cluster" value={cluster} onChange={(e) => { setCluster(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card">
                   <option value="">Semua Cluster</option>
                   {clusterOptions.map((c) => (<option key={c} value={c}>{c}</option>))}
                 </select>
               </div>
               <div>
                 <label htmlFor="pe-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status Expired</label>
-                <select id="pe-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card">
+                <select id="pe-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card">
                   <option value="">Semua</option>
                   <option value="FUTURE">Future</option>
                   <option value="EXPIRED">Past / Expired</option>
@@ -313,14 +313,14 @@ export default function PenerimaanBatchExpiredReportPage() {
               </div>
               <div>
                 <label htmlFor="pe-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label>
-                <select id="pe-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card">
+                <select id="pe-depo" value={kodeDepo} onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card">
                   <option value="">Semua Depo</option>
                   {depots.map((d) => (<option key={d.kode_depo} value={d.kode_depo}>{d.nama_depo} ({d.kode_depo})</option>))}
                 </select>
               </div>
               <div>
                 <label htmlFor="pe-search" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label>
-                <input id="pe-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Produk, cluster…" className="input-field text-sm py-2 bg-surface-raised focus:bg-surface-card" />
+                <input id="pe-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Produk, cluster…" className="input-field text-sm py-2 bg-popover focus:bg-card" />
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between gap-2">
@@ -328,7 +328,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                 {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter — seluruh data'}
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-surface-raised hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
                 <button onClick={submit} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
@@ -336,17 +336,17 @@ export default function PenerimaanBatchExpiredReportPage() {
         </div>
         {summary && (
           <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-surface-card border-gray-100">
+            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total Penerimaan</p>
               <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_item)}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">{fmtNumber(summary.total_cluster)} cluster</p>
             </div>
-            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-surface-card border-gray-100">
+            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Qty Dus/Ball</p>
               <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_qty_dus)}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">satuan CRT/ZAK</p>
             </div>
-            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-surface-card border-gray-100">
+            <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Qty PCS</p>
               <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_qty_pcs)}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">pcs-equivalent</p>
@@ -358,8 +358,8 @@ export default function PenerimaanBatchExpiredReportPage() {
             </div>
           </div>
         )}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-linear-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow shrink-0">
@@ -512,15 +512,15 @@ export default function PenerimaanBatchExpiredReportPage() {
                 </div>
                 <p className="text-xs text-slate-500 line-clamp-2">{row.nama_barang}</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-xl bg-surface-raised p-2">
+                  <div className="rounded-xl bg-popover p-2">
                     <p className="text-[10px] uppercase tracking-wider text-slate-500">Dus/Ball</p>
                     <p className="text-sm font-black tabular-nums text-slate-900">{fmtNumber(row.qty_dus_ball)}</p>
                   </div>
-                  <div className="rounded-xl bg-surface-raised p-2">
+                  <div className="rounded-xl bg-popover p-2">
                     <p className="text-[10px] uppercase tracking-wider text-slate-500">PCS</p>
                     <p className="text-sm font-black tabular-nums text-slate-900">{fmtNumber(row.qty_pcs)}</p>
                   </div>
-                  <div className="rounded-xl bg-surface-raised p-2">
+                  <div className="rounded-xl bg-popover p-2">
                     <p className="text-[10px] uppercase tracking-wider text-slate-500">Sisa Simpan</p>
                     <p className="text-sm font-black tabular-nums text-slate-900">{row.sisa_simpan}</p>
                   </div>
@@ -540,14 +540,14 @@ export default function PenerimaanBatchExpiredReportPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1 || loading}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-card border border-gray-300 text-slate-600 hover:bg-surface-raised disabled:opacity-40 transition-all"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-card border border-gray-300 text-slate-600 hover:bg-popover disabled:opacity-40 transition-all"
                 >
                   Sebelumnya
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
                   disabled={page >= lastPage || loading}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-card border border-gray-300 text-slate-600 hover:bg-surface-raised disabled:opacity-40 transition-all"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-card border border-gray-300 text-slate-600 hover:bg-popover disabled:opacity-40 transition-all"
                 >
                   Berikutnya
                 </button>

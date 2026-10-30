@@ -318,7 +318,7 @@ return (
           <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-surface-card shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center gap-4">
               <div className="flex-1">
@@ -401,7 +401,7 @@ return (
             <table className="w-full border-collapse">
               <caption className="sr-only">Daftar cluster dan principal produk</caption>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-surface-raised">
+                <tr className="bg-popover">
                   {hasPermission('cluster_principal.delete') && (
                     <th scope="col" className="w-10 px-5 py-3 text-left align-middle">
                       <input
@@ -495,7 +495,7 @@ return (
           {/* Mobile cards */}
           <div className="md:hidden space-y-2 p-3">
             {items.map((row) => (
-              <div key={row.id} className="bg-surface-raised rounded-xl p-4 border border-slate-100">
+              <div key={row.id} className="bg-popover rounded-xl p-4 border border-slate-100">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="font-mono font-medium text-gray-900 text-sm">{row.product_sku}</p>
@@ -530,13 +530,13 @@ return (
               Menampilkan <span className="font-medium text-slate-800">{items.length > 0 ? (page - 1) * 20 + 1 : 0}-{Math.min(page * 20, totalCount)}</span> dari <span className="font-medium text-slate-800">{totalCount}</span>
             </p>
             <div className="flex items-center gap-2">
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-card text-slate-600 hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
                 Sebelumnya
               </button>
               <span className="text-sm text-slate-500">
                 Halaman <span className="font-medium text-slate-800">{page}</span> dari <span className="font-medium text-slate-800">{lastPage}</span>
               </span>
-              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-surface-card text-slate-600 hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
+              <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-card text-slate-600 hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">
                 Berikutnya
               </button>
             </div>

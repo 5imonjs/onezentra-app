@@ -281,11 +281,11 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
 
   if (loading) {
     return (
-      <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5" aria-busy="true">
+      <section className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5" aria-busy="true">
         <div className="mb-3 h-4 w-36 rounded bg-gray-100 animate-pulse" />
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="h-9 rounded-lg bg-surface-raised animate-pulse" />
-          <div className="h-9 rounded-lg bg-surface-raised animate-pulse" />
+          <div className="h-9 rounded-lg bg-popover animate-pulse" />
+          <div className="h-9 rounded-lg bg-popover animate-pulse" />
         </div>
       </section>
     );
@@ -293,7 +293,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
 
   if (error) {
     return (
-      <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+      <section className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between gap-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
           <span>{error}</span>
           <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
@@ -310,7 +310,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
   // Seluruh modul gagal: tampilkan banner + retry, bukan section kosong yang hilang diam-diam.
   if (groups.length === 0) {
     return (
-      <section className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+      <section className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between gap-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700" role="alert">
           <span>Data tugas gagal dimuat.</span>
           <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
@@ -358,7 +358,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
                   <li key={item.id}>
                     <Link
                       href={item.href}
-                      className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-raised"
+                      className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-popover"
                     >
                       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone.dot}`} aria-hidden="true" />
                       <span className="flex min-w-0 flex-1 items-baseline gap-2">

@@ -164,7 +164,7 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
               Qty PCS {item?.conversion_factor != null ? '(otomatis)' : '(opsional)'}
             </label>
             {item?.conversion_factor != null ? (
-              <div className="rounded-xl border border-gray-300 bg-surface-raised px-3 py-2.5">
+              <div className="rounded-xl border border-gray-300 bg-popover px-3 py-2.5">
                 <p className="text-sm font-semibold text-gray-800 tabular-nums">
                   {parseFloat(form.qty_crt || '0') * item.conversion_factor}
                 </p>

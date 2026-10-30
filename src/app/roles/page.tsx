@@ -122,7 +122,7 @@ export default function AccessManagementPage() {
         </div>
 
         {/* How it works banner */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               { step: 1, title: 'Buat role sesuai pekerjaan', desc: 'Contoh: Cheker atau Admin Distribusi. Satu role dapat dipakai banyak user.' },
@@ -141,7 +141,7 @@ export default function AccessManagementPage() {
             ))}
           </div>
           <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 md:grid-cols-2">
-            <div className="rounded-lg bg-surface-raised px-4 py-3 text-sm text-slate-700">
+            <div className="rounded-lg bg-popover px-4 py-3 text-sm text-slate-700">
               <p className="font-semibold">Cakupan data: assignment user</p>
               <p className="mt-1 text-xs leading-relaxed">Scope hierarki menentukan entitas yang boleh dikelola. Untuk data operasional, user biasa dibatasi ke depo profilnya; <code>depot.view_region</code> tidak memperluas akses ke depo lain.</p>
             </div>
@@ -154,7 +154,7 @@ export default function AccessManagementPage() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-1.5">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-1.5">
           <div className="flex gap-1" role="tablist">
             <button
               onClick={() => switchTab('roles')}
@@ -163,7 +163,7 @@ export default function AccessManagementPage() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 activeTab === 'roles'
                   ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20'
-                  : 'text-gray-500 hover:bg-surface-raised hover:text-gray-700'
+                  : 'text-gray-500 hover:bg-popover hover:text-gray-700'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -178,7 +178,7 @@ export default function AccessManagementPage() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 activeTab === 'permissions'
                   ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20'
-                  : 'text-gray-500 hover:bg-surface-raised hover:text-gray-700'
+                  : 'text-gray-500 hover:bg-popover hover:text-gray-700'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -503,7 +503,7 @@ function RolesTab() {
   return (
     <>
       {/* Toolbar: Search + Action Buttons */}
-      <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4">
+      <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           <div className="flex-1 min-w-0">
             <div className="relative">
@@ -564,7 +564,7 @@ function RolesTab() {
       {/* Roles Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {roleList.map((role) => (
-          <div key={role.id} className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all duration-200">
+          <div key={role.id} className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all duration-200">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-chip-primary flex items-center justify-center">
@@ -605,7 +605,7 @@ function RolesTab() {
 
             <div className="space-y-3 mb-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-raised rounded-lg">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-popover rounded-lg">
                   <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                   </svg>
@@ -628,7 +628,7 @@ function RolesTab() {
                   </span>
                 ))}
                 {(role.menu_groups || []).length > 4 && (
-                  <span className="px-2 py-0.5 bg-surface-raised text-gray-500 rounded-md text-[11px] font-medium">
+                  <span className="px-2 py-0.5 bg-popover text-gray-500 rounded-md text-[11px] font-medium">
                     +{(role.menu_groups || []).length - 4} lainnya
                   </span>
                 )}
@@ -674,7 +674,7 @@ function RolesTab() {
 
         {roleList.length === 0 && !loading && (
           <div className="col-span-full">
-            <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-12 text-center" role="status">
+            <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-12 text-center" role="status">
               <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
@@ -785,7 +785,7 @@ function RolesTab() {
               <p className="mt-1 text-xs leading-relaxed">Permission modul menentukan menu dan tindakan, sedangkan <strong>Scope</strong> menentukan hierarki yang dikelola. <code>depot.view_all</code> adalah izin sensitif yang hanya dapat diberikan Master untuk akses data operasional lintas depo; izin itu tidak memperluas hak kelola entitas.</p>
             </div>
             {/* Summary Bar */}
-            <div className="flex items-center justify-between p-3 bg-surface-raised rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-popover rounded-xl">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-500">Total:</span>
                 <span className="text-sm font-semibold text-gray-900">{totalAssigned}/{totalPerms} aktif</span>
@@ -829,7 +829,7 @@ function RolesTab() {
               return (
               <div key={groupName} className="border border-gray-100 rounded-xl overflow-hidden">
                 {/* Group Header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-surface-raised border-b border-gray-100">
+                <div className="flex items-center justify-between px-4 py-3 bg-popover border-b border-gray-100">
                   <button
                     type="button"
                     onClick={() => togglePermGroupExpand(groupName)}
@@ -880,7 +880,7 @@ function RolesTab() {
                     return (
                       <div
                         key={perm.id}
-                        className={`flex items-center justify-between px-4 py-3 hover:bg-overlay-50 transition-colors ${isBranch ? 'bg-surface-raised/40' : ''}`}
+                        className={`flex items-center justify-between px-4 py-3 hover:bg-overlay-50 transition-colors ${isBranch ? 'bg-popover/40' : ''}`}
                       >
                         <div className={`flex items-center gap-3 ${isBranch ? 'pl-6' : ''}`}>
                           {isBranch ? (
@@ -1134,7 +1134,7 @@ function PermissionsTab() {
     <>
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-chip-primary flex items-center justify-center">
               <svg className="w-6 h-6 text-accent-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1147,7 +1147,7 @@ function PermissionsTab() {
             </div>
           </div>
         </div>
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
               <svg className="w-6 h-6 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1160,7 +1160,7 @@ function PermissionsTab() {
             </div>
           </div>
         </div>
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
               <svg className="w-6 h-6 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1177,7 +1177,7 @@ function PermissionsTab() {
 
       {/* Add Permission Button & Search */}
       <div className="flex items-center gap-4">
-        <div className="flex-1 bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="flex-1 bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="relative">
             <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -1209,7 +1209,7 @@ function PermissionsTab() {
       {/* Permission Groups */}
       <div className="space-y-4">
         {filteredGroups.map(([groupName, perms]) => (
-          <div key={groupName} className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div key={groupName} className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             {/* Group Header */}
             <button
               onClick={() => toggleGroupExpand(groupName)}
@@ -1248,7 +1248,7 @@ function PermissionsTab() {
             {expandedGroups.has(groupName) && (
               <div className="border-t border-gray-100">
                 {/* Table Header */}
-                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-surface-raised border-b border-gray-100">
+                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-popover border-b border-gray-100">
                   <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama</div>
                   <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Slug</div>
                   <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Route</div>
@@ -1343,7 +1343,7 @@ function PermissionsTab() {
         ))}
 
             {filteredGroups.length === 0 && !loading && (
-          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-12 text-center" role="status">
+          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-12 text-center" role="status">
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>

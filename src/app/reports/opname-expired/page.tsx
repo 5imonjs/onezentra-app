@@ -266,7 +266,7 @@ export default function OpnameExpiredReportPage() {
 
   const badge = (status?: string | null, meta?: { label: string; badge: string; dot: string }) => {
     const s = status || '-';
-    const m = meta || STATUS_META[s] || { label: s, badge: 'bg-surface-raised text-gray-600 ring-gray-200', dot: 'bg-gray-400' };
+    const m = meta || STATUS_META[s] || { label: s, badge: 'bg-popover text-gray-600 ring-gray-200', dot: 'bg-gray-400' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium shadow-sm ${m.badge}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} aria-hidden="true" />
@@ -382,7 +382,7 @@ export default function OpnameExpiredReportPage() {
         )}
 
         {/* Filter panel */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -405,7 +405,7 @@ export default function OpnameExpiredReportPage() {
                   id="oe-week"
                   value={weekStart}
                   onChange={(e) => { setWeekStart(e.target.value); setPage(1); }}
-                  className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"
+                  className="select-field w-full text-sm py-2 bg-popover focus:bg-card"
                 >
                   <option value="">— Pilih Minggu —</option>
                   {weeks.map((w) => (
@@ -419,7 +419,7 @@ export default function OpnameExpiredReportPage() {
                   id="oe-depo"
                   value={kodeDepo}
                   onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
-                  className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"
+                  className="select-field w-full text-sm py-2 bg-popover focus:bg-card"
                 >
                   <option value="">Semua Depo</option>
                   {depots.map((d) => (
@@ -433,14 +433,14 @@ export default function OpnameExpiredReportPage() {
                   id="oe-status"
                   value={statusFilter}
                   onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                  className="select-field w-full text-sm py-2 bg-surface-raised focus:bg-surface-card"
+                  className="select-field w-full text-sm py-2 bg-popover focus:bg-card"
                 >
                   <option value="">Semua Status</option>
                   {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
                 </select>
               </div>
               <div className="flex items-end gap-2">
-                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-surface-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-surface-raised hover:border-slate-300 transition-all">Reset</button>
+                <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-gray-300 text-sm font-semibold text-slate-600 hover:bg-popover hover:border-slate-300 transition-all">Reset</button>
                 <button
                   onClick={handleExport}
                   disabled={!canExport}
@@ -465,7 +465,7 @@ export default function OpnameExpiredReportPage() {
 
         {/* KPI Cards */}
         <div className={`grid grid-cols-2 gap-4 xl:grid-cols-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-slate-100/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-ink-900 text-white flex items-center justify-center shadow-lg shrink-0">
@@ -491,7 +491,7 @@ export default function OpnameExpiredReportPage() {
               </div>
             </div>
           </div>
-          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/20 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm shrink-0">
@@ -504,7 +504,7 @@ export default function OpnameExpiredReportPage() {
               </div>
             </div>
           </div>
-          <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
+          <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5 card-hover relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-20 h-20 bg-primary-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-primary-500/20 transition-colors" aria-hidden="true" />
             <div className="relative flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-chip-primary text-accent-text flex items-center justify-center shadow-sm shrink-0">
@@ -520,8 +520,8 @@ export default function OpnameExpiredReportPage() {
         </div>
 
         {/* Rekap per depo */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ringkasan distribusi</p>
@@ -572,7 +572,7 @@ export default function OpnameExpiredReportPage() {
                     const totalCount = STATUS_ORDER.reduce((a, s) => a + (row.status[s]?.count ?? 0), 0);
                     const totalCrt = STATUS_ORDER.reduce((a, s) => a + (row.status[s]?.qty_crt ?? 0), 0);
                     return (
-                      <tr key={row.kode} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
+                      <tr key={row.kode} className="even:bg-overlay-60 hover:bg-popover transition-colors">
                         <td className="table-cell whitespace-nowrap">
                           <span className="text-sm font-semibold text-slate-700">{row.nama}</span>
                           <span className="ml-1.5 text-xs text-slate-400 font-mono">{row.kode}</span>
@@ -637,7 +637,7 @@ export default function OpnameExpiredReportPage() {
                     {STATUS_ORDER.map((s) => {
                       const c = row.status[s];
                       return (
-                        <div key={s} className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                        <div key={s} className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                           <p className="font-bold tracking-widest uppercase text-[9px] text-slate-400 inline-flex items-center gap-1">
                             <span className={`w-1.5 h-1.5 rounded-full ${STATUS_META[s].dot}`} aria-hidden="true" />
                             {STATUS_META[s].label}
@@ -655,8 +655,8 @@ export default function OpnameExpiredReportPage() {
         </div>
 
         {/* Detail batch */}
-        <div className="bg-surface-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-surface-card flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-card flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Data detail</p>
               <h2 className="text-base font-bold text-slate-900">Detail Batch</h2>
@@ -728,7 +728,7 @@ export default function OpnameExpiredReportPage() {
                     {waves.map((w) => {
                       const meta = STATUS_META[w.status_ini];
                       return (
-                        <tr key={w.id} className="even:bg-overlay-60 hover:bg-surface-raised transition-colors">
+                        <tr key={w.id} className="even:bg-overlay-60 hover:bg-popover transition-colors">
                           {canDelete && (
                             <td className="table-cell text-center">
                               <ReportSelectCheckbox
@@ -781,16 +781,16 @@ export default function OpnameExpiredReportPage() {
                         {badge(w.status_ini)}
                       </div>
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                        <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                           <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Qty</p>
                           <p className="font-black text-slate-900 text-sm tabular-nums">{fnum(num(w.qty_ini_crt))} <span className="text-[10px] font-bold text-slate-400">CRT</span></p>
                           {num(w.qty_ini_pcs) > 0 && <p className="text-[10px] text-slate-400 tabular-nums">/ {fnum(num(w.qty_ini_pcs))} PCS</p>}
                         </div>
-                        <div className="rounded-xl bg-surface-raised p-2 text-center border border-slate-100">
+                        <div className="rounded-xl bg-popover p-2 text-center border border-slate-100">
                           <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Sisa</p>
                           <p className="font-black text-slate-900 text-sm tabular-nums">{w.sisa_hari} <span className="text-[10px] font-bold text-slate-400">hr</span></p>
                         </div>
-                        <div className={`rounded-xl p-2 text-center border ${meta ? meta.chip : 'bg-surface-raised border-slate-100'}`}>
+                        <div className={`rounded-xl p-2 text-center border ${meta ? meta.chip : 'bg-popover border-slate-100'}`}>
                           <p className="font-bold tracking-widest uppercase text-[9px] opacity-70">Expired</p>
                           <p className="font-black text-xs">{fmtDate(w.expired_date_ini)}</p>
                         </div>
