@@ -1,0 +1,16 @@
+/** Global theme safeguard — semua teks wajib adaptasi warna di gelap. */
+[data-theme='dark'] body,
+[data-theme='dark'] .text-ink-900,
+[data-theme='dark'] .text-gray-900,
+[data-theme='dark'] .text-slate-900 {
+  color: #e2e8f0 !important;
+}
+[data-theme='dark'] .text-ink-600,
+[data-theme='dark'] .text-gray-600,
+[data-theme='dark'] .text-slate-600 {
+  color: #94a3b8 !important;
+}
+[data-theme='dark'] .text-ink-400,
+[data-theme='dark'] .text-gray-400 {
+  color: #b0bdcb !important;
+}
