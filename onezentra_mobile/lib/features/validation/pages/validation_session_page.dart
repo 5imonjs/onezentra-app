@@ -301,9 +301,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     margin: const EdgeInsets.only(top: AppTheme.space3),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: AppTheme.warningDark,
+      color: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: AppTheme.warningText),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.border ?? AppTheme.border),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
