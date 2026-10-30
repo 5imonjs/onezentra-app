@@ -88,7 +88,7 @@ class _ValidationHistoryPageState extends State<ValidationHistoryPage> {
     }
 
     return Scaffold(
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+      backgroundColor: context.colors.background,
       appBar: AppBar(
         title: const Text('Riwayat Validasi'),
         elevation: 0,
@@ -123,14 +123,14 @@ class _ValidationHistoryPageState extends State<ValidationHistoryPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space5),
       decoration: BoxDecoration(
-        color: AppTheme.warningWell,
+        color: context.colors.warningWell,
         borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.warningText),
+        border: Border.all(color: context.colors.warningText),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
+          Icon(Icons.lock_rounded, size: 20, color: context.colors.warningText),
           const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
@@ -138,7 +138,7 @@ class _ValidationHistoryPageState extends State<ValidationHistoryPage> {
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
-                color: AppTheme.warningText,
+                color: context.colors.warningText,
               ),
             ),
           ),

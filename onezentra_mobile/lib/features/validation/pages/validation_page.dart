@@ -133,7 +133,7 @@ class _ValidationPageState extends State<ValidationPage> {
     var validation = context.watch<ValidationProvider>();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+      backgroundColor: context.colors.background,
       appBar: AppBar(
         title: const Text('Validasi SJ'),
         elevation: 0,
@@ -218,17 +218,17 @@ class _ValidationPageState extends State<ValidationPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(AppTheme.space5),
               decoration: BoxDecoration(
-                color: AppTheme.warningWell,
+                color: context.colors.warningWell,
                 borderRadius: AppTheme.radiusXl,
-                border: Border.all(color: AppTheme.warningText),
+                border: Border.all(color: context.colors.warningText),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.lock_rounded,
                     size: 20,
-                    color: AppTheme.warningText,
+                    color: context.colors.warningText,
                   ),
                   const SizedBox(width: AppTheme.space3),
                   Expanded(
@@ -237,7 +237,7 @@ class _ValidationPageState extends State<ValidationPage> {
                       style: GoogleFonts.roboto(
                         fontSize: 13,
                         height: 1.4,
-                        color: AppTheme.warningText,
+                        color: context.colors.warningText,
                       ),
                     ),
                   ),
@@ -283,7 +283,7 @@ class _ValidationPageState extends State<ValidationPage> {
                       fontSize: 15,
                       height: 1.25,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                      color: context.colors.foreground,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -292,7 +292,7 @@ class _ValidationPageState extends State<ValidationPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
                       height: 1.4,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: context.colors.textMuted,
                     ),
                   ),
                 ],
@@ -435,10 +435,14 @@ class _ValidationPageState extends State<ValidationPage> {
     margin: const EdgeInsets.only(top: AppTheme.space4),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: message.success ? AppTheme.successWell : AppTheme.dangerWell,
+      color: message.success
+          ? context.colors.successWell
+          : context.colors.dangerWell,
       borderRadius: AppTheme.radiusLg,
       border: Border.all(
-        color: message.success ? AppTheme.successText : AppTheme.dangerText,
+        color: message.success
+            ? context.colors.successText
+            : context.colors.dangerText,
       ),
     ),
     child: Row(
@@ -447,7 +451,9 @@ class _ValidationPageState extends State<ValidationPage> {
         Icon(
           message.success ? Icons.check_circle_rounded : Icons.error_rounded,
           size: 18,
-          color: message.success ? AppTheme.success : AppTheme.danger,
+          color: message.success
+              ? context.colors.success
+              : context.colors.danger,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -456,7 +462,7 @@ class _ValidationPageState extends State<ValidationPage> {
             style: GoogleFonts.roboto(
               fontSize: 12.5,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+              color: context.colors.textSecondary,
             ),
           ),
         ),
@@ -469,14 +475,14 @@ class _ValidationPageState extends State<ValidationPage> {
     margin: const EdgeInsets.only(top: AppTheme.space4),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: AppTheme.warningWell,
+      color: context.colors.warningWell,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: AppTheme.warningText),
+      border: Border.all(color: context.colors.warningText),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.lock_rounded, size: 16, color: AppTheme.warningText),
+        Icon(Icons.lock_rounded, size: 16, color: context.colors.warningText),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -484,7 +490,7 @@ class _ValidationPageState extends State<ValidationPage> {
             style: GoogleFonts.roboto(
               fontSize: 12,
               height: 1.4,
-              color: AppTheme.warningText,
+              color: context.colors.warningText,
             ),
           ),
         ),

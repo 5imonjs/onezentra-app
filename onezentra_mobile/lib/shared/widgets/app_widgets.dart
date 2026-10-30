@@ -71,7 +71,7 @@ class AppTextField extends StatelessWidget {
             label!,
             style: theme.textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.w600,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+              color: context.colors.textSecondary,
             ),
           ),
           const SizedBox(height: AppTheme.space2),
@@ -95,57 +95,57 @@ class AppTextField extends StatelessWidget {
           focusNode: focusNode,
           autofocus: autofocus,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+            color: context.colors.foreground,
           ),
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, size: 20, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400)
+                ? Icon(prefixIcon, size: 20, color: context.colors.textMuted)
                 : null,
             suffixIcon: suffixIcon,
             counterText: '',
             filled: true,
-            fillColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+            fillColor: context.colors.surfaceCard,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: AppTheme.space4,
               vertical: AppTheme.space3,
             ),
             border: OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
+              borderSide: BorderSide(color: context.colors.gray200),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
+              borderSide: BorderSide(color: context.colors.gray200),
             ),
             focusedBorder: const OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
               borderSide: BorderSide(color: AppTheme.primary500, width: 2),
             ),
-            errorBorder: const OutlineInputBorder(
+            errorBorder: OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(color: AppTheme.danger),
+              borderSide: BorderSide(color: context.colors.danger),
             ),
-            focusedErrorBorder: const OutlineInputBorder(
+            focusedErrorBorder: OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(color: AppTheme.danger, width: 2),
+              borderSide: BorderSide(color: context.colors.danger, width: 2),
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: AppTheme.radiusXl,
-              borderSide: BorderSide(color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200),
+              borderSide: BorderSide(color: context.colors.gray200),
             ),
             labelStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+              color: context.colors.textSecondary,
             ),
             hintStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+              color: context.colors.textMuted,
             ),
             errorStyle: theme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.danger,
+              color: context.colors.danger,
             ),
             floatingLabelBehavior: FloatingLabelBehavior.auto,
-            prefixIconColor: Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
-            suffixIconColor: Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+            prefixIconColor: context.colors.gray400,
+            suffixIconColor: context.colors.gray400,
           ),
         ),
       ],
@@ -358,7 +358,7 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var radius = borderRadius ?? AppTheme.radius2xl;
-    var cardBorder = border ?? Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300);
+    var cardBorder = border ?? Border.all(color: context.colors.gray300);
     var cardShadow =
         shadows ??
         [
@@ -375,7 +375,7 @@ class AppCard extends StatelessWidget {
         padding: padding ?? const EdgeInsets.all(AppTheme.space6),
         margin: margin,
         decoration: BoxDecoration(
-          color: color ?? Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+          color: color ?? context.colors.surfaceCard,
           borderRadius: radius,
           border: cardBorder,
           boxShadow: cardShadow,
@@ -391,7 +391,7 @@ class AppCard extends StatelessWidget {
       margin: margin,
       decoration: BoxDecoration(borderRadius: radius, boxShadow: cardShadow),
       child: Material(
-        color: color ?? Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+        color: color ?? context.colors.surfaceCard,
         borderRadius: radius,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -430,34 +430,34 @@ class AppBadge extends StatelessWidget {
 
     switch (variant) {
       case AppBadgeVariant.success:
-        backgroundColor = AppTheme.successWell;
-        textColor = AppTheme.successText;
-        borderColor = AppTheme.success;
+        backgroundColor = context.colors.successWell;
+        textColor = context.colors.successText;
+        borderColor = context.colors.success;
         break;
       case AppBadgeVariant.warning:
-        backgroundColor = AppTheme.warningWell;
-        textColor = AppTheme.warningText;
-        borderColor = AppTheme.warning;
+        backgroundColor = context.colors.warningWell;
+        textColor = context.colors.warningText;
+        borderColor = context.colors.warning;
         break;
       case AppBadgeVariant.danger:
-        backgroundColor = AppTheme.dangerWell;
-        textColor = AppTheme.dangerText;
-        borderColor = AppTheme.danger;
+        backgroundColor = context.colors.dangerWell;
+        textColor = context.colors.dangerText;
+        borderColor = context.colors.danger;
         break;
       case AppBadgeVariant.info:
-        backgroundColor = AppTheme.infoWell;
-        textColor = AppTheme.infoText;
-        borderColor = AppTheme.info;
+        backgroundColor = context.colors.infoWell;
+        textColor = context.colors.infoText;
+        borderColor = context.colors.info;
         break;
       case AppBadgeVariant.primary:
-        backgroundColor = AppTheme.primary950;
-        textColor = AppTheme.primary200;
-        borderColor = AppTheme.primary700;
+        backgroundColor = context.colors.primaryWell;
+        textColor = context.colors.primaryWellText;
+        borderColor = context.colors.primaryWellBorder;
         break;
       case AppBadgeVariant.gray:
-        backgroundColor = Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200;
-        textColor = Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700;
-        borderColor = Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300;
+        backgroundColor = context.colors.gray200;
+        textColor = context.colors.gray700;
+        borderColor = context.colors.gray300;
         break;
     }
 
@@ -511,9 +511,11 @@ class AppStatTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.07),
+      color: context.colors.foreground.withValues(alpha: 0.07),
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.1)),
+      border: Border.all(
+        color: context.colors.foreground.withValues(alpha: 0.1),
+      ),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,7 +540,7 @@ class AppStatTile extends StatelessWidget {
                 style: GoogleFonts.roboto(
                   fontSize: 10.5,
                   height: 1.2,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  color: context.colors.textMuted,
                 ),
               ),
             ),
@@ -551,7 +553,7 @@ class AppStatTile extends StatelessWidget {
             fontSize: 22,
             height: 1.1,
             fontWeight: FontWeight.w700,
-            color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+            color: context.colors.foreground,
           ),
         ),
       ],
@@ -582,7 +584,7 @@ class AppLoadingOverlay extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(AppTheme.space6),
               decoration: BoxDecoration(
-                color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+                color: context.colors.surfaceCard,
                 borderRadius: AppTheme.radiusXl,
                 boxShadow: const [AppTheme.shadowXl],
               ),
@@ -599,9 +601,9 @@ class AppLoadingOverlay extends StatelessWidget {
                     const SizedBox(height: AppTheme.space4),
                     Text(
                       message!,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: context.colors.textSecondary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -633,9 +635,9 @@ class AppErrorDisplay extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        color: AppTheme.dangerWell,
+        color: context.colors.dangerWell,
         borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.danger),
+        border: Border.all(color: context.colors.danger),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,14 +645,15 @@ class AppErrorDisplay extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: const BoxDecoration(
-              color: Color(0xFF450A0F),
+            decoration: BoxDecoration(
+              // Chip lebih dalam di atas sumur danger agar ikonnya mencolok.
+              color: context.colors.danger.withValues(alpha: 0.25),
               borderRadius: AppTheme.radiusLg,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.error_outline_rounded,
               size: 16,
-              color: AppTheme.dangerText,
+              color: context.colors.dangerText,
             ),
           ),
           const SizedBox(width: AppTheme.space3),
@@ -661,7 +664,7 @@ class AppErrorDisplay extends StatelessWidget {
                 Text(
                   message,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dangerText,
+                    color: context.colors.dangerText,
                   ),
                 ),
                 if (onRetry != null) ...[
@@ -671,7 +674,7 @@ class AppErrorDisplay extends StatelessWidget {
                     onPressed: onRetry,
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.danger,
+                      color: context.colors.danger,
                     ),
                   ),
                 ],
@@ -711,18 +714,22 @@ class AppEmptyState extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: const BoxDecoration(
-                color: AppTheme.primary50,
+              decoration: BoxDecoration(
+                color: context.colors.primaryWell,
                 borderRadius: AppTheme.radiusFull,
               ),
-              child: Icon(icon, size: 40, color: AppTheme.primary600),
+              child: Icon(
+                icon,
+                size: 40,
+                color: context.colors.primaryWellText,
+              ),
             ),
             const SizedBox(height: AppTheme.space6),
             Text(
               title,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                color: context.colors.foreground,
               ),
               textAlign: TextAlign.center,
             ),
@@ -731,7 +738,7 @@ class AppEmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                  color: context.colors.textMuted,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -761,7 +768,7 @@ class AppSectionDivider extends StatelessWidget {
       children: [
         Expanded(
           child: Divider(
-            color: color ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200,
+            color: color ?? context.colors.gray200,
             thickness: 1,
             height: 1,
           ),
@@ -771,14 +778,14 @@ class AppSectionDivider extends StatelessWidget {
           child: Text(
             text,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: color ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500,
+              color: color ?? context.colors.gray50,
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
         Expanded(
           child: Divider(
-            color: color ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200,
+            color: color ?? context.colors.gray200,
             thickness: 1,
             height: 1,
           ),

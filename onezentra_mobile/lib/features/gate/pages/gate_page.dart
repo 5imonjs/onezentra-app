@@ -84,7 +84,7 @@ class _GatePageState extends State<GatePage> {
     var gate = context.watch<GateProvider>();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+      backgroundColor: context.colors.background,
       appBar: AppBar(
         title: const Text('Check In Point'),
         elevation: 0,
@@ -188,17 +188,17 @@ class _GatePageState extends State<GatePage> {
               width: double.infinity,
               padding: const EdgeInsets.all(AppTheme.space5),
               decoration: BoxDecoration(
-                color: AppTheme.warningWell,
+                color: context.colors.warningWell,
                 borderRadius: AppTheme.radiusXl,
-                border: Border.all(color: AppTheme.warningText),
+                border: Border.all(color: context.colors.warningText),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.lock_rounded,
                     size: 20,
-                    color: AppTheme.warningText,
+                    color: context.colors.warningText,
                   ),
                   const SizedBox(width: AppTheme.space3),
                   Expanded(
@@ -207,7 +207,7 @@ class _GatePageState extends State<GatePage> {
                       style: GoogleFonts.roboto(
                         fontSize: 13,
                         height: 1.4,
-                        color: AppTheme.warningText,
+                        color: context.colors.warningText,
                       ),
                     ),
                   ),
@@ -254,7 +254,7 @@ class _GatePageState extends State<GatePage> {
                       fontSize: 15,
                       height: 1.25,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                      color: context.colors.foreground,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -263,7 +263,7 @@ class _GatePageState extends State<GatePage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
                       height: 1.4,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: context.colors.textMuted,
                     ),
                   ),
                 ],
@@ -370,10 +370,14 @@ class _GatePageState extends State<GatePage> {
     margin: const EdgeInsets.only(top: AppTheme.space4),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: message.success ? AppTheme.successWell : AppTheme.dangerWell,
+      color: message.success
+          ? context.colors.successWell
+          : context.colors.dangerWell,
       borderRadius: AppTheme.radiusLg,
       border: Border.all(
-        color: message.success ? AppTheme.successText : AppTheme.dangerText,
+        color: message.success
+            ? context.colors.successText
+            : context.colors.dangerText,
       ),
     ),
     child: Row(
@@ -382,7 +386,9 @@ class _GatePageState extends State<GatePage> {
         Icon(
           message.success ? Icons.check_circle_rounded : Icons.error_rounded,
           size: 18,
-          color: message.success ? AppTheme.success : AppTheme.danger,
+          color: message.success
+              ? context.colors.success
+              : context.colors.danger,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -391,7 +397,7 @@ class _GatePageState extends State<GatePage> {
             style: GoogleFonts.roboto(
               fontSize: 12.5,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+              color: context.colors.textSecondary,
             ),
           ),
         ),
@@ -418,7 +424,7 @@ class _GatePageState extends State<GatePage> {
           colors: [AppTheme.ink900, AppTheme.ink800],
         ),
         borderRadius: AppTheme.radius2xl,
-        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.foreground.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +443,7 @@ class _GatePageState extends State<GatePage> {
                         height: 1.3,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
-                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                        color: AppTheme.gray500,
                       ),
                     ),
                     const SizedBox(height: AppTheme.space2),
@@ -457,7 +463,7 @@ class _GatePageState extends State<GatePage> {
                 icon: Icon(
                   Icons.close_rounded,
                   size: 18,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.6),
+                  color: AppTheme.foreground.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -507,7 +513,7 @@ class _GatePageState extends State<GatePage> {
             canCreate
                 ? _darkActionButton(
                     label: 'Gate IN →',
-                    background: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                    background: Colors.white,
                     foreground: AppTheme.ink900,
                     loading: gate.actionBusy,
                     onPressed: () => _confirmAction(action),
@@ -520,7 +526,7 @@ class _GatePageState extends State<GatePage> {
                 ? _darkActionButton(
                     label: 'Verifikasi ✓',
                     background: AppTheme.success,
-                    foreground: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                    foreground: AppTheme.foreground,
                     loading: gate.actionBusy,
                     onPressed: () => _confirmAction(action),
                   )
@@ -548,9 +554,11 @@ class _GatePageState extends State<GatePage> {
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
-                color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.07),
+                color: AppTheme.foreground.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08)),
+                border: Border.all(
+                  color: AppTheme.foreground.withValues(alpha: 0.08),
+                ),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -571,7 +579,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.primary950 : Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                color: highlight ? AppTheme.primary950 : AppTheme.foreground,
               ),
             ),
           ],
@@ -582,17 +590,17 @@ class _GatePageState extends State<GatePage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.05),
+      color: AppTheme.foreground.withValues(alpha: 0.05),
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.1)),
+      border: Border.all(color: AppTheme.foreground.withValues(alpha: 0.1)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
+        const Icon(
           Icons.info_outline_rounded,
           size: 16,
-          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+          color: AppTheme.gray500,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -601,7 +609,7 @@ class _GatePageState extends State<GatePage> {
             style: GoogleFonts.roboto(
               fontSize: 12,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+              color: AppTheme.gray300,
             ),
           ),
         ),
@@ -615,7 +623,7 @@ class _GatePageState extends State<GatePage> {
     decoration: BoxDecoration(
       color: AppTheme.warningDark,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.1)),
+      border: Border.all(color: AppTheme.foreground.withValues(alpha: 0.1)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,7 +694,7 @@ class _GatePageState extends State<GatePage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+        backgroundColor: context.colors.surfaceCard,
         insetPadding: const EdgeInsets.symmetric(
           horizontal: AppTheme.space4,
           vertical: AppTheme.space6,
@@ -708,8 +716,8 @@ class _GatePageState extends State<GatePage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppTheme.space3),
-              decoration: const BoxDecoration(
-                color: AppTheme.infoWell,
+              decoration: BoxDecoration(
+                color: context.colors.infoWell,
                 borderRadius: AppTheme.radiusMd,
               ),
               child: Text(
@@ -717,7 +725,7 @@ class _GatePageState extends State<GatePage> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.4,
-                  color: AppTheme.infoText,
+                  color: context.colors.infoText,
                 ),
               ),
             ),
@@ -731,7 +739,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                color: context.colors.textSecondary,
               ),
             ),
           ),
@@ -739,7 +747,7 @@ class _GatePageState extends State<GatePage> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.primary600,
-              foregroundColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+              foregroundColor: context.colors.foreground,
               textStyle: GoogleFonts.roboto(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -815,7 +823,10 @@ class _GatePageState extends State<GatePage> {
       children: [
         Text(
           label,
-          style: GoogleFonts.roboto(fontSize: 11.5, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500),
+          style: GoogleFonts.roboto(
+            fontSize: 11.5,
+            color: context.colors.textMuted,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
@@ -823,7 +834,7 @@ class _GatePageState extends State<GatePage> {
           style: GoogleFonts.roboto(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? Theme.of(context).extension<ThemeColors>()?.gray800 ?? Theme.of(context).extension<ThemeColors>()?.gray800 ?? Theme.of(context).extension<ThemeColors>()?.gray800 ?? Theme.of(context).extension<ThemeColors>()?.gray800 ?? AppTheme.gray800,
+            color: context.colors.textPrimary,
           ),
         ),
       ],
@@ -867,9 +878,9 @@ class _GatePageState extends State<GatePage> {
           children: [
             _iconBox(
               38,
-              AppTheme.infoWell,
+              context.colors.infoWell,
               Icons.route_rounded,
-              iconColor: AppTheme.infoText,
+              iconColor: context.colors.infoText,
             ),
             const SizedBox(width: AppTheme.space3),
             Expanded(
@@ -879,7 +890,7 @@ class _GatePageState extends State<GatePage> {
                   fontSize: 15,
                   height: 1.25,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: context.colors.foreground,
                 ),
               ),
             ),
@@ -911,7 +922,7 @@ class _GatePageState extends State<GatePage> {
         height: 24,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08),
+          color: context.colors.foreground.withValues(alpha: 0.08),
           shape: BoxShape.circle,
         ),
         child: Text(
@@ -919,7 +930,7 @@ class _GatePageState extends State<GatePage> {
           style: GoogleFonts.roboto(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? Theme.of(context).extension<ThemeColors>()?.gray200 ?? AppTheme.gray200,
+            color: context.colors.gray200,
           ),
         ),
       ),
@@ -934,7 +945,7 @@ class _GatePageState extends State<GatePage> {
                 fontSize: 12.5,
                 height: 1.3,
                 fontWeight: FontWeight.w700,
-                color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                color: context.colors.foreground,
               ),
             ),
             const SizedBox(height: 2),
@@ -943,7 +954,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.roboto(
                 fontSize: 11.5,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                color: context.colors.textMuted,
               ),
             ),
           ],

@@ -67,10 +67,8 @@ class LabelPrintProvider extends ChangeNotifier {
     notifyListeners();
     _save(
       _widthKey,
-      (preferences) => preferences.setInt(
-        _widthKey,
-        LabelWidth.values.indexOf(value),
-      ),
+      (preferences) =>
+          preferences.setInt(_widthKey, LabelWidth.values.indexOf(value)),
     );
   }
 

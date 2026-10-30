@@ -55,11 +55,11 @@ class _HomePageState extends State<HomePage> {
         '/gate',
         step: 1,
       ),
-      const _HomeMenu(
+      _HomeMenu(
         'Validasi SJ',
         'Validasi qty, expired, dan kondisi barang',
         Icons.verified_rounded,
-        AppTheme.success,
+        context.colors.success,
         ['sj_validation.view'],
         '/validasi-sj',
         step: 2,
@@ -76,11 +76,11 @@ class _HomePageState extends State<HomePage> {
     ];
 
     var historyMenus = [
-      const _HomeMenu(
+      _HomeMenu(
         'Riwayat',
         'Gate, validasi, dan penerimaan dalam satu tempat',
         Icons.history_rounded,
-        AppTheme.info,
+        context.colors.info,
         ['gate.view', 'sj_validation.view', 'receiving.view'],
         '/riwayat',
       ),
@@ -103,7 +103,7 @@ class _HomePageState extends State<HomePage> {
     var hasMenu = visibleWorkflow.isNotEmpty || visibleHistory.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+      backgroundColor: context.colors.background,
       appBar: AppBar(
         title: const Text('ONEZENTRA'),
         elevation: 0,
@@ -127,11 +127,17 @@ class _HomePageState extends State<HomePage> {
                 tp = null;
               }
               return IconButton(
-                icon: Icon(tp?.isDark == true ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
+                icon: Icon(
+                  tp?.isDark == true
+                      ? Icons.light_mode_rounded
+                      : Icons.dark_mode_rounded,
+                ),
                 tooltip: tp?.isDark == true ? 'Tema terang' : 'Tema gelap',
-                 onPressed: tp == null
+                onPressed: tp == null
                     ? null
-                    : () => tp!.setMode(tp.isDark ? ThemeMode.light : ThemeMode.dark),
+                    : () => tp!.setMode(
+                        tp.isDark ? ThemeMode.light : ThemeMode.dark,
+                      ),
               );
             },
           ),
@@ -233,16 +239,18 @@ class _HomePageState extends State<HomePage> {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
-          Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
-          Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+          context.colors.surfaceCard,
+          context.colors.surface,
+          context.colors.surfaceHover,
         ],
       ),
       borderRadius: AppTheme.radius2xl,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08)),
+      border: Border.all(
+        color: context.colors.foreground.withValues(alpha: 0.08),
+      ),
       boxShadow: [
         BoxShadow(
-          color: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+          color: context.colors.surfaceHover,
           blurRadius: 24,
           offset: const Offset(0, 10),
         ),
@@ -278,7 +286,7 @@ class _HomePageState extends State<HomePage> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.2,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                  color: context.colors.textMuted,
                 ),
               ),
               Text(
@@ -287,7 +295,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 20,
                   height: 1.2,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: context.colors.foreground,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -321,7 +329,7 @@ class _HomePageState extends State<HomePage> {
                           fontSize: 11,
                           height: 1.2,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                          color: context.colors.textMuted,
                         ),
                       ),
                     ],
@@ -339,7 +347,7 @@ class _HomePageState extends State<HomePage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+        backgroundColor: context.colors.surfaceCard,
         title: Text(
           'Keluar dari akun?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -349,7 +357,7 @@ class _HomePageState extends State<HomePage> {
           style: GoogleFonts.roboto(
             fontSize: 13,
             height: 1.4,
-            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+            color: context.colors.textSecondary,
           ),
         ),
         actions: [
@@ -360,8 +368,8 @@ class _HomePageState extends State<HomePage> {
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.danger,
-              foregroundColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+              backgroundColor: context.colors.danger,
+              foregroundColor: context.colors.foreground,
             ),
             child: const Text('Keluar'),
           ),
@@ -384,9 +392,9 @@ class _HomePageState extends State<HomePage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space5),
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+      color: context.colors.surfaceCard,
       borderRadius: AppTheme.radiusXl,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
+      border: Border.all(color: context.colors.textMuted),
     ),
     child: Row(
       children: [
@@ -404,7 +412,7 @@ class _HomePageState extends State<HomePage> {
             'Memuat izin...',
             style: theme.textTheme.bodyMedium?.copyWith(
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+              color: context.colors.textMuted,
             ),
           ),
         ),
@@ -419,9 +427,9 @@ class _HomePageState extends State<HomePage> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space5),
       decoration: BoxDecoration(
-        color: AppTheme.warningWell,
+        color: context.colors.warningWell,
         borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.warningText),
+        border: Border.all(color: context.colors.warningText),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,16 +441,16 @@ class _HomePageState extends State<HomePage> {
             style: GoogleFonts.roboto(
               fontSize: 13,
               height: 1.4,
-              color: AppTheme.warningText,
+              color: context.colors.warningText,
             ),
           ),
           const SizedBox(height: AppTheme.space3),
           OutlinedButton.icon(
             onPressed: auth.isRefreshing ? null : () => auth.refreshUser(),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.warningText,
+              foregroundColor: context.colors.warningText,
               side: BorderSide(
-                color: AppTheme.warningText.withValues(alpha: 0.6),
+                color: context.colors.warningText.withValues(alpha: 0.6),
               ),
             ),
             icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -457,19 +465,19 @@ class _HomePageState extends State<HomePage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space4),
     decoration: BoxDecoration(
-      color: AppTheme.warningWell,
+      color: context.colors.warningWell,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: AppTheme.warning),
+      border: Border.all(color: context.colors.warning),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 1),
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
           child: Icon(
             Icons.cloud_off_rounded,
             size: 18,
-            color: AppTheme.warningText,
+            color: context.colors.warningText,
           ),
         ),
         const SizedBox(width: AppTheme.space2),
@@ -477,7 +485,7 @@ class _HomePageState extends State<HomePage> {
           child: Text(
             'Gagal memperbarui izin. Data lama ditampilkan.',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.warningText,
+              color: context.colors.warningText,
               height: 1.4,
             ),
           ),
@@ -485,7 +493,9 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(width: AppTheme.space2),
         TextButton(
           onPressed: auth.isRefreshing ? null : () => auth.refreshUser(),
-          style: TextButton.styleFrom(foregroundColor: AppTheme.warningText),
+          style: TextButton.styleFrom(
+            foregroundColor: context.colors.warningText,
+          ),
           child: const Text('Coba lagi'),
         ),
       ],
@@ -521,7 +531,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 16,
                   height: 1.3,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: context.colors.foreground,
                 ),
               ),
             ),
@@ -531,7 +541,7 @@ class _HomePageState extends State<HomePage> {
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: 12,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                color: context.colors.textMuted,
               ),
             ),
           ],
@@ -579,8 +589,8 @@ class _HomePageState extends State<HomePage> {
     padding: const EdgeInsets.all(AppTheme.space5),
     // Subtle stage tint: blends a hint of the step colour into the card so
     // the workflow reads as a colored sequence without breaking the theme.
-    color: Color.lerp(Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard, menu.color, 0.05),
-    border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
+    color: Color.lerp(context.colors.surfaceCard, menu.color, 0.05),
+    border: Border.all(color: context.colors.textMuted),
     onTap: () => context.push(menu.route),
     child: Row(
       children: [
@@ -615,7 +625,10 @@ class _HomePageState extends State<HomePage> {
                   decoration: BoxDecoration(
                     color: menu.color,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background, width: 2),
+                    border: Border.all(
+                      color: context.colors.background,
+                      width: 2,
+                    ),
                   ),
                   child: Text(
                     '$number',
@@ -643,7 +656,7 @@ class _HomePageState extends State<HomePage> {
                   height: 1.3,
                   letterSpacing: 0,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: context.colors.foreground,
                 ),
               ),
               const SizedBox(height: 2),
@@ -652,7 +665,7 @@ class _HomePageState extends State<HomePage> {
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontSize: 13,
                   height: 1.4,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                  color: context.colors.textMuted,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

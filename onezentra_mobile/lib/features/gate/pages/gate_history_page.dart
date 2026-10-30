@@ -94,7 +94,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
     }
 
     return Scaffold(
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+      backgroundColor: context.colors.background,
       appBar: AppBar(
         title: const Text('Riwayat Gate'),
         elevation: 0,
@@ -116,14 +116,14 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space5),
       decoration: BoxDecoration(
-        color: AppTheme.warningWell,
+        color: context.colors.warningWell,
         borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.warningText),
+        border: Border.all(color: context.colors.warningText),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
+          Icon(Icons.lock_rounded, size: 20, color: context.colors.warningText),
           const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
@@ -131,7 +131,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
-                color: AppTheme.warningText,
+                color: context.colors.warningText,
               ),
             ),
           ),
@@ -164,7 +164,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                      color: context.colors.foreground,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -172,7 +172,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     'Nopol / PO / nama driver',
                     style: GoogleFonts.roboto(
                       fontSize: 11,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: context.colors.textMuted,
                     ),
                   ),
                 ],
@@ -223,7 +223,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                      color: context.colors.foreground,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -231,7 +231,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     '${gate.total} transaksi tercatat',
                     style: GoogleFonts.roboto(
                       fontSize: 11,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: context.colors.textMuted,
                     ),
                   ),
                 ],
@@ -265,7 +265,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
               height: 64,
               margin: const EdgeInsets.only(bottom: AppTheme.space3),
               decoration: BoxDecoration(
-                color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+                color: context.colors.gray100,
                 borderRadius: AppTheme.radiusLg,
               ),
             ),
@@ -298,7 +298,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
           for (var i = 0; i < items.length; i++) ...[
             _historyTile(items[i]),
             if (i != items.length - 1)
-              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100, indent: 46),
+              Divider(height: 1, color: context.colors.gray100, indent: 46),
           ],
         ],
       ),
@@ -307,7 +307,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
           padding: const EdgeInsets.only(top: AppTheme.space4),
           child: Column(
             children: [
-              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100),
+              Divider(height: 1, color: context.colors.gray100),
               const SizedBox(height: AppTheme.space3),
               Row(
                 children: [
@@ -326,7 +326,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                     'Halaman ${gate.currentPage}/${gate.lastPage}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                      color: context.colors.textMuted,
                     ),
                   ),
                   const SizedBox(width: AppTheme.space2),
@@ -357,9 +357,9 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
         children: [
           _iconBox(
             36,
-            Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+            context.colors.gray100,
             Icons.local_shipping_rounded,
-            iconColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+            iconColor: context.colors.textMuted,
           ),
           const SizedBox(width: AppTheme.space3),
           Expanded(
@@ -376,7 +376,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                         style: GoogleFonts.robotoMono(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                          color: context.colors.foreground,
                         ),
                       ),
                     ),
@@ -391,7 +391,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                    color: context.colors.textMuted,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -404,7 +404,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.robotoMono(
                           fontSize: 11,
-                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                          color: context.colors.textMuted,
                         ),
                       ),
                     ),

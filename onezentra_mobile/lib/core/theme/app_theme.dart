@@ -7,11 +7,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Theme-aware color extension. Use via `Theme.of(context).extension<ThemeColors>()`.
+/// Theme-aware color extension. Use via `Theme.of(context).extension<ThemeColors>()`
+/// or, singkatnya, `context.colors`.
 ///
 /// In light mode, text colors are dark; in dark mode, they are light.
 /// This allows widgets to use theme-aware colors instead of static AppTheme
 /// constants that don't change between themes.
+///
+/// Token yang memang harus sama di kedua mode dideklarasikan di class
+/// [AppTheme] (primary/accent brand, panel ink selalu-gelap, radius,
+/// spacing, shadow). Semua token di class ini berubah mengikuti tema.
 class ThemeColors extends ThemeExtension<ThemeColors> {
   // ignore: sort_constructors_first
   const ThemeColors({
@@ -34,6 +39,22 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     required this.textMuted,
     required this.background,
     required this.foreground,
+    required this.success,
+    required this.successText,
+    required this.successWell,
+    required this.warning,
+    required this.warningText,
+    required this.warningWell,
+    required this.warningDark,
+    required this.danger,
+    required this.dangerText,
+    required this.dangerWell,
+    required this.info,
+    required this.infoText,
+    required this.infoWell,
+    required this.primaryWell,
+    required this.primaryWellText,
+    required this.primaryWellBorder,
   });
 
   final Color gray50;
@@ -56,6 +77,33 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
   final Color background;
   final Color foreground;
 
+  // --- Semantic status tokens (theme-aware, kontras di kedua mode) -------
+  // Warna solid untuk bar, dot dan state aktif — identik di dua mode.
+  final Color success;
+  final Color successText;
+  final Color warning;
+  final Color warningText;
+  final Color danger;
+  final Color dangerText;
+  final Color info;
+  final Color infoText;
+
+  // Sumur status yang di-tint (padanan `bg-*-50` di web):
+  // dark = well gelap dengan teks pastel; light = well pastel muda
+  // dengan teks gelap yang kontras.
+  final Color successWell;
+  final Color warningWell;
+  final Color dangerWell;
+  final Color infoWell;
+
+  // Tone chip lebih dalam untuk ikon di dalam box notice yang sudah
+  // di-tint (agar chip tidak hilang menyatu dengan outline box).
+  final Color warningDark;
+
+  // Sumur badge varian primary: dark = navy ink; light = indigo muda.
+  final Color primaryWell;
+  final Color primaryWellText;
+  final Color primaryWellBorder;
 
   static const dark = ThemeColors(
     gray50: Color(0xFF0A0F1C),
@@ -77,6 +125,22 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     textMuted: Color(0xFF94A3B8),
     background: Color(0xFF0F172A),
     foreground: Color(0xFFF1F5F9),
+    success: Color(0xFF10B981),
+    successText: Color(0xFFA7F3D0),
+    successWell: Color(0xFF052E21),
+    warning: Color(0xFFF59E0B),
+    warningText: Color(0xFFFDE68A),
+    warningWell: Color(0xFF2B1A03),
+    warningDark: Color(0xFF451A03),
+    danger: Color(0xFFEF4444),
+    dangerText: Color(0xFFFECACA),
+    dangerWell: Color(0xFF2C0A0E),
+    info: Color(0xFF3B82F6),
+    infoText: Color(0xFFBFDBFE),
+    infoWell: Color(0xFF0A1A33),
+    primaryWell: Color(0xFF1E1B4B),
+    primaryWellText: Color(0xFFC7D2FE),
+    primaryWellBorder: Color(0xFF4338CA),
   );
 
   static const light = ThemeColors(
@@ -99,6 +163,22 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     textMuted: Color(0xFF64748B),
     background: Color(0xFFF1F5F9),
     foreground: Color(0xFF0F172A),
+    success: Color(0xFF10B981),
+    successText: Color(0xFF065F46),
+    successWell: Color(0xFFECFDF5),
+    warning: Color(0xFFF59E0B),
+    warningText: Color(0xFF92400E),
+    warningWell: Color(0xFFFFFBEB),
+    warningDark: Color(0xFFFDE68A),
+    danger: Color(0xFFEF4444),
+    dangerText: Color(0xFFB91C1C),
+    dangerWell: Color(0xFFFEF2F2),
+    info: Color(0xFF3B82F6),
+    infoText: Color(0xFF1E40AF),
+    infoWell: Color(0xFFEFF6FF),
+    primaryWell: Color(0xFFE0E7FF),
+    primaryWellText: Color(0xFF4338CA),
+    primaryWellBorder: Color(0xFFA5B4FC),
   );
 
   @override
@@ -122,28 +202,59 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     Color? textMuted,
     Color? background,
     Color? foreground,
-  }) =>
-      ThemeColors(
-        gray50: gray50 ?? this.gray50,
-        gray100: gray100 ?? this.gray100,
-        gray200: gray200 ?? this.gray200,
-        gray300: gray300 ?? this.gray300,
-        gray400: gray400 ?? this.gray400,
-        gray500: gray500 ?? this.gray500,
-        gray600: gray600 ?? this.gray600,
-        gray700: gray700 ?? this.gray700,
-        gray800: gray800 ?? this.gray800,
-        gray900: gray900 ?? this.gray900,
-        surface: surface ?? this.surface,
-        surfaceCard: surfaceCard ?? this.surfaceCard,
-        surfaceHover: surfaceHover ?? this.surfaceHover,
-        border: border ?? this.border,
-        textPrimary: textPrimary ?? this.textPrimary,
-        textSecondary: textSecondary ?? this.textSecondary,
-        textMuted: textMuted ?? this.textMuted,
-        background: background ?? this.background,
-        foreground: foreground ?? this.foreground,
-      );
+    Color? success,
+    Color? successText,
+    Color? successWell,
+    Color? warning,
+    Color? warningText,
+    Color? warningWell,
+    Color? warningDark,
+    Color? danger,
+    Color? dangerText,
+    Color? dangerWell,
+    Color? info,
+    Color? infoText,
+    Color? infoWell,
+    Color? primaryWell,
+    Color? primaryWellText,
+    Color? primaryWellBorder,
+  }) => ThemeColors(
+    gray50: gray50 ?? this.gray50,
+    gray100: gray100 ?? this.gray100,
+    gray200: gray200 ?? this.gray200,
+    gray300: gray300 ?? this.gray300,
+    gray400: gray400 ?? this.gray400,
+    gray500: gray500 ?? this.gray500,
+    gray600: gray600 ?? this.gray600,
+    gray700: gray700 ?? this.gray700,
+    gray800: gray800 ?? this.gray800,
+    gray900: gray900 ?? this.gray900,
+    surface: surface ?? this.surface,
+    surfaceCard: surfaceCard ?? this.surfaceCard,
+    surfaceHover: surfaceHover ?? this.surfaceHover,
+    border: border ?? this.border,
+    textPrimary: textPrimary ?? this.textPrimary,
+    textSecondary: textSecondary ?? this.textSecondary,
+    textMuted: textMuted ?? this.textMuted,
+    background: background ?? this.background,
+    foreground: foreground ?? this.foreground,
+    success: success ?? this.success,
+    successText: successText ?? this.successText,
+    successWell: successWell ?? this.successWell,
+    warning: warning ?? this.warning,
+    warningText: warningText ?? this.warningText,
+    warningWell: warningWell ?? this.warningWell,
+    warningDark: warningDark ?? this.warningDark,
+    danger: danger ?? this.danger,
+    dangerText: dangerText ?? this.dangerText,
+    dangerWell: dangerWell ?? this.dangerWell,
+    info: info ?? this.info,
+    infoText: infoText ?? this.infoText,
+    infoWell: infoWell ?? this.infoWell,
+    primaryWell: primaryWell ?? this.primaryWell,
+    primaryWellText: primaryWellText ?? this.primaryWellText,
+    primaryWellBorder: primaryWellBorder ?? this.primaryWellBorder,
+  );
 
   @override
   ThemeColors lerp(ThemeColors? other, double t) {
@@ -170,7 +281,51 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
       textMuted: Color.lerp(textMuted, other.textMuted, t)!,
       background: Color.lerp(background, other.background, t)!,
       foreground: Color.lerp(foreground, other.foreground, t)!,
+      success: Color.lerp(success, other.success, t)!,
+      successText: Color.lerp(successText, other.successText, t)!,
+      successWell: Color.lerp(successWell, other.successWell, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
+      warningText: Color.lerp(warningText, other.warningText, t)!,
+      warningWell: Color.lerp(warningWell, other.warningWell, t)!,
+      warningDark: Color.lerp(warningDark, other.warningDark, t)!,
+      danger: Color.lerp(danger, other.danger, t)!,
+      dangerText: Color.lerp(dangerText, other.dangerText, t)!,
+      dangerWell: Color.lerp(dangerWell, other.dangerWell, t)!,
+      info: Color.lerp(info, other.info, t)!,
+      infoText: Color.lerp(infoText, other.infoText, t)!,
+      infoWell: Color.lerp(infoWell, other.infoWell, t)!,
+      primaryWell: Color.lerp(primaryWell, other.primaryWell, t)!,
+      primaryWellText: Color.lerp(primaryWellText, other.primaryWellText, t)!,
+      primaryWellBorder: Color.lerp(
+        primaryWellBorder,
+        other.primaryWellBorder,
+        t,
+      )!,
     );
+  }
+}
+
+/// Ringkas akses token warna theme-aware: `context.colors.textMuted`
+/// alih-alih `Theme.of(context).extension<ThemeColors>()?.textMuted`.
+///
+/// Wajib dipakai di dalam widget `BuildContext` yang punya akses tema.
+/// Untuk warna yang memang harus sama di kedua mode (panel ink
+/// selalu-gelap, brand primary/accent, radius, spacing) tetap memakai
+/// konstanta `AppTheme.*` yang statis.
+extension ThemeColorsOnContext on BuildContext {
+  /// Token warna untuk brightness tema saat ini.
+  ///
+  /// Jika `ThemeData` tidak membawa `ThemeColors` (mis. tema bawaan
+  /// Flutter pada test), kembali ke ramp yang sesuai brightness agar
+  /// helper ini tidak pernah null.
+  ThemeColors get colors {
+    var ext = Theme.of(this).extension<ThemeColors>();
+    if (ext != null) {
+      return ext;
+    }
+    return Theme.of(this).brightness == Brightness.dark
+        ? ThemeColors.dark
+        : ThemeColors.light;
   }
 }
 
@@ -310,147 +465,176 @@ class AppTheme {
   static const double space12 = 48;
   static const double space16 = 64;
 
-  // Text Styles
-  static TextTheme get textTheme => GoogleFonts.robotoTextTheme().copyWith(
+  // Text Styles — dibangun per-brightness: tone teks mengikuti tema
+  // (`ThemeColors`), bukan lagi ramp dark statis yang membuat teks putih
+  // tak terbaca di atas permukaan terang.
+  static TextTheme _textTheme({
+    required Color fg,
+    required Color primary,
+    required Color secondary,
+    required Color muted,
+  }) => GoogleFonts.robotoTextTheme().copyWith(
     displayLarge: GoogleFonts.roboto(
       fontSize: 30,
       fontWeight: FontWeight.w700,
       height: 36 / 30,
       letterSpacing: -0.5,
-      color: foreground,
+      color: fg,
     ),
     displayMedium: GoogleFonts.roboto(
       fontSize: 24,
       fontWeight: FontWeight.w700,
       height: 32 / 24,
       letterSpacing: -0.3,
-      color: foreground,
+      color: fg,
     ),
     displaySmall: GoogleFonts.roboto(
       fontSize: 20,
       fontWeight: FontWeight.w700,
       height: 28 / 20,
       letterSpacing: -0.2,
-      color: foreground,
+      color: fg,
     ),
     headlineLarge: GoogleFonts.roboto(
       fontSize: 18,
       fontWeight: FontWeight.w600,
       height: 28 / 18,
-      color: foreground,
+      color: fg,
     ),
     headlineMedium: GoogleFonts.roboto(
       fontSize: 16,
       fontWeight: FontWeight.w600,
       height: 24 / 16,
-      color: foreground,
+      color: fg,
     ),
     headlineSmall: GoogleFonts.roboto(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       height: 20 / 14,
-      color: foreground,
+      color: fg,
     ),
     titleLarge: GoogleFonts.roboto(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       height: 20 / 14,
-      color: gray700,
+      color: primary,
     ),
     titleMedium: GoogleFonts.roboto(
       fontSize: 12,
       fontWeight: FontWeight.w600,
       height: 16 / 12,
       letterSpacing: 0.5,
-      color: gray500,
+      color: muted,
     ),
     titleSmall: GoogleFonts.roboto(
       fontSize: 12,
       fontWeight: FontWeight.w500,
       height: 16 / 12,
-      color: gray600,
+      color: secondary,
     ),
     bodyLarge: GoogleFonts.roboto(
       fontSize: 16,
       fontWeight: FontWeight.w400,
       height: 24 / 16,
-      color: gray700,
+      color: primary,
     ),
     bodyMedium: GoogleFonts.roboto(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       height: 20 / 14,
-      color: gray600,
+      color: secondary,
     ),
     bodySmall: GoogleFonts.roboto(
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 16 / 12,
-      color: gray500,
+      color: muted,
     ),
     labelLarge: GoogleFonts.roboto(
       fontSize: 14,
       fontWeight: FontWeight.w500,
       height: 20 / 14,
-      color: gray700,
+      color: primary,
     ),
     labelMedium: GoogleFonts.roboto(
       fontSize: 12,
       fontWeight: FontWeight.w500,
       height: 16 / 12,
-      color: gray600,
+      color: secondary,
     ),
     labelSmall: GoogleFonts.roboto(
       fontSize: 10,
       fontWeight: FontWeight.w500,
       height: 14 / 10,
       letterSpacing: 0.5,
-      color: gray500,
+      color: muted,
     ),
   );
 
+  /// Tone teks per-brightness. `primary` = tone teks kuat (judul isi),
+  /// `secondary` = tone isi tubuh, `muted` = tone redup (hint, label kecil).
+  static (TextTheme, ThemeColors) _tones(Brightness b) {
+    var c = b == Brightness.dark ? ThemeColors.dark : ThemeColors.light;
+    var t = _textTheme(
+      fg: c.foreground,
+      primary: b == Brightness.dark ? c.gray700 : c.gray800,
+      secondary: b == Brightness.dark ? c.gray600 : c.gray700,
+      muted: c.gray500,
+    );
+    return (t, c);
+  }
+
+  /// Getter kompatibilitas: panel selalu-gelap & kode lama masih pakai ini.
+  /// Jangan dipakai untuk tema terang — tone-nya untuk mode gelap.
+  static TextTheme get textTheme => _textThemeFor(Brightness.dark);
+
+  static TextTheme _textThemeFor(Brightness b) => _tones(b).$1;
+
   // Input Decoration Theme
-  static InputDecorationTheme get inputDecorationTheme => InputDecorationTheme(
+  static InputDecorationTheme _inputDecorationTheme(
+    ThemeColors c,
+    TextTheme t,
+  ) => InputDecorationTheme(
     filled: true,
-    fillColor: surfaceCard,
+    fillColor: c.surfaceCard,
     contentPadding: const EdgeInsets.symmetric(
       horizontal: space4,
       vertical: space3,
     ),
-    border: const OutlineInputBorder(
+    border: OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: BorderSide(color: gray200),
+      borderSide: BorderSide(color: c.border),
     ),
-    enabledBorder: const OutlineInputBorder(
+    enabledBorder: OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: BorderSide(color: gray200),
+      borderSide: BorderSide(color: c.border),
     ),
     focusedBorder: const OutlineInputBorder(
       borderRadius: radiusXl,
       borderSide: BorderSide(color: primary500, width: 2),
     ),
-    errorBorder: const OutlineInputBorder(
+    errorBorder: OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: BorderSide(color: danger),
+      borderSide: BorderSide(color: c.danger),
     ),
-    focusedErrorBorder: const OutlineInputBorder(
+    focusedErrorBorder: OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: BorderSide(color: danger, width: 2),
+      borderSide: BorderSide(color: c.danger, width: 2),
     ),
-    disabledBorder: const OutlineInputBorder(
+    disabledBorder: OutlineInputBorder(
       borderRadius: radiusXl,
-      borderSide: BorderSide(color: gray200),
+      borderSide: BorderSide(color: c.border),
     ),
-    labelStyle: textTheme.bodyMedium?.copyWith(color: gray600),
-    hintStyle: textTheme.bodyMedium?.copyWith(color: gray400),
-    errorStyle: textTheme.bodySmall?.copyWith(color: danger),
+    labelStyle: t.bodyMedium,
+    hintStyle: t.bodyMedium?.copyWith(color: c.gray400),
+    errorStyle: t.bodySmall?.copyWith(color: c.danger),
     floatingLabelBehavior: FloatingLabelBehavior.auto,
-    prefixIconColor: gray400,
-    suffixIconColor: gray400,
+    prefixIconColor: c.gray400,
+    suffixIconColor: c.gray400,
   );
 
   // Elevated Button Theme
-  static ElevatedButtonThemeData get elevatedButtonTheme =>
+  static ElevatedButtonThemeData _elevatedButtonTheme(TextTheme t) =>
       ElevatedButtonThemeData(
         style:
             ElevatedButton.styleFrom(
@@ -463,9 +647,7 @@ class AppTheme {
                 horizontal: space6,
                 vertical: space3,
               ),
-              textStyle: textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              textStyle: t.labelLarge?.copyWith(fontWeight: FontWeight.w600),
               minimumSize: const Size(double.infinity, 52),
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith<Color?>((
@@ -483,79 +665,77 @@ class AppTheme {
       );
 
   // Outlined Button Theme
-  static OutlinedButtonThemeData get outlinedButtonTheme =>
-      OutlinedButtonThemeData(
-        style:
-            OutlinedButton.styleFrom(
-              foregroundColor: gray700,
-              backgroundColor: surfaceCard,
-              side: const BorderSide(color: gray200),
-              shape: const RoundedRectangleBorder(borderRadius: radiusXl),
-              padding: const EdgeInsets.symmetric(
-                horizontal: space6,
-                vertical: space3,
-              ),
-              textStyle: textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-              minimumSize: const Size(double.infinity, 52),
-            ).copyWith(
-              overlayColor: WidgetStateProperty.resolveWith<Color?>((
-                Set<WidgetState> states,
-              ) {
-                if (states.contains(WidgetState.pressed)) {
-                  return gray100;
-                }
-                if (states.contains(WidgetState.hovered)) {
-                  return gray50;
-                }
-                return null;
-              }),
-            ),
-      );
-
-  // Text Button Theme
-  static TextButtonThemeData get textButtonTheme => TextButtonThemeData(
+  static OutlinedButtonThemeData _outlinedButtonTheme(
+    ThemeColors c,
+    TextTheme t,
+  ) => OutlinedButtonThemeData(
     style:
-        TextButton.styleFrom(
-          foregroundColor: primary600,
-          shape: const RoundedRectangleBorder(borderRadius: radiusLg),
+        OutlinedButton.styleFrom(
+          foregroundColor: t.titleLarge?.color,
+          backgroundColor: c.surfaceCard,
+          side: BorderSide(color: c.border),
+          shape: const RoundedRectangleBorder(borderRadius: radiusXl),
           padding: const EdgeInsets.symmetric(
-            horizontal: space3,
-            vertical: space2,
+            horizontal: space6,
+            vertical: space3,
           ),
-          textStyle: textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+          textStyle: t.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+          minimumSize: const Size(double.infinity, 52),
         ).copyWith(
           overlayColor: WidgetStateProperty.resolveWith<Color?>((
             Set<WidgetState> states,
           ) {
             if (states.contains(WidgetState.pressed)) {
-              return primary50;
+              return c.gray100;
             }
             if (states.contains(WidgetState.hovered)) {
-              return primary50;
+              return c.gray100;
             }
             return null;
           }),
         ),
   );
 
+  // Text Button Theme
+  static TextButtonThemeData _textButtonTheme(Brightness b, ThemeColors c) =>
+      TextButtonThemeData(
+        style:
+            TextButton.styleFrom(
+              foregroundColor: b == Brightness.dark ? primary400 : primary600,
+              shape: const RoundedRectangleBorder(borderRadius: radiusLg),
+              padding: const EdgeInsets.symmetric(
+                horizontal: space3,
+                vertical: space2,
+              ),
+            ).copyWith(
+              overlayColor: WidgetStateProperty.resolveWith<Color?>((
+                Set<WidgetState> states,
+              ) {
+                var pressed =
+                    states.contains(WidgetState.pressed) ||
+                    states.contains(WidgetState.hovered);
+                if (!pressed) {
+                  return null;
+                }
+                return c.primaryWell.withValues(alpha: 0.7);
+              }),
+            ),
+      );
+
   // Card Theme
-  static CardThemeData get cardTheme => CardThemeData(
-    color: surfaceCard,
+  static CardThemeData _cardTheme(ThemeColors c) => CardThemeData(
+    color: c.surfaceCard,
     elevation: 0,
-    shape: const RoundedRectangleBorder(
+    shape: RoundedRectangleBorder(
       borderRadius: radius2xl,
-      side: BorderSide(color: gray100),
+      side: BorderSide(color: c.border),
     ),
     shadowColor: Colors.black.withValues(alpha: 0.05),
     margin: EdgeInsets.zero,
   );
 
   // Checkbox Theme
-  static CheckboxThemeData get checkboxTheme => CheckboxThemeData(
+  static CheckboxThemeData _checkboxTheme(ThemeColors c) => CheckboxThemeData(
     fillColor: WidgetStateProperty.resolveWith<Color?>((
       Set<WidgetState> states,
     ) {
@@ -565,32 +745,32 @@ class AppTheme {
       return Colors.transparent;
     }),
     checkColor: WidgetStateProperty.all(Colors.white),
-    side: const BorderSide(color: gray300, width: 1.5),
+    side: BorderSide(color: c.border, width: 1.5),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );
 
   // Radio Theme
-  static RadioThemeData get radioTheme => RadioThemeData(
+  static RadioThemeData _radioTheme(ThemeColors c) => RadioThemeData(
     fillColor: WidgetStateProperty.resolveWith<Color?>((
       Set<WidgetState> states,
     ) {
       if (states.contains(WidgetState.selected)) {
         return primary600;
       }
-      return gray400;
+      return c.gray400;
     }),
   );
 
   // Switch Theme
-  static SwitchThemeData get switchTheme => SwitchThemeData(
+  static SwitchThemeData _switchTheme(ThemeColors c) => SwitchThemeData(
     thumbColor: WidgetStateProperty.resolveWith<Color?>((
       Set<WidgetState> states,
     ) {
       if (states.contains(WidgetState.selected)) {
         return primary600;
       }
-      return gray300;
+      return c.border;
     }),
     trackColor: WidgetStateProperty.resolveWith<Color?>((
       Set<WidgetState> states,
@@ -598,7 +778,7 @@ class AppTheme {
       if (states.contains(WidgetState.selected)) {
         return primary300;
       }
-      return gray300;
+      return c.border;
     }),
     trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
       Set<WidgetState> states,
@@ -606,113 +786,121 @@ class AppTheme {
       if (states.contains(WidgetState.selected)) {
         return primary600;
       }
-      return gray300;
+      return c.border;
     }),
   );
 
   // Slider Theme
-  static SliderThemeData get sliderTheme => SliderThemeData(
-    activeTrackColor: primary600,
-    inactiveTrackColor: primary200,
-    thumbColor: primary600,
-    overlayColor: primary100,
-    valueIndicatorColor: primary600,
-    valueIndicatorTextStyle: textTheme.labelSmall?.copyWith(
-      color: Colors.white,
-    ),
-    trackHeight: 4,
-    thumbShape: const RoundSliderThumbShape(),
-    overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-  );
+  static SliderThemeData _sliderTheme(Brightness b) => b == Brightness.dark
+      ? SliderThemeData(
+          activeTrackColor: primary500,
+          inactiveTrackColor: primary900,
+          thumbColor: primary400,
+          overlayColor: primary900.withValues(alpha: 0.6),
+          valueIndicatorColor: primary600,
+          trackHeight: 4,
+        )
+      : const SliderThemeData(
+          activeTrackColor: primary600,
+          inactiveTrackColor: primary200,
+          thumbColor: primary600,
+          overlayColor: primary100,
+          valueIndicatorColor: primary600,
+          trackHeight: 4,
+        );
 
   // Tab Bar Theme
-  static TabBarThemeData get tabBarTheme => TabBarThemeData(
-    labelColor: primary600,
-    unselectedLabelColor: gray500,
-    indicatorColor: primary600,
-    indicatorSize: TabBarIndicatorSize.label,
-    labelStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-    unselectedLabelStyle: textTheme.labelLarge?.copyWith(
-      fontWeight: FontWeight.w500,
-    ),
-    dividerColor: Colors.transparent,
-  );
-
-  // App Bar Theme
-  static AppBarTheme get appBarTheme => AppBarTheme(
-    backgroundColor: surfaceCard,
-    foregroundColor: foreground,
-    elevation: 0,
-    scrolledUnderElevation: 1,
-    shadowColor: Colors.black.withValues(alpha: 0.05),
-    surfaceTintColor: Colors.transparent,
-    centerTitle: false,
-    titleTextStyle: textTheme.headlineMedium?.copyWith(
-      fontWeight: FontWeight.w700,
-      color: foreground,
-    ),
-    iconTheme: const IconThemeData(color: gray700, size: 24),
-    actionsIconTheme: const IconThemeData(color: gray700, size: 24),
-  );
-
-  // Bottom Navigation Bar Theme
-  static BottomNavigationBarThemeData get bottomNavigationBarTheme =>
-      BottomNavigationBarThemeData(
-        backgroundColor: surfaceCard,
-        selectedItemColor: primary600,
-        unselectedItemColor: gray400,
-        selectedLabelStyle: textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: textTheme.labelSmall?.copyWith(
+  static TabBarThemeData _tabBarTheme(ThemeColors c, TextTheme t) =>
+      TabBarThemeData(
+        labelColor: primary600,
+        unselectedLabelColor: c.textMuted,
+        indicatorColor: primary600,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelStyle: t.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: t.labelLarge?.copyWith(
           fontWeight: FontWeight.w500,
         ),
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
+        dividerColor: Colors.transparent,
       );
 
+  // App Bar Theme
+  static AppBarTheme _appBarTheme(Brightness b, ThemeColors c, TextTheme t) =>
+      AppBarTheme(
+        backgroundColor: b == Brightness.dark ? c.surface : c.surfaceCard,
+        foregroundColor: c.foreground,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        shadowColor: Colors.black.withValues(alpha: 0.05),
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+        titleTextStyle: t.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+        iconTheme: IconThemeData(color: c.textSecondary, size: 24),
+        actionsIconTheme: IconThemeData(color: c.textSecondary, size: 24),
+      );
+
+  // Bottom Navigation Bar Theme
+  static BottomNavigationBarThemeData _bottomNavTheme(
+    ThemeColors c,
+    TextTheme t,
+  ) => BottomNavigationBarThemeData(
+    backgroundColor: c.surfaceCard,
+    selectedItemColor: primary600,
+    unselectedItemColor: c.gray400,
+    selectedLabelStyle: t.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+    unselectedLabelStyle: t.labelSmall?.copyWith(fontWeight: FontWeight.w500),
+    type: BottomNavigationBarType.fixed,
+    elevation: 8,
+    showSelectedLabels: true,
+    showUnselectedLabels: true,
+  );
+
   // Navigation Rail Theme
-  static NavigationRailThemeData get navigationRailTheme =>
+  static NavigationRailThemeData _navRailTheme(ThemeColors c, TextTheme t) =>
       NavigationRailThemeData(
-        backgroundColor: surfaceCard,
+        backgroundColor: c.surfaceCard,
         selectedIconTheme: const IconThemeData(color: primary600, size: 24),
-        unselectedIconTheme: const IconThemeData(color: gray400, size: 24),
-        selectedLabelTextStyle: textTheme.labelSmall?.copyWith(
+        unselectedIconTheme: IconThemeData(color: c.gray400, size: 24),
+        selectedLabelTextStyle: t.labelSmall?.copyWith(
           fontWeight: FontWeight.w600,
           color: primary600,
         ),
-        unselectedLabelTextStyle: textTheme.labelSmall?.copyWith(
+        unselectedLabelTextStyle: t.labelSmall?.copyWith(
           fontWeight: FontWeight.w500,
-          color: gray500,
+          color: c.gray500,
         ),
-        indicatorColor: primary50,
+        indicatorColor: c.primaryWell,
         indicatorShape: const RoundedRectangleBorder(borderRadius: radiusLg),
         elevation: 0,
       );
 
   // Divider Theme
-  static DividerThemeData get dividerTheme =>
-      const DividerThemeData(color: gray200, thickness: 1, space: 1);
+  static DividerThemeData _dividerTheme(ThemeColors c) =>
+      DividerThemeData(color: c.gray200, thickness: 1, space: 1);
 
   // Chip Theme
-  static ChipThemeData get chipTheme => ChipThemeData(
-    backgroundColor: gray100,
-    disabledColor: gray100,
-    selectedColor: primary100,
-    secondarySelectedColor: primary100,
+  static ChipThemeData _chipTheme(ThemeColors c, TextTheme t) => ChipThemeData(
+    backgroundColor: c.gray100,
+    disabledColor: c.gray100,
+    selectedColor: c.primaryWell,
+    secondarySelectedColor: c.primaryWell,
     padding: const EdgeInsets.symmetric(horizontal: space3, vertical: space1),
-    labelStyle: textTheme.labelSmall?.copyWith(color: gray700),
-    secondaryLabelStyle: textTheme.labelSmall?.copyWith(color: primary700),
+    labelStyle: t.labelSmall?.copyWith(color: t.titleLarge?.color),
+    secondaryLabelStyle: t.labelSmall?.copyWith(color: c.primaryWellText),
     brightness: Brightness.light,
     shape: const RoundedRectangleBorder(borderRadius: radiusFull),
   );
 
   // SnackBar Theme
-  static SnackBarThemeData get snackBarTheme => SnackBarThemeData(
-    backgroundColor: gray900,
-    contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
+  static SnackBarThemeData _snackBarTheme(
+    Brightness b,
+    ThemeColors c,
+    TextTheme t,
+  ) => SnackBarThemeData(
+    // Light mode: snack bar gelap klasik; dark mode: panel kartu.
+    backgroundColor: b == Brightness.dark ? c.surfaceCard : ink900,
+    contentTextStyle: t.bodyMedium?.copyWith(
+      color: b == Brightness.dark ? c.foreground : Colors.white,
+    ),
     actionTextColor: accent400,
     behavior: SnackBarBehavior.floating,
     shape: const RoundedRectangleBorder(borderRadius: radiusLg),
@@ -720,157 +908,106 @@ class AppTheme {
   );
 
   // Dialog Theme
-  static DialogThemeData get dialogTheme => DialogThemeData(
-    backgroundColor: surfaceCard,
-    elevation: 24,
-    shadowColor: Colors.black.withValues(alpha: 0.15),
-    shape: const RoundedRectangleBorder(borderRadius: radius2xl),
-    titleTextStyle: textTheme.headlineSmall?.copyWith(
-      fontWeight: FontWeight.w700,
-      color: foreground,
-    ),
-    contentTextStyle: textTheme.bodyMedium?.copyWith(color: gray600),
-  );
+  static DialogThemeData _dialogTheme(ThemeColors c, TextTheme t) =>
+      DialogThemeData(
+        backgroundColor: c.surfaceCard,
+        elevation: 24,
+        shadowColor: Colors.black.withValues(alpha: 0.15),
+        shape: const RoundedRectangleBorder(borderRadius: radius2xl),
+        titleTextStyle: t.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        contentTextStyle: t.bodyMedium,
+      );
 
   // Bottom Sheet Theme
-  static BottomSheetThemeData get bottomSheetTheme => BottomSheetThemeData(
-    backgroundColor: surfaceCard,
-    elevation: 24,
-    shadowColor: Colors.black.withValues(alpha: 0.15),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    modalBackgroundColor: surfaceCard,
-    dragHandleColor: gray300,
-    showDragHandle: true,
-  );
+  static BottomSheetThemeData _bottomSheetTheme(ThemeColors c) =>
+      BottomSheetThemeData(
+        backgroundColor: c.surfaceCard,
+        elevation: 24,
+        shadowColor: Colors.black.withValues(alpha: 0.15),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        modalBackgroundColor: c.surfaceCard,
+        dragHandleColor: c.border,
+        showDragHandle: true,
+      );
 
   // Complete ThemeData
-  static ThemeData get light => ThemeData(
-    useMaterial3: true,
-    fontFamily: GoogleFonts.roboto().fontFamily,
-    extensions: const [ThemeColors.light],
-    colorScheme: const ColorScheme.light(
-      primary: primary600,
-      secondary: accent500,
-      onSecondary: Colors.white,
-      tertiary: primary500,
-      onTertiary: Colors.white,
-      onSurface: foreground,
-      surfaceContainerHighest: surfaceHover,
-      error: danger,
-      outline: gray300,
-      outlineVariant: gray200,
-    ),
-    textTheme: textTheme,
-    inputDecorationTheme: inputDecorationTheme,
-    elevatedButtonTheme: elevatedButtonTheme,
-    outlinedButtonTheme: outlinedButtonTheme,
-    textButtonTheme: textButtonTheme,
-    cardTheme: cardTheme,
-    checkboxTheme: checkboxTheme,
-    radioTheme: radioTheme,
-    switchTheme: switchTheme,
-    sliderTheme: sliderTheme,
-    tabBarTheme: tabBarTheme,
-    appBarTheme: appBarTheme,
-    bottomNavigationBarTheme: bottomNavigationBarTheme,
-    navigationRailTheme: navigationRailTheme,
-    dividerTheme: dividerTheme,
-    chipTheme: chipTheme,
-    snackBarTheme: snackBarTheme,
-    dialogTheme: dialogTheme,
-    bottomSheetTheme: bottomSheetTheme,
-    scaffoldBackgroundColor: background,
-    canvasColor: surfaceCard,
-    // Translucent overlays: an opaque focus/hover/highlight colour would paint
-    // over the whole field and hide the typed text (white on white in dark
-    // mode), so these stay subtle in both brightness modes.
-    splashColor: primary100.withValues(alpha: 0.6),
-    highlightColor: primary50.withValues(alpha: 0.6),
-    hoverColor: primary50.withValues(alpha: 0.5),
-    focusColor: primary100.withValues(alpha: 0.35),
-    pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
-      },
-    ),
-  );
+  static ThemeData get light => _build(Brightness.light);
 
-  // Dark Theme — koheren dengan aplikasi dark-first: permukaan gelap,
-  // teks terang. (Sebelumnya permukaan memakai nilai terang sehingga
-  // teks token terang tenggelam di dialog/sheet/appbar bawaan tema.)
-  static ThemeData get dark => light.copyWith(
-    brightness: Brightness.dark,
-    extensions: const [ThemeColors.dark],
-    colorScheme: const ColorScheme.dark(
-      primary: primary400,
-      onPrimary: Colors.white,
-      secondary: accent400,
-      onSecondary: gray900,
-      tertiary: primary300,
-      onTertiary: gray900,
-      surface: surfaceCard,
-      onSurface: foreground,
-      surfaceContainerHighest: surfaceHover,
-      error: danger,
-      onError: Colors.white,
-      outline: gray300,
-      outlineVariant: gray200,
-    ),
-    scaffoldBackgroundColor: background,
-    canvasColor: surfaceCard,
-    // Overlays stay white and translucent so a focused dark input keeps its
-    // dark fill and the white typed text remains readable.
-    splashColor: Colors.white.withValues(alpha: 0.14),
-    highlightColor: Colors.white.withValues(alpha: 0.08),
-    hoverColor: Colors.white.withValues(alpha: 0.06),
-    focusColor: Colors.white.withValues(alpha: 0.10),
-    cardTheme: cardTheme.copyWith(
-      color: surfaceCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: radius2xl,
-        side: BorderSide(color: gray300),
+  /// Dark Theme — koheren dengan aplikasi dark-first: permukaan gelap,
+  /// teks terang.
+  static ThemeData get dark => _build(Brightness.dark);
+
+  static ThemeData _build(Brightness b) {
+    var (t, c) = _tones(b);
+    var isDark = b == Brightness.dark;
+    return ThemeData(
+      useMaterial3: true,
+      fontFamily: GoogleFonts.roboto().fontFamily,
+      brightness: b,
+      extensions: [c],
+      colorScheme: ColorScheme(
+        brightness: b,
+        primary: isDark ? primary400 : primary600,
+        onPrimary: Colors.white,
+        secondary: isDark ? accent400 : accent500,
+        onSecondary: Colors.white,
+        tertiary: isDark ? primary300 : primary500,
+        onTertiary: Colors.white,
+        surface: c.surfaceCard,
+        onSurface: c.foreground,
+        surfaceContainerHighest: c.surfaceHover,
+        error: c.danger,
+        onError: Colors.white,
+        outline: c.border,
+        outlineVariant: c.gray200,
       ),
-    ),
-    inputDecorationTheme: inputDecorationTheme.copyWith(
-      filled: true,
-      fillColor: surfaceCard,
-      border: const OutlineInputBorder(
-        borderRadius: radiusXl,
-        borderSide: BorderSide(color: gray300),
+      textTheme: t,
+      inputDecorationTheme: _inputDecorationTheme(c, t),
+      elevatedButtonTheme: _elevatedButtonTheme(t),
+      outlinedButtonTheme: _outlinedButtonTheme(c, t),
+      textButtonTheme: _textButtonTheme(b, c),
+      cardTheme: _cardTheme(c),
+      checkboxTheme: _checkboxTheme(c),
+      radioTheme: _radioTheme(c),
+      switchTheme: _switchTheme(c),
+      sliderTheme: _sliderTheme(b),
+      tabBarTheme: _tabBarTheme(c, t),
+      appBarTheme: _appBarTheme(b, c, t),
+      bottomNavigationBarTheme: _bottomNavTheme(c, t),
+      navigationRailTheme: _navRailTheme(c, t),
+      dividerTheme: _dividerTheme(c),
+      chipTheme: _chipTheme(c, t),
+      snackBarTheme: _snackBarTheme(b, c, t),
+      dialogTheme: _dialogTheme(c, t),
+      bottomSheetTheme: _bottomSheetTheme(c),
+      scaffoldBackgroundColor: c.background,
+      canvasColor: c.surfaceCard,
+      // Translucent overlays: an opaque focus/hover/highlight colour would paint
+      // over the whole field and hide the typed text, so these stay subtle in
+      // both brightness modes.
+      splashColor: isDark
+          ? Colors.white.withValues(alpha: 0.14)
+          : primary100.withValues(alpha: 0.6),
+      highlightColor: isDark
+          ? Colors.white.withValues(alpha: 0.08)
+          : primary50.withValues(alpha: 0.6),
+      hoverColor: isDark
+          ? Colors.white.withValues(alpha: 0.06)
+          : primary50.withValues(alpha: 0.5),
+      focusColor: isDark
+          ? Colors.white.withValues(alpha: 0.10)
+          : primary100.withValues(alpha: 0.35),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+        },
       ),
-      enabledBorder: const OutlineInputBorder(
-        borderRadius: radiusXl,
-        borderSide: BorderSide(color: gray300),
-      ),
-      focusedBorder: const OutlineInputBorder(
-        borderRadius: radiusXl,
-        borderSide: BorderSide(color: primary400, width: 2),
-      ),
-    ),
-    bottomSheetTheme: bottomSheetTheme.copyWith(
-      backgroundColor: surfaceCard,
-      modalBackgroundColor: surfaceCard,
-    ),
-    dialogTheme: dialogTheme.copyWith(backgroundColor: surfaceCard),
-    appBarTheme: appBarTheme.copyWith(
-      backgroundColor: surface,
-      foregroundColor: foreground,
-      titleTextStyle: textTheme.headlineMedium?.copyWith(
-        fontWeight: FontWeight.w700,
-        color: foreground,
-      ),
-      iconTheme: const IconThemeData(color: foreground, size: 24),
-      actionsIconTheme: const IconThemeData(color: foreground, size: 24),
-    ),
-    snackBarTheme: snackBarTheme.copyWith(
-      backgroundColor: surfaceCard,
-      contentTextStyle: textTheme.bodyMedium?.copyWith(color: foreground),
-    ),
-  );
+    );
+  }
 }

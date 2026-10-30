@@ -49,7 +49,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                 36,
                 AppTheme.primary50,
                 Icons.history_rounded,
-                iconColor: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                iconColor: AppTheme.primary600,
               ),
               const SizedBox(width: AppTheme.space3),
               Expanded(
@@ -61,7 +61,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                       style: GoogleFonts.roboto(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                        color: context.colors.foreground,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -69,7 +69,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                       '${validation.total} sesi tercatat',
                       style: GoogleFonts.roboto(
                         fontSize: 11,
-                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                        color: context.colors.textMuted,
                       ),
                     ),
                   ],
@@ -114,7 +114,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
               height: 64,
               margin: const EdgeInsets.only(bottom: AppTheme.space3),
               decoration: BoxDecoration(
-                color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+                color: context.colors.gray100,
                 borderRadius: AppTheme.radiusLg,
               ),
             ),
@@ -147,7 +147,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
           for (var i = 0; i < items.length; i++) ...[
             _historyTile(items[i], validation),
             if (i != items.length - 1)
-              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100, indent: 46),
+              Divider(height: 1, color: context.colors.gray100, indent: 46),
           ],
         ],
       ),
@@ -156,7 +156,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
           padding: const EdgeInsets.only(top: AppTheme.space4),
           child: Column(
             children: [
-              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100),
+              Divider(height: 1, color: context.colors.gray100),
               const SizedBox(height: AppTheme.space3),
               Row(
                 children: [
@@ -176,7 +176,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                     'Halaman ${validation.currentPage}/${validation.lastPage}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                      color: context.colors.textSecondary,
                     ),
                   ),
                   const SizedBox(width: AppTheme.space2),
@@ -213,9 +213,9 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
         children: [
           _iconBox(
             36,
-            Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+            context.colors.gray100,
             Icons.verified_rounded,
-            iconColor: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+            iconColor: context.colors.textSecondary,
           ),
           const SizedBox(width: AppTheme.space3),
           Expanded(
@@ -234,7 +234,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                         style: GoogleFonts.robotoMono(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                          color: context.colors.foreground,
                         ),
                       ),
                     ),
@@ -253,7 +253,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                    color: context.colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 1),
@@ -268,7 +268,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 10.5,
-                    color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ],

@@ -90,7 +90,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         .toList();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+      backgroundColor: context.colors.background,
       appBar: AppBar(
         title: Text(
           doc?.poTransporter ?? session.scanCode ?? 'Sesi #${session.id}',
@@ -199,10 +199,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard, Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface],
+          colors: [context.colors.surfaceCard, context.colors.surface],
         ),
         borderRadius: AppTheme.radius2xl,
-        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.08)),
+        border: Border.all(
+          color: context.colors.textSecondary.withValues(alpha: 0.08),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +218,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.8,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    color: context.colors.textMuted,
                   ),
                 ),
               ),
@@ -231,7 +233,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 icon: Icon(
                   Icons.arrow_back_rounded,
                   size: 18,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.6),
+                  color: context.colors.foreground.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -265,8 +267,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   ? 0
                   : session.validatedCount / session.totalItemCount,
               minHeight: 6,
-              backgroundColor: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.1),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary500),
+              backgroundColor: context.colors.textSecondary.withValues(
+                alpha: 0.1,
+              ),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppTheme.primary500,
+              ),
             ),
           ),
           if (session.startedAt != null || session.durationSeconds != null)
@@ -281,7 +287,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 ].join(' • '),
                 style: GoogleFonts.roboto(
                   fontSize: 10.5,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  color: context.colors.textMuted,
                 ),
               ),
             ),
@@ -301,14 +307,15 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     margin: const EdgeInsets.only(top: AppTheme.space3),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+      color: context.colors.surfaceHover,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.border ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
+      border: Border.all(color: context.colors.border),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.layers_rounded, size: 18, color: AppTheme.warning),
+        const SizedBox(width: 8),
+        Icon(Icons.layers_rounded, size: 18, color: context.colors.warning),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -319,7 +326,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.warningText,
+                  color: context.colors.warningText,
                 ),
               ),
               const SizedBox(height: 2),
@@ -329,7 +336,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 11.5,
                   height: 1.4,
-                  color: AppTheme.warning,
+                  color: context.colors.warning,
                 ),
               ),
             ],
@@ -349,9 +356,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space4),
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
+      color: context.colors.textPrimary,
       borderRadius: AppTheme.radiusXl,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.08)),
+      border: Border.all(
+        color: context.colors.textSecondary.withValues(alpha: 0.08),
+      ),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,14 +390,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                      color: context.colors.textSecondary,
                     ),
                   ),
                   Text(
                     '${items.length} pengajuan menunggu keputusan',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.6),
+                      color: context.colors.textMuted.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -416,9 +425,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space3),
       decoration: BoxDecoration(
-        color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.06),
+        color: context.colors.textSecondary.withValues(alpha: 0.06),
         borderRadius: AppTheme.radiusLg,
-        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: context.colors.textSecondary.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,7 +439,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 13,
               fontWeight: FontWeight.w800,
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+              color: context.colors.textMuted,
             ),
           ),
           const SizedBox(height: 2),
@@ -436,7 +447,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             '${item.kodeBarang} • Tier $tier × Tinggi $tinggi',
             style: GoogleFonts.roboto(
               fontSize: 11.5,
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.6),
+              color: context.colors.textMuted.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: AppTheme.space3),
@@ -449,9 +460,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       : () =>
                             _confirmStandarisasiDecision(item, provider, true),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.successText,
-                    side: const BorderSide(color: AppTheme.success),
-                    backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+                    foregroundColor: context.colors.successText,
+                    side: BorderSide(color: context.colors.success),
+                    backgroundColor: context.colors.surfaceHover,
                     minimumSize: const Size(0, 40),
                     shape: const RoundedRectangleBorder(
                       borderRadius: AppTheme.radiusLg,
@@ -461,10 +472,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.check_rounded,
                     size: 16,
-                    color: AppTheme.successText,
+                    color: context.colors.successText,
                   ),
                   label: const Text('Setujui'),
                 ),
@@ -477,9 +488,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       : () =>
                             _confirmStandarisasiDecision(item, provider, false),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.dangerText,
-                    side: const BorderSide(color: AppTheme.danger),
-                    backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+                    foregroundColor: context.colors.dangerText,
+                    side: BorderSide(color: context.colors.danger),
+                    backgroundColor: context.colors.surfaceHover,
                     minimumSize: const Size(0, 40),
                     shape: const RoundedRectangleBorder(
                       borderRadius: AppTheme.radiusLg,
@@ -489,10 +500,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
                     size: 16,
-                    color: AppTheme.dangerText,
+                    color: context.colors.dangerText,
                   ),
                   label: const Text('Tolak'),
                 ),
@@ -519,14 +530,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
+        backgroundColor: context.colors.surfaceCard,
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusXl),
         title: Text(
           approve ? 'Setujui standarisasi?' : 'Tolak standarisasi?',
           style: GoogleFonts.roboto(
             fontSize: 16,
             fontWeight: FontWeight.w800,
-            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+            color: context.colors.textSecondary,
           ),
         ),
         content: Text(
@@ -534,7 +545,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           'Tinggi ${item.standarisasi?.tinggiTumpukan ?? 0}',
           style: GoogleFonts.roboto(
             fontSize: 13,
-            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.9),
+            color: context.colors.textMuted.withValues(alpha: 0.9),
           ),
         ),
         actions: [
@@ -545,7 +556,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(
-              backgroundColor: approve ? AppTheme.success : AppTheme.danger,
+              backgroundColor: approve
+                  ? context.colors.success
+                  : context.colors.danger,
             ),
             child: Text(approve ? 'Setujui' : 'Tolak'),
           ),
@@ -567,10 +580,14 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     margin: const EdgeInsets.only(top: AppTheme.space3),
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: message.success ? AppTheme.successWell : AppTheme.dangerWell,
+      color: message.success
+          ? context.colors.successWell
+          : context.colors.dangerWell,
       borderRadius: AppTheme.radiusLg,
       border: Border.all(
-        color: message.success ? AppTheme.successText : AppTheme.dangerText,
+        color: message.success
+            ? context.colors.successText
+            : context.colors.dangerText,
       ),
     ),
     child: Row(
@@ -579,7 +596,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         Icon(
           message.success ? Icons.check_circle_rounded : Icons.error_rounded,
           size: 18,
-          color: message.success ? AppTheme.success : AppTheme.danger,
+          color: message.success
+              ? context.colors.success
+              : context.colors.danger,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -588,7 +607,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 12.5,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+              color: context.colors.textSecondary,
             ),
           ),
         ),
@@ -638,13 +657,13 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         padding: const EdgeInsets.all(AppTheme.space3),
         decoration: BoxDecoration(
           color: (!item.isPending && (item.batch?.isPrinted ?? false))
-              ? AppTheme.success.withValues(alpha: 0.12)
-              : Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.07),
+              ? context.colors.success.withValues(alpha: 0.12)
+              : context.colors.textSecondary.withValues(alpha: 0.07),
           borderRadius: AppTheme.radiusLg,
           border: Border.all(
             color: locked
-                ? AppTheme.warningText.withValues(alpha: 0.5)
-                : Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.15),
+                ? context.colors.warningText.withValues(alpha: 0.5)
+                : context.colors.textSecondary.withValues(alpha: 0.15),
           ),
         ),
         child: Column(
@@ -658,10 +677,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   height: 36,
                   decoration: BoxDecoration(
                     color: locked
-                        ? AppTheme.warningDark.withValues(alpha: 0.4)
+                        ? context.colors.warningDark.withValues(alpha: 0.4)
                         : item.isPending
-                        ? Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.1)
-                        : AppTheme.success.withValues(alpha: 0.2),
+                        ? context.colors.textSecondary.withValues(alpha: 0.1)
+                        : context.colors.success.withValues(alpha: 0.2),
                     borderRadius: AppTheme.radiusLg,
                   ),
                   child: Icon(
@@ -674,12 +693,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         : Icons.warning_rounded,
                     size: 18,
                     color: locked
-                        ? AppTheme.warningText
+                        ? context.colors.warningText
                         : item.isPending
-                        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
+                        ? context.colors.gray400
                         : item.status == 'VALIDATED'
-                        ? AppTheme.success
-                        : AppTheme.warning,
+                        ? context.colors.success
+                        : context.colors.warning,
                   ),
                 ),
                 const SizedBox(width: AppTheme.space3),
@@ -696,7 +715,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         style: GoogleFonts.roboto(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(
+                          color: context.colors.textMuted.withValues(
                             alpha: locked ? 0.6 : 1.0,
                           ),
                         ),
@@ -709,7 +728,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         ' • ${ValidationItemStatus.label(item.status)}',
                         style: GoogleFonts.robotoMono(
                           fontSize: 11,
-                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400.withValues(
+                          color: context.colors.textMuted.withValues(
                             alpha: locked ? 0.6 : 1.0,
                           ),
                         ),
@@ -722,17 +741,19 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                             vertical: 1,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.warningDark,
+                            color: context.colors.warningDark,
                             borderRadius: AppTheme.radiusFull,
-                            border: Border.all(color: AppTheme.warningText),
+                            border: Border.all(
+                              color: context.colors.warningText,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.error_outline_rounded,
                                 size: 11,
-                                color: AppTheme.warningText,
+                                color: context.colors.warningText,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -742,7 +763,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                                 style: GoogleFonts.roboto(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
-                                  color: AppTheme.warningText,
+                                  color: context.colors.warningText,
                                   letterSpacing: 0.4,
                                 ),
                               ),
@@ -760,7 +781,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                             style: GoogleFonts.roboto(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: AppTheme.warning,
+                              color: context.colors.warning,
                             ),
                           ),
                         ),
@@ -774,8 +795,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: item.selisih! < 0
-                                  ? AppTheme.danger
-                                  : AppTheme.success,
+                                  ? context.colors.danger
+                                  : context.colors.success,
                             ),
                           ),
                         ),
@@ -862,13 +883,13 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       var confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+          backgroundColor: context.colors.surfaceCard,
           title: Text(
             'Produk Belum Disetujui BLC',
             style: GoogleFonts.roboto(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+              color: context.colors.foreground,
             ),
           ),
           content: Column(
@@ -882,7 +903,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   height: 1.4,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                  color: context.colors.textMuted,
                 ),
               ),
               if (item.standarisasi?.status == 'pending') ...[
@@ -893,7 +914,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   style: GoogleFonts.roboto(
                     fontSize: 12.5,
                     height: 1.4,
-                    color: AppTheme.warning,
+                    color: context.colors.warning,
                   ),
                 ),
               ] else ...[
@@ -904,7 +925,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   style: GoogleFonts.roboto(
                     fontSize: 12.5,
                     height: 1.4,
-                    color: AppTheme.warning,
+                    color: context.colors.warning,
                   ),
                 ),
               ],
@@ -921,8 +942,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(true),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.warningText,
-                  foregroundColor: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
+                  backgroundColor: context.colors.warningText,
+                  foregroundColor: context.colors.textPrimary,
                 ),
                 child: const Text('Input Standarisasi'),
               ),
@@ -960,9 +981,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space4),
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
+      color: context.colors.textPrimary,
       borderRadius: AppTheme.radiusXl,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.08)),
+      border: Border.all(
+        color: context.colors.textSecondary.withValues(alpha: 0.08),
+      ),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -973,13 +996,13 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppTheme.warning.withValues(alpha: 0.18),
+                color: context.colors.warning.withValues(alpha: 0.18),
                 borderRadius: AppTheme.radiusLg,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.inventory_2_rounded,
                 size: 18,
-                color: AppTheme.warning,
+                color: context.colors.warning,
               ),
             ),
             const SizedBox(width: AppTheme.space3),
@@ -992,7 +1015,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                      color: context.colors.textSecondary,
                     ),
                   ),
                   Text(
@@ -1000,7 +1023,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11,
                       height: 1.4,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+                      color: context.colors.textMuted,
                     ),
                   ),
                 ],
@@ -1018,8 +1041,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           const SizedBox(height: AppTheme.space3),
           _darkActionButton(
             label: 'Laporkan barang luar rencana',
-            background: AppTheme.warning,
-            foreground: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
+            background: context.colors.warning,
+            foreground: context.colors.textPrimary,
             loading: provider.actionBusy,
             onPressed: () => _showExtraItemSheet(provider),
           ),
@@ -1035,9 +1058,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   ) {
     // Keputusan planner (Fase 2): PENDING default, warna mengikuti keputusan.
     var (label, badgeColor) = switch (item.status) {
-      'APPROVED' => ('Disetujui', AppTheme.success),
-      'REJECTED' => ('Ditolak', AppTheme.danger),
-      _ => ('Menunggu persetujuan', AppTheme.warning),
+      'APPROVED' => ('Disetujui', context.colors.success),
+      'REJECTED' => ('Ditolak', context.colors.danger),
+      _ => ('Menunggu persetujuan', context.colors.warning),
     };
     // Paritas tanda tercetak: label yang sudah dilaporkan menandai tile
     // hijau seperti tile item rencana kirim.
@@ -1047,10 +1070,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       padding: const EdgeInsets.all(AppTheme.space3),
       decoration: BoxDecoration(
         color: printed
-            ? AppTheme.success.withValues(alpha: 0.12)
-            : Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.06),
+            ? context.colors.success.withValues(alpha: 0.12)
+            : context.colors.textSecondary.withValues(alpha: 0.06),
         borderRadius: AppTheme.radiusLg,
-        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: context.colors.textSecondary.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1068,7 +1093,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         style: GoogleFonts.roboto(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+                          color: context.colors.textMuted,
                         ),
                       ),
                     ),
@@ -1081,7 +1106,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   vertical: 2,
                 ),
                 decoration: BoxDecoration(
-                  color: item.condition == 'FISIK_TIDAK_ADA' ? AppTheme.danger.withValues(alpha: 0.15) : AppTheme.warning.withValues(alpha: 0.15),
+                  color: item.condition == 'FISIK_TIDAK_ADA'
+                      ? context.colors.danger.withValues(alpha: 0.15)
+                      : context.colors.warning.withValues(alpha: 0.15),
                   borderRadius: AppTheme.radiusFull,
                 ),
                 child: Text(
@@ -1089,7 +1116,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   style: GoogleFonts.roboto(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: item.condition == 'FISIK_TIDAK_ADA' ? AppTheme.danger : AppTheme.warning,
+                    color: item.condition == 'FISIK_TIDAK_ADA'
+                        ? context.colors.danger
+                        : context.colors.warning,
                   ),
                 ),
               ),
@@ -1105,7 +1134,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 11.5,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+              color: context.colors.textMuted,
             ),
           ),
           const SizedBox(height: 4),
@@ -1142,9 +1171,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     ? null
                     : () => _openExtraPrintSheet(item),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+                  foregroundColor: context.colors.textMuted,
                   side: const BorderSide(color: AppTheme.primary600),
-                  backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
+                  backgroundColor: context.colors.surfaceHover,
                   minimumSize: const Size(0, 44),
                   shape: const RoundedRectangleBorder(
                     borderRadius: AppTheme.radiusLg,
@@ -1157,11 +1186,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 icon: Icon(
                   Icons.print_rounded,
                   size: 18,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+                  color: context.colors.textMuted,
                 ),
                 label: Text(
                   item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
-                  style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700),
+                  style: TextStyle(color: context.colors.textMuted),
                 ),
               ),
             ),
@@ -1177,9 +1206,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         ? null
                         : () => _confirmExtraDecision(item, provider, true),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.successText,
-                      side: const BorderSide(color: AppTheme.success),
-                      backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+                      foregroundColor: context.colors.successText,
+                      side: BorderSide(color: context.colors.success),
+                      backgroundColor: context.colors.surfaceHover,
                       minimumSize: const Size(0, 44),
                       shape: const RoundedRectangleBorder(
                         borderRadius: AppTheme.radiusLg,
@@ -1189,10 +1218,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.check_rounded,
                       size: 18,
-                      color: AppTheme.successText,
+                      color: context.colors.successText,
                     ),
                     label: const Text('Setujui'),
                   ),
@@ -1204,9 +1233,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         ? null
                         : () => _confirmExtraDecision(item, provider, false),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.dangerText,
-                      side: const BorderSide(color: AppTheme.danger),
-                      backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+                      foregroundColor: context.colors.dangerText,
+                      side: BorderSide(color: context.colors.danger),
+                      backgroundColor: context.colors.surfaceHover,
                       minimumSize: const Size(0, 44),
                       shape: const RoundedRectangleBorder(
                         borderRadius: AppTheme.radiusLg,
@@ -1216,10 +1245,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close_rounded,
                       size: 18,
-                      color: AppTheme.dangerText,
+                      color: context.colors.dangerText,
                     ),
                     label: const Text('Tolak'),
                   ),
@@ -1246,7 +1275,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
+          backgroundColor: context.colors.surfaceCard,
           shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusXl),
           title: Text(
             approve
@@ -1255,7 +1284,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+              color: context.colors.textSecondary,
             ),
           ),
           content: Column(
@@ -1267,7 +1296,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.9),
+                  color: context.colors.textMuted.withValues(alpha: 0.9),
                 ),
               ),
               const SizedBox(height: AppTheme.space3),
@@ -1275,13 +1304,16 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 controller: notesController,
                 maxLines: 3,
                 autofocus: !approve,
-                style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700, fontSize: 13),
+                style: TextStyle(
+                  color: context.colors.textSecondary,
+                  fontSize: 13,
+                ),
                 decoration: InputDecoration(
                   hintText: approve
                       ? 'Catatan (opsional)'
                       : 'Alasan penolakan (wajib)',
                   hintStyle: TextStyle(
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.4),
+                    color: context.colors.textMuted.withValues(alpha: 0.4),
                     fontSize: 13,
                   ),
                   errorText: notesError
@@ -1290,7 +1322,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: AppTheme.radiusLg,
                     borderSide: BorderSide(
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.2),
+                      color: context.colors.textMuted.withValues(alpha: 0.2),
                     ),
                   ),
                   focusedBorder: const OutlineInputBorder(
@@ -1316,7 +1348,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 Navigator.pop(dialogContext, true);
               },
               style: FilledButton.styleFrom(
-                backgroundColor: approve ? AppTheme.success : AppTheme.danger,
+                backgroundColor: approve
+                    ? context.colors.success
+                    : context.colors.danger,
               ),
               child: Text(approve ? 'Setujui' : 'Tolak'),
             ),
@@ -1343,7 +1377,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     return '${two(date.day)}/${two(date.month)}/${date.year}';
   }
 
-  Future<void> _showExtraItemSheet(ValidationProvider provider, {SjValidationExtraItem? item}) async {
+  Future<void> _showExtraItemSheet(
+    ValidationProvider provider, {
+    SjValidationExtraItem? item,
+  }) async {
     if (provider.actionBusy) {
       return;
     }
@@ -1365,7 +1402,12 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   }) {
     var pending = session.items.where((item) => item.isPending).length;
     var missingExpired = session.items
-        .where((item) => !item.isPending && item.condition != 'FISIK_TIDAK_ADA' && !item.hasExpiredDate)
+        .where(
+          (item) =>
+              !item.isPending &&
+              item.condition != 'FISIK_TIDAK_ADA' &&
+              !item.hasExpiredDate,
+        )
         .length;
     // Paritas label luar rencana: label yang belum tercetak mengunci
     // penyelesaian sama seperti label rencana kirim — catatan yang
@@ -1395,8 +1437,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               : totalUnprinted > 0
               ? 'Cetak $totalUnprinted label dulu'
               : 'Selesaikan Validasi ✓',
-          background: AppTheme.success,
-          foreground: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
+          background: context.colors.success,
+          foreground: context.colors.textPrimary,
           loading: provider.actionBusy,
           onPressed: blocked ? null : () => _confirmComplete(provider),
         ),
@@ -1406,17 +1448,17 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(AppTheme.space3),
             decoration: BoxDecoration(
-              color: AppTheme.warningDark,
+              color: context.colors.warningDark,
               borderRadius: AppTheme.radiusLg,
-              border: Border.all(color: AppTheme.warningText),
+              border: Border.all(color: context.colors.warningText),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
+                Icon(
                   Icons.warning_rounded,
                   size: 16,
-                  color: AppTheme.warningText,
+                  color: context.colors.warningText,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1429,7 +1471,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 12,
                       height: 1.4,
-                      color: AppTheme.warning,
+                      color: context.colors.warning,
                     ),
                   ),
                 ),
@@ -1466,8 +1508,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               );
             },
       style: FilledButton.styleFrom(
-        backgroundColor: AppTheme.success,
-        foregroundColor: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
+        backgroundColor: context.colors.success,
+        foregroundColor: context.colors.textPrimary,
         minimumSize: const Size(0, 40),
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
@@ -1490,8 +1532,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         ? null
         : () => _openStandarisasiSheet(item, canCreate: canCreate),
     style: FilledButton.styleFrom(
-      backgroundColor: AppTheme.warningText,
-      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
+      backgroundColor: context.colors.warningText,
+      foregroundColor: AppTheme.ink900,
       minimumSize: const Size(0, 40),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
@@ -1507,33 +1549,40 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   Widget _editButton(SjValidationItem item) => OutlinedButton.icon(
     onPressed: () => _openItemSheet(item),
     style: OutlinedButton.styleFrom(
-      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+      foregroundColor: context.colors.textMuted,
       side: const BorderSide(color: AppTheme.primary600),
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
+      backgroundColor: context.colors.surfaceHover,
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: Icon(Icons.description_rounded, size: 18, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700),
-    label: Text('Detail Validasi', style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700)),
+    icon: Icon(
+      Icons.description_rounded,
+      size: 18,
+      color: context.colors.textMuted,
+    ),
+    label: Text(
+      'Detail Validasi',
+      style: TextStyle(color: context.colors.textMuted),
+    ),
   );
 
   Widget _printLabelButton(SjValidationItem item) => OutlinedButton.icon(
     onPressed: () => _openPrintSheet(item),
     style: OutlinedButton.styleFrom(
-      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+      foregroundColor: context.colors.textMuted,
       side: const BorderSide(color: AppTheme.primary600),
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
+      backgroundColor: context.colors.surfaceHover,
       minimumSize: const Size(0, 44),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
       textStyle: GoogleFonts.roboto(fontSize: 13, fontWeight: FontWeight.w800),
     ),
-    icon: Icon(Icons.print_rounded, size: 18, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700),
+    icon: Icon(Icons.print_rounded, size: 18, color: context.colors.textMuted),
     label: Text(
       item.batch?.isPrinted == true ? 'Cetak Ulang' : 'Cetak Label',
-      style: TextStyle(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700),
+      style: TextStyle(color: context.colors.textMuted),
     ),
   );
 
@@ -1547,11 +1596,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     if (batch == null || batch.id == 0) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+          SnackBar(
+            content: const Text(
               'Item belum memiliki batch. Silakan validasi ulang atau coba lagi.',
             ),
-            backgroundColor: AppTheme.warning,
+            backgroundColor: context.colors.warning,
           ),
         );
       }
@@ -1580,11 +1629,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     if (batch == null || batch.id == 0) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
+          SnackBar(
+            content: const Text(
               'Catatan belum disetujui planner — label tersedia setelah disetujui.',
             ),
-            backgroundColor: AppTheme.warning,
+            backgroundColor: context.colors.warning,
           ),
         );
       }
@@ -1651,6 +1700,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       return;
     }
     if (printed ?? false) {
+      // Warna diambil sebelum await agar tidak memakai context lintas gap
+      // async (use_build_context_synchronously).
+      var warningColor = context.colors.warning;
+      var successColor = context.colors.success;
       String? reportWarning;
       if (reportFailed) {
         reportWarning = widget.provider.message?.message;
@@ -1670,7 +1723,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       'Label tercetak, status gagal dilaporkan ke server.')
                 : 'Label ${batch.barcodeLabel} tercetak.',
           ),
-          backgroundColor: reportFailed ? AppTheme.warning : AppTheme.success,
+          backgroundColor: reportFailed ? warningColor : successColor,
         ),
       );
     }
@@ -1715,7 +1768,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     var confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+        backgroundColor: context.colors.surfaceCard,
         title: Text(
           'Selesaikan validasi?',
           style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w700),
@@ -1729,7 +1782,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                color: context.colors.textMuted,
               ),
             ),
             if (mismatches.isNotEmpty) ...[
@@ -1742,7 +1795,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   fontSize: 13,
                   height: 1.4,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.warningText,
+                  color: context.colors.warningText,
                 ),
               ),
             ],
@@ -1752,7 +1805,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.roboto(
                 fontSize: 12.5,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                color: context.colors.textSecondary,
               ),
             ),
           ],
@@ -1765,8 +1818,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.success,
-              foregroundColor: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
+              backgroundColor: context.colors.success,
+              foregroundColor: context.colors.textPrimary,
             ),
             child: const Text('Ya, Selesaikan'),
           ),
@@ -1803,9 +1856,11 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
-                color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.07),
+                color: context.colors.textSecondary.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.08)),
+                border: Border.all(
+                  color: context.colors.textSecondary.withValues(alpha: 0.08),
+                ),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1815,7 +1870,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.roboto(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: highlight ? AppTheme.primary800 : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                color: highlight ? AppTheme.primary800 : context.colors.gray400,
               ),
             ),
             const SizedBox(height: 2),
@@ -1826,7 +1881,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.primary950 : Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+                color: highlight
+                    ? AppTheme.primary950
+                    : context.colors.textMuted,
               ),
             ),
           ],
@@ -1837,14 +1894,16 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: AppTheme.warningDark,
+      color: context.colors.warningDark,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.1)),
+      border: Border.all(
+        color: context.colors.textSecondary.withValues(alpha: 0.1),
+      ),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.lock_rounded, size: 16, color: AppTheme.warning),
+        Icon(Icons.lock_rounded, size: 16, color: context.colors.warning),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -1852,7 +1911,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 12,
               height: 1.4,
-              color: AppTheme.warning,
+              color: context.colors.warning,
             ),
           ),
         ),
@@ -1878,7 +1937,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         disabledForegroundColor: foreground.withValues(alpha: 0.5),
         minimumSize: const Size(0, 48),
         side: outline
-            ? BorderSide(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700.withValues(alpha: 0.4))
+            ? BorderSide(color: context.colors.textMuted.withValues(alpha: 0.4))
             : null,
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(
@@ -2018,9 +2077,9 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     var item = widget.item;
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+        color: context.colors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
+        border: Border.all(color: context.colors.gray300),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.space5,
@@ -2042,7 +2101,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+                      color: context.colors.gray300,
                       borderRadius: AppTheme.radiusFull,
                     ),
                   ),
@@ -2053,7 +2112,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                    color: context.colors.foreground,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -2062,7 +2121,7 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   '${item.satuan != null ? ' ${item.satuan}' : ''}',
                   style: GoogleFonts.robotoMono(
                     fontSize: 12,
-                    color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                    color: context.colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: AppTheme.space4),
@@ -2070,34 +2129,32 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   AppTextField(
                     controller: _qtyController,
                     label: 'Qty aktual',
-                  hint: '0',
-                  prefixIcon: Icons.inventory_rounded,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  textInputAction: TextInputAction.next,
-                  validator: (value) {
-                    if (_condition == 'FISIK_TIDAK_ADA') {
+                    hint: '0',
+                    prefixIcon: Icons.inventory_rounded,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (_condition == 'FISIK_TIDAK_ADA') {
+                        return null;
+                      }
+                      var qty = double.tryParse(
+                        (value ?? '').replaceAll(',', '.'),
+                      );
+                      if (qty == null || qty < 0) {
+                        return 'Isi qty aktual dengan angka ≥ 0';
+                      }
                       return null;
-                    }
-                    var qty = double.tryParse(
-                      (value ?? '').replaceAll(',', '.'),
-                    );
-                    if (qty == null || qty < 0) {
-                      return 'Isi qty aktual dengan angka ≥ 0';
-                    }
-                    return null;
-                  },
-                ),
+                    },
+                  ),
                 ],
                 const SizedBox(height: AppTheme.space3),
                 DropdownButtonFormField<String>(
                   initialValue: _condition,
                   decoration: const InputDecoration(
                     labelText: 'Kondisi',
-                    border: OutlineInputBorder(
-                      borderRadius: AppTheme.radiusLg,
-                    ),
+                    border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: AppTheme.space3,
                       vertical: AppTheme.space2,
@@ -2132,7 +2189,11 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                   ExpiredDateField(
                     controller: _expiredController,
                     onPicked: _onExpiredPicked,
-                    validator: (_) => (_condition == 'FISIK_TIDAK_ADA' || _expiredDate != null) ? null : 'Tanggal expired wajib diisi',
+                    validator: (_) =>
+                        (_condition == 'FISIK_TIDAK_ADA' ||
+                            _expiredDate != null)
+                        ? null
+                        : 'Tanggal expired wajib diisi',
                   ),
                 ],
                 const SizedBox(height: AppTheme.space3),
@@ -2142,11 +2203,11 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                     style: GoogleFonts.roboto(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                      color: context.colors.textMuted,
                     ),
                   ),
-                  iconColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
-                  collapsedIconColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                  iconColor: context.colors.textMuted,
+                  collapsedIconColor: context.colors.textMuted,
                   tilePadding: EdgeInsets.zero,
                   childrenPadding: EdgeInsets.zero,
                   shape: const Border(),
@@ -2173,16 +2234,16 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(AppTheme.space3),
                     decoration: BoxDecoration(
-                      color: AppTheme.dangerWell,
+                      color: context.colors.dangerWell,
                       borderRadius: AppTheme.radiusLg,
-                      border: Border.all(color: AppTheme.dangerText),
+                      border: Border.all(color: context.colors.dangerText),
                     ),
                     child: Text(
                       _error!,
                       style: GoogleFonts.roboto(
                         fontSize: 12.5,
                         height: 1.4,
-                        color: AppTheme.dangerText,
+                        color: context.colors.dangerText,
                       ),
                     ),
                   ),
@@ -2285,7 +2346,9 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
     var provider = context.read<ValidationProvider>();
     var success = await provider.validateItem(
       itemId: widget.item.id,
-      actualQty: _condition == 'FISIK_TIDAK_ADA' ? 0.0 : double.parse(_qtyController.text.trim().replaceAll(',', '.')),
+      actualQty: _condition == 'FISIK_TIDAK_ADA'
+          ? 0.0
+          : double.parse(_qtyController.text.trim().replaceAll(',', '.')),
       barcode: _barcodeController.text.trim().isEmpty
           ? null
           : _barcodeController.text.trim(),
@@ -2403,9 +2466,9 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+      color: context.colors.surface,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
+      border: Border.all(color: context.colors.gray300),
     ),
     padding: EdgeInsets.only(
       left: AppTheme.space5,
@@ -2427,7 +2490,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+                    color: context.colors.gray300,
                     borderRadius: AppTheme.radiusFull,
                   ),
                 ),
@@ -2438,7 +2501,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 style: GoogleFonts.roboto(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: context.colors.foreground,
                 ),
               ),
               const SizedBox(height: 4),
@@ -2448,7 +2511,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.4,
-                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                  color: context.colors.textSecondary,
                 ),
               ),
               const SizedBox(height: AppTheme.space4),
@@ -2478,15 +2541,15 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 Container(
                   margin: const EdgeInsets.only(top: AppTheme.space2),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+                    color: context.colors.surfaceCard,
                     borderRadius: AppTheme.radiusLg,
-                    border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
+                    border: Border.all(color: context.colors.gray300),
                   ),
                   child: Column(
                     children: [
                       for (var (index, product) in _suggestions.indexed) ...[
                         if (index > 0)
-                          Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
+                          Divider(height: 1, color: context.colors.gray300),
                         _NpnSuggestionTile(
                           product: product,
                           enabled: !_saving,
@@ -2506,7 +2569,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                     'Tidak ada di master NPN — isi kode & nama manual di bawah.',
                     style: GoogleFonts.roboto(
                       fontSize: 12,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                      color: context.colors.textSecondary,
                     ),
                   ),
                 ),
@@ -2572,7 +2635,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 'Kondisi',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+                  color: context.colors.textSecondary,
                 ),
               ),
               const SizedBox(height: AppTheme.space2),
@@ -2616,16 +2679,16 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppTheme.space3),
                   decoration: BoxDecoration(
-                    color: AppTheme.dangerWell,
+                    color: context.colors.dangerWell,
                     borderRadius: AppTheme.radiusLg,
-                    border: Border.all(color: AppTheme.dangerText),
+                    border: Border.all(color: context.colors.dangerText),
                   ),
                   child: Text(
                     _error!,
                     style: GoogleFonts.roboto(
                       fontSize: 12.5,
                       height: 1.4,
-                      color: AppTheme.dangerText,
+                      color: context.colors.dangerText,
                     ),
                   ),
                 ),
@@ -2651,7 +2714,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+      color: context.colors.surfaceCard,
       borderRadius: AppTheme.radiusLg,
       border: Border.all(color: AppTheme.primary500),
     ),
@@ -2680,7 +2743,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 style: GoogleFonts.roboto(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: context.colors.foreground,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -2691,7 +2754,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 '${_npn!.satuan != null ? ' • Satuan ${_npn!.satuan}' : ''}',
                 style: GoogleFonts.robotoMono(
                   fontSize: 11.5,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                  color: context.colors.textMuted,
                 ),
               ),
             ],
@@ -2700,7 +2763,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
         IconButton(
           tooltip: 'Ganti barang',
           icon: const Icon(Icons.close_rounded, size: 18),
-          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray700,
+          color: context.colors.textMuted,
           onPressed: _saving
               ? null
               : () => setState(() {
@@ -2874,7 +2937,7 @@ class _NpnSuggestionTile extends StatelessWidget {
                   style: GoogleFonts.roboto(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                    color: context.colors.foreground,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2884,7 +2947,7 @@ class _NpnSuggestionTile extends StatelessWidget {
                     product.kodeBarang!,
                     style: GoogleFonts.robotoMono(
                       fontSize: 11,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                      color: context.colors.textMuted,
                     ),
                   ),
               ],
@@ -2893,7 +2956,7 @@ class _NpnSuggestionTile extends StatelessWidget {
           Icon(
             Icons.chevron_right_rounded,
             size: 18,
-            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+            color: context.colors.textSecondary,
           ),
         ],
       ),
@@ -2937,9 +3000,9 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+        color: context.colors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
+        border: Border.all(color: context.colors.gray300),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.space5,
@@ -2961,7 +3024,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+                      color: context.colors.gray300,
                       borderRadius: AppTheme.radiusFull,
                     ),
                   ),
@@ -2973,13 +3036,15 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: AppTheme.warningText.withValues(alpha: 0.12),
+                        color: context.colors.warningText.withValues(
+                          alpha: 0.12,
+                        ),
                         borderRadius: AppTheme.radiusLg,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.layers_rounded,
                         size: 20,
-                        color: AppTheme.warningText,
+                        color: context.colors.warningText,
                       ),
                     ),
                     const SizedBox(width: AppTheme.space3),
@@ -2992,14 +3057,14 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                             style: GoogleFonts.roboto(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                              color: context.colors.foreground,
                             ),
                           ),
                           Text(
                             item.namaBarang ?? item.kodeBarang ?? 'Produk',
                             style: GoogleFonts.robotoMono(
                               fontSize: 12,
-                              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700,
+                              color: context.colors.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -3009,7 +3074,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                               'NPN: #${item.npnId}',
                               style: GoogleFonts.robotoMono(
                                 fontSize: 11,
-                                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                                color: context.colors.textMuted,
                               ),
                             ),
                         ],
@@ -3045,7 +3110,7 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                     style: GoogleFonts.roboto(
                       fontSize: 12.5,
                       height: 1.4,
-                      color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+                      color: context.colors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: AppTheme.space4),
@@ -3114,9 +3179,15 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
   }
 
   Widget _noticeBox(String message, {required bool isError}) {
-    var background = isError ? AppTheme.dangerWell : AppTheme.warningWell;
-    var border = isError ? AppTheme.dangerText : AppTheme.warningText;
-    var textColor = isError ? AppTheme.dangerText : AppTheme.warningText;
+    var background = isError
+        ? context.colors.dangerWell
+        : context.colors.warningWell;
+    var border = isError
+        ? context.colors.dangerText
+        : context.colors.warningText;
+    var textColor = isError
+        ? context.colors.dangerText
+        : context.colors.warningText;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space3),

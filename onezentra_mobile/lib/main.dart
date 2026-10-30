@@ -42,7 +42,13 @@ void main() async {
     router.go('/login');
   };
 
-  runApp(OneZentraApp(authProvider: authProvider, router: router, themeProvider: themeProvider));
+  runApp(
+    OneZentraApp(
+      authProvider: authProvider,
+      router: router,
+      themeProvider: themeProvider,
+    ),
+  );
 }
 
 /// OneZentra Mobile App
@@ -100,23 +106,23 @@ class _OneZentraAppState extends State<OneZentraApp>
               theme: AppTheme.light,
               darkTheme: AppTheme.dark,
               themeMode: tp.mode,
-          // Pin ke bahasa Indonesia: pemilih tanggal (CupertinoDatePicker)
-          // mengikuti locale — tanpa pin ini rodanya berurutan MM/DD/YYYY
-          // (format AS) padahal hasilnya ditampilkan dd/MM/yyyy, ambigu
-          // bagi user lapangan. Dengan locale `id` rodanya tanggal-bulan-
-          // tahun dan nama bulan berbahasa Indonesia.
-          locale: const Locale('id'),
-          supportedLocales: const [Locale('id'), Locale('en')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-          ],
-          routerConfig: widget.router,
+              // Pin ke bahasa Indonesia: pemilih tanggal (CupertinoDatePicker)
+              // mengikuti locale — tanpa pin ini rodanya berurutan MM/DD/YYYY
+              // (format AS) padahal hasilnya ditampilkan dd/MM/yyyy, ambigu
+              // bagi user lapangan. Dengan locale `id` rodanya tanggal-bulan-
+              // tahun dan nama bulan berbahasa Indonesia.
+              locale: const Locale('id'),
+              supportedLocales: const [Locale('id'), Locale('en')],
+              localizationsDelegates: const [
+                GlobalMaterialLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+              ],
+              routerConfig: widget.router,
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 /// Permission required to open each operational route.

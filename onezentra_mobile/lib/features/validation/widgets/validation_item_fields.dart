@@ -71,10 +71,10 @@ class _ConditionChip extends StatelessWidget {
         vertical: AppTheme.space2,
       ),
       decoration: BoxDecoration(
-        color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
+        color: selected ? AppTheme.primary600 : context.colors.surfaceCard,
         borderRadius: AppTheme.radiusFull,
         border: Border.all(
-          color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+          color: selected ? AppTheme.primary600 : context.colors.gray300,
         ),
       ),
       child: Text(
@@ -82,7 +82,7 @@ class _ConditionChip extends StatelessWidget {
         style: GoogleFonts.roboto(
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
-          color: selected ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground : Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+          color: selected ? Colors.white : context.colors.gray700,
         ),
       ),
     ),
@@ -188,19 +188,19 @@ class _PhotoEvidenceFieldState extends State<PhotoEvidenceField> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: AppTheme.warningWell,
+      color: context.colors.warningWell,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: AppTheme.warningText),
+      border: Border.all(color: context.colors.warningText),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.photo_camera_rounded,
               size: 16,
-              color: AppTheme.warningText,
+              color: context.colors.warningText,
             ),
             const SizedBox(width: 6),
             Expanded(
@@ -209,7 +209,7 @@ class _PhotoEvidenceFieldState extends State<PhotoEvidenceField> {
                 style: GoogleFonts.roboto(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.warningText,
+                  color: context.colors.warningText,
                 ),
               ),
             ),
@@ -221,7 +221,7 @@ class _PhotoEvidenceFieldState extends State<PhotoEvidenceField> {
           style: GoogleFonts.roboto(
             fontSize: 11.5,
             height: 1.4,
-            color: AppTheme.warningText,
+            color: context.colors.warningText,
           ),
         ),
         const SizedBox(height: AppTheme.space3),
@@ -260,12 +260,12 @@ class _PhotoEvidenceFieldState extends State<PhotoEvidenceField> {
                 width: double.infinity,
                 height: 96,
                 alignment: Alignment.center,
-                color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
+                color: context.colors.gray100,
                 child: Text(
                   'Pratinjau tidak tersedia',
                   style: GoogleFonts.roboto(
                     fontSize: 12,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                    color: context.colors.textMuted,
                   ),
                 ),
               ),
@@ -303,7 +303,7 @@ class _PhotoEvidenceFieldState extends State<PhotoEvidenceField> {
             style: GoogleFonts.roboto(
               fontSize: 11.5,
               height: 1.4,
-              color: AppTheme.dangerText,
+              color: context.colors.dangerText,
             ),
           ),
         ],
@@ -334,14 +334,14 @@ Future<DateTime?> pickExpiredDate(BuildContext context, {DateTime? initial}) {
     builder: (_) => Container(
       height: 260,
       padding: const EdgeInsets.all(AppTheme.space4),
-      color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+      color: context.colors.surface,
       child: Column(
         children: [
           Container(
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+              color: context.colors.gray300,
               borderRadius: AppTheme.radiusFull,
             ),
           ),
@@ -352,7 +352,7 @@ Future<DateTime?> pickExpiredDate(BuildContext context, {DateTime? initial}) {
               minimumDate: DateTime(2000),
               maximumDate: DateTime(2100),
               onDateTimeChanged: (DateTime value) => changed = value,
-              backgroundColor: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+              backgroundColor: context.colors.surface,
             ),
           ),
           SafeArea(

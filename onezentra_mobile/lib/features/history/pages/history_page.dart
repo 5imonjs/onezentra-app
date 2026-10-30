@@ -60,16 +60,16 @@ class HistoryPage extends StatelessWidget {
 
     if (tabs.isEmpty) {
       return Scaffold(
-        backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(title: const Text('Riwayat'), elevation: 0),
-        body: SafeArea(child: _buildNoAccess()),
+        body: SafeArea(child: _buildNoAccess(context)),
       );
     }
 
     return DefaultTabController(
       length: tabs.length,
       child: Scaffold(
-        backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
           title: const Text('Riwayat'),
           elevation: 0,
@@ -77,8 +77,8 @@ class HistoryPage extends StatelessWidget {
               ? TabBar(
                   indicatorColor: AppTheme.primary400,
                   labelColor: AppTheme.primary200,
-                  unselectedLabelColor: Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
-                  dividerColor: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300.withValues(alpha: 0.2),
+                  unselectedLabelColor: context.colors.gray400,
+                  dividerColor: context.colors.gray300.withValues(alpha: 0.2),
                   labelStyle: GoogleFonts.roboto(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
@@ -109,20 +109,20 @@ class HistoryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildNoAccess() => SingleChildScrollView(
+  Widget _buildNoAccess(BuildContext context) => SingleChildScrollView(
     padding: const EdgeInsets.all(AppTheme.space5),
     child: Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space5),
       decoration: BoxDecoration(
-        color: AppTheme.warningWell,
+        color: context.colors.warningWell,
         borderRadius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.warningText),
+        border: Border.all(color: context.colors.warningText),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.lock_rounded, size: 20, color: AppTheme.warningText),
+          Icon(Icons.lock_rounded, size: 20, color: context.colors.warningText),
           const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
@@ -130,7 +130,7 @@ class HistoryPage extends StatelessWidget {
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
-                color: AppTheme.warningText,
+                color: context.colors.warningText,
               ),
             ),
           ),

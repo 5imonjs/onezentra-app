@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
+import 'package:onezentra_mobile/core/theme/theme_provider.dart';
 import 'package:onezentra_mobile/features/auth/models/auth_models.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart';
@@ -57,10 +58,15 @@ AuthResponse _fakeAuthResponse() => AuthResponse(
 
 Future<AuthProvider> _pumpApp(
   WidgetTester tester,
-  AuthRepository repository,
-) async {
+  AuthRepository repository, {
+  ThemeMode themeMode = ThemeMode.light,
+}) async {
   var authProvider = AuthProvider(repository: repository);
   await authProvider.init();
+
+  var themeProvider = ThemeProvider();
+  await themeProvider.init();
+  await themeProvider.setMode(themeMode);
 
   // A phone-sized surface so the layout is exercised the way users see it.
   tester.view.physicalSize = const Size(1080, 1920);
@@ -68,7 +74,11 @@ Future<AuthProvider> _pumpApp(
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
-    OneZentraApp(authProvider: authProvider, router: buildRouter(authProvider)),
+    OneZentraApp(
+      authProvider: authProvider,
+      router: buildRouter(authProvider),
+      themeProvider: themeProvider,
+    ),
   );
   await tester.pumpAndSettle();
 
@@ -760,12 +770,10 @@ void main() {
     testWidgets('teks input tetap terbaca saat field difokuskan (mode gelap)', (
       tester,
     ) async {
-      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
-
       await _pumpApp(
         tester,
         _FakeAuthRepository((_, _) async => _fakeAuthResponse()),
+        themeMode: ThemeMode.dark,
       );
 
       var decoration = _emailFieldDecoration(tester);
@@ -780,8 +788,8 @@ void main() {
       expect(theme.focusColor.a, lessThan(1));
       expect(theme.splashColor.a, lessThan(1));
 
-      // White text on the dark glass fill: clearly readable.
-      expect(textColor, Colors.white);
+      // Near-white text on the dark glass fill: clearly readable.
+      expect(textColor, AppTheme.foreground);
       expect(
         _contrastRatio(textColor, const Color(0xFF1E1B4B)),
         greaterThan(4.5),
@@ -802,9 +810,9 @@ void main() {
         expect(decoration.focusColor!.a, lessThan(1));
 
         // Near-black text on the light fill.
-        expect(textColor, AppTheme.gray900);
+        expect(textColor, AppTheme.ink900);
         expect(
-          _contrastRatio(textColor, AppTheme.surfaceHover),
+          _contrastRatio(textColor, const Color(0xFFF8FAFC)),
           greaterThan(4.5),
         );
       },
@@ -822,7 +830,7 @@ void main() {
       expect((logo.image as AssetImage).assetName, 'assets/images/LOGO.png');
 
       // The mark is recoloured for the active brightness and nothing else.
-      expect(logo.color, AppTheme.gray900);
+      expect(logo.color, AppTheme.ink900);
       expect(logo.colorBlendMode, BlendMode.srcIn);
 
       // No tinted plate: no decorated Container may sit between the logo and

@@ -1,8 +1,11 @@
 # Mobile rules (`onezentra_mobile/**`)
 
-- The app is dark-first. Keep `themeMode: ThemeMode.dark` in `lib/main.dart`;
-  `test/core/theme/theme_guard_test.dart` guards it. Forcing light/dark variants
-  is what causes hardcoded dark pages to render unreadable.
+- Tema dikelola secara global: `AppTheme.light`/`AppTheme.dark` + `ThemeColors`
+  extension + `ThemeProvider`. Hanya Light dan Dark (manual), TIDAK mengikuti
+  brightness sistem. Default pertama kali = Light; preferensi user tersimpan di
+  SharedPreferences (`theme_mode`) dan dipulihkan tanpa restart. Toggle di AppBar
+  Home memanggil `ThemeProvider.setMode`. `lib/main.dart` memakai
+  `themeMode: tp.mode`. `test/core/theme/theme_guard_test.dart` menjaga disiplin.
 - Auth tokens live in `flutter_secure_storage`; during the current trial the
   production API base URL is `https://187.77.121.102/api/v1`
   (`lib/core/network/api_client.dart`). The server's self-signed certificate is

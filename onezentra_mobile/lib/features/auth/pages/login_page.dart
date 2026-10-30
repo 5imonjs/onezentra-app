@@ -210,7 +210,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     var authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
+      backgroundColor: context.colors.background,
       body: Stack(
         children: [
           const Positioned.fill(child: _AuroraBackground()),
@@ -263,7 +263,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     // Glass card: translucent indigo in dark mode, solid white in light mode.
     var cardColor = isDark
         ? AppTheme.primary950.withValues(alpha: 0.55)
-        : Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground;
+        : context.colors.foreground;
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.space6),
@@ -271,7 +271,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         color: cardColor,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isDark ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.14) : Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+          color: isDark
+              ? context.colors.foreground.withValues(alpha: 0.14)
+              : context.colors.foreground,
         ),
         boxShadow: [AppTheme.shadowXl, if (!isDark) AppTheme.shadowPrimary],
       ),
@@ -454,9 +456,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     bool isDark,
     AuthProvider authProvider,
   ) {
-    var muted = isDark
-        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
-        : Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600;
+    var muted = isDark ? context.colors.gray400 : context.colors.gray600;
     var parsedHost = Uri.tryParse(authProvider.apiBaseUrl)?.host ?? '';
     var host = parsedHost.isEmpty ? authProvider.apiBaseUrl : parsedHost;
 
@@ -545,10 +545,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader(ThemeData theme, bool isDark) {
-    var titleColor = isDark ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900;
-    var subtitleColor = isDark
-        ? const Color(0xFFC7D2FE) // primary-200
-        : Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500;
+    var titleColor = isDark
+        ? context.colors.foreground
+        : context.colors.gray900;
+    var subtitleColor = isDark ? AppTheme.primary200 : context.colors.gray50;
 
     return Column(
       children: [
@@ -560,7 +560,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           'assets/images/LOGO.png',
           height: 34,
           fit: BoxFit.contain,
-          color: isDark ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
+          color: isDark ? context.colors.foreground : context.colors.gray900,
           colorBlendMode: BlendMode.srcIn,
           semanticLabel: 'ONEZENTRA',
         ),
@@ -592,14 +592,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     }
 
     var background = isDark
-        ? AppTheme.danger.withValues(alpha: 0.16)
-        : AppTheme.dangerWell; // red-50
+        ? context.colors.danger.withValues(alpha: 0.16)
+        : context.colors.dangerWell;
     var border = isDark
-        ? AppTheme.danger.withValues(alpha: 0.45)
-        : AppTheme.dangerText; // red-200
-    var textColor = isDark
-        ? AppTheme.dangerText
-        : AppTheme.dangerText; // red-700
+        ? context.colors.danger.withValues(alpha: 0.45)
+        : context.colors.dangerText;
+    var textColor = context.colors.dangerText;
 
     // `liveRegion` makes screen readers announce the error as soon as it shows.
     return Semantics(
@@ -681,9 +679,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     bool isDark,
     AuthProvider authProvider,
   ) {
-    var iconColor = isDark
-        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
-        : Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600;
+    var iconColor = isDark ? context.colors.gray400 : context.colors.gray600;
 
     return _FieldLabel(
       label: 'Password',
@@ -739,7 +735,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   TextStyle? _fieldTextStyle(ThemeData theme, bool isDark) =>
       theme.textTheme.bodyLarge?.copyWith(
-        color: isDark ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
+        color: isDark ? context.colors.foreground : context.colors.gray900,
         fontWeight: FontWeight.w500,
       );
 
@@ -753,11 +749,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }) {
     var theme = Theme.of(context);
     var borderColor = isDark
-        ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.14)
+        ? context.colors.foreground.withValues(alpha: 0.14)
         : AppTheme.primary100;
-    var iconColor = isDark
-        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
-        : Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600;
+    var iconColor = isDark ? context.colors.gray400 : context.colors.gray600;
     var focusedColor = isDark ? AppTheme.primary300 : AppTheme.primary500;
 
     OutlineInputBorder pill(Color color, double width) => OutlineInputBorder(
@@ -772,16 +766,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       hintStyle: theme.textTheme.bodyMedium?.copyWith(color: iconColor),
       filled: true,
       fillColor: isDark
-          ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08)
-          : Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
+          ? context.colors.foreground.withValues(alpha: 0.08)
+          : context.colors.surfaceHover,
       // The pill keeps its own border as the focus affordance, so the hover /
       // focus overlays stay translucent. An opaque overlay is painted on top of
       // the fill and swallows the typed text (white on white in dark mode).
       hoverColor: isDark
-          ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.06)
+          ? context.colors.foreground.withValues(alpha: 0.06)
           : AppTheme.primary50.withValues(alpha: 0.5),
       focusColor: isDark
-          ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.10)
+          ? context.colors.foreground.withValues(alpha: 0.10)
           : AppTheme.primary100.withValues(alpha: 0.35),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppTheme.space5,
@@ -793,10 +787,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       border: pill(borderColor, 1),
       enabledBorder: pill(borderColor, 1),
       focusedBorder: pill(focusedColor, 1.6),
-      errorBorder: pill(AppTheme.danger, 1.2),
-      focusedErrorBorder: pill(AppTheme.danger, 1.6),
+      errorBorder: pill(context.colors.danger, 1.2),
+      focusedErrorBorder: pill(context.colors.danger, 1.6),
       errorStyle: theme.textTheme.bodySmall?.copyWith(
-        color: isDark ? AppTheme.danger : AppTheme.danger,
+        color: context.colors.danger,
       ),
     );
   }
@@ -831,13 +825,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           child: InkWell(
             onTap: isDisabled ? null : _handleLogin,
             borderRadius: AppTheme.radiusFull,
-            splashColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.14),
-            highlightColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.06),
+            splashColor: context.colors.foreground.withValues(alpha: 0.14),
+            highlightColor: context.colors.foreground.withValues(alpha: 0.06),
             child: Ink(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isDisabled
-                      ? [Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400, Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500]
+                      ? [context.colors.gray400, context.colors.gray50]
                       : [AppTheme.primary600, AppTheme.primary500],
                 ),
                 borderRadius: AppTheme.radiusFull,
@@ -849,12 +843,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (isLoading)
-                      const SizedBox(
+                      SizedBox(
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.gray900,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            context.colors.gray900,
                           ),
                         ),
                       )
@@ -864,7 +859,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         style: GoogleFonts.roboto(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                          color: context.colors.foreground,
                         ),
                       )
                     else ...[
@@ -873,14 +868,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         style: GoogleFonts.roboto(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                          color: context.colors.foreground,
                         ),
                       ),
                       const SizedBox(width: AppTheme.space2),
                       Icon(
                         Icons.arrow_forward_rounded,
                         size: 20,
-                        color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                        color: context.colors.foreground,
                       ),
                     ],
                   ],
@@ -894,9 +889,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildTrustNote(ThemeData theme, bool isDark) {
-    var noteColor = isDark
-        ? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400
-        : Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600;
+    var noteColor = isDark ? context.colors.gray400 : context.colors.gray600;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -915,9 +908,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildFooter(ThemeData theme, bool isDark) {
-    var footerColor = isDark
-        ? const Color(0xFF64748B) // gray-500
-        : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
+    var footerColor = isDark ? context.colors.gray500 : context.colors.gray400;
 
     return Text(
       '© ${DateTime.now().year} ONEZENTRA · Langkau_kami',
@@ -941,9 +932,7 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var labelColor = isDark
-        ? const Color(0xFFC7D2FE) // primary-200
-        : Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600;
+    var labelColor = isDark ? AppTheme.primary200 : context.colors.gray600;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -981,21 +970,27 @@ class _AuroraBackground extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
-              Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
-              Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+              context.colors.surface,
+              context.colors.surfaceCard,
+              context.colors.surfaceHover,
             ],
             stops: const [0, 0.45, 1],
           ),
-    ),
-    ),
+        ),
+      ),
       Align(
-    alignment: Alignment.topRight,
-        child: _Glow(color: const Color(0x4D2DD4BF), size: 280), // accent-400
-    ),
+        alignment: Alignment.topRight,
+        child: _Glow(
+          color: AppTheme.accent400.withValues(alpha: 0.298), // ~0x4D
+          size: 280,
+        ),
+      ),
       Align(
-    alignment: Alignment.bottomLeft,
-        child: _Glow(color: const Color(0x4D818CF8), size: 320), // primary-400
+        alignment: Alignment.bottomLeft,
+        child: _Glow(
+          color: AppTheme.primary400.withValues(alpha: 0.298), // ~0x4D
+          size: 320,
+        ),
       ),
     ],
   );
