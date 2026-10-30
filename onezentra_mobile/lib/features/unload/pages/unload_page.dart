@@ -191,7 +191,7 @@ class _UnloadPageState extends State<UnloadPage> {
           style: GoogleFonts.roboto(
             fontSize: 12,
             height: 1.4,
-            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+            color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
           ),
         ),
         const SizedBox(height: AppTheme.space4),
@@ -314,7 +314,7 @@ class _UnloadPageState extends State<UnloadPage> {
             style: GoogleFonts.roboto(
               fontSize: 12.5,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+              color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
             ),
           ),
         ),
@@ -347,7 +347,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     '${unload.activeTotal} receiving aktif',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                     ),
                   ),
                 ],
@@ -389,7 +389,7 @@ class _UnloadPageState extends State<UnloadPage> {
         ],
         if (unload.activeLastPage > 1) ...[
           const SizedBox(height: AppTheme.space4),
-          Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
+          Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
           const SizedBox(height: AppTheme.space3),
           Row(
             children: [
@@ -409,7 +409,7 @@ class _UnloadPageState extends State<UnloadPage> {
                 '${unload.activePage}/${unload.activeLastPage}',
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                 ),
               ),
               const SizedBox(width: AppTheme.space2),
@@ -448,7 +448,7 @@ class _UnloadPageState extends State<UnloadPage> {
           color: selected ? AppTheme.primary950 : Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
           borderRadius: AppTheme.radiusLg,
           border: Border.all(
-            color: selected ? AppTheme.primary400 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+            color: selected ? AppTheme.primary400 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
           ),
         ),
         child: Row(
@@ -475,7 +475,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     '${session.driverName ?? '-'} • ${session.nopol ?? '-'}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                     ),
                   ),
                 ],
@@ -535,7 +535,7 @@ class _UnloadPageState extends State<UnloadPage> {
                   'Progres bongkar',
                   style: GoogleFonts.roboto(
                     fontSize: 12,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                   ),
                 ),
               ),
@@ -544,7 +544,7 @@ class _UnloadPageState extends State<UnloadPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                 ),
               ),
             ],
@@ -555,7 +555,7 @@ class _UnloadPageState extends State<UnloadPage> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 7,
-              backgroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.12),
+              backgroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.12),
               valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
             ),
           ),
@@ -585,7 +585,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     : () => _confirmComplete(unload),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.success,
-                  foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                  foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                   padding: const EdgeInsets.symmetric(
                     vertical: AppTheme.space3,
                   ),
@@ -647,7 +647,7 @@ class _UnloadPageState extends State<UnloadPage> {
           colors: [AppTheme.ink900, AppTheme.ink800],
         ),
         borderRadius: AppTheme.radius2xl,
-        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.08)),
+        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -661,7 +661,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.8,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                   ),
                 ),
               ),
@@ -682,7 +682,7 @@ class _UnloadPageState extends State<UnloadPage> {
                 icon: Icon(
                   Icons.close_rounded,
                   size: 18,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.6),
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -732,7 +732,7 @@ class _UnloadPageState extends State<UnloadPage> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 6,
-              backgroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1),
+              backgroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.1),
               valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
             ),
           ),
@@ -741,8 +741,8 @@ class _UnloadPageState extends State<UnloadPage> {
             if (canEdit)
               _darkActionButton(
                 label: 'Mulai Bongkar',
-                background: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
-                foreground: Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
+                background: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+                foreground: Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
                 loading: unload.actionBusy,
                 onPressed: () => unload.startActive(),
               )
@@ -769,7 +769,7 @@ class _UnloadPageState extends State<UnloadPage> {
             _darkActionButton(
               label: 'Batalkan Bongkar',
               background: Colors.transparent,
-              foreground: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+              foreground: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
               outline: true,
               loading: unload.actionBusy,
               onPressed: () => _confirmCancel(unload),
@@ -812,9 +812,9 @@ class _UnloadPageState extends State<UnloadPage> {
       child: Container(
         padding: const EdgeInsets.all(AppTheme.space3),
         decoration: BoxDecoration(
-          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.07),
+          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.07),
           borderRadius: AppTheme.radiusLg,
-          border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.08)),
+          border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.08)),
         ),
         child: Row(
           children: [
@@ -824,7 +824,7 @@ class _UnloadPageState extends State<UnloadPage> {
               decoration: BoxDecoration(
                 color: covered
                     ? AppTheme.success.withValues(alpha: 0.2)
-                    : Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1),
+                    : Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.1),
                 borderRadius: AppTheme.radiusLg,
               ),
               child: Icon(
@@ -832,7 +832,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     ? Icons.check_circle_rounded
                     : Icons.hourglass_empty_rounded,
                 size: 18,
-                color: covered ? AppTheme.success : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                color: covered ? AppTheme.success : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
               ),
             ),
             const SizedBox(width: AppTheme.space3),
@@ -847,7 +847,7 @@ class _UnloadPageState extends State<UnloadPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -860,7 +860,7 @@ class _UnloadPageState extends State<UnloadPage> {
                               '${line.satuan != null ? ' ${line.satuan}' : ''}',
                     style: GoogleFonts.robotoMono(
                       fontSize: 11,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                     ),
                   ),
                 ],
@@ -884,7 +884,7 @@ class _UnloadPageState extends State<UnloadPage> {
                         ),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.success,
-                    foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                    foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppTheme.space3,
                     ),
@@ -952,7 +952,7 @@ class _UnloadPageState extends State<UnloadPage> {
               ? 'Selesai Bongkar (belum ada item)'
               : 'Selesaikan Bongkar ✓',
           background: AppTheme.success,
-          foreground: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+          foreground: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
           loading: unload.actionBusy,
           onPressed: empty ? null : () => _confirmComplete(unload),
         ),
@@ -961,7 +961,7 @@ class _UnloadPageState extends State<UnloadPage> {
           Text(
             'Pindai dulu minimal 1 produk — tombol aktif otomatis.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.roboto(fontSize: 11.5, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
+            style: GoogleFonts.roboto(fontSize: 11.5, color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
           ),
         ],
       ],
@@ -994,7 +994,7 @@ class _UnloadPageState extends State<UnloadPage> {
           style: GoogleFonts.roboto(
             fontSize: 13,
             height: 1.4,
-            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
           ),
         ),
         actions: [
@@ -1006,7 +1006,7 @@ class _UnloadPageState extends State<UnloadPage> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.success,
-              foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+              foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
             ),
             child: const Text('Ya, Selesaikan'),
           ),
@@ -1037,7 +1037,7 @@ class _UnloadPageState extends State<UnloadPage> {
           style: GoogleFonts.roboto(
             fontSize: 13,
             height: 1.4,
-            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
           ),
         ),
         actions: [
@@ -1049,7 +1049,7 @@ class _UnloadPageState extends State<UnloadPage> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.danger,
-              foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+              foregroundColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
             ),
             child: const Text('Ya, Batalkan'),
           ),
@@ -1065,9 +1065,9 @@ class _UnloadPageState extends State<UnloadPage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.05),
+      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.05),
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.1)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1084,7 +1084,7 @@ class _UnloadPageState extends State<UnloadPage> {
             style: GoogleFonts.roboto(
               fontSize: 12,
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
             ),
           ),
         ),
@@ -1100,13 +1100,13 @@ class _UnloadPageState extends State<UnloadPage> {
         ),
         decoration: highlight
             ? BoxDecoration(
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.07),
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.08)),
+                border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.08)),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1118,7 +1118,7 @@ class _UnloadPageState extends State<UnloadPage> {
                 fontWeight: FontWeight.w500,
                 color: highlight
                     ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50.withValues(alpha: 0.65)
-                    : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                    : Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
               ),
             ),
             const SizedBox(height: 2),
@@ -1129,7 +1129,7 @@ class _UnloadPageState extends State<UnloadPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50 : Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                color: highlight ? Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray50 : Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
               ),
             ),
           ],
@@ -1142,7 +1142,7 @@ class _UnloadPageState extends State<UnloadPage> {
     decoration: BoxDecoration(
       color: AppTheme.warningDark,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.1)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.1)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1180,7 +1180,7 @@ class _UnloadPageState extends State<UnloadPage> {
         foregroundColor: foreground,
         disabledBackgroundColor: background.withValues(alpha: 0.6),
         side: outline
-            ? BorderSide(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500.withValues(alpha: 0.4))
+            ? BorderSide(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500.withValues(alpha: 0.4))
             : null,
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
         textStyle: GoogleFonts.roboto(
@@ -1264,7 +1264,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
       decoration: BoxDecoration(
         color: Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
+        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
       ),
       padding: EdgeInsets.only(
         left: AppTheme.space5,
@@ -1286,7 +1286,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+                      color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
                       borderRadius: AppTheme.radiusFull,
                     ),
                   ),
@@ -1306,7 +1306,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
                   '${line.satuan != null ? ' ${line.satuan}' : ''}',
                   style: GoogleFonts.robotoMono(
                     fontSize: 12,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: AppTheme.space4),
@@ -1334,7 +1334,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
                   'Kondisi',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+                    color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
                   ),
                 ),
                 const SizedBox(height: AppTheme.space2),
@@ -1409,7 +1409,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
           color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
           borderRadius: AppTheme.radiusFull,
           border: Border.all(
-            color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
+            color: selected ? AppTheme.primary600 : Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300,
           ),
         ),
         child: Text(
@@ -1417,7 +1417,7 @@ class _UnloadScanSheetState extends State<_UnloadScanSheet> {
           style: GoogleFonts.roboto(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
-            color: selected ? Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500 : Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+            color: selected ? Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500 : Theme.of(context).extension<ThemeColors>()?.gray700 ?? Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
           ),
         ),
       ),

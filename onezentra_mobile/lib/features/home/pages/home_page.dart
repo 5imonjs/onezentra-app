@@ -278,7 +278,7 @@ class _HomePageState extends State<HomePage> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.2,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                 ),
               ),
               Text(
@@ -321,7 +321,7 @@ class _HomePageState extends State<HomePage> {
                           fontSize: 11,
                           height: 1.2,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                          color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                         ),
                       ),
                     ],
@@ -349,7 +349,7 @@ class _HomePageState extends State<HomePage> {
           style: GoogleFonts.roboto(
             fontSize: 13,
             height: 1.4,
-            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
+            color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600,
           ),
         ),
         actions: [
@@ -386,7 +386,7 @@ class _HomePageState extends State<HomePage> {
     decoration: BoxDecoration(
       color: Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard,
       borderRadius: AppTheme.radiusXl,
-      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
     ),
     child: Row(
       children: [
@@ -404,7 +404,7 @@ class _HomePageState extends State<HomePage> {
             'Memuat izin...',
             style: theme.textTheme.bodyMedium?.copyWith(
               height: 1.4,
-              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+              color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
             ),
           ),
         ),
@@ -531,7 +531,7 @@ class _HomePageState extends State<HomePage> {
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: 12,
                 height: 1.4,
-                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
               ),
             ),
           ],
@@ -580,7 +580,7 @@ class _HomePageState extends State<HomePage> {
     // Subtle stage tint: blends a hint of the step colour into the card so
     // the workflow reads as a colored sequence without breaking the theme.
     color: Color.lerp(Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceCard, menu.color, 0.05),
-    border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
+    border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400),
     onTap: () => context.push(menu.route),
     child: Row(
       children: [
@@ -652,7 +652,7 @@ class _HomePageState extends State<HomePage> {
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontSize: 13,
                   height: 1.4,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
