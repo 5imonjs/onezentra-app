@@ -125,15 +125,22 @@ class ApiClient {
       return cached;
     }
 
-    var ioClient = HttpClient()
-      ..connectionTimeout = requestTimeout
-      ..badCertificateCallback = (certificate, host, port) =>
-          host == _productionHost &&
-          port == 443 &&
-          certificate.pem.trim() == oneZentraIpCertificatePem.trim();
-    cached = IOClient(ioClient);
-    _httpClient = cached;
-    return cached;
+    http.Client client;
+    if (kIsWeb) {
+      // Browser handles TLS/certificate validation; dart:io's HttpClient is
+      // unavailable (and would throw UnsupportedError "Platform._version").
+      client = http.Client();
+    } else {
+      var ioClient = HttpClient()
+        ..connectionTimeout = requestTimeout
+        ..badCertificateCallback = (certificate, host, port) =>
+            host == _productionHost &&
+            port == 443 &&
+            certificate.pem.trim() == oneZentraIpCertificatePem.trim();
+      client = IOClient(ioClient);
+    }
+    _httpClient = client;
+    return client;
   }
 
   static const String _tokenKey = 'auth_token';
