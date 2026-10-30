@@ -580,7 +580,7 @@ class _GatePageState extends State<GatePage> {
 
   Widget _guideBox(String guide) => Container(
     width: double.infinity,
-    padding: EdgeInsets.all(AppTheme.space3),
+    padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
       color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.05),
       borderRadius: AppTheme.radiusLg,
@@ -611,7 +611,7 @@ class _GatePageState extends State<GatePage> {
 
   Widget _warningBox(String warning) => Container(
     width: double.infinity,
-    padding: EdgeInsets.all(AppTheme.space3),
+    padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
       color: AppTheme.warningDark,
       borderRadius: AppTheme.radiusLg,

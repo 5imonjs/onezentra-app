@@ -461,7 +461,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.check_rounded,
                     size: 16,
                     color: AppTheme.successText,
@@ -489,7 +489,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.close_rounded,
                     size: 16,
                     color: AppTheme.dangerText,
@@ -1189,7 +1189,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.check_rounded,
                       size: 18,
                       color: AppTheme.successText,
@@ -1216,7 +1216,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.close_rounded,
                       size: 18,
                       color: AppTheme.dangerText,

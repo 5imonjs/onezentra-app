@@ -875,7 +875,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                         ),
                       ),
-                      SizedBox(width: AppTheme.space2),
+                      const SizedBox(width: AppTheme.space2),
                       Icon(
                         Icons.arrow_forward_rounded,
                         size: 20,
