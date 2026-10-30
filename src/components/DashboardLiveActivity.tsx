@@ -271,7 +271,9 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
                       </>
                     )}
                     <span aria-hidden="true">·</span>
-                    <span>{formatRelativeTime(event.occurred_at)}</span>
+                    <span title={new Date(event.occurred_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}>
+                      {formatRelativeTime(event.occurred_at)}
+                    </span>
                     <span aria-hidden="true">·</span>
                     <span className="max-w-full truncate font-mono" title={event.route}>
                       {event.route}
