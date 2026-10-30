@@ -2199,6 +2199,9 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
                               _photoPath == null)
                       ? null
                       : () async {
+                          if (!(_formKey.currentState?.validate() ?? false)) {
+                            return;
+                          }
                           var confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(

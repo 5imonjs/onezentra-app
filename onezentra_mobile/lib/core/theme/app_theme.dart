@@ -7,7 +7,86 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// OneZentra Mobile Theme
+/// Theme-aware color extension. Use via `Theme.of(context).extension<ThemeColors>()`.
+///
+/// In light mode, text colors are dark; in dark mode, they are light.
+/// This allows widgets to use theme-aware colors instead of static AppTheme
+/// constants that don't change between themes.
+class ThemeColors extends ThemeExtension<ThemeColors> {
+  const ThemeColors({
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textMuted,
+    required this.surface,
+    required this.surfaceCard,
+    required this.surfaceHover,
+    required this.border,
+  });
+
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textMuted;
+  final Color surface;
+  final Color surfaceCard;
+  final Color surfaceHover;
+  final Color border;
+
+  static const dark = ThemeColors(
+    textPrimary: Color(0xFFF1F5F9),
+    textSecondary: Color(0xFFE2E8F0),
+    textMuted: Color(0xFF94A3B8),
+    surface: Color(0xFF0F172A),
+    surfaceCard: Color(0xFF162033),
+    surfaceHover: Color(0xFF1D2942),
+    border: Color(0xFF24324A),
+  );
+
+  static const light = ThemeColors(
+    textPrimary: Color(0xFF0F172A),
+    textSecondary: Color(0xFF1E293B),
+    textMuted: Color(0xFF64748B),
+    surface: Color(0xFFF1F5F9),
+    surfaceCard: Color(0xFFFFFFFF),
+    surfaceHover: Color(0xFFF8FAFC),
+    border: Color(0xFFCBD5E1),
+  );
+
+  @override
+  ThemeColors copyWith({
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textMuted,
+    Color? surface,
+    Color? surfaceCard,
+    Color? surfaceHover,
+    Color? border,
+  }) =>
+      ThemeColors(
+        textPrimary: textPrimary ?? this.textPrimary,
+        textSecondary: textSecondary ?? this.textSecondary,
+        textMuted: textMuted ?? this.textMuted,
+        surface: surface ?? this.surface,
+        surfaceCard: surfaceCard ?? this.surfaceCard,
+        surfaceHover: surfaceHover ?? this.surfaceHover,
+        border: border ?? this.border,
+      );
+
+  @override
+  ThemeColors lerp(ThemeColors? other, double t) {
+    if (other == null) {
+      return this;
+    }
+    return ThemeColors(
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textMuted: Color.lerp(textMuted, other.textMuted, t)!,
+      surface: Color.lerp(surface, other.surface, t)!,
+      surfaceCard: Color.lerp(surfaceCard, other.surfaceCard, t)!,
+      surfaceHover: Color.lerp(surfaceHover, other.surfaceHover, t)!,
+      border: Color.lerp(border, other.border, t)!,
+    );
+  }
+}
 ///
 /// Mirrors the web design system in `globals.css`: the neutral ramp is defined
 /// by ROLE, not by lightness, so the same token reads correctly in both
@@ -594,6 +673,7 @@ class AppTheme {
   static ThemeData get light => ThemeData(
     useMaterial3: true,
     fontFamily: GoogleFonts.roboto().fontFamily,
+    extensions: const [ThemeColors.light],
     colorScheme: const ColorScheme.light(
       primary: primary600,
       secondary: accent500,
@@ -650,6 +730,7 @@ class AppTheme {
   // teks token terang tenggelam di dialog/sheet/appbar bawaan tema.)
   static ThemeData get dark => light.copyWith(
     brightness: Brightness.dark,
+    extensions: const [ThemeColors.dark],
     colorScheme: const ColorScheme.dark(
       primary: primary400,
       onPrimary: Colors.white,

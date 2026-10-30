@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
+import 'package:onezentra_mobile/core/theme/theme_provider.dart';
 import 'package:onezentra_mobile/features/auth/models/auth_models.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
@@ -117,6 +118,23 @@ class _HomePageState extends State<HomePage> {
               )
             : null,
         actions: [
+          Builder(
+            builder: (context) {
+              ThemeProvider? tp;
+              try {
+                tp = context.watch<ThemeProvider>();
+              } catch (_) {
+                tp = null;
+              }
+              return IconButton(
+                icon: Icon(tp?.isDark == true ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
+                tooltip: tp?.isDark == true ? 'Tema terang' : 'Tema gelap',
+                 onPressed: tp == null
+                    ? null
+                    : () => tp!.setMode(tp.isDark ? ThemeMode.light : ThemeMode.dark),
+              );
+            },
+          ),
           IconButton(
             icon: auth.isLoading
                 ? const SizedBox(

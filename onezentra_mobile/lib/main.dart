@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
+import 'package:onezentra_mobile/core/theme/theme_provider.dart';
 import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
@@ -30,6 +31,9 @@ void main() async {
   var authProvider = AuthProvider();
   await authProvider.init();
 
+  var themeProvider = ThemeProvider();
+  await themeProvider.init();
+
   var router = buildRouter(authProvider);
 
   // Handle unauthorized responses
@@ -38,7 +42,7 @@ void main() async {
     router.go('/login');
   };
 
-  runApp(OneZentraApp(authProvider: authProvider, router: router));
+  runApp(OneZentraApp(authProvider: authProvider, router: router, themeProvider: themeProvider));
 }
 
 /// OneZentra Mobile App
@@ -46,10 +50,12 @@ class OneZentraApp extends StatefulWidget {
   const OneZentraApp({
     required this.authProvider,
     required this.router,
+    this.themeProvider,
     super.key,
   });
   final AuthProvider authProvider;
   final GoRouter router;
+  final ThemeProvider? themeProvider;
 
   @override
   State<OneZentraApp> createState() => _OneZentraAppState();
@@ -85,18 +91,15 @@ class _OneZentraAppState extends State<OneZentraApp>
   Widget build(BuildContext context) =>
       ChangeNotifierProvider<AuthProvider>.value(
         value: widget.authProvider,
-        child: MaterialApp.router(
-          title: 'ONEZENTRA Mobile',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          // Pinned to the dark aurora theme. The app is a dark-first design
-          // matching the web console; leaving this on the default
-          // ThemeMode.system made the OS preference swap themes while pages
-          // kept painting hardcoded dark colours. ThemeMode.light is never
-          // correct here — the login card and every Material surface would
-          // go light while the pages stay dark (guarded by theme_guard_test).
-          themeMode: ThemeMode.dark,
+        child: ChangeNotifierProvider<ThemeProvider>.value(
+          value: widget.themeProvider ?? ThemeProvider(),
+          child: Consumer<ThemeProvider>(
+            builder: (context, tp, _) => MaterialApp.router(
+              title: 'ONEZENTRA Mobile',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light,
+              darkTheme: AppTheme.dark,
+              themeMode: tp.mode,
           // Pin ke bahasa Indonesia: pemilih tanggal (CupertinoDatePicker)
           // mengikuti locale — tanpa pin ini rodanya berurutan MM/DD/YYYY
           // (format AS) padahal hasilnya ditampilkan dd/MM/yyyy, ambigu
@@ -111,7 +114,9 @@ class _OneZentraAppState extends State<OneZentraApp>
           ],
           routerConfig: widget.router,
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Permission required to open each operational route.

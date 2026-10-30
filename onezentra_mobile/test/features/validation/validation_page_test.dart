@@ -616,6 +616,9 @@ void main() {
     await tester.enterText(qtyField, '100');
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
+    // Konfirmasi dialog sebelum simpan.
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
 
     expect(repository.scanCalls, 1);
     expect(repository.lastActualQty, 100);
@@ -666,8 +669,10 @@ void main() {
     await tester.tap(find.text('Gula 50kg'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Qty kurang'));
-    await tester.tap(find.text('Qty kurang'));
+    await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Qty kurang').last);
     await tester.pumpAndSettle();
     expect(find.text('Foto bukti *'), findsOneWidget);
 
