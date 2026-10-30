@@ -359,7 +359,7 @@ class _GateHistoryPageState extends State<GateHistoryPage> {
             36,
             Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
             Icons.local_shipping_rounded,
-            iconColor: Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500,
+            iconColor: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
           ),
           const SizedBox(width: AppTheme.space3),
           Expanded(
