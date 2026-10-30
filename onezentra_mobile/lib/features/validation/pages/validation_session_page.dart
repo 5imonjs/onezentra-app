@@ -266,7 +266,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   : session.validatedCount / session.totalItemCount,
               minHeight: 6,
               backgroundColor: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.1),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary500),
             ),
           ),
           if (session.startedAt != null || session.durationSeconds != null)
