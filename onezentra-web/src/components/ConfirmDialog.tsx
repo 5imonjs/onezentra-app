@@ -64,7 +64,7 @@ export default function ConfirmDialog({
           {style.icon}
         </div>
         <h3 id="confirm-title" className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-        <p id="confirm-message" className="text-sm text-gray-500 max-w-sm">{message}</p>
+        <p id="confirm-message" className="text-sm text-muted-foreground max-w-sm">{message}</p>
       </div>
       <div className="flex items-center justify-center gap-3 mt-6">
         <button onClick={onClose} disabled={loading} className="btn-secondary min-w-[100px]">

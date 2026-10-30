@@ -145,7 +145,7 @@ export default function DashboardLayout({
       <GlobalToast />
 
       {/* Topbar mobile: satu-satunya pemicu drawer di layar kecil. */}
-      <header className="z-20 shrink-0 border-b border-slate-200/80 bg-white/85 backdrop-blur-md lg:hidden">
+      <header className="z-20 shrink-0 border-b border-border/80 bg-white/85 backdrop-blur-md lg:hidden">
         <div className="flex h-14 items-center gap-2 px-3">
           <button
             type="button"

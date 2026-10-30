@@ -146,7 +146,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
                 onClick={() => setPeriodDays(p.days)}
                 aria-pressed={periodDays === p.days}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors min-h-9 ${
-                  periodDays === p.days ? 'bg-ink-900 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-popover'
+                  periodDays === p.days ? 'bg-ink-900 text-white shadow-sm' : 'text-muted-foreground hover:text-gray-800 hover:bg-popover'
                 }`}
               >
                 {p.label}
@@ -190,7 +190,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <div className="rounded-xl bg-popover px-4 py-3">
-                <p className="text-xs text-gray-500">Total aktivitas</p>
+                <p className="text-xs text-muted-foreground">Total aktivitas</p>
                 <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">{totalRequests.toLocaleString('id-ID')}</p>
                 <p className="mt-0.5 text-[10px] leading-4 text-gray-400">Aksi tercatat, bukan jumlah dokumen</p>
               </div>
@@ -231,7 +231,7 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-muted-foreground">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" aria-hidden="true" />
               Login + seluruh proses sistem per hari
               {activeUsers > 0 && (

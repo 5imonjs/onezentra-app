@@ -34,7 +34,7 @@ interface StatusDef {
  * "Antrean Persetujuan Biaya" supaya dua blok di dashboard terlihat satu gaya.
  */
 const STATUSES: StatusDef[] = [
-  { key: 'DRAFT',       label: 'Rencana Kirim',     dot: 'bg-slate-400', box: 'border-slate-200 bg-popover', num: 'text-slate-700', name: 'text-slate-500' },
+  { key: 'DRAFT',       label: 'Rencana Kirim',     dot: 'bg-slate-400', box: 'border-border bg-popover', num: 'text-slate-700', name: 'text-muted-foreground' },
   { key: 'SCHEDULED',   label: 'Dijadwalkan',       dot: 'bg-blue-300',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
   { key: 'CHECKED_IN',  label: 'Gate Check-in',     dot: 'bg-blue-400',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
   { key: 'VERIFIED',    label: 'Verifikasi',        dot: 'bg-blue-500',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
@@ -149,7 +149,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
         {loading ? (
           <DashboardCardGrid>
             {PIPELINE_STATUSES.map((s) => (
-              <div key={s.key} className="rounded-2xl border border-slate-200 bg-card p-3">
+              <div key={s.key} className="rounded-2xl border border-border bg-card p-3">
                 <div className="h-3 w-16 rounded bg-slate-100 animate-pulse" />
                 <div className="mt-2 h-5 w-8 rounded bg-slate-200 animate-pulse" />
                 <div className="mt-2 h-3 w-20 rounded bg-slate-100 animate-pulse" />
@@ -180,7 +180,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
                       data-role={s.key}
                       data-count={count}
                       title={`${s.label}: ${count} pengiriman • ${qtyMap[s.key].toLocaleString('id-ID')} qty • ${kubikasiMap[s.key].toFixed(2)} m³`}
-                      className={`rounded-2xl border p-3 transition-colors ${active ? s.box : 'border-slate-200 bg-card'}`}
+                      className={`rounded-2xl border p-3 transition-colors ${active ? s.box : 'border-border bg-card'}`}
                     >
                       <div className="flex items-center gap-1.5">
                         <span aria-hidden="true" className="relative flex h-5 w-5 shrink-0 items-center justify-center">
@@ -198,7 +198,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
                       </div>
                       <p className={`mt-1.5 text-xl leading-none font-black tabular-nums ${active ? s.num : 'text-slate-400'}`}>{count}</p>
                       {active && (
-                        <p className="mt-1 truncate text-[11px] text-slate-500">
+                        <p className="mt-1 truncate text-[11px] text-muted-foreground">
                           {qtyMap[s.key].toLocaleString('id-ID')} qty • {kubikasiMap[s.key].toFixed(2)} m³
                         </p>
                       )}
@@ -249,7 +249,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Total {total} pengiriman • {totalQty.toLocaleString('id-ID')} qty • {totalKubikasi.toFixed(2)} m³
                 <br />
                 Selesai receiving: {counts.COMPLETED} dari {total}

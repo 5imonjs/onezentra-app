@@ -54,7 +54,7 @@ export default function ToggleSwitch({
       {(label || description) && (
         <div className="flex flex-col">
           {label && <span className="text-sm font-medium text-gray-700">{label}</span>}
-          {description && <span className="text-xs text-gray-500">{description}</span>}
+          {description && <span className="text-xs text-muted-foreground">{description}</span>}
         </div>
       )}
     </label>

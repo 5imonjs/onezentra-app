@@ -190,7 +190,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900">Ubah Password</p>
-                <p className="text-xs text-gray-500 mt-0.5">Perbarui password akun Anda secara berkala</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Perbarui password akun Anda secara berkala</p>
               </div>
               <button onClick={() => setShowPasswordModal(true)} className="btn-secondary text-sm">
                 <span className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export default function ProfilePage() {
         <div className="bg-card rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-surface-card">
             <h2 className="text-lg font-semibold text-gray-900">Tampilan</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               Pilih tema terang atau gelap. Pilihan ini tersimpan di browser Anda.
             </p>
           </div>

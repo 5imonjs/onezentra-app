@@ -372,13 +372,13 @@ export default function GatePage() {
                   <caption className="sr-only">Riwayat transaksi gate</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-300 bg-popover">
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Gate Type</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nopol</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">RK Status</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Scan Time</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Gate Type</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">PO Transporter</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Nopol</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Driver</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">RK Status</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Scan Time</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -396,7 +396,7 @@ export default function GatePage() {
                       ))
                     ) : items.map((item, index) => (
                       <tr key={item.id} className="transition-colors hover:bg-overlay-70">
-                        <td className="px-5 py-3 text-sm tabular-nums text-slate-500">{(page - 1) * 20 + index + 1}</td>
+                        <td className="px-5 py-3 text-sm tabular-nums text-muted-foreground">{(page - 1) * 20 + index + 1}</td>
                         <td className="px-5 py-3">
                           <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 bg-blue-50 text-blue-700 ring-blue-200">
                             {item.gate_type}
@@ -442,7 +442,7 @@ export default function GatePage() {
               </div>
 
                 {/* Penjelasan untuk menghindari ambiguitas */}
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   <strong>Catatan:</strong> Semua transaksi gate adalah check-in kedatangan (INBOUND). <span className="font-medium ml-2">Status</span> = Status Rencana Kirim (COMPLETED = semua item sudah diverifikasi & diterima di depo).
                 </p>
 
@@ -469,17 +469,17 @@ export default function GatePage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-                          <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .414.336.75.75.75z" /></svg>
+                          <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .414.336.75.75.75z" /></svg>
                         </div>
                         <div>
                           <p className="font-mono text-sm font-bold text-slate-900">{item.po_transporter as string || '-'}</p>
-                          <p className="text-xs text-slate-500">{item.nopol as string} • {item.driver_name as string}</p>
+                          <p className="text-xs text-muted-foreground">{item.nopol as string} • {item.driver_name as string}</p>
                         </div>
                       </div>
                       <span className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 bg-blue-50 text-blue-700 ring-blue-200">{item.gate_type}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs tabular-nums text-slate-500">{fmtDateTime(item.scan_time)}</p>
+                      <p className="text-xs tabular-nums text-muted-foreground">{fmtDateTime(item.scan_time)}</p>
                       <StatusPill status={item.rencana_kirim?.status as string} />
                     </div>
                   </div>
@@ -500,7 +500,7 @@ export default function GatePage() {
                     <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">
                       Sebelumnya
                     </button>
-                    <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
+                    <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
                     <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman berikutnya">
                       Selanjutnya
                     </button>

@@ -114,11 +114,11 @@ export default function ApprovalSettingsPage() {
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
           <div className="border-b border-gray-100 px-5 py-4">
             <p className="text-sm font-semibold text-slate-800">Approver {module === 'biaya_thl' ? 'Biaya THL' : 'Biaya Retribusi'} per depo</p>
-            <p className="mt-1 text-xs text-slate-500">Berlaku khusus modul ini — tidak memengaruhi modul lainnya. Nama pada PDF diambil dari akun user aktif yang dipilih di sini.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Berlaku khusus modul ini — tidak memengaruhi modul lainnya. Nama pada PDF diambil dari akun user aktif yang dipilih di sini.</p>
           </div>
           <div className="space-y-4 p-5">
             <label className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
-              <span><span className="block text-sm font-semibold text-slate-800">Depo BLC/BAC</span><span className="text-xs text-slate-500">Pilih depo yang akan diatur</span></span>
+              <span><span className="block text-sm font-semibold text-slate-800">Depo BLC/BAC</span><span className="text-xs text-muted-foreground">Pilih depo yang akan diatur</span></span>
               <select value={effectiveDepot} onChange={(event) => setSelectedDepot(event.target.value)} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
                 {depots.map((depot) => <option key={depot.kode_depo} value={depot.kode_depo}>{depot.nama_depo || depot.kode_depo} ({depot.kode_depo})</option>)}
               </select>
@@ -164,7 +164,7 @@ export default function ApprovalSettingsPage() {
 
               return (
               <label key={key} className="grid gap-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
-                <span><span className="block text-sm font-semibold text-slate-800">{title}</span><span className="text-xs text-slate-500">{description} ({key})</span></span>
+                <span><span className="block text-sm font-semibold text-slate-800">{title}</span><span className="text-xs text-muted-foreground">{description} ({key})</span></span>
                 <select value={selected[key] || ''} onChange={(event) => setSelected((current) => ({ ...current, [key]: event.target.value }))} disabled={!hasPermission('approval.manage')} className="select-field-sm w-full">
                   <option value="">Pilih user aktif</option>
                   {options.map((approver) => <option key={approver.id} value={approver.id}>{approver.full_name} - {approver.email}</option>)}

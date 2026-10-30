@@ -678,7 +678,7 @@ const confirmApprove = async () => {
                         />
                       )}
                     </td>
-                    <td className="table-cell text-sm text-slate-500 text-center">{(page - 1) * 20 + index + 1}</td>
+                    <td className="table-cell text-sm text-muted-foreground text-center">{(page - 1) * 20 + index + 1}</td>
                     <td className="table-cell">
                       <span className="font-mono text-sm font-medium text-slate-800">{item.npn?.BOSnetszProductId || '-'}</span>
                     </td>
@@ -746,7 +746,7 @@ const confirmApprove = async () => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L2.25 12l4.179 2.25m0 0l5.571 3 5.571-3m-11.142 0L2.25 17.25 12 22.5l9.75-5.25-4.179-2.25" />
                           </svg>
                         </div>
-                        <p className="text-sm text-slate-500 font-medium" role="status">Tidak ada data standarisasi</p>
+                        <p className="text-sm text-muted-foreground font-medium" role="status">Tidak ada data standarisasi</p>
                       </div>
                     </td>
                   </tr>
@@ -757,7 +757,7 @@ const confirmApprove = async () => {
 
           {/* Pagination */}
           <div className="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-500 tabular-nums">
+            <p className="text-xs text-muted-foreground tabular-nums">
               Halaman {page} dari {lastPage}
             </p>
             <div className="flex items-center gap-1.5">
@@ -899,7 +899,7 @@ const confirmApprove = async () => {
             )}
             <div className="grid grid-cols-2 gap-4" onKeyDown={(e) => { if (e.key === 'Enter' && editForm.npn_id && isEditDirty && !saving) { e.preventDefault(); handleSaveEdit(); } }}>
               <div className="col-span-2 flex items-center justify-between gap-2">
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Produk <span className="text-slate-400">(ketik nama atau BOS ID)</span></label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Produk <span className="text-slate-400">(ketik nama atau BOS ID)</span></label>
                 {badge(editItem.status || 'pending')}
               </div>
               <div className="col-span-2 -mt-2">
@@ -918,11 +918,11 @@ const confirmApprove = async () => {
                 )}
               </div>
               <div>
-                <label htmlFor="edit-tier" className="block text-xs font-medium text-slate-500 mb-1.5">Tier <span className="text-primary-500">*</span></label>
+                <label htmlFor="edit-tier" className="block text-xs font-medium text-muted-foreground mb-1.5">Tier <span className="text-primary-500">*</span></label>
                 <input id="edit-tier" type="number" min="1" max="100" value={editForm.tier || 1} onChange={(e) => setEditForm(prev => ({ ...prev, tier: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
               </div>
               <div>
-                <label htmlFor="edit-tinggi" className="block text-xs font-medium text-slate-500 mb-1.5">Tinggi Tumpukan <span className="text-primary-500">*</span></label>
+                <label htmlFor="edit-tinggi" className="block text-xs font-medium text-muted-foreground mb-1.5">Tinggi Tumpukan <span className="text-primary-500">*</span></label>
                 <input id="edit-tinggi" type="number" min="1" max="100" value={editForm.tinggi_tumpukan || 1} onChange={(e) => setEditForm(prev => ({ ...prev, tinggi_tumpukan: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
               </div>
             </div>
@@ -966,7 +966,7 @@ const confirmApprove = async () => {
       >
         <div className="grid grid-cols-2 gap-4" onKeyDown={(e) => { if (e.key === 'Enter' && createForm.npn_id && !saving) { e.preventDefault(); handleCreate(); } }}>
           <div className="col-span-2">
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Produk <span className="text-slate-400">(ketik nama atau BOS ID)</span></label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Produk <span className="text-slate-400">(ketik nama atau BOS ID)</span></label>
             <NpnProductPicker
               selected={selectedProduct}
               onSelect={(p) => { setSelectedProduct(p); setCreateForm(prev => ({ ...prev, npn_id: p.id })); }}
@@ -974,11 +974,11 @@ const confirmApprove = async () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5" htmlFor="tier">Tier <span className="text-primary-500">*</span></label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5" htmlFor="tier">Tier <span className="text-primary-500">*</span></label>
             <input id="tier" type="number" min="1" max="100" value={createForm.tier || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tier: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5" htmlFor="tinggi-tumpukan">Tinggi Tumpukan <span className="text-primary-500">*</span></label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5" htmlFor="tinggi-tumpukan">Tinggi Tumpukan <span className="text-primary-500">*</span></label>
             <input id="tinggi-tumpukan" type="number" min="1" max="100" value={createForm.tinggi_tumpukan || 1} onChange={(e) => setCreateForm(prev => ({ ...prev, tinggi_tumpukan: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))} className="input-field text-sm" />
           </div>
         </div>
@@ -1052,12 +1052,12 @@ const confirmApprove = async () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-500 mb-1" htmlFor="pilih-file">Pilih File</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="pilih-file">Pilih File</label>
             <input id="pilih-file"
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
+              className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
             />
             <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: npn_id, tier, tinggi_tumpukan</p>
           </div>

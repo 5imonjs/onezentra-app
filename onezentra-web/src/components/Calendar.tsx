@@ -67,14 +67,14 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-800">Kalender Kirim</h3>
-            <p className="text-[11px] text-slate-500">Jadwal per tanggal</p>
+            <p className="text-[11px] text-muted-foreground">Jadwal per tanggal</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={prevMonth}
             aria-label={`Bulan sebelumnya: ${MONTHS[month === 0 ? 11 : month - 1]}`}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-700 min-w-9 min-h-9 flex items-center justify-center"
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-muted-foreground hover:text-slate-700 min-w-9 min-h-9 flex items-center justify-center"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -83,7 +83,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
           <button
             onClick={nextMonth}
             aria-label={`Bulan berikutnya: ${MONTHS[month === 11 ? 0 : month + 1]}`}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-700 min-w-9 min-h-9 flex items-center justify-center"
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-muted-foreground hover:text-slate-700 min-w-9 min-h-9 flex items-center justify-center"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -100,7 +100,7 @@ export default function Calendar({ events = [], onDateClick, selectedDate }: Cal
       {/* Day Headers */}
       <div className="grid grid-cols-7 gap-1 mb-1" role="row">
         {DAYS.map((day) => (
-          <div key={day} className="text-center text-[11px] font-semibold text-slate-500 py-2" role="columnheader" aria-label={day}>
+          <div key={day} className="text-center text-[11px] font-semibold text-muted-foreground py-2" role="columnheader" aria-label={day}>
             {day}
           </div>
         ))}

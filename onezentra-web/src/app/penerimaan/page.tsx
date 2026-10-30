@@ -513,7 +513,7 @@ export default function PenerimaanPage() {
                   <button type="button" onClick={() => { setSearch(''); setPage(1); }} className="mt-2 text-xs font-semibold text-accent-text hover:underline">Hapus pencarian</button>
                 </>
               ) : (
-                <p className="text-slate-500 font-medium">Belum ada data penerimaan dari SJ.</p>
+                <p className="text-muted-foreground font-medium">Belum ada data penerimaan dari SJ.</p>
               )}
               {!search.trim() && rawGroups.length === 0 && (
                 <p className="mt-2 text-xs text-slate-400">
@@ -540,17 +540,17 @@ export default function PenerimaanPage() {
                   <caption className="sr-only">Daftar penerimaan barang</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-300 bg-popover">
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode Barang</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Barang</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Qty CRT</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500" title="Nilai otomatis: QTY CRT × faktor konversi (master)">PCS (auto)</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Satuan</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Expired</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kondisi</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Kode Barang</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Nama Barang</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Qty CRT</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" title="Nilai otomatis: QTY CRT × faktor konversi (master)">PCS (auto)</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Satuan</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Expired</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Kondisi</th>
                       {/* Aksi selalu ada: kolom ini memuat cetak label (bukan
                           hanya Edit), jadi tidak boleh hilang saat user tanpa
                           permission edit — header dan baris harus sinkron. */}
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -582,7 +582,7 @@ export default function PenerimaanPage() {
                 <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pagination.current_page <= 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">
                   Sebelumnya
                 </button>
-                <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{pagination.current_page}</strong> dari <strong className="text-slate-800">{pagination.last_page}</strong></span>
+                <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="text-slate-800">{pagination.current_page}</strong> dari <strong className="text-slate-800">{pagination.last_page}</strong></span>
                 <button onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))} disabled={pagination.current_page >= pagination.last_page} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman berikutnya">
                   Selanjutnya
                 </button>
@@ -637,15 +637,15 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
               {group.receivingId && (
                 <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700">#{group.receivingId}</span>
               )}
-              <span className="hidden sm:inline text-xs text-gray-500">{group.driver}{group.nopol !== '-' ? ` · ${group.nopol}` : ''}</span>
-              <span className="hidden lg:inline text-xs text-gray-500">{group.depo}</span>
+              <span className="hidden sm:inline text-xs text-muted-foreground">{group.driver}{group.nopol !== '-' ? ` · ${group.nopol}` : ''}</span>
+              <span className="hidden lg:inline text-xs text-muted-foreground">{group.depo}</span>
               <span className="text-xs text-gray-400">{fmtDate(group.tanggal)}</span>
               <span className="hidden md:inline text-xs text-gray-400">{group.sumber}</span>
               <span className="text-xs text-gray-400">{group.items.length} item</span>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <span className="text-xs font-semibold text-gray-600 tabular-nums">{fnum(group.totalCrt)} CRT</span>
-              <span className="text-xs font-semibold text-gray-500 tabular-nums">{fnum(group.totalPcs)} PCS</span>
+              <span className="text-xs font-semibold text-muted-foreground tabular-nums">{fnum(group.totalPcs)} PCS</span>
             </div>
           </div>
         </td>
@@ -659,7 +659,7 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
                <span className="block line-clamp-2 wrap-break-word text-sm text-gray-700" title={item.nama_barang || undefined}>{item.nama_barang || '-'}</span>
              </td>
              <td className="px-5 py-3 text-right text-sm font-medium tabular-nums text-gray-800">{num(item.actual_qty)}</td>
-             <td className="px-5 py-3 text-right text-sm tabular-nums text-gray-500" title={cf != null ? `QTY CRT × faktor konversi ${cf}` : undefined}>
+             <td className="px-5 py-3 text-right text-sm tabular-nums text-muted-foreground" title={cf != null ? `QTY CRT × faktor konversi ${cf}` : undefined}>
                  {item.qty_pcs != null ? num(item.qty_pcs) : (cf != null ? num(item.actual_qty * cf) : '-')}
                </td>
              <td className="px-5 py-3 whitespace-nowrap text-sm text-gray-600">{item.satuan || '-'}</td>
@@ -713,10 +713,10 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
           </div>
           <div className="shrink-0 text-right">
             <p className="text-sm font-bold text-gray-800 tabular-nums">{fnum(group.totalCrt)} <span className="text-xs font-medium text-gray-400">CRT</span></p>
-            <p className="text-xs font-semibold text-gray-500 tabular-nums">{fnum(group.totalPcs)} PCS</p>
+            <p className="text-xs font-semibold text-muted-foreground tabular-nums">{fnum(group.totalPcs)} PCS</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-xs text-muted-foreground">
           <span>{group.driver}{group.nopol !== '-' ? ` · ${group.nopol}` : ''}</span>
           <span>{group.depo}</span>
           <span>{fmtDate(group.tanggal)}</span>
@@ -739,7 +739,7 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-semibold tabular-nums text-gray-800">{num(item.actual_qty)} <span className="text-[11px] font-medium text-gray-400">CRT</span></p>
-                    <p className="text-xs tabular-nums text-gray-500">{item.qty_pcs != null ? num(item.qty_pcs) : (cf != null ? num(item.actual_qty * cf) : '-')} PCS</p>
+                    <p className="text-xs tabular-nums text-muted-foreground">{item.qty_pcs != null ? num(item.qty_pcs) : (cf != null ? num(item.actual_qty * cf) : '-')} PCS</p>
                   </div>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">

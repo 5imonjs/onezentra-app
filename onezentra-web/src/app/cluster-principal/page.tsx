@@ -388,7 +388,7 @@ return (
             </div>
             {selectedIds.length > 0 && hasPermission('cluster_principal.delete') && (
               <div className="mt-3 flex items-center justify-end gap-2">
-                <span className="text-xs text-slate-500">{selectedIds.length} dipilih</span>
+                <span className="text-xs text-muted-foreground">{selectedIds.length} dipilih</span>
                 <button onClick={() => setShowBulkConfirm(true)} className="btn-danger px-3 py-1.5 text-xs">
                   Hapus Terpilih
                 </button>
@@ -413,13 +413,13 @@ return (
                       />
                     </th>
                   )}
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No</th>
                   {COLUMNS.map((col) => (
-                    <th key={col.key} scope="col" {...sortProps(col.sort)} className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer">
+                    <th key={col.key} scope="col" {...sortProps(col.sort)} className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer">
                       <span className="inline-flex items-center gap-1">{col.label}<SortIcon column={col.sort} /></span>
                     </th>
                   ))}
-                  <th scope="col" className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                  <th scope="col" className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,7 +441,7 @@ return (
                         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
                           <svg className="h-8 w-8 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
                         </div>
-                        <p className="text-sm font-medium text-slate-500">Tidak ada data cluster/principal</p>
+                        <p className="text-sm font-medium text-muted-foreground">Tidak ada data cluster/principal</p>
                         <p className="text-xs text-slate-400">Cari atau import produk untuk memulai.</p>
                       </div>
                     </td>
@@ -459,7 +459,7 @@ return (
                         />
                       </td>
                     )}
-                    <td className="px-5 py-3 text-center text-sm text-gray-500">{(page - 1) * 20 + index + 1}</td>
+                    <td className="px-5 py-3 text-center text-sm text-muted-foreground">{(page - 1) * 20 + index + 1}</td>
                     {COLUMNS.map((col) => (
                       <td
                         key={col.key}
@@ -499,15 +499,15 @@ return (
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="font-mono font-medium text-gray-900 text-sm">{row.product_sku}</p>
-                    <p className="text-xs text-gray-500">{row.principal_1 || row.principal_2 || '-'}</p>
+                    <p className="text-xs text-muted-foreground">{row.principal_1 || row.principal_2 || '-'}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <p className="text-slate-500">LOB: <span className="text-slate-700">{row.lob || '-'}</span></p>
-                  <p className="text-slate-500">Category: <span className="text-slate-700">{row.product_category || '-'}</span></p>
-                  <p className="text-slate-500">Group: <span className="text-slate-700">{row.product_group || '-'}</span></p>
-                  <p className="text-slate-500">Class: <span className="text-slate-700">{row.product_class || '-'}</span></p>
-                  <p className="text-slate-500 col-span-2">Principal 2: <span className="text-slate-700">{row.principal_2 || '-'}</span></p>
+                  <p className="text-muted-foreground">LOB: <span className="text-slate-700">{row.lob || '-'}</span></p>
+                  <p className="text-muted-foreground">Category: <span className="text-slate-700">{row.product_category || '-'}</span></p>
+                  <p className="text-muted-foreground">Group: <span className="text-slate-700">{row.product_group || '-'}</span></p>
+                  <p className="text-muted-foreground">Class: <span className="text-slate-700">{row.product_class || '-'}</span></p>
+                  <p className="text-muted-foreground col-span-2">Principal 2: <span className="text-slate-700">{row.principal_2 || '-'}</span></p>
                 </div>
                 <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
                   {hasPermission('cluster_principal.edit') && <button onClick={() => handleEdit(row)} className="min-h-9 px-2 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors" aria-label={`Edit ${row.product_sku}`}>Edit</button>}
@@ -520,20 +520,20 @@ return (
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
                   <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
                 </div>
-                <p className="text-sm font-medium text-slate-500">Tidak ada data</p>
+                <p className="text-sm font-medium text-muted-foreground">Tidak ada data</p>
               </div>
             )}
           </div>
 
           <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Menampilkan <span className="font-medium text-slate-800">{items.length > 0 ? (page - 1) * 20 + 1 : 0}-{Math.min(page * 20, totalCount)}</span> dari <span className="font-medium text-slate-800">{totalCount}</span>
             </p>
             <div className="flex items-center gap-2">
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-card text-slate-600 hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman sebelumnya">
                 Sebelumnya
               </button>
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-muted-foreground">
                 Halaman <span className="font-medium text-slate-800">{page}</span> dari <span className="font-medium text-slate-800">{lastPage}</span>
               </span>
               <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="min-h-11 px-3 text-sm font-medium rounded-lg border border-slate-300 bg-card text-slate-600 hover:bg-popover disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Halaman berikutnya">

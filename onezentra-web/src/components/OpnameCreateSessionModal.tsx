@@ -156,9 +156,9 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
         </div>
       </div>
       <div className="mt-4">
-        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Baris wave ({picked.size}/{waves.length})</p>
-        {loadingWaves ? <p className="text-sm text-gray-500">Memuat wave...</p> : waves.length === 0 ? (
-          <p className="text-sm text-gray-500">Tidak ada wave minggu ini — Generate dulu di Batch Expired.</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Baris wave ({picked.size}/{waves.length})</p>
+        {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat wave...</p> : waves.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Tidak ada wave minggu ini — Generate dulu di Batch Expired.</p>
         ) : (
           <div className="max-h-64 overflow-auto border border-gray-300 rounded-xl divide-y divide-gray-100">
             {waves.map((w) => (
@@ -170,8 +170,8 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
                   return n;
                 })} className="w-4 h-4 accent-primary-600" />
                 <span className="font-mono text-sm">{w.kode_barang}</span>
-                <span className="text-xs text-gray-500 truncate">{w.nama_barang || ''}</span>
-                <span className="ml-auto text-xs text-gray-500 whitespace-nowrap">{w.qty_ini_crt} CRT · {w.status_ini}</span>
+                <span className="text-xs text-muted-foreground truncate">{w.nama_barang || ''}</span>
+                <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{w.qty_ini_crt} CRT · {w.status_ini}</span>
               </label>
             ))}
           </div>

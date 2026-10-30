@@ -344,12 +344,12 @@ export default function RencanaKirimReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-gray-900">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-gray-500">Rentang tanggal RKH, status, depo, dan pencarian</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Rentang tanggal RKH, status, depo, dan pencarian</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-gray-900 shadow-sm' : 'text-gray-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-gray-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -558,7 +558,7 @@ export default function RencanaKirimReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-gray-900">Detail Replenishment</h2>
-                  <p className="mt-0.5 text-xs text-gray-500 tabular-nums">{rangeText}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{rangeText}</p>
                 </div>
               </div>
               <button onClick={handleExport} disabled={!canExport || exporting} title={!canExport ? 'Tidak ada data untuk diexport' : 'Export seluruh baris terfilter ke Excel'} aria-label="Export laporan ke Excel" className="btn-secondary text-sm disabled:opacity-50 flex items-center gap-2">
@@ -723,7 +723,7 @@ export default function RencanaKirimReportPage() {
                       <p className="font-black text-gray-900 text-sm tabular-nums">{item.item_count}</p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-slate-100 text-gray-600 flex items-center justify-center text-[9px] font-black uppercase" aria-hidden="true">{(item.driver_name || '?').charAt(0)}</span><span className="font-medium text-slate-700">{item.driver_name}</span></span>
                     <span className="font-mono">{item.nopol}</span>
                     <span>{item.jenis_kendaraan}</span>
@@ -752,7 +752,7 @@ export default function RencanaKirimReportPage() {
                       onClick={() => setPage(p)}
                       aria-label={`Halaman ${p}`}
                       aria-current={p === page ? 'page' : undefined}
-                      className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === page ? 'bg-ink-900 text-white shadow' : 'text-gray-500 hover:bg-slate-200/70'}`}
+                      className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === page ? 'bg-ink-900 text-white shadow' : 'text-muted-foreground hover:bg-slate-200/70'}`}
                     >
                       {p}
                     </button>

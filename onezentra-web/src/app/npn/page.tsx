@@ -414,27 +414,27 @@ export default function NpnPage() {
                       />
                     </th>
                   )}
-                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
-                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer`} {...sortHeaderProps('szNickName')}>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No</th>
+                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer`} {...sortHeaderProps('szNickName')}>
                     Nickname <SortIcon column="szNickName" />
                   </th>
-                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer`} {...sortHeaderProps('szNickNameNew')}>
+                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer`} {...sortHeaderProps('szNickNameNew')}>
                     Nickname New <SortIcon column="szNickNameNew" />
                   </th>
-                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer`} {...sortHeaderProps('BOSnetszProductId')}>
+                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer`} {...sortHeaderProps('BOSnetszProductId')}>
                     BOS ID <SortIcon column="BOSnetszProductId" />
                   </th>
-                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer`} {...sortHeaderProps('SAPszProductId')}>
+                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer`} {...sortHeaderProps('SAPszProductId')}>
                     SAP ID <SortIcon column="SAPszProductId" />
                   </th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Description</th>
-                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer`} {...sortHeaderProps('szBarcode')}>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Description</th>
+                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer`} {...sortHeaderProps('szBarcode')}>
                     Barcode <SortIcon column="szBarcode" />
                   </th>
-                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer`} {...sortHeaderProps('szStatus')}>
+                  <th scope="col" className={`whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground cursor-pointer`} {...sortHeaderProps('szStatus')}>
                     Status <SortIcon column="szStatus" />
                   </th>
-                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                  <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -450,12 +450,12 @@ export default function NpnPage() {
                         />
                       </td>
                     )}
-                    <td className="px-5 py-3 text-center text-sm text-gray-500">{(page - 1) * 20 + index + 1}</td>
+                    <td className="px-5 py-3 text-center text-sm text-muted-foreground">{(page - 1) * 20 + index + 1}</td>
                     <td className="px-5 py-3 text-sm"><div className="font-medium text-gray-900">{item.szNickName || '-'}</div></td>
                     <td className="px-5 py-3 text-sm text-gray-600">{item.szNickNameNew || '-'}</td>
                     <td className="px-5 py-3 text-sm font-mono text-gray-600">{item.BOSnetszProductId || '-'}</td>
                     <td className="px-5 py-3 text-sm font-mono text-gray-600">{item.SAPszProductId || '-'}</td>
-                    <td className="px-5 py-3 text-sm text-gray-500">{item.szShortDescription || '-'}</td>
+                    <td className="px-5 py-3 text-sm text-muted-foreground">{item.szShortDescription || '-'}</td>
                     <td className="px-5 py-3 text-sm">{item.szBarcode ? <span className="font-mono text-gray-600">{item.szBarcode}</span> : <span className="text-gray-400 italic">Belum diisi</span>}</td>
                     <td className="px-5 py-3">
                       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${statusColor(item.szStatus)}`}>{item.szStatus || '-'}</span>
@@ -486,7 +486,7 @@ export default function NpnPage() {
                         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
                           <svg className="h-8 w-8 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                         </div>
-                        <p className="text-sm font-medium text-slate-500">Tidak ada data produk</p>
+                        <p className="text-sm font-medium text-muted-foreground">Tidak ada data produk</p>
                         <p className="text-xs text-slate-400">Cari atau import produk untuk memulai.</p>
                       </div>
                     </td>
@@ -503,14 +503,14 @@ export default function NpnPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="font-medium text-gray-900 text-sm">{item.szNickName || '-'}</p>
-                    <p className="text-xs text-gray-500">{item.szNickNameNew || '-'}</p>
+                    <p className="text-xs text-muted-foreground">{item.szNickNameNew || '-'}</p>
                   </div>
                   <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusColor(item.szStatus)}`}>{item.szStatus || '-'}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <p className="text-slate-500">BOS: <span className="font-mono text-slate-700">{item.BOSnetszProductId || '-'}</span></p>
-                  <p className="text-slate-500">SAP: <span className="font-mono text-slate-700">{item.SAPszProductId || '-'}</span></p>
-                  <p className="text-slate-500 col-span-2">Barcode: <span className="font-mono text-slate-700">{item.szBarcode || 'Belum diisi'}</span></p>
+                  <p className="text-muted-foreground">BOS: <span className="font-mono text-slate-700">{item.BOSnetszProductId || '-'}</span></p>
+                  <p className="text-muted-foreground">SAP: <span className="font-mono text-slate-700">{item.SAPszProductId || '-'}</span></p>
+                  <p className="text-muted-foreground col-span-2">Barcode: <span className="font-mono text-slate-700">{item.szBarcode || 'Belum diisi'}</span></p>
                 </div>
                 <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-100">
                   <button onClick={() => setViewItem(item)} className="min-h-9 px-2 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors" aria-label="Lihat Detail">Lihat</button>
@@ -524,14 +524,14 @@ export default function NpnPage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
                   <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
-                <p className="text-sm font-medium text-slate-500">Tidak ada data</p>
+                <p className="text-sm font-medium text-muted-foreground">Tidak ada data</p>
               </div>
             )}
           </div>
 
           {/* Pagination */}
           <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 bg-overlay-50 px-4 py-3 border-t border-slate-100">
-            <span className="text-xs text-slate-500 font-medium order-2 sm:order-1">
+            <span className="text-xs text-muted-foreground font-medium order-2 sm:order-1">
               Halaman {page} dari {lastPage}
             </span>
             <div className="flex items-center gap-2 order-1 sm:order-2">
@@ -678,7 +678,7 @@ export default function NpnPage() {
                 ['decRate', 'decRate', false, 'number'],
               ].map(([label, key, full, type]) => (
                 <div key={key as string} className={full ? 'col-span-2' : ''}>
-                  <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor={`field-${key}`}>{label as string}</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor={`field-${key}`}>{label as string}</label>
                   <input id={`field-${key}`}
                     type={(type as string) || 'text'}
                     value={(editForm[key as keyof NpnItem] as string | number) ?? ''}
@@ -698,11 +698,11 @@ export default function NpnPage() {
                     return (
                       <div key={i} className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="cat">Cat {i + 1}</label>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor="cat">Cat {i + 1}</label>
                           <input id="cat" value={(editForm[catKey as keyof NpnItem] as string) ?? ''} onChange={(e) => setEditForm(prev => ({ ...prev, [catKey]: e.target.value }))} className="input-field text-xs" />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="desc">Desc {i + 1}</label>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor="desc">Desc {i + 1}</label>
                           <input id="desc" value={(editForm[descKey as keyof NpnItem] as string) ?? ''} onChange={(e) => setEditForm(prev => ({ ...prev, [descKey]: e.target.value }))} className="input-field text-xs" />
                         </div>
                       </div>
@@ -760,7 +760,7 @@ export default function NpnPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">({formatFileSize(selectedFile.size)}) • Klik atau taruh file untuk ganti</p>
+                    <p className="text-xs text-muted-foreground mt-1">({formatFileSize(selectedFile.size)}) • Klik atau taruh file untuk ganti</p>
                   </div>
                   <button
                     type="button"

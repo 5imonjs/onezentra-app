@@ -47,7 +47,7 @@ export default function DashboardPanel({
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-gray-900">{title}</h2>
           {subtitle != null && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">{subtitle}</div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">{subtitle}</div>
           )}
         </div>
         {(badge || actions) && (

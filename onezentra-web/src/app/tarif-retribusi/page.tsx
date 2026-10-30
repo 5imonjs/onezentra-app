@@ -155,7 +155,7 @@ export default function TarifRetribusiPage() {
               <svg className="h-6 w-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
             </div>
             <h1 className="mt-4 text-lg font-bold text-slate-800">Akses terbatas</h1>
-            <p className="mt-1 text-sm text-slate-500">Hanya Admin Master dan Admin Distribusi yang dapat mengelola tarif retribusi.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Hanya Admin Master dan Admin Distribusi yang dapat mengelola tarif retribusi.</p>
           </div>
         </div>
       </DashboardLayout>
@@ -180,7 +180,7 @@ export default function TarifRetribusiPage() {
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm">
           <div className="border-b border-gray-100 px-5 py-4">
             <p className="text-sm font-semibold text-slate-800">Tarif khusus per depo</p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Depo tanpa baris tersimpan memakai bawaan config. Simpan baris untuk meng-override, atau reset untuk kembali ke bawaan.
             </p>
           </div>
@@ -199,7 +199,7 @@ export default function TarifRetribusiPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-overlay-60 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-gray-100 bg-overlay-60 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     <th className="px-5 py-3">Depo</th>
                     <th className="px-3 py-3">Mode</th>
                     <th className="px-3 py-3 text-right">Tarif / zak (Rp)</th>
@@ -221,7 +221,7 @@ export default function TarifRetribusiPage() {
                             {depot.nama_depo && <span className="truncate text-xs text-slate-400">{depot.nama_depo}</span>}
                           </div>
                           {!draft.hasOverride && (
-                            <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">Bawaan config</span>
+                            <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">Bawaan config</span>
                           )}
                         </td>
                         <td className="px-3 py-3">
@@ -288,7 +288,7 @@ export default function TarifRetribusiPage() {
                                 onClick={() => void resetRow(depot.kode_depo)}
                                 disabled={isSaving}
                                 title="Kembalikan ke nilai bawaan config"
-                                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Reset
                               </button>
@@ -304,7 +304,7 @@ export default function TarifRetribusiPage() {
           )}
 
           <div className="border-t border-gray-100 bg-overlay-60 px-5 py-3">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Rumus mode koli: <span className="font-semibold text-slate-700">nominal = qty zak × tarif zak + qty crt × tarif crt</span>. Mode borongan memakai nominal manual saat input biaya.
             </p>
           </div>

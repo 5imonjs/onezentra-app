@@ -358,8 +358,8 @@ function ApprovalStepper({ item, rfahThreshold }: { item: BiayaRetribusiItem; rf
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`text-sm font-semibold ${state === 'done' ? 'text-slate-900' : state === 'current' ? 'text-accent-text' : 'text-slate-500'}`}>{step.label}</p>
-                    <span className="inline-flex rounded-md bg-slate-100 border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-500">{step.role}</span>
+                    <p className={`text-sm font-semibold ${state === 'done' ? 'text-slate-900' : state === 'current' ? 'text-accent-text' : 'text-muted-foreground'}`}>{step.label}</p>
+                    <span className="inline-flex rounded-md bg-slate-100 border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground">{step.role}</span>
                   </div>
                   <p className="mt-0.5 text-xs text-slate-400">
                     {step.at ? (
@@ -1447,23 +1447,23 @@ export default function BiayaRetribusiPage() {
         <div className={`rounded-2xl border border-gray-100 bg-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <div className="px-2 py-1">
-              <p className="text-xs text-slate-500">Total Nominal</p>
+              <p className="text-xs text-muted-foreground">Total Nominal</p>
               <p className="mt-1 text-2xl font-bold text-slate-800 tabular-nums">{formatCurrency(summary?.total_nominal ?? 0)}</p>
             </div>
             <div onClick={() => { setStatusFilter(statusFilter === 'pending' ? '' : 'pending'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-amber-50/50 rounded-lg transition-colors">
-              <p className="text-xs text-slate-500">Menunggu</p>
+              <p className="text-xs text-muted-foreground">Menunggu</p>
               <p className="mt-1 text-2xl font-bold text-amber-600 tabular-nums">{summary?.pending ?? 0}</p>
             </div>
             <div onClick={() => { setStatusFilter(statusFilter === 'approved' ? '' : 'approved'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-emerald-50/50 rounded-lg transition-colors">
-              <p className="text-xs text-slate-500">Disetujui</p>
+              <p className="text-xs text-muted-foreground">Disetujui</p>
               <p className="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">{summary?.approved ?? 0}</p>
             </div>
             <div onClick={() => { setStatusFilter(statusFilter === 'revisi' ? '' : 'revisi'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-orange-50/50 rounded-lg transition-colors">
-              <p className="text-xs text-slate-500">Revisi</p>
+              <p className="text-xs text-muted-foreground">Revisi</p>
               <p className="mt-1 text-2xl font-bold text-orange-600 tabular-nums">{summary?.revisi ?? 0}</p>
             </div>
             <div onClick={() => { setStatusFilter(statusFilter === 'rejected' ? '' : 'rejected'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-red-50/50 rounded-lg transition-colors">
-              <p className="text-xs text-slate-500">Ditolak</p>
+              <p className="text-xs text-muted-foreground">Ditolak</p>
               <p className="mt-1 text-2xl font-bold text-red-600 tabular-nums">{summary?.rejected ?? 0}</p>
             </div>
           </div>
@@ -1484,7 +1484,7 @@ export default function BiayaRetribusiPage() {
               <option value="revisi">Revisi</option>
             </select>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-slate-500">/page</span>
+              <span className="text-xs text-muted-foreground">/page</span>
               <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className="select-field-sm w-22.5">
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -1655,7 +1655,7 @@ export default function BiayaRetribusiPage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-gray-800">{getNopols(item).slice(0, 2).join(', ') || item.nama_depo}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{formatDate(item.tanggal_pengajuan)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{formatDate(item.tanggal_pengajuan)}</p>
                     </div>
                   </div>
                   {badge(item.status)}
@@ -1671,9 +1671,9 @@ export default function BiayaRetribusiPage() {
                         RFAH
                       </span>
                     )}
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">SJ: {getSJShorts(item).join(', ') || '-'}</span>
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{getKendaraanTypes(item).join(', ') || '-'}</span>
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{getQtyLabel(item)}</span>
+                    <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full">SJ: {getSJShorts(item).join(', ') || '-'}</span>
+                    <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full">{getKendaraanTypes(item).join(', ') || '-'}</span>
+                    <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full">{getQtyLabel(item)}</span>
                   </div>
                   <span className="text-sm font-bold text-gray-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</span>
                 </div>
@@ -1708,7 +1708,7 @@ export default function BiayaRetribusiPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
-            <p className="text-xs text-slate-500 tabular-nums mr-2">Halaman {page} dari {totalPages}</p>
+            <p className="text-xs text-muted-foreground tabular-nums mr-2">Halaman {page} dari {totalPages}</p>
             {pageWindow(page, totalPages).map((p, idx) => p === '…' ? (
               <span key={`e${idx}`} className="text-xs text-slate-400 px-1" aria-hidden="true">…</span>
             ) : (
@@ -1928,12 +1928,12 @@ export default function BiayaRetribusiPage() {
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <button type="button" aria-pressed={sourceType === 'receiving'} onClick={() => switchSourceType('receiving')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'receiving' ? 'border-primary-600 bg-chip-primary shadow-md' : 'border-chip-primary-border bg-chip-primary/50 hover:border-primary-400'}`}>
                     <span className="mt-2 block text-sm font-black text-slate-900">Otomatis dari Receiving</span>
-                    <span className="mt-1 block text-[11px] leading-5 text-slate-500">Qty zak/crt & tanggal terisi sendiri dari receiving COMPLETED. Nominal mengikuti tarif koli depo.</span>
+                    <span className="mt-1 block text-[11px] leading-5 text-muted-foreground">Qty zak/crt & tanggal terisi sendiri dari receiving COMPLETED. Nominal mengikuti tarif koli depo.</span>
                   </button>
                   <button type="button" aria-pressed={sourceType === 'manual'} onClick={() => switchSourceType('manual')} className={`rounded-2xl border-2 p-4 text-left transition-all hover:shadow-md active:scale-[0.99] ${sourceType === 'manual' ? 'border-slate-700 bg-popover shadow-md' : 'border-slate-300 bg-card hover:border-slate-400'}`}>
                     <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-600">MANUAL</span>
                     <span className="mt-2 block text-sm font-black text-slate-900">Borongan / Manual</span>
-                    <span className="mt-1 block text-[11px] leading-5 text-slate-500">Ketik nopol, qty, dan nominal sendiri. Cocok untuk biaya satuan borongan.</span>
+                    <span className="mt-1 block text-[11px] leading-5 text-muted-foreground">Ketik nopol, qty, dan nominal sendiri. Cocok untuk biaya satuan borongan.</span>
                   </button>
                 </div>
               </div>
@@ -1955,13 +1955,13 @@ export default function BiayaRetribusiPage() {
                     {isKoliMode ? (
                       <span className="text-xs font-semibold text-accent-text">1 zak Rp {Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · 1 crt Rp {Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')}</span>
                     ) : (
-                      <span className="text-xs font-semibold text-slate-500">Borongan — nominal diisi manual</span>
+                      <span className="text-xs font-semibold text-muted-foreground">Borongan — nominal diisi manual</span>
                     )}
                     <svg className={`ml-auto w-4 h-4 text-slate-400 transition-transform ${tariffOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                   </button>
                   {tariffOpen && (
                     <div className="mt-2 border-t border-slate-300 pt-2">
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-muted-foreground">
                         {isKoliMode
                           ? 'Nominal tiap baris = qty zak × tarif zak + qty crt × tarif crt, dihitung otomatis.'
                           : 'Depo ini memakai borongan: qty hanya info, nominal diketik manual per baris.'}
@@ -1972,10 +1972,10 @@ export default function BiayaRetribusiPage() {
                             <option value="borongan">Borongan</option>
                             <option value="koli">Koli</option>
                           </select>
-                          <label className="flex items-center gap-1 text-[11px] text-slate-500">Rp/zak
+                          <label className="flex items-center gap-1 text-[11px] text-muted-foreground">Rp/zak
                             <input type="number" min={0} value={rateDraft.rate_zak || ''} disabled={rateDraft.mode !== 'koli'} onChange={(e) => setRateDraft((p) => ({ ...p, rate_zak: Number(e.target.value) }))} placeholder="0" className="input-field w-24 py-1.5 text-right text-xs disabled:bg-slate-100" aria-label="Tarif per zak" />
                           </label>
-                          <label className="flex items-center gap-1 text-[11px] text-slate-500">Rp/crt
+                          <label className="flex items-center gap-1 text-[11px] text-muted-foreground">Rp/crt
                             <input type="number" min={0} value={rateDraft.rate_crt || ''} disabled={rateDraft.mode !== 'koli'} onChange={(e) => setRateDraft((p) => ({ ...p, rate_crt: Number(e.target.value) }))} placeholder="0" className="input-field w-24 py-1.5 text-right text-xs disabled:bg-slate-100" aria-label="Tarif per crt" />
                           </label>
                           <button type="button" onClick={saveRates} disabled={rateSaving || !effectiveKode} className="min-h-9 rounded-lg bg-ink-900 px-3 text-[11px] font-bold text-white hover:bg-ink-800 disabled:opacity-50">
@@ -2050,9 +2050,9 @@ export default function BiayaRetribusiPage() {
                             <td className="table-cell whitespace-nowrap">{formatDate(c.tanggal_selesai)}</td>
                             <td className="table-cell font-mono font-medium">{upper(c.nopol_kendaraan)}</td>
                             <td className="table-cell">{upper(c.type_kendaraan)}</td>
-                            <td className="table-cell font-mono text-gray-500">{c.po_transporter}</td>
+                            <td className="table-cell font-mono text-muted-foreground">{c.po_transporter}</td>
                             <td className="table-cell">{c.driver_name}</td>
-                            <td className="table-cell text-gray-500">{c.checker_name}</td>
+                            <td className="table-cell text-muted-foreground">{c.checker_name}</td>
                             <td className="table-cell text-right tabular-nums" title="Otomatis dari receiving">{Number(c.qty_zak || 0).toLocaleString('id-ID')} <span className="ml-1 rounded bg-slate-100 px-1 text-[9px] font-bold text-slate-400">AUTO</span></td>
                             <td className="table-cell text-right tabular-nums" title="Otomatis dari receiving">{Number(c.qty_crt || 0).toLocaleString('id-ID')} <span className="ml-1 rounded bg-slate-100 px-1 text-[9px] font-bold text-slate-400">AUTO</span></td>
                             <td className="table-cell text-right" onClick={(e) => e.stopPropagation()}>
@@ -2075,10 +2075,10 @@ export default function BiayaRetribusiPage() {
                           <div className="flex items-center gap-2">
                             <input type="checkbox" checked={checked} onChange={() => toggleCandidate(c.id)} onClick={(e) => e.stopPropagation()} className="rounded border-gray-300 text-accent-text w-4 h-4 shrink-0" aria-label={`Pilih ${c.nopol_kendaraan}`} />
                             <p className="font-mono font-bold text-sm text-slate-800">{upper(c.nopol_kendaraan)}</p>
-                            <span className="ml-auto text-[11px] text-slate-500">{formatDate(c.tanggal_selesai)}</span>
+                            <span className="ml-auto text-[11px] text-muted-foreground">{formatDate(c.tanggal_selesai)}</span>
                           </div>
-                          <p className="mt-1 text-[11px] text-slate-500">{upper(c.type_kendaraan)} · {c.po_transporter} · {c.driver_name}</p>
-                          <p className="mt-1 text-[11px] text-slate-500 tabular-nums">Otomatis: {Number(c.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(c.qty_crt || 0).toLocaleString('id-ID')} crt</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">{upper(c.type_kendaraan)} · {c.po_transporter} · {c.driver_name}</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">Otomatis: {Number(c.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(c.qty_crt || 0).toLocaleString('id-ID')} crt</p>
                           <div onClick={(e) => e.stopPropagation()}>
                             {isKoliMode ? (
                               <p className="mt-2 text-sm font-black text-slate-900 tabular-nums">{formatCurrency(candidateNominal(c.id))}</p>
@@ -2126,13 +2126,13 @@ export default function BiayaRetribusiPage() {
                     <div className="px-3 pb-3 pt-1 border-t border-gray-100">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-nopol_kendaraan`}>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-nopol_kendaraan`}>
                             Plat Kendaraan <span className="text-red-400">*</span>
                           </label>
                           <input type="text" value={d.nopol_kendaraan} onChange={(e) => updateExistingDetail(i, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" id={`existing-row-${i}-nopol_kendaraan`} className="input-field py-2 text-sm font-mono uppercase" />
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-type_kendaraan`}>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-type_kendaraan`}>
                             Type Kendaraan <span className="text-red-400">*</span>
                           </label>
                           <select value={d.type_kendaraan} onChange={(e) => updateExistingDetail(i, 'type_kendaraan', e.target.value)} id={`existing-row-${i}-type_kendaraan`} className="select-field py-2 text-sm">
@@ -2141,25 +2141,25 @@ export default function BiayaRetribusiPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-no_surat_jalan`}>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-no_surat_jalan`}>
                             No. SJ
                           </label>
                           <input type="text" value={d.no_surat_jalan} onChange={(e) => updateExistingDetail(i, 'no_surat_jalan', e.target.value)} placeholder="Nomor SJ" id={`existing-row-${i}-no_surat_jalan`} className="input-field py-2 text-sm font-mono" />
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-qty_zak`}>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-qty_zak`}>
                             Qty Zak
                           </label>
                           <input type="number" min="0" value={d.qty_zak || ''} onChange={(e) => updateExistingDetail(i, 'qty_zak', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-qty_zak`} className="input-field py-2 text-sm text-right" />
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-qty_crt`}>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-qty_crt`}>
                             Qty Crt
                           </label>
                           <input type="number" min="0" value={d.qty_crt || ''} onChange={(e) => updateExistingDetail(i, 'qty_crt', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-qty_crt`} className="input-field py-2 text-sm text-right" />
                         </div>
                         <div>
-                          <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-nominal_biaya`}>
+                          <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`existing-row-${i}-nominal_biaya`}>
                             Nominal (Rp) <span className="text-red-400">*</span>
                           </label>
                           <input type="number" min="0" value={d.nominal_biaya || ''} onChange={(e) => updateExistingDetail(i, 'nominal_biaya', Number(e.target.value))} placeholder="0" id={`existing-row-${i}-nominal_biaya`} className="input-field py-2 text-sm font-bold" />
@@ -2195,13 +2195,13 @@ export default function BiayaRetribusiPage() {
                 <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-card p-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="plat-kendaraan">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor="plat-kendaraan">
                         Plat Kendaraan <span className="text-red-400">*</span>
                       </label>
                       <input id="plat-kendaraan" type="text" onChange={(e) => startManualRow('nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="type-kendaraan">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor="type-kendaraan">
                         Type Kendaraan <span className="text-red-400">*</span>
                       </label>
                       <select id="type-kendaraan" defaultValue="" onChange={(e) => startManualRow('type_kendaraan', e.target.value)} className="select-field py-2 text-sm">
@@ -2210,25 +2210,25 @@ export default function BiayaRetribusiPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="no-sj">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor="no-sj">
                         No. SJ
                       </label>
                       <input id="no-sj" type="text" onChange={(e) => startManualRow('no_surat_jalan', e.target.value)} placeholder="Nomor SJ" className="input-field py-2 text-sm font-mono" />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="qty-zak">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor="qty-zak">
                         Qty Zak
                       </label>
                       <input id="qty-zak" type="number" min="0" onChange={(e) => startManualRow('qty_zak', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="qty-crt">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor="qty-crt">
                         Qty Crt
                       </label>
                       <input id="qty-crt" type="number" min="0" onChange={(e) => startManualRow('qty_crt', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm text-right" />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="nominal-rp">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor="nominal-rp">
                         Nominal (Rp) <span className="text-red-400">*</span>
                       </label>
                       <input id="nominal-rp" type="number" min="0" onChange={(e) => startManualRow('nominal_biaya', Number(e.target.value))} placeholder="0" className="input-field py-2 text-sm font-bold" />
@@ -2260,13 +2260,13 @@ export default function BiayaRetribusiPage() {
                       <div className="px-3 pb-3 pt-1 border-t border-gray-100">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-nopol_kendaraan`}>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-nopol_kendaraan`}>
                               Plat Kendaraan <span className="text-red-400">*</span>
                             </label>
                             <input type="text" value={md.nopol_kendaraan} onChange={(e) => updateManualDetail(i, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" id={`manual-row-${i}-nopol_kendaraan`} className="input-field py-2 text-sm font-mono uppercase" />
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-type_kendaraan`}>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-type_kendaraan`}>
                               Type Kendaraan <span className="text-red-400">*</span>
                             </label>
                             <select value={md.type_kendaraan} onChange={(e) => updateManualDetail(i, 'type_kendaraan', e.target.value)} id={`manual-row-${i}-type_kendaraan`} className="select-field py-2 text-sm">
@@ -2275,25 +2275,25 @@ export default function BiayaRetribusiPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-no_surat_jalan`}>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-no_surat_jalan`}>
                               No. SJ
                             </label>
                             <input type="text" value={md.no_surat_jalan} onChange={(e) => updateManualDetail(i, 'no_surat_jalan', e.target.value)} placeholder="Nomor SJ" id={`manual-row-${i}-no_surat_jalan`} className="input-field py-2 text-sm font-mono" />
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-qty_zak`}>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-qty_zak`}>
                               Qty Zak
                             </label>
                             <input type="number" min="0" value={md.qty_zak || ''} onChange={(e) => updateManualDetail(i, 'qty_zak', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-qty_zak`} className="input-field py-2 text-sm text-right" />
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-qty_crt`}>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-qty_crt`}>
                               Qty Crt
                             </label>
                             <input type="number" min="0" value={md.qty_crt || ''} onChange={(e) => updateManualDetail(i, 'qty_crt', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-qty_crt`} className="input-field py-2 text-sm text-right" />
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-nominal_biaya`}>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`manual-row-${i}-nominal_biaya`}>
                               Nominal (Rp) <span className="text-red-400">*</span>
                             </label>
                             <input type="number" min="0" value={md.nominal_biaya || ''} onChange={(e) => updateManualDetail(i, 'nominal_biaya', Number(e.target.value))} placeholder="0" id={`manual-row-${i}-nominal_biaya`} className="input-field py-2 text-sm font-bold" />
@@ -2328,7 +2328,7 @@ export default function BiayaRetribusiPage() {
                 <div className="rounded-xl border-2 border-dashed border-chip-primary-border bg-card p-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="tipe-dokumen">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor="tipe-dokumen">
                         Tipe Dokumen <span className="text-red-400">*</span>
                       </label>
                       <select id="tipe-dokumen" defaultValue="" onChange={(e) => { const t = e.target.value; if (t) startDocument('document_type', t); }} className="select-field py-2 text-sm">
@@ -2337,7 +2337,7 @@ export default function BiayaRetribusiPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor="doc-file-start">
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor="doc-file-start">
                         File <span className="text-red-400">*</span>
                       </label>
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only" id="doc-file-start" onChange={(e) => {
@@ -2379,7 +2379,7 @@ export default function BiayaRetribusiPage() {
                       <div className="px-3 pb-3 pt-1 border-t border-gray-100">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`tipe-dokumen-${i}`}>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`tipe-dokumen-${i}`}>
                               Tipe Dokumen <span className="text-red-400">*</span>
                             </label>
                             <select id={`tipe-dokumen-${i}`} value={doc.document_type} onChange={(e) => updateDocument(i, 'document_type', e.target.value)} className="select-field py-2 text-sm">
@@ -2387,7 +2387,7 @@ export default function BiayaRetribusiPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`doc-file-${i}`}>
+                            <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`doc-file-${i}`}>
                               File <span className="text-red-400">*</span>
                             </label>
                             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only" id={`doc-file-${i}`} onChange={(e) => {
@@ -2398,7 +2398,7 @@ export default function BiayaRetribusiPage() {
                             <label htmlFor={`doc-file-${i}`} className="flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-popover px-4 py-3 text-sm text-gray-600 hover:border-primary-400 hover:bg-chip-primary/50 cursor-pointer transition-colors">
                               <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A4 4 0 1118.8 7.372l-10.94 10.938a2.5 2.5 0 01-3.536-3.536l10.94-10.938a1 1 0 011.414 1.414l-10.94 10.938a.5.5 0 01-.707-.707l7.693-7.693a1 1 0 011.414 1.414z" /></svg>
                               <span className="min-w-0 flex-1 truncate">{doc.file_name || 'Pilih file (PDF, JPG, PNG, WEBP — maks 20 MB)'}</span>
-                              {doc.file && <span className="shrink-0 text-[11px] font-bold text-slate-500 tabular-nums">{formatBytes(doc.file.size)}</span>}
+                              {doc.file && <span className="shrink-0 text-[11px] font-bold text-muted-foreground tabular-nums">{formatBytes(doc.file.size)}</span>}
                             </label>
                           </div>
                         </div>
@@ -2416,19 +2416,19 @@ export default function BiayaRetribusiPage() {
                 <p className="text-sm font-bold text-gray-700">Periksa kembali sebelum dikirim</p>
                 <dl className="mt-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-slate-500">Depo</dt>
+                    <dt className="text-muted-foreground">Depo</dt>
                     <dd className="font-bold text-slate-800">{targetDepoLabel}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-slate-500">Tanggal</dt>
+                    <dt className="text-muted-foreground">Tanggal</dt>
                     <dd className="font-bold text-slate-800">{formatDate(formData.tanggal_pengajuan)}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-slate-500">Mode hitung</dt>
+                    <dt className="text-muted-foreground">Mode hitung</dt>
                     <dd className="font-bold text-slate-800">{isKoliSession ? `Koli (zak Rp ${Number(biayaConfig.retribusi_rate_zak).toLocaleString('id-ID')} · crt Rp ${Number(biayaConfig.retribusi_rate_crt).toLocaleString('id-ID')})` : 'Borongan (manual)'}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-slate-500">Dokumen</dt>
+                    <dt className="text-muted-foreground">Dokumen</dt>
                     <dd className="font-bold text-slate-800">{formData.documents.length} lampiran</dd>
                   </div>
                 </dl>
@@ -2440,7 +2440,7 @@ export default function BiayaRetribusiPage() {
                       <div key={id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                         <div className="min-w-0">
                           <p className="font-mono font-bold text-slate-800">{upper(c.nopol_kendaraan)}</p>
-                          <p className="text-[11px] text-slate-500 tabular-nums">{Number(c.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(c.qty_crt || 0).toLocaleString('id-ID')} crt · {c.po_transporter}</p>
+                          <p className="text-[11px] text-muted-foreground tabular-nums">{Number(c.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(c.qty_crt || 0).toLocaleString('id-ID')} crt · {c.po_transporter}</p>
                         </div>
                         <p className="shrink-0 font-bold tabular-nums text-slate-800">{formatCurrency(candidateNominal(id))}</p>
                       </div>
@@ -2450,7 +2450,7 @@ export default function BiayaRetribusiPage() {
                     <div key={`e-${i}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                       <div className="min-w-0">
                         <p className="font-mono font-bold text-slate-800">{upper(d.nopol_kendaraan)}</p>
-                        <p className="text-[11px] text-slate-500 tabular-nums">{Number(d.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(d.qty_crt || 0).toLocaleString('id-ID')} crt</p>
+                        <p className="text-[11px] text-muted-foreground tabular-nums">{Number(d.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(d.qty_crt || 0).toLocaleString('id-ID')} crt</p>
                       </div>
                       <p className="shrink-0 font-bold tabular-nums text-slate-800">{formatCurrency(existingNominal(d))}</p>
                     </div>
@@ -2459,7 +2459,7 @@ export default function BiayaRetribusiPage() {
                     <div key={`m-${i}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                       <div className="min-w-0">
                         <p className="font-mono font-bold text-slate-800">{upper(md.nopol_kendaraan) || `Manual #${i + 1}`}</p>
-                        <p className="text-[11px] text-slate-500 tabular-nums">{Number(md.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(md.qty_crt || 0).toLocaleString('id-ID')} crt</p>
+                        <p className="text-[11px] text-muted-foreground tabular-nums">{Number(md.qty_zak || 0).toLocaleString('id-ID')} zak · {Number(md.qty_crt || 0).toLocaleString('id-ID')} crt</p>
                       </div>
                       <p className="shrink-0 font-bold tabular-nums text-slate-800">{formatCurrency(manualNominal(md))}</p>
                     </div>
@@ -2640,7 +2640,7 @@ export default function BiayaRetribusiPage() {
                         {viewItem.details.map((d, i) => (
                           <tr key={i} className="hover:bg-overlay-60 transition-colors">
                             <td className="table-cell text-center">
-                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500 mx-auto">{i + 1}</span>
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-muted-foreground mx-auto">{i + 1}</span>
                             </td>
                             <td className="table-cell">
                               <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium font-mono text-slate-700">{upper(d.nopol_kendaraan) || '-'}</span>
@@ -2689,7 +2689,7 @@ export default function BiayaRetribusiPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-gray-800">{doc.document_type.toUpperCase()}</p>
-                          <p className="text-[11px] text-gray-500 truncate" title={doc.file_name}>{doc.file_name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate" title={doc.file_name}>{doc.file_name}</p>
                         </div>
                         {url ? (
                           <div className="flex shrink-0 items-center gap-1">
@@ -2712,7 +2712,7 @@ export default function BiayaRetribusiPage() {
 
               {/* Status footer */}
               <div className="rounded-2xl border border-slate-300 bg-overlay-70 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-xs font-semibold text-slate-500">Status pengajuan</p>
+                <p className="text-xs font-semibold text-muted-foreground">Status pengajuan</p>
                 {badge(viewItem.status)}
               </div>
             </div>
@@ -2763,16 +2763,16 @@ export default function BiayaRetribusiPage() {
                 </div>
                 <div className="divide-y divide-slate-100 bg-card text-sm">
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                    <span className="text-slate-500">Depo</span>
+                    <span className="text-muted-foreground">Depo</span>
                     <span className="font-semibold text-slate-800 font-mono">{decision.item.nama_depo}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                    <span className="text-slate-500">Total Biaya</span>
+                    <span className="text-muted-foreground">Total Biaya</span>
                     <span className="font-black text-slate-800 tabular-nums">{formatCurrency(decision.item.nominal_biaya)}</span>
                   </div>
                   {decision.item.is_rfah_required && (
                     <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                      <span className="text-slate-500">RFAH*</span>
+                      <span className="text-muted-foreground">RFAH*</span>
                       <span className="font-semibold text-amber-700">{decision.item.rfah_name || 'Diperlukan'}</span>
                     </div>
                   )}
@@ -2847,12 +2847,12 @@ export default function BiayaRetribusiPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-500 mb-1" htmlFor="pilih-file">Pilih File</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="pilih-file">Pilih File</label>
               <input id="pilih-file"
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
+                className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
               />
               <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: nopol_kendaraan, nominal_biaya</p>
             </div>
