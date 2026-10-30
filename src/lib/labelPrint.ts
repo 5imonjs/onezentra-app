@@ -85,6 +85,7 @@ export function clearPrintedLabels(validationId: number): void {
 export type PrintableItem = {
   id: number;
   status: string;
+  condition?: string;
   batch?: {
     barcode_label?: string | null;
     status?: string | null;

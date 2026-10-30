@@ -436,13 +436,13 @@ export default function ValidasiSjPage() {
       notifyGlobal('Validasi sudah selesai sehingga hasil item tidak dapat diubah.', 'error');
       return;
     }
-    setSelected(extra);
+    setSelected(extra as unknown as ValidationItem);
     setForm({
       actual_qty: extra.qty != null ? String(extra.qty) : '',
       expired_date: toDateInput(extra.expired_date),
       condition: extra.condition || 'FISIK_BAGUS',
       notes: extra.notes ?? '',
-      barcode: extra.batch?.barcode_label ?? extra.barcode ?? '',
+      barcode: ((extra as unknown) as ValidationItem).barcode ?? (extra as { batch?: { barcode_label?: string } }).batch?.barcode_label ?? '',
       tier: 1,
       tinggi_tumpukan: 1,
     });
