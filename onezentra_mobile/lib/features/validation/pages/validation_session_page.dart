@@ -196,10 +196,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppTheme.ink900, AppTheme.ink800],
+          colors: [Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard, Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface],
         ),
         borderRadius: AppTheme.radius2xl,
         border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.08)),
@@ -349,7 +349,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space4),
     decoration: BoxDecoration(
-      color: AppTheme.ink900,
+      color: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
       borderRadius: AppTheme.radiusXl,
       border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.08)),
     ),
@@ -922,7 +922,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 onPressed: () => Navigator.of(dialogContext).pop(true),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.warningText,
-                  foregroundColor: AppTheme.ink900,
+                  foregroundColor: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
                 ),
                 child: const Text('Input Standarisasi'),
               ),
@@ -960,7 +960,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space4),
     decoration: BoxDecoration(
-      color: AppTheme.ink900,
+      color: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
       borderRadius: AppTheme.radiusXl,
       border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.textSecondary ?? AppTheme.gray700.withValues(alpha: 0.08)),
     ),
@@ -1019,7 +1019,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           _darkActionButton(
             label: 'Laporkan barang luar rencana',
             background: AppTheme.warning,
-            foreground: AppTheme.ink900,
+            foreground: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
             loading: provider.actionBusy,
             onPressed: () => _showExtraItemSheet(provider),
           ),
@@ -1396,7 +1396,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               ? 'Cetak $totalUnprinted label dulu'
               : 'Selesaikan Validasi ✓',
           background: AppTheme.success,
-          foreground: AppTheme.ink900,
+          foreground: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
           loading: provider.actionBusy,
           onPressed: blocked ? null : () => _confirmComplete(provider),
         ),
@@ -1467,7 +1467,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             },
       style: FilledButton.styleFrom(
         backgroundColor: AppTheme.success,
-        foregroundColor: AppTheme.ink900,
+        foregroundColor: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
         minimumSize: const Size(0, 40),
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
         shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
@@ -1491,7 +1491,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         : () => _openStandarisasiSheet(item, canCreate: canCreate),
     style: FilledButton.styleFrom(
       backgroundColor: AppTheme.warningText,
-      foregroundColor: AppTheme.ink900,
+      foregroundColor: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
       minimumSize: const Size(0, 40),
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
       shape: const RoundedRectangleBorder(borderRadius: AppTheme.radiusLg),
@@ -1766,7 +1766,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.success,
-              foregroundColor: AppTheme.ink900,
+              foregroundColor: Theme.of(context).extension<ThemeColors>()?.textPrimary ?? AppTheme.gray900,
             ),
             child: const Text('Ya, Selesaikan'),
           ),
