@@ -82,7 +82,7 @@ class _ConditionChip extends StatelessWidget {
         style: GoogleFonts.roboto(
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
-          color: selected ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
+          color: selected ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground : Theme.of(context).extension<ThemeColors>()?.gray700 ?? AppTheme.gray700,
         ),
       ),
     ),

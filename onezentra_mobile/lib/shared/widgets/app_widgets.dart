@@ -511,9 +511,9 @@ class AppStatTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.07),
+      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.07),
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.1)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,7 +551,7 @@ class AppStatTile extends StatelessWidget {
             fontSize: 22,
             height: 1.1,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
           ),
         ),
       ],

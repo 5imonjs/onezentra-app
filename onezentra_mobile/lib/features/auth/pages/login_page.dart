@@ -270,7 +270,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         color: cardColor,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.14) : Colors.white,
+          color: isDark ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.14) : Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
         ),
         boxShadow: [AppTheme.shadowXl, if (!isDark) AppTheme.shadowPrimary],
       ),
@@ -454,7 +454,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     AuthProvider authProvider,
   ) {
     var muted = isDark
-        ? const Color(0xFF94A3B8) // gray-400
+        ? Color(0xFF94A3B8) // gray-400
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
     var parsedHost = Uri.tryParse(authProvider.apiBaseUrl)?.host ?? '';
     var host = parsedHost.isEmpty ? authProvider.apiBaseUrl : parsedHost;
@@ -544,9 +544,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader(ThemeData theme, bool isDark) {
-    var titleColor = isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900;
+    var titleColor = isDark ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900;
     var subtitleColor = isDark
-        ? const Color(0xFFC7D2FE) // primary-200
+        ? Color(0xFFC7D2FE) // primary-200
         : Theme.of(context).extension<ThemeColors>()?.gray50 ?? AppTheme.gray500;
 
     return Column(
@@ -559,7 +559,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           'assets/images/LOGO.png',
           height: 34,
           fit: BoxFit.contain,
-          color: isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
+          color: isDark ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
           colorBlendMode: BlendMode.srcIn,
           semanticLabel: 'ONEZENTRA',
         ),
@@ -681,7 +681,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     AuthProvider authProvider,
   ) {
     var iconColor = isDark
-        ? const Color(0xFF94A3B8) // gray-400
+        ? Color(0xFF94A3B8) // gray-400
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
 
     return _FieldLabel(
@@ -738,7 +738,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   TextStyle? _fieldTextStyle(ThemeData theme, bool isDark) =>
       theme.textTheme.bodyLarge?.copyWith(
-        color: isDark ? Colors.white : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
+        color: isDark ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground : Theme.of(context).extension<ThemeColors>()?.gray900 ?? Theme.of(context).extension<ThemeColors>()?.gray900 ?? AppTheme.gray900,
         fontWeight: FontWeight.w500,
       );
 
@@ -752,10 +752,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }) {
     var theme = Theme.of(context);
     var borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.14)
+        ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.14)
         : AppTheme.primary100;
     var iconColor = isDark
-        ? const Color(0xFF94A3B8) // gray-400
+        ? Color(0xFF94A3B8) // gray-400
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
     var focusedColor = isDark ? AppTheme.primary300 : AppTheme.primary500;
 
@@ -771,16 +771,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       hintStyle: theme.textTheme.bodyMedium?.copyWith(color: iconColor),
       filled: true,
       fillColor: isDark
-          ? Colors.white.withValues(alpha: 0.08)
+          ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08)
           : Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surfaceHover,
       // The pill keeps its own border as the focus affordance, so the hover /
       // focus overlays stay translucent. An opaque overlay is painted on top of
       // the fill and swallows the typed text (white on white in dark mode).
       hoverColor: isDark
-          ? Colors.white.withValues(alpha: 0.06)
+          ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.06)
           : AppTheme.primary50.withValues(alpha: 0.5),
       focusColor: isDark
-          ? Colors.white.withValues(alpha: 0.10)
+          ? Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.10)
           : AppTheme.primary100.withValues(alpha: 0.35),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppTheme.space5,
@@ -830,8 +830,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           child: InkWell(
             onTap: isDisabled ? null : _handleLogin,
             borderRadius: AppTheme.radiusFull,
-            splashColor: Colors.white.withValues(alpha: 0.14),
-            highlightColor: Colors.white.withValues(alpha: 0.06),
+            splashColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.14),
+            highlightColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.06),
             child: Ink(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -853,8 +853,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.gray900,
                           ),
                         ),
                       )
@@ -864,7 +863,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         style: GoogleFonts.roboto(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                         ),
                       )
                     else ...[
@@ -873,14 +872,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         style: GoogleFonts.roboto(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                         ),
                       ),
-                      const SizedBox(width: AppTheme.space2),
-                      const Icon(
+                      SizedBox(width: AppTheme.space2),
+                      Icon(
                         Icons.arrow_forward_rounded,
                         size: 20,
-                        color: Colors.white,
+                        color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                       ),
                     ],
                   ],
@@ -895,7 +894,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   Widget _buildTrustNote(ThemeData theme, bool isDark) {
     var noteColor = isDark
-        ? const Color(0xFF94A3B8) // gray-400
+        ? Color(0xFF94A3B8) // gray-400
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
 
     return Row(
@@ -916,7 +915,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   Widget _buildFooter(ThemeData theme, bool isDark) {
     var footerColor = isDark
-        ? const Color(0xFF64748B) // gray-500
+        ? Color(0xFF64748B) // gray-500
         : Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400;
 
     return Text(
@@ -942,7 +941,7 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var labelColor = isDark
-        ? const Color(0xFFC7D2FE) // primary-200
+        ? Color(0xFFC7D2FE) // primary-200
         : Theme.of(context).extension<ThemeColors>()?.gray600 ?? AppTheme.gray600;
 
     return Column(

@@ -418,7 +418,7 @@ class _GatePageState extends State<GatePage> {
           colors: [AppTheme.ink900, AppTheme.ink800],
         ),
         borderRadius: AppTheme.radius2xl,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,7 +457,7 @@ class _GatePageState extends State<GatePage> {
                 icon: Icon(
                   Icons.close_rounded,
                   size: 18,
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -507,7 +507,7 @@ class _GatePageState extends State<GatePage> {
             canCreate
                 ? _darkActionButton(
                     label: 'Gate IN →',
-                    background: Colors.white,
+                    background: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                     foreground: AppTheme.ink900,
                     loading: gate.actionBusy,
                     onPressed: () => _confirmAction(action),
@@ -520,7 +520,7 @@ class _GatePageState extends State<GatePage> {
                 ? _darkActionButton(
                     label: 'Verifikasi ✓',
                     background: AppTheme.success,
-                    foreground: Colors.white,
+                    foreground: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                     loading: gate.actionBusy,
                     onPressed: () => _confirmAction(action),
                   )
@@ -548,9 +548,9 @@ class _GatePageState extends State<GatePage> {
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.07),
+                color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08)),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -571,7 +571,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.primary950 : Colors.white,
+                color: highlight ? AppTheme.primary950 : Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
               ),
             ),
           ],
@@ -580,11 +580,11 @@ class _GatePageState extends State<GatePage> {
 
   Widget _guideBox(String guide) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(AppTheme.space3),
+    padding: EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.05),
+      color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.05),
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.1)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,11 +611,11 @@ class _GatePageState extends State<GatePage> {
 
   Widget _warningBox(String warning) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(AppTheme.space3),
+    padding: EdgeInsets.all(AppTheme.space3),
     decoration: BoxDecoration(
       color: AppTheme.warningDark,
       borderRadius: AppTheme.radiusLg,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.1)),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -739,7 +739,7 @@ class _GatePageState extends State<GatePage> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.primary600,
-              foregroundColor: Colors.white,
+              foregroundColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
               textStyle: GoogleFonts.roboto(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -844,7 +844,7 @@ class _GatePageState extends State<GatePage> {
     double size,
     Color background,
     IconData icon, {
-    Color iconColor = Colors.white,
+    Color iconColor = AppTheme.gray500,
   }) => Container(
     width: size,
     height: size,
@@ -911,7 +911,7 @@ class _GatePageState extends State<GatePage> {
         height: 24,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08),
           shape: BoxShape.circle,
         ),
         child: Text(

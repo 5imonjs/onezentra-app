@@ -239,7 +239,7 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       borderRadius: AppTheme.radius2xl,
-      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      border: Border.all(color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground.withValues(alpha: 0.08)),
       boxShadow: [
         BoxShadow(
           color: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
@@ -361,7 +361,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.danger,
-              foregroundColor: Colors.white,
+              foregroundColor: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
             ),
             child: const Text('Keluar'),
           ),
@@ -521,7 +521,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 16,
                   height: 1.3,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
               ),
             ),
@@ -643,7 +643,7 @@ class _HomePageState extends State<HomePage> {
                   height: 1.3,
                   letterSpacing: 0,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
                 ),
               ),
               const SizedBox(height: 2),

@@ -112,7 +112,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
             3,
             (_) => Container(
               height: 64,
-              margin: const EdgeInsets.only(bottom: AppTheme.space3),
+              margin: EdgeInsets.only(bottom: AppTheme.space3),
               decoration: BoxDecoration(
                 color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
                 borderRadius: AppTheme.radiusLg,
@@ -153,7 +153,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
       ),
       if (validation.lastPage > 1)
         Padding(
-          padding: const EdgeInsets.only(top: AppTheme.space4),
+          padding: EdgeInsets.only(top: AppTheme.space4),
           child: Column(
             children: [
               Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100),
@@ -283,7 +283,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
     double size,
     Color background,
     IconData icon, {
-    Color iconColor = Colors.white,
+    Color iconColor = AppTheme.gray500,
   }) => Container(
     width: size,
     height: size,
