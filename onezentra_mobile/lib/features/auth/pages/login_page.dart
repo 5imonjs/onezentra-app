@@ -209,7 +209,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     var authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: AppTheme.primary950,
+      backgroundColor: Theme.of(context).extension<ThemeColors>()?.background ?? AppTheme.background,
       body: Stack(
         children: [
           const Positioned.fill(child: _AuroraBackground()),
@@ -971,7 +971,7 @@ class _AuroraBackground extends StatelessWidget {
   const _AuroraBackground();
 
   @override
-  Widget build(BuildContext context) => const Stack(
+  Widget build(BuildContext context) => Stack(
     fit: StackFit.expand,
     children: [
       DecoratedBox(
@@ -980,9 +980,9 @@ class _AuroraBackground extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF1E1B4B), // primary-950
-              Color(0xFF4F46E5), // primary-600
-              Color(0xFF0F172A), // gray-900
+              Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+              Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
+              Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
             ],
             stops: [0, 0.45, 1],
           ),
