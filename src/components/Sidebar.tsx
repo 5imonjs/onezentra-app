@@ -350,11 +350,11 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
       <div className={`border-b border-border flex items-center ${isExpanded ? 'justify-between px-5 py-4' : 'justify-center py-4'}`}>
         {isExpanded ? (
           <div className="sidebar-logo relative h-14 flex-1 min-w-0 animate-fade-in">
-            <Image src="/garuda-logo.png" alt="ONEZENTRA" fill sizes="200px" className="object-contain object-left" />
+            <Image src="/LOGO.png" alt="ONEZENTRA" fill sizes="200px" className="object-contain object-left" />
           </div>
         ) : (
           <div className="sidebar-logo relative w-9 h-9 overflow-hidden">
-            <Image src="/garuda-logo.png" alt="ONEZENTRA" fill sizes="36px" className="object-contain p-1" />
+            <Image src="/LOGO.png" alt="ONEZENTRA" fill sizes="36px" className="object-contain p-1" />
           </div>
         )}
         {isExpanded && (
