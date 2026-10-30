@@ -144,7 +144,7 @@ function BatchCell({ batch, printed }: { batch?: BatchInfo | null; printed?: boo
   if (state.kind === 'cancelled') {
     return (
       <div className="min-w-37.5">
-        <p className="font-mono text-xs font-bold text-slate-500 line-through">{state.number}</p>
+        <p className="font-mono text-xs font-bold text-muted-foreground line-through">{state.number}</p>
         <span className="mt-0.5 inline-flex items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700">
           Dibatalkan
         </span>
@@ -155,7 +155,7 @@ function BatchCell({ batch, printed }: { batch?: BatchInfo | null; printed?: boo
   return (
     <div className="min-w-37.5">
       <p className="font-mono text-xs font-bold text-slate-800">{state.number}</p>
-      {state.barcode && <p className="mt-0.5 font-mono text-[10px] text-slate-500">{state.barcode}</p>}
+      {state.barcode && <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{state.barcode}</p>}
       {printed ? (
         <span className="mt-0.5 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
           <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12.75 9.25 17 19 7.25" /></svg>
@@ -1049,15 +1049,15 @@ export default function ValidasiSjPage() {
                   <caption className="sr-only">Daftar validasi dokumen</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-300 bg-popover">
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Transporter</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Tujuan</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Mulai</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Selesai</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Durasi</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">PO Transporter</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Driver</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Tujuan</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mulai</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Selesai</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Durasi</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1174,12 +1174,12 @@ export default function ValidasiSjPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate font-mono text-sm font-bold text-slate-900">{item.rencana_kirim?.po_transporter || item.scan_code}</p>
-                          <p className="mt-0.5 truncate text-xs text-slate-500">{item.rencana_kirim?.driver_name || '-'} <span className="text-slate-300">•</span> {item.rencana_kirim?.destination_name || '-'}</p>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.rencana_kirim?.driver_name || '-'} <span className="text-slate-300">•</span> {item.rencana_kirim?.destination_name || '-'}</p>
                         </div>
                         <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${cfg.bg} ${cfg.text} border-current/10`}><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           Selesai: <span className="tabular-nums">{fmtDateTime(item.completed_at)}</span>
                           <span className="text-slate-300"> • </span>
                           Durasi: <span className="tabular-nums font-semibold text-slate-600">{validationDuration(item, nowIso)}</span>
@@ -1198,7 +1198,7 @@ export default function ValidasiSjPage() {
                 <div className="border-t border-gray-100 bg-overlay-50 px-5 py-4">
                   <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
                     <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="btn-secondary w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed sm:w-auto">Sebelumnya</button>
-                    <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
+                    <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
                     <button type="button" disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))} className="btn-secondary w-full text-sm disabled:opacity-40 disabled:cursor-not-allowed sm:w-auto">Selanjutnya</button>
                   </div>
                 </div>
@@ -1342,16 +1342,16 @@ export default function ValidasiSjPage() {
                   <caption className="sr-only">Rincian item dan hasil validasi dokumen {active.rencana_kirim?.po_transporter}</caption>
                   <thead>
                     <tr className="bg-popover border-b border-gray-300">
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Barang</th>
-                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Plan</th>
-                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aktual</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Expired</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No. Batch</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Catatan</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Foto</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
-                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Kode</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Nama Barang</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Plan</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aktual</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Expired</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No. Batch</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Catatan</th>
+                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Foto</th>
+                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1371,7 +1371,7 @@ export default function ValidasiSjPage() {
                         <td className="px-4 py-3 text-sm text-slate-600">
                           <BatchCell batch={item.batch} printed={isLabelPrinted(item, printedLabels)} />
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
                         <td className="px-4 py-3 text-center">
                           {item.photo ? (
                             <a href={storageFileUrl(item.photo) ?? '#'} target="_blank" rel={AUTHENTICATED_FILE_REL} className="inline-flex items-center gap-1 text-xs text-accent-text hover:text-accent-text-strong font-medium">
@@ -1486,7 +1486,7 @@ export default function ValidasiSjPage() {
                       return (
                       <li key={extra.id} className="flex flex-col gap-1.5 px-5 py-3 even:bg-overlay-30">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-bold text-slate-800">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-slate-500">{extra.kode_barang}</span></p>
+                          <p className="text-sm font-bold text-slate-800">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-muted-foreground">{extra.kode_barang}</span></p>
                           <button type="button" onClick={() => openExtraItem(extra)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-card px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-popover" title="Ubah catatan luar rencana">Ubah</button>
                         </div>
                           <div className="flex items-center gap-2">
@@ -1497,7 +1497,7 @@ export default function ValidasiSjPage() {
                               {decision.label}
                             </span>
                           </div>
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-[11px] text-muted-foreground">
                           {extra.expired_date ? <>Expired: <span className="font-semibold">{fmtDate(extra.expired_date)}</span><span className="text-slate-300"> • </span></> : null}
                           {extra.notes ? <>{extra.notes}<span className="text-slate-300"> • </span></> : null}
                           Dicatat oleh <span className="font-semibold text-slate-600">{extra.recorder?.full_name || '-'}</span>
@@ -1509,7 +1509,7 @@ export default function ValidasiSjPage() {
                           )}
                         </p>
                         {(extra.status === 'APPROVED' || extra.status === 'REJECTED') && (
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[11px] text-muted-foreground">
                             Diputus oleh <span className="font-semibold text-slate-600">{extra.approver?.full_name || '-'}</span>
                             {extra.approved_at ? <> · {fmtDate(extra.approved_at)}</> : null}
                             {extra.decision_notes ? <> — “{extra.decision_notes}”</> : null}
@@ -1607,17 +1607,17 @@ export default function ValidasiSjPage() {
             <div className={`rounded-2xl border p-4 ${itemSisaUmur && itemSisaUmur.totalDays <= 0 ? 'border-red-200 bg-red-50' : itemSisaUmur && itemSisaUmur.totalMonths < itemStandarUmur ? 'border-amber-200 bg-amber-50' : 'border-chip-primary-border bg-chip-primary/60'}`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Standar umur produk</p>
-                  <p className="mt-1 text-[11px] text-slate-500">Acuan database dalam bulan</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">Standar umur produk</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Acuan database dalam bulan</p>
                 </div>
                 <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold text-accent-text shadow-sm">DATABASE</span>
               </div>
               <div className="mt-3 grid grid-cols-3 divide-x divide-slate-200/80">
-                <div className="pr-3"><p className="text-[10px] text-slate-500">Standar</p><p className="mt-1 text-xl font-black text-slate-900">{itemStandarUmur}</p><p className="text-[10px] text-slate-500">bulan</p></div>
-                <div className="px-3"><p className="text-[10px] text-slate-500">Sisa simpan</p><p className={`mt-1 text-xl font-black ${itemSisaUmur && itemSisaUmur.totalDays <= 0 ? 'text-red-600' : itemSisaUmur && itemSisaUmur.totalMonths < itemStandarUmur ? 'text-amber-600' : 'text-emerald-600'}`}>{itemSisaUmur ? itemSisaUmur.totalMonths : '-'}</p><p className="text-[10px] text-slate-500">bulan</p></div>
-                <div className="pl-3"><p className="text-[10px] text-slate-500">Selisih</p><p className={`mt-1 text-sm font-black leading-5 ${itemUmurSelisih !== null && itemUmurSelisih < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{itemUmurSelisihDetail || '-'}</p><p className="text-[10px] text-slate-500">hari · bulan · tahun</p></div>
+                <div className="pr-3"><p className="text-[10px] text-muted-foreground">Standar</p><p className="mt-1 text-xl font-black text-slate-900">{itemStandarUmur}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
+                <div className="px-3"><p className="text-[10px] text-muted-foreground">Sisa simpan</p><p className={`mt-1 text-xl font-black ${itemSisaUmur && itemSisaUmur.totalDays <= 0 ? 'text-red-600' : itemSisaUmur && itemSisaUmur.totalMonths < itemStandarUmur ? 'text-amber-600' : 'text-emerald-600'}`}>{itemSisaUmur ? itemSisaUmur.totalMonths : '-'}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
+                <div className="pl-3"><p className="text-[10px] text-muted-foreground">Selisih</p><p className={`mt-1 text-sm font-black leading-5 ${itemUmurSelisih !== null && itemUmurSelisih < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{itemUmurSelisihDetail || '-'}</p><p className="text-[10px] text-muted-foreground">hari · bulan · tahun</p></div>
               </div>
-              <p className="mt-3 border-t border-slate-200/80 pt-3 text-[11px] font-semibold text-slate-600">
+              <p className="mt-3 border-t border-border/80 pt-3 text-[11px] font-semibold text-slate-600">
                 {!itemSisaUmur ? 'Isi tanggal expired untuk melihat perbandingan.' : itemSisaUmur.totalDays <= 0 ? 'Produk sudah kadaluarsa.' : itemUmurSelisih !== null && itemUmurSelisih < 0 ? `Sisa simpan kurang dari standar (${itemUmurSelisihDetail}).` : `Sisa simpan memenuhi standar (${itemUmurSelisihDetail}).`}
               </p>
             </div>
@@ -1750,13 +1750,13 @@ export default function ValidasiSjPage() {
               </div>
             </label>
             {extraNpn && (
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-muted-foreground">
                 Kode master: <span className="font-mono font-semibold text-slate-700">{extraNpn.BOSnetszProductId}</span>
                 {extraNpn.SAPszUomId ? ` · Satuan: ${extraNpn.SAPszUomId}` : ''}
               </p>
             )}
             {!extraNpn && (
-              <p className="text-[11px] text-slate-500">Ketik nama barang — kode &amp; satuan terisi otomatis. Tidak ada di master? Isi kode + nama manual di bawah.</p>
+              <p className="text-[11px] text-muted-foreground">Ketik nama barang — kode &amp; satuan terisi otomatis. Tidak ada di master? Isi kode + nama manual di bawah.</p>
             )}
 
             {!extraNpn && (
@@ -1894,34 +1894,34 @@ export default function ValidasiSjPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-chip-primary-border bg-chip-primary/60 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-accent-text">Standar database</p>
-                  <div className="mt-2 flex items-baseline gap-1.5"><span className="text-3xl font-black text-slate-900">{standarUmur || '-'}</span><span className="text-xs font-bold text-slate-500">bulan</span></div>
-                  <p className="mt-1 text-[11px] text-slate-500">{standarUmur > 0 ? 'Standar minimum dalam bulan' : 'Data tidak tersedia'}</p>
+                  <div className="mt-2 flex items-baseline gap-1.5"><span className="text-3xl font-black text-slate-900">{standarUmur || '-'}</span><span className="text-xs font-bold text-muted-foreground">bulan</span></div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{standarUmur > 0 ? 'Standar minimum dalam bulan' : 'Data tidak tersedia'}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-300 bg-popover p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tanggal expired</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tanggal expired</p>
                   <p className="mt-2 text-lg font-black text-slate-900">{formatDateDmy(form.expired_date)}</p>
-                  <p className="mt-1 text-[11px] text-slate-500">Tanggal acuan perhitungan</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Tanggal acuan perhitungan</p>
                 </div>
               </div>
 
               <div className={`rounded-2xl border p-4 ${standarUmur <= 0 ? 'border-amber-200 bg-amber-50' : sisaUmur.totalDays <= 0 ? 'border-red-200 bg-red-50' : sisaUmur.totalMonths < standarUmur ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
                 <div className="flex items-center justify-between gap-3">
-                  <div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Hasil pemeriksaan</p><p className="mt-1 text-sm font-bold text-slate-800">Sisa umur produk</p></div>
+                  <div><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Hasil pemeriksaan</p><p className="mt-1 text-sm font-bold text-slate-800">Sisa umur produk</p></div>
                   <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${standarUmur <= 0 ? 'bg-slate-200 text-slate-700' : sisaUmur.totalDays <= 0 ? 'bg-red-200 text-red-700' : sisaUmur.totalMonths < standarUmur ? 'bg-amber-200 text-amber-700' : 'bg-emerald-200 text-emerald-700'}`}>{standarUmur <= 0 ? 'DATA LENGKAP' : sisaUmur.totalDays <= 0 ? 'KADALUARSA' : sisaUmur.totalMonths < standarUmur ? 'PERLU PERHATIAN' : 'AMAN'}</span>
                 </div>
                 <div className="mt-4 grid grid-cols-3 divide-x divide-slate-200/80">
-                  <div className="pr-3"><p className="text-[10px] text-slate-500">Sisa simpan</p><p className={`mt-1 text-xl font-black ${sisaUmur.totalDays <= 0 ? 'text-red-600' : sisaUmur.totalMonths < standarUmur ? 'text-amber-600' : 'text-emerald-600'}`}>{sisaUmur.totalMonths}</p><p className="text-[10px] text-slate-500">bulan</p></div>
-                  <div className="px-3"><p className="text-[10px] text-slate-500">Standar</p><p className={`mt-1 text-xl font-black ${standarUmur <= 0 ? 'text-slate-300' : 'text-slate-800'}`}>{standarUmur || '-'}</p><p className="text-[10px] text-slate-500">bulan</p></div>
-                  <div className="pl-3"><p className="text-[10px] text-slate-500">Selisih</p><p className={`mt-1 text-sm font-black leading-5 ${standarUmur <= 0 ? 'text-slate-400' : sisaUmur.totalDays <= 0 ? 'text-red-600' : umurSelisih < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{standarUmur <= 0 ? '-' : popupUmurSelisihDetail || '-'}</p><p className="text-[10px] text-slate-500">hari · bulan · tahun</p></div>
+                  <div className="pr-3"><p className="text-[10px] text-muted-foreground">Sisa simpan</p><p className={`mt-1 text-xl font-black ${sisaUmur.totalDays <= 0 ? 'text-red-600' : sisaUmur.totalMonths < standarUmur ? 'text-amber-600' : 'text-emerald-600'}`}>{sisaUmur.totalMonths}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
+                  <div className="px-3"><p className="text-[10px] text-muted-foreground">Standar</p><p className={`mt-1 text-xl font-black ${standarUmur <= 0 ? 'text-slate-300' : 'text-slate-800'}`}>{standarUmur || '-'}</p><p className="text-[10px] text-muted-foreground">bulan</p></div>
+                  <div className="pl-3"><p className="text-[10px] text-muted-foreground">Selisih</p><p className={`mt-1 text-sm font-black leading-5 ${standarUmur <= 0 ? 'text-slate-400' : sisaUmur.totalDays <= 0 ? 'text-red-600' : umurSelisih < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{standarUmur <= 0 ? '-' : popupUmurSelisihDetail || '-'}</p><p className="text-[10px] text-muted-foreground">hari · bulan · tahun</p></div>
                 </div>
                 {standarUmur <= 0 ? (
-                  <p className="mt-4 border-t border-slate-200/80 pt-3 text-xs font-bold text-slate-500">Standar umur produk tidak tersedia. Data standar umur perlu diisi di database standar umur produk.</p>
+                  <p className="mt-4 border-t border-border/80 pt-3 text-xs font-bold text-muted-foreground">Standar umur produk tidak tersedia. Data standar umur perlu diisi di database standar umur produk.</p>
                 ) : sisaUmur.totalDays <= 0 ? (
-                  <p className="mt-4 border-t border-slate-200/80 pt-3 text-xs font-bold text-red-600">Produk sudah kadaluarsa dan perlu penanganan segera.</p>
+                  <p className="mt-4 border-t border-border/80 pt-3 text-xs font-bold text-red-600">Produk sudah kadaluarsa dan perlu penanganan segera.</p>
                 ) : sisaUmur.totalMonths < standarUmur ? (
-                  <p className="mt-4 border-t border-slate-200/80 pt-3 text-xs font-bold text-amber-600">Sisa simpan kurang dari standar ({popupUmurSelisihDetail}).</p>
+                  <p className="mt-4 border-t border-border/80 pt-3 text-xs font-bold text-amber-600">Sisa simpan kurang dari standar ({popupUmurSelisihDetail}).</p>
                 ) : (
-                  <p className="mt-4 border-t border-slate-200/80 pt-3 text-xs font-bold text-emerald-600">Sisa simpan memenuhi standar ({popupUmurSelisihDetail}).</p>
+                  <p className="mt-4 border-t border-border/80 pt-3 text-xs font-bold text-emerald-600">Sisa simpan memenuhi standar ({popupUmurSelisihDetail}).</p>
                 )}
               </div>
 

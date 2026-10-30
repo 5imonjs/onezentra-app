@@ -111,7 +111,7 @@ export default function BarcodeScanner({ open, onClose, onDetected, formats, tit
       <div className="space-y-4">
         <video ref={videoRef} className="w-full rounded-xl bg-black aspect-video object-cover" muted playsInline />
         {scanning && !error && (
-          <p className="text-sm text-gray-500 text-center">Memindai barcode...</p>
+          <p className="text-sm text-muted-foreground text-center">Memindai barcode...</p>
         )}
         {error && (
           <p className="text-sm text-red-600 text-center">{error}</p>

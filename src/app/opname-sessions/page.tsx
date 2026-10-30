@@ -92,7 +92,7 @@ export default function OpnameSessionsPage() {
   if (!hasPermission('opname.session.view')) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm text-gray-500">Anda tidak memiliki izin untuk melihat sesi opname.</div>
+        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat sesi opname.</div>
       </DashboardLayout>
     );
   }
@@ -158,10 +158,10 @@ export default function OpnameSessionsPage() {
             <button type="button" onClick={load} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
           </div>
         ) : loading && sessions.length === 0 ? (
-          <p className="text-sm text-gray-500">Memuat...</p>
+          <p className="text-sm text-muted-foreground">Memuat...</p>
         ) : sessions.length === 0 ? (
           <div className="border border-dashed border-gray-300 rounded-2xl py-12 text-center">
-            <p className="text-sm text-gray-500 font-medium">Belum ada sesi opname.</p>
+            <p className="text-sm text-muted-foreground font-medium">Belum ada sesi opname.</p>
             <p className="text-xs text-gray-400 mt-1">Buat sesi dari wave Batch Expired, tugaskan ke petugas lapangan.</p>
           </div>
         ) : (
@@ -171,12 +171,12 @@ export default function OpnameSessionsPage() {
                 <caption className="sr-only">Daftar sesi opname</caption>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-slate-300 bg-popover">
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Minggu</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Depo</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Petugas</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Progres</th>
-                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Aksi</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Depo</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Petugas</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Progres</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -200,7 +200,7 @@ export default function OpnameSessionsPage() {
                                   style={{ width: `${Math.round((done / total) * 100)}%` }}
                                 />
                               </div>
-                              <span className="text-xs text-gray-500">{done}/{total}</span>
+                              <span className="text-xs text-muted-foreground">{done}/{total}</span>
                             </div>
                           ) : (
                             <span className="text-xs text-gray-400">—</span>

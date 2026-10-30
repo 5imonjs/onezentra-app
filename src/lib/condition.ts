@@ -79,7 +79,7 @@ const TONE_CLASSES: Record<ConditionTone, { badge: string; dot: string }> = {
   good: { badge: 'border-emerald-200 bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
   warn: { badge: 'border-amber-200 bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
   bad: { badge: 'border-red-200 bg-red-50 text-red-700', dot: 'bg-red-500' },
-  neutral: { badge: 'border-slate-200 bg-slate-50 text-slate-600', dot: 'bg-slate-400' },
+  neutral: { badge: 'border-border bg-slate-50 text-slate-600', dot: 'bg-slate-400' },
 };
 
 export function canonicalCondition(condition?: string | null): string {

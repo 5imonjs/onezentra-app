@@ -351,7 +351,7 @@ export default function DocksPage() {
                         <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
                           <svg className="w-7 h-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21a3 3 0 003 3h2a3 3 0 003-3V21a3 3 0 00-3-3h-2a3 3 0 00-3 3zm0 0h18" /></svg>
                         </div>
-                        <p className="text-sm text-slate-500 font-medium" role="status">Tidak ada dock</p>
+                        <p className="text-sm text-muted-foreground font-medium" role="status">Tidak ada dock</p>
                       </div>
                     </td>
                   </tr>
@@ -362,7 +362,7 @@ export default function DocksPage() {
 
           {/* Pagination */}
           <div className="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-500 tabular-nums">Halaman {page} dari {lastPage}</p>
+            <p className="text-xs text-muted-foreground tabular-nums">Halaman {page} dari {lastPage}</p>
             <div className="flex items-center gap-1.5">
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary px-3 py-1.5 text-xs disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
                 <span className="flex items-center gap-2"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>Sebelumnya</span>
@@ -395,19 +395,19 @@ export default function DocksPage() {
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <label htmlFor="dock-name" className="block text-xs font-medium text-slate-500 mb-1.5">Nama <span className="text-slate-400">*</span></label>
+            <label htmlFor="dock-name" className="block text-xs font-medium text-muted-foreground mb-1.5">Nama <span className="text-slate-400">*</span></label>
             <input id="dock-name" type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-field text-sm" placeholder="Nama dock" />
           </div>
           <div>
-            <label htmlFor="dock-code" className="block text-xs font-medium text-slate-500 mb-1.5">Kode</label>
+            <label htmlFor="dock-code" className="block text-xs font-medium text-muted-foreground mb-1.5">Kode</label>
             <input id="dock-code" type="text" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} className="input-field text-sm" placeholder="Kode dock" />
           </div>
           <div>
-            <label htmlFor="dock-capacity" className="block text-xs font-medium text-slate-500 mb-1.5">Kapasitas</label>
+            <label htmlFor="dock-capacity" className="block text-xs font-medium text-muted-foreground mb-1.5">Kapasitas</label>
             <input id="dock-capacity" type="number" min="0" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: e.target.value })} className="input-field text-sm" placeholder="Kapasitas" />
           </div>
           <div className="col-span-2">
-            <label htmlFor="dock-notes" className="block text-xs font-medium text-slate-500 mb-1.5">Catatan</label>
+            <label htmlFor="dock-notes" className="block text-xs font-medium text-muted-foreground mb-1.5">Catatan</label>
             <textarea id="dock-notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input-field text-sm" rows={3} placeholder="Catatan tambahan" />
           </div>
         </div>
@@ -433,19 +433,19 @@ export default function DocksPage() {
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <label htmlFor="edit-dock-name" className="block text-xs font-medium text-slate-500 mb-1.5">Nama <span className="text-slate-400">*</span></label>
+            <label htmlFor="edit-dock-name" className="block text-xs font-medium text-muted-foreground mb-1.5">Nama <span className="text-slate-400">*</span></label>
             <input id="edit-dock-name" type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-field text-sm" placeholder="Nama dock" />
           </div>
           <div>
-            <label htmlFor="edit-dock-code" className="block text-xs font-medium text-slate-500 mb-1.5">Kode</label>
+            <label htmlFor="edit-dock-code" className="block text-xs font-medium text-muted-foreground mb-1.5">Kode</label>
             <input id="edit-dock-code" type="text" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} className="input-field text-sm" placeholder="Kode dock" />
           </div>
           <div>
-            <label htmlFor="edit-dock-capacity" className="block text-xs font-medium text-slate-500 mb-1.5">Kapasitas</label>
+            <label htmlFor="edit-dock-capacity" className="block text-xs font-medium text-muted-foreground mb-1.5">Kapasitas</label>
             <input id="edit-dock-capacity" type="number" min="0" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: e.target.value })} className="input-field text-sm" placeholder="Kapasitas" />
           </div>
           <div className="col-span-2">
-            <label htmlFor="edit-dock-notes" className="block text-xs font-medium text-slate-500 mb-1.5">Catatan</label>
+            <label htmlFor="edit-dock-notes" className="block text-xs font-medium text-muted-foreground mb-1.5">Catatan</label>
             <textarea id="edit-dock-notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input-field text-sm" rows={3} placeholder="Catatan tambahan" />
           </div>
         </div>

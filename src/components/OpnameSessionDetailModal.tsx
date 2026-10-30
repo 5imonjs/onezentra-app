@@ -260,7 +260,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
     <>
       <Modal open onClose={onClose} title={`Sesi #${sessionId}`} subtitle={detail ? `${fmtDate(detail.week_start)} · ${detail.nama_depo || detail.kode_depo} · ${detail.assignee?.full_name || ''}` : ''} size="xl"
         footer={<button onClick={onClose} className="btn-secondary">Tutup</button>}>
-        {detailLoading || !detail ? <p className="text-sm text-gray-500">Memuat...</p> : (
+        {detailLoading || !detail ? <p className="text-sm text-muted-foreground">Memuat...</p> : (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold ${STATUS_META[detail.status] || STATUS_META.OPEN}`}>{detail.status}</span>
@@ -297,7 +297,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
             {detail.status !== 'CANCELLED' && <FlowStepper status={detail.status} />}
 
             {STATUS_HINTS[detail.status] && (
-              <p className="text-xs text-slate-600 bg-popover/70 border border-gray-200 rounded-lg px-3 py-2">
+              <p className="text-xs text-slate-600 bg-popover/70 border border-border rounded-lg px-3 py-2">
                 {STATUS_HINTS[detail.status]}
               </p>
             )}
@@ -310,7 +310,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                     style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
                   />
                 </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {progress.done}/{progress.total} terverifikasi
                   {remaining > 0 ? ` · sisa ${remaining}` : ''}
                 </span>
@@ -340,30 +340,30 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                   </span>
                 </button>
                 {q && (
-                  <span className="text-xs text-slate-500">{visibleItems.length} cocok</span>
+                  <span className="text-xs text-muted-foreground">{visibleItems.length} cocok</span>
                 )}
               </div>
 
               {(detail.items ?? []).length === 0 ? (
-                <p className="px-4 py-10 text-center text-sm text-gray-500">Belum ada baris dalam sesi ini.</p>
+                <p className="px-4 py-10 text-center text-sm text-muted-foreground">Belum ada baris dalam sesi ini.</p>
               ) : (
                 <div className="max-h-[560px] overflow-x-auto overflow-y-auto">
                   <table className="w-full min-w-[900px] border-collapse">
                     <caption className="sr-only">Daftar batch sesi opname</caption>
                     <thead className="sticky top-0 z-10">
                       <tr className="border-b border-gray-300 bg-popover">
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Barang</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Batch</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Produk</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Hasil</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Aksi</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kode Barang</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Produk</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hasil</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {visibleItems.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">Tidak ada baris cocok dengan pencarian.</td>
+                          <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">Tidak ada baris cocok dengan pencarian.</td>
                         </tr>
                       ) : visibleItems.map((it) => {
                         const isVerified = Boolean(it.verified_at);
@@ -406,8 +406,8 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                                     <span className="block text-gray-700">
                                       Fisik {it.qty_fisik_crt} CRT{it.qty_fisik_pcs != null ? ` / ${it.qty_fisik_pcs} PCS` : ''}{it.condition ? ` · ${it.condition}` : ''}
                                     </span>
-                                    <span className="block text-gray-500">Acuan {expectedCrt} CRT{expectedPcs != null ? ` / ${expectedPcs} PCS` : ''}</span>
-                                    <span className={`block ${diffCrt === 0 ? 'text-slate-500' : diffCrt != null && diffCrt < 0 ? 'text-red-600 font-semibold' : diffCrt != null ? 'text-emerald-600 font-semibold' : ''}`}>
+                                    <span className="block text-muted-foreground">Acuan {expectedCrt} CRT{expectedPcs != null ? ` / ${expectedPcs} PCS` : ''}</span>
+                                    <span className={`block ${diffCrt === 0 ? 'text-muted-foreground' : diffCrt != null && diffCrt < 0 ? 'text-red-600 font-semibold' : diffCrt != null ? 'text-emerald-600 font-semibold' : ''}`}>
                                       {diffCrt === 0 ? 'Sesuai' : diffCrt != null ? (diffCrt < 0 ? `Selisih ${diffCrt}` : `Selisih +${diffCrt}`) : ''}
                                     </span>
                                   </div>
@@ -437,7 +437,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                                             type="button"
                                             onClick={() => identify(it.id, 'manual')}
                                             title="Hanya bila label fisik rusak tak terbaca — tercatat sebagai identifikasi manual"
-                                            className="text-xs font-semibold text-slate-500 underline hover:text-slate-700"
+                                            className="text-xs font-semibold text-muted-foreground underline hover:text-slate-700"
                                           >
                                             Label rusak — identifikasi manual
                                           </button>
@@ -453,7 +453,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                               <tr className="bg-popover/50">
                                 <td colSpan={6} className="px-4 py-3">
                                   {showExpected && expectedCrt != null && (
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-xs text-muted-foreground">
                                       Acuan sistem: {expectedCrt} CRT{expectedPcs != null ? ` / ${expectedPcs} PCS` : ''}
                                     </p>
                                   )}
@@ -463,21 +463,21 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                                   </div>
                                   <div className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
                                     <div>
-                                      <label htmlFor={`vf-crt-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Fisik CRT *</label>
+                                      <label htmlFor={`vf-crt-${it.id}`} className="block text-[11px] font-semibold text-muted-foreground mb-1">Fisik CRT *</label>
                                       <input id={`vf-crt-${it.id}`} min="0" step="1" type="number" value={forms[it.id]?.qty_fisik_crt || ''} onChange={(e) => setForm(it.id, { qty_fisik_crt: e.target.value })} className="input-field text-sm" />
                                     </div>
                                     <div>
-                                      <label htmlFor={`vf-pcs-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Fisik PCS</label>
+                                      <label htmlFor={`vf-pcs-${it.id}`} className="block text-[11px] font-semibold text-muted-foreground mb-1">Fisik PCS</label>
                                       <input id={`vf-pcs-${it.id}`} min="0" step="1" type="number" value={forms[it.id]?.qty_fisik_pcs || ''} onChange={(e) => setForm(it.id, { qty_fisik_pcs: e.target.value })} className="input-field text-sm" />
                                     </div>
                                     <div>
-                                      <label htmlFor={`vf-cond-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Kondisi</label>
+                                      <label htmlFor={`vf-cond-${it.id}`} className="block text-[11px] font-semibold text-muted-foreground mb-1">Kondisi</label>
                                       <select id={`vf-cond-${it.id}`} value={forms[it.id]?.condition || 'FISIK_BAGUS'} onChange={(e) => setForm(it.id, { condition: e.target.value })} className="input-field text-sm">
                                         {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                                       </select>
                                     </div>
                                     <div>
-                                      <label htmlFor={`vf-photo-${it.id}`} className="block text-[11px] font-semibold text-gray-500 mb-1">Foto{conditionRequiresPhoto(forms[it.id]?.condition) ? ' *' : ''}</label>
+                                      <label htmlFor={`vf-photo-${it.id}`} className="block text-[11px] font-semibold text-muted-foreground mb-1">Foto{conditionRequiresPhoto(forms[it.id]?.condition) ? ' *' : ''}</label>
                                       <input id={`vf-photo-${it.id}`} type="file" accept="image/*" onChange={(e) => setForm(it.id, { photo: e.target.files?.[0] ?? null })} className="text-xs" />
                                     </div>
                                     <button onClick={() => verify(it)} disabled={busy} className="btn-primary text-sm disabled:opacity-50">Verifikasi</button>
@@ -605,8 +605,8 @@ function AddWavesModal({ session, onClose, onAdded }: {
   return (
     <Modal open onClose={onClose} title="Tambah Wave ke Sesi" subtitle={`Wave minggu ${session.week_start} depo ${session.nama_depo || session.kode_depo} yang belum masuk sesi`} size="lg"
       footer={<><button onClick={onClose} className="btn-secondary">Batal</button><button onClick={save} disabled={saving || picked.size === 0} className="btn-primary disabled:opacity-50">{saving ? 'Menyimpan...' : `Tambah (${picked.size})`}</button></>}>
-      {loading ? <p className="text-sm text-gray-500">Memuat wave...</p> : waves.length === 0 ? (
-        <p className="text-sm text-gray-500">Semua wave minggu ini sudah masuk sesi.</p>
+      {loading ? <p className="text-sm text-muted-foreground">Memuat wave...</p> : waves.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Semua wave minggu ini sudah masuk sesi.</p>
       ) : (
         <div className="max-h-80 overflow-auto border border-gray-300 rounded-xl divide-y divide-gray-100">
           {waves.map((w) => (
@@ -618,8 +618,8 @@ function AddWavesModal({ session, onClose, onAdded }: {
                 return n;
               })} className="w-4 h-4 accent-primary-600" />
               <span className="font-mono text-sm">{w.kode_barang}</span>
-              <span className="text-xs text-gray-500 truncate">{w.nama_barang || ''}</span>
-              <span className="ml-auto text-xs text-gray-500 whitespace-nowrap">{w.qty_ini_crt} CRT · {w.status_ini}</span>
+              <span className="text-xs text-muted-foreground truncate">{w.nama_barang || ''}</span>
+              <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{w.qty_ini_crt} CRT · {w.status_ini}</span>
             </label>
           ))}
         </div>

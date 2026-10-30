@@ -303,12 +303,12 @@ export default function PenerimaanReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">Tanggal • Depo • Sumber • Cari</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Tanggal • Depo • Sumber • Cari</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -380,9 +380,9 @@ export default function PenerimaanReportPage() {
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Selisih</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Selisih</p>
                   <p className={`text-2xl font-black tabular-nums ${summary.total_selisih === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>{summary.total_selisih > 0 ? '+' : ''}{summary.total_selisih.toLocaleString('id-ID')}</p>
-                  <p className="text-[11px] text-slate-500">{summary.total_selisih === 0 ? 'Aman — tidak ada selisih' : 'Perlu perhatian'}</p>
+                  <p className="text-[11px] text-muted-foreground">{summary.total_selisih === 0 ? 'Aman — tidak ada selisih' : 'Perlu perhatian'}</p>
                 </div>
               </div>
             </div>
@@ -399,7 +399,7 @@ export default function PenerimaanReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Detail Inbound</h2>
-                  <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{rangeText}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{rangeText}</p>
                 </div>
               </div>
               <button
@@ -515,7 +515,7 @@ export default function PenerimaanReportPage() {
                             <span className="text-slate-300">—</span>
                           )}
                         </td>
-                        <td className="table-cell text-xs text-slate-500 max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
+                        <td className="table-cell text-xs text-muted-foreground max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
                       </tr>
                     );
                   })
@@ -559,7 +559,7 @@ export default function PenerimaanReportPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-900 truncate" title={item.nama_barang}>{item.nama_barang}</p>
-                      <p className="text-xs font-mono text-slate-500 mt-0.5 truncate">{item.kode_barang} • {item.po_transporter}</p>
+                      <p className="text-xs font-mono text-muted-foreground mt-0.5 truncate">{item.kode_barang} • {item.po_transporter}</p>
                     </div>
                     <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border shrink-0 ${tone.badge}`}><span className={`w-1.5 h-1.5 rounded-full ${tone.dot}`} aria-hidden="true" />{tone.label}</span>
                   </div>
@@ -606,7 +606,7 @@ export default function PenerimaanReportPage() {
                       onClick={() => setPage(p)}
                       aria-label={`Halaman ${p}`}
                       aria-current={p === page ? 'page' : undefined}
-                      className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === page ? 'bg-ink-900 text-white shadow' : 'text-slate-500 hover:bg-slate-200/70'}`}
+                      className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === page ? 'bg-ink-900 text-white shadow' : 'text-muted-foreground hover:bg-slate-200/70'}`}
                     >
                       {p}
                     </button>

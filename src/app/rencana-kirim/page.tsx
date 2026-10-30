@@ -890,19 +890,19 @@ export default function RencanaKirimPage() {
               <caption className="sr-only">Daftar rencana pengiriman</caption>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-popover border-b border-slate-300 shadow-sm">
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">No</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tanggal RKH</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Driver</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nopol</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Expedisi</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Jenis Kendaraan</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tujuan</th>
-                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Total Qty</th>
-                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kubikasi (m³)</th>
-                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Status</th>
-                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">No</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Tgl Create</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">PO Transporter</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Tanggal RKH</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Driver</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Nopol</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Expedisi</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Jenis Kendaraan</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Tujuan</th>
+                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Total Qty</th>
+                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Kubikasi (m³)</th>
+                  <th scope="col" className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Status</th>
+                  <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -919,7 +919,7 @@ export default function RencanaKirimPage() {
                 )}
                 {items.map((item, index) => (
                   <tr key={item.id} className="group hover:bg-overlay-70 transition-colors">
-                    <td className="px-5 py-3.5 text-sm text-slate-500 whitespace-nowrap">{(page - 1) * 20 + index + 1}</td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">{(page - 1) * 20 + index + 1}</td>
                     <td className="px-5 py-3.5 text-sm text-slate-600 whitespace-nowrap"><span className="font-mono">{item.created_at?.split('T')[0] || '-'}</span></td>
                     <td className="px-5 py-3.5 text-sm text-slate-800 font-medium whitespace-nowrap"><span className="font-mono">{fmt(item.po_transporter)}</span></td>
                     <td className="px-5 py-3.5 text-sm text-slate-600 whitespace-nowrap"><span className="font-mono">{fmt(item.rkh_date?.split('T')[0])}</span></td>
@@ -1116,7 +1116,7 @@ export default function RencanaKirimPage() {
 
           <div className="border-t border-gray-100 bg-overlay-60 px-4 py-3.5 sm:px-5">
             <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
-              <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="font-semibold text-slate-800">{page}</strong> dari <strong className="font-semibold text-slate-800">{lastPage}</strong></span>
+              <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="font-semibold text-slate-800">{page}</strong> dari <strong className="font-semibold text-slate-800">{lastPage}</strong></span>
               <div className="flex w-full items-center justify-center gap-2 sm:w-auto">
                 <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} aria-label="Halaman sebelumnya" className="btn-secondary flex-1 text-sm px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed sm:flex-none">
                   <span className="flex items-center justify-center gap-1.5"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>Sebelumnya</span>
@@ -1184,7 +1184,7 @@ export default function RencanaKirimPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
+              <div className="rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-muted-foreground uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
                 <div className="space-y-2.5 text-sm">
                   <div className="flex justify-between"><span className="text-slate-400">Driver</span><span className="font-bold text-slate-900">{fmt(viewItem.driver_name)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-400">Nopol</span><span className="font-mono font-bold">{fmt(viewItem.nopol)}</span></div>
@@ -1192,18 +1192,18 @@ export default function RencanaKirimPage() {
                   <div className="flex justify-between"><span className="text-slate-400">Jenis</span><span className="rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{fmt(viewItem.jenis_kendaraan)}</span></div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-slate-500 uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
+              <div className="rounded-2xl border border-slate-100 bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-muted-foreground uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
                 <div className="space-y-2.5 text-sm">
-                  <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Pengirim</p><p className="font-bold text-slate-900">{fmt(viewItem.shipper_name)}</p><p className="text-xs text-slate-500">{fmt(viewItem.shipper_address)}</p></div>
-                  <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Kepada</p><p className="font-bold text-slate-900">{fmt(viewItem.destination_name)}</p><p className="text-xs text-slate-500">{fmt(viewItem.destination_address) || '-'}</p></div>
+                  <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Pengirim</p><p className="font-bold text-slate-900">{fmt(viewItem.shipper_name)}</p><p className="text-xs text-muted-foreground">{fmt(viewItem.shipper_address)}</p></div>
+                  <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Kepada</p><p className="font-bold text-slate-900">{fmt(viewItem.destination_name)}</p><p className="text-xs text-muted-foreground">{fmt(viewItem.destination_address) || '-'}</p></div>
                 </div>
               </div>
             </div>
             {viewItem.items && viewItem.items.length > 0 && (
               <div className="overflow-hidden rounded-2xl border border-slate-100 bg-card shadow-sm">
                 <div className="flex items-center justify-between px-4 py-3 bg-popover border-b border-slate-100">
-                  <h4 className="text-xs font-black tracking-widest text-slate-500 uppercase">Daftar barang • {viewItem.items.length}</h4>
-                  <span className="text-xs font-mono text-slate-500">{viewItem.items.reduce((s, i) => s + Number(i.jumlah || 0), 0).toLocaleString('id-ID')} qty</span>
+                  <h4 className="text-xs font-black tracking-widest text-muted-foreground uppercase">Daftar barang • {viewItem.items.length}</h4>
+                  <span className="text-xs font-mono text-muted-foreground">{viewItem.items.reduce((s, i) => s + Number(i.jumlah || 0), 0).toLocaleString('id-ID')} qty</span>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-64 overflow-auto">
                   {viewItem.items.map((item, idx) => (
@@ -1237,7 +1237,7 @@ export default function RencanaKirimPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-white" /> Lengkapi NPN dulu
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-gray-500">
+                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                   <span className={`w-2 h-2 rounded-full ${canSave ? 'bg-emerald-500' : 'bg-gray-300'}`} /> {canSave ? 'Siap simpan' : !isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat' : 'Isi minimal 1 barang'}
                 </span>
               )}
@@ -1296,7 +1296,7 @@ export default function RencanaKirimPage() {
                       }}
                       className={`flex flex-col items-center gap-1.5 flex-1 ${step.n <= currentStep || isDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                     >
-                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500 border border-gray-300'}`}>
+                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-muted-foreground border border-gray-300'}`}>
                         {isDone && !isActive ? '✓' : step.n}
                       </span>
                       <span className={`text-[11px] font-semibold ${isActive ? 'text-accent-text' : isDone ? 'text-emerald-600' : 'text-gray-400'}`}>{step.label}</span>
@@ -1307,7 +1307,7 @@ export default function RencanaKirimPage() {
               })}
             </div>
             <div className="mt-3 flex items-center justify-between text-xs">
-              <span className="font-medium text-gray-500">Langkah {currentStep} dari 5</span>
+              <span className="font-medium text-muted-foreground">Langkah {currentStep} dari 5</span>
               <span className={`font-semibold ${canSave ? 'text-emerald-600' : 'text-accent-text'}`}>{completedCount}/5 lengkap • {canSave ? 'Siap simpan' : 'Lengkapi dulu'}</span>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
@@ -1320,7 +1320,7 @@ export default function RencanaKirimPage() {
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-chip-primary flex items-center justify-center text-accent-text text-xs font-bold">1</span> Informasi Dokumen</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="f-po-transporter" className="block text-xs font-medium text-gray-500 mb-1">PO Transporter <span className="text-red-500">*</span></label>
+                <label htmlFor="f-po-transporter" className="block text-xs font-medium text-muted-foreground mb-1">PO Transporter <span className="text-red-500">*</span></label>
                 <input id="f-po-transporter" aria-invalid={poDuplicate || undefined} type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2 uppercase" />
                 <p className="text-[10px] text-gray-400 mt-0.5">Nomor PO transporter (SJ/BA)</p>
                 {poDuplicate && (
@@ -1328,7 +1328,7 @@ export default function RencanaKirimPage() {
                 )}
               </div>
               <div>
-                <label htmlFor="f-rkh-date" className="block text-xs font-medium text-gray-500 mb-1">Tanggal RKH <span className="text-red-500">*</span></label>
+                <label htmlFor="f-rkh-date" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal RKH <span className="text-red-500">*</span></label>
                 <input id="f-rkh-date" type="date" min={editingId ? undefined : todayDateStr()} value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
                 <p className="text-[10px] text-gray-400 mt-0.5">Tanggal pengiriman rencana</p>
               </div>
@@ -1341,19 +1341,19 @@ export default function RencanaKirimPage() {
             <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">2</span> Kendaraan & Driver</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="f-driver" className="block text-xs font-medium text-gray-500 mb-1">Nama Driver <span className="text-red-500">*</span></label>
+                <label htmlFor="f-driver" className="block text-xs font-medium text-muted-foreground mb-1">Nama Driver <span className="text-red-500">*</span></label>
                 <input id="f-driver" type="text" value={createForm.driver_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, driver_name: e.target.value }))} placeholder="cth: Budi Santoso" className="input-field text-sm py-2" />
               </div>
               <div>
-                <label htmlFor="f-expedisi" className="block text-xs font-medium text-gray-500 mb-1">Expedisi / Nama Kendaraan <span className="text-red-500">*</span></label>
+                <label htmlFor="f-expedisi" className="block text-xs font-medium text-muted-foreground mb-1">Expedisi / Nama Kendaraan <span className="text-red-500">*</span></label>
                 <input id="f-expedisi" type="text" value={createForm.expedisi ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, expedisi: e.target.value }))} placeholder="cth: CTP / Nama ekspedisi" className="input-field text-sm py-2" />
               </div>
               <div>
-                <label htmlFor="f-nopol" className="block text-xs font-medium text-gray-500 mb-1">Nopol <span className="text-red-500">*</span></label>
+                <label htmlFor="f-nopol" className="block text-xs font-medium text-muted-foreground mb-1">Nopol <span className="text-red-500">*</span></label>
                 <input id="f-nopol" type="text" value={createForm.nopol ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, nopol: e.target.value }))} placeholder="cth: DA 8323 BU" className="input-field text-sm py-2 uppercase" />
               </div>
               <div>
-                <label htmlFor="f-jenis" className="block text-xs font-medium text-gray-500 mb-1">Jenis Kendaraan <span className="text-red-500">*</span></label>
+                <label htmlFor="f-jenis" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Kendaraan <span className="text-red-500">*</span></label>
                 <select id="f-jenis" value={createForm.jenis_kendaraan ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, jenis_kendaraan: e.target.value }))} className="select-field text-sm py-2">
                   <option value="">Pilih jenis kendaraan</option>
                   {jenisKendaraanOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
@@ -1370,34 +1370,34 @@ export default function RencanaKirimPage() {
               <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">Asal Pengirim</h4>
                 <div>
-                  <label htmlFor="f-shipper-name" className="block text-xs font-medium text-gray-500 mb-1">Asal Pengirim <span className="text-red-500">*</span></label>
+                  <label htmlFor="f-shipper-name" className="block text-xs font-medium text-muted-foreground mb-1">Asal Pengirim <span className="text-red-500">*</span></label>
                   <input id="f-shipper-name" type="text" value={createForm.shipper_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_name: e.target.value }))} placeholder="cth: PT Sinar Abadi" className="input-field text-sm py-2" />
                 </div>
                 <div>
-                  <label htmlFor="f-shipper-addr" className="block text-xs font-medium text-gray-500 mb-1">Alamat Pengirim</label>
+                  <label htmlFor="f-shipper-addr" className="block text-xs font-medium text-muted-foreground mb-1">Alamat Pengirim</label>
                   <textarea id="f-shipper-addr" value={createForm.shipper_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_address: e.target.value }))} placeholder="cth: Jl. Raya Singkawang No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
                 </div>
                 <div>
-                  <label htmlFor="f-shipper-phone" className="block text-xs font-medium text-gray-500 mb-1">No. HP Pengirim</label>
+                  <label htmlFor="f-shipper-phone" className="block text-xs font-medium text-muted-foreground mb-1">No. HP Pengirim</label>
                   <input id="f-shipper-phone" type="text" value={createForm.shipper_phone ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_phone: e.target.value }))} placeholder="cth: 08xx-xxxx-xxxx" className="input-field text-sm py-2" />
                 </div>
               </div>
               <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-600">Ditujukan</h4>
                 <div>
-                  <label htmlFor="f-nama-depo" className="block text-xs font-medium text-gray-500 mb-1">Nama Depo <span className="text-red-500">*</span>{!!editingId && !hasPermission('depot.move') && (<span className="ml-1 font-normal normal-case text-gray-400">(terkunci — butuh izin Pindah Depo)</span>)}</label>
+                  <label htmlFor="f-nama-depo" className="block text-xs font-medium text-muted-foreground mb-1">Nama Depo <span className="text-red-500">*</span>{!!editingId && !hasPermission('depot.move') && (<span className="ml-1 font-normal normal-case text-gray-400">(terkunci — butuh izin Pindah Depo)</span>)}</label>
                   <NamaDepoInput value={createForm.nama_depo ?? ''} depoList={depoList} onChange={handleNamaDepoChange} onClear={clearNamaDepo} disabled={!!editingId && !hasPermission('depot.move')} />
                 </div>
                 <div>
-                  <label htmlFor="f-kode-depo" className="block text-xs font-medium text-gray-500 mb-1">Kode Depo</label>
+                  <label htmlFor="f-kode-depo" className="block text-xs font-medium text-muted-foreground mb-1">Kode Depo</label>
                   <input id="f-kode-depo" type="text" value={createForm.kode_depo ?? ''} disabled className="input-field text-sm py-2 uppercase" placeholder="Otomatis terisi" />
                 </div>
                 <div>
-                  <label htmlFor="f-dest-name" className="block text-xs font-medium text-gray-500 mb-1">Ditujukan <span className="text-red-500">*</span></label>
+                  <label htmlFor="f-dest-name" className="block text-xs font-medium text-muted-foreground mb-1">Ditujukan <span className="text-red-500">*</span></label>
                   <input id="f-dest-name" type="text" value={createForm.destination_name ?? createForm.nama_depo ?? ''} disabled placeholder="Otomatis dari Nama Depo" className="input-field cursor-not-allowed bg-gray-100 text-sm py-2 text-gray-600" />
                 </div>
                 <div>
-                  <label htmlFor="f-dest-addr" className="block text-xs font-medium text-gray-500 mb-1">Alamat Tujuan</label>
+                  <label htmlFor="f-dest-addr" className="block text-xs font-medium text-muted-foreground mb-1">Alamat Tujuan</label>
                   <textarea id="f-dest-addr" value={createForm.destination_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, destination_address: e.target.value }))} placeholder="cth: Jl. Karang Intan No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
                   <p className="text-[10px] text-gray-400 mt-0.5">Terisi otomatis dari depo tujuan — boleh diubah manual</p>
                   <p className="text-[10px] text-gray-400 mt-0.5">Alamat lengkap tujuan (akan tampil di Detail & PDF di bawah Singkawang)</p>
@@ -1418,7 +1418,7 @@ export default function RencanaKirimPage() {
                   </div>
                   <div>
                     <h3 className="text-[15px] font-bold text-gray-900 tracking-tight">Daftar Barang</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Kelola produk NPN • auto hitung umur & kubikasi</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Kelola produk NPN • auto hitung umur & kubikasi</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm' : 'bg-card text-amber-700 border-amber-200'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-card' : 'bg-amber-500'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
@@ -1449,7 +1449,7 @@ export default function RencanaKirimPage() {
                   <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
                 <h4 className="text-sm font-bold text-gray-800">Belum ada barang</h4>
-                <p className="text-xs text-gray-500 mt-1">Tambah manual atau import Excel — minimal 1 barang dengan jumlah &gt;0</p>
+                <p className="text-xs text-muted-foreground mt-1">Tambah manual atau import Excel — minimal 1 barang dengan jumlah &gt;0</p>
                 <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
                   <button onClick={() => setShowBarangModal(true)} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-ink-900 text-white text-sm font-semibold hover:bg-black shadow-lg">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
@@ -1479,7 +1479,7 @@ export default function RencanaKirimPage() {
                         <p className="text-sm font-medium text-gray-900 truncate">{it.nama_barang}</p>
                         <p className="text-xs font-mono text-gray-400">{it.kode_barang} • {it.umur != null ? `${it.umur} bln` : '-'}</p>
                       </div>
-                      <span className="text-sm font-bold text-gray-900 whitespace-nowrap">{it.jumlah} <span className="text-xs font-normal text-gray-500">{it.satuan}</span></span>
+                      <span className="text-sm font-bold text-gray-900 whitespace-nowrap">{it.jumlah} <span className="text-xs font-normal text-muted-foreground">{it.satuan}</span></span>
                       <span className="text-xs font-mono font-semibold text-teal-600 whitespace-nowrap">{itemKubikasi(it).toFixed(2)} m³</span>
                     </div>
                   ))}
@@ -1542,7 +1542,7 @@ export default function RencanaKirimPage() {
         size="2xl"
         footer={
           <div className="flex w-full items-center justify-between">
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {duplicateCount > 0
                 ? `${duplicateCount} baris duplikat — gabungkan atau hapus dulu`
                 : sectionComplete.barang
@@ -1606,7 +1606,7 @@ export default function RencanaKirimPage() {
                           )}
                         </div>
                       ) : (
-                        <p className="mt-1.5 text-xs text-slate-500">Ketik nama barang lalu pilih dari NPN</p>
+                        <p className="mt-1.5 text-xs text-muted-foreground">Ketik nama barang lalu pilih dari NPN</p>
                       )}
                     </div>
                     <div className="grid grid-cols-3 gap-2">
@@ -1694,7 +1694,7 @@ export default function RencanaKirimPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
-                  <p className="text-xs text-gray-500 mt-1">Klik untuk ganti file</p>
+                  <p className="text-xs text-muted-foreground mt-1">Klik untuk ganti file</p>
                 </div>
               </div>
             ) : (

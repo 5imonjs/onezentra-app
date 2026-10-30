@@ -321,12 +321,12 @@ export default function BiayaThlReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">Tanggal • Depo • Status • Cari</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Tanggal • Depo • Status • Cari</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -417,7 +417,7 @@ export default function BiayaThlReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Detail Biaya THL</h2>
-                  <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{rangeText}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{rangeText}</p>
                 </div>
               </div>
               <button
@@ -561,7 +561,7 @@ export default function BiayaThlReportPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-900 truncate" title={item.nama_thl}>{item.nama_thl}</p>
-                    <p className="text-xs font-mono text-slate-500 mt-0.5 truncate" title={`${item.no_surat_jalan} • ${item.nopol_kendaraan}`}>{item.no_surat_jalan} • {item.nopol_kendaraan}</p>
+                    <p className="text-xs font-mono text-muted-foreground mt-0.5 truncate" title={`${item.no_surat_jalan} • ${item.nopol_kendaraan}`}>{item.no_surat_jalan} • {item.nopol_kendaraan}</p>
                   </div>
                   <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border shrink-0 shadow-sm ${statusTone(item.status)}`}><span className={`w-1.5 h-1.5 rounded-full ${statusDot(item.status)}`} aria-hidden="true" />{statusLabel(item.status)}</span>
                 </div>
@@ -604,7 +604,7 @@ export default function BiayaThlReportPage() {
                       onClick={() => setPage(p)}
                       aria-label={`Halaman ${p}`}
                       aria-current={p === page ? 'page' : undefined}
-                      className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === page ? 'bg-ink-900 text-white shadow' : 'text-slate-500 hover:bg-slate-200/70'}`}
+                      className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === page ? 'bg-ink-900 text-white shadow' : 'text-muted-foreground hover:bg-slate-200/70'}`}
                     >
                       {p}
                     </button>

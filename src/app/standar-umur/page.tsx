@@ -383,7 +383,7 @@ export default function StandarUmurPage() {
 
   const skuStatusColor = (status: unknown): string => {
     const s = String(status ?? '').trim().toLowerCase();
-    if (!s || s === '-' || s === '0') return 'bg-gray-100 text-gray-500';
+    if (!s || s === '-' || s === '0') return 'bg-gray-100 text-muted-foreground';
     if (s === 'aktif' || s === 'active') return 'bg-emerald-100 text-emerald-700';
     return 'bg-blue-100 text-blue-700';
   };
@@ -410,7 +410,7 @@ export default function StandarUmurPage() {
     <div className="grid grid-cols-2 gap-4">
       {allFields.map(([key, label, full, type]) => (
         <div key={key as string} className={full ? 'col-span-2' : ''}>
-          <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor={`field-${label}`}>{label}</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor={`field-${label}`}>{label}</label>
           <input id={`field-${label}`}
             type={type || 'text'}
             value={(form[key] as string | number) ?? ''}
@@ -586,7 +586,7 @@ export default function StandarUmurPage() {
                         />
                       </td>
                     )}
-                    <td className="excel-cell text-center text-gray-500">{(page - 1) * 20 + index + 1}</td>
+                    <td className="excel-cell text-center text-muted-foreground">{(page - 1) * 20 + index + 1}</td>
                     <td className="excel-cell"><span className="text-sm font-mono">{fmt(item.material)}</span></td>
                     <td className="excel-cell"><span className="text-sm">{fmt(item.material_description)}</span></td>
                     <td className="excel-cell"><span className="text-sm font-mono">{fmt(item.old_material_number)}</span></td>
@@ -656,7 +656,7 @@ export default function StandarUmurPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
-                        <p className="text-gray-500 font-medium" role="status">Tidak ada data produk</p>
+                        <p className="text-muted-foreground font-medium" role="status">Tidak ada data produk</p>
                       </div>
                     </td>
                   </tr>

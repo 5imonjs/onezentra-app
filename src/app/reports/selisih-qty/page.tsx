@@ -259,12 +259,12 @@ export default function SelisihQtyReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">Filter berdasarkan tanggal dan depo</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Filter berdasarkan tanggal dan depo</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
                 {RANGES.map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -362,7 +362,7 @@ export default function SelisihQtyReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Detail Selisih</h2>
-                  <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{fmtNum(items.length)} item selisih ditemukan{truncated ? ' (dibatasi 2000 terbaru — persempit rentang atau unduh export)' : ''}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{fmtNum(items.length)} item selisih ditemukan{truncated ? ' (dibatasi 2000 terbaru — persempit rentang atau unduh export)' : ''}</p>
                 </div>
               </div>
               <button
@@ -471,7 +471,7 @@ export default function SelisihQtyReportPage() {
                         <td className="table-cell text-sm text-slate-600 min-w-[160px] max-w-[220px]">
                           <span className="block wrap-break-word" title={item.selisih_reason}>{item.selisih_reason}</span>
                         </td>
-                        <td className="table-cell text-xs text-slate-500 max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
+                        <td className="table-cell text-xs text-muted-foreground max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
                         <td className="table-cell text-sm text-slate-600 whitespace-nowrap">{item.validator_name}</td>
                       </tr>
                     );
@@ -515,7 +515,7 @@ export default function SelisihQtyReportPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-slate-900 truncate" title={item.nama_barang}>{item.nama_barang}</p>
-                      <p className="mt-0.5 text-xs font-mono text-slate-500 truncate">{item.kode_barang} • {item.po_transporter}</p>
+                      <p className="mt-0.5 text-xs font-mono text-muted-foreground truncate">{item.kode_barang} • {item.po_transporter}</p>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shadow-sm tabular-nums ${minus ? 'bg-red-50 text-red-700' : plus ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                       <svg className={`w-3 h-3 ${plus ? 'order-last' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -535,7 +535,7 @@ export default function SelisihQtyReportPage() {
                     </div>
                     <div className={`rounded-xl p-2 text-center border ${minus ? 'bg-red-50 border-red-200' : plus ? 'bg-emerald-50 border-emerald-200' : 'bg-popover border-slate-100'}`}>
                       <p className={`font-bold tracking-widest uppercase text-[9px] ${minus ? 'text-red-500' : plus ? 'text-emerald-600' : 'text-slate-400'}`}>Selisih</p>
-                      <p className={`font-black text-sm tabular-nums ${minus ? 'text-red-700' : plus ? 'text-emerald-700' : 'text-slate-500'}`}>{item.selisih_qty > 0 ? '+' : ''}{fmtNum(item.selisih_qty)}</p>
+                      <p className={`font-black text-sm tabular-nums ${minus ? 'text-red-700' : plus ? 'text-emerald-700' : 'text-muted-foreground'}`}>{item.selisih_qty > 0 ? '+' : ''}{fmtNum(item.selisih_qty)}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">

@@ -122,7 +122,7 @@ function NavItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
         <Icon
           name={icon}
           className={`w-5 h-5 shrink-0 transition-colors duration-150 ${
-            isActive ? 'text-accent-text' : 'text-slate-500 group-hover:text-slate-400'
+            isActive ? 'text-accent-text' : 'text-muted-foreground group-hover:text-slate-400'
           }`}
         />
       )}
@@ -153,7 +153,7 @@ function NavSubItem({ href, label, icon, isActive, isExpanded }: NavItemProps) {
         <Icon
           name={icon}
           className={`w-4.25 h-4.25 shrink-0 transition-colors duration-150 ${
-            isActive ? 'text-accent-text' : 'text-slate-500 group-hover:text-slate-400'
+            isActive ? 'text-accent-text' : 'text-muted-foreground group-hover:text-slate-400'
           }`}
         />
       )}
@@ -198,7 +198,7 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
         className={`relative flex justify-center w-full p-3 rounded-lg transition-colors duration-150 ${
           isActiveAny
             ? 'bg-primary-500/10 text-accent-text'
-            : 'text-slate-500 hover:bg-overlay-60 hover:text-gray-700'
+            : 'text-muted-foreground hover:bg-overlay-60 hover:text-gray-700'
         }`}
       >
         {isActiveAny && (
@@ -227,17 +227,17 @@ function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermiss
         <Icon
           name={icon}
           className={`w-4.5 h-4.5 shrink-0 transition-colors duration-150 ${
-            accent ? 'text-emerald-600' : isActiveAny || open ? 'text-accent-text' : 'text-slate-500'
+            accent ? 'text-emerald-600' : isActiveAny || open ? 'text-accent-text' : 'text-muted-foreground'
           }`}
         />
         <span className={`flex-1 text-left text-[11px] font-bold uppercase tracking-[0.12em] ${accent ? 'text-emerald-700' : ''}`}>{title}</span>
         <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md transition-colors duration-150 ${
-          open ? 'bg-primary-500/15 text-accent-text' : 'bg-overlay-60 text-gray-500'
+          open ? 'bg-primary-500/15 text-accent-text' : 'bg-overlay-60 text-muted-foreground'
         }`}>
           {visibleItems.length}
         </span>
         <svg
-          className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />

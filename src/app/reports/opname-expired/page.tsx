@@ -391,7 +391,7 @@ export default function OpnameExpiredReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">Minggu opname, depo, dan status batch</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Minggu opname, depo, dan status batch</p>
                 </div>
               </div>
               {(kodeDepo || statusFilter) && (
@@ -526,7 +526,7 @@ export default function OpnameExpiredReportPage() {
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ringkasan distribusi</p>
                 <h2 className="text-base font-bold text-slate-900">Rekap per Depo</h2>
-                <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{fnum(depotRows.length)} depo • {fnum(summary.totalBatch)} batch</p>
+                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{fnum(depotRows.length)} depo • {fnum(summary.totalBatch)} batch</p>
               </div>
             </div>
           </div>
@@ -631,7 +631,7 @@ export default function OpnameExpiredReportPage() {
                 <div key={row.kode} className="p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-bold text-slate-900 truncate">{row.nama} <span className="ml-1 text-xs font-mono font-medium text-slate-400">{row.kode}</span></p>
-                    <p className="text-xs text-slate-500 tabular-nums shrink-0">{fnum(totalCount)} batch • {fnum(totalCrt)} CRT</p>
+                    <p className="text-xs text-muted-foreground tabular-nums shrink-0">{fnum(totalCount)} batch • {fnum(totalCrt)} CRT</p>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     {STATUS_ORDER.map((s) => {
@@ -660,7 +660,7 @@ export default function OpnameExpiredReportPage() {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Data detail</p>
               <h2 className="text-base font-bold text-slate-900">Detail Batch</h2>
-              <p className="mt-0.5 text-xs text-slate-500 tabular-nums">
+              <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                 {statusFilter ? `Status: ${STATUS_META[statusFilter].label}` : 'Semua status'}
                 {selectedDepo ? ` · ${selectedDepo.nama_depo}` : ''}
                 {pagination ? ` • Menampilkan ${pagination.from ?? 0}–${pagination.to ?? 0} dari ${pagination.total} baris` : ''}
@@ -741,7 +741,7 @@ export default function OpnameExpiredReportPage() {
                           <td className="table-cell whitespace-nowrap">{badge(w.status_ini)}</td>
                           <td className="table-cell min-w-50 max-w-75">
                             <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
-                            <span className="block text-xs text-slate-500 line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
+                            <span className="block text-xs text-muted-foreground line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
                           </td>
                           <td className="table-cell whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
                           {renderQtyCell(w)}
@@ -776,7 +776,7 @@ export default function OpnameExpiredReportPage() {
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-slate-900 truncate" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
-                          <p className="text-xs font-mono text-slate-500 mt-0.5 truncate">{w.kode_barang}</p>
+                          <p className="text-xs font-mono text-muted-foreground mt-0.5 truncate">{w.kode_barang}</p>
                         </div>
                         {badge(w.status_ini)}
                       </div>
@@ -827,7 +827,7 @@ export default function OpnameExpiredReportPage() {
                           onClick={() => setPage(p)}
                           aria-label={`Halaman ${p}`}
                           aria-current={p === pagination.current_page ? 'page' : undefined}
-                          className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === pagination.current_page ? 'bg-ink-900 text-white shadow' : 'text-slate-500 hover:bg-slate-200/70'}`}
+                          className={`min-w-9 h-9 px-2 rounded-lg text-sm font-bold tabular-nums transition-colors ${p === pagination.current_page ? 'bg-ink-900 text-white shadow' : 'text-muted-foreground hover:bg-slate-200/70'}`}
                         >
                           {p}
                         </button>

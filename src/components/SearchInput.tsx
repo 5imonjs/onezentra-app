@@ -53,7 +53,7 @@ export default function SearchInput({
   return (
     <div className="flex items-center gap-4">
       <div className="relative flex-1 max-w-md" ref={dropdownRef}>
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
         </svg>
         {activeFilter && (
@@ -123,7 +123,7 @@ export default function SearchInput({
         )}
       </div>
       {resultCount !== undefined && (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-muted-foreground">
           {totalCount !== undefined && currentFrom !== undefined && currentTo !== undefined
             ? `Menampilkan ${currentFrom}–${currentTo} dari ${totalCount} ${resultLabel}`
             : `${resultCount} ${resultLabel}`

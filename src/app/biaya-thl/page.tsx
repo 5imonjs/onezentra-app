@@ -609,8 +609,8 @@ function ApprovalStepper({ item }: { item: BiayaThlItem }) {
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`text-sm font-semibold ${state === 'done' ? 'text-slate-900' : state === 'current' ? 'text-accent-text' : 'text-slate-500'}`}>{step.label}</p>
-                    <span className="inline-flex rounded-md bg-slate-100 border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-500">{step.role}</span>
+                    <p className={`text-sm font-semibold ${state === 'done' ? 'text-slate-900' : state === 'current' ? 'text-accent-text' : 'text-muted-foreground'}`}>{step.label}</p>
+                    <span className="inline-flex rounded-md bg-slate-100 border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground">{step.role}</span>
                   </div>
                   <p className="mt-0.5 text-xs text-slate-400">
                     {step.at ? (
@@ -1671,23 +1671,23 @@ export default function BiayaThlPage() {
         <div className={`rounded-2xl border border-gray-100 bg-card px-5 py-4 shadow-sm transition-opacity ${loading && summary ? 'opacity-60' : ''}`} aria-busy={loading}>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           <div className="px-2 py-1">
-            <p className="text-xs text-slate-500">Total Nominal</p>
+            <p className="text-xs text-muted-foreground">Total Nominal</p>
             <p className="mt-1 text-2xl font-bold text-slate-800 tabular-nums">{formatCurrency(summary?.total_nominal ?? 0)}</p>
           </div>
           <div onClick={() => { setStatusFilter(statusFilter === 'pending' ? '' : 'pending'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-amber-50/50 rounded-lg transition-colors">
-            <p className="text-xs text-slate-500">Menunggu</p>
+            <p className="text-xs text-muted-foreground">Menunggu</p>
             <p className="mt-1 text-2xl font-bold text-amber-600 tabular-nums">{summary?.pending ?? 0}</p>
           </div>
           <div onClick={() => { setStatusFilter(statusFilter === 'approved' ? '' : 'approved'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-emerald-50/50 rounded-lg transition-colors">
-            <p className="text-xs text-slate-500">Disetujui</p>
+            <p className="text-xs text-muted-foreground">Disetujui</p>
             <p className="mt-1 text-2xl font-bold text-emerald-600 tabular-nums">{summary?.approved ?? 0}</p>
           </div>
           <div onClick={() => { setStatusFilter(statusFilter === 'revisi' ? '' : 'revisi'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-orange-50/50 rounded-lg transition-colors">
-            <p className="text-xs text-slate-500">Revisi</p>
+            <p className="text-xs text-muted-foreground">Revisi</p>
             <p className="mt-1 text-2xl font-bold text-orange-600 tabular-nums">{summary?.revisi ?? 0}</p>
           </div>
           <div onClick={() => { setStatusFilter(statusFilter === 'rejected' ? '' : 'rejected'); setPage(1); }} className="border-l border-slate-100 px-2 py-1 sm:pl-5 cursor-pointer hover:bg-red-50/50 rounded-lg transition-colors">
-            <p className="text-xs text-slate-500">Ditolak</p>
+            <p className="text-xs text-muted-foreground">Ditolak</p>
             <p className="mt-1 text-2xl font-bold text-red-600 tabular-nums">{summary?.rejected ?? 0}</p>
           </div>
         </div>
@@ -1708,7 +1708,7 @@ export default function BiayaThlPage() {
               <option value="revisi">Revisi</option>
             </select>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-slate-500">/page</span>
+              <span className="text-xs text-muted-foreground">/page</span>
               <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className="select-field-sm w-22.5">
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -1871,7 +1871,7 @@ export default function BiayaThlPage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-800">{item.no_kendaraan || '-'}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{formatDate(item.tanggal_pengajuan)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(item.tanggal_pengajuan)}</p>
                     </div>
                   </div>
                   {badge(item.status, item)}
@@ -1886,7 +1886,7 @@ export default function BiayaThlPage() {
                         RFAH
                       </span>
                     )}
-                    <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <svg className="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12M15 3a3 3 0 003 3m-3-3h3m-3 15h3a2.25 2.25 0 002.25-2.25V12" /></svg>
                     {item.nama_depo}
                     </span>
@@ -1894,9 +1894,9 @@ export default function BiayaThlPage() {
                   <span className="text-sm font-bold text-gray-800 tabular-nums">{formatCurrency(Number(item.nominal_biaya))}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-gray-100">
-                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full" title={getSJFull(item)}>SJ: {getSJShorts(item).join(', ') || '-'}</span>
-                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{getKendaraanTypes(item).join(', ') || '-'}</span>
-                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{getWorkerCount(item)} tenaga kerja</span>
+                  <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full" title={getSJFull(item)}>SJ: {getSJShorts(item).join(', ') || '-'}</span>
+                  <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full">{getKendaraanTypes(item).join(', ') || '-'}</span>
+                  <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded-full">{getWorkerCount(item)} tenaga kerja</span>
                   <button onClick={() => openViewModal(item)} className="flex-1 min-h-11 flex items-center justify-center gap-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     Lihat
@@ -1926,7 +1926,7 @@ export default function BiayaThlPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
-            <p className="text-xs text-slate-500 tabular-nums mr-2">Halaman {page} dari {totalPages}</p>
+            <p className="text-xs text-muted-foreground tabular-nums mr-2">Halaman {page} dari {totalPages}</p>
             {pageWindow(page, totalPages).map((p, idx) => p === '…' ? (
               <span key={`e${idx}`} className="text-xs text-slate-400 px-1" aria-hidden="true">…</span>
             ) : (
@@ -2017,7 +2017,7 @@ export default function BiayaThlPage() {
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black ${formStep === item.step ? 'bg-primary-600 text-white' : blockedReason ? 'bg-white/10 text-ink-fg-muted' : 'bg-white/10 text-white'}`}>{item.step}</span>
                     <span className="min-w-0">
                       <span className="block text-xs font-black">{item.label}</span>
-                      <span className={`mt-0.5 block truncate text-[10px] ${formStep === item.step ? 'text-slate-500' : 'text-ink-fg-muted'}`}>{blockedReason ?? item.note}</span>
+                      <span className={`mt-0.5 block truncate text-[10px] ${formStep === item.step ? 'text-muted-foreground' : 'text-ink-fg-muted'}`}>{blockedReason ?? item.note}</span>
                     </span>
                   </button>
                   );
@@ -2036,7 +2036,7 @@ export default function BiayaThlPage() {
                       ))}
                       {platList.length > 4 && <span className="text-[10px] font-bold text-ink-fg-muted">+{platList.length - 4}</span>}
                     </span>
-                  ) : <span className="text-xs text-slate-500">—</span>}</div>
+                  ) : <span className="text-xs text-muted-foreground">—</span>}</div>
                   <div className="h-px bg-white/10" />
                   <p className="text-[10px] leading-4 text-ink-fg-muted">Validasi otomatis aktif. Data yang belum lengkap tidak dapat dikirim.</p>
                 </div>
@@ -2058,8 +2058,8 @@ export default function BiayaThlPage() {
               const blockedReason = isStepBlocked(s.step);
               return (
               <Fragment key={s.step}>
-                <button type="button" onClick={() => goToStep(s.step)} disabled={!!blockedReason} title={blockedReason ?? undefined} aria-current={formStep === s.step ? 'step' : undefined} aria-disabled={!!blockedReason} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${formStep === s.step ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : formStep > s.step ? 'bg-chip-primary text-accent-text' : blockedReason ? 'bg-popover text-gray-500 cursor-not-allowed' : 'bg-popover text-gray-700'}`}>
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${formStep === s.step ? 'bg-card text-accent-text' : formStep > s.step ? 'bg-brand-wash-strong text-accent-text' : blockedReason ? 'bg-card text-gray-500' : 'bg-card text-gray-700'}`}>
+                <button type="button" onClick={() => goToStep(s.step)} disabled={!!blockedReason} title={blockedReason ?? undefined} aria-current={formStep === s.step ? 'step' : undefined} aria-disabled={!!blockedReason} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${formStep === s.step ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : formStep > s.step ? 'bg-chip-primary text-accent-text' : blockedReason ? 'bg-popover text-muted-foreground cursor-not-allowed' : 'bg-popover text-gray-700'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${formStep === s.step ? 'bg-card text-accent-text' : formStep > s.step ? 'bg-brand-wash-strong text-accent-text' : blockedReason ? 'bg-card text-muted-foreground' : 'bg-card text-gray-700'}`}>
                     {formStep > s.step ? <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> : s.step}
                   </div>
                   <span className="text-xs font-bold hidden sm:inline">{s.label}</span>
@@ -2091,7 +2091,7 @@ export default function BiayaThlPage() {
                 </label>
               </div>
 
-              <p className="rounded-xl bg-popover border border-slate-300 px-4 py-3 text-xs text-slate-500">Gunakan tombol <span className="font-bold text-slate-700">Lanjut ke Data Pekerja</span> di bawah dialog untuk melanjutkan.</p>
+              <p className="rounded-xl bg-popover border border-slate-300 px-4 py-3 text-xs text-muted-foreground">Gunakan tombol <span className="font-bold text-slate-700">Lanjut ke Data Pekerja</span> di bawah dialog untuk melanjutkan.</p>
             </div>
           )}
 
@@ -2099,12 +2099,12 @@ export default function BiayaThlPage() {
           {formStep === 2 && (
             <div className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <button type="button" onClick={() => goToStep(1)} className="h-10 w-10 inline-flex items-center justify-center rounded-xl border border-gray-300 bg-card text-gray-500 hover:bg-popover hover:text-accent-text transition-colors shrink-0" aria-label="Kembali ke Informasi">
+                <button type="button" onClick={() => goToStep(1)} className="h-10 w-10 inline-flex items-center justify-center rounded-xl border border-gray-300 bg-card text-muted-foreground hover:bg-popover hover:text-accent-text transition-colors shrink-0" aria-label="Kembali ke Informasi">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 </button>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-black text-gray-900">Data Pekerja</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">1 baris = 1 pekerja × 1 bongkaran — pekerja yang sama boleh muncul di SJ berbeda</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">1 baris = 1 pekerja × 1 bongkaran — pekerja yang sama boleh muncul di SJ berbeda</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {formData.details.length > 0 && (
@@ -2113,7 +2113,7 @@ export default function BiayaThlPage() {
                       {formData.details.length} pekerja
                     </span>
                   )}
-                  <button type="button" onClick={addSjGroup} className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-colors shrink-0 ${formData.details.length === 0 ? 'border border-gray-300 bg-card text-gray-500 hover:border-primary-300 hover:text-accent-text' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-200'}`}>
+                  <button type="button" onClick={addSjGroup} className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-colors shrink-0 ${formData.details.length === 0 ? 'border border-gray-300 bg-card text-muted-foreground hover:border-primary-300 hover:text-accent-text' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-200'}`}>
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah Surat Jalan
                   </button>
@@ -2132,11 +2132,11 @@ export default function BiayaThlPage() {
                     Hanya yang belum lengkap
                   </label>
                   <span className="hidden h-4 w-px bg-slate-200 sm:block" aria-hidden="true" />
-                  <button type="button" onClick={() => setCollapsedCards(new Set(formData.details.map((_, i) => i)))} className="text-[11px] font-black text-slate-500 hover:text-accent-text transition-colors">
+                  <button type="button" onClick={() => setCollapsedCards(new Set(formData.details.map((_, i) => i)))} className="text-[11px] font-black text-muted-foreground hover:text-accent-text transition-colors">
                     Lipatkan semua
                   </button>
                   <span className="text-slate-300" aria-hidden="true">·</span>
-                  <button type="button" onClick={() => setCollapsedCards(new Set())} className="text-[11px] font-black text-slate-500 hover:text-accent-text transition-colors">
+                  <button type="button" onClick={() => setCollapsedCards(new Set())} className="text-[11px] font-black text-muted-foreground hover:text-accent-text transition-colors">
                     Bentangkan semua
                   </button>
                 </div>
@@ -2165,7 +2165,7 @@ export default function BiayaThlPage() {
                         {gIdx > 0 && (
                           <div className="flex items-center gap-3 py-1">
                             <div className="h-px flex-1 border-t-2 border-dashed border-gray-300" />
-                            <button type="button" onClick={() => { const gid = insertSjGroupBefore(group.groupId); focusSjInput(gid); }} title={`Sisipkan Surat Jalan sebelum nomor ${gIdx + 1}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-card px-3 py-1 text-[11px] font-black text-gray-500 hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
+                            <button type="button" onClick={() => { const gid = insertSjGroupBefore(group.groupId); focusSjInput(gid); }} title={`Sisipkan Surat Jalan sebelum nomor ${gIdx + 1}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-card px-3 py-1 text-[11px] font-black text-muted-foreground hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
 
                               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                               Tambah Surat Jalan di sini
@@ -2207,8 +2207,8 @@ export default function BiayaThlPage() {
                                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
                                 </span>
                                 <span className="flex-1 min-w-0">
-                                  <span className="block text-sm font-black text-slate-900">Kendaraan tambahan <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">opsional</span></span>
-                                  <span className="block text-[11px] text-slate-500">Hanya jika 1 kru membongkar 2+ kendaraan — boleh dikosongkan</span>
+                                  <span className="block text-sm font-black text-slate-900">Kendaraan tambahan <span className="ml-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">opsional</span></span>
+                                  <span className="block text-[11px] text-muted-foreground">Hanya jika 1 kru membongkar 2+ kendaraan — boleh dikosongkan</span>
                                 </span>
                               </div>
                               <button type="button" onClick={() => setSjVehicle((prev) => ({ ...prev, [group.groupId]: [...(prev[group.groupId] ?? []), { id: generateId(), sj: '', nopol: '', type: '' }] }))} className="btn-secondary shrink-0">
@@ -2225,15 +2225,15 @@ export default function BiayaThlPage() {
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                                   <div>
-                                    <label htmlFor={`sjv-sj-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">No. SJ Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
+                                    <label htmlFor={`sjv-sj-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">No. SJ Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
                                     <input id={`sjv-sj-${group.groupId}-${vIdx}`} type="text" value={sjVehicle[group.groupId]?.[vIdx]?.sj ?? ''} onChange={(e) => setSjVehicle((prev) => { const arr = [...(prev[group.groupId] ?? [])]; if (arr[vIdx]) arr[vIdx] = { ...arr[vIdx], sj: e.target.value }; return { ...prev, [group.groupId]: arr }; })} placeholder="SJ kendaraan ke-2" className="input-field py-2 text-sm font-mono uppercase" />
                                   </div>
                                   <div>
-                                    <label htmlFor={`sjv-nopol-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Plat Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
+                                    <label htmlFor={`sjv-nopol-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Plat Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
                                     <input id={`sjv-nopol-${group.groupId}-${vIdx}`} type="text" value={sjVehicle[group.groupId]?.[vIdx]?.nopol ?? ''} onChange={(e) => setSjVehicle((prev) => { const arr = [...(prev[group.groupId] ?? [])]; if (arr[vIdx]) arr[vIdx] = { ...arr[vIdx], nopol: e.target.value.toUpperCase() }; return { ...prev, [group.groupId]: arr }; })} placeholder="KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
                                   </div>
                                   <div>
-                                    <label htmlFor={`sjv-type-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Type Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
+                                    <label htmlFor={`sjv-type-${group.groupId}-${vIdx}`} className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Type Kendaraan ke-{vIdx + 2} <span className="text-red-400">*</span></label>
                                     <select id={`sjv-type-${group.groupId}-${vIdx}`} value={sjVehicle[group.groupId]?.[vIdx]?.type ?? ''} onChange={(e) => setSjVehicle((prev) => { const arr = [...(prev[group.groupId] ?? [])]; if (arr[vIdx]) arr[vIdx] = { ...arr[vIdx], type: e.target.value }; return { ...prev, [group.groupId]: arr }; })} className="select-field py-2 text-sm"> <option value="">Pilih</option> {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)} </select>
                                   </div>
                                 </div>
@@ -2249,7 +2249,7 @@ export default function BiayaThlPage() {
                               {rowNum > 1 && (
                                 <div className="flex items-center gap-3 py-1">
                                   <div className="h-px flex-1 border-t-2 border-dashed border-gray-300" />
-                                  <button type="button" onClick={() => insertDetailBefore(group.groupId, idx)} title={`Sisipkan pekerja sebelum nomor ${rowNum}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-card px-3 py-1 text-[11px] font-black text-gray-500 hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
+                                  <button type="button" onClick={() => insertDetailBefore(group.groupId, idx)} title={`Sisipkan pekerja sebelum nomor ${rowNum}`} className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-gray-300 bg-card px-3 py-1 text-[11px] font-black text-muted-foreground hover:border-primary-400 hover:text-accent-text transition-colors shrink-0">
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                                     Sisipkan di sini
                                   </button>
@@ -2282,11 +2282,11 @@ export default function BiayaThlPage() {
                                       Kurang: {getMissingFields(detail).join(', ')}
                                     </span>
                                   ) : collapsedCards.has(idx) ? (
-                                    <span className="text-[11px] text-slate-500 truncate block">
+                                    <span className="text-[11px] text-muted-foreground truncate block">
                                       {detail.posisi || 'Tanpa posisi'} · {formatCurrency(Number(detail.nominal_biaya) || 0)} · {Number(detail.kubikasi) || 0} m³
                                     </span>
                                   ) : (
-                                    <span className="text-[11px] text-slate-500 truncate block">Lengkapi semua kolom bertanda <span className="font-bold text-red-500">*</span></span>
+                                    <span className="text-[11px] text-muted-foreground truncate block">Lengkapi semua kolom bertanda <span className="font-bold text-red-500">*</span></span>
                                   )}
                                 </div>
                                 <span className={`hidden rounded-full border px-2.5 py-1 text-[10px] font-black sm:inline-flex ${isDetailReady(detail) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
@@ -2309,7 +2309,7 @@ export default function BiayaThlPage() {
                                   ['Jam', `wp-${idx}-jam`],
                                   ['Foto', `wp-${idx}-foto`],
                                 ].map(([label, href]) => (
-                                  <a key={href} href={`#${href}`} className="rounded-full border border-slate-300 bg-popover px-2.5 py-1 text-[10px] font-bold text-slate-500 hover:border-primary-300 hover:text-accent-text transition-colors">
+                                  <a key={href} href={`#${href}`} className="rounded-full border border-slate-300 bg-popover px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:border-primary-300 hover:text-accent-text transition-colors">
                                     {label}
                                   </a>
                                 ))}
@@ -2326,13 +2326,13 @@ export default function BiayaThlPage() {
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nama_thl`}>
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nama_thl`}>
                                         Nama THL <span className="text-red-400">*</span>
                                       </label>
                                       <input id={`detail-${idx}-nama_thl`} type="text" value={detail.nama_thl} onChange={(e) => updateDetail(idx, 'nama_thl', e.target.value)} placeholder="Nama pekerja" className="input-field py-2 text-sm" />
                                     </div>
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-posisi`}>
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-posisi`}>
                                         Posisi <span className="text-red-400">*</span>
                                       </label>
                                       <select id={`detail-${idx}-posisi`} value={detail.posisi} onChange={(e) => {
@@ -2354,7 +2354,7 @@ export default function BiayaThlPage() {
                                     </div>
 {requiresDriverName(detail.posisi) && (
                       <div>
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-driver_name`}>
+                        <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-driver_name`}>
                           Nama Driver <span className="text-red-400">*</span>
                         </label>
                         <input id={`detail-${idx}-driver_name`} type="text" value={detail.driver_name} onChange={(e) => updateDetail(idx, 'driver_name', e.target.value)} placeholder="Nama driver" className="input-field py-2 text-sm" />
@@ -2373,13 +2373,13 @@ export default function BiayaThlPage() {
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nopol_kendaraan`}>
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nopol_kendaraan`}>
                                         Plat Kendaraan <span className="text-red-400">*</span>
                                       </label>
                                       <input id={`detail-${idx}-nopol_kendaraan`} type="text" value={detail.nopol_kendaraan} onChange={(e) => updateDetail(idx, 'nopol_kendaraan', e.target.value.toUpperCase())} placeholder="KB 1234 XX" title="Nomor polisi kendaraan, contoh: KB 1234 XX" className="input-field py-2 text-sm font-mono uppercase" />
                                     </div>
                     <div>
-                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-type_kendaraan`}>
+                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-type_kendaraan`}>
                         Type Kendaraan <span className="text-red-400">*</span>
                       </label>
                       <select id={`detail-${idx}-type_kendaraan`} value={detail.type_kendaraan} onChange={(e) => updateDetail(idx, 'type_kendaraan', e.target.value)} className="select-field py-2 text-sm">
@@ -2389,7 +2389,7 @@ export default function BiayaThlPage() {
                     </div>
                   </div>
                   {String(detail.posisi ?? '').trim().toUpperCase() === 'THL GUDANG' && activeVehicles(detail.groupId).length > 0 && (
-                    <p className="mt-2 text-[11px] text-slate-500">
+                    <p className="mt-2 text-[11px] text-muted-foreground">
                       Kru ini juga membongkar:{' '}
                       {activeVehicles(detail.groupId).map((v, vi) => (
                         <span key={v.id} className="mr-1 inline-flex items-center rounded-md bg-amber-50 border border-amber-200 px-1.5 py-px text-[10px] font-bold text-amber-700">ke-{vi + 2}: {v.nopol || '?'} · {v.sj || 'SJ?'}</span>
@@ -2408,20 +2408,20 @@ export default function BiayaThlPage() {
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nominal_biaya`}>
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-nominal_biaya`}>
                                         Nominal Biaya (Rp) <span className="text-red-400">*</span>
                                       </label>
                                       <input id={`detail-${idx}-nominal_biaya`} type="text" inputMode="decimal" value={detail.nominal_biaya ? formatRibuan(detail.nominal_biaya) : ''} onChange={(e) => updateDetail(idx, 'nominal_biaya', parseRibuan(e.target.value))} placeholder="0" title="Besaran biaya/honor THL dalam rupiah (minimal Rp 1)" className="input-field py-2 text-sm font-bold tabular-nums" />
                                       <p className="mt-1 text-[10px] text-gray-400">Contoh: 150000 = Rp 150.000</p>
                                     </div>
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-kubikasi`}>
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-kubikasi`}>
                                         Kubikasi (m³) {requiresDriverName(detail.posisi) && <span className="text-red-400">*</span>}
                                       </label>
                                       <input id={`detail-${idx}-kubikasi`} type="number" min="0" step="0.01" value={detail.posisi === 'THL GUDANG' ? 0 : detail.kubikasi || ''} onChange={(e) => updateDetail(idx, 'kubikasi', Number(e.target.value))} placeholder="0" disabled={detail.posisi === 'THL GUDANG'} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
                                     </div>
                                     <div>
-                                      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-droppoint`}>
+                                      <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-droppoint`}>
                                         Droppoint {requiresDriverName(detail.posisi) && <span className="text-red-400">*</span>}
                                       </label>
                                       <input id={`detail-${idx}-droppoint`} type="text" value={detail.posisi === 'THL GUDANG' ? '' : detail.droppoint} onChange={(e) => updateDetail(idx, 'droppoint', e.target.value)} placeholder={detail.posisi === 'THL GUDANG' ? 'Tidak diperlukan' : 'Lokasi tujuan'} disabled={detail.posisi === 'THL GUDANG'} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
@@ -2441,13 +2441,13 @@ export default function BiayaThlPage() {
                                     </div>
                                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                       <div>
-                                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-jam_datang`}>
+                                        <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-jam_datang`}>
                                           Jam Datang <span className="text-red-400">*</span>
                                         </label>
                                         <input id={`detail-${idx}-jam_datang`} type="datetime-local" value={detail.jam_datang} onChange={(e) => updateDetail(idx, 'jam_datang', e.target.value)} disabled={!detail.posisi} title={!detail.posisi ? 'Pilih posisi terlebih dahulu' : undefined} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
                                       </div>
                                       <div>
-                                        <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-jam_pulang`}>
+                                        <label className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5" htmlFor={`detail-${idx}-jam_pulang`}>
                                           Jam Pulang <span className="text-red-400">*</span>
                                         </label>
                                         <input id={`detail-${idx}-jam_pulang`} type="datetime-local" value={detail.jam_pulang} onChange={(e) => updateDetail(idx, 'jam_pulang', e.target.value)} disabled={!detail.posisi} title={!detail.posisi ? 'Pilih posisi terlebih dahulu' : undefined} className="input-field py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400" />
@@ -2478,7 +2478,7 @@ export default function BiayaThlPage() {
                                     <label className="block cursor-pointer grow">
                                       <div className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-6 text-center transition-colors ${detail.photos.length > 0 ? 'border-primary-300 bg-chip-primary/40 hover:bg-chip-primary' : 'border-gray-300 bg-popover hover:border-primary-300 hover:bg-chip-primary/50'}`}>
                                         <svg className={`w-5 h-5 ${detail.photos.length > 0 ? 'text-primary-400' : 'text-gray-400'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                                        <span className="text-xs font-bold text-gray-500">{detail.photos.length > 0 ? 'Ganti foto' : 'Upload foto bukti *'}</span>
+                                        <span className="text-xs font-bold text-muted-foreground">{detail.photos.length > 0 ? 'Ganti foto' : 'Upload foto bukti *'}</span>
                                       </div>
                                       <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={async (e) => {
                                         const files = Array.from(e.target.files || []).slice(0, MAX_PHOTOS_PER_DETAIL);
@@ -2530,7 +2530,7 @@ export default function BiayaThlPage() {
                 </div>
               )}
               {formData.details.length > 0 && (
-                <p className="rounded-xl bg-popover border border-slate-300 px-4 py-3 text-xs text-slate-500">Gunakan tombol <span className="font-bold text-slate-700">Lanjut ke Review</span> di bawah dialog untuk melanjutkan.</p>
+                <p className="rounded-xl bg-popover border border-slate-300 px-4 py-3 text-xs text-muted-foreground">Gunakan tombol <span className="font-bold text-slate-700">Lanjut ke Review</span> di bawah dialog untuk melanjutkan.</p>
               )}
             </div>
           )}
@@ -2545,7 +2545,7 @@ export default function BiayaThlPage() {
 
               <div className={`rounded-2xl p-5 transition-all ${isRfahRequired ? 'bg-linear-to-br from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-300 shadow-lg shadow-amber-100/50' : 'bg-popover border border-gray-300'}`}>
                 <div className="flex items-center gap-4">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isRfahRequired ? 'bg-amber-100 text-amber-600' : 'bg-gray-200 text-gray-500'}`}>
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isRfahRequired ? 'bg-amber-100 text-amber-600' : 'bg-gray-200 text-muted-foreground'}`}>
                     <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659 1.171-1.671a4.5 4.5 0 015.07-1.651 3 3 0 011.482 5.369L12 12" /></svg>
                   </div>
                   <div>
@@ -2569,7 +2569,7 @@ export default function BiayaThlPage() {
               </div>
 
               <div className="rounded-xl bg-card border border-gray-100 p-4 space-y-2">
-                <h4 className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">Detail Pekerja</h4>
+                <h4 className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-3">Detail Pekerja</h4>
                 {(['THL GUDANG', 'THL HELPER', 'THL DRIVER'] as const).map((pos) => {
                   const rows = formData.details
                     .map((d, i) => ({ d, i }))
@@ -2777,7 +2777,7 @@ export default function BiayaThlPage() {
                         {groupWorkersBySuratJalan(viewItem.details).map((group, i) => (
                           <tr key={group.no_surat_jalan} className="hover:bg-overlay-60 transition-colors align-top">
                             <td className="table-cell text-center">
-                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500 mx-auto">{i + 1}</span>
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-muted-foreground mx-auto">{i + 1}</span>
                             </td>
                             <td className="table-cell font-mono">
                               <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">{group.no_surat_jalan}</span>
@@ -2860,7 +2860,7 @@ export default function BiayaThlPage() {
 
               {/* Status footer */}
               <div className="rounded-2xl border border-slate-300 bg-overlay-70 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-xs font-semibold text-slate-500">Status pengajuan</p>
+                <p className="text-xs font-semibold text-muted-foreground">Status pengajuan</p>
                   {badge(viewItem.status, viewItem)}
               </div>
             </div>
@@ -2911,16 +2911,16 @@ export default function BiayaThlPage() {
                 </div>
                 <div className="divide-y divide-slate-100 bg-card text-sm">
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                    <span className="text-slate-500">Depo</span>
+                    <span className="text-muted-foreground">Depo</span>
                     <span className="font-semibold text-slate-800 font-mono">{decision.item.nama_depo}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                    <span className="text-slate-500">Total Biaya</span>
+                    <span className="text-muted-foreground">Total Biaya</span>
                     <span className="font-black text-slate-800 tabular-nums">{formatCurrency(decision.item.nominal_biaya)}</span>
                   </div>
                   {decision.item.is_rfah_required && (
                     <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                      <span className="text-slate-500">RFAH*</span>
+                      <span className="text-muted-foreground">RFAH*</span>
                       <span className="font-semibold text-amber-700">{decision.item.rfah_name || 'Diperlukan'}</span>
                     </div>
                   )}
@@ -3009,12 +3009,12 @@ export default function BiayaThlPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-500 mb-1" htmlFor="pilih-file">Pilih File</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="pilih-file">Pilih File</label>
             <input id="pilih-file"
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
+              className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
             />
             <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: no_surat_jalan, nama_thl</p>
           </div>

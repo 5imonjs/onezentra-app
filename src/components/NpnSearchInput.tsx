@@ -279,7 +279,7 @@ export default function NpnSearchInput({
         <button
           onClick={handleUnlock}
           aria-label="Ganti barang"
-          className="shrink-0 h-10 w-10 inline-flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 rounded-xl transition-colors"
+          className="shrink-0 h-10 w-10 inline-flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 rounded-xl transition-colors"
           title="Ganti barang"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -371,7 +371,7 @@ export default function NpnSearchInput({
                           </div>
                         </div>
                         {taken && (
-                          <span className="shrink-0 rounded-full bg-popover border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+                          <span className="shrink-0 rounded-full bg-popover border border-gray-300 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
                             Sudah dipakai
                           </span>
                         )}
@@ -384,14 +384,14 @@ export default function NpnSearchInput({
           )}
 
           {showEmptyState && (
-            <p className="px-4 py-3 text-center text-sm text-gray-500">
+            <p className="px-4 py-3 text-center text-sm text-muted-foreground">
               Tidak ada barang yang cocok dengan “{searchedQuery}”
             </p>
           )}
 
           {results.length > 0 && total > results.length && (
-            <div className="flex items-center justify-between gap-3 border-t border-gray-200 px-3 py-2">
-              <span className="text-xs text-gray-500">
+            <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2">
+              <span className="text-xs text-muted-foreground">
                 Menampilkan {results.length} dari {total} barang
               </span>
               <button

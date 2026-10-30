@@ -365,7 +365,7 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.primary}</span>
                         <span className="min-w-0 truncate text-xs text-gray-400">{item.secondary}</span>
                       </span>
-                      <svg className="h-3.5 w-3.5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                      <svg className="h-3.5 w-3.5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </Link>
                   </li>
                 ))}

@@ -135,7 +135,7 @@ export default function AccessManagementPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-800">{item.title}</p>
-                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">{item.desc}</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -163,7 +163,7 @@ export default function AccessManagementPage() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 activeTab === 'roles'
                   ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20'
-                  : 'text-gray-500 hover:bg-popover hover:text-gray-700'
+                  : 'text-muted-foreground hover:bg-popover hover:text-gray-700'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -178,7 +178,7 @@ export default function AccessManagementPage() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 activeTab === 'permissions'
                   ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/20'
-                  : 'text-gray-500 hover:bg-popover hover:text-gray-700'
+                  : 'text-muted-foreground hover:bg-popover hover:text-gray-700'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -595,13 +595,13 @@ function RolesTab() {
                   size="sm"
                 />
               ) : (
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${role.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${role.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-muted-foreground'}`}>
                   {role.is_active ? 'Aktif' : 'Nonaktif'}
                 </span>
               )}
             </div>
 
-            <p className="text-sm text-gray-500 mb-4 line-clamp-2">{role.description || 'Tidak ada deskripsi'}</p>
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{role.description || 'Tidak ada deskripsi'}</p>
 
             <div className="space-y-3 mb-4">
               <div className="flex items-center justify-between">
@@ -628,7 +628,7 @@ function RolesTab() {
                   </span>
                 ))}
                 {(role.menu_groups || []).length > 4 && (
-                  <span className="px-2 py-0.5 bg-popover text-gray-500 rounded-md text-[11px] font-medium">
+                  <span className="px-2 py-0.5 bg-popover text-muted-foreground rounded-md text-[11px] font-medium">
                     +{(role.menu_groups || []).length - 4} lainnya
                   </span>
                 )}
@@ -678,7 +678,7 @@ function RolesTab() {
               <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
-              <p className="text-gray-500">Belum ada role</p>
+              <p className="text-muted-foreground">Belum ada role</p>
             </div>
           </div>
         )}
@@ -765,7 +765,7 @@ function RolesTab() {
         {permLoading ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-8 h-8 border-4 border-chip-primary-border border-t-primary-600 rounded-full animate-spin mb-4"></div>
-            <p className="text-sm text-gray-500">Memuat permission...</p>
+            <p className="text-sm text-muted-foreground">Memuat permission...</p>
           </div>
         ) : permLoadError ? (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
@@ -787,13 +787,13 @@ function RolesTab() {
             {/* Summary Bar */}
             <div className="flex items-center justify-between p-3 bg-popover rounded-xl">
               <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-500">Total:</span>
+                <span className="text-sm text-muted-foreground">Total:</span>
                 <span className="text-sm font-semibold text-gray-900">{totalAssigned}/{totalPerms} aktif</span>
               </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setAllPermGroupsCollapsed(collapsedGroups.size < Object.keys(allPermissions).length)}
-                  className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                  className="text-sm font-medium text-muted-foreground hover:text-gray-700"
                 >
                   {collapsedGroups.size < Object.keys(allPermissions).length ? 'Ciutkan Semua' : 'Bentangkan Semua'}
                 </button>
@@ -895,7 +895,7 @@ function RolesTab() {
                               <span className="text-sm font-medium text-gray-700">{perm.name}</span>
                               <span className="text-xs text-gray-400 font-mono">{perm.slug}</span>
                               {isBranch && (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                                   Cabang dari {parentName}
                                 </span>
                               )}
@@ -927,7 +927,7 @@ function RolesTab() {
                 <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                 </svg>
-                <p className="text-gray-500">{permSearch ? `Tidak ada permission cocok "${permSearch}"` : 'Belum ada permission tersedia'}</p>
+                <p className="text-muted-foreground">{permSearch ? `Tidak ada permission cocok "${permSearch}"` : 'Belum ada permission tersedia'}</p>
               </div>
             )}
           </div>
@@ -1143,7 +1143,7 @@ function PermissionsTab() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{totalPerms}</p>
-              <p className="text-sm text-gray-500">Total Permission</p>
+              <p className="text-sm text-muted-foreground">Total Permission</p>
             </div>
           </div>
         </div>
@@ -1156,7 +1156,7 @@ function PermissionsTab() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{activePerms}</p>
-              <p className="text-sm text-gray-500">Aktif</p>
+              <p className="text-sm text-muted-foreground">Aktif</p>
             </div>
           </div>
         </div>
@@ -1169,7 +1169,7 @@ function PermissionsTab() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{uniqueGroups}</p>
-              <p className="text-sm text-gray-500">Menu Group</p>
+              <p className="text-sm text-muted-foreground">Menu Group</p>
             </div>
           </div>
         </div>
@@ -1223,7 +1223,7 @@ function PermissionsTab() {
                 </div>
                 <div className="text-left">
                   <h2 className="text-base font-semibold text-gray-900">{groupName}</h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {(perms as Permission[]).filter(p => p.is_active).length}/{perms.length} aktif
                   </p>
                 </div>
@@ -1249,12 +1249,12 @@ function PermissionsTab() {
               <div className="border-t border-gray-100">
                 {/* Table Header */}
                 <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-popover border-b border-gray-100">
-                  <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama</div>
-                  <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Slug</div>
-                  <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Route</div>
-                  <div className="col-span-1 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Dipakai</div>
-                  <div className="col-span-1 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Status</div>
-                  <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</div>
+                  <div className="col-span-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nama</div>
+                  <div className="col-span-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Slug</div>
+                  <div className="col-span-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Route</div>
+                  <div className="col-span-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">Dipakai</div>
+                  <div className="col-span-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">Status</div>
+                  <div className="col-span-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Aksi</div>
                 </div>
 
                 {/* Permission Rows */}
@@ -1262,11 +1262,11 @@ function PermissionsTab() {
                   {(perms as Permission[]).map((perm) => (
                     <div key={perm.id} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-overlay-50 transition-colors items-center">
                       <div className="col-span-4">
-                        <div className={`font-medium text-gray-900 ${perm.parent_id ? 'pl-4 border-l-2 border-slate-200' : ''}`}>
+                        <div className={`font-medium text-gray-900 ${perm.parent_id ? 'pl-4 border-l-2 border-border' : ''}`}>
                           {perm.name}
                         </div>
                         {perm.parent && (
-                          <div className="text-xs text-slate-500 mt-0.5 pl-4">↳ cabang dari {perm.parent.name}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5 pl-4">↳ cabang dari {perm.parent.name}</div>
                         )}
                         {perm.description && (
                           <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{perm.description}</div>
@@ -1278,7 +1278,7 @@ function PermissionsTab() {
                         </span>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-sm text-gray-500 font-mono line-clamp-1">{perm.route || '-'}</span>
+                        <span className="text-sm text-muted-foreground font-mono line-clamp-1">{perm.route || '-'}</span>
                       </div>
                       <div className="col-span-1 flex justify-center">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${perm.roles_count ? 'bg-chip-primary text-accent-text' : 'bg-gray-100 text-gray-400'}`}>
@@ -1293,7 +1293,7 @@ function PermissionsTab() {
                             size="sm"
                           />
                         ) : (
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${perm.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${perm.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-muted-foreground'}`}>
                             {perm.is_active ? 'Aktif' : 'Nonaktif'}
                           </span>
                         )}
@@ -1347,7 +1347,7 @@ function PermissionsTab() {
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
-            <p className="text-gray-500">Tidak ada permission ditemukan</p>
+            <p className="text-muted-foreground">Tidak ada permission ditemukan</p>
           </div>
         )}
       </div>
@@ -1426,7 +1426,7 @@ function PermissionsTab() {
                   <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
                 ))}
             </select>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Permission turunan tampil sebagai cabang di bawah induknya pada tab Roles → Kelola Akses.
               Menu Group otomatis mengikuti induk agar cabang tetap satu grup.
             </p>

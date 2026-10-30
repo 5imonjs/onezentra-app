@@ -318,7 +318,7 @@ export default function EmailRecipientsPage() {
   if (!canView) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm text-gray-500">Anda tidak memiliki izin untuk melihat Penerima Email.</div>
+        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat Penerima Email.</div>
       </DashboardLayout>
     );
   }
@@ -521,13 +521,13 @@ export default function EmailRecipientsPage() {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {docTypeLabel[r.document_type] || r.document_type} · {triggerLabel(r.document_type, r.trigger)}
           </p>
           {r.label && <p className="mt-0.5 text-xs text-gray-400">{r.label}</p>}
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${r.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${r.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-muted-foreground'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${r.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
             {r.is_active ? 'Aktif' : 'Nonaktif'}
           </span>
@@ -596,7 +596,7 @@ export default function EmailRecipientsPage() {
         {/* Audit ringkasan */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-5">
-            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Total Penerima</p>
+            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Total Penerima</p>
             <p className="text-2xl font-bold text-gray-900">{totals.total}</p>
           </div>
           <div className="bg-card rounded-2xl shadow-sm border border-blue-100 p-5">
@@ -683,7 +683,7 @@ export default function EmailRecipientsPage() {
           <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
             <div className="mb-3">
               <p className="text-sm font-bold text-gray-900">Status Email per Depo</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Depo <strong>nonaktif</strong> tidak menerima email apa pun, walau penerima Global terisi. Depo tanpa baris
                 penerima sendiri tetap memakai Global selama statusnya aktif.
               </p>
@@ -716,7 +716,7 @@ export default function EmailRecipientsPage() {
         {/* Paginasi per depo */}
         {meta && meta.last_page > 1 && (
           <nav className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-card px-5 py-3" aria-label="Paginasi depo">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Depo halaman <strong className="text-gray-700">{meta.page}</strong> dari{' '}
               <strong className="text-gray-700">{meta.last_page}</strong> · {meta.total_groups} depo · {meta.total_rows} penerima
             </p>
@@ -748,7 +748,7 @@ export default function EmailRecipientsPage() {
               <div className="w-14 h-14 rounded-2xl bg-popover border border-gray-100 flex items-center justify-center">
                 <svg className="w-7 h-7 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
               </div>
-              <p className="text-sm text-gray-500">{hasSearch ? 'Tidak ada penerima sesuai filter' : 'Belum ada penerima email'}</p>
+              <p className="text-sm text-muted-foreground">{hasSearch ? 'Tidak ada penerima sesuai filter' : 'Belum ada penerima email'}</p>
               {!hasSearch && canEdit && (
                 <button onClick={openCreateGeneric} className="btn-primary">Tambah Penerima</button>
               )}
@@ -770,7 +770,7 @@ export default function EmailRecipientsPage() {
                       </span>
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-gray-900 truncate">{depotLabel(depoKey)}</p>
-                        <p className="text-xs text-gray-500">{total} penerima · TO {g.to.length} · CC {g.cc.length}</p>
+                        <p className="text-xs text-muted-foreground">{total} penerima · TO {g.to.length} · CC {g.cc.length}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -814,7 +814,7 @@ export default function EmailRecipientsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="ef-doc" className="block text-xs font-medium text-gray-500 mb-1">Jenis Dokumen</label>
+                <label htmlFor="ef-doc" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Dokumen</label>
                 <select id="ef-doc" value={editForm.document_type}
                   onChange={(e) => {
                     const doc = e.target.value;
@@ -825,7 +825,7 @@ export default function EmailRecipientsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="ef-trigger" className="block text-xs font-medium text-gray-500 mb-1">Trigger</label>
+                <label htmlFor="ef-trigger" className="block text-xs font-medium text-muted-foreground mb-1">Trigger</label>
                 <select id="ef-trigger" value={editForm.trigger} onChange={(e) => setEditForm({ ...editForm, trigger: e.target.value })} className="select-field">
                   {triggerValuesFor(options.document_type_triggers, editForm.document_type).map((v) => (
                     <option key={v} value={v}>{triggerLabel(editForm.document_type, v)}</option>
@@ -833,14 +833,14 @@ export default function EmailRecipientsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="ef-depo" className="block text-xs font-medium text-gray-500 mb-1">Depo</label>
+                <label htmlFor="ef-depo" className="block text-xs font-medium text-muted-foreground mb-1">Depo</label>
                 <select id="ef-depo" value={editForm.kode_depo || ''} onChange={(e) => setEditForm({ ...editForm, kode_depo: e.target.value || null })} className="select-field">
                   <option value="">Global (Semua Depo)</option>
                   {(options.depots || []).map((d) => <option key={d.kode_depo} value={d.kode_depo}>{d.kode_depo} — {d.nama_depo}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="ef-field" className="block text-xs font-medium text-gray-500 mb-1">Field</label>
+                <label htmlFor="ef-field" className="block text-xs font-medium text-muted-foreground mb-1">Field</label>
                 <select id="ef-field" value={editForm.field} onChange={(e) => setEditForm({ ...editForm, field: e.target.value })} className="select-field">
                   <option value="TO">TO</option>
                   <option value="CC">CC</option>
@@ -848,7 +848,7 @@ export default function EmailRecipientsPage() {
               </div>
             </div>
             <div>
-              <label htmlFor="ef-type" className="block text-xs font-medium text-gray-500 mb-1">Tipe Penerima</label>
+              <label htmlFor="ef-type" className="block text-xs font-medium text-muted-foreground mb-1">Tipe Penerima</label>
               <select id="ef-type" value={editForm.recipient_type} onChange={(e) => setEditForm({ ...editForm, recipient_type: e.target.value })} className="select-field">
                 <option value="email">Email Langsung</option>
                 <option value="user">Pengguna Tertentu</option>
@@ -857,13 +857,13 @@ export default function EmailRecipientsPage() {
             </div>
             {editForm.recipient_type === 'email' && (
               <div>
-                <label htmlFor="ef-email" className="block text-xs font-medium text-gray-500 mb-1">Alamat Email</label>
+                <label htmlFor="ef-email" className="block text-xs font-medium text-muted-foreground mb-1">Alamat Email</label>
                 <input id="ef-email" type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="nama@domain.com" className="input-field text-sm py-2" />
               </div>
             )}
             {editForm.recipient_type === 'user' && (
               <div>
-                <label htmlFor="ef-user" className="block text-xs font-medium text-gray-500 mb-1">Pilih Pengguna</label>
+                <label htmlFor="ef-user" className="block text-xs font-medium text-muted-foreground mb-1">Pilih Pengguna</label>
                 <select id="ef-user" value={editForm.user_id ?? 0} onChange={(e) => setEditForm({ ...editForm, user_id: parseInt(e.target.value) || null })} className="select-field">
                   <option value={0}>Pilih user...</option>
                   {options.users.map((u) => <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>)}
@@ -872,7 +872,7 @@ export default function EmailRecipientsPage() {
             )}
             {editForm.recipient_type === 'role' && (
               <div>
-                <label htmlFor="ef-role" className="block text-xs font-medium text-gray-500 mb-1">Pilih Role</label>
+                <label htmlFor="ef-role" className="block text-xs font-medium text-muted-foreground mb-1">Pilih Role</label>
                 <select id="ef-role" value={editForm.role_slug} onChange={(e) => setEditForm({ ...editForm, role_slug: e.target.value })} className="select-field">
                   <option value="">Pilih role...</option>
                   {options.roles.map((r) => <option key={r.id} value={r.slug}>{r.name}</option>)}
@@ -880,7 +880,7 @@ export default function EmailRecipientsPage() {
               </div>
             )}
             <div>
-              <label htmlFor="ef-label" className="block text-xs font-medium text-gray-500 mb-1">Label (opsional)</label>
+              <label htmlFor="ef-label" className="block text-xs font-medium text-muted-foreground mb-1">Label (opsional)</label>
               <input id="ef-label" type="text" value={editForm.label} onChange={(e) => setEditForm({ ...editForm, label: e.target.value })} placeholder="Mis: BLC penerima" className="input-field text-sm py-2" />
             </div>
             <div className="flex items-center gap-3">
@@ -892,9 +892,9 @@ export default function EmailRecipientsPage() {
           <div className="space-y-4">
             {/* Konteks depo & field */}
             <div className={`rounded-xl px-4 py-3 text-sm ${depoLocked || fieldLocked ? 'bg-brand-wash border border-chip-primary-border' : 'bg-popover'}`}>
-              <p className="text-xs text-gray-500 mb-1">Penerima ini akan dibuat untuk:</p>
+              <p className="text-xs text-muted-foreground mb-1">Penerima ini akan dibuat untuk:</p>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-card border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-card border border-border px-2.5 py-1 text-xs font-semibold text-gray-700">
                   <svg className="w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15" /></svg>
                   {depotLabel(createForm.kode_depo)}
                 </span>
@@ -905,12 +905,12 @@ export default function EmailRecipientsPage() {
               </div>
             </div>
 
-            <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+            <p className="text-xs text-muted-foreground bg-slate-50 rounded-lg px-3 py-2">
               Panduan: satu baris = satu penerima. Pilih jenis dokumen &amp; trigger, lalu tambahkan banyak user/email/role ke field TO atau CC sekaligus. Depo kosong = berlaku global.
             </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="cf-doc" className="block text-xs font-medium text-gray-500 mb-1">Jenis Dokumen</label>
+                <label htmlFor="cf-doc" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Dokumen</label>
                 <select id="cf-doc" value={createForm.document_type}
                   onChange={(e) => {
                     const doc = e.target.value;
@@ -921,7 +921,7 @@ export default function EmailRecipientsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="cf-trigger" className="block text-xs font-medium text-gray-500 mb-1">Trigger</label>
+                <label htmlFor="cf-trigger" className="block text-xs font-medium text-muted-foreground mb-1">Trigger</label>
                 <select id="cf-trigger" value={createForm.trigger} onChange={(e) => setCreateForm({ ...createForm, trigger: e.target.value })} className="select-field">
                   {triggerValuesFor(options.document_type_triggers, createForm.document_type).map((v) => (
                     <option key={v} value={v}>{triggerLabel(createForm.document_type, v)}</option>
@@ -933,7 +933,7 @@ export default function EmailRecipientsPage() {
               </div>
               {!depoLocked && (
                 <div>
-                  <label htmlFor="cf-depo" className="block text-xs font-medium text-gray-500 mb-1">Depo</label>
+                  <label htmlFor="cf-depo" className="block text-xs font-medium text-muted-foreground mb-1">Depo</label>
                   <select id="cf-depo" value={createForm.kode_depo || ''} onChange={(e) => setCreateForm({ ...createForm, kode_depo: e.target.value || null })} className="select-field">
                     <option value="">Global (Semua Depo)</option>
                     {(options.depots || []).map((d) => <option key={d.kode_depo} value={d.kode_depo}>{d.kode_depo} — {d.nama_depo}</option>)}
@@ -942,14 +942,14 @@ export default function EmailRecipientsPage() {
               )}
               {!fieldLocked && (
                 <div>
-                  <label htmlFor="cf-field" className="block text-xs font-medium text-gray-500 mb-1">Field</label>
+                  <label htmlFor="cf-field" className="block text-xs font-medium text-muted-foreground mb-1">Field</label>
                   <div className="flex gap-2">
                     {(['TO', 'CC'] as const).map((f) => (
                       <button
                         key={f}
                         type="button"
                         onClick={() => setCreateForm({ ...createForm, field: f })}
-                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold border transition-colors ${createForm.field === f ? fieldBadge(f) : 'bg-card border-gray-200 text-gray-500 hover:bg-popover'}`}
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold border transition-colors ${createForm.field === f ? fieldBadge(f) : 'bg-card border-border text-muted-foreground hover:bg-popover'}`}
                       >
                         {f}
                       </button>
@@ -959,10 +959,10 @@ export default function EmailRecipientsPage() {
               )}
             </div>
 
-            <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div className="rounded-xl border border-border p-4 space-y-3">
               <p className="text-sm font-bold text-slate-700">Penerima {createForm.field}</p>
               <div>
-                <label htmlFor="cf-users" className="block text-xs font-medium text-gray-500 mb-1">Pengguna (bisa lebih dari satu)</label>
+                <label htmlFor="cf-users" className="block text-xs font-medium text-muted-foreground mb-1">Pengguna (bisa lebih dari satu)</label>
                 <select id="cf-users" multiple value={createForm.user_ids.map(String)} onChange={(e) => {
                   const vals = Array.from(e.target.selectedOptions).map((o) => parseInt(o.value)).filter(Boolean);
                   setCreateForm({ ...createForm, user_ids: vals });
@@ -971,11 +971,11 @@ export default function EmailRecipientsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="cf-emails" className="block text-xs font-medium text-gray-500 mb-1">Email tambahan (luar sistem)</label>
+                <label htmlFor="cf-emails" className="block text-xs font-medium text-muted-foreground mb-1">Email tambahan (luar sistem)</label>
                 <textarea id="cf-emails" value={createForm.emails} onChange={(e) => setCreateForm({ ...createForm, emails: e.target.value })} placeholder="nama1@domain.com, nama2@domain.com" className="input-field text-sm py-2 min-h-[60px]" />
               </div>
               <div>
-                <label htmlFor="cf-role" className="block text-xs font-medium text-gray-500 mb-1">Role (semua anggota)</label>
+                <label htmlFor="cf-role" className="block text-xs font-medium text-muted-foreground mb-1">Role (semua anggota)</label>
                 <select id="cf-role" value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })} className="select-field">
                   <option value="">Tidak ada</option>
                   {options.roles.map((r) => <option key={r.id} value={r.slug}>{r.name}</option>)}
@@ -984,7 +984,7 @@ export default function EmailRecipientsPage() {
             </div>
 
             <div>
-              <label htmlFor="cf-label" className="block text-xs font-medium text-gray-500 mb-1">Label (opsional)</label>
+              <label htmlFor="cf-label" className="block text-xs font-medium text-muted-foreground mb-1">Label (opsional)</label>
               <input id="cf-label" type="text" value={createForm.label} onChange={(e) => setCreateForm({ ...createForm, label: e.target.value })} placeholder="Mis: BLC penerima" className="input-field text-sm py-2" />
             </div>
             <div className="flex items-center gap-3">

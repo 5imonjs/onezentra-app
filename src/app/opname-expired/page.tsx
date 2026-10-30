@@ -176,7 +176,7 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
       </td>
       <td className="px-5 py-3 min-w-50 max-w-80">
         <span className="block font-mono text-sm font-medium text-slate-800">{w.kode_barang}</span>
-        <span className="block text-xs text-slate-500 line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
+        <span className="block text-xs text-muted-foreground line-clamp-1 wrap-break-word" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</span>
       </td>
       <td className="px-5 py-3 whitespace-nowrap text-sm text-slate-600">{w.nama_depo || w.kode_depo || '-'}</td>
       <td className="px-5 py-3 whitespace-nowrap">{sourceBadge(w.source_mix)}</td>
@@ -263,7 +263,7 @@ function SortHeader({ label, sortKey, sort, onSort, align = 'left' }: {
       type="button"
       onClick={() => onSort(sortKey)}
       aria-label={`Urutkan ${label} ${active && sort.dir === 'asc' ? 'menurun' : 'menaik'}`}
-      className={`inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[11px] transition-colors hover:text-slate-800 ${active ? 'text-slate-800' : 'text-slate-500'} ${align === 'right' ? 'flex-row-reverse' : ''}`}
+      className={`inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[11px] transition-colors hover:text-slate-800 ${active ? 'text-slate-800' : 'text-muted-foreground'} ${align === 'right' ? 'flex-row-reverse' : ''}`}
     >
       <span>{label}</span>
       <span aria-hidden="true" className={`text-[10px] leading-none ${active ? 'text-primary-500' : 'text-slate-300'}`}>
@@ -660,7 +660,7 @@ export default function OpnameExpiredPage() {
                   <svg className="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Total Batch</p>
+                  <p className="text-xs text-muted-foreground">Total Batch</p>
                   <p className="text-2xl font-bold text-slate-800 tabular-nums mt-1">{fnum(totalBatch)}</p>
                 </div>
               </div>
@@ -680,7 +680,7 @@ export default function OpnameExpiredPage() {
                       {s === 'AMAN' && <svg className="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>}
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 truncate">{meta.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">{meta.label}</p>
                       <p className={`text-2xl font-bold tabular-nums mt-1 ${meta.text}`}>{fnum(c?.count ?? 0)}</p>
                     </div>
                   </div>
@@ -698,7 +698,7 @@ export default function OpnameExpiredPage() {
                   <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">CRT Berisiko</p>
+                  <p className="text-xs text-muted-foreground">CRT Berisiko</p>
                   <p className="text-2xl font-bold tabular-nums mt-1 text-slate-800">{fnum(berisikoCrt)}</p>
                 </div>
               </div>
@@ -747,7 +747,7 @@ export default function OpnameExpiredPage() {
                         <div className={`h-full rounded-full ${d.submitted ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
-                    <span className="text-xs tabular-nums text-slate-500 whitespace-nowrap">{d.validated}/{d.total}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">{d.validated}/{d.total}</span>
                   </div>
                 );
               })}
@@ -760,7 +760,7 @@ export default function OpnameExpiredPage() {
           {/* Toolbar: week + search */}
           <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-gray-100">
             <label htmlFor="week-start" className="flex items-center gap-2">
-              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-slate-500">Minggu</span>
+              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</span>
               <select id="week-start" value={weekStart} onChange={(e) => { setWeekStart(e.target.value); setPage(1); }} className="select-field-sm min-w-[210px]">
                 <option value="">— Pilih Minggu —</option>
                 {weeks.map((w) => (
@@ -777,7 +777,7 @@ export default function OpnameExpiredPage() {
             />
             {depoOptions.length > 1 && (
               <label className="flex items-center gap-2">
-                <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-slate-500">Depo</span>
+                <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Depo</span>
                 <select
                   value={depoFilter}
                   onChange={(e) => { setDepoFilter(e.target.value); setPage(1); }}
@@ -793,7 +793,7 @@ export default function OpnameExpiredPage() {
               </label>
             )}
             <label className="flex items-center gap-2">
-              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-slate-500">Sumber</span>
+              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sumber</span>
               <select
                 value={sourceFilter}
                 onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
@@ -829,7 +829,7 @@ export default function OpnameExpiredPage() {
                     className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${active ? 'bg-ink-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}
                   >
                     {tab.label}
-                    <span className={`px-1.5 py-0.5 rounded-md text-[11px] tabular-nums ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`px-1.5 py-0.5 rounded-md text-[11px] tabular-nums ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-muted-foreground'}`}>
                       {fnum(count)}
                     </span>
                   </button>
@@ -939,7 +939,7 @@ export default function OpnameExpiredPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-sm font-medium text-slate-500">
+                    <p className="text-sm font-medium text-muted-foreground">
                       {tabKey === 'AMAN' ? 'Tidak ada batch berstatus Aman minggu ini.' : 'Tidak ada batch dengan kriteria ini.'}
                     </p>
                     <p className="text-xs text-slate-400">Ganti filter minggu/tab, atau Generate opname untuk minggu tersebut.</p>
@@ -971,7 +971,7 @@ export default function OpnameExpiredPage() {
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Status" sortKey="status" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Produk" sortKey="produk" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Depo" sortKey="depo" sort={sort} onSort={handleSort} /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Sumber</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Sumber</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Principal 1" sortKey="principal_1" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Principal 2" sortKey="principal_2" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="CRT/Ball" sortKey="crt" sort={sort} onSort={handleSort} align="right" /></th>
@@ -979,7 +979,7 @@ export default function OpnameExpiredPage() {
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Tgl Penerimaan" sortKey="penerimaan" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Expired" sortKey="expired" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Sisa" sortKey="sisa" sort={sort} onSort={handleSort} /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Tindakan</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Tindakan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1009,14 +1009,14 @@ export default function OpnameExpiredPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate font-mono text-sm font-bold text-slate-800">{w.kode_barang}</p>
-                          <p className="mt-0.5 line-clamp-1 wrap-break-word text-xs text-slate-500" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
+                          <p className="mt-0.5 line-clamp-1 wrap-break-word text-xs text-muted-foreground" title={w.nama_barang || undefined}>{w.nama_barang || '-'}</p>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-1">
                           {badge(w.status_ini)}
                           {w.sisa_hari < 0 && <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">EXPIRED</span>}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
                           <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                           {w.nama_depo || w.kode_depo || '-'}
@@ -1070,7 +1070,7 @@ export default function OpnameExpiredPage() {
               {pagination && pagination.total > ITEMS_PER_PAGE && (
                 <div className="border-t border-gray-100 bg-overlay-50 px-5 py-4">
                   <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
-                  <p className="text-xs text-slate-500 tabular-nums">
+                  <p className="text-xs text-muted-foreground tabular-nums">
                     Menampilkan {pagination.from ?? 0}–{pagination.to ?? 0} dari {pagination.total} baris
                   </p>
                   <div className="flex items-center gap-1.5">
@@ -1128,15 +1128,15 @@ export default function OpnameExpiredPage() {
                 {/* Ringkasan */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-popover rounded-xl p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Qty Minggu Ini</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qty Minggu Ini</p>
                     <p className="text-lg font-bold text-slate-800 tabular-nums mt-1">{fnum(num(current.qty_ini_crt))} CRT</p>
-                    {num(current.qty_ini_pcs) > 0 && <p className="text-xs text-slate-500 tabular-nums">{fnum(num(current.qty_ini_pcs))} PCS</p>}
+                    {num(current.qty_ini_pcs) > 0 && <p className="text-xs text-muted-foreground tabular-nums">{fnum(num(current.qty_ini_pcs))} PCS</p>}
                     {num(current.qty_koreksi_crt) !== 0 && (
                       <p className="text-[11px] text-blue-600 tabular-nums mt-0.5">koreksi {num(current.qty_koreksi_crt)} CRT / {num(current.qty_koreksi_pcs)} PCS</p>
                     )}
                   </div>
                   <div className="bg-popover rounded-xl p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Expired Date</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Expired Date</p>
                     <p className="text-lg font-bold text-slate-800 mt-1">{fmtDate(current.expired_date_ini)}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <DaysBar sisaHari={current.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={current.status_ini} />
@@ -1144,24 +1144,24 @@ export default function OpnameExpiredPage() {
                     </div>
                   </div>
                   <div className="bg-popover rounded-xl p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Depo</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Depo</p>
                     <p className="text-sm font-semibold text-slate-800 mt-1">{current.nama_depo || current.kode_depo || '-'}</p>
                   </div>
                   <div className="bg-popover rounded-xl p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Sumber Material</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber Material</p>
                     <p className="text-sm font-semibold text-slate-800 mt-1 wrap-break-word">{current.sumber_material || '-'}</p>
                   </div>
                 </div>
 
                 {/* Rekomendasi */}
                 <div className={`rounded-xl border px-4 py-3 ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).badge}`}>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Rekomendasi</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rekomendasi</p>
                   <p className="text-sm text-slate-800 mt-0.5 leading-snug">{current.rekomendasi || '-'}</p>
                 </div>
 
                 {/* Batch penyusun: jejak identitas tiap baris ledger agregat ini */}
                 <div className="rounded-xl border border-gray-300 px-4 py-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Batch Penyusun ({(current.batch_numbers || []).length}) · Sumber: {num(current.source_mix?.sj) > 0 && num(current.source_mix?.import) > 0
                       ? `Campuran (${current.source_mix?.sj} SJ + ${current.source_mix?.import} import)`
                       : num(current.source_mix?.import) > 0 ? `Import (${current.source_mix?.import} baris)` : num(current.source_mix?.sj) > 0 ? `SJ (${current.source_mix?.sj} baris)` : '-'}
@@ -1179,11 +1179,11 @@ export default function OpnameExpiredPage() {
 
                 {/* Perbandingan mingguan */}
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Perbandingan Minggu</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Perbandingan Minggu</h3>
                   <div className="rounded-xl border border-gray-300 overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-popover text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        <tr className="bg-popover text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           <th scope="col" className="px-3 py-2 text-left">Aspek</th>
                           <th scope="col" className="px-3 py-2 text-right">Minggu Ini</th>
                           <th scope="col" className="px-3 py-2 text-right">Minggu Lalu</th>
@@ -1191,28 +1191,28 @@ export default function OpnameExpiredPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         <tr>
-                          <td className="px-3 py-2 text-slate-500 text-xs">Qty (CRT / PCS)</td>
+                          <td className="px-3 py-2 text-muted-foreground text-xs">Qty (CRT / PCS)</td>
                           <td className="px-3 py-2 text-right tabular-nums text-slate-700">{fnum(num(current.qty_ini_crt))} / {fnum(num(current.qty_ini_pcs))}</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-slate-500">{num(current.qty_lalu_crt) > 0 || num(current.qty_lalu_pcs) > 0 ? `${fnum(num(current.qty_lalu_crt))} / ${fnum(num(current.qty_lalu_pcs))}` : '—'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{num(current.qty_lalu_crt) > 0 || num(current.qty_lalu_pcs) > 0 ? `${fnum(num(current.qty_lalu_crt))} / ${fnum(num(current.qty_lalu_pcs))}` : '—'}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 text-slate-500 text-xs">Expired Date</td>
+                          <td className="px-3 py-2 text-muted-foreground text-xs">Expired Date</td>
                           <td className="px-3 py-2 text-right text-slate-700">{fmtDate(current.expired_date_ini)}</td>
-                          <td className="px-3 py-2 text-right text-slate-500">{fmtDate(current.expired_date_lalu)}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">{fmtDate(current.expired_date_lalu)}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 text-slate-500 text-xs">Status</td>
+                          <td className="px-3 py-2 text-muted-foreground text-xs">Status</td>
                           <td className="px-3 py-2 text-right">{badge(current.status_ini)}</td>
                           <td className="px-3 py-2 text-right">{current.status_lalu ? badge(current.status_lalu) : <span className="text-xs text-slate-400">—</span>}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 text-slate-500 text-xs">Selisih Expired</td>
+                          <td className="px-3 py-2 text-muted-foreground text-xs">Selisih Expired</td>
                           <td colSpan={2} className="px-3 py-2 text-right tabular-nums text-slate-700">
                             {current.selisih_expired_date === null ? '—' : `${current.selisih_expired_date > 0 ? '+' : ''}${current.selisih_expired_date} hari`}
                           </td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 text-slate-500 text-xs font-semibold">Perubahan</td>
+                          <td className="px-3 py-2 text-muted-foreground text-xs font-semibold">Perubahan</td>
                           <td colSpan={2} className="px-3 py-2 text-right text-slate-700 font-medium">{current.perubahan || '—'}</td>
                         </tr>
                       </tbody>
@@ -1222,7 +1222,7 @@ export default function OpnameExpiredPage() {
 
                 {/* Validasi info */}
                 {current.validated_at && (
-                  <div className="text-xs text-slate-500 bg-popover rounded-xl px-3 py-2.5">
+                  <div className="text-xs text-muted-foreground bg-popover rounded-xl px-3 py-2.5">
                     <span className="font-semibold text-slate-700">Divalidasi:</span> oleh {current.validator?.full_name || '-'} · {fmtDate(current.validated_at)}
                   </div>
                 )}
@@ -1233,7 +1233,7 @@ export default function OpnameExpiredPage() {
                 <button
                   onClick={() => navNext(-1)}
                   disabled={currentIndex <= 0}
-                  className="p-2.5 rounded-xl border border-gray-300 text-slate-500 hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2.5 rounded-xl border border-gray-300 text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label="Batch sebelumnya"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
@@ -1247,7 +1247,7 @@ export default function OpnameExpiredPage() {
                 <button
                   onClick={() => navNext(1)}
                   disabled={currentIndex >= waves.length - 1}
-                  className="p-2.5 rounded-xl border border-gray-300 text-slate-500 hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-2.5 rounded-xl border border-gray-300 text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label="Batch berikutnya"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -1276,17 +1276,17 @@ export default function OpnameExpiredPage() {
           </div>
         )}
           <div>
-            <label htmlFor="threshold-aman" className="block text-xs font-medium text-gray-500 mb-1">Threshold AMAN (hari, ≥ ini = Aman)</label>
+            <label htmlFor="threshold-aman" className="block text-xs font-medium text-muted-foreground mb-1">Threshold AMAN (hari, ≥ ini = Aman)</label>
             <input id="threshold-aman" type="number" min={0} step={1} value={thresholdForm.threshold_aman} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_aman: parseInt(e.target.value) || 0 }))} className="input-field" />
             <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa ≥ hari ini → status <span className="text-emerald-600 font-medium">Aman</span></p>
           </div>
           <div>
-            <label htmlFor="threshold-perhatian" className="block text-xs font-medium text-gray-500 mb-1">Threshold PERHATIAN (hari)</label>
+            <label htmlFor="threshold-perhatian" className="block text-xs font-medium text-muted-foreground mb-1">Threshold PERHATIAN (hari)</label>
             <input id="threshold-perhatian" type="number" min={0} step={1} value={thresholdForm.threshold_perhatian} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_perhatian: parseInt(e.target.value) || 0 }))} className="input-field" />
             <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa &lt; threshold AMAN → status <span className="text-amber-600 font-medium">Perhatian</span></p>
           </div>
           <div>
-            <label htmlFor="threshold-kritis" className="block text-xs font-medium text-gray-500 mb-1">Threshold KRITIS — ambang &ldquo;SEGERA&rdquo; (hari)</label>
+            <label htmlFor="threshold-kritis" className="block text-xs font-medium text-muted-foreground mb-1">Threshold KRITIS — ambang &ldquo;SEGERA&rdquo; (hari)</label>
             <input id="threshold-kritis" type="number" min={0} step={1} value={thresholdForm.threshold_kritis} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: parseInt(e.target.value) || 0 }))} className="input-field" />
             <p className="text-[11px] text-slate-400 mt-1">Batch berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Tidak menggeser batas status (batas Kritis = threshold PERHATIAN).</p>
           </div>

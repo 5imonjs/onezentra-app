@@ -274,7 +274,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">Tanggal • Cluster • Status • Depo • Cari</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Tanggal • Cluster • Status • Depo • Cari</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100" role="group" aria-label="Preset rentang tanggal">
@@ -283,7 +283,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                   { key: '7d', label: '7 Hari' },
                   { key: 'month', label: 'Bulan Ini' },
                 ].map((r) => (
-                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{r.label}</button>
+                  <button key={r.key} onClick={() => applyRange(r.key)} aria-pressed={rangePreset === r.key} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${rangePreset === r.key ? 'bg-card text-slate-900 shadow-sm' : 'text-muted-foreground hover:text-slate-700'}`}>{r.label}</button>
                 ))}
               </div>
             </div>
@@ -337,24 +337,24 @@ export default function PenerimaanBatchExpiredReportPage() {
         {summary && (
           <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
             <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total Penerimaan</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total Penerimaan</p>
               <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_item)}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">{fmtNumber(summary.total_cluster)} cluster</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{fmtNumber(summary.total_cluster)} cluster</p>
             </div>
             <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Qty Dus/Ball</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qty Dus/Ball</p>
               <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_qty_dus)}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">satuan CRT/ZAK</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">satuan CRT/ZAK</p>
             </div>
             <div className="rounded-2xl shadow-sm border p-5 card-hover bg-card border-gray-100">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Qty PCS</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qty PCS</p>
               <p className="text-2xl font-black tabular-nums text-slate-900 mt-1">{fmtNumber(summary.total_qty_pcs)}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">pcs-equivalent</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">pcs-equivalent</p>
             </div>
             <div className={`rounded-2xl shadow-sm border p-5 card-hover ${summary.item_expired > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Sudah Expired</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sudah Expired</p>
               <p className={`text-2xl font-black tabular-nums mt-1 ${summary.item_expired > 0 ? 'text-red-700' : 'text-emerald-700'}`}>{fmtNumber(summary.item_expired)}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">{fmtNumber(summary.item_future)} masih future</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{fmtNumber(summary.item_future)} masih future</p>
             </div>
           </div>
         )}
@@ -367,7 +367,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Detail Penerimaan &amp; Expired</h2>
-                  <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{rangeText}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{rangeText}</p>
                 </div>
               </div>
               <button
@@ -476,7 +476,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                     </td>
                     <td className="table-cell text-sm text-slate-600 tabular-nums whitespace-nowrap">{fmtDate(row.tanggal_penerimaan)}</td>
                     <td className="table-cell whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${row.weekday === 'Future' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : row.weekday === 'Past' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${row.weekday === 'Future' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : row.weekday === 'Past' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-muted-foreground border-border'}`}>
                         {row.weekday}
                       </span>
                     </td>
@@ -502,30 +502,30 @@ export default function PenerimaanBatchExpiredReportPage() {
               <div key={row.id} className={`p-4 space-y-2 ${row.is_expired ? 'bg-red-50/70' : ''}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-500">{row.cluster}</p>
+                    <p className="text-xs font-semibold text-muted-foreground">{row.cluster}</p>
                     <p className="text-sm font-bold text-slate-900 font-mono truncate" title={row.kode_barang}>{row.sku ?? row.kode_barang}</p>
-                    <p className="text-[11px] text-slate-500 truncate">{row.principal_1 ?? '-'}{(row.principal_2 ?? '-') !== '-' ? ` / ${row.principal_2}` : ''}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{row.principal_1 ?? '-'}{(row.principal_2 ?? '-') !== '-' ? ` / ${row.principal_2}` : ''}</p>
                   </div>
-                  <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${row.weekday === 'Future' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : row.weekday === 'Past' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                  <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${row.weekday === 'Future' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : row.weekday === 'Past' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-muted-foreground border-border'}`}>
                     {row.weekday}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 line-clamp-2">{row.nama_barang}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{row.nama_barang}</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-xl bg-popover p-2">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">Dus/Ball</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Dus/Ball</p>
                     <p className="text-sm font-black tabular-nums text-slate-900">{fmtNumber(row.qty_dus_ball)}</p>
                   </div>
                   <div className="rounded-xl bg-popover p-2">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">PCS</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">PCS</p>
                     <p className="text-sm font-black tabular-nums text-slate-900">{fmtNumber(row.qty_pcs)}</p>
                   </div>
                   <div className="rounded-xl bg-popover p-2">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">Sisa Simpan</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Sisa Simpan</p>
                     <p className="text-sm font-black tabular-nums text-slate-900">{row.sisa_simpan}</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 tabular-nums">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground tabular-nums">
                   <span>Expired: <span className={row.is_expired ? 'text-red-700 font-bold' : ''}>{fmtDate(row.tanggal_expired)}</span></span>
                   <span>Diterima: {fmtDate(row.tanggal_penerimaan)}</span>
                 </div>
@@ -535,7 +535,7 @@ export default function PenerimaanBatchExpiredReportPage() {
 
           {lastPage > 1 && (
             <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
-              <p className="text-xs text-slate-500 tabular-nums">Halaman {page} dari {lastPage}</p>
+              <p className="text-xs text-muted-foreground tabular-nums">Halaman {page} dari {lastPage}</p>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}

@@ -434,7 +434,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
           )}
 
           <div className="rounded-2xl border border-gray-300 p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Tambah Baris Manual</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">Tambah Baris Manual</p>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -512,7 +512,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                                   <div className="flex items-center gap-2 mt-0.5">
                                     <span className="text-xs font-mono opacity-70">{product.szNickName}</span>
                                     {product.SAPszUomId && (
-                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">{product.SAPszUomId}</span>
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-muted-foreground font-medium">{product.SAPszUomId}</span>
                                     )}
                                   </div>
                                 </div>
@@ -576,7 +576,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
 
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase">Batch Manual Tersimpan {loading ? '(memuat...)' : `(${totalCount})`}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Batch Manual Tersimpan {loading ? '(memuat...)' : `(${totalCount})`}</p>
               <div className="flex items-center gap-2">
                 {items.length > 0 && hasPermission('penerimaan.delete') && (
                   <>
@@ -604,7 +604,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                 <p className="text-[11px] text-amber-600 w-full">Menampilkan 100 batch terbaru dari {totalCount} &mdash; &ldquo;Hapus semua&rdquo; mencakup seluruh data, bukan hanya yang tampil</p>
               )}
               {items.some((it) => !it.batch?.batch_number && !it.verifiedBatch?.batch_number) && (
-                <p className="text-[11px] text-slate-500 w-full">Kode Batch &ldquo;&ndash;&rdquo; = label fisik belum diterbitkan (baris import/baseline lama); label terbit saat verifikasi sesi lapangan pertama.</p>
+                <p className="text-[11px] text-muted-foreground w-full">Kode Batch &ldquo;&ndash;&rdquo; = label fisik belum diterbitkan (baris import/baseline lama); label terbit saat verifikasi sesi lapangan pertama.</p>
               )}
             </div>
             {loadError ? (
@@ -629,14 +629,14 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                           />
                         </th>
                       )}
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Barang</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Batch</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nama</th>
-                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Qty CRT/ZAK</th>
-                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">PCS</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Expired</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Sumber Material</th>
-                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Aksi</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kode Barang</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kode Batch</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nama</th>
+                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Qty CRT/ZAK</th>
+                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">PCS</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Expired</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sumber Material</th>
+                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -683,7 +683,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                   <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
                     <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                   </div>
-                  <p className="text-sm text-gray-500 font-medium">{loading ? 'Memuat...' : 'Belum ada batch manual tersimpan.'}</p>
+                  <p className="text-sm text-muted-foreground font-medium">{loading ? 'Memuat...' : 'Belum ada batch manual tersimpan.'}</p>
                 </div>
               </div>
             )}

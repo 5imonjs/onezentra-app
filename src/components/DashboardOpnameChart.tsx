@@ -79,7 +79,7 @@ export default function DashboardOpnameChart() {
     >
       <div className="px-6 py-4">
         {loading && depots.length === 0 ? (
-          <p className="text-sm text-gray-500">Memuat...</p>
+          <p className="text-sm text-muted-foreground">Memuat...</p>
         ) : error ? (
           <div id="opname-chart-error" role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
             <span className="flex-1 text-sm text-red-700">{error}</span>
@@ -88,7 +88,7 @@ export default function DashboardOpnameChart() {
             </button>
           </div>
         ) : depots.length === 0 ? (
-          <p className="text-sm text-gray-500">Belum ada wave minggu ini — Generate dulu di Batch Expired.</p>
+          <p className="text-sm text-muted-foreground">Belum ada wave minggu ini — Generate dulu di Batch Expired.</p>
         ) : (
           <ul className="space-y-3">
             {depots.map((d) => {
@@ -100,7 +100,7 @@ export default function DashboardOpnameChart() {
                       <span className={`w-2 h-2 rounded-full shrink-0 ${d.submitted ? 'bg-emerald-500' : 'bg-amber-500'}`} aria-hidden="true" />
                       <span className="font-semibold text-slate-700 truncate">{d.nama_depo || d.kode_depo}</span>
                     </span>
-                    <span className="text-xs tabular-nums text-slate-500 whitespace-nowrap">{d.validated}/{d.total} · {pct}%</span>
+                    <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">{d.validated}/{d.total} · {pct}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-slate-100 overflow-hidden mt-1" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Progres ${d.nama_depo || d.kode_depo}`}>
                     <div className={`h-full rounded-full transition-all duration-300 ${d.submitted ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />

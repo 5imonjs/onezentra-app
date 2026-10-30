@@ -381,7 +381,7 @@ export default function ReceivingPage() {
                   <svg className="h-6 w-6 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
                 <h3 className="text-sm font-bold text-slate-800">Belum ada receiving dipilih</h3>
-                <p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-slate-500">
+                <p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
                   Scan barcode pada dokumen PO transporter, atau pilih receiving berstatus <b>Menunggu</b> / <b>Diproses</b> pada daftar di bawah.
                 </p>
               </div>
@@ -454,7 +454,7 @@ export default function ReceivingPage() {
                 </div>
                 {scanResult.success && notifiedRecipients && (
                   <div className="border-t border-emerald-100 px-4 py-3 bg-card">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email dikirim ke:</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Email dikirim ke:</p>
                     <div className="flex flex-wrap gap-2">
                       {notifiedRecipients.to.map((r) => (
                         <span key={`to-${r}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-medium">
@@ -536,12 +536,12 @@ export default function ReceivingPage() {
                 <caption className="sr-only">Daftar receiving</caption>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-slate-300 bg-popover">
-                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">No. PO Transporter</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Driver</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Progres</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
-                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Aksi</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">No. PO Transporter</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Driver</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Progres</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -632,7 +632,7 @@ export default function ReceivingPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-mono text-sm font-bold text-slate-800">{fmt(item.rencana_kirim?.po_transporter)}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           {fmt(item.rencana_kirim?.driver_name)}
                           {item.rencana_kirim?.nopol ? ` · ${item.rencana_kirim.nopol}` : ''}
                         </p>
@@ -655,7 +655,7 @@ export default function ReceivingPage() {
           <div className="border-t border-gray-100 bg-overlay-60 px-4 py-3.5 sm:px-5">
             <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman sebelumnya">Sebelumnya</button>
-              <span className="text-xs text-slate-500 sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
+              <span className="text-xs text-muted-foreground sm:text-sm">Halaman <strong className="text-slate-800">{page}</strong> dari {lastPage}</span>
               <button onClick={() => setPage(Math.min(lastPage, page + 1))} disabled={page === lastPage} className="btn-secondary w-full text-sm disabled:opacity-50 sm:w-auto" aria-label="Halaman berikutnya">Selanjutnya</button>
             </div>
           </div>
@@ -688,7 +688,7 @@ export default function ReceivingPage() {
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">PO Transporter</p>
                     <h3 className="text-lg font-bold tracking-tight font-mono text-slate-900">{viewItem.rencana_kirim?.po_transporter}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">{viewItem.rencana_kirim?.driver_name || '-'} · {viewItem.rencana_kirim?.nopol || '-'}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{viewItem.rencana_kirim?.driver_name || '-'} · {viewItem.rencana_kirim?.nopol || '-'}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="rounded-xl bg-card border border-slate-300 p-3 text-center min-w-[76px]">
@@ -724,14 +724,14 @@ export default function ReceivingPage() {
                       <caption className="sr-only">Detail item receiving</caption>
                       <thead>
                         <tr className="bg-popover border-b border-slate-300">
-                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Kode</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama</th>
-                          <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Expected</th>
-                          <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Actual</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Expired</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Catatan</th>
-                          <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Foto</th>
-                          <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">Condition</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Kode</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Nama</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Expected</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Actual</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Expired</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Catatan</th>
+                          <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Foto</th>
+                          <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Condition</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -757,7 +757,7 @@ export default function ReceivingPage() {
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground max-w-[160px] truncate" title={item.notes || ''}>{item.notes || '-'}</td>
                             <td className="px-4 py-3 text-center">
                               {item.photo ? (
                                 <a href={storageFileUrl(item.photo) ?? '#'} target="_blank" rel={AUTHENTICATED_FILE_REL} className="inline-flex items-center gap-1 text-xs text-accent-text hover:text-accent-text-strong font-medium">
@@ -801,12 +801,12 @@ export default function ReceivingPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-500 mb-1" htmlFor="pilih-file">Pilih File</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="pilih-file">Pilih File</label>
             <input id="pilih-file"
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
+              className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
             />
             <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: no_surat_jalan, nama_thl</p>
           </div>

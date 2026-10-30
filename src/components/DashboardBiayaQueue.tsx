@@ -155,7 +155,7 @@ export default function DashboardBiayaQueue({ kodeDepo }: { kodeDepo?: string })
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate text-[11px] font-semibold uppercase tracking-wider ${tone.label}`}>{card.label}</span>
                   <span className={`mt-0.5 block text-2xl leading-none tabular-nums font-black ${tone.num}`}>{card.count.toLocaleString('id-ID')}</span>
-                  <span className="mt-1 block truncate text-[11px] text-gray-500">{card.hint}</span>
+                  <span className="mt-1 block truncate text-[11px] text-muted-foreground">{card.hint}</span>
                 </span>
                 <svg className="mt-0.5 h-4 w-4 shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
               </Link>

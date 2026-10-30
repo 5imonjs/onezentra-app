@@ -83,7 +83,7 @@ function NotificationLogPanel() {
           </button>
         </div>
       ) : logs.length === 0 ? (
-        <p className="text-xs text-gray-500">Tidak ada catatan pada filter ini.</p>
+        <p className="text-xs text-muted-foreground">Tidak ada catatan pada filter ini.</p>
       ) : (
         <ul className="space-y-2 max-h-64 overflow-auto">
           {logs.map((l) => (
@@ -91,7 +91,7 @@ function NotificationLogPanel() {
               <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold mr-2 ${l.status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{l.status}</span>
               <span className="font-semibold text-gray-700">{l.document_type} · {l.trigger}</span>
               <span className="text-gray-400"> #{l.context_id ?? '-'} · {formatDateId(l.created_at)}</span>
-              {l.error && <p className="text-gray-500 mt-1 wrap-break-word">{l.error}</p>}
+              {l.error && <p className="text-muted-foreground mt-1 wrap-break-word">{l.error}</p>}
             </li>
           ))}
         </ul>
@@ -143,7 +143,7 @@ export default function EmailSettingsPage() {
   if (!canView) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm text-gray-500">Anda tidak memiliki izin untuk melihat Setting Email.</div>
+        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat Setting Email.</div>
       </DashboardLayout>
     );
   }
@@ -212,7 +212,7 @@ export default function EmailSettingsPage() {
                 <fieldset disabled={!canEdit} className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="mailer" className="block text-xs font-medium text-gray-500 mb-1">Mailer</label>
+                      <label htmlFor="mailer" className="block text-xs font-medium text-muted-foreground mb-1">Mailer</label>
                       <select id="mailer" value={form.mailer} onChange={(e) => input('mailer', e.target.value)} className="select-field">
                         <option value="smtp">SMTP</option>
                         <option value="log">Log (debug)</option>
@@ -225,15 +225,15 @@ export default function EmailSettingsPage() {
                       <p className="mt-1 text-[11px] text-gray-400">Hanya SMTP untuk pengiriman nyata; Log untuk uji lokal.</p>
                     </div>
                     <div>
-                      <label htmlFor="host" className="block text-xs font-medium text-gray-500 mb-1">Host</label>
+                      <label htmlFor="host" className="block text-xs font-medium text-muted-foreground mb-1">Host</label>
                       <input id="host" type="text" value={form.host} onChange={(e) => input('host', e.target.value)} placeholder="smtp.gmail.com" className="input-field text-sm py-2" />
                     </div>
                     <div>
-                      <label htmlFor="port" className="block text-xs font-medium text-gray-500 mb-1">Port</label>
+                      <label htmlFor="port" className="block text-xs font-medium text-muted-foreground mb-1">Port</label>
                       <input id="port" type="number" value={form.port} onChange={(e) => input('port', parseInt(e.target.value) || 0)} className="input-field text-sm py-2" />
                     </div>
                     <div>
-                      <label htmlFor="encryption" className="block text-xs font-medium text-gray-500 mb-1">Encryption</label>
+                      <label htmlFor="encryption" className="block text-xs font-medium text-muted-foreground mb-1">Encryption</label>
                       <select id="encryption" value={form.encryption} onChange={(e) => input('encryption', e.target.value)} className="select-field">
                         <option value="tls">TLS</option>
                         <option value="ssl">SSL</option>
@@ -241,11 +241,11 @@ export default function EmailSettingsPage() {
                       </select>
                     </div>
                     <div>
-                      <label htmlFor="username" className="block text-xs font-medium text-gray-500 mb-1">Username</label>
+                      <label htmlFor="username" className="block text-xs font-medium text-muted-foreground mb-1">Username</label>
                       <input id="username" type="text" value={form.username} onChange={(e) => input('username', e.target.value)} placeholder="email@domain.com" className="input-field text-sm py-2" />
                     </div>
                     <div>
-                      <label htmlFor="password" className="block text-xs font-medium text-gray-500 mb-1">Password</label>
+                      <label htmlFor="password" className="block text-xs font-medium text-muted-foreground mb-1">Password</label>
                       <input id="password" type="password" value={form.password} onChange={(e) => input('password', e.target.value)} placeholder="•••••••• — kosongkan bila tidak diubah" autoComplete="new-password" className="input-field text-sm py-2" />
                     </div>
                   </div>
@@ -254,11 +254,11 @@ export default function EmailSettingsPage() {
                     <h3 className="text-sm font-bold text-gray-800 mb-3">Pengirim (From)</h3>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div>
-                        <label htmlFor="from_address" className="block text-xs font-medium text-gray-500 mb-1">From Address</label>
+                        <label htmlFor="from_address" className="block text-xs font-medium text-muted-foreground mb-1">From Address</label>
                         <input id="from_address" type="email" value={form.from_address} onChange={(e) => input('from_address', e.target.value)} placeholder="notifikasi@onezentra.com" className="input-field text-sm py-2" />
                       </div>
                       <div>
-                        <label htmlFor="from_name" className="block text-xs font-medium text-gray-500 mb-1">From Name</label>
+                        <label htmlFor="from_name" className="block text-xs font-medium text-muted-foreground mb-1">From Name</label>
                         <input id="from_name" type="text" value={form.from_name} onChange={(e) => input('from_name', e.target.value)} placeholder="ONEZENTRA Warehouse" className="input-field text-sm py-2" />
                       </div>
                     </div>
@@ -281,7 +281,7 @@ export default function EmailSettingsPage() {
             <div className="space-y-6">
               <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-base font-bold text-gray-800 mb-4">Kirim Email Test</h3>
-                <label htmlFor="test-email" className="block text-xs font-medium text-gray-500 mb-1">Alamat Email Test</label>
+                <label htmlFor="test-email" className="block text-xs font-medium text-muted-foreground mb-1">Alamat Email Test</label>
                 <input id="test-email" type="email" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} disabled={!canEdit} placeholder="alamat@penerima.com" className="input-field text-sm py-2 mb-3" />
                 <button onClick={handleTest} disabled={!testEmail || sendingTest || !canEdit} className="btn-secondary w-full disabled:opacity-50">
                   {sendingTest ? 'Mengirim...' : 'Kirim Test Email'}
@@ -290,7 +290,7 @@ export default function EmailSettingsPage() {
 
               <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-base font-bold text-gray-800 mb-3">Informasi</h3>
-                <ul className="text-xs text-gray-500 space-y-2 list-disc pl-4">
+                <ul className="text-xs text-muted-foreground space-y-2 list-disc pl-4">
                   <li>Notifikasi dikirim otomatis saat rencana kirim dibuat.</li>
                   <li>Notifikasi hasil validasi dokumen dikirim ke BLC & CC.</li>
                   <li>Kelola penerima (TO/CC) di menu &quot;Penerima Email&quot;.</li>

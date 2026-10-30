@@ -129,7 +129,7 @@ export default function LoginPage() {
           <div className="bg-card rounded-3xl shadow-2xl shadow-black/10 p-8 border border-gray-100">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Hallo, Welcome Back</h2>
-              <p className="text-gray-500">Welcome Back to ONEZENTRA</p>
+              <p className="text-muted-foreground">Welcome Back to ONEZENTRA</p>
             </div>
 
             {error && (
@@ -212,9 +212,9 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-ink-fg-muted mt-8 whitespace-nowrap">
             &copy; {new Date().getFullYear()} <span className="font-semibold text-ink-fg-muted">ONEZENTRA</span>
-            <span className="mx-1.5 text-gray-500">&middot;</span>
+            <span className="mx-1.5 text-muted-foreground">&middot;</span>
             Developed by <span className="font-semibold text-ink-fg-muted">Langkau_kami</span>
-            <span className="mx-1.5 text-gray-500">&middot;</span>
+            <span className="mx-1.5 text-muted-foreground">&middot;</span>
             All rights reserved
           </p>
         </div>
