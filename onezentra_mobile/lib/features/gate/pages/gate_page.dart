@@ -844,7 +844,7 @@ class _GatePageState extends State<GatePage> {
     double size,
     Color background,
     IconData icon, {
-    Color iconColor = Theme.of(context).extension<ThemeColors>()?.gray500 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
+    Color iconColor = AppTheme.gray500,
   }) => Container(
     width: size,
     height: size,
