@@ -229,16 +229,20 @@ class _HomePageState extends State<HomePage> {
     width: double.infinity,
     padding: const EdgeInsets.all(AppTheme.space5),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
+      gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [AppTheme.primary950, AppTheme.ink900, AppTheme.ink800],
+        colors: [
+          Theme.of(context).extension<ThemeColors>()?.surfaceCard ?? AppTheme.surfaceCard,
+          Theme.of(context).extension<ThemeColors>()?.surface ?? AppTheme.surface,
+          Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
+        ],
       ),
       borderRadius: AppTheme.radius2xl,
       border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       boxShadow: [
         BoxShadow(
-          color: AppTheme.ink900.withValues(alpha: 0.35),
+          color: Theme.of(context).extension<ThemeColors>()?.surfaceHover ?? AppTheme.surfaceHover,
           blurRadius: 24,
           offset: const Offset(0, 10),
         ),
@@ -257,10 +261,11 @@ class _HomePageState extends State<HomePage> {
             ),
             borderRadius: AppTheme.radiusXl,
           ),
-          child: const Icon(
-            Icons.warehouse_rounded,
-            size: 26,
-            color: Colors.white,
+          child: Image.asset(
+            'assets/images/logo_apps.png',
+            width: 32,
+            height: 32,
+            fit: BoxFit.contain,
           ),
         ),
         const SizedBox(width: AppTheme.space4),
@@ -273,7 +278,7 @@ class _HomePageState extends State<HomePage> {
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   height: 1.2,
-                  color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  color: Colors.white70,
                 ),
               ),
               Text(
@@ -282,7 +287,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 20,
                   height: 1.2,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: Colors.white,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -516,7 +521,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 16,
                   height: 1.3,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -638,7 +643,7 @@ class _HomePageState extends State<HomePage> {
                   height: 1.3,
                   letterSpacing: 0,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).extension<ThemeColors>()?.foreground ?? AppTheme.foreground,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 2),
