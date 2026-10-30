@@ -58,7 +58,7 @@ function writeStore(store: Record<string, string[]>): void {
 
 /** Daftar `barcode_label` yang sudah dicetak pada sesi validasi ini. */
 export function loadPrintedLabels(validationId: number | null | undefined): string[] {
-  if (validationId == null) return [];
+  if (validationId === null || validationId === undefined) return [];
   const list = readStore()[String(validationId)];
   return Array.isArray(list) ? list.filter((v): v is string => typeof v === 'string') : [];
 }
@@ -116,7 +116,7 @@ export function unprintedCompleteItems<T extends PrintableItem>(items: T[] | nul
   if (!items?.length) return [];
   return items.filter((item) => {
     if (item.status === 'PENDING') return false;
-    if ((item as any).condition === 'FISIK_TIDAK_ADA') return false;
+    if (item.condition === 'FISIK_TIDAK_ADA') return false;
     const barcode = item.batch?.barcode_label?.trim() ?? '';
     if (!barcode) return false;
     if (item.batch?.status === 'CANCELLED') return false;

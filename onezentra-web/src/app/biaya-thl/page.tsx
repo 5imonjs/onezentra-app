@@ -897,7 +897,7 @@ export default function BiayaThlPage() {
     setBusy(true);
     try {
       const id = await persistFinal();
-      if (id == null) throw new Error('empty');
+      if (id === null || id === undefined) throw new Error('empty');
       await biayaThl.submit(id);
       notifyGlobal(editingStatus === 'revisi' ? 'Perubahan disimpan dan dikirim ulang ke tahap approval yang meminta revisi.' : 'Pengajuan dikirim ke antrean pemeriksaan.', 'success');
       await finishAfterSave();

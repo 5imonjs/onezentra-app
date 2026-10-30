@@ -714,7 +714,7 @@ export default function BiayaRetribusiPage() {
       logPayloadDiag(fd, 'create');
       const res = await biayaRetribusi.create(fd);
       const id = (res as { data?: { data?: { id?: number } } }).data?.data?.id;
-      if (id == null) throw new Error('empty');
+      if (id === null || id === undefined) throw new Error('empty');
       return id;
   };
 
