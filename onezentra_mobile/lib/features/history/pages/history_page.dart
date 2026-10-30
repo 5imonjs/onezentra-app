@@ -77,8 +77,8 @@ class HistoryPage extends StatelessWidget {
               ? TabBar(
                   indicatorColor: AppTheme.primary400,
                   labelColor: AppTheme.primary200,
-                  unselectedLabelColor: AppTheme.gray400,
-                  dividerColor: AppTheme.gray300.withValues(alpha: 0.2),
+                  unselectedLabelColor: Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
+                  dividerColor: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300.withValues(alpha: 0.2),
                   labelStyle: GoogleFonts.roboto(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,

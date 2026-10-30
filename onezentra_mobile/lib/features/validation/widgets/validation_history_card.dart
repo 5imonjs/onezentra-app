@@ -69,7 +69,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                       '${validation.total} sesi tercatat',
                       style: GoogleFonts.roboto(
                         fontSize: 11,
-                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray400,
+                        color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray400 ?? AppTheme.gray400,
                       ),
                     ),
                   ],
@@ -113,8 +113,8 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
             (_) => Container(
               height: 64,
               margin: const EdgeInsets.only(bottom: AppTheme.space3),
-              decoration: const BoxDecoration(
-                color: AppTheme.gray100,
+              decoration: BoxDecoration(
+                color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
                 borderRadius: AppTheme.radiusLg,
               ),
             ),
@@ -147,7 +147,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
           for (var i = 0; i < items.length; i++) ...[
             _historyTile(items[i], validation),
             if (i != items.length - 1)
-              const Divider(height: 1, color: AppTheme.gray100, indent: 46),
+              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100, indent: 46),
           ],
         ],
       ),
@@ -156,7 +156,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
           padding: const EdgeInsets.only(top: AppTheme.space4),
           child: Column(
             children: [
-              const Divider(height: 1, color: AppTheme.gray100),
+              Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100),
               const SizedBox(height: AppTheme.space3),
               Row(
                 children: [
@@ -176,7 +176,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                     'Halaman ${validation.currentPage}/${validation.lastPage}',
                     style: GoogleFonts.roboto(
                       fontSize: 11.5,
-                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                      color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                     ),
                   ),
                   const SizedBox(width: AppTheme.space2),
@@ -213,9 +213,9 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
         children: [
           _iconBox(
             36,
-            AppTheme.gray100,
+            Theme.of(context).extension<ThemeColors>()?.gray100 ?? AppTheme.gray100,
             Icons.verified_rounded,
-            iconColor: AppTheme.gray500,
+            iconColor: Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
           ),
           const SizedBox(width: AppTheme.space3),
           Expanded(
@@ -253,7 +253,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 11,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                   ),
                 ),
                 const SizedBox(height: 1),
@@ -268,7 +268,7 @@ class _ValidationHistoryCardState extends State<ValidationHistoryCard> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
                     fontSize: 10.5,
-                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? AppTheme.gray500,
+                    color: Theme.of(context).extension<ThemeColors>()?.textMuted ?? Theme.of(context).extension<ThemeColors>()?.gray50 ?? Theme.of(context).extension<ThemeColors>()?.gray500 ?? AppTheme.gray500,
                   ),
                 ),
               ],

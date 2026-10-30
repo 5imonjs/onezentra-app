@@ -13,62 +13,123 @@ import 'package:google_fonts/google_fonts.dart';
 /// This allows widgets to use theme-aware colors instead of static AppTheme
 /// constants that don't change between themes.
 class ThemeColors extends ThemeExtension<ThemeColors> {
-  const ThemeColors({
-    required this.textPrimary,
-    required this.textSecondary,
-    required this.textMuted,
-    required this.surface,
-    required this.surfaceCard,
-    required this.surfaceHover,
-    required this.border,
-  });
-
-  final Color textPrimary;
-  final Color textSecondary;
-  final Color textMuted;
+  // ignore: sort_constructors_first
+  final Color gray50;
+  final Color gray100;
+  final Color gray200;
+  final Color gray300;
+  final Color gray400;
+  final Color gray500;
+  final Color gray600;
+  final Color gray700;
+  final Color gray800;
+  final Color gray900;
   final Color surface;
   final Color surfaceCard;
   final Color surfaceHover;
   final Color border;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textMuted;
+
+  const ThemeColors({
+    required this.gray50,
+    required this.gray100,
+    required this.gray200,
+    required this.gray300,
+    required this.gray400,
+    required this.gray500,
+    required this.gray600,
+    required this.gray700,
+    required this.gray800,
+    required this.gray900,
+    required this.surface,
+    required this.surfaceCard,
+    required this.surfaceHover,
+    required this.border,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textMuted,
+  });
 
   static const dark = ThemeColors(
-    textPrimary: Color(0xFFF1F5F9),
-    textSecondary: Color(0xFFE2E8F0),
-    textMuted: Color(0xFF94A3B8),
+    gray50: Color(0xFF0A0F1C),
+    gray100: Color(0xFF0F172A),
+    gray200: Color(0xFF162033),
+    gray300: Color(0xFF24324A),
+    gray400: Color(0xFF64748B),
+    gray500: Color(0xFF94A3B8),
+    gray600: Color(0xFFC3CEDD),
+    gray700: Color(0xFFE2E8F0),
+    gray800: Color(0xFFF1F5F9),
+    gray900: Color(0xFFFFFFFF),
     surface: Color(0xFF0F172A),
     surfaceCard: Color(0xFF162033),
     surfaceHover: Color(0xFF1D2942),
     border: Color(0xFF24324A),
+    textPrimary: Color(0xFFF1F5F9),
+    textSecondary: Color(0xFFE2E8F0),
+    textMuted: Color(0xFF94A3B8),
   );
 
   static const light = ThemeColors(
-    textPrimary: Color(0xFF0F172A),
-    textSecondary: Color(0xFF1E293B),
-    textMuted: Color(0xFF64748B),
+    gray50: Color(0xFFF8FAFC),
+    gray100: Color(0xFFF1F5F9),
+    gray200: Color(0xFFE2E8F0),
+    gray300: Color(0xFFCBD5E1),
+    gray400: Color(0xFF94A3B8),
+    gray500: Color(0xFF64748B),
+    gray600: Color(0xFF475569),
+    gray700: Color(0xFF334155),
+    gray800: Color(0xFF1E293B),
+    gray900: Color(0xFF0F172A),
     surface: Color(0xFFF1F5F9),
     surfaceCard: Color(0xFFFFFFFF),
     surfaceHover: Color(0xFFF8FAFC),
     border: Color(0xFFCBD5E1),
+    textPrimary: Color(0xFF0F172A),
+    textSecondary: Color(0xFF1E293B),
+    textMuted: Color(0xFF64748B),
   );
 
   @override
   ThemeColors copyWith({
-    Color? textPrimary,
-    Color? textSecondary,
-    Color? textMuted,
+    Color? gray50,
+    Color? gray100,
+    Color? gray200,
+    Color? gray300,
+    Color? gray400,
+    Color? gray500,
+    Color? gray600,
+    Color? gray700,
+    Color? gray800,
+    Color? gray900,
     Color? surface,
     Color? surfaceCard,
     Color? surfaceHover,
     Color? border,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textMuted,
   }) =>
       ThemeColors(
-        textPrimary: textPrimary ?? this.textPrimary,
-        textSecondary: textSecondary ?? this.textSecondary,
-        textMuted: textMuted ?? this.textMuted,
+        gray50: gray50 ?? this.gray50,
+        gray100: gray100 ?? this.gray100,
+        gray200: gray200 ?? this.gray200,
+        gray300: gray300 ?? this.gray300,
+        gray400: gray400 ?? this.gray400,
+        gray500: gray500 ?? this.gray500,
+        gray600: gray600 ?? this.gray600,
+        gray700: gray700 ?? this.gray700,
+        gray800: gray800 ?? this.gray800,
+        gray900: gray900 ?? this.gray900,
         surface: surface ?? this.surface,
         surfaceCard: surfaceCard ?? this.surfaceCard,
         surfaceHover: surfaceHover ?? this.surfaceHover,
         border: border ?? this.border,
+        textPrimary: textPrimary ?? this.textPrimary,
+        textSecondary: textSecondary ?? this.textSecondary,
+        textMuted: textMuted ?? this.textMuted,
       );
 
   @override
@@ -77,27 +138,27 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
       return this;
     }
     return ThemeColors(
-      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
-      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
-      textMuted: Color.lerp(textMuted, other.textMuted, t)!,
+      gray50: Color.lerp(gray50, other.gray50, t)!,
+      gray100: Color.lerp(gray100, other.gray100, t)!,
+      gray200: Color.lerp(gray200, other.gray200, t)!,
+      gray300: Color.lerp(gray300, other.gray300, t)!,
+      gray400: Color.lerp(gray400, other.gray400, t)!,
+      gray500: Color.lerp(gray500, other.gray500, t)!,
+      gray600: Color.lerp(gray600, other.gray600, t)!,
+      gray700: Color.lerp(gray700, other.gray700, t)!,
+      gray800: Color.lerp(gray800, other.gray800, t)!,
+      gray900: Color.lerp(gray900, other.gray900, t)!,
       surface: Color.lerp(surface, other.surface, t)!,
       surfaceCard: Color.lerp(surfaceCard, other.surfaceCard, t)!,
       surfaceHover: Color.lerp(surfaceHover, other.surfaceHover, t)!,
       border: Color.lerp(border, other.border, t)!,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textMuted: Color.lerp(textMuted, other.textMuted, t)!,
     );
   }
 }
-///
-/// Mirrors the web design system in `globals.css`: the neutral ramp is defined
-/// by ROLE, not by lightness, so the same token reads correctly in both
-/// brightness modes. In light the ramp runs light -> dark, in dark it runs
-/// dark -> light.
-///
-/// That role-based approach is what lets the two themes share ONE set of
-/// class-level tokens instead of every widget branching on brightness. The
-/// dark values are the defaults (field hardware is the primary use case, and
-/// the whole app is dark-first); [gray] and friends return the light variant
-/// when a light theme is requested.
+
 class AppTheme {
   // Primary Colors (Indigo) — brand identity, identical in both themes.
   static const Color primary50 = Color(0xFFEEF2FF);
