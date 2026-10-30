@@ -4,14 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Manages the app's theme mode (light/dark/system) and persists the choice.
 class ThemeProvider extends ChangeNotifier {
   static const _key = 'theme_mode';
-  ThemeMode _mode = ThemeMode.dark;
+  ThemeMode _mode = ThemeMode.system;
 
   ThemeMode get mode => _mode;
 
   Future<void> init() async {
     var prefs = await SharedPreferences.getInstance();
     var saved = prefs.getString(_key);
-    if (saved == 'light') {
+    if (saved == 'system') {
+      _mode = ThemeMode.system;
+    } else if (saved == 'light') {
       _mode = ThemeMode.light;
     } else if (saved == 'dark') {
       _mode = ThemeMode.dark;

@@ -1886,7 +1886,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           fontWeight: FontWeight.w800,
         ),
         elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.5),
+        shadowColor: Theme.of(context).shadowColor,
       ),
       child: loading
           ? SizedBox(
