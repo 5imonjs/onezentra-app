@@ -14,26 +14,6 @@ import 'package:google_fonts/google_fonts.dart';
 /// constants that don't change between themes.
 class ThemeColors extends ThemeExtension<ThemeColors> {
   // ignore: sort_constructors_first
-  final Color gray50;
-  final Color gray100;
-  final Color gray200;
-  final Color gray300;
-  final Color gray400;
-  final Color gray500;
-  final Color gray600;
-  final Color gray700;
-  final Color gray800;
-  final Color gray900;
-  final Color surface;
-  final Color surfaceCard;
-  final Color surfaceHover;
-  final Color border;
-  final Color textPrimary;
-  final Color textSecondary;
-  final Color textMuted;
-  final Color background;
-  final Color foreground;
-
   const ThemeColors({
     required this.gray50,
     required this.gray100,
@@ -55,6 +35,27 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     required this.background,
     required this.foreground,
   });
+
+  final Color gray50;
+  final Color gray100;
+  final Color gray200;
+  final Color gray300;
+  final Color gray400;
+  final Color gray500;
+  final Color gray600;
+  final Color gray700;
+  final Color gray800;
+  final Color gray900;
+  final Color surface;
+  final Color surfaceCard;
+  final Color surfaceHover;
+  final Color border;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textMuted;
+  final Color background;
+  final Color foreground;
+
 
   static const dark = ThemeColors(
     gray50: Color(0xFF0A0F1C),

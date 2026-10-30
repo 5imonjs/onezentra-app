@@ -388,7 +388,7 @@ class _UnloadPageState extends State<UnloadPage> {
           ],
         ],
         if (unload.activeLastPage > 1) ...[
-          SizedBox(height: AppTheme.space4),
+          const SizedBox(height: AppTheme.space4),
           Divider(height: 1, color: Theme.of(context).extension<ThemeColors>()?.gray300 ?? AppTheme.gray300),
           const SizedBox(height: AppTheme.space3),
           Row(
