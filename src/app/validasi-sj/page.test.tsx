@@ -21,7 +21,13 @@ const { hasPermission, list, get, stats, reportExtraItem, approveExtraItem, reje
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 vi.mock('next/image', () => ({
-  default: ({ alt }: { alt?: string }) => <img alt={alt ?? ''} />,
+  default: ({ alt }: { alt?: string }) => (
+    <div
+      data-testid="mock-image"
+      title={alt ?? ''}
+
+    />
+  ),
 }));
 
 vi.mock('@/app/dashboard/layout', () => ({

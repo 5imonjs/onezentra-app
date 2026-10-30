@@ -32,7 +32,7 @@ export function fmtDateTime(v: string | null | undefined): string {
  * gambaran besaran durasi.
  */
 export function fmtDuration(seconds: number | null | undefined): string {
-  if (seconds == null || !Number.isFinite(seconds)) return '-';
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return '-';
   if (seconds < 0) return '-';
 
   const totalMinutes = Math.floor(seconds / 60);

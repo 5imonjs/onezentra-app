@@ -431,7 +431,7 @@ export default function ValidasiSjPage() {
     }
   };
 
-  const openExtraItem = (extra: any) => {
+  const openExtraItem = (extra: ValidationExtraItem) => {
     if (!canEditItems(active, { canCorrectCompleted: active?.can_correct_completed })) {
       notifyGlobal('Validasi sudah selesai sehingga hasil item tidak dapat diubah.', 'error');
       return;
@@ -822,7 +822,7 @@ export default function ValidasiSjPage() {
    * tercetak. Selesaikan Validasi terkunci selama daftar ini tidak kosong —
    * label fisik wajib menempel sebelum dokumen boleh selesai.
    */
-  const unprintedItems = unprintedCompleteItems(active?.items?.filter((i: any) => i.condition !== 'FISIK_TIDAK_ADA'), printedLabels);
+  const unprintedItems = unprintedCompleteItems(active?.items?.filter((i) => i.condition !== 'FISIK_TIDAK_ADA'), printedLabels);
   const progress = active?.items?.length ? Math.round(((active.items.length - pendingCount) / active.items.length) * 100) : 0;
   const photoRequired = conditionRequiresPhoto(form.condition);
   const umurSelisih = sisaUmur.totalMonths - standarUmur;
