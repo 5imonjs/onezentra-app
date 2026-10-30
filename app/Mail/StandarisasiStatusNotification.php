@@ -25,6 +25,7 @@ class StandarisasiStatusNotification extends Mailable
                 $standarisasi = $reloaded;
             }
         }
+
         return $standarisasi;
     }
 
