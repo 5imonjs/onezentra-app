@@ -3,34 +3,18 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
-/**
- * Theme picker for the app shell.
- *
- * `next-themes` exposes three values when `enableSystem` is on: 'light',
- * 'dark' and 'system'. That matches what we want to offer, so the options are
- * derived from the hook rather than hard-coded.
- *
- * Renders as a segmented control with real radio inputs: keyboard users get
- * arrow-key navigation for free, and assistive tech announces a choice whose
- * meaning does not silently change (a bare toggle button cannot).
- */
 export default function ThemeToggle({ compact = false }: { compact?: boolean }) {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
-  // `theme` is undefined on the server and on the first client render, so
-  // rendering the selected state before mount would mismatch hydration.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const options: { value: string; label: string }[] = [
     { value: 'light', label: 'Terang' },
     { value: 'dark', label: 'Gelap' },
-    { value: 'system', label: 'Sistem' },
   ];
 
   if (!mounted) {
-    // Reserve the same space so the surrounding layout does not jump once the
-    // real control appears.
     return (
       <div
         aria-hidden="true"
@@ -43,7 +27,7 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
     );
   }
 
-  const active = theme ?? 'system';
+  const active = theme ?? 'light';
 
   return (
     <div
@@ -74,15 +58,9 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
               onChange={() => setTheme(option.value)}
               className="sr-only"
             />
-            <ThemeIcon mode={option.value} resolved={resolvedTheme} />
+            <ThemeIcon mode={option.value} />
             {!compact && <span>{option.label}</span>}
-            {/* On compact the visible label is dropped, so the state still has
-                to reach assistive tech. */}
-            <span className="sr-only">
-              {option.value === 'system'
-                ? `Ikuti pengaturan sistem, saat ini ${resolvedTheme === 'dark' ? 'gelap' : 'terang'}`
-                : `Tema ${option.label}`}
-            </span>
+            <span className="sr-only">Tema {option.label}</span>
           </label>
         );
       })}
@@ -90,18 +68,7 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
   );
 }
 
-function ThemeIcon({ mode, resolved }: { mode: string; resolved?: string }) {
-  if (mode === 'system') {
-    // Half-filled circle: the conventional "follow the OS" glyph.
-    return (
-      <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
-        <title>{resolved === 'dark' ? 'Sistem (gelap)' : 'Sistem (terang)'}</title>
-      </svg>
-    );
-  }
-
+function ThemeIcon({ mode }: { mode: string }) {
   return mode === 'dark' ? (
     <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />

@@ -31,7 +31,7 @@ const attr = () => document.documentElement.getAttribute('data-theme');
  */
 function renderToggle() {
   return render(
-    <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="data-theme" defaultTheme="light">
       <ThemeToggle />
     </ThemeProvider>,
   );
@@ -44,12 +44,11 @@ beforeEach(() => {
 });
 
 describe('ThemeToggle dengan next-themes', () => {
-  it('menampilkan ketiga pilihan tema', () => {
+  it('menampilkan dua pilihan tema', () => {
     renderToggle();
 
     expect(screen.getByRole('radio', { name: /tema terang/i })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /tema gelap/i })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /ikuti pengaturan sistem/i })).toBeInTheDocument();
   });
 
   it('menandai pilihan tersimpan sebagai aktif', () => {
@@ -64,7 +63,6 @@ describe('ThemeToggle dengan next-themes', () => {
 
     screen.getByRole('radio', { name: /tema gelap/i }).click();
 
-    // The one assertion that matters: this attribute is what flips the palette.
     expect(attr()).toBe('dark');
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe('dark');
   });
@@ -76,14 +74,5 @@ describe('ThemeToggle dengan next-themes', () => {
     screen.getByRole('radio', { name: /tema terang/i }).click();
 
     expect(attr()).toBe('light');
-  });
-
-  it('mode system mengikuti preferensi OS', () => {
-    stubMatchMedia(true);
-    renderToggle();
-
-    expect(attr()).toBe('dark');
-    // And the option itself is still "system", not an explicit choice.
-    expect(screen.getByRole('radio', { name: /ikuti pengaturan sistem/i })).toBeChecked();
   });
 });

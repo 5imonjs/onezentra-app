@@ -46,8 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-full bg-surface text-foreground font-sans antialiased">
         <ThemeProvider
           attribute="data-theme"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
           disableTransitionOnChange
           nonce={nonce}
         >

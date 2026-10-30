@@ -532,6 +532,30 @@
   --color-surface-hover: var(--oz-hover);
   --color-foreground: var(--oz-text);
 
+  /* Semantic design tokens — kanonik (Light/Dark aware via var()). */
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-info: var(--info);
+  --color-sidebar: var(--sidebar);
+  --color-navbar: var(--navbar);
+
   /* Gradient end-cap for card headers. Plain `to-white` cannot be used here:
      a card header fades into it, so on the dark theme the whole strip would
      flare white and swamp the title sitting on top of it. */
@@ -567,9 +591,31 @@
 }
 
 :root {
-  --background: var(--oz-canvas);
-  --foreground: var(--oz-text);
-  --sidebar-width: 260px;
+  /* Semantic design tokens (shadcn-style) — kanonik, theme-aware.
+     Memetakan nama standar ke ramp oz-* yang sudah ada, sehingga utilitas
+     Tailwind `bg-background`, `text-foreground`, `bg-card`, dll. tersedia
+     di Light dan Dark tanpa sistem tema ganda. */
+  --card: var(--oz-card);
+  --card-foreground: var(--oz-text);
+  --popover: var(--oz-raised);
+  --popover-foreground: var(--oz-text);
+  --primary: var(--color-primary-600);
+  --primary-foreground: #ffffff;
+  --secondary: var(--oz-gray-100);
+  --secondary-foreground: var(--oz-text);
+  --muted: var(--oz-gray-100);
+  --muted-foreground: var(--oz-gray-500);
+  --accent: var(--color-accent-500);
+  --accent-foreground: #ffffff;
+  --border: var(--oz-gray-200);
+  --input: var(--oz-gray-200);
+  --ring: var(--color-primary-600);
+  --success: var(--oz-emerald-600);
+  --warning: var(--oz-amber-500);
+  --destructive: var(--oz-red-600);
+  --info: var(--oz-blue-600);
+  --sidebar: var(--oz-gray-100);
+  --navbar: var(--oz-card);
   --sidebar-collapsed-width: 72px;
 
   /* Accessible focus ring (3:1+ contrast on the dark canvas). The inner
