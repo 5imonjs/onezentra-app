@@ -19,21 +19,21 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 900),
     );
     _fadeIn = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOut,
     );
-    _scale = Tween<double>(begin: 0, end: 1).animate(
+    _scale = Tween<double>(begin: 0.6, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
     );
-    _controller.forward();
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
         Navigator.of(context).pushReplacementNamed('/login');
       }
     });
+    _controller.forward();
   }
 
   @override
