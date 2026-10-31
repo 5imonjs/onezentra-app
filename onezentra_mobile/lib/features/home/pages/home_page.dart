@@ -204,6 +204,12 @@ class _HomePageState extends State<HomePage> {
                             visibleWorkflow,
                             numbered: true,
                           ),
+                          Image.asset(
+                            'assets/images/LOGO.png',
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.contain,
+                          ),
                         ],
                         if (visibleHistory.isNotEmpty) ...[
                           if (visibleWorkflow.isNotEmpty)
