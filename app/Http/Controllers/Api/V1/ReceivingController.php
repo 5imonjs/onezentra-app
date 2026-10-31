@@ -45,6 +45,14 @@ class ReceivingController extends Controller
             $query->whereHas('rencanaKirim', fn ($q) => $q->forUserDepot($request->user()));
         }
 
+        $user = $request->user();
+        if ($user && $user->region_id) {
+            $query->where('region_id', $user->region_id);
+        }
+        if ($user && $user->depo_id) {
+            $query->where('depo_id', $user->depo_id);
+        }
+
         if ($request->status) {
             $query->where('status', $request->status);
         }

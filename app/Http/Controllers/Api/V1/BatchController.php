@@ -26,6 +26,15 @@ class BatchController extends Controller
             });
         }
 
+        // Multi-Region / Multi-Depo isolation: filter by authenticated user context
+        $user = $request->user();
+        if ($user && $user->region_id) {
+            $query->where('region_id', $user->region_id);
+        }
+        if ($user && $user->depo_id) {
+            $query->where('depo_id', $user->depo_id);
+        }
+
         if ($request->search) {
             $like = LikePattern::contains($request->search);
             $query->whereRaw('batch_number LIKE ? ESCAPE ?', [$like, '\\']);

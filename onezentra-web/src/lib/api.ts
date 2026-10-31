@@ -4,6 +4,7 @@ import { PDFDocument, PDFName, PDFNumber, PDFRawStream } from 'pdf-lib';
 import { notifyPermissionDenied } from '@/store/globalToast';
 
 const CSRF_URL = '/sanctum/csrf-cookie';
+const csrfClient = axios.create({ baseURL: '/', withCredentials: true });
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 const normalizedApiUrl = API_URL.replace(/\/$/, '');
@@ -322,11 +323,11 @@ export function registerResponseInterceptors(
   );
 }
 
-registerResponseInterceptors(apiClient);
+registerResponseInterceptors(apiClient, () => csrfClient.get(CSRF_URL));
 
 export const auth = {
   login: async (email: string, password: string) => {
-    await apiClient.get(CSRF_URL);
+    await csrfClient.get(CSRF_URL);
     return apiClient.post('/login', { email, password });
   },
   logout: () => apiClient.post('/logout'),

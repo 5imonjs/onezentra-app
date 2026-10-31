@@ -40,6 +40,10 @@ Route::prefix('v1')->group(function () {
     // Mobile (Bearer token, per-perangkat). Web SPA tetap cookie-only via /login.
     Route::post('mobile/login', [AuthController::class, 'mobileLogin'])->middleware('throttle:10,1,login-mobile');
     Route::post('mobile/logout', [AuthController::class, 'mobileLogout'])->middleware(['auth:sanctum', 'throttle:30,1,api']);
+    Route::post('region-validate', [\App\Http\Controllers\Api\V1\RegionDepoValidationController::class, 'validateRegion'])->middleware('throttle:10,1,region');
+    Route::post('depo-validate', [\App\Http\Controllers\Api\V1\RegionDepoValidationController::class, 'validateDepo'])->middleware('throttle:10,1,depo');
+    Route::post('login-with-context', [\App\Http\Controllers\Api\V1\RegionDepoValidationController::class, 'loginWithContext'])->middleware('throttle:10,1,login-context');
+
     Route::post('register', [AuthController::class, 'register'])
         ->middleware(['auth:sanctum', 'permission:users.create', 'throttle:5,1,register']);
     Route::post('logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum', 'throttle:600,1,api']);

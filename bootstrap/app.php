@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ScopeRegionDepo;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackUserActivity;
@@ -23,9 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // SecurityHeaders harus paling luar agar 401/422/500 juga ber-header.
         $middleware->prependToGroup('api', SecurityHeaders::class);
         $middleware->appendToGroup('api', TrackUserActivity::class);
+        $middleware->appendToGroup('api', ScopeRegionDepo::class);
         $middleware->alias([
             'permission' => CheckPermission::class,
             'track.activity' => TrackUserActivity::class,
+            'scope.region.depo' => ScopeRegionDepo::class,
         ]);
 
         $middleware->redirectGuestsTo(function () {
