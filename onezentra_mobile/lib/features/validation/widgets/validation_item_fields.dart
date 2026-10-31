@@ -36,6 +36,7 @@ class ConditionChipRow extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
+  // ignore: prefer_const_constructors
   Widget build(BuildContext context) => DropdownButtonFormField<String>(
     initialValue: value,
     decoration: InputDecoration(
