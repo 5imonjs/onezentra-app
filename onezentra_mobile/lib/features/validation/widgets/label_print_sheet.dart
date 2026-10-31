@@ -114,8 +114,8 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var printer = context.watch<LabelPrintProvider>();
-    // Hanya tampilkan printer selector & pairing kalau belum ada printer terhubung.
-    var showPrinter = printer.selected == null;
+    // Tampilkan printer selector & pairing selalu agar bisa dicari/dihubungkan.
+    var showPrinter = true;
     return SafeArea(
       child: SingleChildScrollView(
         child: Column(
