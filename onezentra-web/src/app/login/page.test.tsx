@@ -1,16 +1,23 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginPage from './page';
 
-const { push, replace, login, loadUser } = vi.hoisted(() => ({
-  push: vi.fn(),
-  replace: vi.fn(),
-  login: vi.fn(),
-  loadUser: vi.fn(),
-}));
+const { push, replace, login, loadUser, router } = vi.hoisted(() => {
+  const push = vi.fn();
+  const replace = vi.fn();
+  return {
+    push,
+    replace,
+    login: vi.fn(),
+    loadUser: vi.fn(),
+    // Objek router STABIL (referensi sama tiap render) — meniru perilaku
+    // useRouter() Next.js asli; objek baru per render memicu loop setState.
+    router: { push, replace },
+  };
+});
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, replace }),
+  useRouter: () => router,
 }));
 
 vi.mock('next/image', () => ({
@@ -43,7 +50,10 @@ vi.mock('@/store/auth', () => ({
 describe('LoginPage', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/login');
+    localStorage.clear();
+    sessionStorage.clear();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   afterEach(() => {
@@ -71,5 +81,102 @@ describe('LoginPage', () => {
     render(<LoginPage />);
 
     expect(loadUser).not.toHaveBeenCalled();
+  });
+
+  it('spek UI: tombol SIGN IN tampil, link Region Access tepat di bawahnya, tanpa navigasi antarhalaman', () => {
+    render(<LoginPage />);
+
+    const signIn = screen.getByRole('button', { name: 'SIGN IN' });
+    const regionLink = screen.getByRole('button', { name: /Region Access/i });
+
+    // Urutan DOM: Region Access berada SETELAH tombol SIGN IN (di bawahnya).
+    expect(signIn.compareDocumentPosition(regionLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Tidak ada tautan navigasi ke /region-access atau /depo-identify.
+    expect(screen.queryByRole('link', { name: /region/i })).not.toBeInTheDocument();
+    expect(push).not.toHaveBeenCalledWith('/region-access');
+  });
+
+  it('klik Region Access membuka MODAL di atas /login — bukan pindah halaman', async () => {
+    render(<LoginPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    // Masih di halaman login yang sama (tidak ada navigasi).
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText('Hallo, Welcome Back')).toBeInTheDocument();
+    // Modal hanya berisi Port, Region Code, dan tombol SAVE.
+    expect(screen.getByLabelText('Port')).toBeInTheDocument();
+    expect(screen.getByLabelText('Region Code')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'SAVE' })).toBeInTheDocument();
+  });
+
+  it('SIGN IN tanpa konfigurasi Region Access: login TIDAK dipanggil, modal terbuka, pesan error tampil', async () => {
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'rahasia123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'SIGN IN' }));
+
+    expect(login).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Konfigurasikan Region Access terlebih dahulu/)).toBeInTheDocument();
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('SAVE dengan Region Code salah: pesan error tampil dan modal TETAP terbuka', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ valid: false, message: 'Region not found or inactive' }),
+    }));
+
+    render(<LoginPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
+    fireEvent.change(await screen.findByLabelText('Port'), { target: { value: '9999' } });
+    fireEvent.change(screen.getByLabelText('Region Code'), { target: { value: 'REGION-TIDAK-ADA' } });
+    fireEvent.click(screen.getByRole('button', { name: 'SAVE' }));
+
+    expect(await screen.findByText(/Region not found or inactive/)).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(localStorage.getItem('region_access')).toBeNull();
+  });
+
+  it('SAVE dengan konfigurasi valid: konfigurasi persisten di localStorage, modal OTOMATIS tertutup, halaman tetap /login', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ valid: true, region_id: 1, region_code: 'REG-001' }),
+    }));
+
+    render(<LoginPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
+    fireEvent.change(await screen.findByLabelText('Port'), { target: { value: '8000' } });
+    fireEvent.change(screen.getByLabelText('Region Code'), { target: { value: 'REG-001' } });
+    fireEvent.click(screen.getByRole('button', { name: 'SAVE' }));
+
+    // Konfigurasi tersimpan PERSISTEN (localStorage, bertahan setelah browser ditutup).
+    await waitFor(() => {
+      expect(localStorage.getItem('region_access')).toContain('REG-001');
+    });
+    // Modal tertutup otomatis (setTimeout 600ms), user tetap di halaman login.
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    }, { timeout: 2000 });
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByText('Hallo, Welcome Back')).toBeInTheDocument();
+  });
+
+  it('setelah konfigurasi tersimpan, SIGN IN memanggil autentikasi (login dipanggil)', async () => {
+    localStorage.setItem('region_access', JSON.stringify({ port: '8000', regionCode: 'REG-001', regionId: 1, code: 'REG-001' }));
+
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'rahasia123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'SIGN IN' }));
+
+    await waitFor(() => {
+      expect(login).toHaveBeenCalledWith('admin', 'rahasia123');
+    });
+    expect(push).toHaveBeenCalledWith('/dashboard');
   });
 });

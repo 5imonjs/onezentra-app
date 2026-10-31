@@ -112,6 +112,15 @@ class AuthController extends Controller
             ]);
         }
 
+        // Wajib memiliki konteks Region yang valid sebelum autentikasi berhasil.
+        $regionId = $request->session()->get('region_id');
+        $regionCode = $request->session()->get('region_code');
+        if (! $regionId || ! $regionCode) {
+            throw ValidationException::withMessages([
+                'email' => ['Region Access belum dikonfigurasi atau tidak valid. Silakan konfigurasi terlebih dahulu.'],
+            ]);
+        }
+
         // Autentikasi SPA ini murni berbasis cookie Sanctum (stateful).
         // Jangan terbitkan Bearer token: frontend tidak pernah mengirim
         // header Authorization sehingga token hanya menumpuk tak terpakai.
