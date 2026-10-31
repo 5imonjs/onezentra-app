@@ -2632,14 +2632,16 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 value: _condition,
                 onChanged: (value) => setState(() => _condition = value),
               ),
-              const SizedBox(height: AppTheme.space3),
-              PhotoEvidenceField(
-                photoPath: _photoPath,
-                onChanged: (path) => setState(() => _photoPath = path),
-                picker: widget.pickPhoto,
-                enabled: !_saving,
-                subtitle: 'Wajib — menggantikan catatan manual di kertas.',
-              ),
+              if (_condition != 'FISIK_BAGUS') ...[
+                const SizedBox(height: AppTheme.space3),
+                PhotoEvidenceField(
+                  photoPath: _photoPath,
+                  onChanged: (path) => setState(() => _photoPath = path),
+                  picker: widget.pickPhoto,
+                  enabled: !_saving,
+                  subtitle: 'Wajib — menggantikan catatan manual di kertas.',
+                ),
+              ],
               const SizedBox(height: AppTheme.space3),
               ExpiredDateField(
                 controller: _expiredController,
