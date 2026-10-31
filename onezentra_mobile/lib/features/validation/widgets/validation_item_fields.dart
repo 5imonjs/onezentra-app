@@ -36,17 +36,17 @@ class ConditionChipRow extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: AppTheme.space2,
-    runSpacing: AppTheme.space2,
-    children: [
-      for (var option in ValidationCondition.values)
-        _ConditionChip(
-          value: option,
-          selected: option == value,
-          onTap: () => onChanged(option),
-        ),
-    ],
+  Widget build(BuildContext context) => DropdownButtonFormField<String>(
+    value: value,
+    decoration: InputDecoration(
+      labelText: 'Kondisi fisik',
+      border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
+    ),
+    items: ValidationCondition.values.map((opt) => DropdownMenuItem(
+      value: opt,
+      child: Text(ValidationCondition.label(opt)),
+    )).toList(),
+    onChanged: (v) => v != null ? onChanged(v) : null,
   );
 }
 
