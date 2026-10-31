@@ -2577,18 +2577,7 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
               if (_npn != null)
                 _npnIdentityCard()
               else ...[
-                AppTextField(
-                  controller: _kodeController,
-                  label: 'Kode barang *',
-                  hint: 'Wajib bila barcode tidak dikenal',
-                  prefixIcon: Icons.tag_rounded,
-                  textInputAction: TextInputAction.next,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  validator: (value) => _identityValid
-                      ? null
-                      : 'Isi kode & nama barang, atau barcode yang dikenal',
-                ),
-                const SizedBox(height: AppTheme.space3),
+                // Kode barang disembunyikan — hanya nama + satuan + jumlah
                 AppTextField(
                   controller: _namaController,
                   label: 'Nama barang *',
