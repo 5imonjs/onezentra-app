@@ -190,3 +190,5 @@ export async function proxy(request: NextRequest) {
 
   return pageResponse(request);
 }
+
+export { proxy as middleware };
