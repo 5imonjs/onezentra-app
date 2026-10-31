@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
+import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -30,7 +32,10 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
-        Navigator.of(context).pushReplacementNamed('/login');
+        var auth = context.read<AuthProvider>();
+        Navigator.of(context).pushReplacementNamed(
+          auth.user != null ? '/home' : '/login',
+        );
       }
     });
     _controller.forward();
