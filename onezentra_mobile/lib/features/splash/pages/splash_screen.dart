@@ -29,7 +29,9 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _controller.forward();
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) Navigator.of(context).pushReplacementNamed('/');
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/');
+      }
     });
   }
 
@@ -41,26 +43,25 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) => Opacity(
-              opacity: _fadeIn.value,
-              child: Transform.scale(
-                scale: _scale.value,
-                child: Image.asset(
-                  'assets/images/LOGO.png',
-                  width: 160,
-                  height: 160,
-                  fit: BoxFit.contain,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: SafeArea(
+          child: Center(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) => Opacity(
+                opacity: _fadeIn.value,
+                child: Transform.scale(
+                  scale: _scale.value,
+                  child: Image.asset(
+                    'assets/images/LOGO.png',
+                    width: 160,
+                    height: 160,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }
