@@ -37,7 +37,7 @@ class ConditionChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DropdownButtonFormField<String>(
-    value: value,
+    initialValue: value,
     decoration: InputDecoration(
       labelText: 'Kondisi fisik',
       border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
@@ -47,45 +47,6 @@ class ConditionChipRow extends StatelessWidget {
       child: Text(ValidationCondition.label(opt)),
     )).toList(),
     onChanged: (v) => v != null ? onChanged(v) : null,
-  );
-}
-
-class _ConditionChip extends StatelessWidget {
-  const _ConditionChip({
-    required this.value,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String value;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: AppTheme.radiusFull,
-    child: Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.space4,
-        vertical: AppTheme.space2,
-      ),
-      decoration: BoxDecoration(
-        color: selected ? AppTheme.primary600 : context.colors.surfaceCard,
-        borderRadius: AppTheme.radiusFull,
-        border: Border.all(
-          color: selected ? AppTheme.primary600 : context.colors.gray300,
-        ),
-      ),
-      child: Text(
-        ValidationCondition.label(value),
-        style: GoogleFonts.roboto(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          color: selected ? Colors.white : context.colors.gray700,
-        ),
-      ),
-    ),
   );
 }
 
