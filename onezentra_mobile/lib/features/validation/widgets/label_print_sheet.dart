@@ -131,8 +131,6 @@ class _Body extends StatelessWidget {
               const SizedBox(height: 8),
               _PairingSection(printer: printer),
               const SizedBox(height: 12),
-            ] else ...[
-              const SizedBox.shrink(),
             ],
             _WidthSelector(printer: printer),
             _Toggle(
