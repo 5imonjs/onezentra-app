@@ -230,7 +230,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
+                      constraints: const BoxConstraints(maxWidth: double.infinity),
                       child: FadeTransition(
                         opacity: _fadeAnimation,
                         child: SlideTransition(
