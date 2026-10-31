@@ -276,7 +276,7 @@ class _HomePageState extends State<HomePage> {
             borderRadius: AppTheme.radiusXl,
           ),
           child: Image.asset(
-            'assets/images/logo_apps.png',
+            'assets/images/LOGO.png',
             width: 32,
             height: 32,
             fit: BoxFit.contain,

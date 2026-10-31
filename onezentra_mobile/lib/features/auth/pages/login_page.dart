@@ -558,7 +558,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         // behind it.
         Image.asset(
           'assets/images/LOGO.png',
-          height: 34,
+          height: 60,
           fit: BoxFit.contain,
           color: isDark ? context.colors.foreground : context.colors.gray900,
           colorBlendMode: BlendMode.srcIn,
