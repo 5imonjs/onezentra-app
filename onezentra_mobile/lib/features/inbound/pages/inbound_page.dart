@@ -170,12 +170,12 @@ class _InboundPageState extends State<InboundPage> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: context.colors.surfaceCard.withValues(alpha: 0.1),
             borderRadius: AppTheme.radiusLg,
           ),
           child: const Icon(
             Icons.inventory_2_rounded,
-            color: Colors.white,
+            color: context.colors.foreground,
             size: 22,
           ),
         ),
@@ -189,7 +189,7 @@ class _InboundPageState extends State<InboundPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: context.colors.foreground,
                 ),
               ),
               const SizedBox(height: 2),
@@ -457,7 +457,7 @@ class _InboundPageState extends State<InboundPage> {
               colors: [AppTheme.ink900, AppTheme.ink800],
             ),
             borderRadius: AppTheme.radius2xl,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: context.colors.foreground.withValues(alpha: 0.08)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,7 +470,7 @@ class _InboundPageState extends State<InboundPage> {
                       style: GoogleFonts.robotoMono(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: context.colors.foreground,
                       ),
                     ),
                   ),
@@ -651,13 +651,13 @@ class _InboundPageState extends State<InboundPage> {
         ),
         decoration: highlight
             ? const BoxDecoration(
-                color: Colors.white,
+                color: context.colors.foreground,
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.07),
+                color: context.colors.foreground.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: context.colors.foreground.withValues(alpha: 0.08)),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -680,7 +680,7 @@ class _InboundPageState extends State<InboundPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.gray50 : Colors.white,
+                color: highlight ? AppTheme.gray50 : context.colors.foreground,
               ),
             ),
           ],
