@@ -173,7 +173,7 @@ class _InboundPageState extends State<InboundPage> {
             color: context.colors.surfaceCard.withValues(alpha: 0.1),
             borderRadius: AppTheme.radiusLg,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.inventory_2_rounded,
             color: context.colors.foreground,
             size: 22,
@@ -650,7 +650,7 @@ class _InboundPageState extends State<InboundPage> {
           vertical: AppTheme.space2,
         ),
         decoration: highlight
-            ? const BoxDecoration(
+            ? BoxDecoration(
                 color: context.colors.foreground,
                 borderRadius: AppTheme.radiusLg,
               )
