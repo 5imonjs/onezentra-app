@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onezentra_mobile/core/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
