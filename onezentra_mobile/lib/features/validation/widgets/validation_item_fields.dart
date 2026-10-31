@@ -40,14 +40,18 @@ class ConditionChipRow extends StatelessWidget {
   // ignore: prefer_const_constructors
   Widget build(BuildContext context) => DropdownButtonFormField<String>(
     initialValue: value,
-    decoration: InputDecoration(
+    decoration: const InputDecoration(
       labelText: 'Kondisi fisik',
       border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
     ),
-    items: ValidationCondition.values.map((opt) => DropdownMenuItem(
-      value: opt,
-      child: Text(ValidationCondition.label(opt)),
-    )).toList(),
+    items: ValidationCondition.values
+        .map(
+          (opt) => DropdownMenuItem(
+            value: opt,
+            child: Text(ValidationCondition.label(opt)),
+          ),
+        )
+        .toList(),
     onChanged: (v) => v != null ? onChanged(v) : null,
   );
 }
