@@ -65,7 +65,7 @@ export default function LoginPage() {
               dashboard/layout). loading="eager" tidak membuat preload —
               ia hanya menaikkan prioritas fetch gambar in-viewport ini. */}
           <Image src="/LOGO.png" alt="" width={560} height={560} loading="eager" className="w-full max-w-lg h-auto mb-8" />
-          <h1 className="text-4xl font-bold text-white mb-10 tracking-tight">ONEZENTRA</h1>
+
           
           <div className="grid grid-cols-2 gap-6 max-w-md w-full">
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
