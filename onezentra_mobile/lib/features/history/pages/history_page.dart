@@ -90,7 +90,7 @@ class HistoryPage extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(tab.icon, size: 16),
+                            Icon(tab.icon, size: 22),
                             const SizedBox(width: 6),
                             Text(tab.label),
                           ],
