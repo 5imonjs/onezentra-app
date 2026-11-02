@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\ReceivingExport;
 use App\Exports\ReceivingTemplate;
-use App\Http\Controllers\Concerns\AuthorizesDepotRow;
 use App\Http\Controllers\Controller;
 use App\Imports\ReceivingImport;
 use App\Imports\ReceivingImportFailed;
 use App\Mail\ReceivingCompleted;
 use App\Models\Batch;
+use App\Models\DepotSetting;
 use App\Models\Dock;
 use App\Models\GateTransaction;
 use App\Models\Npn;
@@ -18,9 +18,11 @@ use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\SjValidation;
+use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Services\ExportGuard;
 use App\Support\LikePattern;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,34 +35,22 @@ class ReceivingController extends Controller
     /** Memo lookup NPN per request: store/scan memanggil per baris. */
     private array $npnConversionCache = [];
 
-    use AuthorizesDepotRow;
-
     public function __construct(private EmailNotificationService $emailService) {}
 
     public function index(Request $request): JsonResponse
     {
-        $query = Receiving::with(['rencanaKirim', 'dock', 'gateTransaction']);
-
-        if ($request->user()->isDepotScoped()) {
-            $query->whereHas('rencanaKirim', fn ($q) => $q->forUserDepot($request->user()));
-        }
-
         $user = $request->user();
-        if ($user && $user->region_id) {
-            $query->where('region_id', $user->region_id);
-        }
-        if ($user && $user->depo_id) {
-            $query->where('depo_id', $user->depo_id);
-        }
+        $query = $this->scopeReceivingsToUser(
+            Receiving::query(),
+            $user
+        )->with(['rencanaKirim', 'dock', 'gateTransaction']);
 
         if ($request->status) {
             $query->where('status', $request->status);
         }
 
-        // Filter depo untuk master (user global); user depot-scoped sudah
-        // terkunci forUserDepot di atas sehingga filter asing diabaikan
-        // (konsisten dengan semua laporan) — tetap depo sendiri.
-        if ($request->filled('kode_depo') && ! $request->user()->isDepotScoped()) {
+        // Filter dari klien hanya mempersempit scope server; middleware menolak kode depo di luar akses user.
+        if ($request->filled('kode_depo')) {
             $query->whereHas('rencanaKirim', fn ($q) => $q->where('kode_depo', $request->input('kode_depo')));
         }
 
@@ -81,14 +71,7 @@ class ReceivingController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $user = $request->user();
-        $statusCounts = Receiving::query()
-            ->when(
-                $user->isDepotScoped(),
-                fn ($query) => $query->whereHas(
-                    'rencanaKirim',
-                    fn ($rencanaQuery) => $rencanaQuery->forUserDepot($user)
-                )
-            )
+        $statusCounts = $this->scopeReceivingsToUser(Receiving::query(), $user)
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
@@ -103,6 +86,69 @@ class ReceivingController extends Controller
         ]);
     }
 
+    private function scopeReceivingsToUser(Builder $query, User $user): Builder
+    {
+        $depotCodes = $this->accessibleDepotCodes($user);
+
+        if ($depotCodes === null) {
+            return $query;
+        }
+
+        return $query->whereHas(
+            'rencanaKirim',
+            fn (Builder $rencanaQuery) => $rencanaQuery->whereIn('kode_depo', $depotCodes)
+        );
+    }
+
+    private function scopeRencanaKirimToUser(Builder $query, User $user): Builder
+    {
+        $depotCodes = $this->accessibleDepotCodes($user);
+
+        return $depotCodes === null
+            ? $query
+            : $query->whereIn('kode_depo', $depotCodes);
+    }
+
+    /**
+     * @return list<string>|null Null means unrestricted master scope.
+     */
+    private function accessibleDepotCodes(User $user): ?array
+    {
+        if ($user->isMasterScope()) {
+            return null;
+        }
+
+        if ($user->scope_level === 'region' && blank($user->region_id)) {
+            return [];
+        }
+
+        $assignedDepotCodes = DB::table('user_depots')->where('user_id', $user->id);
+        $hasAssignments = DB::table('user_depots')->where('user_id', $user->id)->exists();
+
+        if ($user->scope_level === 'region') {
+            $assignedDepotCodes->whereIn(
+                'kode_depo',
+                DepotSetting::query()->select('kode_depo')->where('region_id', $user->region_id)
+            );
+        }
+
+        $depotCodes = $assignedDepotCodes->pluck('kode_depo')->all();
+
+        if (empty($depotCodes) && ! $hasAssignments && filled($user->kode_depo)) {
+            $legacyDepotIsInScope = $user->scope_level !== 'region'
+                || DepotSetting::query()
+                    ->where('kode_depo', $user->kode_depo)
+                    ->where('region_id', $user->region_id)
+                    ->exists();
+
+            if ($legacyDepotIsInScope) {
+                $depotCodes[] = $user->kode_depo;
+            }
+        }
+
+        return array_values(array_unique($depotCodes));
+    }
+
     public function byPo(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -110,7 +156,6 @@ class ReceivingController extends Controller
         ]);
         $po = trim($validated['po_transporter']);
         $user = $request->user();
-
         $receiving = Receiving::with([
             'rencanaKirim.items',
             'dock',
@@ -118,7 +163,7 @@ class ReceivingController extends Controller
             'items',
         ])
             ->whereHas('rencanaKirim', function ($query) use ($user, $po) {
-                $query->forUserDepot($user)
+                $this->scopeRencanaKirimToUser($query, $user)
                     ->whereRaw('LOWER(po_transporter) = ?', [mb_strtolower($po)]);
             })
             ->orderByRaw(
@@ -175,7 +220,10 @@ class ReceivingController extends Controller
         }
 
         $receiving = DB::transaction(function () use ($request, $validated) {
-            $rencanaKirim = RencanaKirim::with('items')->forUserDepot($request->user())->lockForUpdate()->findOrFail($validated['rencana_kirim_id']);
+            $rencanaKirim = $this->scopeRencanaKirimToUser(
+                RencanaKirim::with('items'),
+                $request->user()
+            )->lockForUpdate()->findOrFail($validated['rencana_kirim_id']);
 
             abort_unless(
                 $rencanaKirim->status === 'VERIFIED',
@@ -284,10 +332,14 @@ class ReceivingController extends Controller
 
     private function authorizeDepot(Receiving $receiving): void
     {
-        $rk = $receiving->rencanaKirim;
-        $this->authorizeDepotRow(
-            $rk?->kode_depo,
-            $rk?->nama_depo,
+        $user = auth()->user();
+
+        abort_unless(
+            $user instanceof User
+                && $this->scopeReceivingsToUser(Receiving::query(), $user)
+                    ->whereKey($receiving->getKey())
+                    ->exists(),
+            403,
             'Data receiving tidak ditemukan di depo Anda.'
         );
     }

@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\DepotSetting;
 use App\Models\Permission;
 use App\Models\Receiving;
+use App\Models\Region;
 use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -40,10 +43,12 @@ class ReceivingDepotFilterTest extends TestCase
             'full_name' => 'Receiving Depot User',
             'kode_depo' => $depo,
             'nama_depo' => 'Depo '.$depo,
+            'scope_level' => $viewAll ? 'master' : 'depot',
             'level' => 'staff_logistic',
             'status' => 'active',
         ]);
         $role->users()->attach($user->id);
+        User::clearPermissionCache($user->id);
 
         return $user;
     }
@@ -84,6 +89,53 @@ class ReceivingDepotFilterTest extends TestCase
             ->assertJsonPath('data.0.rencana_kirim.kode_depo', 'DPO-A');
     }
 
+    public function test_region_receiving_history_scopes_through_rencana_kirim(): void
+    {
+        Region::firstOrCreate(['code' => 'REG-1'], ['name' => 'Region 1']);
+        Region::firstOrCreate(['code' => 'REG-2'], ['name' => 'Region 2']);
+        $regionUser = $this->userWith(true);
+        $regionUser->forceFill([
+            'scope_level' => 'region',
+            'region_id' => 'REG-1',
+            'depo_id' => 12,
+        ])->save();
+        foreach ([
+            ['kode_depo' => 'DPO-A', 'region_id' => 'REG-1'],
+            ['kode_depo' => 'DPO-B', 'region_id' => 'REG-1'],
+            ['kode_depo' => 'DPO-C', 'region_id' => 'REG-2'],
+        ] as $depotAttributes) {
+            $depot = DepotSetting::create([
+                ...$depotAttributes,
+                'nama_depo' => 'Depo '.$depotAttributes['kode_depo'],
+                'is_active' => true,
+            ]);
+
+            if ($depotAttributes['region_id'] === 'REG-1') {
+                DB::table('user_depots')->insert([
+                    'user_id' => $regionUser->id,
+                    'kode_depo' => $depot->kode_depo,
+                    'assigned_at' => now(),
+                ]);
+            }
+        }
+        $this->makeReceiving('DPO-A', $regionUser);
+        $this->makeReceiving('DPO-B', $regionUser);
+        $this->makeReceiving('DPO-C', $regionUser);
+
+        Sanctum::actingAs($regionUser);
+
+        $response = $this->getJson('/api/v1/receivings')
+            ->assertOk()
+            ->assertJsonPath('total', 2);
+        $this->assertEqualsCanonicalizing(
+            ['DPO-A', 'DPO-B'],
+            collect($response->json('data'))->pluck('rencana_kirim.kode_depo')->all()
+        );
+        $this->getJson('/api/v1/receivings/stats')
+            ->assertOk()
+            ->assertJsonPath('data.total', 2);
+    }
+
     public function test_scoped_user_locked_to_own_depo(): void
     {
         $master = $this->userWith(true);
@@ -92,12 +144,13 @@ class ReceivingDepotFilterTest extends TestCase
 
         Sanctum::actingAs($this->userWith(false, 'DPO-A'));
 
-        $this->getJson('/api/v1/receivings')->assertOk()->assertJsonPath('total', 1);
-        // Filter ke depo lain diabaikan — tetap depo sendiri.
-        $this->getJson('/api/v1/receivings?kode_depo=DPO-B')
+        $this->getJson('/api/v1/receivings')
             ->assertOk()
-            ->assertJsonPath('total', 1)
-            ->assertJsonPath('data.0.rencana_kirim.kode_depo', 'DPO-A');
+            ->assertJsonPath('total', 1);
+        // Filter ke depo lain ditolak oleh middleware isolasi.
+        $this->getJson('/api/v1/receivings?kode_depo=DPO-B')
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Access denied: depo isolation');
     }
 
     public function test_stats_returns_grouped_counts_for_the_users_depo(): void
