@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuthStore } from "@/store/auth";
 import ThemeToggle from "@/components/ThemeToggle";
+import { getErrorMessage } from "@/lib/api";
+import { validateRegion } from "@/lib/accessGateway";
 
 const featureCards = [
   { title: "Inventory", desc: "Track products", icon: "inventory" },
@@ -75,27 +77,15 @@ export default function LoginPage() {
     setRegionStatus("loading");
     setRegionMsg("");
     try {
-      const res = await fetch("/api/v1/region-validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ region_code: regionCode.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRegionStatus("success");
-        setRegionMsg("Region valid.");
-        localStorage.setItem("region_access", JSON.stringify({ port: regionPort, regionCode: regionCode.trim(), regionId: data.region_id, code: data.region_code }));
-        setRegionContext({ code: regionCode.trim(), depo: undefined });
-        setTimeout(() => { setRegionModalOpen(false); setRegionStatus("idle"); setRegionMsg(""); }, 600);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setRegionStatus("error");
-        setRegionMsg(data.message || "Region tidak valid atau tidak aktif.");
-      }
-    } catch {
+      const data = await validateRegion(regionCode.trim());
+      setRegionStatus("success");
+      setRegionMsg("Region valid.");
+      localStorage.setItem("region_access", JSON.stringify({ port: regionPort, regionCode: regionCode.trim(), regionId: data.region_id, code: data.region_code }));
+      setRegionContext({ code: regionCode.trim(), depo: undefined });
+      setTimeout(() => { setRegionModalOpen(false); setRegionStatus("idle"); setRegionMsg(""); }, 600);
+    } catch (err) {
       setRegionStatus("error");
-      setRegionMsg("Gagal menghubungi server Region.");
+      setRegionMsg(getErrorMessage(err, "Gagal menghubungi server Region."));
     }
   };
 

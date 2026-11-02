@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginPage from './page';
 
-const { push, replace, login, loadUser, router } = vi.hoisted(() => {
+const { push, replace, login, loadUser, validateRegion, router } = vi.hoisted(() => {
   const push = vi.fn();
   const replace = vi.fn();
   return {
@@ -10,6 +10,7 @@ const { push, replace, login, loadUser, router } = vi.hoisted(() => {
     replace,
     login: vi.fn(),
     loadUser: vi.fn(),
+    validateRegion: vi.fn(),
     // Objek router STABIL (referensi sama tiap render) — meniru perilaku
     // useRouter() Next.js asli; objek baru per render memicu loop setState.
     router: { push, replace },
@@ -45,6 +46,10 @@ vi.mock('@/store/auth', () => ({
     login,
     loadUser,
   }),
+}));
+
+vi.mock('@/lib/accessGateway', () => ({
+  validateRegion,
 }));
 
 describe('LoginPage', () => {
@@ -146,10 +151,9 @@ describe('LoginPage', () => {
   });
 
   it('SAVE dengan Region Code salah: pesan error tampil dan modal TETAP terbuka', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({ valid: false, message: 'Region not found or inactive' }),
-    }));
+    validateRegion.mockRejectedValue({
+      response: { status: 404, data: { message: 'Region not found or inactive' } },
+    });
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
@@ -158,16 +162,19 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'SAVE' }));
 
     expect(await screen.findByText(/Region not found or inactive/)).toBeInTheDocument();
+    expect(validateRegion).toHaveBeenCalledWith('REGION-TIDAK-ADA');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(localStorage.getItem('region_access')).toBeNull();
   });
 
   it('SAVE dengan konfigurasi valid: konfigurasi persisten di localStorage, modal OTOMATIS tertutup, halaman tetap /login', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ valid: true, region_id: 1, region_code: 'REG-001' }),
+    validateRegion.mockResolvedValue({
+      valid: true,
+      region_id: 1,
+      region_code: 'REG-001',
+      region_name: 'Region 001',
+      message: 'Region validated',
     });
-    vi.stubGlobal('fetch', fetchMock);
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
@@ -179,11 +186,7 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(localStorage.getItem('region_access')).toContain('REG-001');
     });
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/region-validate', expect.objectContaining({
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ region_code: 'REG-001' }),
-    }));
+    expect(validateRegion).toHaveBeenCalledWith('REG-001');
     // Modal tertutup otomatis (setTimeout 600ms), user tetap di halaman login.
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
