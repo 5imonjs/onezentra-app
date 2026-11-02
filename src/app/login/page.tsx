@@ -127,12 +127,12 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="relative grid min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_24%_70%,rgba(75,70,190,0.28),transparent_55%),linear-gradient(115deg,#1b1d50_0%,#171a3c_48%,#101629_100%)] font-sans text-white antialiased lg:grid-cols-2">
+    <main className="relative grid min-h-screen overflow-hidden bg-background font-sans text-foreground antialiased lg:grid-cols-2">
       <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px bg-white/5 lg:block" aria-hidden="true" />
 
       <section
         aria-label="Keunggulan ONEZENTRA"
-        className="relative hidden min-h-screen items-center justify-center overflow-hidden px-10 py-14 lg:flex xl:px-16"
+        className="relative hidden min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(115deg,#1b1d50_0%,#171a3c_48%,#101629_100%)] px-10 py-14 text-white lg:flex xl:px-16"
       >
         <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-indigo-400/10 to-transparent" aria-hidden="true" />
         <div className="relative z-10 flex w-full max-w-xl flex-col items-center">
@@ -175,29 +175,29 @@ export default function LoginPage() {
             <div className="mx-auto mb-4 flex h-28 w-28 items-center justify-center rounded-2xl bg-white p-1.5 shadow-xl shadow-black/20">
               <Image alt="Logo" loading="lazy" width={600} height={600} src="/LOGO.png" className="object-contain w-full h-full" />
             </div>
-            <h1 className="text-2xl font-bold tracking-wide text-white">ONEZENTRA</h1>
+            <h1 className="text-2xl font-bold tracking-wide text-foreground">ONEZENTRA</h1>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-7 text-slate-900 shadow-2xl shadow-black/20 sm:p-9">
+          <div className="rounded-3xl border border-border bg-card p-7 text-card-foreground shadow-2xl shadow-black/20 sm:p-9">
             <div className="mb-6">
-              <h2 className="mb-2 text-2xl font-bold tracking-tight text-slate-900">Hallo, Welcome Back</h2>
-              <p className="text-sm text-slate-500">Welcome Back to ONEZENTRA</p>
+              <h2 className="mb-2 text-2xl font-bold tracking-tight text-card-foreground">Hallo, Welcome Back</h2>
+              <p className="text-sm text-muted-foreground">Welcome Back to ONEZENTRA</p>
             </div>
 
             {regionContext && (
-              <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-slate-700">
-                <svg className="h-5 w-5 shrink-0 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+              <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted px-4 py-3 text-sm text-card-foreground">
+                <svg className="h-5 w-5 shrink-0 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
                   <circle cx="12" cy="12" r="9" />
                   <path strokeLinecap="round" d="M3 12h18M12 3a14 14 0 010 18m0-18a14 14 0 000 18" />
                 </svg>
                 <div>
                   <p className="font-medium">Region: <strong>{regionContext.code || "—"}</strong></p>
-                  {regionContext.depo && <p className="text-xs text-amber-700">Depo: {regionContext.depo}</p>}
+                  {regionContext.depo && <p className="text-xs text-muted-foreground">Depo: {regionContext.depo}</p>}
                 </div>
                 <button
                   type="button"
                   onClick={() => { setRegionModalOpen(true); setRegionStatus("idle"); setRegionMsg(""); }}
-                  className="ml-auto rounded-md border border-amber-200 bg-white px-2 py-1 text-xs text-slate-700 transition hover:bg-amber-100"
+                  className="ml-auto rounded-md border border-border bg-card px-2 py-1 text-xs text-card-foreground transition hover:bg-accent hover:text-accent-foreground"
                   aria-label="Ubah Region Access"
                 >
                   Ubah
@@ -207,11 +207,11 @@ export default function LoginPage() {
 
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div>
-                <label htmlFor="login-email" className="mb-2 block text-sm font-semibold text-slate-700">Username</label>
+                <label htmlFor="login-email" className="mb-2 block text-sm font-semibold text-card-foreground">Username</label>
                 <input
                   id="login-email"
                   type="text"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                  className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/15"
                   placeholder="Masukkan username"
                   required
                   autoComplete="username"
@@ -221,12 +221,12 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label htmlFor="login-password" className="mb-2 block text-sm font-semibold text-slate-700">Password</label>
+                <label htmlFor="login-password" className="mb-2 block text-sm font-semibold text-card-foreground">Password</label>
                 <div className="relative">
                   <input
                     id="login-password"
                     type={showPassword ? "text" : "password"}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                    className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-12 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/15"
                     placeholder="Masukkan password"
                     required
                     autoComplete="current-password"
@@ -238,7 +238,7 @@ export default function LoginPage() {
                     onClick={() => setShowPassword((s) => !s)}
                     aria-label="Tampilkan password"
                     aria-pressed={showPassword}
-                    className="absolute right-2 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 transition-colors hover:text-slate-700"
+                    className="absolute right-2 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
@@ -249,19 +249,19 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                  <svg className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.86L1.82 18.5A2 2 0 003.55 21h16.9a2 2 0 001.73-2.5L13.7 3.86a2 2 0 00-3.4 0z" />
                   </svg>
                   <div>
                     <p className="font-medium">Login gagal</p>
-                    <p className="text-xs text-rose-700">{error}</p>
+                    <p className="text-xs opacity-85">{error}</p>
                   </div>
                 </div>
               )}
               <button
                 type="submit"
-                className="w-full rounded-xl bg-indigo-600 py-3.5 font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-xl bg-primary py-3.5 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={isLoading}
               >
                 {isLoading ? "Memvalidasi..." : "SIGN IN"}
@@ -271,7 +271,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setRegionModalOpen(true); setRegionStatus("idle"); setRegionMsg(""); }}
-              className="mt-4 flex items-center gap-2 text-xs font-medium text-slate-500 transition hover:text-indigo-600"
+              className="mt-4 flex items-center gap-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25a3.75 3.75 0 100 7.5 3.75 3.75 0 000-7.5z" />
@@ -280,11 +280,11 @@ export default function LoginPage() {
               <span>Region Access</span>
             </button>
 
-            <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
+            <p className="mt-5 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
               Jika belum menyimpan Region Access, konfigurasi akan diminta sebelum login.
             </p>
           </div>
-          <footer className="mt-7 text-center text-xs text-slate-400">
+          <footer className="mt-7 text-center text-xs text-muted-foreground">
             © 2026 ONEZENTRA <span className="px-1">·</span> Developed by Langkau_kami <span className="px-1">·</span> All rights reserved
           </footer>
         </div>
@@ -292,10 +292,10 @@ export default function LoginPage() {
 
       {regionModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Region Access">
-          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900 p-6 text-slate-100 shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-popover p-6 text-popover-foreground shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold">Region Access</h3>
-              <button onClick={() => { setRegionModalOpen(false); setRegionStatus("idle"); setRegionMsg(""); }} aria-label="Tutup" className="text-slate-400 hover:text-white">
+              <button onClick={() => { setRegionModalOpen(false); setRegionStatus("idle"); setRegionMsg(""); }} aria-label="Tutup" className="text-muted-foreground hover:text-foreground">
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                   <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
                 </svg>
@@ -304,18 +304,18 @@ export default function LoginPage() {
             <form onSubmit={handleRegionSave} className="space-y-4">
               <div>
                 <label htmlFor="region-port-modal" className="mb-1 block text-sm font-medium">Port</label>
-                <input id="region-port-modal" type="text" value={regionPort} onChange={(e) => setRegionPort(e.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input id="region-port-modal" type="text" value={regionPort} onChange={(e) => setRegionPort(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div>
                 <label htmlFor="region-code-modal" className="mb-1 block text-sm font-medium">Region Code</label>
-                <input id="region-code-modal" type="text" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} placeholder="Contoh: REGION-A" required className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input id="region-code-modal" type="text" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} placeholder="Contoh: REGION-A" required className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
-              <button type="submit" disabled={regionStatus === "loading" || !regionCode.trim()} className="w-full rounded-xl bg-indigo-600 py-2.5 font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50">
+              <button type="submit" disabled={regionStatus === "loading" || !regionCode.trim()} className="w-full rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50">
                 {regionStatus === "loading" ? "Memvalidasi..." : "SAVE"}
               </button>
             </form>
             {regionStatus === "success" && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-emerald-300">
+              <div className="mt-3 flex items-center gap-2 text-sm text-success">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12.5l4.5 4.5L19 7" />
                 </svg>
@@ -323,7 +323,7 @@ export default function LoginPage() {
               </div>
             )}
             {regionStatus === "error" && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-rose-300">
+              <div className="mt-3 flex items-center gap-2 text-sm text-destructive">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.86L1.82 18.5A2 2 0 003.55 21h16.9a2 2 0 001.73-2.5L13.7 3.86a2 2 0 00-3.4 0z" />
                 </svg>
