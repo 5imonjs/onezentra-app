@@ -88,6 +88,15 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('radio', { name: 'Tema Sistem' })).toBeInTheDocument();
   });
 
+  it('menggunakan token tema global untuk halaman, kartu, input, dan tombol login', () => {
+    render(<LoginPage />);
+
+    expect(screen.getByRole('main')).toHaveClass('bg-background');
+    expect(screen.getByRole('heading', { name: 'Hallo, Welcome Back' }).parentElement?.parentElement).toHaveClass('bg-card', 'border-border');
+    expect(screen.getByLabelText('Username')).toHaveClass('bg-background', 'border-input', 'text-foreground');
+    expect(screen.getByRole('button', { name: 'SIGN IN' })).toHaveClass('bg-primary', 'text-primary-foreground');
+  });
+
   it('regresi: tidak memanggil loadUser saat dibuka — validasi sesi kini di proxy, bukan GET /user di browser', () => {
     render(<LoginPage />);
 
