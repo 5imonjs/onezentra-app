@@ -22,6 +22,7 @@ interface AuthState {
   permissions: string[];
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithContext: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   hasPermission: (slug: string) => boolean;
@@ -34,6 +35,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
 
   login: async (email: string, password: string) => {
+    set({ isLoading: true });
+    try {
+      const res = await auth.login(email, password);
+      const { user, permissions } = res.data;
+      // Buang ringkasan dashboard milik sesi sebelumnya (bila ada) agar user
+      // baru tidak melihat data user lama sebelum cache kedaluwarsa.
+      clearDashboardSummaryCache();
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('ow_login_splash', '1');
+      }
+      set({ user, permissions, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  loginWithContext: async (email: string, password: string) => {
     set({ isLoading: true });
     try {
       const res = await auth.login(email, password);
