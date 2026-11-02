@@ -10,13 +10,14 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
+use Throwable;
 
 /**
  * Menyiapkan fixtures + token untuk `tests/load/api-load.mjs`.
  *
  * Sengaja memakai connection normal, BUKAN RefreshDatabase: token load test
- * harus tetap hidup di database dev selama server berjalan. Command ini juga
- * mencetak token ke stdout supaya bisa langsung di-pipe ke --tokens.
+ * harus tetap hidup di database dev selama server berjalan.
  */
 class PrepareLoadTest extends Command
 {
@@ -28,8 +29,45 @@ class PrepareLoadTest extends Command
 
     public function handle(): int
     {
+        if (! app()->environment(['local', 'testing'])) {
+            $this->components->error('Load test hanya boleh dijalankan di environment local atau testing.');
+
+            return self::FAILURE;
+        }
+
         $userCount = (int) $this->option('users');
         $rows = (int) $this->option('rows');
+
+        if ($userCount < 1 || $rows < 1) {
+            $this->components->error('Jumlah users dan rows harus lebih besar dari nol.');
+
+            return self::FAILURE;
+        }
+
+        $tokenFile = tempnam(sys_get_temp_dir(), 'onezentra-loadtest-');
+        if ($tokenFile === false) {
+            $this->components->error('Tidak dapat membuat file token sementara.');
+
+            return self::FAILURE;
+        }
+
+        $permissions = fileperms($tokenFile);
+        $tokenDirectory = realpath(dirname($tokenFile));
+        $temporaryDirectory = realpath(sys_get_temp_dir());
+        if (
+            $permissions === false
+            || ($permissions & 0077) !== 0
+            || $tokenDirectory === false
+            || $tokenDirectory !== $temporaryDirectory
+        ) {
+            if (! unlink($tokenFile)) {
+                throw new RuntimeException('Tidak dapat menghapus file token sementara yang tidak aman.');
+            }
+
+            $this->components->error('File token sementara tidak memiliki permission yang aman.');
+
+            return self::FAILURE;
+        }
 
         $this->components->info("Menyiapkan {$userCount} token dan {$rows} baris data dummy...");
 
@@ -50,20 +88,35 @@ class PrepareLoadTest extends Command
         $this->seedNpn($rows);
 
         $tokens = [];
-        for ($i = 0; $i < $userCount; $i++) {
-            $user = User::updateOrCreate(
-                ['email' => "loadtest{$i}@local.test"],
-                [
-                    'password' => Hash::make('loadtest123'),
-                    'full_name' => "Load Test {$i}",
-                    'kode_depo' => 'LOADTEST',
-                    'nama_depo' => 'Load Test Depo',
-                    'level' => 'admin_master',
-                    'status' => 'active',
-                ]
-            );
-            $role->users()->syncWithoutDetaching([$user->id]);
-            $tokens[] = $user->createToken('loadtest')->plainTextToken;
+        try {
+            DB::transaction(function () use ($userCount, $role, $tokenFile, &$tokens): void {
+                for ($i = 0; $i < $userCount; $i++) {
+                    $user = User::updateOrCreate(
+                        ['email' => "loadtest{$i}@local.test"],
+                        [
+                            'password' => Hash::make('loadtest123'),
+                            'full_name' => "Load Test {$i}",
+                            'kode_depo' => 'LOADTEST',
+                            'nama_depo' => 'Load Test Depo',
+                            'level' => 'admin_master',
+                            'status' => 'active',
+                        ]
+                    );
+                    $role->users()->syncWithoutDetaching([$user->id]);
+                    $tokens[] = $user->createToken('loadtest')->plainTextToken;
+                }
+
+                $tokenContents = implode(',', $tokens);
+                if (file_put_contents($tokenFile, $tokenContents, LOCK_EX) !== strlen($tokenContents)) {
+                    throw new RuntimeException('Tidak dapat menulis token ke file sementara.');
+                }
+            });
+        } catch (Throwable $exception) {
+            if (is_file($tokenFile) && ! unlink($tokenFile)) {
+                throw new RuntimeException('Tidak dapat menghapus file token setelah persiapan gagal.', previous: $exception);
+            }
+
+            throw $exception;
         }
 
         $this->newLine();
@@ -72,12 +125,8 @@ class PrepareLoadTest extends Command
         $this->line('  npn               : '.Npn::count().' baris');
         $this->line('  tokens            : '.count($tokens));
         $this->newLine();
-        $this->line('<fg=cyan>Jalankan load test dengan:</>');
-        $this->line('  node tests/load/api-load.mjs --users=100 --duration=30 \\');
-        $this->line('    --tokens='.substr(implode(',', $tokens), 0, 60).'...');
-        $this->newLine();
-        $this->line('<fg=yellow>Token lengkap:</>');
-        $this->line(implode(',', $tokens));
+        $this->line('File token sementara: '.$tokenFile);
+        $this->line('Jalankan: node tests/load/api-load.mjs --tokens-file='.escapeshellarg($tokenFile));
 
         return self::SUCCESS;
     }

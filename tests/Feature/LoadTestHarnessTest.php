@@ -12,14 +12,14 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * Test yang rallied sebagai harness load test.
+ * Test harness load test untuk fixture terisolasi.
  *
  * Fungsinya bukan menguji endpoint, tapi menyediakan token + data yang bisa
  * dipakai `tests/load/api-load.mjs`. Dipisah dari test biasa karena harus
  * jalan dengan APP_ENV lokal dan database dev, bukan saat `php artisan test`.
  *
- * Grup 'performance': dikecualikan dari CI default
- * (`--exclude-group=performance`) agar token debug tidak tercetak di suite biasa.
+ * Grup 'performance': dikecualikan dari CI default (`--exclude-group=performance`)
+ * karena fixture ini sengaja membuat ribuan baris data.
  * Jalankan manual: php artisan test --filter=LoadTestHarnessTest
  */
 #[Group('performance')]
@@ -28,10 +28,7 @@ class LoadTestHarnessTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Menyiapkan N user dengan token valid, lalu mencetak tokennya.
-     *
-     * Dipakai manual: php artisan test --filter=LoadTestHarnessTest
-     * Output di-row terakhir adalah daftar token untuk --tokens.
+     * Menyiapkan N user dengan token valid untuk memastikan fixture load test.
      */
     public function test_issue_tokens_for_load_test(): void
     {
@@ -66,9 +63,6 @@ class LoadTestHarnessTest extends TestCase
             $role->users()->attach($user->id);
             $tokens[] = $user->createToken('loadtest')->plainTextToken;
         }
-
-        fwrite(STDERR, "\n=== LOADTEST_TOKENS ===\n".implode(',', $tokens)."\n=== END ===\n");
-        fwrite(STDERR, 'cluster_principal rows: '.ClusterPrincipal::count().PHP_EOL);
 
         $this->assertCount(20, $tokens);
         $this->assertSame(5000, ClusterPrincipal::count());

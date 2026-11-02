@@ -4,8 +4,8 @@
  * Mengukur p50/p95/p99 dan error rate pada beban paralel.
  * Node >=18 punya fetch bawaan, jadi tidak perlu axios/undici.
  *
- * Jalankan:
- *   node tests/load/api-load.mjs --base=http://127.0.0.1:8000 --users=100 --duration=30
+ * Jalankan `php artisan loadtest:prepare` di environment local/testing, lalu
+ * gunakan perintah dengan `--tokens-file` yang ditampilkan oleh command tersebut.
  *
  * CATATAN PENTING soal angka yang keluar dari sini:
  *  - `php artisan serve` adalah single-process PHP dev server. Ia TIDAK
@@ -18,6 +18,9 @@
 
 import { performance } from 'node:perf_hooks';
 import http from 'node:http';
+import { readFileSync, realpathSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, resolve } from 'node:path';
 
 /**
  * Transport memakai node:http, BUKAN fetch bawaan.
@@ -59,10 +62,32 @@ const BASE = args.base ?? 'http://127.0.0.1:8000';
 const CONCURRENCY = Number(args.users ?? 50);
 const DURATION_S = Number(args.duration ?? 15);
 const WARMUP_S = Number(args.warmup ?? 3);
-const TOKENS = (args.tokens ?? '').split(',').filter(Boolean);
+const tokenFilePath = args['tokens-file'];
+
+if (args.tokens !== undefined || !tokenFilePath) {
+  console.error('ERROR: gunakan --tokens-file dari `php artisan loadtest:prepare`; jangan masukkan token ke argumen shell.');
+  process.exit(2);
+}
+
+let TOKENS;
+try {
+  const resolvedTokenFile = resolve(tokenFilePath);
+  if (
+    realpathSync(dirname(resolvedTokenFile)) !== realpathSync(tmpdir())
+    || !basename(resolvedTokenFile).startsWith('onezentra-loadtest-')
+  ) {
+    throw new Error('File token harus berasal dari direktori sementara load-test.');
+  }
+
+  TOKENS = readFileSync(resolvedTokenFile, 'utf8').split(',').filter(Boolean);
+  unlinkSync(resolvedTokenFile);
+} catch (error) {
+  console.error(`ERROR: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(2);
+}
 
 if (TOKENS.length === 0) {
-  console.error('ERROR: butuh --tokens=<t1,t2,...>. Ambil dari POST /api/v1/login.');
+  console.error('ERROR: file token sementara kosong.');
   process.exit(2);
 }
 

@@ -46,6 +46,26 @@ export default function LoginPage() {
     }
   };
 
+  const openRegionModal = () => {
+    const saved = localStorage.getItem("region_access");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setRegionCode(typeof parsed?.regionCode === "string" ? parsed.regionCode : typeof parsed?.code === "string" ? parsed.code : "");
+        setRegionPort(typeof parsed?.port === "string" ? parsed.port : "8000");
+      } catch {
+        setRegionCode("");
+        setRegionPort("8000");
+      }
+    } else {
+      setRegionCode("");
+      setRegionPort("8000");
+    }
+    setRegionModalOpen(true);
+    setRegionStatus("idle");
+    setRegionMsg("");
+  };
+
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem("region_access");
@@ -187,7 +207,7 @@ export default function LoginPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setRegionModalOpen(true); setRegionStatus("idle"); setRegionMsg(""); }}
+                  onClick={openRegionModal}
                   className="ml-auto rounded-md border border-border bg-card px-2 py-1 text-xs text-card-foreground transition hover:bg-accent hover:text-accent-foreground"
                   aria-label="Ubah Region Access"
                 >
@@ -261,7 +281,7 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={() => { setRegionModalOpen(true); setRegionStatus("idle"); setRegionMsg(""); }}
+              onClick={openRegionModal}
               className="mt-4 flex items-center gap-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
