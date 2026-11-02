@@ -459,6 +459,50 @@ class ValidationProvider extends ChangeNotifier {
     }
   }
 
+  /// Automatically links an NPN when the validation snapshot has one unique
+  /// exact match. Returns false when no unique match exists and null on error.
+  Future<bool?> resolveItemNpn({required int itemId}) async {
+    var active = _active;
+    if (active == null || _actionBusy) {
+      return null;
+    }
+
+    _actionBusy = true;
+    _message = null;
+    _notify();
+
+    try {
+      var resolved = await _repository.resolveItemNpn(
+        validationId: active.id,
+        itemId: itemId,
+      );
+      if (resolved == null) {
+        return false;
+      }
+
+      _active = await _repository.show(active.id);
+      _message = const ValidationActionMessage.success(
+        'Produk NPN berhasil teridentifikasi dan tertaut otomatis.',
+      );
+      return true;
+    } on ApiException catch (e) {
+      _message = ValidationActionMessage.failure(e.message);
+      return null;
+    } catch (e, stack) {
+      debugPrint(
+        'ValidationProvider.resolveItemNpn: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      _message = const ValidationActionMessage.failure(
+        'Produk NPN gagal ditautkan otomatis. Silakan coba lagi.',
+      );
+      return null;
+    } finally {
+      _actionBusy = false;
+      _notify();
+    }
+  }
+
   /// Validates one line, then reloads the session so progress stays exact.
   Future<bool> validateItem({
     required int itemId,

@@ -839,6 +839,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                           item,
                           provider,
                           canCreate: canCreateStandarisasi,
+                          canViewNpn: canViewNpn,
                         )
                       else if (!item.isPending &&
                           canValidate &&
@@ -919,7 +920,49 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           return;
         }
 
-        await _selectNpnForItem(item, provider);
+        var autoLinked = await provider.resolveItemNpn(itemId: item.id);
+        if (!mounted || autoLinked == null) {
+          return;
+        }
+        if (autoLinked) {
+          var linkedItem = provider.active?.items.firstWhere(
+            (candidate) => candidate.id == item.id,
+            orElse: () => item,
+          );
+          if (linkedItem == null || linkedItem.npnId == null) {
+            return;
+          }
+          if (linkedItem.canValidate) {
+            await _openItemSheet(linkedItem);
+          } else if (linkedItem.standarisasi?.status == 'pending') {
+            await showDialog<void>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                backgroundColor: context.colors.surfaceCard,
+                title: const Text('Menunggu persetujuan BLC'),
+                content: const Text(
+                  'Produk sudah tertaut dan standarisasi tumpukan sedang '
+                  'menunggu persetujuan BLC. Standarisasi tidak perlu diajukan ulang.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Tutup'),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            await _openStandarisasiSheet(linkedItem, canCreate: true);
+          }
+          return;
+        }
+
+        await _selectNpnForItem(
+          item,
+          provider,
+          canCreateStandarisasi: canCreateStandarisasi,
+        );
         return;
       }
 
@@ -1015,8 +1058,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
 
   Future<void> _selectNpnForItem(
     SjValidationItem item,
-    ValidationProvider provider,
-  ) async {
+    ValidationProvider provider, {
+    required bool canCreateStandarisasi,
+  }) async {
     var product = await showModalBottomSheet<NpnProduct>(
       context: context,
       isScrollControlled: true,
@@ -1050,7 +1094,21 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       ),
     );
     if (confirmed == true && mounted) {
-      await provider.linkItemNpn(itemId: item.id, npnId: product.id);
+      var linked = await provider.linkItemNpn(
+        itemId: item.id,
+        npnId: product.id,
+      );
+      if (!linked || !mounted || !canCreateStandarisasi) {
+        return;
+      }
+
+      var linkedItem = provider.active?.items.firstWhere(
+        (candidate) => candidate.id == item.id,
+        orElse: () => item,
+      );
+      if (linkedItem != null && linkedItem.npnId != null) {
+        await _openStandarisasiSheet(linkedItem, canCreate: true);
+      }
     }
   }
 
@@ -1617,10 +1675,16 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     SjValidationItem item,
     ValidationProvider provider, {
     required bool canCreate,
+    required bool canViewNpn,
   }) => FilledButton.icon(
     onPressed: provider.actionBusy
         ? null
-        : () => _openStandarisasiSheet(item, canCreate: canCreate),
+        : () => _onItemTap(
+            item,
+            canCreateStandarisasi: canCreate,
+            canViewNpn: canViewNpn,
+            provider: provider,
+          ),
     style: FilledButton.styleFrom(
       backgroundColor: context.colors.warningText,
       foregroundColor: AppTheme.ink900,

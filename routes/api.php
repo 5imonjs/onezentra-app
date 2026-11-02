@@ -394,6 +394,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/{sjValidation}', [SjValidationController::class, 'show'])->middleware('permission:sj_validation.view');
         Route::post('/start/{rencanaKirim}', [SjValidationController::class, 'start'])->middleware('permission:sj_validation.create');
         Route::post('/{sjValidation}/scan', [SjValidationController::class, 'scanItem'])->middleware('permission:sj_validation.validate');
+        Route::post('/{sjValidation}/items/{item}/resolve-npn', [SjValidationController::class, 'resolveItemNpn'])
+            ->middleware(['permission:sj_validation.validate', 'permission:npn.view']);
         Route::post('/{sjValidation}/items/{item}/link-npn', [SjValidationController::class, 'linkItemNpn'])
             ->middleware(['permission:sj_validation.validate', 'permission:npn.view']);
         Route::post('/{sjValidation}/extra-items', [SjValidationController::class, 'storeExtraItem'])->middleware('permission:sj_validation.extra');

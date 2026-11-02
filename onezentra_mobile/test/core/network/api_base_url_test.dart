@@ -50,6 +50,23 @@ void main() {
       );
     });
 
+    test('domain produksi mempertahankan https dan menolak http saat release', () {
+      expect(
+        ApiClient.normalizeBaseUrl(
+          'https://api.onezentra.sbs',
+          allowInsecure: false,
+        ),
+        'https://api.onezentra.sbs/api/v1',
+      );
+      expect(
+        ApiClient.normalizeBaseUrl(
+          'http://api.onezentra.sbs',
+          allowInsecure: false,
+        ),
+        isNull,
+      );
+    });
+
     test('IP produksi dipaksa https walau debug memasukkan http', () {
       // POST login via http dibalas redirect 301 nginx — Dart mengikuti
       // redirect dan mengubah POST→GET, login jadi selalu gagal.
@@ -111,13 +128,27 @@ void main() {
       expect(ApiClient().usesCustomBaseUrl, isFalse);
     });
 
-    test('URL produksi memakai IP trial', () {
-      expect(ApiClient.productionBaseUrl, 'https://187.77.121.102/api/v1');
+    test('URL produksi memakai domain API', () {
+      expect(
+        ApiClient.productionBaseUrl,
+        'https://api.onezentra.sbs/api/v1',
+      );
     });
 
-    test('override domain lama dimigrasikan ke IP', () async {
+    test('override domain produksi dibersihkan agar memakai default', () async {
       SharedPreferences.setMockInitialValues({
         'api_base_url': 'https://api.onezentra.sbs/api/v1',
+      });
+
+      await ApiClient().init();
+
+      expect(ApiClient().usesCustomBaseUrl, isFalse);
+      expect(ApiClient().baseUrl, ApiClient.resolvedBaseUrl);
+    });
+
+    test('override IP trial dimigrasikan ke domain produksi', () async {
+      SharedPreferences.setMockInitialValues({
+        'api_base_url': 'https://187.77.121.102/api/v1',
       });
 
       await ApiClient().init();

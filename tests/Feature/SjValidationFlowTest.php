@@ -147,6 +147,93 @@ class SjValidationFlowTest extends TestCase
         ]);
     }
 
+    public function test_field_operator_auto_links_validation_item_to_exact_npn_code(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.create',
+            'sj_validation.validate',
+            'npn.view',
+        ]));
+        $rencana = $this->scheduledRencana($user);
+        $npn = Npn::factory()->create([
+            'BOSnetszProductId' => 'SKU-SJ-1',
+            'szNickName' => 'Barang SJ Master',
+            'SAPszUomId' => 'CRT',
+        ]);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', [
+            'scan_code' => $rencana->po_transporter,
+        ])->assertOk()->json('data');
+        $itemId = $validation['items'][0]['id'];
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/items/{$itemId}/resolve-npn")
+            ->assertOk()
+            ->assertJsonPath('matched', true)
+            ->assertJsonPath('data.npn_id', $npn->id)
+            ->assertJsonPath('data.kode_barang', 'SKU-SJ-1')
+            ->assertJsonPath('data.nama_barang', 'Barang SJ Master')
+            ->assertJsonPath('data.satuan', 'CRT');
+
+        $this->assertDatabaseHas('sj_validation_items', [
+            'id' => $itemId,
+            'npn_id' => $npn->id,
+        ]);
+        $this->assertDatabaseHas('rencana_kirim_items', [
+            'id' => $rencana->items()->firstOrFail()->id,
+            'npn_id' => null,
+        ]);
+    }
+
+    public function test_field_operator_does_not_auto_link_ambiguous_npn_name(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.create',
+            'sj_validation.validate',
+            'npn.view',
+        ]));
+        $rencana = $this->scheduledRencana($user);
+        Npn::factory()->create(['szNickName' => 'Barang SJ']);
+        Npn::factory()->create(['szNickName' => 'Barang SJ']);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', [
+            'scan_code' => $rencana->po_transporter,
+        ])->assertOk()->json('data');
+        $itemId = $validation['items'][0]['id'];
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/items/{$itemId}/resolve-npn")
+            ->assertOk()
+            ->assertJsonPath('matched', false)
+            ->assertJsonPath('data', null);
+
+        $this->assertDatabaseHas('sj_validation_items', [
+            'id' => $itemId,
+            'npn_id' => null,
+        ]);
+    }
+
+    public function test_field_operator_auto_links_by_unique_exact_npn_name_when_code_is_unknown(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.create',
+            'sj_validation.validate',
+            'npn.view',
+        ]));
+        $rencana = $this->scheduledRencana($user);
+        $npn = Npn::factory()->create([
+            'BOSnetszProductId' => 'UNRELATED-CODE',
+            'szNickName' => null,
+            'szNickNameNew' => null,
+            'szShortDescription' => 'Barang SJ',
+        ]);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', [
+            'scan_code' => $rencana->po_transporter,
+        ])->assertOk()->json('data');
+        $itemId = $validation['items'][0]['id'];
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/items/{$itemId}/resolve-npn")
+            ->assertOk()
+            ->assertJsonPath('matched', true)
+            ->assertJsonPath('data.npn_id', $npn->id);
+    }
+
     public function test_link_npn_rejects_an_item_from_another_validation(): void
     {
         Sanctum::actingAs($user = $this->userWithPermissions([
@@ -168,6 +255,8 @@ class SjValidationFlowTest extends TestCase
         $this->postJson("/api/v1/sj-validations/{$validationA['id']}/items/{$itemId}/link-npn", [
             'npn_id' => $npn->id,
         ])->assertStatus(422);
+        $this->postJson("/api/v1/sj-validations/{$validationA['id']}/items/{$itemId}/resolve-npn")
+            ->assertStatus(422);
 
         $this->assertDatabaseHas('sj_validation_items', [
             'id' => $itemId,

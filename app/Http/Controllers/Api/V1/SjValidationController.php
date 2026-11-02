@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -504,6 +505,88 @@ class SjValidationController extends Controller
 
             return response()->json(['data' => $validationItem]);
         });
+    }
+
+    /**
+     * Tautkan otomatis snapshot item ke master NPN hanya jika identitasnya
+     * cocok tepat dan menghasilkan satu produk unik.
+     */
+    public function resolveItemNpn(SjValidation $sjValidation, mixed $item): JsonResponse
+    {
+        $this->authorizeDepot($sjValidation);
+        abort_unless($sjValidation->status === 'IN_PROGRESS', 422, 'NPN hanya dapat ditautkan saat sesi validasi berjalan.');
+
+        return DB::transaction(function () use ($sjValidation, $item): JsonResponse {
+            $validationItem = SjValidationItem::whereKey($item)->lockForUpdate()->firstOrFail();
+            if ($validationItem->sj_validation_id !== $sjValidation->id) {
+                return response()->json(['message' => 'Item tidak sesuai validasi ini'], 422);
+            }
+
+            if ($validationItem->status !== 'PENDING') {
+                return response()->json(['message' => 'NPN hanya dapat ditautkan sebelum item divalidasi.'], 422);
+            }
+
+            $npn = $validationItem->npn_id
+                ? Npn::find($validationItem->npn_id)
+                : $this->matchNpnToValidationItem($validationItem);
+
+            if (! $npn) {
+                return response()->json(['matched' => false, 'data' => null]);
+            }
+
+            $validationItem->npn_id = $npn->id;
+            $validationItem->kode_barang = $npn->BOSnetszProductId ?: $validationItem->kode_barang;
+            $validationItem->nama_barang = $npn->szNickName
+                ?: ($npn->szShortDescription ?: ($npn->szNickNameNew ?: $validationItem->nama_barang));
+            $validationItem->satuan = $npn->SAPszUomId ?: ($npn->BOSnetszUomId ?: $validationItem->satuan);
+            $validationItem->save();
+            $this->standarisasiForItem($validationItem);
+            $validationItem->load(['npn', 'batch']);
+            $this->attachStandarUmur([$validationItem]);
+
+            return response()->json(['matched' => true, 'data' => $validationItem]);
+        });
+    }
+
+    private function matchNpnToValidationItem(SjValidationItem $item): ?Npn
+    {
+        $code = trim((string) $item->kode_barang);
+        if ($code !== '') {
+            $matches = Npn::query()
+                ->where(function (Builder $query) use ($code): void {
+                    $query->where('BOSnetszProductId', $code)
+                        ->orWhere('SAPszProductId', $code)
+                        ->orWhere('szBarcode', $code)
+                        ->orWhere('szBarcodeSekunder', $code)
+                        ->orWhere('szBarcodeTersier', $code);
+                })
+                ->limit(2)
+                ->get();
+
+            if ($matches->count() === 1) {
+                return $matches->first();
+            }
+
+            if ($matches->isNotEmpty()) {
+                return null;
+            }
+        }
+
+        $name = trim((string) $item->nama_barang);
+        if ($name === '') {
+            return null;
+        }
+
+        $matches = Npn::query()
+            ->where(function (Builder $query) use ($name): void {
+                $query->where('szNickName', $name)
+                    ->orWhere('szNickNameNew', $name)
+                    ->orWhere('szShortDescription', $name);
+            })
+            ->limit(2)
+            ->get();
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     /**

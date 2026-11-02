@@ -29,6 +29,7 @@ class _FakeValidationRepository extends ValidationRepository {
     this.sessionToOpen,
     this.startError,
     this.searchResults = const [],
+    this.autoResolvedItem,
   });
 
   final List<SjValidation> history;
@@ -36,8 +37,10 @@ class _FakeValidationRepository extends ValidationRepository {
   final SjValidation? sessionToOpen;
   final Object? startError;
   final List<NpnProduct> searchResults;
+  final SjValidationItem? autoResolvedItem;
 
   int searchCalls = 0;
+  int resolveNpnCalls = 0;
   String? lastSearchQuery;
 
   int listCalls = 0;
@@ -145,6 +148,33 @@ class _FakeValidationRepository extends ValidationRepository {
       extraItems: session.extraItems,
     );
     return linkedSession!.items.firstWhere((item) => item.id == itemId);
+  }
+
+  @override
+  Future<SjValidationItem?> resolveItemNpn({
+    required int validationId,
+    required int itemId,
+  }) async {
+    resolveNpnCalls++;
+    var resolvedItem = autoResolvedItem;
+    if (resolvedItem == null) {
+      return null;
+    }
+
+    var session = _session();
+    linkedSession = SjValidation(
+      id: session.id,
+      rencanaKirimId: session.rencanaKirimId,
+      scanCode: session.scanCode,
+      status: session.status,
+      document: session.document,
+      items: [
+        for (var item in session.items)
+          item.id == itemId ? resolvedItem : item,
+      ],
+      extraItems: session.extraItems,
+    );
+    return resolvedItem;
   }
 
   @override
@@ -981,9 +1011,7 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Standarisasi'), findsOneWidget);
   });
 
-  testWidgets('NPN kosong dapat dicari dan ditautkan langsung di Flutter', (
-    tester,
-  ) async {
+  testWidgets('shortcut standarisasi menautkan produk NPN', (tester) async {
     var repository = _FakeValidationRepository(
       sessionToOpen: _sessionWithoutNpn(),
       searchResults: const [
@@ -1003,8 +1031,12 @@ void main() {
     await tester.pumpAndSettle();
     await _pumpSessionPage(tester, auth, provider, provider.active!);
 
-    await tester.ensureVisible(find.text('Gula 50kg'));
-    await tester.tap(find.text('Gula 50kg'));
+    var standardizationShortcut = find.widgetWithText(
+      FilledButton,
+      'Standarisasi',
+    );
+    await tester.ensureVisible(standardizationShortcut);
+    await tester.tap(standardizationShortcut);
     await tester.pumpAndSettle();
     expect(find.text('Pilih produk dari master NPN'), findsOneWidget);
 
@@ -1021,17 +1053,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.linkNpnCalls, 1);
+    expect(repository.resolveNpnCalls, 1);
     expect(repository.lastLinkedItemId, 31);
     expect(repository.lastLinkedNpnId, 777);
     expect(provider.active?.items.single.npnId, 777);
-    expect(find.textContaining('Produk NPN tertaut.'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Gula 50kg'));
-    await tester.tap(find.text('Gula 50kg'));
-    await tester.pumpAndSettle();
-    expect(find.text('Produk Belum Disetujui BLC'), findsOneWidget);
-    await tester.tap(find.text('Input Standarisasi'));
-    await tester.pumpAndSettle();
     expect(find.text('Standarisasi Tumpukan'), findsWidgets);
 
     Future<void> enterSheetField(String key, String value) => tester.enterText(
@@ -1056,6 +1081,49 @@ void main() {
     expect(repository.lastTier, 3);
     expect(repository.lastTinggi, 5);
     expect(repository.scanCalls, 0);
+
+    provider.dispose();
+  });
+
+  testWidgets('shortcut standarisasi menautkan NPN otomatis tanpa pencarian', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: _sessionWithoutNpn(),
+      autoResolvedItem: const SjValidationItem(
+        id: 31,
+        validationId: 9,
+        npnId: 777,
+        kodeBarang: 'SKU-MASTER-77',
+        namaBarang: 'Gula Master',
+        expectedQty: 100,
+        satuan: 'CRT',
+        status: 'PENDING',
+      ),
+    );
+    var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
+
+    var standardizationShortcut = find.widgetWithText(
+      FilledButton,
+      'Standarisasi',
+    );
+    await tester.ensureVisible(standardizationShortcut);
+    await tester.tap(standardizationShortcut);
+    await tester.pumpAndSettle();
+
+    expect(repository.resolveNpnCalls, 1);
+    expect(repository.searchCalls, 0);
+    expect(repository.linkNpnCalls, 0);
+    expect(provider.active?.items.single.npnId, 777);
+    expect(find.text('Pilih produk dari master NPN'), findsNothing);
+    expect(find.text('Standarisasi Tumpukan'), findsWidgets);
 
     provider.dispose();
   });

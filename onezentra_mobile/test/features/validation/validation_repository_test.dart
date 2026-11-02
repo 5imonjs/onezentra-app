@@ -208,6 +208,50 @@ void main() {
       expect(item.npnId, 501);
     });
 
+    test('resolveItemNpn mengembalikan produk yang tertaut otomatis', () async {
+      String? hitEndpoint;
+      var repository = ValidationRepository(
+        get: (_) async => throw StateError('unexpected GET'),
+        post: (endpoint, body) async {
+          hitEndpoint = endpoint;
+          expect(body, isEmpty);
+          return {
+            'matched': true,
+            'data': {
+              'id': 31,
+              'sj_validation_id': 9,
+              'npn_id': 501,
+              'kode_barang': 'BRG-1',
+              'nama_barang': 'Gula 50kg',
+              'status': 'PENDING',
+            },
+          };
+        },
+      );
+
+      var item = await repository.resolveItemNpn(
+        validationId: 9,
+        itemId: 31,
+      );
+
+      expect(hitEndpoint, '/sj-validations/9/items/31/resolve-npn');
+      expect(item?.npnId, 501);
+    });
+
+    test('resolveItemNpn mengembalikan null untuk produk yang tidak unik', () async {
+      var repository = ValidationRepository(
+        get: (_) async => throw StateError('unexpected GET'),
+        post: (_, _) async => {'matched': false, 'data': null},
+      );
+
+      var item = await repository.resolveItemNpn(
+        validationId: 9,
+        itemId: 31,
+      );
+
+      expect(item, isNull);
+    });
+
     test('scanItem mengirim field validasi dan memparse item', () async {
       Map<String, dynamic>? hitBody;
       var repository = ValidationRepository(

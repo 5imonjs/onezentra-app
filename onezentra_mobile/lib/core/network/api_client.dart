@@ -31,17 +31,15 @@ class ApiClient {
   /// `flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8000/api/v1`
   static const String _overrideBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  /// Production API during the IP-only trial.
-  ///
-  /// The server uses a self-signed certificate for the IP. The exact
-  /// certificate is pinned in [_httpClient], so normal TLS verification stays
-  /// enabled for every other host.
-  static const String productionBaseUrl = 'https://187.77.121.102/api/v1';
+  /// Production API URL. Its public certificate is verified through the
+  /// platform trust store; the pinned IP certificate remains available only
+  /// for an explicitly configured IP endpoint.
+  static const String productionBaseUrl = 'https://api.onezentra.sbs/api/v1';
 
-  /// The previous production URL. Existing installs may still have this saved
-  /// as a runtime override; [init] clears it so they move to [productionBaseUrl].
+  /// Previous IP-only trial URL. Existing installs migrate this override back
+  /// to [productionBaseUrl] on initialization.
   static const String _legacyProductionBaseUrl =
-      'https://api.onezentra.sbs/api/v1';
+      'https://187.77.121.102/api/v1';
 
   static const String _productionHost = '187.77.121.102';
 
@@ -84,10 +82,10 @@ class ApiClient {
       text = 'https://$text';
     }
     var uri = Uri.tryParse(text);
-    // Server trial produksi WAJIB https walau build debug. POST login via
-    // http dibalas redirect 301 nginx, Dart mengikuti redirect dengan
-    // mengubah POST→GET, dan login selalu gagal walau kredensial benar.
-    // http tetap diizinkan untuk server dev lokal (10.0.2.2/localhost/LAN).
+    // IP trial lama wajib https walau build debug. POST login via http
+    // dibalas redirect 301 nginx, Dart mengikuti redirect dengan mengubah
+    // POST→GET, dan login gagal walau kredensial benar. http tetap diizinkan
+    // untuk server dev lokal (10.0.2.2/localhost/LAN).
     if (uri != null && uri.host == _productionHost && uri.scheme == 'http') {
       uri = uri.replace(scheme: 'https');
     }
@@ -223,8 +221,9 @@ class ApiClient {
     _runtimeBaseUrl = null;
     if (savedBaseUrl != null && savedBaseUrl.isNotEmpty) {
       var normalized = normalizeBaseUrl(savedBaseUrl);
-      if (normalized == _legacyProductionBaseUrl) {
-        // Move existing installs from the old API domain to the trial IP.
+      if (normalized == productionBaseUrl ||
+          normalized == _legacyProductionBaseUrl) {
+        // Clear the default domain and the previous trial IP override.
         await prefs.remove(_apiBaseUrlKey);
       } else {
         _runtimeBaseUrl = normalized;

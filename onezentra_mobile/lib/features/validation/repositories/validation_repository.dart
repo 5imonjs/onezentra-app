@@ -282,6 +282,37 @@ class ValidationRepository {
     return SjValidationItem.fromJson(Map<String, dynamic>.from(data));
   }
 
+  /// Automatically links an unassociated validation line when its saved
+  /// product code or exact product name identifies one unique NPN.
+  Future<SjValidationItem?> resolveItemNpn({
+    required int validationId,
+    required int itemId,
+  }) async {
+    var body = _expectObject(
+      await _post(
+        '/sj-validations/$validationId/items/$itemId/resolve-npn',
+        const {},
+      ),
+    );
+    if (body['matched'] == false) {
+      return null;
+    }
+    if (body['matched'] != true) {
+      throw const ApiException(
+        'Respons server tidak menjelaskan hasil pencocokan NPN.',
+        0,
+      );
+    }
+    var data = body['data'];
+    if (data is! Map) {
+      throw const ApiException(
+        'Respons server tidak memuat item. Silakan coba lagi.',
+        0,
+      );
+    }
+    return SjValidationItem.fromJson(Map<String, dynamic>.from(data));
+  }
+
   /// Finishes the session. The server rejects it while lines are still
   /// `PENDING`; its Indonesian message is surfaced as-is.
   Future<SjValidation> complete(int id) async =>
