@@ -174,6 +174,38 @@ void main() {
 
       expect(products, isEmpty);
       expect(calls, 0);
+    }    );
+
+    test('linkItemNpn menautkan produk terpilih ke item sesi', () async {
+      String? hitEndpoint;
+      Map<String, dynamic>? hitBody;
+      var repository = ValidationRepository(
+        get: (_) async => throw StateError('unexpected GET'),
+        post: (endpoint, body) async {
+          hitEndpoint = endpoint;
+          hitBody = body;
+          return {
+            'data': {
+              'id': 31,
+              'sj_validation_id': 9,
+              'npn_id': 501,
+              'kode_barang': 'BRG-1',
+              'nama_barang': 'Gula 50kg',
+              'status': 'PENDING',
+            },
+          };
+        },
+      );
+
+      var item = await repository.linkItemNpn(
+        validationId: 9,
+        itemId: 31,
+        npnId: 501,
+      );
+
+      expect(hitEndpoint, '/sj-validations/9/items/31/link-npn');
+      expect(hitBody, {'npn_id': 501});
+      expect(item.npnId, 501);
     });
 
     test('scanItem mengirim field validasi dan memparse item', () async {

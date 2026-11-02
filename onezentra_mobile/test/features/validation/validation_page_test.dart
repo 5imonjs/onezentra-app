@@ -54,6 +54,10 @@ class _FakeValidationRepository extends ValidationRepository {
   int? lastNpnId;
   int? lastTier;
   int? lastTinggi;
+  int linkNpnCalls = 0;
+  int? lastLinkedItemId;
+  int? lastLinkedNpnId;
+  SjValidation? linkedSession;
 
   int extraDecisionCalls = 0;
   bool? lastExtraApprove;
@@ -99,7 +103,49 @@ class _FakeValidationRepository extends ValidationRepository {
   }
 
   @override
-  Future<SjValidation> show(int id) async => _session();
+  Future<SjValidation> show(int id) async => linkedSession ?? _session();
+
+  @override
+  Future<SjValidationItem> linkItemNpn({
+    required int validationId,
+    required int itemId,
+    required int npnId,
+  }) async {
+    linkNpnCalls++;
+    lastLinkedItemId = itemId;
+    lastLinkedNpnId = npnId;
+    var session = _session();
+    linkedSession = SjValidation(
+      id: session.id,
+      rencanaKirimId: session.rencanaKirimId,
+      scanCode: session.scanCode,
+      status: session.status,
+      document: session.document,
+      items: [
+        for (var item in session.items)
+          SjValidationItem(
+            id: item.id,
+            validationId: item.validationId,
+            npnId: item.id == itemId ? npnId : item.npnId,
+            kodeBarang: item.kodeBarang,
+            namaBarang: item.namaBarang,
+            expectedQty: item.expectedQty,
+            actualQty: item.actualQty,
+            satuan: item.satuan,
+            barcode: item.barcode,
+            condition: item.condition,
+            expiredDate: item.expiredDate,
+            notes: item.notes,
+            hasPhoto: item.hasPhoto,
+            status: item.status,
+            standarisasi: item.standarisasi,
+            batch: item.batch,
+          ),
+      ],
+      extraItems: session.extraItems,
+    );
+    return linkedSession!.items.firstWhere((item) => item.id == itemId);
+  }
 
   @override
   Future<List<NpnProduct>> searchProduct(String query) async {
@@ -257,6 +303,7 @@ const List<String> _fullValidationPermissions = [
   'sj_validation.validate',
   'sj_validation.complete',
   'standarisasi.create',
+  'npn.view',
 ];
 
 /// Sesi berjalan dengan satu produk yang standarisasinya masih PENDING —
@@ -477,6 +524,29 @@ SjValidation _lockedSession() => const SjValidation(
       namaBarang: 'Gula 50kg',
       expectedQty: 100,
       expiredDate: '2027-01-31',
+      satuan: 'zak',
+    ),
+  ],
+);
+
+SjValidation _sessionWithoutNpn() => const SjValidation(
+  id: 9,
+  rencanaKirimId: 11,
+  scanCode: 'PO-042',
+  document: ValidationDocument(
+    id: 11,
+    poTransporter: 'PO-042',
+    nopol: 'B 9999 ZZ',
+    driverName: 'Andi',
+    status: 'CHECKED_IN',
+  ),
+  items: [
+    SjValidationItem(
+      id: 31,
+      validationId: 9,
+      kodeBarang: 'BRG-1',
+      namaBarang: 'Gula 50kg',
+      expectedQty: 100,
       satuan: 'zak',
     ),
   ],
@@ -909,6 +979,85 @@ void main() {
     // No green fast path while locked — the amber shortcut instead.
     expect(find.widgetWithText(FilledButton, 'Sesuai'), findsNothing);
     expect(find.widgetWithText(FilledButton, 'Standarisasi'), findsOneWidget);
+  });
+
+  testWidgets('NPN kosong dapat dicari dan ditautkan langsung di Flutter', (
+    tester,
+  ) async {
+    var repository = _FakeValidationRepository(
+      sessionToOpen: _sessionWithoutNpn(),
+      searchResults: const [
+        NpnProduct(
+          id: 777,
+          kodeBarang: 'SKU-MASTER-77',
+          nama: 'Gula Master',
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+    var provider = ValidationProvider(repository: repository);
+
+    await _pumpValidationPage(tester, auth, repository, provider: provider);
+    await tester.enterText(find.byType(TextFormField).first, 'PO-042');
+    await tester.tap(find.widgetWithText(AppPrimaryButton, 'Mulai'));
+    await tester.pumpAndSettle();
+    await _pumpSessionPage(tester, auth, provider, provider.active!);
+
+    await tester.ensureVisible(find.text('Gula 50kg'));
+    await tester.tap(find.text('Gula 50kg'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pilih produk dari master NPN'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'Gula');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(repository.searchCalls, 1);
+    expect(find.text('Gula Master'), findsOneWidget);
+
+    await tester.tap(find.text('Gula Master'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tautkan produk NPN?'), findsOneWidget);
+    await tester.tap(find.text('Tautkan'));
+    await tester.pumpAndSettle();
+
+    expect(repository.linkNpnCalls, 1);
+    expect(repository.lastLinkedItemId, 31);
+    expect(repository.lastLinkedNpnId, 777);
+    expect(provider.active?.items.single.npnId, 777);
+    expect(find.textContaining('Produk NPN tertaut.'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Gula 50kg'));
+    await tester.tap(find.text('Gula 50kg'));
+    await tester.pumpAndSettle();
+    expect(find.text('Produk Belum Disetujui BLC'), findsOneWidget);
+    await tester.tap(find.text('Input Standarisasi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Standarisasi Tumpukan'), findsWidgets);
+
+    Future<void> enterSheetField(String key, String value) => tester.enterText(
+      find.descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byType(TextFormField),
+      ),
+      value,
+    );
+    await enterSheetField('standarisasi_tier', '3');
+    await enterSheetField('standarisasi_tinggi', '5');
+    var submit = find.widgetWithText(
+      AppPrimaryButton,
+      'Kirim untuk Approve BLC',
+    );
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(repository.standarisasiCalls, 1);
+    expect(repository.lastNpnId, 777);
+    expect(repository.lastTier, 3);
+    expect(repository.lastTinggi, 5);
+    expect(repository.scanCalls, 0);
+
+    provider.dispose();
   });
 
   testWidgets('input standarisasi terkirim tier × tinggi lalu menunggu BLC', (

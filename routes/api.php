@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ReceivingController;
 use App\Http\Controllers\Api\V1\ReceivingItemController;
 use App\Http\Controllers\Api\V1\RegionController;
+use App\Http\Controllers\Api\V1\RegionDepoValidationController;
 use App\Http\Controllers\Api\V1\RencanaKirimController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RetribusiRateController;
@@ -40,9 +41,9 @@ Route::prefix('v1')->group(function () {
     // Mobile (Bearer token, per-perangkat). Web SPA tetap cookie-only via /login.
     Route::post('mobile/login', [AuthController::class, 'mobileLogin'])->middleware('throttle:10,1,login-mobile');
     Route::post('mobile/logout', [AuthController::class, 'mobileLogout'])->middleware(['auth:sanctum', 'throttle:30,1,api']);
-    Route::post('region-validate', [\App\Http\Controllers\Api\V1\RegionDepoValidationController::class, 'validateRegion'])->middleware('throttle:10,1,region');
-    Route::post('depo-validate', [\App\Http\Controllers\Api\V1\RegionDepoValidationController::class, 'validateDepo'])->middleware('throttle:10,1,depo');
-    Route::post('login-with-context', [\App\Http\Controllers\Api\V1\RegionDepoValidationController::class, 'loginWithContext'])->middleware('throttle:10,1,login-context');
+    Route::post('region-validate', [RegionDepoValidationController::class, 'validateRegion'])->middleware('throttle:10,1,region');
+    Route::post('depo-validate', [RegionDepoValidationController::class, 'validateDepo'])->middleware('throttle:10,1,depo');
+    Route::post('login-with-context', [RegionDepoValidationController::class, 'loginWithContext'])->middleware('throttle:10,1,login-context');
 
     Route::post('register', [AuthController::class, 'register'])
         ->middleware(['auth:sanctum', 'permission:users.create', 'throttle:5,1,register']);
@@ -393,6 +394,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/{sjValidation}', [SjValidationController::class, 'show'])->middleware('permission:sj_validation.view');
         Route::post('/start/{rencanaKirim}', [SjValidationController::class, 'start'])->middleware('permission:sj_validation.create');
         Route::post('/{sjValidation}/scan', [SjValidationController::class, 'scanItem'])->middleware('permission:sj_validation.validate');
+        Route::post('/{sjValidation}/items/{item}/link-npn', [SjValidationController::class, 'linkItemNpn'])
+            ->middleware(['permission:sj_validation.validate', 'permission:npn.view']);
         Route::post('/{sjValidation}/extra-items', [SjValidationController::class, 'storeExtraItem'])->middleware('permission:sj_validation.extra');
         // Fase 2: keputusan planner — setujui/tolak catatan barang luar rencana.
         Route::post('/{sjValidation}/extra-items/{extraItem}/approve', [SjValidationController::class, 'approveExtraItem'])->middleware('permission:sj_validation.approve');

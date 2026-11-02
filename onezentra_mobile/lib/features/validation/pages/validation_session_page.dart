@@ -71,6 +71,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         canValidate || (user?.hasPermission('penerimaan.view') ?? false);
     var canCreateStandarisasi =
         user?.hasPermission('standarisasi.create') ?? false;
+    var canViewNpn = user?.hasPermission('npn.view') ?? false;
     var canReportExtra = user?.hasPermission('sj_validation.extra') ?? false;
     var canApproveExtra = user?.hasPermission('sj_validation.approve') ?? false;
     var canApproveStandarisasi =
@@ -142,6 +143,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 canValidate: canValidate,
                 canPrintLabels: canPrintLabels,
                 canCreateStandarisasi: canCreateStandarisasi,
+                canViewNpn: canViewNpn,
               ),
               // Barang di luar rencana kirim (deviation record): selalu
               // tampil bila sudah ada catatan; tombol lapor hanya saat sesi
@@ -625,6 +627,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     required bool canValidate,
     required bool canPrintLabels,
     required bool canCreateStandarisasi,
+    required bool canViewNpn,
   }) => [
     for (var i = 0; i < items.length; i++) ...[
       _itemTile(
@@ -633,6 +636,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         canValidate: canValidate,
         canPrintLabels: canPrintLabels,
         canCreateStandarisasi: canCreateStandarisasi,
+        canViewNpn: canViewNpn,
       ),
       if (i != items.length - 1) const SizedBox(height: AppTheme.space2),
     ],
@@ -644,11 +648,17 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     required bool canValidate,
     required bool canPrintLabels,
     required bool canCreateStandarisasi,
+    required bool canViewNpn,
   }) {
     var locked = !item.canValidate;
     var tapAction = !canValidate || provider.actionBusy
         ? null
-        : () => _onItemTap(item, canCreateStandarisasi: canCreateStandarisasi);
+        : () => _onItemTap(
+            item,
+            canCreateStandarisasi: canCreateStandarisasi,
+            canViewNpn: canViewNpn,
+            provider: provider,
+          );
 
     return InkWell(
       onTap: tapAction,
@@ -757,7 +767,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                item.standarisasi?.status == 'pending'
+                                item.npnId == null
+                                    ? 'NPN BELUM TERTAUT'
+                                    : item.standarisasi?.status == 'pending'
                                     ? 'SUDAH DIJUKAN BLC'
                                     : 'BELUM ADA STANDARISASI',
                                 style: GoogleFonts.roboto(
@@ -775,7 +787,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                            item.standarisasi?.status == 'pending'
+                            item.npnId == null
+                                ? 'NPN belum tertaut — pilih produk master untuk input standar di Flutter'
+                                : item.standarisasi?.status == 'pending'
                                 ? 'Standarisasi sudah diajukan — menunggu approve BLC'
                                 : 'Belum ada standarisasi tumpukan — ajukan dulu',
                             style: GoogleFonts.roboto(
@@ -867,6 +881,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   Future<void> _onItemTap(
     SjValidationItem item, {
     required bool canCreateStandarisasi,
+    required bool canViewNpn,
+    required ValidationProvider provider,
   }) async {
     if (_isTapping) {
       return;
@@ -874,6 +890,39 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     _isTapping = true;
 
     try {
+      if (item.npnId == null) {
+        if (!canCreateStandarisasi || !canViewNpn) {
+          await showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              backgroundColor: context.colors.surfaceCard,
+              title: const Text('Produk NPN belum tertaut'),
+              content: Text(
+                !canViewNpn
+                    ? 'Akun ini belum memiliki akses pencarian master NPN. '
+                        'Minta akses npn.view agar petugas dapat memilih produk di Flutter.'
+                    : 'Akun ini belum memiliki izin standarisasi.create untuk '
+                        'menautkan produk dan mengisi standar di Flutter.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Tutup'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+
+        if (!(provider.active?.isRunning ?? widget.session.isRunning)) {
+          return;
+        }
+
+        await _selectNpnForItem(item, provider);
+        return;
+      }
+
       if (item.canValidate) {
         await _openItemSheet(item);
         return;
@@ -961,6 +1010,47 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       }
     } finally {
       _isTapping = false;
+    }
+  }
+
+  Future<void> _selectNpnForItem(
+    SjValidationItem item,
+    ValidationProvider provider,
+  ) async {
+    var product = await showModalBottomSheet<NpnProduct>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _NpnProductPicker(provider: provider),
+    );
+    if (product == null || !mounted) {
+      return;
+    }
+
+    var confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: context.colors.surfaceCard,
+        title: const Text('Tautkan produk NPN?'),
+        content: Text(
+          '${item.namaBarang ?? item.kodeBarang ?? 'Item rencana'} akan '
+          'ditautkan ke ${product.displayName} (${product.kodeBarang ?? '-'}) '
+          'untuk pengisian standarisasi tumpukan di Flutter.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Tautkan'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await provider.linkItemNpn(itemId: item.id, npnId: product.id);
     }
   }
 
@@ -2955,6 +3045,147 @@ class _NpnSuggestionTile extends StatelessWidget {
   );
 }
 
+class _NpnProductPicker extends StatefulWidget {
+  const _NpnProductPicker({required this.provider});
+
+  final ValidationProvider provider;
+
+  @override
+  State<_NpnProductPicker> createState() => _NpnProductPickerState();
+}
+
+class _NpnProductPickerState extends State<_NpnProductPicker> {
+  final _queryController = TextEditingController();
+  Timer? _searchDebounce;
+  List<NpnProduct> _products = const [];
+  bool _searching = false;
+  String? _error;
+  int _requestId = 0;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  void _onQueryChanged(String value) {
+    _searchDebounce?.cancel();
+    var query = value.trim();
+    if (query.length < 2) {
+      _requestId++;
+      setState(() {
+        _products = const [];
+        _searching = false;
+        _error = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _searching = true;
+      _error = null;
+    });
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _searchProducts(query),
+    );
+  }
+
+  Future<void> _searchProducts(String query) async {
+    var requestId = ++_requestId;
+    var products = await widget.provider.searchProduct(query);
+    if (!mounted || requestId != _requestId) {
+      return;
+    }
+    setState(() {
+      _products = products;
+      _searching = false;
+      _error = widget.provider.productSearchError;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: MediaQuery.sizeOf(context).height * 0.72,
+    decoration: BoxDecoration(
+      color: context.colors.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      border: Border.all(color: context.colors.border),
+    ),
+    padding: EdgeInsets.only(
+      left: AppTheme.space4,
+      right: AppTheme.space4,
+      top: AppTheme.space4,
+      bottom: MediaQuery.viewInsetsOf(context).bottom + AppTheme.space4,
+    ),
+    child: SafeArea(
+      top: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pilih produk dari master NPN',
+            style: GoogleFonts.roboto(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: context.colors.foreground,
+            ),
+          ),
+          const SizedBox(height: AppTheme.space2),
+          TextField(
+            controller: _queryController,
+            autofocus: true,
+            onChanged: _onQueryChanged,
+            decoration: InputDecoration(
+              labelText: 'Nama, kode, atau barcode',
+              prefixIcon: const Icon(Icons.search_rounded),
+              border: OutlineInputBorder(
+                borderRadius: AppTheme.radiusLg,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Expanded(
+            child: _searching
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? Center(
+                    child: Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: context.colors.dangerText),
+                    ),
+                  )
+                : _products.isNotEmpty
+                ? ListView.separated(
+                    itemCount: _products.length,
+                    separatorBuilder: (_, _) =>
+                        Divider(height: 1, color: context.colors.border),
+                    itemBuilder: (context, index) {
+                      var product = _products[index];
+                      return _NpnSuggestionTile(
+                        product: product,
+                        onTap: () => Navigator.of(context).pop(product),
+                      );
+                    },
+                  )
+                : Center(
+                    child: Text(
+                      _queryController.text.trim().length < 2
+                          ? 'Ketik minimal 2 karakter untuk mencari produk.'
+                          : 'Produk tidak ditemukan. Coba nama atau kode lain.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: context.colors.textMuted),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// Bottom sheet untuk input standarisasi tumpukan satu produk.
 class _StandarisasiSheet extends StatefulWidget {
   const _StandarisasiSheet({required this.item, required this.canCreate});
@@ -3076,8 +3307,8 @@ class _StandarisasiSheetState extends State<_StandarisasiSheet> {
                 const SizedBox(height: AppTheme.space4),
                 if (item.npnId == null)
                   _noticeBox(
-                    'Data produk tidak lengkap (npn tidak terbaca). '
-                    'Isi standarisasi produk ini di web.',
+                    'Produk NPN belum tertaut. Pilih produk dari master NPN '
+                    'di Flutter agar petugas dapat mengisi standarisasi tumpukan.',
                     isError: true,
                   )
                 else if (pending)

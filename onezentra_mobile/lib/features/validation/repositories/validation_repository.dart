@@ -259,6 +259,29 @@ class ValidationRepository {
         .toList();
   }
 
+  /// Links an unassociated validation line to the product selected from the
+  /// NPN master by the field operator.
+  Future<SjValidationItem> linkItemNpn({
+    required int validationId,
+    required int itemId,
+    required int npnId,
+  }) async {
+    var body = _expectObject(
+      await _post(
+        '/sj-validations/$validationId/items/$itemId/link-npn',
+        {'npn_id': npnId},
+      ),
+    );
+    var data = body['data'];
+    if (data is! Map) {
+      throw const ApiException(
+        'Respons server tidak memuat item. Silakan coba lagi.',
+        0,
+      );
+    }
+    return SjValidationItem.fromJson(Map<String, dynamic>.from(data));
+  }
+
   /// Finishes the session. The server rejects it while lines are still
   /// `PENDING`; its Indonesian message is surfaced as-is.
   Future<SjValidation> complete(int id) async =>

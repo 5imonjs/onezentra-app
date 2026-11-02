@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\Receiving;
 use App\Models\RencanaKirim;
@@ -109,6 +110,69 @@ class SjValidationFlowTest extends TestCase
             ->json('data');
         $this->assertSame($res['id'], $res2['id']);
         $this->assertSame(1, SjValidation::count());
+    }
+
+    public function test_field_operator_can_link_npn_to_unlinked_validation_item(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.view',
+            'sj_validation.create',
+            'sj_validation.validate',
+            'npn.view',
+        ]));
+        $rencana = $this->scheduledRencana($user);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', [
+            'scan_code' => $rencana->po_transporter,
+        ])->assertOk()->json('data');
+        $itemId = $validation['items'][0]['id'];
+        $npn = Npn::factory()->create([
+            'SAPszUomId' => 'PCS',
+        ]);
+
+        $this->postJson("/api/v1/sj-validations/{$validation['id']}/items/{$itemId}/link-npn", [
+            'npn_id' => $npn->id,
+        ])->assertOk()
+            ->assertJsonPath('data.npn_id', $npn->id)
+            ->assertJsonPath('data.kode_barang', $npn->BOSnetszProductId)
+            ->assertJsonPath('data.nama_barang', $npn->szNickName)
+            ->assertJsonPath('data.satuan', 'PCS');
+
+        $this->assertDatabaseHas('sj_validation_items', [
+            'id' => $itemId,
+            'npn_id' => $npn->id,
+        ]);
+        $this->assertDatabaseHas('rencana_kirim_items', [
+            'id' => $rencana->items()->firstOrFail()->id,
+            'npn_id' => null,
+        ]);
+    }
+
+    public function test_link_npn_rejects_an_item_from_another_validation(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.create',
+            'sj_validation.validate',
+            'npn.view',
+        ]));
+        $rencanaA = $this->scheduledRencana($user);
+        $rencanaB = $this->scheduledRencana($user);
+        $validationA = $this->postJson('/api/v1/sj-validations/start-by-code', [
+            'scan_code' => $rencanaA->po_transporter,
+        ])->assertOk()->json('data');
+        $validationB = $this->postJson('/api/v1/sj-validations/start-by-code', [
+            'scan_code' => $rencanaB->po_transporter,
+        ])->assertOk()->json('data');
+        $npn = Npn::factory()->create();
+        $itemId = $validationB['items'][0]['id'];
+
+        $this->postJson("/api/v1/sj-validations/{$validationA['id']}/items/{$itemId}/link-npn", [
+            'npn_id' => $npn->id,
+        ])->assertStatus(422);
+
+        $this->assertDatabaseHas('sj_validation_items', [
+            'id' => $itemId,
+            'npn_id' => null,
+        ]);
     }
 
     public function test_start_rejects_draft_rencana(): void
@@ -726,7 +790,9 @@ class SjValidationFlowTest extends TestCase
 
     public function test_index_filters_by_depo_for_master(): void
     {
-        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'depot.view_all']));
+        $user = $this->userWithPermissions(['sj_validation.view', 'depot.view_all']);
+        $user->update(['scope_level' => 'master']);
+        Sanctum::actingAs($user);
 
         foreach (['DPO-A' => 'Depo A', 'DPO-B' => 'Depo B'] as $kode => $nama) {
             $rk = RencanaKirim::create([
@@ -753,7 +819,7 @@ class SjValidationFlowTest extends TestCase
             ->assertJsonPath('data.0.rencana_kirim.kode_depo', 'DPO-A');
     }
 
-    public function test_index_ignores_foreign_depo_filter_for_scoped_user(): void
+    public function test_index_rejects_foreign_depo_filter_for_scoped_user(): void
     {
         Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view']));
 
@@ -766,9 +832,8 @@ class SjValidationFlowTest extends TestCase
             'started_at' => now(),
         ]);
 
-        // Filter ke depo lain diabaikan — tetap depo sendiri.
         $this->getJson('/api/v1/sj-validations?kode_depo=DPO-B')
-            ->assertOk()
-            ->assertJsonPath('total', 1);
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Access denied: depo isolation');
     }
 }

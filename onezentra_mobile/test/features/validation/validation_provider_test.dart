@@ -84,6 +84,10 @@ class _ExtraFakeRepository extends ValidationRepository {
   Object? searchError;
   int searchCalls = 0;
   String? lastSearchQuery;
+  int linkCalls = 0;
+  int? lastLinkValidationId;
+  int? lastLinkItemId;
+  int? lastLinkNpnId;
 
   @override
   Future<List<NpnProduct>> searchProduct(String query) async {
@@ -103,6 +107,23 @@ class _ExtraFakeRepository extends ValidationRepository {
   Future<SjValidation> show(int id) async {
     showCalls++;
     return session;
+  }
+
+  @override
+  Future<SjValidationItem> linkItemNpn({
+    required int validationId,
+    required int itemId,
+    required int npnId,
+  }) async {
+    linkCalls++;
+    lastLinkValidationId = validationId;
+    lastLinkItemId = itemId;
+    lastLinkNpnId = npnId;
+    return SjValidationItem(
+      id: itemId,
+      validationId: validationId,
+      npnId: npnId,
+    );
   }
 
   @override
@@ -357,6 +378,26 @@ void main() {
     // Autofill hanyalah kenyamanan: gagal pencarian tidak melempar, form
     // lanjut ke input manual.
     expect(products, isEmpty);
+    expect(provider.productSearchError, 'Server tidak merespons.');
+
+    provider.dispose();
+  });
+
+  test('linkItemNpn menautkan pilihan dan memuat ulang sesi', () async {
+    var session = const SjValidation(id: 9, scanCode: 'PO-042');
+    var repository = _ExtraFakeRepository(session);
+    var provider = ValidationProvider(repository: repository);
+    await provider.start('PO-042');
+
+    var linked = await provider.linkItemNpn(itemId: 31, npnId: 501);
+
+    expect(linked, isTrue);
+    expect(repository.linkCalls, 1);
+    expect(repository.lastLinkValidationId, 9);
+    expect(repository.lastLinkItemId, 31);
+    expect(repository.lastLinkNpnId, 501);
+    expect(repository.showCalls, 1);
+    expect(provider.message?.success, isTrue);
 
     provider.dispose();
   });

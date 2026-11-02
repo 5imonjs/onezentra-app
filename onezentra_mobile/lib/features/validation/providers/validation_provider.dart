@@ -50,6 +50,7 @@ class ValidationProvider extends ChangeNotifier {
   bool _startBusy = false;
   bool _actionBusy = false;
   ValidationActionMessage? _message;
+  String? _productSearchError;
   bool _bootstrapped = false;
 
   List<SjValidation> get items => _items;
@@ -65,6 +66,7 @@ class ValidationProvider extends ChangeNotifier {
   bool get startBusy => _startBusy;
   bool get actionBusy => _actionBusy;
   ValidationActionMessage? get message => _message;
+  String? get productSearchError => _productSearchError;
   bool get canGoBack => _currentPage > 1;
   bool get canGoForward => _currentPage < _lastPage;
 
@@ -394,18 +396,66 @@ class ValidationProvider extends ChangeNotifier {
     }
   }
 
-  /// Cari produk master NPN (nama/kode/barcode). Error tidak melempar —
-  /// kembalikan daftar kosong supaya form lanjut ke input manual; pesan
-  /// gagal dicatat di log (autofill hanyalah kenyamanan, bukan penjaga).
+  /// Cari produk master NPN (nama/kode/barcode). Error disimpan agar UI
+  /// pencarian dapat menampilkan kegagalan, bukan menganggap produk tidak ada.
   Future<List<NpnProduct>> searchProduct(String query) async {
+    _productSearchError = null;
     try {
       return await _repository.searchProduct(query);
+    } on ApiException catch (e) {
+      _productSearchError = e.message;
+      return const [];
     } catch (e, stack) {
       debugPrint(
         'ValidationProvider.searchProduct: unhandled ${e.runtimeType}: $e',
       );
       debugPrintStack(stackTrace: stack, maxFrames: 8);
+      _productSearchError = 'Pencarian produk NPN gagal. Periksa koneksi lalu coba lagi.';
       return const [];
+    }
+  }
+
+  /// Links a missing NPN relation to the field-selected product, then reloads
+  /// the session so its standardization state is shown on the item.
+  Future<bool> linkItemNpn({
+    required int itemId,
+    required int npnId,
+  }) async {
+    var active = _active;
+    if (active == null || _actionBusy) {
+      return false;
+    }
+
+    _actionBusy = true;
+    _message = null;
+    _notify();
+
+    try {
+      await _repository.linkItemNpn(
+        validationId: active.id,
+        itemId: itemId,
+        npnId: npnId,
+      );
+      _active = await _repository.show(active.id);
+      _message = const ValidationActionMessage.success(
+        'Produk NPN tertaut. Silakan isi standarisasi tumpukan di Flutter.',
+      );
+      return true;
+    } on ApiException catch (e) {
+      _message = ValidationActionMessage.failure(e.message);
+      return false;
+    } catch (e, stack) {
+      debugPrint(
+        'ValidationProvider.linkItemNpn: unhandled ${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      _message = const ValidationActionMessage.failure(
+        'Produk NPN gagal ditautkan. Silakan coba lagi.',
+      );
+      return false;
+    } finally {
+      _actionBusy = false;
+      _notify();
     }
   }
 

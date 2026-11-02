@@ -464,6 +464,49 @@ class SjValidationController extends Controller
     }
 
     /**
+     * Hubungkan item validasi yang belum memiliki NPN ke produk yang dipilih
+     * petugas lapangan. Relasi ini hanya mengubah snapshot validasi, bukan
+     * rencana kirim milik planner.
+     */
+    public function linkItemNpn(Request $request, SjValidation $sjValidation, mixed $item): JsonResponse
+    {
+        $this->authorizeDepot($sjValidation);
+        abort_unless($sjValidation->status === 'IN_PROGRESS', 422, 'NPN hanya dapat ditautkan saat sesi validasi berjalan.');
+
+        $validated = $request->validate([
+            'npn_id' => 'required|integer|exists:npn,id',
+        ]);
+
+        return DB::transaction(function () use ($sjValidation, $item, $validated): JsonResponse {
+            $validationItem = SjValidationItem::whereKey($item)->lockForUpdate()->firstOrFail();
+            if ($validationItem->sj_validation_id !== $sjValidation->id) {
+                return response()->json(['message' => 'Item tidak sesuai validasi ini'], 422);
+            }
+
+            if ($validationItem->status !== 'PENDING') {
+                return response()->json(['message' => 'NPN hanya dapat ditautkan sebelum item divalidasi.'], 422);
+            }
+
+            if ($validationItem->npn_id !== null && $validationItem->npn_id !== (int) $validated['npn_id']) {
+                return response()->json(['message' => 'Item sudah tertaut ke produk NPN lain.'], 422);
+            }
+
+            $npn = Npn::findOrFail($validated['npn_id']);
+            $validationItem->npn_id = $npn->id;
+            $validationItem->kode_barang = $npn->BOSnetszProductId ?: $validationItem->kode_barang;
+            $validationItem->nama_barang = $npn->szNickName
+                ?: ($npn->szShortDescription ?: ($npn->szNickNameNew ?: $validationItem->nama_barang));
+            $validationItem->satuan = $npn->SAPszUomId ?: ($npn->BOSnetszUomId ?: $validationItem->satuan);
+            $validationItem->save();
+            $this->standarisasiForItem($validationItem);
+            $validationItem->load(['npn', 'batch']);
+            $this->attachStandarUmur([$validationItem]);
+
+            return response()->json(['data' => $validationItem]);
+        });
+    }
+
+    /**
      * Apakah hasil item pada sesi validasi ini masih boleh diubah.
      *
      * Menggantikan gate `abort_unless(status === 'IN_PROGRESS')` yang dulu
