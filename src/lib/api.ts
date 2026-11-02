@@ -325,6 +325,8 @@ export function registerResponseInterceptors(
 
 registerResponseInterceptors(apiClient, () => csrfClient.get(CSRF_URL));
 
+export const ensureCsrfCookie = () => csrfClient.get(CSRF_URL);
+
 export const auth = {
   login: async (email: string, password: string) => {
     await csrfClient.get(CSRF_URL);
