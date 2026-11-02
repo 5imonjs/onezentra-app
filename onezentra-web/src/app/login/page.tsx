@@ -123,11 +123,11 @@ export default function LoginPage() {
 
       <section
         aria-label="Keunggulan ONEZENTRA"
-        className="relative hidden min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(115deg,#1b1d50_0%,#171a3c_48%,#101629_100%)] px-10 py-14 text-white lg:flex xl:px-16"
+        className="relative hidden min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-ink-900 via-ink-950 to-ink-950 px-10 py-14 text-ink-fg lg:flex xl:px-16"
       >
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-indigo-400/10 to-transparent" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary-400/10 to-transparent" aria-hidden="true" />
         <div className="relative z-10 flex w-full max-w-xl flex-col items-center">
-          <div className="mb-5 flex h-48 w-48 items-center justify-center rounded-3xl bg-white p-2 shadow-2xl shadow-black/20">
+          <div className="mb-5 flex h-48 w-48 items-center justify-center rounded-full bg-white p-2 shadow-2xl shadow-black/20">
             <Image
               alt="Logo"
               priority
@@ -145,11 +145,11 @@ export default function LoginPage() {
                 key={item.title}
                 className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-sm backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/10"
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-400/20 text-indigo-200">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-400/20 text-primary-200">
                   <FeatureIcon name={item.icon} />
                 </div>
-                <h2 className="mb-1 font-semibold text-white">{item.title}</h2>
-                <p className="text-sm text-indigo-200/80">{item.desc}</p>
+                <h2 className="mb-1 font-semibold text-ink-fg">{item.title}</h2>
+                <p className="text-sm text-ink-fg-muted">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -163,7 +163,7 @@ export default function LoginPage() {
 
         <div className="w-full max-w-md animate-fade-in">
           <div className="lg:hidden text-center mb-8">
-            <div className="mx-auto mb-4 flex h-28 w-28 items-center justify-center rounded-2xl bg-white p-1.5 shadow-xl shadow-black/20">
+            <div className="mx-auto mb-4 flex h-28 w-28 items-center justify-center rounded-full bg-white p-1.5 shadow-xl shadow-black/20">
               <Image alt="Logo" loading="lazy" width={600} height={600} src="/LOGO.png" className="object-contain w-full h-full" />
             </div>
             <h1 className="text-2xl font-bold tracking-wide text-foreground">ONEZENTRA</h1>
