@@ -188,7 +188,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form className="space-y-5" onSubmit={handleSubmit}>
+            <form className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-6" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="login-email" className="block text-sm font-semibold text-foreground mb-2">Username</label>
                 <input id="login-email" type="text" className="input-field" placeholder="Masukkan username" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
