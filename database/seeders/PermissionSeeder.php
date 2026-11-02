@@ -257,7 +257,7 @@ class PermissionSeeder extends Seeder
             'cheker' => [
                 'dashboard.view', 'penerimaan.view', 'penerimaan.create', 'penerimaan.edit',
                 'npn.view',
-                'standar_umur.view', 'standarisasi.view',
+                'standar_umur.view', 'standarisasi.view', 'standarisasi.create',
                 'sj_validation.view', 'sj_validation.create', 'sj_validation.edit', 'sj_validation.validate', 'sj_validation.complete', 'sj_validation.delete', 'sj_validation.cancel',
                 'rencana_kirim.view', 'rencana_kirim.edit',
                 'gate.view', 'gate.create', 'gate.edit', 'gate.delete',

@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\EmailRecipient;
+use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class SeederRoleVerificationTest extends TestCase
@@ -204,6 +207,46 @@ class SeederRoleVerificationTest extends TestCase
         );
     }
 
+    public function test_field_checker_can_search_npn_and_submit_stack_standardization(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+        Mail::fake();
+
+        $role = Role::where('slug', 'cheker')->firstOrFail();
+        $user = User::create([
+            'email' => 'field-checker@example.test',
+            'password' => 'password',
+            'full_name' => 'Field Checker',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'cheker',
+            'status' => 'active',
+        ]);
+        $role->users()->attach($user->id);
+        User::clearPermissionCache((int) $user->id);
+        Sanctum::actingAs($user);
+
+        $npn = Npn::create([
+            'BOSnetszProductId' => 'FIELD-NPN-1',
+            'SAPszProductId' => 'FIELD-MATERIAL-1',
+            'SAPszUomId' => 'CRT',
+            'szNickName' => 'Produk Impor Lapangan',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        $this->getJson('/api/v1/npn/search-product?q=FIELD-NPN-1')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $npn->id);
+
+        $this->postJson('/api/v1/standarisasi-tumpukan', [
+            'npn_id' => $npn->id,
+            'tier' => 3,
+            'tinggi_tumpukan' => 5,
+        ])->assertCreated()
+            ->assertJsonPath('data.status', 'pending');
+    }
+
     public function test_blc_scoped_global_diganti_permission_standarisasi_lintas_depo(): void
     {
         $this->seedRoles();
@@ -324,12 +367,12 @@ class SeederRoleVerificationTest extends TestCase
         // Total sistem tetap konsisten: 12 role lama + ga + bh, 111 permission
         // (106 lama + 3 sesi opname + 1 barang luar rencana `sj_validation.
         // extra` + 1 persetujuan planner `sj_validation.approve` — keduanya
-        // tanpa grant bawaan seeder, dicentang manual / di-grant migrasi),
-        // dan grant hasil turunan.
+        // tanpa grant bawaan seeder) serta grant create standarisasi ke checker
+        // lapangan dan operator. Jumlah role-permission mencakup grant turunan.
         // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
         $this->assertSame(111, Permission::count());
-        $this->assertSame(569, DB::table('role_permission')->count());
+        $this->assertSame(571, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void
