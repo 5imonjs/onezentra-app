@@ -1,4 +1,4 @@
-// Smoke test: the app boots into the login screen.
+// Smoke test: the app opens directly on the login screen without a splash route.
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +13,7 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
-  testWidgets('App loads login page', (WidgetTester tester) async {
+  testWidgets('App opens login page directly', (WidgetTester tester) async {
     var authProvider = AuthProvider();
     await authProvider.init();
 
@@ -29,5 +29,6 @@ void main() {
     expect(find.text('Selamat datang kembali'), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

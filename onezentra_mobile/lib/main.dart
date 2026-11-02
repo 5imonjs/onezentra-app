@@ -9,7 +9,6 @@ import 'package:onezentra_mobile/core/theme/theme_provider.dart';
 import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
-import 'package:onezentra_mobile/features/splash/pages/splash_screen.dart';
 import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
 import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart';
 import 'package:onezentra_mobile/features/history/pages/history_page.dart';
@@ -164,7 +163,8 @@ GoRouter buildRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => const SplashScreen(),
+      redirect: (context, state) =>
+          authProvider.isAuthenticated ? '/home' : '/login',
     ),
     GoRoute(
       path: '/login',
