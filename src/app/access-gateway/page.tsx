@@ -774,51 +774,52 @@ export default function AccessGatewayPage() {
                   </button>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="gateway-email"
-                    className="mb-2 block text-sm font-semibold"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="gateway-email"
-                    type="email"
-                    className="input-field"
-                    placeholder="Masukkan email akun"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    autoComplete="username"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="gateway-password"
-                    className="mb-2 block text-sm font-semibold"
-                  >
-                    Password
-                  </label>
-                  <div className="relative">
+                <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-6">
+                  <div>
+                    <label
+                      htmlFor="gateway-email"
+                      className="block text-sm font-semibold"
+                    >
+                      Email
+                    </label>
                     <input
-                      id="gateway-password"
-                      type={showPassword ? "text" : "password"}
-                      className="input-field pr-24"
-                      placeholder="Masukkan password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      autoComplete="current-password"
+                      id="gateway-email"
+                      type="email"
+                      className="input-field"
+                      placeholder="Masukkan email akun"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      autoComplete="username"
                       required
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((value) => !value)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-semibold text-primary-600 hover:bg-primary-500/10"
-                      aria-pressed={showPassword}
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="gateway-password"
+                      className="block text-sm font-semibold"
                     >
-                      {showPassword ? "Sembunyikan" : "Tampilkan"}
-                    </button>
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="gateway-password"
+                        type={showPassword ? "text" : "password"}
+                        className="input-field pr-24"
+                        placeholder="Masukkan password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        autoComplete="current-password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-semibold text-primary-600 hover:bg-primary-500/10"
+                        aria-pressed={showPassword}
+                      >
+                        {showPassword ? "Sembunyikan" : "Tampilkan"}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
