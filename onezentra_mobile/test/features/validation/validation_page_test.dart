@@ -1098,7 +1098,6 @@ void main() {
         namaBarang: 'Gula Master',
         expectedQty: 100,
         satuan: 'CRT',
-        status: 'PENDING',
       ),
     );
     var auth = await _loginAuth();

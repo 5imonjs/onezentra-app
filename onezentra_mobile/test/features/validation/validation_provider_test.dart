@@ -429,7 +429,6 @@ void main() {
       id: 31,
       validationId: 9,
       npnId: 501,
-      status: 'PENDING',
     );
     var provider = ValidationProvider(repository: repository);
     await provider.start('PO-042');
