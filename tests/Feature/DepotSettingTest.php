@@ -142,7 +142,13 @@ class DepotSettingTest extends TestCase
     {
         Region::create(['code' => 'REG-01', 'name' => 'Region Satu']);
         DepotSetting::create(['kode_depo' => 'DPA', 'nama_depo' => 'Depo A']);
-        Sanctum::actingAs($this->user('admin_master', 'DPA'));
+        $this->withSession([
+            'region_id' => '001',
+            'region_code' => '001',
+        ])->withHeaders([
+            'Origin' => 'http://localhost',
+            'Referer' => 'http://localhost',
+        ])->actingAs($this->user('admin_master', 'DPA'));
 
         $this->putJson('/api/v1/depot-settings/DPA', ['region_id' => 'REG-01'])
             ->assertOk()
@@ -156,9 +162,12 @@ class DepotSettingTest extends TestCase
 
     public function test_region_code_is_validated(): void
     {
-        Sanctum::actingAs($this->user('admin_master', 'DPA'));
-
-        $this->putJson('/api/v1/depot-settings/DPA', ['region_id' => str_repeat('R', 21)])
+        $user = $this->user('admin_master', 'DPA');
+        $this->be($user);
+        $this->withHeaders([
+            'Origin' => 'http://localhost',
+            'Referer' => 'http://localhost',
+        ])->putJson('/api/v1/depot-settings/DPA', ['region_id' => str_repeat('R', 21)])
             ->assertJsonValidationErrors(['region_id']);
     }
 

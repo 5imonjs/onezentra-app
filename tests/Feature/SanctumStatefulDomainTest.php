@@ -104,6 +104,18 @@ class SanctumStatefulDomainTest extends TestCase
 
         $frontendOrigin = 'http://localhost:3000';
 
+        // Langkah 1: Validasi Region terlebih dahulu (requiremen baru Phase 6)
+        $this->withSession([
+            'region_id' => '001',
+            'region_code' => '001',
+        ])->withHeaders([
+            'Origin' => $frontendOrigin,
+            'Referer' => $frontendOrigin.'/',
+            'Accept' => 'application/json',
+        ])->actingAs($user);
+
+        $regionValidate = $this->postJson('/api/v1/region-validate', ['region_code' => '001']);
+
         $login = $this->withHeaders([
             'Origin' => $frontendOrigin,
             'Referer' => $frontendOrigin.'/',

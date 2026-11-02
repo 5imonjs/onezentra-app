@@ -114,13 +114,19 @@ class MobileAuthTest extends TestCase
 
     public function test_web_login_still_cookie_only_without_token(): void
     {
-        User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'web@onezentra.com',
             'password' => 'secret-123',
             'status' => 'active',
         ]);
 
-        $this->postJson('/api/v1/login', [
+        $this->withSession([
+            'region_id' => '001',
+            'region_code' => '001',
+        ])->withHeaders([
+            'Origin' => 'http://localhost',
+            'Referer' => 'http://localhost',
+        ])->postJson('/api/v1/login', [
             'email' => 'web@onezentra.com',
             'password' => 'secret-123',
         ])->assertOk()->assertJsonMissingPath('token');

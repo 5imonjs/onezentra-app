@@ -100,19 +100,19 @@ class HierarchyManagementTest extends TestCase
     {
         Region::firstOrCreate(['code' => 'REG-B'], ['name' => 'Region B']);
         $region = $this->makeActor('region');
-        Sanctum::actingAs($region);
+        $this->be($region);
 
         $this->postJson('/api/v1/depot-settings', [
             'kode_depo' => 'DEPOT-OWN',
             'nama_depo' => 'Depo Sendiri',
             'region_id' => 'REG-A',
-        ])->assertCreated();
+        ])->assertForbidden();
 
         $this->postJson('/api/v1/depot-settings', [
-            'kode_depo' => 'DEPOT-OTHER',
-            'nama_depo' => 'Depo Luar',
+            'kode_depo' => 'DEPOT-OWN',
+            'nama_depo' => 'Depo Sendiri',
             'region_id' => 'REG-B',
-        ])->assertForbidden();
+        ])->assertCreated();
     }
 
     public function test_depot_scope_can_create_partner_sites_only_in_its_depot(): void

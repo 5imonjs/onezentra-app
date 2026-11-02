@@ -118,6 +118,13 @@ class SystemEndToEndTest extends TestCase
         ])->assertStatus(422);
 
         // login valid -> 200 tanpa Bearer token (AuthTest.php:28)
+        $this->withSession([
+            'region_id' => '001',
+            'region_code' => '001',
+        ])->withHeaders([
+            'Origin' => 'http://localhost',
+            'Referer' => 'http://localhost',
+        ]);
         $res = $this->postJson('/api/v1/login', [
             'email' => 'admin@onezentra.com',
             'password' => 'password',
