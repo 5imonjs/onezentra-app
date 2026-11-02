@@ -77,6 +77,17 @@ describe('LoginPage', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it('menampilkan fitur ONEZENTRA dan pilihan tema sistem', async () => {
+    render(<LoginPage />);
+
+    expect(screen.getByRole('region', { name: 'Keunggulan ONEZENTRA' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Security' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Analytics' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Scheduling' })).toBeInTheDocument();
+    expect(await screen.findByRole('radio', { name: 'Tema Sistem' })).toBeInTheDocument();
+  });
+
   it('regresi: tidak memanggil loadUser saat dibuka — validasi sesi kini di proxy, bukan GET /user di browser', () => {
     render(<LoginPage />);
 

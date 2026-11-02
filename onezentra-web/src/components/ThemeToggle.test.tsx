@@ -49,6 +49,17 @@ describe('ThemeToggle dengan next-themes', () => {
 
     expect(screen.getByRole('radio', { name: /tema terang/i })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /tema gelap/i })).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /tema sistem/i })).not.toBeInTheDocument();
+  });
+
+  it('menampilkan pilihan sistem saat diaktifkan untuk tampilan ringkas', () => {
+    render(
+      <ThemeProvider attribute="data-theme" defaultTheme="light">
+        <ThemeToggle compact includeSystem />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByRole('radio', { name: /tema sistem/i })).toBeInTheDocument();
   });
 
   it('menandai pilihan tersimpan sebagai aktif', () => {
