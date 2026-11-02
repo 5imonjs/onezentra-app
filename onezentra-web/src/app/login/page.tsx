@@ -78,6 +78,7 @@ export default function LoginPage() {
       const res = await fetch("/api/v1/region-validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ region_code: regionCode.trim() }),
       });
       if (res.ok) {
