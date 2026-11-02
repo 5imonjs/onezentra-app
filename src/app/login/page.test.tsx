@@ -138,6 +138,21 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: 'SAVE' })).toBeInTheDocument();
   });
 
+  it('Ubah Region Access memuat kembali kode dan port yang sudah tersimpan', async () => {
+    localStorage.setItem('region_access', JSON.stringify({
+      port: '8000',
+      regionCode: '001',
+      regionId: 1,
+      code: '001',
+    }));
+
+    render(<LoginPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Ubah Region Access' }));
+
+    expect(await screen.findByLabelText('Region Code')).toHaveValue('001');
+    expect(screen.getByLabelText('Port')).toHaveValue('8000');
+  });
+
   it('SIGN IN tanpa konfigurasi Region Access: login TIDAK dipanggil, modal terbuka, pesan error tampil', async () => {
     render(<LoginPage />);
 
