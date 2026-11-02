@@ -120,67 +120,87 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-full bg-background text-foreground font-sans antialiased">
+      {/* Background layer - subtle gradient for depth */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-600/15 to-accent/10 pointer-events-none z-10">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl bg-primary-500/20"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full blur-3xl bg-accent/20"></div>
+      </div>
+
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" aria-hidden="true">
-        <div className="absolute inset-0 bg-linear-to-br from-primary-600/20 to-transparent"></div>
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-accent-500/10 rounded-full blur-3xl"></div>
-        <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
+        {/* Left side - Branding showcase */}
+        <div className="absolute inset-0 bg-linear-to-br from-primary-600/20 to-transparent pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl bg-primary-500/10"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full blur-3xl bg-accent/10"></div>
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center justify-center w-full p-6">
           <img
             alt="Logo"
             loading="eager"
-            width="560"
-            height="560"
             decoding="async"
-            className="w-full max-w-lg h-auto mb-8"
+            className="w-20 h-20 rounded-2xl object-contain mb-8 bg-white/5 p-3"
             src="/_next/image?url=%2FLOGO.png&w=1200&q=75"
           />
-          <div className="grid grid-cols-2 gap-6 max-w-md w-full">
+          
+          {/* Feature cards - subtle and modern */}
+          <div className="grid grid-cols-2 gap-3 max-w-md w-full">
             {[
               { title: "Inventory", desc: "Track products", icon: "🏭" },
               { title: "Security", desc: "Role-based access", icon: "🔒" },
               { title: "Analytics", desc: "Real-time data", icon: "📊" },
               { title: "Scheduling", desc: "Plan ahead", icon: "📅" },
             ].map((item) => (
-              <div key={item.title} className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
-                <div className="w-10 h-10 bg-primary-500/20 rounded-xl flex items-center justify-center mb-3 text-xl">{item.icon}</div>
-                <h3 className="text-white font-semibold mb-1">{item.title}</h3>
-                <p className="text-primary-300 text-sm">{item.desc}</p>
+              <div
+                key={item.title}
+                className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 transition-all hover:border-white/20 hover:bg-white/10"
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-primary-500/20">
+                  {item.icon}
+                </div>
+                <h3 className="text-sm font-medium text-white">{item.title}</h3>
+                <p className="text-xs text-primary-300/80">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
+      {/* Right side - Login form with modern card design */}
+      <div className="lg:w-1/2 flex items-center justify-center py-8 px-6 relative">
         <div className="absolute top-4 right-4">
           <ThemeToggle />
         </div>
 
         <div className="w-full max-w-md animate-fade-in">
+          {/* Mobile version - stacked logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="relative w-44 h-16 bg-primary-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-600/30 px-3 overflow-hidden">
-              <img alt="Logo" loading="lazy" decoding="async" src="/_next/image?url=%2FLOGO.png&w=1200&q=75" className="object-contain w-full h-full" />
+            <div className="relative w-32 h-32 rounded-full bg-primary-600/20 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-500/20">
+              <img alt="Logo" loading="lazy" decoding="async" src="/_next/image?url=%2FLOGO.png&w=600&q=75" className="object-contain w-full h-full" />
             </div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">ONEZENTRA</h1>
           </div>
 
-          <div className="bg-card rounded-3xl shadow-2xl shadow-black/10 p-8 border border-border">
+          {/* Desktop/Tablet card - the main login container */}
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl shadow-black/5 border border-white/20 p-8 md:p-10">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-foreground mb-2">Hallo, Welcome Back</h2>
-              <p className="text-muted-foreground">Welcome Back to ONEZENTRA</p>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Welcome Back to ONEZENTRA
+              </p>
             </div>
 
+            {/* Region context if saved - modern badge */}
             {regionContext && (
-              <div className="mb-4 rounded-xl bg-linear-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/20 px-4 py-3 text-sm text-slate-200 flex items-center gap-3">
-                <span className="text-lg">🌐</span>
+              <div className="mb-5 rounded-xl bg-linear-to-r from-amber-500/5 to-orange-500/5 border border-amber-400/20 px-4 py-3 text-sm text-slate-700 flex items-center gap-3">
+                <span className="text-amber-400">🌐</span>
                 <div>
                   <p className="font-medium">Region: <strong>{regionContext.code || "—"}</strong></p>
-                  {regionContext.depo && <p className="text-xs text-amber-200">Depo: {regionContext.depo}</p>}
+                  {regionContext.depo && <p className="text-xs text-amber-300">Depo: {regionContext.depo}</p>}
                 </div>
                 <button
                   type="button"
                   onClick={() => { setRegionModalOpen(true); setRegionStatus("idle"); setRegionMsg(""); }}
-                  className="ml-auto text-xs bg-white/10 hover:bg-white/20 border border-white/10 rounded-md px-2 py-1 transition"
+                  className="ml-auto text-xs font-semibold text-amber-500 hover:text-amber-400 transition"
                   aria-label="Ubah Region Access"
                 >
                   Ubah
@@ -188,76 +208,104 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form className="space-y-5" onSubmit={handleSubmit}>
+            {/* Modern login form */}
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {/* Username input - modern text input */}
               <div>
-                <label htmlFor="login-email" className="block text-sm font-semibold text-foreground mb-2">Username</label>
-                <input id="login-email" type="text" className="input-field" placeholder="Masukkan username" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <label htmlFor="login-email" className="block text-sm font-medium text-foreground mb-1.5">
+                  Username
+                </label>
+                <input
+                  id="login-email"
+                  type="text"
+                  className="input-field w-full rounded-lg bg-white/80 border border-white/20 px-3.5 py-2.5 placeholder-text-color text-sm focus:bg-white focus:border-primary-400 focus:outline-none transition-colors"
+                  placeholder="Masukkan username"
+                  required
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
+
+              {/* Password input - modern with eye toggle */}
               <div>
-                <label htmlFor="login-password" className="block text-sm font-semibold text-foreground mb-2">Password</label>
+                <label htmlFor="login-password" className="block text-sm font-medium text-foreground mb-1.5">
+                  Password
+                </label>
                 <div className="relative">
-                  <input id="login-password" type={showPassword ? "text" : "password"} className="input-field pr-12" placeholder="Masukkan password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                  <button type="button" onClick={() => setShowPassword((s) => !s)} aria-label="Tampilkan password" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors min-w-11 min-h-11 flex items-center justify-center -mr-2" aria-pressed={showPassword}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  <input
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
+                    className="input-field w-full rounded-lg bg-white/80 border border-white/20 px-3.5 py-2.5 pr-14 placeholder-text-color text-sm focus:bg-white focus:border-primary-400 focus:outline-none transition-colors"
+                    placeholder="Masukkan password"
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label="Tampilkan password"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M1.236 10.236a1 1 0 010.708-.293l12.73 12.73a1 1 0 01-.708 1.707L9.5 13.793l-4.236 4.236z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-6-6 6-6" />
+                    </svg>
                   </button>
                 </div>
               </div>
-              <button type="submit" className="w-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-semibold py-3.5 rounded-xl shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed" disabled={isLoading}>
-                {isLoading ? "Memvalidasi..." : "SIGN IN"}
+
+              {/* Remember me and error */}
+              {error && (
+                <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 px-4 py-3 text-sm text-rose-600 flex items-start gap-3">
+                  <span className="font-bold text-rose-400">⚠</span>
+                  <div>
+                    <p className="font-medium">Login gagal</p>
+                    <p className="text-xs text-rose-300/80">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Remember checkbox in a modern row */}
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-border flex-shrink-0"
+                  checked={true}
+                  onChange={() => {}}
+                />
+                <span>
+                  Ingat konfigurasi Region & Depo di perangkat ini. Email
+                  dan password tidak disimpan.
+                </span>
+              </div>
+
+              {/* Modern submit button - primary action */}
+              <button
+                type="submit"
+                className="w-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-medium py-3 rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
+              >
+                {isLoading ? "Memvalidasi..." : "LOGIN"}
               </button>
             </form>
 
-            <button
-              type="button"
-              onClick={() => { setRegionModalOpen(true); setRegionStatus("idle"); setRegionMsg(""); }}
-              className="mt-4 flex items-center gap-2 text-xs text-amber-300 hover:text-amber-200 transition"
-            >
-              <span>⚙</span>
-              <span>Region Access</span>
-            </button>
-
-            {error && (
-              <div className="mt-4 rounded-xl bg-rose-900/20 border border-rose-500/20 px-4 py-3 text-sm text-rose-100 flex items-start gap-3">
-                <span className="font-bold text-rose-400">⚠</span>
-                <div>
-                  <p className="font-medium">Login gagal</p>
-                  <p className="text-xs text-rose-200/80">{error}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 pt-6 border-t border-white/10 flex flex-col gap-3 text-sm text-slate-400">
-              <p className="text-xs text-slate-500">Jika belum menyimpan Region Access, konfigurasi akan diminta sebelum login.</p>
-            </div>
+            {/* Footer links - subtle and modern */}
+            <p className="mt-5 text-xs text-slate-400">
+              Jika belum menyimpan Region Access, konfigurasi akan diminta sebelum login.
+            </p>
           </div>
         </div>
       </div>
-
-      {regionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="Region Access">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-sm text-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Region Access</h3>
-              <button onClick={() => { setRegionModalOpen(false); setRegionStatus("idle"); setRegionMsg(""); }} aria-label="Tutup" className="text-slate-400 hover:text-white">✕</button>
-            </div>
-            <form onSubmit={handleRegionSave} className="space-y-4">
-              <div>
-                <label htmlFor="region-port-modal" className="block text-sm font-medium mb-1">Port</label>
-                <input id="region-port-modal" type="text" value={regionPort} onChange={(e) => setRegionPort(e.target.value)} className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-              </div>
-              <div>
-                <label htmlFor="region-code-modal" className="block text-sm font-medium mb-1">Region Code</label>
-                <input id="region-code-modal" type="text" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} placeholder="Contoh: REGION-A" required className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
-              </div>
-              <button type="submit" disabled={regionStatus === "loading" || !regionCode.trim()} className="w-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-semibold py-2.5 rounded-xl transition disabled:opacity-50">
-                {regionStatus === "loading" ? "Memvalidasi..." : "SAVE"}
-              </button>
-            </form>
-            {regionStatus === "success" && <div className="mt-3 text-sm text-emerald-300">✓ {regionMsg}</div>}
-            {regionStatus === "error" && <div className="mt-3 text-sm text-rose-300">⚠ {regionMsg}</div>}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
