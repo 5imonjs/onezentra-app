@@ -3137,9 +3137,9 @@ class _NpnProductPickerState extends State<_NpnProductPicker> {
             controller: _queryController,
             autofocus: true,
             onChanged: _onQueryChanged,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'Nama, kode, atau barcode',
-              prefixIcon: const Icon(Icons.search_rounded),
+              prefixIcon: Icon(Icons.search_rounded),
               border: OutlineInputBorder(
                 borderRadius: AppTheme.radiusLg,
               ),
