@@ -163,10 +163,11 @@ describe('LoginPage', () => {
   });
 
   it('SAVE dengan konfigurasi valid: konfigurasi persisten di localStorage, modal OTOMATIS tertutup, halaman tetap /login', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ valid: true, region_id: 1, region_code: 'REG-001' }),
-    }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
@@ -178,6 +179,11 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(localStorage.getItem('region_access')).toContain('REG-001');
     });
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/region-validate', expect.objectContaining({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ region_code: 'REG-001' }),
+    }));
     // Modal tertutup otomatis (setTimeout 600ms), user tetap di halaman login.
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

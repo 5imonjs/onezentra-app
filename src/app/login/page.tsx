@@ -311,7 +311,12 @@ export default function LoginPage() {
                 <label htmlFor="region-code-modal" className="mb-1 block text-sm font-medium">Region Code</label>
                 <input id="region-code-modal" type="text" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} placeholder="Contoh: REGION-A" required className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
-              <button type="submit" disabled={regionStatus === "loading" || !regionCode.trim()} className="w-full rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50">
+              <button
+                type="button"
+                onClick={() => { void handleRegionSave(); }}
+                disabled={regionStatus === "loading" || !regionCode.trim()}
+                className="w-full rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+              >
                 {regionStatus === "loading" ? "Memvalidasi..." : "SAVE"}
               </button>
             </form>
