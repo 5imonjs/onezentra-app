@@ -160,19 +160,13 @@ describe('BiayaThlPage — pola input langsung di step Data Pekerja', () => {
     const originalRevokeObjectURL = Object.getOwnPropertyDescriptor(urlApi, 'revokeObjectURL');
     const createObjectURL = vi.fn(() => 'blob:biaya-thl-export');
     const revokeObjectURL = vi.fn();
-    let revokeScheduled: (() => void) | undefined;
     Object.defineProperty(urlApi, 'createObjectURL', { configurable: true, value: createObjectURL });
     Object.defineProperty(urlApi, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });
-    const timeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation((handler) => {
-      if (typeof handler === 'function') {
-        revokeScheduled = handler as () => void;
-      }
-      return 0;
-    });
     const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     thlExport.mockResolvedValue({ data: new Blob(['xlsx']) });
 
     try {
+      vi.useFakeTimers();
       fireEvent.click(exportButton);
       await Promise.resolve();
 
@@ -180,12 +174,11 @@ describe('BiayaThlPage — pola input langsung di step Data Pekerja', () => {
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(anchorClick).toHaveBeenCalledOnce();
       expect(revokeObjectURL).not.toHaveBeenCalled();
-      expect(revokeScheduled).toBeDefined();
 
-      revokeScheduled?.();
+      vi.advanceTimersByTime(1000);
       expect(revokeObjectURL).toHaveBeenCalledWith('blob:biaya-thl-export');
     } finally {
-      timeoutSpy.mockRestore();
+      vi.useRealTimers();
       anchorClick.mockRestore();
       if (originalCreateObjectURL) {
         Object.defineProperty(urlApi, 'createObjectURL', originalCreateObjectURL);
