@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [isValidatingRegion, setIsValidatingRegion] = useState(false);
   const [regionContext, setRegionContext] = useState<{ code?: string; depo?: string } | null>(null);
   const { login, isLoading, user } = useAuthStore();
   const router = useRouter();
@@ -120,11 +121,18 @@ export default function LoginPage() {
         return;
       }
       const parsed = JSON.parse(saved);
-      if (!parsed?.regionCode && !parsed?.code) {
+      const regionCode = typeof parsed?.regionCode === "string"
+        ? parsed.regionCode.trim()
+        : typeof parsed?.code === "string"
+          ? parsed.code.trim()
+          : "";
+      if (!regionCode) {
         setRegionModalOpen(true);
         setError("Konfigurasi Region Access tidak valid. Silakan perbarui.");
         return;
       }
+      setIsValidatingRegion(true);
+      await validateRegion(regionCode);
       await login(email, password);
       router.push("/dashboard");
     } catch (err) {
@@ -134,6 +142,8 @@ export default function LoginPage() {
       const validationMessage = response?.data?.errors?.email?.[0] ?? response?.data?.message ?? "";
       const isInvalidCredentials = response?.status === 401 || validationMessage.toLowerCase().includes("credentials");
       setError(isInvalidCredentials ? "Username atau password tidak sesuai." : validationMessage || "Login gagal.");
+    } finally {
+      setIsValidatingRegion(false);
     }
   };
 
@@ -273,9 +283,9 @@ export default function LoginPage() {
               <button
                 type="submit"
                 className="w-full rounded-xl bg-primary py-3.5 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isLoading}
+                disabled={isLoading || isValidatingRegion}
               >
-                {isLoading ? "Memvalidasi..." : "SIGN IN"}
+                {isLoading || isValidatingRegion ? "Memvalidasi..." : "SIGN IN"}
               </button>
             </form>
 
@@ -292,7 +302,7 @@ export default function LoginPage() {
             </button>
 
             <p className="mt-5 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
-              Jika belum menyimpan Region Access, konfigurasi akan diminta sebelum login.
+              Region Access tersimpan akan divalidasi ulang otomatis sebelum login.
             </p>
           </div>
           <footer className="mt-7 text-center text-xs text-muted-foreground">

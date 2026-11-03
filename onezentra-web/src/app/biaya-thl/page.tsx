@@ -1026,6 +1026,24 @@ export default function BiayaThlPage() {
     }
   };
 
+  const exportBiayaThl = async () => {
+    try {
+      const response = await biayaThl.export();
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `biaya-thl-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+      notifyGlobal('Export dimulai', 'success');
+    } catch (error: unknown) {
+      notifyGlobal(getErrorMessage(error, 'Export gagal'), 'error');
+    }
+  };
+
   const approvalAction = async (action: 'submit' | 'check' | 'rfahApprove') => {
     if (!viewItem) return;
     try {
@@ -1730,7 +1748,7 @@ export default function BiayaThlPage() {
               </button>
             )}
             {hasPermission('biaya_thl.export') && (
-              <button onClick={async () => { try { const res = await biayaThl.export(); const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `biaya-thl-${new Date().toISOString().slice(0,10)}.xlsx`; a.click(); window.URL.revokeObjectURL(url); notifyGlobal('Export dimulai', 'success'); } catch (e) { notifyGlobal(getErrorMessage(e, 'Export gagal'), 'error'); } }} className="btn-secondary shrink-0">
+              <button onClick={exportBiayaThl} className="btn-secondary shrink-0">
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 18v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" /></svg>
                   Export
