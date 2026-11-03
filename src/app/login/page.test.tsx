@@ -17,6 +17,7 @@ const { push, replace, login, loadUser, validateRegion, router } = vi.hoisted(()
   };
 });
 
+
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
 }));
@@ -210,7 +211,14 @@ describe('LoginPage', () => {
     expect(screen.getByText('Hallo, Welcome Back')).toBeInTheDocument();
   });
 
-  it('setelah konfigurasi tersimpan, SIGN IN memanggil autentikasi (login dipanggil)', async () => {
+  it('memvalidasi ulang region tersimpan sebelum mengirim kredensial login', async () => {
+    validateRegion.mockResolvedValue({
+      valid: true,
+      region_id: 1,
+      region_code: 'REG-001',
+      region_name: 'Region 001',
+      message: 'Region validated',
+    });
     localStorage.setItem('region_access', JSON.stringify({ port: '8000', regionCode: 'REG-001', regionId: 1, code: 'REG-001' }));
 
     render(<LoginPage />);
@@ -219,8 +227,27 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'SIGN IN' }));
 
     await waitFor(() => {
+      expect(validateRegion).toHaveBeenCalledWith('REG-001');
       expect(login).toHaveBeenCalledWith('admin', 'rahasia123');
     });
+    expect(validateRegion.mock.invocationCallOrder[0]).toBeLessThan(login.mock.invocationCallOrder[0]);
     expect(push).toHaveBeenCalledWith('/dashboard');
+  });
+
+  it('tidak mengirim kredensial jika Region Access tersimpan tidak lagi valid', async () => {
+    validateRegion.mockRejectedValue({
+      response: { status: 404, data: { message: 'Region not found or inactive' } },
+    });
+    localStorage.setItem('region_access', JSON.stringify({ port: '8000', regionCode: 'REG-OLD' }));
+
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'rahasia123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'SIGN IN' }));
+
+    expect(await screen.findByText('Region not found or inactive')).toBeInTheDocument();
+    expect(validateRegion).toHaveBeenCalledWith('REG-OLD');
+    expect(login).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalledWith('/dashboard');
   });
 });

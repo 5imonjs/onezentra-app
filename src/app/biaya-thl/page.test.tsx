@@ -2,10 +2,11 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import BiayaThlPage from './page';
 
-const { hasPermission, thlList, thlGet, getBiayaConfig, getBiayaConfigWithStatus, notify } = vi.hoisted(() => ({
+const { hasPermission, thlList, thlGet, thlExport, getBiayaConfig, getBiayaConfigWithStatus, notify } = vi.hoisted(() => ({
   hasPermission: vi.fn(() => true),
   thlList: vi.fn(),
   thlGet: vi.fn(),
+  thlExport: vi.fn(),
   getBiayaConfig: vi.fn(),
   getBiayaConfigWithStatus: vi.fn(),
   notify: vi.fn(),
@@ -28,7 +29,7 @@ vi.mock('@/app/dashboard/layout', () => ({
 }));
 
 vi.mock('@/lib/api', () => ({
-  biayaThl: { list: thlList, get: thlGet },
+  biayaThl: { list: thlList, get: thlGet, export: thlExport },
   getErrorMessage: (_error: unknown, fallback: string) => fallback,
   API_ROOT: 'http://localhost:3000',
 }));
@@ -148,6 +149,55 @@ describe('BiayaThlPage — pola input langsung di step Data Pekerja', () => {
     expect(document.getElementById('worker-card-0')).not.toBeNull();
     expect(screen.getAllByText('1 pekerja').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('Belum ada data pekerja')).not.toBeInTheDocument();
+  });
+
+  it('menjaga URL export tetap aktif sampai browser sempat memulai unduhan', async () => {
+    render(<BiayaThlPage />);
+    const exportButton = await screen.findByRole('button', { name: 'Export' });
+
+    const urlApi = window.URL;
+    const originalCreateObjectURL = Object.getOwnPropertyDescriptor(urlApi, 'createObjectURL');
+    const originalRevokeObjectURL = Object.getOwnPropertyDescriptor(urlApi, 'revokeObjectURL');
+    const createObjectURL = vi.fn(() => 'blob:biaya-thl-export');
+    const revokeObjectURL = vi.fn();
+    let revokeScheduled: (() => void) | undefined;
+    Object.defineProperty(urlApi, 'createObjectURL', { configurable: true, value: createObjectURL });
+    Object.defineProperty(urlApi, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });
+    const timeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation((handler) => {
+      if (typeof handler === 'function') {
+        revokeScheduled = handler as () => void;
+      }
+      return 0;
+    });
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    thlExport.mockResolvedValue({ data: new Blob(['xlsx']) });
+
+    try {
+      fireEvent.click(exportButton);
+      await Promise.resolve();
+
+      expect(thlExport).toHaveBeenCalledOnce();
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(anchorClick).toHaveBeenCalledOnce();
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+      expect(revokeScheduled).toBeDefined();
+
+      revokeScheduled?.();
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:biaya-thl-export');
+    } finally {
+      timeoutSpy.mockRestore();
+      anchorClick.mockRestore();
+      if (originalCreateObjectURL) {
+        Object.defineProperty(urlApi, 'createObjectURL', originalCreateObjectURL);
+      } else {
+        Reflect.deleteProperty(urlApi, 'createObjectURL');
+      }
+      if (originalRevokeObjectURL) {
+        Object.defineProperty(urlApi, 'revokeObjectURL', originalRevokeObjectURL);
+      } else {
+        Reflect.deleteProperty(urlApi, 'revokeObjectURL');
+      }
+    }
   });
 
   it('tidak menggandakan grup saat keluar-masuk step Data Pekerja', async () => {
