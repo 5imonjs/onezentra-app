@@ -29,20 +29,12 @@ class RegionDepoValidationController
             return response()->json(['valid' => false, 'message' => 'Region not found or inactive'], 404);
         }
 
-        // Konteks mengikuti kunci bisnis (kode region), bukan surrogate id:
-        // tabel regions memakai `code` sebagai primary key dan scoping
-        // operasional (users.region_id, depot_settings.region_id) juga
-        // menyimpan kode tersebut.
-        $request->session()->put([
-            'region_id' => $region->code,
-            'region_code' => $region->code,
-            'region_name' => $region->name,
-        ]);
-
-        // Region berubah → konteks depo lama harus dibuang agar tidak
-        // mencampur depo lintas region.
-        $request->session()->forget(['depo_id', 'kode_depo', 'depo_nama']);
-
+        // Konteks region diambil langsung dari database (code PK).
+        // Session store tidak selalu tersedia di semua deployment (misal:
+        #  production nginx proxy + Sanctum EnsureFrontendRequestsAreStateful).
+        // Nilai region dikirim dalam respons JSON; frontend harus menyimpannya
+        # dari respons ini jika butuh untuk request selanjutnya (depo-options,
+        # depo-validate, login).
         return response()->json([
             'valid' => true,
             'region_id' => $region->code,
