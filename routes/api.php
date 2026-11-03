@@ -42,6 +42,7 @@ Route::prefix('v1')->group(function () {
     Route::post('mobile/login', [AuthController::class, 'mobileLogin'])->middleware('throttle:10,1,login-mobile');
     Route::post('mobile/logout', [AuthController::class, 'mobileLogout'])->middleware(['auth:sanctum', 'throttle:30,1,api']);
     Route::post('region-validate', [RegionDepoValidationController::class, 'validateRegion'])->middleware('throttle:10,1,region');
+    Route::get('depo-options', [RegionDepoValidationController::class, 'depoOptions'])->middleware('throttle:30,1,region');
     Route::post('depo-validate', [RegionDepoValidationController::class, 'validateDepo'])->middleware('throttle:10,1,depo');
     Route::post('login-with-context', [RegionDepoValidationController::class, 'loginWithContext'])->middleware('throttle:10,1,login-context');
 

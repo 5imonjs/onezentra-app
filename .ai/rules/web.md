@@ -59,3 +59,14 @@
   total/resolved/manual counts plus samples, and require typing `BACKFILL`
   before `adminDatabase.backfillDepot({ dry_run: false, confirm: 'BACKFILL' })`.
   Never present the backfill as a reset or as a “Tanpa Depo” purge.
+
+- Frontend DEV tidak boleh mengarah ke backend produksi: `onezentra-web/.env`
+  dan `.env.local` pernah berisi `BACKEND_URL=https://api.onezentra.sbs` sehingga
+  `npm run dev` lokal meneruskan semua `/api/*` + cookie Sanctum ke produksi
+  (kebocoran mutasi lintas lingkungan). Nilai BACKEND_URL di `.env`/.env.local
+  lokal harus `http://127.0.0.1:8000`; URL produksi hanya boleh ada di
+  `.env.production`/deploy pipeline. Jika butuh uji ke API jadi, pakai override
+  sementara `BACKEND_URL=... npm run dev`.
+- Route baru di backend (contoh `GET /api/v1/depo-options`) tidak terlihat dari
+  cache rute lama: setelah menambah route, jalankan
+  `php artisan route:clear && php artisan route:cache` sebelum merujuknya dr web.

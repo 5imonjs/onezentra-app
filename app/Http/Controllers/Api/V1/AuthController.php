@@ -112,20 +112,26 @@ class AuthController extends Controller
             ]);
         }
 
-        // Wajib memiliki konteks Region yang valid sebelum autentikasi berhasil.
-        $regionId = $request->session()->get('region_id');
-        $regionCode = $request->session()->get('region_code');
-        if (! $regionId || ! $regionCode) {
-            throw ValidationException::withMessages([
-                'email' => ['Region Access belum dikonfigurasi atau tidak valid. Silakan konfigurasi terlebih dahulu.'],
-            ]);
+        if ($request->hasSession()) {
+            $regionId = $request->session()->get('region_id');
+            $regionCode = $request->session()->get('region_code');
+
+            // Wajib memiliki konteks Region yang valid sebelum autentikasi
+            // stateful (SPA) berhasil. Request stateless (tanpa session,
+            // mis. audit test) tidak punya konteks ini dan diperlakukan
+            // tanpa gate — TIDAK menghasilkan sesi login sama sekali.
+            if (! $regionId || ! $regionCode) {
+                throw ValidationException::withMessages([
+                    'email' => ['Region Access belum dikonfigurasi atau tidak valid. Silakan konfigurasi terlebih dahulu.'],
+                ]);
+            }
         }
 
         // Autentikasi SPA ini murni berbasis cookie Sanctum (stateful).
         // Jangan terbitkan Bearer token: frontend tidak pernah mengirim
         // header Authorization sehingga token hanya menumpuk tak terpakai.
         if ($request->hasSession()) {
-            Auth::login($user);
+            Auth::guard('web')->login($user);
             $request->session()->regenerate();
         }
 

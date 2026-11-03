@@ -31,10 +31,12 @@ class ScopeRegionDepo
             return $next($request);
         }
 
-        // If request explicitly passes region/depo, validate isolation (prevent IDOR)
+        // If request explicitly passes region, validate isolation (prevent IDOR).
+        // Kode region bisa string ("REG-A") — bandingkan dengan sameRegion(),
+        // bukan cast int yang membuat semua kode non-numerik jadi 0.
         $reqRegion = $request->input('region_id') ?? $request->route('region_id');
 
-        if ($reqRegion !== null && (int) $reqRegion !== (int) $regionId) {
+        if ($reqRegion !== null && ! $this->sameRegion($reqRegion, $regionId)) {
             return response()->json(['message' => 'Access denied: region isolation'], 403);
         }
 
@@ -48,25 +50,11 @@ class ScopeRegionDepo
             return response()->json(['message' => 'Access denied: depo isolation'], 403);
         }
 
-        $reqDepoCode = $request->input('kode_depo')
-            ?? $request->input('depo_code')
-            ?? $request->route('kode_depo');
-
-        if ($reqDepoCode !== null && $reqDepoCode !== '') {
-            // `depot_codes` mendukung multi-depot; fallback ke kode_depo legacy
-            // agar akun lama tidak ikut ditolak.
-            $allowedCodes = array_map('strval', $user->depot_codes);
-
-            if (filled($depoCode)) {
-                $allowedCodes[] = (string) $depoCode;
-            }
-
-            $allowedCodes = array_values(array_unique($allowedCodes));
-
-            if (! empty($allowedCodes) && ! in_array((string) $reqDepoCode, $allowedCodes, true)) {
-                return response()->json(['message' => 'Access denied: depo isolation'], 403);
-            }
-        }
+        // Catatan: kode_depo dari body/query TIDAK diverifikasi di middleware.
+        // Kontrak scoping kode depo (clamp untuk user terruping, bebas untuk
+        // admin/depot.view_all) ditetapkan di controller masing-masing
+        // (RencanaKirim, gate, report, email recipients) agar alur
+        // crossdepot yang sah (impian admin, item journal) tetap jalan.
 
         return $next($request);
     }

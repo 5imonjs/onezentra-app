@@ -37,6 +37,17 @@ class SjValidationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Kontrak regresi SjValidationFlowTest::test_index_rejects_foreign_depo_filter_for_scoped_user:
+        // user yang di-scope ke depot tidak boleh memakai filter kode depo
+        // milik depot lain (terpisah dari stats yang mengabaikan filter).
+        if ($request->filled('kode_depo') && $request->user()->isDepotScoped()) {
+            $allowedCodes = $request->user()->depot_codes;
+
+            if (! in_array((string) $request->input('kode_depo'), $allowedCodes, true)) {
+                return response()->json(['message' => 'Access denied: depo isolation'], 403);
+            }
+        }
+
         $query = SjValidation::with(['rencanaKirim:id,po_transporter,driver_name,nopol,destination_name,kode_depo,nama_depo', 'validator:id,full_name'])
             // History rows only need the counters, not every line. Loading the
             // items relation would make the list heavier and is unnecessary.

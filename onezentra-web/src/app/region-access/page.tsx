@@ -42,59 +42,77 @@ export default function RegionAccessPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom right, #0f172a, #020617)", color: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-      <div style={{ width: "100%", maxWidth: "28rem", background: "rgba(255,255,255,0.05)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "1rem", padding: "2rem", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.7)" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "3.5rem", height: "3.5rem", borderRadius: "0.75rem", background: "linear-gradient(135deg, #f59e0b, #f97316)", color: "white", fontWeight: 800, fontSize: "1.25rem", marginBottom: "1rem" }}>●</div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>Akses Region</h1>
-          <p style={{ fontSize: "0.875rem", color: "#94a3b8", marginTop: "0.5rem" }}>Identifikasi lingkungan operasional Anda sebelum masuk.</p>
+    <div className="flex min-h-screen items-center justify-center bg-background p-8 text-foreground">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-2xl shadow-black/10 backdrop-blur-md">
+        <div className="mb-8 text-center">
+          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-400 to-orange-500 text-xl font-black text-slate-950 shadow-lg shadow-amber-400/20">●</div>
+          <h1 className="text-2xl font-bold tracking-tight">Akses Region</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Identifikasi lingkungan operasional Anda sebelum masuk.</p>
         </div>
 
-        <form onSubmit={handleValidate} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <form onSubmit={handleValidate} className="flex flex-col gap-5">
           <div>
-            <label htmlFor="region-port" style={{ display: "block", fontSize: "0.875rem", fontWeight: 500, marginBottom: "0.25rem", color: "#cbd5e1" }}>Port / Alamat Region</label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <input id="region-port" type="text" value={port} onChange={(e) => setPort(e.target.value)} placeholder="Contoh: 8000" style={{ width: "6rem", borderRadius: "0.5rem", background: "rgba(30,41,59,0.6)", border: "1px solid #334155", padding: "0.625rem 0.75rem", fontSize: "0.875rem", color: "#f1f5f9" }} />
-              <input type="text" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} placeholder="Kode Region (contoh: REGION-A)" style={{ flex: 1, borderRadius: "0.5rem", background: "rgba(30,41,59,0.6)", border: "1px solid #334155", padding: "0.625rem 0.75rem", fontSize: "0.875rem", color: "#f1f5f9", textTransform: "uppercase" }} />
+            <label htmlFor="region-code" className="mb-1.5 block text-sm font-medium">Port / Alamat Region</label>
+            <div className="flex gap-2">
+              <input
+                id="region-port"
+                type="text"
+                value={port}
+                onChange={(e) => setPort(e.target.value)}
+                placeholder="Contoh: 8000"
+                className="input-field w-24 shrink-0 rounded-lg"
+              />
+              <input
+                id="region-code"
+                type="text"
+                value={regionCode}
+                onChange={(e) => setRegionCode(e.target.value.toUpperCase())}
+                placeholder="Kode Region (contoh: REGION-A)"
+                className="input-field w-full flex-1 rounded-lg uppercase"
+              />
             </div>
-            <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.25rem" }}>Port internal dikelola server. Masukkan kode Region yang valid.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Port internal dikelola server. Masukkan kode Region yang valid.</p>
           </div>
 
-          <button type="submit" disabled={status === "loading" || !regionCode.trim()} style={{ width: "100%", borderRadius: "0.75rem", background: "linear-gradient(135deg, #f59e0b, #f97316)", color: "#020617", fontWeight: 600, padding: "0.75rem", fontSize: "0.875rem", border: "none", cursor: status === "loading" ? "not-allowed" : "pointer", opacity: status === "loading" ? 0.5 : 1 }}>
+          <button
+            type="submit"
+            disabled={status === "loading" || !regionCode.trim()}
+            className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-semibold text-slate-950 shadow-lg transition hover:from-amber-400 hover:to-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
+          >
             {status === "loading" ? "Memvalidasi..." : "Validasi Region"}
           </button>
         </form>
 
-        <div style={{ marginTop: "1rem", minHeight: "2.5rem" }} aria-live="polite">
+        <div className="mt-4 min-h-[2.5rem]" aria-live="polite">
           {status === "success" && (
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", borderRadius: "0.75rem", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)", padding: "0.75rem", fontSize: "0.875rem", color: "#d1fae5" }}>
-              <span style={{ fontWeight: 700, color: "#34d399" }}>✓</span>
+            <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <span className="font-bold text-emerald-600">✓</span>
               <div>
-                <p style={{ fontWeight: 500 }}>Konfigurasi Region valid</p>
-                <p style={{ fontSize: "0.75rem", color: "#a7f3d0" }}>Region <strong>{regionCode}</strong> terverifikasi. Pastikan Depo sudah benar.</p>
+                <p className="font-medium">Konfigurasi Region valid</p>
+                <p className="text-xs text-emerald-700">Region <strong>{regionCode}</strong> terverifikasi. Pastikan Depo sudah benar.</p>
               </div>
             </div>
           )}
           {status === "error" && (
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", borderRadius: "0.75rem", background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.3)", padding: "0.75rem", fontSize: "0.875rem", color: "#ffe4e6" }}>
-              <span style={{ fontWeight: 700, color: "#fb7185" }}>⚠</span>
+            <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <span className="font-bold text-red-600">⚠</span>
               <div>
-                <p style={{ fontWeight: 500 }}>Validasi gagal</p>
-                <p style={{ fontSize: "0.75rem", color: "#fda4af" }}>{msg || "Region tidak ditemukan atau tidak aktif."}</p>
+                <p className="font-medium">Validasi gagal</p>
+                <p className="text-xs text-red-600">{msg || "Region tidak ditemukan atau tidak aktif."}</p>
               </div>
             </div>
           )}
         </div>
 
-        <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div className="mt-6 flex flex-col gap-3 border-t border-border pt-6">
           <button
             onClick={handleSave}
             disabled={status !== "success"}
-            style={{ width: "100%", borderRadius: "0.75rem", background: "rgba(30,41,59,1)", border: "1px solid #334155", color: "#f1f5f9", fontWeight: 500, padding: "0.75rem", fontSize: "0.875rem", cursor: status === "success" ? "pointer" : "not-allowed", opacity: status === "success" ? 1 : 0.4 }}
+            className="w-full rounded-xl border border-border bg-card py-3 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Simpan Konfigurasi & Lanjutkan →
+            Simpan Konfigurasi &amp; Lanjutkan →
           </button>
-          <p style={{ fontSize: "0.7rem", color: "#64748b", textAlign: "center" }}>
+          <p className="text-center text-[11px] text-muted-foreground">
             Konfigurasi akses akan digunakan untuk sesi berikutnya.
           </p>
         </div>

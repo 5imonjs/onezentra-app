@@ -222,3 +222,26 @@
   `kode_depo` is never overwritten; ambiguous names and conflicting sources
   stay null and are reported for manual review. Do not add a global "Tanpa
   Depo" reset — repair the attribution first, then reset per depot.
+
+## Stray `.env.local` breaks `php artisan serve` (fixed 2026-11-03 audit)
+- `php artisan serve` passthrough `APP_ENV` (ServeCommand::$passthroughVariables) ke
+  worker PHP. Bootstrap Laravel lalu memilih file `.env.<APP_ENV>` bila ada —
+  sebuah `.env.local` di repo root (temuan Next.js) MEMGANTIKAN `.env`, sehingga
+  worker hanya memuat NEXT_PUBLIC_API_URL tanpa APP_KEY → semua request HTTP 500
+  `MissingAppKeyException`, sementara CLI tetap sehat. Jangan pernah menaruh
+  `.env.local` / `.env.<APP_ENV>` di root repo; file env frontend hanya boleh di
+  `onezentra-web/`.
+- `regions` memakai **`code` sebagai primary key** (tanpa kolom `id`, tanpa
+  `is_active` dari create migration — kolom `is_active` ditambahkan migrasi
+  `add_is_active_to_regions_table`). Session `region_id` = KODE region, dan
+  `users.region_id`/`depot_settings.region_id` juga menyimpan kode, bukan angka.
+  Jangan bandingkan region id dengan cast `(int)` (ScopeRegionDepo pernah
+  dibobol oleh `0 === 0` untuk kode non-numerik) — pakai perbandingan string.
+- Kontrak scoping kode depo: middleware `ScopeRegionDepo` HANYA menangani
+  region_id/depo_id eksplisit. Penyaringan/clamping `kode_depo` dari body/query
+  ditetapkan di controller masing-masing, dan kontraknya BERBEDA per modul:
+  Receiving & SjValidation index = 403 untuk kode depo asing milik user scoped;
+  stats gate/rencana-kirim/email-recipients = soft (abaikan/clamp). Tidak boleh
+  menggeser kontrak ini ke middleware (regresi 37 test saat audit 2026-11-03).
+- User dengan permission `depot.view_all` adalah pembaca global; user scope
+  `region` tetap terbatas depot di region-nya meski punya `depot.view_all`.

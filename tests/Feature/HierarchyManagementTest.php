@@ -102,17 +102,24 @@ class HierarchyManagementTest extends TestCase
         $region = $this->makeActor('region');
         $this->be($region);
 
+        // Region berhasil membuat depot di region-nya sendiri (REG-A).
         $this->postJson('/api/v1/depot-settings', [
             'kode_depo' => 'DEPOT-OWN',
             'nama_depo' => 'Depo Sendiri',
             'region_id' => 'REG-A',
+        ])->assertCreated();
+
+        // Region lintas region (REG-B) ditolak dan tidak membuat baris apa pun.
+        $this->postJson('/api/v1/depot-settings', [
+            'kode_depo' => 'DEPOT-LUAR',
+            'nama_depo' => 'Depo Lintas Region',
+            'region_id' => 'REG-B',
         ])->assertForbidden();
 
-        $this->postJson('/api/v1/depot-settings', [
-            'kode_depo' => 'DEPOT-OWN',
-            'nama_depo' => 'Depo Sendiri',
+        $this->assertDatabaseMissing('depot_settings', [
+            'kode_depo' => 'DEPOT-LUAR',
             'region_id' => 'REG-B',
-        ])->assertCreated();
+        ]);
     }
 
     public function test_depot_scope_can_create_partner_sites_only_in_its_depot(): void

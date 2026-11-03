@@ -49,8 +49,18 @@ class ReceivingController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter dari klien hanya mempersempit scope server; middleware menolak kode depo di luar akses user.
+        // Filter dari klien mempersempit scope server. Untuk user scoped,
+        // kode depo di luar akses ditolak eksplisit (kontrak regresi
+        // ReceivingDepotFilterTest::test_scoped_user_locked_to_own_depo).
         if ($request->filled('kode_depo')) {
+            $depotCodes = $this->accessibleDepotCodes($user);
+
+            if ($depotCodes !== null
+                && ! in_array((string) $request->input('kode_depo'), $depotCodes, true)
+            ) {
+                return response()->json(['message' => 'Access denied: depo isolation'], 403);
+            }
+
             $query->whereHas('rencanaKirim', fn ($q) => $q->where('kode_depo', $request->input('kode_depo')));
         }
 
@@ -115,6 +125,14 @@ class ReceivingController extends Controller
     private function accessibleDepotCodes(User $user): ?array
     {
         if ($user->isMasterScope()) {
+            return null;
+        }
+
+        // Scope region tetap terbatas ke depot di region-nya sendiri,
+        // apa pun izin view_all-nya (depot lintas region tidak boleh bocor).
+        if ($user->scope_level === 'region') {
+            // fall through ke pembatasan region di bawah
+        } elseif ($user->hasAnyPermission(['depot.view_all'])) {
             return null;
         }
 
