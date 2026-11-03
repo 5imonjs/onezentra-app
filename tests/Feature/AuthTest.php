@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -52,6 +53,71 @@ class AuthTest extends TestCase
             'method' => 'LOGIN',
             'route' => 'auth.login',
         ]);
+    }
+
+    public function test_stateful_login_stores_a_validated_region_from_the_login_request(): void
+    {
+        DB::table('regions')->insert([
+            'code' => 'REG-001',
+            'name' => 'Region 001',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $user = User::factory()->create([
+            'email' => 'region-login@example.com',
+            'password' => 'secret-123',
+        ]);
+
+        $this->withHeaders([
+            'Origin' => 'http://localhost:3000',
+            'Referer' => 'http://localhost:3000/',
+        ])->postJson('/api/v1/login', [
+            'email' => 'region-login@example.com',
+            'password' => 'secret-123',
+            'region_code' => 'REG-001',
+        ])->assertOk()
+            ->assertSessionHas('region_id', 'REG-001')
+            ->assertSessionHas('region_code', 'REG-001')
+            ->assertSessionHas('region_name', 'Region 001');
+
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_stateful_login_rejects_missing_or_inactive_region_context(): void
+    {
+        DB::table('regions')->insert([
+            'code' => 'REG-OFF',
+            'name' => 'Region Inactive',
+            'is_active' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        User::factory()->create([
+            'email' => 'region-required@example.com',
+            'password' => 'secret-123',
+        ]);
+
+        $headers = [
+            'Origin' => 'http://localhost:3000',
+            'Referer' => 'http://localhost:3000/',
+        ];
+        $credentials = [
+            'email' => 'region-required@example.com',
+            'password' => 'secret-123',
+        ];
+
+        $this->withHeaders($headers)->postJson('/api/v1/login', $credentials)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
+
+        $this->withHeaders($headers)->postJson('/api/v1/login', [
+            ...$credentials,
+            'region_code' => 'REG-OFF',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
+
+        $this->assertGuest();
     }
 
     public function test_login_inactive_account_gets_distinct_message_only_after_correct_password(): void

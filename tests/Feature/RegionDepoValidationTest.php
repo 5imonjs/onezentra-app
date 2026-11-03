@@ -60,12 +60,9 @@ class RegionDepoValidationTest extends TestCase
         ]);
     }
 
-    public function test_region_valid_disimpan_di_session_dan_depo_lama_dibuang(): void
+    public function test_region_valid_dikembalikan_tanpa_mengubah_session(): void
     {
-        $response = $this->withSession([
-            'depo_id' => $this->depotPontianakId,
-            'kode_depo' => '0126',
-        ])->postJson('/api/v1/region-validate', ['region_code' => '001']);
+        $response = $this->postJson('/api/v1/region-validate', ['region_code' => '001']);
 
         $response->assertOk()
             ->assertJson([
@@ -73,7 +70,7 @@ class RegionDepoValidationTest extends TestCase
                 'region_code' => '001',
                 'region_name' => 'REGION JATAKALBAR',
             ])
-            ->assertSessionHas('region_code', '001')
+            ->assertSessionMissing('region_code')
             ->assertSessionMissing('depo_id');
     }
 

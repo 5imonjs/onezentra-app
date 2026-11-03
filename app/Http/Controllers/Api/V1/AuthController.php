@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -113,17 +114,45 @@ class AuthController extends Controller
         }
 
         if ($request->hasSession()) {
-            $regionId = $request->session()->get('region_id');
-            $regionCode = $request->session()->get('region_code');
+            $regionCode = $request->input('region_code');
 
-            // Wajib memiliki konteks Region yang valid sebelum autentikasi
-            // stateful (SPA) berhasil. Request stateless (tanpa session,
-            // mis. audit test) tidak punya konteks ini dan diperlakukan
-            // tanpa gate — TIDAK menghasilkan sesi login sama sekali.
-            if (! $regionId || ! $regionCode) {
-                throw ValidationException::withMessages([
-                    'email' => ['Region Access belum dikonfigurasi atau tidak valid. Silakan konfigurasi terlebih dahulu.'],
+            if ($request->exists('region_code')) {
+                $region = is_string($regionCode)
+                    ? DB::table('regions')
+                        ->where('code', trim($regionCode))
+                        ->where('is_active', true)
+                        ->first()
+                    : null;
+
+                if (! $region) {
+                    throw ValidationException::withMessages([
+                        'email' => ['Region Access belum dikonfigurasi atau tidak valid. Silakan konfigurasi terlebih dahulu.'],
+                    ]);
+                }
+
+                $currentRegionCode = $request->session()->get('region_code')
+                    ?? $request->session()->get('region_id');
+
+                if ($currentRegionCode !== $region->code) {
+                    $request->session()->forget(['depo_id', 'kode_depo', 'depo_nama']);
+                }
+
+                $request->session()->put([
+                    'region_id' => $region->code,
+                    'region_code' => $region->code,
+                    'region_name' => $region->name,
                 ]);
+            } else {
+                $regionId = $request->session()->get('region_id');
+                $regionCode = $request->session()->get('region_code');
+
+                // Request stateless (mis. audit test) tidak punya konteks
+                // session dan tidak menghasilkan sesi login.
+                if (! $regionId || ! $regionCode) {
+                    throw ValidationException::withMessages([
+                        'email' => ['Region Access belum dikonfigurasi atau tidak valid. Silakan konfigurasi terlebih dahulu.'],
+                    ]);
+                }
             }
         }
 

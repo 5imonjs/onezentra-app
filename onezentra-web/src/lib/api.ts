@@ -328,9 +328,13 @@ registerResponseInterceptors(apiClient, () => csrfClient.get(CSRF_URL));
 export const ensureCsrfCookie = () => csrfClient.get(CSRF_URL);
 
 export const auth = {
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, regionCode?: string) => {
     await csrfClient.get(CSRF_URL);
-    return apiClient.post('/login', { email, password });
+    return apiClient.post('/login', {
+      email,
+      password,
+      ...(regionCode ? { region_code: regionCode } : {}),
+    });
   },
   logout: () => apiClient.post('/logout'),
   getUser: () => apiClient.get('/user'),

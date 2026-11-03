@@ -132,8 +132,8 @@ export default function LoginPage() {
         return;
       }
       setIsValidatingRegion(true);
-      await validateRegion(regionCode);
-      await login(email, password);
+      const validatedRegion = await validateRegion(regionCode);
+      await login(email, password, validatedRegion.region_code);
       router.push("/dashboard");
     } catch (err) {
       const response = (err as {

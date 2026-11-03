@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Tests\TestCase;
 
@@ -97,6 +98,13 @@ class SanctumStatefulDomainTest extends TestCase
      */
     public function test_session_auth_works_end_to_end_from_frontend_origin(): void
     {
+        DB::table('regions')->insert([
+            'code' => '001',
+            'name' => 'Region 001',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         $user = User::factory()->create([
             'email' => 'stateful@example.com',
             'password' => 'secret-123',
@@ -104,17 +112,16 @@ class SanctumStatefulDomainTest extends TestCase
 
         $frontendOrigin = 'http://localhost:3000';
 
-        // Langkah 1: Validasi Region terlebih dahulu (requiremen baru Phase 6)
-        $this->withSession([
-            'region_id' => '001',
-            'region_code' => '001',
-        ])->withHeaders([
+        // Validasi mengembalikan region; login kemudian mengirim kode validasi
+        // supaya tidak bergantung pada session dari request sebelumnya.
+        $this->withHeaders([
             'Origin' => $frontendOrigin,
             'Referer' => $frontendOrigin.'/',
             'Accept' => 'application/json',
-        ])->actingAs($user);
+        ]);
 
         $regionValidate = $this->postJson('/api/v1/region-validate', ['region_code' => '001']);
+        $regionValidate->assertOk()->assertJsonPath('region_code', '001');
 
         $login = $this->withHeaders([
             'Origin' => $frontendOrigin,
@@ -123,9 +130,10 @@ class SanctumStatefulDomainTest extends TestCase
         ])->postJson('/api/v1/login', [
             'email' => 'stateful@example.com',
             'password' => 'secret-123',
+            'region_code' => $regionValidate->json('region_code'),
         ]);
 
-        $login->assertOk();
+        $login->assertOk()->assertSessionHas('region_code', '001');
 
         // Request lanjutan harus ikut terautentikasi. Kalau Sanctum tidak
         // stateful, cookie sesi tidak diterbitkan/terbaca dan hasilnya 401 —
