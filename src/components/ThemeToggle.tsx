@@ -27,8 +27,8 @@ export default function ThemeToggle({
         aria-hidden="true"
         className={
           compact
-            ? 'inline-flex items-center gap-0.5 rounded-lg bg-white/5 p-0.5 ring-1 ring-white/10 h-[30px]'
-            : 'inline-flex w-full items-center gap-1 rounded-xl bg-white/5 p-1 ring-1 ring-white/10 h-[38px]'
+            ? 'inline-flex items-center gap-0.5 rounded-lg bg-white/5 p-0.5 ring-1 ring-white/10 h-7.5'
+            : 'inline-flex w-full items-center gap-1 rounded-xl bg-white/5 p-1 ring-1 ring-white/10 h-9.5'
         }
       />
     );
