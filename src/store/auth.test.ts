@@ -58,8 +58,9 @@ describe('useAuthStore — reset cache ringkasan dashboard', () => {
   it('login mengosongkan cache sebelum menampilkan data user baru', async () => {
     login.mockResolvedValue({ data: { user: user(2, 'B'), permissions: [] } });
 
-    await useAuthStore.getState().login('b@depot.test', 'secret');
+    await useAuthStore.getState().login('b@depot.test', 'secret', 'REG-001');
 
+    expect(login).toHaveBeenCalledWith('b@depot.test', 'secret', 'REG-001');
     expect(clearDashboardSummaryCache).toHaveBeenCalled();
     expect(useAuthStore.getState().user?.id).toBe(2);
   });

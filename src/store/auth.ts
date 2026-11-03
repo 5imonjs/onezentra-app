@@ -21,7 +21,7 @@ interface AuthState {
   user: User | null;
   permissions: string[];
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, regionCode?: string) => Promise<void>;
   loginWithContext: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
@@ -34,10 +34,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   permissions: [],
   isLoading: false,
 
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, regionCode?: string) => {
     set({ isLoading: true });
     try {
-      const res = await auth.login(email, password);
+      const res = await auth.login(email, password, regionCode);
       const { user, permissions } = res.data;
       // Buang ringkasan dashboard milik sesi sebelumnya (bila ada) agar user
       // baru tidak melihat data user lama sebelum cache kedaluwarsa.

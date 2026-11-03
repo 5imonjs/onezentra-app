@@ -228,7 +228,7 @@ describe('LoginPage', () => {
 
     await waitFor(() => {
       expect(validateRegion).toHaveBeenCalledWith('REG-001');
-      expect(login).toHaveBeenCalledWith('admin', 'rahasia123');
+      expect(login).toHaveBeenCalledWith('admin', 'rahasia123', 'REG-001');
     });
     expect(validateRegion.mock.invocationCallOrder[0]).toBeLessThan(login.mock.invocationCallOrder[0]);
     expect(push).toHaveBeenCalledWith('/dashboard');
