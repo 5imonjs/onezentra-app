@@ -37,6 +37,10 @@
 	<string>ONEZENTRA menggunakan kamera untuk memindai barcode PO dan mengambil foto bukti kondisi barang.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ONEZENTRA memerlukan akses galeri untuk memilih foto bukti kondisi barang saat validasi.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>ONEZENTRA menggunakan Bluetooth untuk menghubungkan printer label thermal.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>ONEZENTRA menggunakan Bluetooth untuk menghubungkan printer label thermal.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ONEZENTRA menggunakan jaringan lokal untuk menghubungi server.</string>
 	<key>UIApplicationSceneManifest</key>

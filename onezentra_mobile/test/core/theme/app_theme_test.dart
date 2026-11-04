@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 
@@ -60,6 +61,27 @@ void main() {
         reason: 'teks snackbar harus terbaca',
       );
     });
+  });
+
+  testWidgets('semua varian font yang dipakai tersedia sebagai asset', (
+    tester,
+  ) async {
+    // Runtime fetching dimatikan supaya build offline tidak mencoba internet.
+    // Kalau ada varian yang lupa di-bundle, pendingFonts melempar error.
+    GoogleFonts.config.allowRuntimeFetching = false;
+    for (var weight in [
+      FontWeight.w400,
+      FontWeight.w500,
+      FontWeight.w600,
+      FontWeight.w700,
+      FontWeight.w800,
+    ]) {
+      GoogleFonts.roboto(fontWeight: weight);
+    }
+    GoogleFonts.robotoMono(fontWeight: FontWeight.w400);
+    GoogleFonts.robotoMono(fontWeight: FontWeight.w700);
+
+    await GoogleFonts.pendingFonts();
   });
 }
 

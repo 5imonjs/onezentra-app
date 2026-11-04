@@ -944,6 +944,11 @@ class AppTheme {
   static ThemeData get dark => _build(Brightness.dark);
 
   static ThemeData _build(Brightness b) {
+    // Semua varian Roboto/Roboto Mono yang dipakai sudah ada di
+    // assets/google_fonts. Jangan biarkan google_fonts mengambil dari
+    // internet: perangkat gudang bisa offline dan fetch runtime membuat
+    // tampilan berkedip / gagal render.
+    GoogleFonts.config.allowRuntimeFetching = false;
     var (t, c) = _tones(b);
     var isDark = b == Brightness.dark;
     return ThemeData(

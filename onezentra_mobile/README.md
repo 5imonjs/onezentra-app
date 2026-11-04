@@ -34,9 +34,11 @@ ditampilkan per halaman agar layar tetap ringkas pada perangkat handheld.
 - Provider (State Management)
 - GoRouter (Navigation)
 - HTTP (API Calls)
-- FlutterSecureStorage (token di Keychain / EncryptedSharedPreferences)
+- FlutterSecureStorage (token di Keychain / Android Keystore, AES-GCM)
 - SharedPreferences (profil user & preferensi tema)
-- Google Fonts (Roboto - matching web)
+- Google Fonts (Roboto & Roboto Mono, di-bundle di `assets/google_fonts` —
+  tidak mengambil font dari internet saat runtime)
+- Connectivity Plus (banner peringatan saat perangkat offline)
 
 ## Struktur Project
 
@@ -84,6 +86,12 @@ Aplikasi terintegrasi dengan endpoint Laravel yang sudah ada:
 cd onezentra_mobile
 flutter pub get
 ```
+
+> Catatan toolchain: `permission_handler` 13.0.2 menarik
+> `permission_handler_android` 14.1.1 yang mewajibkan AGP 9 + compileSdk 37.
+> Proyek ini masih memakai AGP 8.11 + compileSdk 36, jadi `pubspec.yaml`
+> mem-pin `permission_handler_android: 13.0.1` lewat `dependency_overrides`.
+> Hapus override itu hanya setelah AGP/Gradle/compileSdk ikut dinaikkan.
 
 ### Konfigurasi API URL
 

@@ -10,9 +10,9 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 
-/// Pola input bersama untuk sheet validasi item rencana ([_ItemValidationSheet]
-/// di validation_session_page.dart) dan sheet barang luar rencana
-/// ([_ExtraItemSheet]): chips kondisi, bukti foto, dan pemilih tanggal
+/// Pola input bersama untuk sheet validasi item rencana (`ItemValidationSheet`)
+/// dan sheet barang luar rencana (`ExtraItemSheet`): chips kondisi, bukti
+/// foto, dan pemilih tanggal
 /// expired. Semua dipakai ulang oleh kedua sheet agar tampilan, urutan tap,
 /// dan perilakunya selalu identik — perubahan pola cukup di satu tempat.
 

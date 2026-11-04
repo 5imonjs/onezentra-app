@@ -17,9 +17,9 @@ dependencies:
   http: ^1.2.2
   provider: ^6.1.2
   shared_preferences: ^2.2.3
-  flutter_secure_storage: ^9.2.2
-  go_router: ^14.2.7
-  google_fonts: ^6.2.1
+  flutter_secure_storage: ^11.2.0
+  go_router: ^17.5.0
+  google_fonts: ^8.2.1
   intl: ^0.20.2
   mobile_scanner: ^7.4.2
   # Printer thermal label batch.
@@ -30,16 +30,27 @@ dependencies:
   # commercial license untuk penggunaan komersial.
   flutter_bluetooth_serial: ^0.4.0
   # Izin runtime Bluetooth Android 12+ (SCAN/CONNECT) untuk cari printer.
-  permission_handler: ^12.0.0
+  permission_handler: ^13.0.2
   image_picker: ^1.2.4
+  connectivity_plus: ^7.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+dependency_overrides:
+  # permission_handler 13.0.2 menarik permission_handler_android 14.1.1 yang
+  # mewajibkan AGP 9 + compileSdk 37. Toolchain proyek masih AGP 8.11 /
+  # compileSdk 36; 13.0.1 memakai platform interface yang sama dan tetap
+  # kompatibel untuk izin Bluetooth yang dipakai aplikasi.
+  permission_handler_android: 13.0.1
+
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
+    # Font Roboto & Roboto Mono di-bundle agar app tidak mengambil font dari
+    # internet saat runtime (offline-first, ukuran & startup lebih pasti).
+    - assets/google_fonts/

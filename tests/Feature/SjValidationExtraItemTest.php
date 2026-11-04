@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\ExtraItemReported;
 use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\Permission;
@@ -11,8 +12,10 @@ use App\Models\Role;
 use App\Models\SjValidation;
 use App\Models\SjValidationExtraItem;
 use App\Models\User;
+use Database\Seeders\EmailNotificationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -40,6 +43,24 @@ class SjValidationExtraItemTest extends TestCase
             'email' => 'sj-extra-'.uniqid().'@example.com',
             'password' => 'password',
             'full_name' => 'Checker Luar Rencana',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'level' => 'staff_logistic',
+            'status' => 'active',
+        ]);
+        $role->users()->attach($user->id);
+
+        return $user;
+    }
+
+    private function userWithRole(string $roleSlug, string $email): User
+    {
+        $role = Role::firstOrCreate(['slug' => $roleSlug], ['name' => ucfirst($roleSlug)]);
+
+        $user = User::create([
+            'email' => $email,
+            'password' => 'password',
+            'full_name' => ucfirst($roleSlug),
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo Test',
             'level' => 'staff_logistic',
@@ -343,6 +364,36 @@ class SjValidationExtraItemTest extends TestCase
             'document_type' => 'sj_ba',
             'trigger' => 'extra_item',
             'context_id' => $rk->id,
+        ]);
+    }
+
+    public function test_laporan_barang_luar_rencana_terkirim_dengan_penerima_default(): void
+    {
+        Mail::fake();
+        $this->seed(EmailNotificationSeeder::class);
+
+        $blc = $this->userWithRole('blc', 'blc-default@example.com');
+        $admin = $this->userWithRole('admin_distirbusi', 'admin-default@example.com');
+
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']));
+        Storage::fake('public');
+        $rk = $this->rencanaKirim($user);
+        $validation = $this->inProgressValidation($user, $rk);
+
+        $this->post("/api/v1/sj-validations/{$validation->id}/extra-items", [
+            'kode_barang' => 'SKU-LUAR-1',
+            'nama_barang' => 'Barang di Luar Rencana',
+            'qty' => 1,
+            'photo' => UploadedFile::fake()->image('bukti.jpg'),
+        ])->assertCreated();
+
+        Mail::assertSent(ExtraItemReported::class, fn (ExtraItemReported $mail) => $mail->hasTo($blc->email)
+            && $mail->hasCc($admin->email));
+        $this->assertDatabaseHas('email_notification_logs', [
+            'document_type' => 'sj_ba',
+            'trigger' => 'extra_item',
+            'context_id' => $rk->id,
+            'status' => 'sent',
         ]);
     }
 

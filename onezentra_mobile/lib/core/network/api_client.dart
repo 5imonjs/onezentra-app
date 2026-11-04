@@ -155,9 +155,7 @@ class ApiClient {
   /// semua default di bawah agar app bisa mengikuti server tanpa rebuild.
   static const String _apiBaseUrlKey = 'api_base_url';
 
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   String? _token;
   Map<String, dynamic>? _user;

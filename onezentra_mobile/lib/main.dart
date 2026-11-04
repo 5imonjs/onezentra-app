@@ -1,12 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/core/theme/theme_provider.dart';
 import 'package:onezentra_mobile/core/network/api_client.dart';
+import 'package:onezentra_mobile/core/network/network_status_provider.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
 import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
@@ -18,10 +21,23 @@ import 'package:onezentra_mobile/features/unload/pages/unload_page.dart';
 import 'package:onezentra_mobile/features/unload/repositories/unload_repository.dart';
 import 'package:onezentra_mobile/features/validation/pages/validation_page.dart';
 import 'package:onezentra_mobile/features/validation/repositories/validation_repository.dart';
+import 'package:onezentra_mobile/shared/widgets/network_banner.dart';
 
 /// Main App Entry Point
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Font di-bundle di assets/google_fonts — jangan fetch dari internet.
+  GoogleFonts.config.allowRuntimeFetching = false;
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(const [
+      'Roboto',
+    ], await rootBundle.loadString('assets/google_fonts/LICENSE-Roboto.txt'));
+    yield LicenseEntryWithLineBreaks(
+      const ['Roboto Mono'],
+      await rootBundle.loadString('assets/google_fonts/LICENSE-RobotoMono.txt'),
+    );
+  });
 
   // Handheld warehouse app: portrait only. Landscape would stretch the
   // single-column operational layouts and shrink the camera scan window.
@@ -57,11 +73,13 @@ class OneZentraApp extends StatefulWidget {
     required this.authProvider,
     required this.router,
     this.themeProvider,
+    this.networkStatusProvider,
     super.key,
   });
   final AuthProvider authProvider;
   final GoRouter router;
   final ThemeProvider? themeProvider;
+  final NetworkStatusProvider? networkStatusProvider;
 
   @override
   State<OneZentraApp> createState() => _OneZentraAppState();
@@ -69,15 +87,24 @@ class OneZentraApp extends StatefulWidget {
 
 class _OneZentraAppState extends State<OneZentraApp>
     with WidgetsBindingObserver {
+  late final NetworkStatusProvider _network =
+      widget.networkStatusProvider ?? NetworkStatusProvider();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.networkStatusProvider == null) {
+      _network.init();
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (widget.networkStatusProvider == null) {
+      _network.dispose();
+    }
     super.dispose();
   }
 
@@ -90,39 +117,46 @@ class _OneZentraAppState extends State<OneZentraApp>
     // provider so HomePage can show a retry banner without hiding the menu.
     if (state == AppLifecycleState.resumed) {
       widget.authProvider.refreshUser();
+      _network.refresh();
     }
   }
 
   @override
-  Widget build(BuildContext context) =>
-      ChangeNotifierProvider<AuthProvider>.value(
-        value: widget.authProvider,
-        child: ChangeNotifierProvider<ThemeProvider>.value(
-          value: widget.themeProvider ?? ThemeProvider(),
-          child: Consumer<ThemeProvider>(
-            builder: (context, tp, _) => MaterialApp.router(
-              title: 'ONEZENTRA Mobile',
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.light,
-              darkTheme: AppTheme.dark,
-              themeMode: tp.mode,
-              // Pin ke bahasa Indonesia: pemilih tanggal (CupertinoDatePicker)
-              // mengikuti locale — tanpa pin ini rodanya berurutan MM/DD/YYYY
-              // (format AS) padahal hasilnya ditampilkan dd/MM/yyyy, ambigu
-              // bagi user lapangan. Dengan locale `id` rodanya tanggal-bulan-
-              // tahun dan nama bulan berbahasa Indonesia.
-              locale: const Locale('id'),
-              supportedLocales: const [Locale('id'), Locale('en')],
-              localizationsDelegates: const [
-                GlobalMaterialLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-              ],
-              routerConfig: widget.router,
-            ),
+  Widget build(
+    BuildContext context,
+  ) => ChangeNotifierProvider<AuthProvider>.value(
+    value: widget.authProvider,
+    child: ChangeNotifierProvider<ThemeProvider>.value(
+      value: widget.themeProvider ?? ThemeProvider(),
+      child: ChangeNotifierProvider<NetworkStatusProvider>.value(
+        value: _network,
+        child: Consumer<ThemeProvider>(
+          builder: (context, tp, _) => MaterialApp.router(
+            title: 'ONEZENTRA Mobile',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: tp.mode,
+            builder: (context, child) =>
+                NetworkBannerHost(child: child ?? const SizedBox.shrink()),
+            // Pin ke bahasa Indonesia: pemilih tanggal (CupertinoDatePicker)
+            // mengikuti locale — tanpa pin ini rodanya berurutan MM/DD/YYYY
+            // (format AS) padahal hasilnya ditampilkan dd/MM/yyyy, ambigu
+            // bagi user lapangan. Dengan locale `id` rodanya tanggal-bulan-
+            // tahun dan nama bulan berbahasa Indonesia.
+            locale: const Locale('id'),
+            supportedLocales: const [Locale('id'), Locale('en')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+            ],
+            routerConfig: widget.router,
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Permission required to open each operational route.

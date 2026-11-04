@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -54,7 +56,7 @@ void main() {
   Future<Future<bool?> Function()> openSheet(
     WidgetTester tester,
     LabelPrintProvider provider, {
-    Future<void> Function()? onPrintAttempted,
+    Future<void> Function()? onPrintSucceeded,
   }) async {
     late Future<bool?> result;
     await tester.pumpWidget(
@@ -67,7 +69,7 @@ void main() {
                   context,
                   label: _label,
                   printer: provider,
-                  onPrintAttempted: onPrintAttempted,
+                  onPrintSucceeded: onPrintSucceeded,
                 );
               },
               child: const Text('Buka cetak'),
@@ -81,20 +83,52 @@ void main() {
     return () => result;
   }
 
-  testWidgets('menutup panel otomatis setelah label berhasil dicetak', (
+  testWidgets('menutup panel dan melaporkan server setelah cetak sukses', (
     tester,
   ) async {
+    var attempts = 0;
     var provider = LabelPrintProvider(
       printer: _FakeLabelPrinter(),
       requestPermissions: () async => true,
     );
-    var result = await openSheet(tester, provider);
+    var result = await openSheet(
+      tester,
+      provider,
+      onPrintSucceeded: () async => attempts++,
+    );
 
     await tester.tap(find.widgetWithText(FilledButton, 'Cetak Label'));
     await tester.pumpAndSettle();
 
     expect(find.byType(LabelPrintSheet), findsNothing);
     expect(await result(), isTrue);
+    expect(attempts, 1);
+    provider.dispose();
+  });
+
+  testWidgets('mengunci tombol selama laporan server belum selesai', (
+    tester,
+  ) async {
+    var report = Completer<void>();
+    var provider = LabelPrintProvider(
+      printer: _FakeLabelPrinter(),
+      requestPermissions: () async => true,
+    );
+    await openSheet(tester, provider, onPrintSucceeded: () => report.future);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Cetak Label'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(LabelPrintSheet), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+
+    report.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(LabelPrintSheet), findsNothing);
     provider.dispose();
   });
 
@@ -117,13 +151,9 @@ void main() {
     provider.dispose();
   });
 
-  testWidgets('laporan server terkirim meski cetak dilaporkan gagal', (
-    tester,
-  ) async {
-    // Paritas web: kertas sudah keluar dari printer bahkan saat aplikasi
-    // salah membaca hasil — jadi status "tercetak" dilaporkan pada setiap
-    // percobaan cetak, bukan hanya saat sukses. Dulu laporan hanya dikirim
-    // setelah sukses, sehingga badge web tidak pernah berubah.
+  testWidgets('tidak melaporkan server saat cetak gagal', (tester) async {
+    // Kalau Bluetooth gagal, label belum tentu tercetak. Jangan tandai
+    // tercetak supaya operator bisa mengulang dan status server benar.
     var attempts = 0;
     var provider = LabelPrintProvider(
       printer: _FakeLabelPrinter(
@@ -131,12 +161,13 @@ void main() {
       ),
       requestPermissions: () async => true,
     );
-    await openSheet(tester, provider, onPrintAttempted: () async => attempts++);
+    await openSheet(tester, provider, onPrintSucceeded: () async => attempts++);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Cetak Label'));
     await tester.pumpAndSettle();
 
-    expect(attempts, 1);
+    expect(find.byType(LabelPrintSheet), findsOneWidget);
+    expect(attempts, 0);
     provider.dispose();
   });
 }

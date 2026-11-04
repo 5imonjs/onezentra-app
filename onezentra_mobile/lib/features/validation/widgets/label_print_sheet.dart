@@ -15,33 +15,31 @@ class LabelPrintSheet extends StatefulWidget {
   const LabelPrintSheet({
     required this.label,
     this.printer,
-    this.onPrintAttempted,
+    this.onPrintSucceeded,
     super.key,
   });
 
   final BatchLabelData label;
   final LabelPrintProvider? printer;
 
-  /// Paritas web: web melaporkan label "tercetak" SAAT tombol cetak
-  /// ditekan, bukan setelah menunggu hasil printer. Mobile mengikuti pola
-  /// yang sama — [onPrintAttempted] dipanggil setelah setiap percobaan
-  /// cetak, apa pun hasil Bluetooth-nya, supaya status tercetak & badge
-  /// web/mobile selalu konsisten.
-  final Future<void> Function()? onPrintAttempted;
+  /// Dipanggil hanya setelah printer melaporkan cetak sukses. Label yang
+  /// gagal dicetak harus tetap berstatus belum tercetak agar operator bisa
+  /// mencetak ulang dan tombol Selesaikan tidak terbuka terlalu awal.
+  final Future<void> Function()? onPrintSucceeded;
 
   /// Buka panel cetak. Mengembalikan true kalau label berhasil dicetak.
   static Future<bool?> show(
     BuildContext context, {
     required BatchLabelData label,
     LabelPrintProvider? printer,
-    Future<void> Function()? onPrintAttempted,
+    Future<void> Function()? onPrintSucceeded,
   }) => showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     builder: (_) => LabelPrintSheet(
       label: label,
       printer: printer,
-      onPrintAttempted: onPrintAttempted,
+      onPrintSucceeded: onPrintSucceeded,
     ),
   );
 
@@ -52,6 +50,7 @@ class LabelPrintSheet extends StatefulWidget {
 class _LabelPrintSheetState extends State<LabelPrintSheet> {
   late final LabelPrintProvider _printer =
       widget.printer ?? LabelPrintProvider();
+  bool _reporting = false;
 
   @override
   void initState() {
@@ -70,22 +69,29 @@ class _LabelPrintSheetState extends State<LabelPrintSheet> {
   Future<void> _print() async {
     var ok = await _printer.printLabel(widget.label);
     debugPrint('CetakLabel: printLabel selesai -> $ok');
-    // Paritas web: lapor label tercetak apa pun hasil Bluetooth-nya —
-    // kertas memang keluar bahkan saat aplikasi salah membaca hasil, dan
-    // dulu laporan yang hilang di sini membuat status web tidak berubah.
+    if (!mounted) {
+      return;
+    }
+    if (!ok) {
+      // Jangan tandai tercetak saat printer gagal: operator harus bisa
+      // mengulang, dan status server harus mencerminkan kenyataan.
+      return;
+    }
+    // Printer sudah selesai, tetapi laporan ke server masih berjalan. Kunci
+    // tombol cetak selama itu supaya operator tidak mencetak label yang sama
+    // dua kali saat jaringan lambat.
+    setState(() => _reporting = true);
     try {
-      await widget.onPrintAttempted?.call();
+      await widget.onPrintSucceeded?.call();
     } catch (e) {
       debugPrint('CetakLabel: laporan server gagal: $e');
     }
     if (!mounted) {
       return;
     }
-    if (ok) {
-      // Sheet ditutup otomatis supaya operator langsung lanjut scan produk
-      // berikutnya tanpa satu ketukan tambahan.
-      Navigator.of(context).pop(true);
-    }
+    // Sheet ditutup otomatis supaya operator langsung lanjut scan produk
+    // berikutnya tanpa satu ketukan tambahan.
+    Navigator.of(context).pop(true);
   }
 
   @override
@@ -99,7 +105,7 @@ class _LabelPrintSheetState extends State<LabelPrintSheet> {
             top: 16,
             bottom: MediaQuery.of(context).viewInsets.bottom + 16,
           ),
-          child: _Body(onPrint: _print),
+          child: _Body(onPrint: _print, reporting: _reporting),
         ),
       );
 }
@@ -107,13 +113,15 @@ class _LabelPrintSheetState extends State<LabelPrintSheet> {
 /// Badan panel: semua kontrol cetak. Stateless supaya rebuild efficient dan
 /// mudah diuji lewat [LabelPrintProvider] palsu.
 class _Body extends StatelessWidget {
-  const _Body({required this.onPrint});
+  const _Body({required this.onPrint, required this.reporting});
 
   final Future<void> Function() onPrint;
+  final bool reporting;
 
   @override
   Widget build(BuildContext context) {
     var printer = context.watch<LabelPrintProvider>();
+    var busy = printer.printing || reporting;
     return SafeArea(
       child: SingleChildScrollView(
         child: Column(
@@ -158,8 +166,8 @@ class _Body extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: FilledButton(
-                    onPressed: printer.printing ? null : onPrint,
-                    child: printer.printing
+                    onPressed: busy ? null : onPrint,
+                    child: busy
                         ? const SizedBox(
                             height: 16,
                             width: 16,
@@ -172,7 +180,7 @@ class _Body extends StatelessWidget {
             ),
             if (printer.success != null)
               TextButton(
-                onPressed: printer.printing ? null : onPrint,
+                onPressed: busy ? null : onPrint,
                 child: const Text('Cetak ulang'),
               ),
             TextButton(

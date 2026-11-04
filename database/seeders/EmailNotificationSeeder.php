@@ -34,6 +34,24 @@ class EmailNotificationSeeder extends Seeder
             ['document_type' => 'sj_ba', 'trigger' => 'validated', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
             ['label' => 'CC admin distribusi', 'is_active' => true]
         );
+        // Barang di luar rencana: dilaporkan operator lapangan (termasuk dari
+        // aplikasi mobile) dan keputusannya dikirim balik ke planner/BLC.
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'sj_ba', 'trigger' => 'extra_item', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+            ['label' => 'BLC penerima laporan barang luar rencana', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'sj_ba', 'trigger' => 'extra_item', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
+            ['label' => 'CC admin distribusi laporan barang luar rencana', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'sj_ba', 'trigger' => 'extra_item_decision', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+            ['label' => 'BLC penerima keputusan barang luar rencana', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'sj_ba', 'trigger' => 'extra_item_decision', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
+            ['label' => 'CC admin distribusi keputusan barang luar rencana', 'is_active' => true]
+        );
 
         EmailRecipient::updateOrCreate(
             ['document_type' => 'receiving', 'trigger' => 'completed', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
@@ -179,6 +197,19 @@ class EmailNotificationSeeder extends Seeder
             ['document_type' => 'biaya_retribusi', 'trigger' => 'revisi', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'rfah'],
             ['label' => 'CC RFAH notifikasi Retribusi revisi', 'is_active' => true]
         );
+
+        // Opname expired: pengingat mingguan dan laporan sesi selesai.
+        foreach (['completed', 'reminder'] as $trigger) {
+            $label = $trigger === 'completed' ? 'selesai' : 'pengingat';
+            EmailRecipient::updateOrCreate(
+                ['document_type' => 'opname_expired', 'trigger' => $trigger, 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+                ['label' => "BLC notifikasi opname expired {$label}", 'is_active' => true]
+            );
+            EmailRecipient::updateOrCreate(
+                ['document_type' => 'opname_expired', 'trigger' => $trigger, 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
+                ['label' => "CC admin distribusi opname expired {$label}", 'is_active' => true]
+            );
+        }
 
         $this->command->info('Email notification defaults seeded.');
     }
