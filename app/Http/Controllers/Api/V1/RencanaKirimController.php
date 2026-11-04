@@ -235,6 +235,8 @@ class RencanaKirimController extends Controller
         $this->attachKubikasi($rencanaKirim->items);
         $rencanaKirim->total_kubikasi = $this->totalKubikasi($rencanaKirim->items);
 
+        $this->sendCreatedNotification($rencanaKirim);
+
         return response()->json([
             'message' => 'Rencana kirim berhasil dibuat',
             'data' => $rencanaKirim,
@@ -422,14 +424,6 @@ class RencanaKirimController extends Controller
                 'status' => 'SCHEDULED',
                 'scheduled_at' => now(),
             ]);
-
-            $this->emailService->send(
-                'rencana_kirim',
-                'created',
-                $locked,
-                new RencanaKirimCreated($locked->fresh(['items', 'creator'])),
-                $locked->kode_depo
-            );
 
             return $locked;
         });
@@ -680,6 +674,15 @@ class RencanaKirimController extends Controller
             $import = new RencanaKirimImport($request->user());
             DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
+            $createdRencanaKirims = RencanaKirim::query()
+                ->with(['items', 'creator'])
+                ->whereIn('id', $import->createdIds)
+                ->get();
+
+            foreach ($createdRencanaKirims as $rencanaKirim) {
+                $this->sendCreatedNotification($rencanaKirim);
+            }
+
             return response()->json([
                 'message' => 'Import berhasil',
                 'data' => [
@@ -694,6 +697,19 @@ class RencanaKirimController extends Controller
 
             return response()->json(['message' => 'Import gagal. Silakan periksa file dan coba lagi.'], 500);
         }
+    }
+
+    private function sendCreatedNotification(RencanaKirim $rencanaKirim): void
+    {
+        $rencanaKirim->loadMissing(['items', 'creator']);
+
+        $this->emailService->send(
+            'rencana_kirim',
+            'created',
+            $rencanaKirim,
+            new RencanaKirimCreated($rencanaKirim),
+            $rencanaKirim->kode_depo
+        );
     }
 
     public function itemTemplate()

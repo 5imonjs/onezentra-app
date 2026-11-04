@@ -22,6 +22,9 @@ class RencanaKirimImport implements ToCollection, WithHeadingRow
 
     public int $skipped = 0;
 
+    /** @var list<int> */
+    public array $createdIds = [];
+
     /** @var array<int, array{row: int, errors: string}> */
     public array $errors = [];
 
@@ -183,7 +186,7 @@ class RencanaKirimImport implements ToCollection, WithHeadingRow
         }
 
         try {
-            DB::transaction(function () use ($header, $validItems): void {
+            $createdId = DB::transaction(function () use ($header, $validItems): int {
                 $rencanaKirim = RencanaKirim::create(array_filter($header, fn ($v) => ! is_null($v)));
 
                 $totalQty = 0;
@@ -197,7 +200,11 @@ class RencanaKirimImport implements ToCollection, WithHeadingRow
                 $rencanaKirim->update(['total_qty' => $totalQty]);
 
                 $this->imported++;
+
+                return (int) $rencanaKirim->getKey();
             });
+
+            $this->createdIds[] = $createdId;
         } catch (QueryException $e) {
             // Race duplikat PO: backstop unique rk_depo_po_unique bicara.
             $this->errors[] = [

@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Mail\RencanaKirimCancelled;
 use App\Mail\RencanaKirimCreated;
 use App\Models\EmailRecipient;
+use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
@@ -22,7 +24,7 @@ class RencanaKirimEmailTest extends TestCase
     private function planner(): User
     {
         $role = Role::firstOrCreate(['slug' => 'rk_email_flow'], ['name' => 'RK Email Flow']);
-        foreach (['rencana_kirim.edit', 'depot.view_all'] as $slug) {
+        foreach (['rencana_kirim.create', 'rencana_kirim.edit', 'rencana_kirim.import', 'depot.view_all'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }
@@ -74,7 +76,64 @@ class RencanaKirimEmailTest extends TestCase
         ]);
     }
 
-    public function test_schedule_sends_created_email(): void
+    public function test_create_sends_created_email_once_even_after_scheduling(): void
+    {
+        Mail::fake();
+        $user = $this->planner();
+        $this->createRecipients('created');
+
+        Sanctum::actingAs($user);
+        $response = $this->postJson('/api/v1/rencana-kirim', [
+            'po_transporter' => 'PO-EMAIL-'.uniqid(),
+        ])->assertCreated();
+        $rencanaKirimId = $response->json('data.id');
+
+        Mail::assertSentCount(1);
+        Mail::assertSent(RencanaKirimCreated::class, fn ($mail) => $mail->hasTo('rk-to@example.com'));
+        Mail::assertSent(RencanaKirimCreated::class, fn ($mail) => $mail->hasCc('rk-cc@example.com'));
+        $this->assertDatabaseHas('email_notification_logs', [
+            'document_type' => 'rencana_kirim',
+            'trigger' => 'created',
+            'context_id' => $rencanaKirimId,
+            'status' => 'sent',
+        ]);
+
+        $this->postJson("/api/v1/rencana-kirim/{$rencanaKirimId}/schedule")->assertOk();
+
+        Mail::assertSentCount(1);
+        $this->assertDatabaseHas('rencana_kirim', ['id' => $rencanaKirimId, 'status' => 'SCHEDULED']);
+    }
+
+    public function test_imported_rencana_kirim_sends_created_email_after_import_commit(): void
+    {
+        Mail::fake();
+        $user = $this->planner();
+        $this->createRecipients('created');
+        $npn = Npn::create([
+            'BOSnetszProductId' => 'RK-EMAIL-ITEM',
+            'szNickName' => 'Produk Email',
+            'SAPszProductId' => 'SAP-RK-EMAIL',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        Sanctum::actingAs($user);
+        $this->post('/api/v1/rencana-kirim/import', [
+            'file' => UploadedFile::fake()->createWithContent(
+                'rencana.csv',
+                "po_transporter,kode_depo,kode_barang,nama_barang,jumlah,satuan\nPO-IMPORT-EMAIL,DPO,{$npn->BOSnetszProductId},Produk Email,2,CRT\n"
+            ),
+        ])->assertOk()->assertJsonPath('data.imported', 1);
+
+        Mail::assertSentCount(1);
+        Mail::assertSent(RencanaKirimCreated::class, fn ($mail) => $mail->hasTo('rk-to@example.com'));
+        $this->assertDatabaseHas('email_notification_logs', [
+            'document_type' => 'rencana_kirim',
+            'trigger' => 'created',
+            'status' => 'sent',
+        ]);
+    }
+
+    public function test_schedule_does_not_send_created_email_for_existing_draft(): void
     {
         Mail::fake();
         $user = $this->planner();
@@ -84,8 +143,7 @@ class RencanaKirimEmailTest extends TestCase
         Sanctum::actingAs($user);
         $this->postJson("/api/v1/rencana-kirim/{$rk->id}/schedule")->assertOk();
 
-        Mail::assertSent(RencanaKirimCreated::class, fn ($mail) => $mail->hasTo('rk-to@example.com'));
-        Mail::assertSent(RencanaKirimCreated::class, fn ($mail) => $mail->hasCc('rk-cc@example.com'));
+        Mail::assertNotSent(RencanaKirimCreated::class);
         $this->assertDatabaseHas('rencana_kirim', ['id' => $rk->id, 'status' => 'SCHEDULED']);
     }
 
