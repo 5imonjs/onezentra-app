@@ -485,6 +485,33 @@ void main() {
       expect(provider.user?.fullName, 'Budi Santoso');
     });
 
+    test(
+      'token yang sudah kedaluwarsa tidak dianggap terautentikasi',
+      () async {
+        var provider = AuthProvider(
+          repository: _FakeAuthRepository(
+            (_, _) async => AuthResponse(
+              message: 'Login successful',
+              token: '1|expired-token',
+              tokenType: 'Bearer',
+              expiresAt: DateTime.now()
+                  .subtract(const Duration(minutes: 1))
+                  .toIso8601String(),
+              user: _fakeUser(),
+            ),
+          ),
+        );
+
+        await provider.login(
+          email: 'budi@onezentra.com',
+          password: 'rahasia123',
+        );
+
+        expect(provider.token, '1|expired-token');
+        expect(provider.isAuthenticated, isFalse);
+      },
+    );
+
     test('session kedaluwarsa mengembalikan state ke login', () async {
       var provider = AuthProvider(
         repository: _FakeAuthRepository((_, _) async => _fakeAuthResponse()),

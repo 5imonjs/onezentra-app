@@ -62,8 +62,14 @@ class ApiClient {
         : 'http://localhost:8000/api/v1'; // iOS simulator / desktop
   }
 
-  static String get resolvedBaseUrl =>
-      _overrideBaseUrl.isNotEmpty ? _overrideBaseUrl : _platformBaseUrl;
+  /// Base URL efektif. Override `--dart-define` ikut dinormalisasi supaya
+  /// build release tidak bisa diam-diam memakai URL HTTP atau path salah.
+  static String get resolvedBaseUrl {
+    if (_overrideBaseUrl.isEmpty) {
+      return _platformBaseUrl;
+    }
+    return normalizeBaseUrl(_overrideBaseUrl) ?? _platformBaseUrl;
+  }
 
   /// Normalisasi input server oleh pengguna: rapikan slash, lengkapi skema
   /// (default https), dan lengkapi path `/api/v1` bila hanya host yang diisi.

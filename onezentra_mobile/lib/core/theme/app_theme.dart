@@ -812,9 +812,9 @@ class AppTheme {
   // Tab Bar Theme
   static TabBarThemeData _tabBarTheme(ThemeColors c, TextTheme t) =>
       TabBarThemeData(
-        labelColor: primary600,
+        labelColor: c.primaryWellText,
         unselectedLabelColor: c.textMuted,
-        indicatorColor: primary600,
+        indicatorColor: c.primaryWellText,
         indicatorSize: TabBarIndicatorSize.label,
         labelStyle: t.labelLarge?.copyWith(fontWeight: FontWeight.w600),
         unselectedLabelStyle: t.labelLarge?.copyWith(
@@ -844,8 +844,8 @@ class AppTheme {
     TextTheme t,
   ) => BottomNavigationBarThemeData(
     backgroundColor: c.surfaceCard,
-    selectedItemColor: primary600,
-    unselectedItemColor: c.gray400,
+    selectedItemColor: c.primaryWellText,
+    unselectedItemColor: c.textMuted,
     selectedLabelStyle: t.labelSmall?.copyWith(fontWeight: FontWeight.w600),
     unselectedLabelStyle: t.labelSmall?.copyWith(fontWeight: FontWeight.w500),
     type: BottomNavigationBarType.fixed,
@@ -878,17 +878,21 @@ class AppTheme {
       DividerThemeData(color: c.gray200, thickness: 1, space: 1);
 
   // Chip Theme
-  static ChipThemeData _chipTheme(ThemeColors c, TextTheme t) => ChipThemeData(
-    backgroundColor: c.gray100,
-    disabledColor: c.gray100,
-    selectedColor: c.primaryWell,
-    secondarySelectedColor: c.primaryWell,
-    padding: const EdgeInsets.symmetric(horizontal: space3, vertical: space1),
-    labelStyle: t.labelSmall?.copyWith(color: t.titleLarge?.color),
-    secondaryLabelStyle: t.labelSmall?.copyWith(color: c.primaryWellText),
-    brightness: Brightness.light,
-    shape: const RoundedRectangleBorder(borderRadius: radiusFull),
-  );
+  static ChipThemeData _chipTheme(Brightness b, ThemeColors c, TextTheme t) =>
+      ChipThemeData(
+        backgroundColor: c.gray100,
+        disabledColor: c.gray100,
+        selectedColor: c.primaryWell,
+        secondarySelectedColor: c.primaryWell,
+        padding: const EdgeInsets.symmetric(
+          horizontal: space3,
+          vertical: space1,
+        ),
+        labelStyle: t.labelSmall?.copyWith(color: t.titleLarge?.color),
+        secondaryLabelStyle: t.labelSmall?.copyWith(color: c.primaryWellText),
+        brightness: b,
+        shape: const RoundedRectangleBorder(borderRadius: radiusFull),
+      );
 
   // SnackBar Theme
   static SnackBarThemeData _snackBarTheme(
@@ -978,7 +982,7 @@ class AppTheme {
       bottomNavigationBarTheme: _bottomNavTheme(c, t),
       navigationRailTheme: _navRailTheme(c, t),
       dividerTheme: _dividerTheme(c),
-      chipTheme: _chipTheme(c, t),
+      chipTheme: _chipTheme(b, c, t),
       snackBarTheme: _snackBarTheme(b, c, t),
       dialogTheme: _dialogTheme(c, t),
       bottomSheetTheme: _bottomSheetTheme(c),

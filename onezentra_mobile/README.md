@@ -34,7 +34,8 @@ ditampilkan per halaman agar layar tetap ringkas pada perangkat handheld.
 - Provider (State Management)
 - GoRouter (Navigation)
 - HTTP (API Calls)
-- SharedPreferences (Token Storage)
+- FlutterSecureStorage (token di Keychain / EncryptedSharedPreferences)
+- SharedPreferences (profil user & preferensi tema)
 - Google Fonts (Roboto - matching web)
 
 ## Struktur Project
@@ -43,23 +44,21 @@ ditampilkan per halaman agar layar tetap ringkas pada perangkat handheld.
 lib/
 ├── core/
 │   ├── network/
-│   │   └── api_client.dart          # HTTP client dengan auth
+│   │   └── api_client.dart          # HTTP client, token, base URL
 │   └── theme/
-│       └── app_theme.dart           # Theme system matching web
+│       ├── app_theme.dart           # Token warna & komponen global
+│       └── theme_provider.dart      # Preferensi light/dark
 ├── features/
-│   └── auth/
-│       ├── models/
-│       │   └── auth_models.dart     # User, Role, Permission, AuthResponse
-│       ├── repositories/
-│       │   └── auth_repository.dart # API calls untuk auth
-│       ├── providers/
-│       │   └── auth_provider.dart   # State management
-│       └── pages/
-│           └── login_page.dart      # Login UI
+│   ├── auth/                        # Login, sesi, permission
+│   ├── gate/                        # Check In / Check Out Point
+│   ├── validation/                  # Validasi SJ, standarisasi, cetak label
+│   ├── unload/                      # Bongkar / receiving
+│   ├── history/                     # Riwayat transaksi
+│   └── home/                        # Shell navigasi utama
 ├── shared/
 │   └── widgets/
 │       └── app_widgets.dart         # Reusable UI components
-└── main.dart                        # App entry point
+└── main.dart                        # App entry point & router
 ```
 
 ## API Integration
@@ -75,7 +74,7 @@ Aplikasi terintegrasi dengan endpoint Laravel yang sudah ada:
 
 ### Prerequisites
 
-- Flutter SDK 3.11+
+- Flutter SDK 3.41+ (Dart 3.11+)
 - Android Studio / Xcode
 - Laravel backend running (default: http://10.0.2.2:8000 untuk Android emulator)
 
@@ -118,6 +117,12 @@ flutter build apk --release
 flutter build ipa --release
 ```
 
+Setiap rilis ke Play Store **wajib** menaikkan `version` di `pubspec.yaml`
+(format `versi+buildNumber`), misalnya `1.0.1+2` → `1.0.2+3`. `buildNumber`
+adalah `versionCode` Android dan tidak boleh sama atau lebih kecil dari rilis
+sebelumnya. Untuk build lokal, `--build-number` bisa dipakai tanpa mengubah
+`pubspec.yaml`.
+
 Satu akun/user, satu database, satu backend Laravel untuk web + mobile:
 web login cookie via `/api/v1/login`, mobile login Bearer token via
 `/api/v1/mobile/login` (satu token per perangkat). Override hanya bila perlu
@@ -136,9 +141,12 @@ Tombol Bawaan mengembalikan ke default. Prioritas yang dipakai:
 `--dart-define` > pilihan panel Server > default release (API produksi) >
 default debug per platform.
 
-API produksi memakai HTTPS pada domain dengan sertifikat publik. Endpoint IP
-trial lama masih bisa dipakai sebagai override; sertifikat self-signed-nya
-dipin di `lib/core/network/api_client.dart` dan hanya dipercaya untuk IP itu.
+API produksi memakai HTTPS pada domain dengan sertifikat publik. Override IP
+trial lama (`187.77.121.102`) tidak lagi disimpan sebagai pilihan server: saat
+init nilainya dibersihkan dan app kembali ke `https://api.onezentra.sbs/api/v1`.
+Pin sertifikat IP di `lib/core/network/api_client.dart` dipertahankan hanya
+untuk kompatibilitas endpoint IP eksplisit; jangan mengandalkannya sebagai
+alamat produksi.
 
 Catatan tambahan:
 
@@ -176,8 +184,10 @@ flutter run 2>&1 | grep -i 'ApiClient\|AuthProvider'
 
 ## Design System
 
-Theme mobile mengikuti **dark aurora** yang sama dengan web app (`globals.css`)
-dan halaman login: indigo primary, teal accent, Roboto, kanvas gelap.
+Theme mobile mengikuti **design system** yang sama dengan web app
+(`globals.css`): indigo primary, teal accent, Roboto. App mendukung mode
+**light dan dark**; mode awal light dan pilihan pengguna disimpan di
+`SharedPreferences` lewat `ThemeProvider`.
 
 ### Colors
 Ramp netral **dibalik** terhadap Tailwind: `gray50` = permukaan terdalam,
@@ -201,11 +211,11 @@ terang" — pilih berdasarkan **peran**:
 di atas. Semua warna status hardcode yang tersisa sudah dipetakan; menambah
 hex baru berpotensi menghasilkan teks tak terbaca di kanvas gelap.
 
-`main.dart` mengunci `ThemeMode.dark`. Dulu tidak ada `themeMode` sehingga
-default `ThemeMode.system` menukar `AppTheme.dark` masuk sementara halaman
-masih menyematkan `AppTheme.background` (terang) — teks hitam di atas
-background terang. Jangan dikembalikan ke `system` tanpa sekalian membuat
-seluruh halaman memakai `Theme.of(context)` dan bukan warna statis.
+`ThemeProvider` menyimpan pilihan `light`/`dark` di `SharedPreferences` dan
+default-nya `ThemeMode.light`. Jangan mengubah default ke `system` tanpa
+memastikan semua halaman memakai `Theme.of(context)`/token tema, bukan warna
+statis — dulu kombinasi `system` + warna statis membuat teks gelap di atas
+kanvas gelap.
 
 ### Brand
 - **Primary (Indigo)**: 50-950 scale
@@ -234,7 +244,8 @@ seluruh halaman memakai `Theme.of(context)` dan bukan warna statis.
 1. User masukkan email & password
 2. App call `POST /api/v1/mobile/login` dengan `device_name`
 3. Server return `token` (Bearer) + `user` + `permissions`
-4. Token disimpan di SharedPreferences
+4. Token disimpan di `FlutterSecureStorage` (iOS Keychain / Android
+   EncryptedSharedPreferences); profil user di `SharedPreferences`
 5. Request selanjutnya pakai header `Authorization: Bearer <token>`
 6. Logout hapus token local & call `POST /api/v1/mobile/logout`
 

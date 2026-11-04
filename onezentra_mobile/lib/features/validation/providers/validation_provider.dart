@@ -410,17 +410,15 @@ class ValidationProvider extends ChangeNotifier {
         'ValidationProvider.searchProduct: unhandled ${e.runtimeType}: $e',
       );
       debugPrintStack(stackTrace: stack, maxFrames: 8);
-      _productSearchError = 'Pencarian produk NPN gagal. Periksa koneksi lalu coba lagi.';
+      _productSearchError =
+          'Pencarian produk NPN gagal. Periksa koneksi lalu coba lagi.';
       return const [];
     }
   }
 
   /// Links a missing NPN relation to the field-selected product, then reloads
   /// the session so its standardization state is shown on the item.
-  Future<bool> linkItemNpn({
-    required int itemId,
-    required int npnId,
-  }) async {
+  Future<bool> linkItemNpn({required int itemId, required int npnId}) async {
     var active = _active;
     if (active == null || _actionBusy) {
       return false;

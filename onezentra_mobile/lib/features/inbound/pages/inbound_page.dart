@@ -457,7 +457,9 @@ class _InboundPageState extends State<InboundPage> {
               colors: [AppTheme.ink900, AppTheme.ink800],
             ),
             borderRadius: AppTheme.radius2xl,
-            border: Border.all(color: context.colors.foreground.withValues(alpha: 0.08)),
+            border: Border.all(
+              color: context.colors.foreground.withValues(alpha: 0.08),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -657,7 +659,9 @@ class _InboundPageState extends State<InboundPage> {
             : BoxDecoration(
                 color: context.colors.foreground.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
-                border: Border.all(color: context.colors.foreground.withValues(alpha: 0.08)),
+                border: Border.all(
+                  color: context.colors.foreground.withValues(alpha: 0.08),
+                ),
               ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

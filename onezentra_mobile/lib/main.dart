@@ -160,6 +160,9 @@ GoRouter buildRouter(
   UnloadRepository? unloadRepository,
 }) => GoRouter(
   initialLocation: '/',
+  // Redirect dievaluasi ulang saat auth berubah (login/logout/expiry),
+  // bukan hanya saat navigasi berikutnya.
+  refreshListenable: authProvider,
   routes: [
     GoRoute(
       path: '/',

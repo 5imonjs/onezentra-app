@@ -174,7 +174,7 @@ void main() {
 
       expect(products, isEmpty);
       expect(calls, 0);
-    }    );
+    });
 
     test('linkItemNpn menautkan produk terpilih ke item sesi', () async {
       String? hitEndpoint;
@@ -229,28 +229,25 @@ void main() {
         },
       );
 
-      var item = await repository.resolveItemNpn(
-        validationId: 9,
-        itemId: 31,
-      );
+      var item = await repository.resolveItemNpn(validationId: 9, itemId: 31);
 
       expect(hitEndpoint, '/sj-validations/9/items/31/resolve-npn');
       expect(item?.npnId, 501);
     });
 
-    test('resolveItemNpn mengembalikan null untuk produk yang tidak unik', () async {
-      var repository = ValidationRepository(
-        get: (_) async => throw StateError('unexpected GET'),
-        post: (_, _) async => {'matched': false, 'data': null},
-      );
+    test(
+      'resolveItemNpn mengembalikan null untuk produk yang tidak unik',
+      () async {
+        var repository = ValidationRepository(
+          get: (_) async => throw StateError('unexpected GET'),
+          post: (_, _) async => {'matched': false, 'data': null},
+        );
 
-      var item = await repository.resolveItemNpn(
-        validationId: 9,
-        itemId: 31,
-      );
+        var item = await repository.resolveItemNpn(validationId: 9, itemId: 31);
 
-      expect(item, isNull);
-    });
+        expect(item, isNull);
+      },
+    );
 
     test('scanItem mengirim field validasi dan memparse item', () async {
       Map<String, dynamic>? hitBody;

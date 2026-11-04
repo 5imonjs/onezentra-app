@@ -75,9 +75,11 @@ class HistoryPage extends StatelessWidget {
           elevation: 0,
           bottom: tabs.length > 1
               ? TabBar(
-                  indicatorColor: AppTheme.primary400,
-                  labelColor: AppTheme.primary200,
-                  unselectedLabelColor: context.colors.gray400,
+                  // Token primaryWellText aman di kedua tema: indigo gelap
+                  // di light, lavender terang di dark.
+                  indicatorColor: context.colors.primaryWellText,
+                  labelColor: context.colors.primaryWellText,
+                  unselectedLabelColor: context.colors.textMuted,
                   dividerColor: context.colors.gray300.withValues(alpha: 0.2),
                   labelStyle: GoogleFonts.roboto(
                     fontSize: 12.5,

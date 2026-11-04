@@ -317,7 +317,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(width: 8),
-        Icon(Icons.layers_rounded, size: 18, color: context.colors.warning),
+        Icon(Icons.layers_rounded, size: 18, color: context.colors.warningText),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -338,7 +338,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 11.5,
                   height: 1.4,
-                  color: context.colors.warning,
+                  color: context.colors.warningText,
                 ),
               ),
             ],
@@ -795,7 +795,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                             style: GoogleFonts.roboto(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: context.colors.warning,
+                              color: context.colors.warningText,
                             ),
                           ),
                         ),
@@ -901,9 +901,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               content: Text(
                 !canViewNpn
                     ? 'Akun ini belum memiliki akses pencarian master NPN. '
-                        'Minta akses npn.view agar petugas dapat memilih produk di Flutter.'
+                          'Minta akses npn.view agar petugas dapat memilih produk di Flutter.'
                     : 'Akun ini belum memiliki izin standarisasi.create untuk '
-                        'menautkan produk dan mengisi standar di Flutter.',
+                          'menautkan produk dan mengisi standar di Flutter.',
               ),
               actions: [
                 TextButton(
@@ -1006,7 +1006,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   style: GoogleFonts.roboto(
                     fontSize: 12.5,
                     height: 1.4,
-                    color: context.colors.warning,
+                    color: context.colors.warningText,
                   ),
                 ),
               ] else ...[
@@ -1017,7 +1017,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   style: GoogleFonts.roboto(
                     fontSize: 12.5,
                     height: 1.4,
-                    color: context.colors.warning,
+                    color: context.colors.warningText,
                   ),
                 ),
               ],
@@ -1150,7 +1150,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
               child: Icon(
                 Icons.inventory_2_rounded,
                 size: 18,
-                color: context.colors.warning,
+                color: context.colors.warningText,
               ),
             ),
             const SizedBox(width: AppTheme.space3),
@@ -1190,7 +1190,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           _darkActionButton(
             label: 'Laporkan barang luar rencana',
             background: context.colors.warning,
-            foreground: context.colors.textPrimary,
+            // Amber selalu terang; teks harus gelap di kedua tema agar
+            // kontras tetap terbaca (textPrimary berubah putih di dark mode).
+            foreground: AppTheme.ink900,
             loading: provider.actionBusy,
             onPressed: () => _showExtraItemSheet(provider),
           ),
@@ -1525,10 +1527,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     return '${two(date.day)}/${two(date.month)}/${date.year}';
   }
 
-  Future<void> _showExtraItemSheet(
-    ValidationProvider provider, {
-    SjValidationExtraItem? item,
-  }) async {
+  Future<void> _showExtraItemSheet(ValidationProvider provider) async {
     if (provider.actionBusy) {
       return;
     }
@@ -1538,7 +1537,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => ChangeNotifierProvider<ValidationProvider>.value(
         value: widget.provider,
-        child: _ExtraItemSheet(pickPhoto: widget.pickPhoto, item: item),
+        child: _ExtraItemSheet(pickPhoto: widget.pickPhoto),
       ),
     );
   }
@@ -1619,7 +1618,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 12,
                       height: 1.4,
-                      color: context.colors.warning,
+                      color: context.colors.warningText,
                     ),
                   ),
                 ),
@@ -2057,7 +2056,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.lock_rounded, size: 16, color: context.colors.warning),
+        Icon(Icons.lock_rounded, size: 16, color: context.colors.warningText),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -2065,7 +2064,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
             style: GoogleFonts.roboto(
               fontSize: 12,
               height: 1.4,
-              color: context.colors.warning,
+              color: context.colors.warningText,
             ),
           ),
         ),
@@ -2547,11 +2546,10 @@ class _ItemValidationSheetState extends State<_ItemValidationSheet> {
 /// foto bukti (widget bersama), tanggal expired (picker bersama). Rencana
 /// tidak pernah diubah — planner diberi tahu via email oleh server.
 class _ExtraItemSheet extends StatefulWidget {
-  const _ExtraItemSheet({this.pickPhoto, this.item});
+  const _ExtraItemSheet({this.pickPhoto});
 
   /// Overrides ImagePicker untuk test.
   final Future<String?> Function({required bool fromCamera})? pickPhoto;
-  final SjValidationExtraItem? item;
 
   @override
   State<_ExtraItemSheet> createState() => _ExtraItemSheetState();
@@ -2581,21 +2579,6 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
   /// lanjut manual. Dibatasi 5 supaya daftar singkat di layar kecil.
   List<NpnProduct> _suggestions = [];
   Timer? _searchDebounce;
-
-  @override
-  void initState() {
-    super.initState();
-    var item = widget.item;
-    if (item != null) {
-      _qtyController.text = item.qty.toString();
-      _condition = item.condition;
-      _notesController.text = item.notes ?? '';
-      if (item.expiredDate != null) {
-        _expiredDate = DateTime.tryParse(item.expiredDate ?? '');
-        _expiredController.text = formatDateId(_expiredDate);
-      }
-    }
-  }
 
   @override
   void dispose() {
@@ -2731,7 +2714,21 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
               if (_npn != null)
                 _npnIdentityCard()
               else ...[
-                // Kode barang disembunyikan — hanya nama + satuan + jumlah
+                // Barang tidak ada di master NPN: identitas manual wajib
+                // lengkap (kode + nama) karena server menolak baris tanpa
+                // kode_barang saat tidak ada barcode/npn_id.
+                AppTextField(
+                  controller: _kodeController,
+                  label: 'Kode barang *',
+                  hint: 'Contoh: SKU-123',
+                  prefixIcon: Icons.qr_code_2_rounded,
+                  textInputAction: TextInputAction.next,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: (value) => _identityValid
+                      ? null
+                      : 'Isi kode & nama barang, atau barcode yang dikenal',
+                ),
+                const SizedBox(height: AppTheme.space3),
                 AppTextField(
                   controller: _namaController,
                   label: 'Nama barang *',
@@ -2786,16 +2783,17 @@ class _ExtraItemSheetState extends State<_ExtraItemSheet> {
                 value: _condition,
                 onChanged: (value) => setState(() => _condition = value),
               ),
-              if (_condition != 'FISIK_BAGUS') ...[
-                const SizedBox(height: AppTheme.space3),
-                PhotoEvidenceField(
-                  photoPath: _photoPath,
-                  onChanged: (path) => setState(() => _photoPath = path),
-                  picker: widget.pickPhoto,
-                  enabled: !_saving,
-                  subtitle: 'Wajib — menggantikan catatan manual di kertas.',
-                ),
-              ],
+              // Backend mewajibkan foto untuk setiap barang luar rencana,
+              // termasuk kondisi FISIK_BAGUS — jangan sembunyikan field ini
+              // berdasarkan kondisi, karena tombol simpan akan terkunci.
+              const SizedBox(height: AppTheme.space3),
+              PhotoEvidenceField(
+                photoPath: _photoPath,
+                onChanged: (path) => setState(() => _photoPath = path),
+                picker: widget.pickPhoto,
+                enabled: !_saving,
+                subtitle: 'Wajib — menggantikan catatan manual di kertas.',
+              ),
               const SizedBox(height: AppTheme.space3),
               ExpiredDateField(
                 controller: _expiredController,
@@ -3204,9 +3202,7 @@ class _NpnProductPickerState extends State<_NpnProductPicker> {
             decoration: const InputDecoration(
               labelText: 'Nama, kode, atau barcode',
               prefixIcon: Icon(Icons.search_rounded),
-              border: OutlineInputBorder(
-                borderRadius: AppTheme.radiusLg,
-              ),
+              border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
             ),
           ),
           const SizedBox(height: AppTheme.space3),

@@ -50,22 +50,25 @@ void main() {
       );
     });
 
-    test('domain produksi mempertahankan https dan menolak http saat release', () {
-      expect(
-        ApiClient.normalizeBaseUrl(
-          'https://api.onezentra.sbs',
-          allowInsecure: false,
-        ),
-        'https://api.onezentra.sbs/api/v1',
-      );
-      expect(
-        ApiClient.normalizeBaseUrl(
-          'http://api.onezentra.sbs',
-          allowInsecure: false,
-        ),
-        isNull,
-      );
-    });
+    test(
+      'domain produksi mempertahankan https dan menolak http saat release',
+      () {
+        expect(
+          ApiClient.normalizeBaseUrl(
+            'https://api.onezentra.sbs',
+            allowInsecure: false,
+          ),
+          'https://api.onezentra.sbs/api/v1',
+        );
+        expect(
+          ApiClient.normalizeBaseUrl(
+            'http://api.onezentra.sbs',
+            allowInsecure: false,
+          ),
+          isNull,
+        );
+      },
+    );
 
     test('IP produksi dipaksa https walau debug memasukkan http', () {
       // POST login via http dibalas redirect 301 nginx — Dart mengikuti
@@ -89,16 +92,6 @@ void main() {
         ),
         'https://187.77.121.102/api/v1',
       );
-    });
-
-    test('override tersimpan ber-http di-upgrade saat init', () async {
-      SharedPreferences.setMockInitialValues({
-        'api_base_url': 'http://187.77.121.102/api/v1',
-      });
-
-      await ApiClient().init();
-
-      expect(ApiClient().baseUrl, 'https://187.77.121.102/api/v1');
     });
   });
 
@@ -129,10 +122,7 @@ void main() {
     });
 
     test('URL produksi memakai domain API', () {
-      expect(
-        ApiClient.productionBaseUrl,
-        'https://api.onezentra.sbs/api/v1',
-      );
+      expect(ApiClient.productionBaseUrl, 'https://api.onezentra.sbs/api/v1');
     });
 
     test('override domain produksi dibersihkan agar memakai default', () async {

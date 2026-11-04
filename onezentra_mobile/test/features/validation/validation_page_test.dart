@@ -169,8 +169,7 @@ class _FakeValidationRepository extends ValidationRepository {
       status: session.status,
       document: session.document,
       items: [
-        for (var item in session.items)
-          item.id == itemId ? resolvedItem : item,
+        for (var item in session.items) item.id == itemId ? resolvedItem : item,
       ],
       extraItems: session.extraItems,
     );
@@ -1015,11 +1014,7 @@ void main() {
     var repository = _FakeValidationRepository(
       sessionToOpen: _sessionWithoutNpn(),
       searchResults: const [
-        NpnProduct(
-          id: 777,
-          kodeBarang: 'SKU-MASTER-77',
-          nama: 'Gula Master',
-        ),
+        NpnProduct(id: 777, kodeBarang: 'SKU-MASTER-77', nama: 'Gula Master'),
       ],
     );
     var auth = await _loginAuth();
@@ -1145,6 +1140,12 @@ void main() {
     var shortcut = find.widgetWithText(FilledButton, 'Standarisasi');
     await tester.ensureVisible(shortcut);
     await tester.tap(shortcut);
+    await tester.pumpAndSettle();
+
+    // Produk tanpa standarisasi menampilkan konfirmasi BLC lebih dulu;
+    // sheet baru terbuka setelah operator menekan "Input Standarisasi".
+    expect(find.text('Produk Belum Disetujui BLC'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Input Standarisasi'));
     await tester.pumpAndSettle();
 
     expect(find.text('Standarisasi Tumpukan'), findsWidgets);

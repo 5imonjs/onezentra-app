@@ -267,10 +267,9 @@ class ValidationRepository {
     required int npnId,
   }) async {
     var body = _expectObject(
-      await _post(
-        '/sj-validations/$validationId/items/$itemId/link-npn',
-        {'npn_id': npnId},
-      ),
+      await _post('/sj-validations/$validationId/items/$itemId/link-npn', {
+        'npn_id': npnId,
+      }),
     );
     var data = body['data'];
     if (data is! Map) {

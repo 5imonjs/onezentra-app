@@ -141,7 +141,7 @@ class AppTextField extends StatelessWidget {
               color: context.colors.textMuted,
             ),
             errorStyle: theme.textTheme.bodySmall?.copyWith(
-              color: context.colors.danger,
+              color: context.colors.dangerText,
             ),
             floatingLabelBehavior: FloatingLabelBehavior.auto,
             prefixIconColor: context.colors.gray400,
@@ -674,7 +674,7 @@ class AppErrorDisplay extends StatelessWidget {
                     onPressed: onRetry,
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: context.colors.danger,
+                      color: context.colors.dangerText,
                     ),
                   ),
                 ],

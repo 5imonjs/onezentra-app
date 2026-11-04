@@ -230,17 +230,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: Center(
                     child: FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: _buildCard(
-                            context,
-                            theme,
-                            isDark,
-                            authProvider,
-                          ),
-                        ),
+                      opacity: _fadeAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: _buildCard(context, theme, isDark, authProvider),
                       ),
+                    ),
                   ),
                 ),
               ),
@@ -788,7 +783,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       errorBorder: pill(context.colors.danger, 1.2),
       focusedErrorBorder: pill(context.colors.danger, 1.6),
       errorStyle: theme.textTheme.bodySmall?.copyWith(
-        color: context.colors.danger,
+        color: context.colors.dangerText,
       ),
     );
   }

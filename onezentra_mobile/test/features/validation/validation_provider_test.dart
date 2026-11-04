@@ -423,13 +423,13 @@ void main() {
   });
 
   test('resolveItemNpn menautkan hasil unik dan memuat ulang sesi', () async {
-    var repository = _ExtraFakeRepository(
-      const SjValidation(id: 9, scanCode: 'PO-042'),
-    )..autoResolvedItem = const SjValidationItem(
-      id: 31,
-      validationId: 9,
-      npnId: 501,
-    );
+    var repository =
+        _ExtraFakeRepository(const SjValidation(id: 9, scanCode: 'PO-042'))
+          ..autoResolvedItem = const SjValidationItem(
+            id: 31,
+            validationId: 9,
+            npnId: 501,
+          );
     var provider = ValidationProvider(repository: repository);
     await provider.start('PO-042');
 
@@ -445,22 +445,25 @@ void main() {
     provider.dispose();
   });
 
-  test('resolveItemNpn membiarkan pencarian manual saat tidak ada pasangan', () async {
-    var repository = _ExtraFakeRepository(
-      const SjValidation(id: 9, scanCode: 'PO-042'),
-    );
-    var provider = ValidationProvider(repository: repository);
-    await provider.start('PO-042');
+  test(
+    'resolveItemNpn membiarkan pencarian manual saat tidak ada pasangan',
+    () async {
+      var repository = _ExtraFakeRepository(
+        const SjValidation(id: 9, scanCode: 'PO-042'),
+      );
+      var provider = ValidationProvider(repository: repository);
+      await provider.start('PO-042');
 
-    var resolved = await provider.resolveItemNpn(itemId: 31);
+      var resolved = await provider.resolveItemNpn(itemId: 31);
 
-    expect(resolved, isFalse);
-    expect(repository.resolveCalls, 1);
-    expect(repository.showCalls, 0);
-    expect(provider.message, isNull);
+      expect(resolved, isFalse);
+      expect(repository.resolveCalls, 1);
+      expect(repository.showCalls, 0);
+      expect(provider.message, isNull);
 
-    provider.dispose();
-  });
+      provider.dispose();
+    },
+  );
 
   test('resolveItemNpn menyampaikan kegagalan resolver', () async {
     var repository = _ExtraFakeRepository(

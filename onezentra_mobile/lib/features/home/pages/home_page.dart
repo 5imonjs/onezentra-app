@@ -375,7 +375,9 @@ class _HomePageState extends State<HomePage> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: context.colors.danger,
-              foregroundColor: context.colors.foreground,
+              // Merah selalu cukup gelap; pakai teks gelap agar kontras aman
+              // di light maupun dark mode.
+              foregroundColor: AppTheme.ink900,
             ),
             child: const Text('Keluar'),
           ),

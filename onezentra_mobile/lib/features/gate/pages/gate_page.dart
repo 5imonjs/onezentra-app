@@ -387,8 +387,8 @@ class _GatePageState extends State<GatePage> {
           message.success ? Icons.check_circle_rounded : Icons.error_rounded,
           size: 18,
           color: message.success
-              ? context.colors.success
-              : context.colors.danger,
+              ? context.colors.successText
+              : context.colors.dangerText,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -568,7 +568,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.roboto(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: AppTheme.danger,
+                color: highlight ? AppTheme.primary950 : AppTheme.dangerText,
               ),
             ),
             const SizedBox(height: 2),

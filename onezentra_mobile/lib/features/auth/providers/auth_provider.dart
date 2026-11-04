@@ -38,7 +38,20 @@ class AuthProvider extends ChangeNotifier {
   /// Wait time requested by the server after a 429, used by the login screen
   /// to keep the submit button disabled until the throttle window ends.
   Duration? get retryAfter => _retryAfter;
-  bool get isAuthenticated => _token != null && _user != null;
+
+  /// Token yang mendekati kedaluwarsa dianggap tidak valid agar router tidak
+  /// mempertahankan halaman terlindungi sampai request berikutnya gagal.
+  bool get _isExpired {
+    var expiry = _expiresAt;
+    if (expiry == null) {
+      return false;
+    }
+    return !DateTime.now().isBefore(
+      expiry.subtract(const Duration(seconds: 30)),
+    );
+  }
+
+  bool get isAuthenticated => _token != null && _user != null && !_isExpired;
   bool get isAdmin => _user?.isAdmin ?? false;
 
   /// Initialize auth state from storage

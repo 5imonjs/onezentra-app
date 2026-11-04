@@ -334,6 +334,32 @@ void main() {
     expect(find.text('Pilih receiving lain'), findsNothing);
   });
 
+  testWidgets('tombol selesai bongkar dan konfirmasi tetap kontras', (
+    tester,
+  ) async {
+    var repository = _FakeUnloadRepository(session: _pendingSession());
+    var auth = await _loginAuth();
+
+    await _pumpUnloadPage(tester, auth, repository);
+
+    await tester.tap(find.text('PO-042'));
+    await tester.pumpAndSettle();
+
+    var button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Selesai Bongkar'),
+    );
+    expect(button.style?.backgroundColor?.resolve({}), AppTheme.success);
+    expect(button.style?.foregroundColor?.resolve({}), AppTheme.ink900);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Selesai Bongkar'));
+    await tester.pumpAndSettle();
+
+    var confirm = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Ya, Selesaikan'),
+    );
+    expect(confirm.style?.foregroundColor?.resolve({}), AppTheme.ink900);
+  });
+
   testWidgets('rute /bongkar merender UnloadPage dengan repo tersuntik', (
     tester,
   ) async {
