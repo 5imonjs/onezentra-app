@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function RegionAccessPage() {
-  const [port, setPort] = useState("8000");
   const [regionCode, setRegionCode] = useState("");
   const [status, setStatus] = useState("idle");
   const [msg, setMsg] = useState("");
@@ -24,7 +23,7 @@ export default function RegionAccessPage() {
         setStatus("success");
         setMsg("Region " + (data.region_code || regionCode) + " valid.");
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("region_access", JSON.stringify({ port, regionCode, regionId: data.region_id }));
+          sessionStorage.setItem("region_access", JSON.stringify({ regionCode, regionId: data.region_id }));
         }
       } else {
         const data = await res.json().catch(() => ({}));
@@ -52,26 +51,16 @@ export default function RegionAccessPage() {
 
         <form onSubmit={handleValidate} className="flex flex-col gap-5">
           <div>
-            <label htmlFor="region-code" className="mb-1.5 block text-sm font-medium">Port / Alamat Region</label>
-            <div className="flex gap-2">
-              <input
-                id="region-port"
-                type="text"
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
-                placeholder="Contoh: 8000"
-                className="input-field w-24 shrink-0 rounded-lg"
-              />
-              <input
-                id="region-code"
-                type="text"
-                value={regionCode}
-                onChange={(e) => setRegionCode(e.target.value.toUpperCase())}
-                placeholder="Kode Region (contoh: REGION-A)"
-                className="input-field w-full flex-1 rounded-lg uppercase"
-              />
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">Port internal dikelola server. Masukkan kode Region yang valid.</p>
+            <label htmlFor="region-code" className="mb-1.5 block text-sm font-medium">Kode Region</label>
+            <input
+              id="region-code"
+              type="text"
+              value={regionCode}
+              onChange={(e) => setRegionCode(e.target.value.toUpperCase())}
+              placeholder="Contoh: REGION-A"
+              className="input-field w-full rounded-lg uppercase"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">Masukkan kode Region yang valid.</p>
           </div>
 
           <button

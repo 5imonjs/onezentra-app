@@ -133,13 +133,13 @@ describe('LoginPage', () => {
     expect(push).not.toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
     expect(screen.getByText('Hallo, Welcome Back')).toBeInTheDocument();
-    // Modal hanya berisi Port, Region Code, dan tombol SAVE.
-    expect(screen.getByLabelText('Port')).toBeInTheDocument();
+    // Modal hanya meminta Region Code dan tombol SAVE.
+    expect(screen.queryByLabelText('Port')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Region Code')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SAVE' })).toBeInTheDocument();
   });
 
-  it('Ubah Region Access memuat kembali kode dan port yang sudah tersimpan', async () => {
+  it('Ubah Region Access memuat kembali kode yang sudah tersimpan tanpa port', async () => {
     localStorage.setItem('region_access', JSON.stringify({
       port: '8000',
       regionCode: '001',
@@ -151,7 +151,7 @@ describe('LoginPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ubah Region Access' }));
 
     expect(await screen.findByLabelText('Region Code')).toHaveValue('001');
-    expect(screen.getByLabelText('Port')).toHaveValue('8000');
+    expect(screen.queryByLabelText('Port')).not.toBeInTheDocument();
   });
 
   it('SIGN IN tanpa konfigurasi Region Access: login TIDAK dipanggil, modal terbuka, pesan error tampil', async () => {
@@ -173,7 +173,6 @@ describe('LoginPage', () => {
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
-    fireEvent.change(await screen.findByLabelText('Port'), { target: { value: '9999' } });
     fireEvent.change(screen.getByLabelText('Region Code'), { target: { value: 'REGION-TIDAK-ADA' } });
     fireEvent.click(screen.getByRole('button', { name: 'SAVE' }));
 
@@ -191,16 +190,19 @@ describe('LoginPage', () => {
       region_name: 'Region 001',
       message: 'Region validated',
     });
-
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
-    fireEvent.change(await screen.findByLabelText('Port'), { target: { value: '8000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Region Access/i }));
     fireEvent.change(screen.getByLabelText('Region Code'), { target: { value: 'REG-001' } });
     fireEvent.click(screen.getByRole('button', { name: 'SAVE' }));
 
     // Konfigurasi tersimpan PERSISTEN (localStorage, bertahan setelah browser ditutup).
     await waitFor(() => {
-      expect(localStorage.getItem('region_access')).toContain('REG-001');
+      expect(JSON.parse(localStorage.getItem('region_access') ?? '{}')).toEqual({
+        regionCode: 'REG-001',
+        regionId: 1,
+        code: 'REG-001',
+      });
     });
     expect(validateRegion).toHaveBeenCalledWith('REG-001');
     // Modal tertutup otomatis (setTimeout 600ms), user tetap di halaman login.
