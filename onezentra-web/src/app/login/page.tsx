@@ -26,7 +26,6 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [regionModalOpen, setRegionModalOpen] = useState(false);
-  const [regionPort, setRegionPort] = useState("8000");
   const [regionCode, setRegionCode] = useState("");
   const [regionStatus, setRegionStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [regionMsg, setRegionMsg] = useState("");
@@ -53,14 +52,11 @@ export default function LoginPage() {
       try {
         const parsed = JSON.parse(saved);
         setRegionCode(typeof parsed?.regionCode === "string" ? parsed.regionCode : typeof parsed?.code === "string" ? parsed.code : "");
-        setRegionPort(typeof parsed?.port === "string" ? parsed.port : "8000");
       } catch {
         setRegionCode("");
-        setRegionPort("8000");
       }
     } else {
       setRegionCode("");
-      setRegionPort("8000");
     }
     setRegionModalOpen(true);
     setRegionStatus("idle");
@@ -101,7 +97,7 @@ export default function LoginPage() {
       const data = await validateRegion(regionCode.trim());
       setRegionStatus("success");
       setRegionMsg("Region valid.");
-      localStorage.setItem("region_access", JSON.stringify({ port: regionPort, regionCode: regionCode.trim(), regionId: data.region_id, code: data.region_code }));
+      localStorage.setItem("region_access", JSON.stringify({ regionCode: regionCode.trim(), regionId: data.region_id, code: data.region_code }));
       setRegionContext({ code: regionCode.trim(), depo: undefined });
       setTimeout(() => { setRegionModalOpen(false); setRegionStatus("idle"); setRegionMsg(""); }, 600);
     } catch (err) {
@@ -323,10 +319,6 @@ export default function LoginPage() {
               </button>
             </div>
             <form onSubmit={handleRegionSave} className="space-y-4">
-              <div>
-                <label htmlFor="region-port-modal" className="mb-1 block text-sm font-medium">Port</label>
-                <input id="region-port-modal" type="text" value={regionPort} onChange={(e) => setRegionPort(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-              </div>
               <div>
                 <label htmlFor="region-code-modal" className="mb-1 block text-sm font-medium">Region Code</label>
                 <input id="region-code-modal" type="text" value={regionCode} onChange={(e) => setRegionCode(e.target.value.toUpperCase())} placeholder="Contoh: REGION-A" required className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
