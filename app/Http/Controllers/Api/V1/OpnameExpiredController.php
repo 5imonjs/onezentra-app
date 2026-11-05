@@ -211,16 +211,19 @@ class OpnameExpiredController extends Controller
             ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
             ->get();
 
-        $completedSessions = OpnameExpiredSession::query()
+        // Sesi "berjalan" = belum ditutup definitif: penghitungan, antrean
+        // approval, maupun revisi — wave-nya masih terkunci.
+        $openSessions = OpnameExpiredSession::query()
             ->where('week_start', $weekStart)
-            ->where('status', OpnameExpiredSession::STATUS_COMPLETED)
+            ->whereIn('status', OpnameExpiredSession::OPEN_STATUSES)
             ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
             ->pluck('kode_depo')
             ->flip();
 
-        $openSessions = OpnameExpiredSession::query()
+        // APPROVED adalah keputusan final; COMPLETED hanya sesi lama pra-approval.
+        $completedSessions = OpnameExpiredSession::query()
             ->where('week_start', $weekStart)
-            ->whereIn('status', [OpnameExpiredSession::STATUS_OPEN, OpnameExpiredSession::STATUS_IN_PROGRESS])
+            ->whereIn('status', [OpnameExpiredSession::STATUS_APPROVED, OpnameExpiredSession::STATUS_COMPLETED])
             ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
             ->pluck('kode_depo')
             ->flip();

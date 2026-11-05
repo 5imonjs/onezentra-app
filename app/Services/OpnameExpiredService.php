@@ -397,28 +397,30 @@ class OpnameExpiredService
     }
 
     /**
-     * Verifikasi satu batch sesi oleh petugas lapangan: simpan hasil fisik
-     * → tulis koreksi + validasi ke wave. Koreksi dihitung sebagai SELISIH
-     * per batch (fisik − qty ledger batch ini) sehingga verifikasi
-     * multi-batch dalam satu wave saling menjumlah dengan benar.
+     * Penghitungan fisik satu batch oleh petugas lapangan: simpan hasil
+     * hitung + disposisi. Base praktik stock opname: PENGHITUNG TIDAK
+     * menulis koreksi — angka fisik hanya tercatat di item sesi; koreksi
+     * baru berlaku setelah approver independen menyetujui sesi
+     * (lihat applyApprovedCorrections).
+     *
      * Baris warisan tanpa label diterbitkan susulan (satu-satunya titik
-     * penerbitan selain import/SJ).
+     * penerbitan selain import/SJ) agar tiap hasil hitung fisik menempel ke
+     * batch yang jelas.
      *
      * @return array{batches_issued: int}
      */
     public function verifySessionItem(OpnameExpiredSessionItem $item, array $data, User $verifier): array
     {
-        // Transaksi + kunci baris wave: dua petugas yang memverifikasi dua
-        // batch satu wave bersamaan tidak boleh saling menimpa koreksi.
         return DB::transaction(function () use ($item, $data, $verifier): array {
             // Kunci baris item sesi: verifikasi ganda atas item yang sama
             // (double-tap / dua petugas) terserialisasi di sini.
             $item = OpnameExpiredSessionItem::whereKey($item->id)->lockForUpdate()->firstOrFail();
-            // Kunci + cek ulang sesi: verifikasi yang tiba setelah complete/
-            // cancel (race) wajib ditolak agar audit sesi tidak berubah
-            // pasca-penutupan.
+            // Kunci + cek ulang sesi: penghitungan yang tiba setelah sesi
+            // disetujui/dibatalkan (race) wajib ditolak agar keputusan
+            // approval tidak berubah kemudian.
             $lockedSession = OpnameExpiredSession::whereKey($item->session_id)->lockForUpdate()->firstOrFail();
-            abort_unless($lockedSession->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
+            abort_unless($lockedSession->acceptsCounting(), 422, 'Sesi tidak sedang dalam tahap penghitungan.');
+
             $batch = $item->batch;
             $issued = 0;
 
@@ -448,6 +450,7 @@ class OpnameExpiredService
                 'qty_fisik_crt' => $data['qty_fisik_crt'],
                 'qty_fisik_pcs' => $data['qty_fisik_pcs'] ?? null,
                 'condition' => $data['condition'] ?? null,
+                'disposition' => $data['disposition'],
                 'photo' => $data['photo'] ?? $item->photo,
                 'notes' => $data['notes'] ?? null,
                 'verified_at' => now(),
@@ -455,34 +458,70 @@ class OpnameExpiredService
                 'verified_via' => $data['identified_via'],
             ], $batch ? ['batch_id' => $batch->id] : []));
 
-            $wave = OpnameExpiredWave::whereKey($item->wave_id)->lockForUpdate()->firstOrFail();
-            $source = $batch ? $this->batchSourceItem($batch) : null;
-
-            if ($source) {
-                // Increment atomik: koreksi multi-batch dalam satu wave saling
-                // menjumlah — read-tambah-tulis akan menghilangkan koreksi
-                // transaksi pesaing yang commit di antara baca dan tulis.
-                $wave->increment('qty_koreksi_crt', (float) $data['qty_fisik_crt'] - (float) $source->actual_qty);
-                $wave->increment('qty_koreksi_pcs', ((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) ($source->qty_pcs ?? 0));
-                $wave->update([
-                    'koreksi_by' => $verifier->id,
-                    'koreksi_at' => now(),
-                    'validated_by' => $verifier->id,
-                    'validated_at' => now(),
-                ]);
-            } else {
-                $wave->update([
-                    'qty_koreksi_crt' => (float) $data['qty_fisik_crt'] - (float) $wave->qty_ini_crt,
-                    'qty_koreksi_pcs' => ((float) ($data['qty_fisik_pcs'] ?? 0)) - (float) $wave->qty_ini_pcs,
-                    'koreksi_by' => $verifier->id,
-                    'koreksi_at' => now(),
-                    'validated_by' => $verifier->id,
-                    'validated_at' => now(),
-                ]);
-            }
-
             return ['batches_issued' => $issued];
         });
+    }
+
+    /**
+     * Terapkan koreksi wave hasil sesi yang DISETUJUI (dipanggil service
+     * approval). Koreksi dihitung SEKALI dari hasil hitung terakhir tiap
+     * item — bukan ditambah per event verifikasi — sehingga verifikasi
+     * ulang tidak menggandakan selisih dan angka koreksi selalu konsisten
+     * dengan isi sesi terkini.
+     *
+     * Per wave:
+     * - item berbatch : selisih = fisik − qty ledger batch ini, dijumlah
+     *   seluruh batch (koreksi multi-batch satu wave saling menjumlah).
+     * - item warisan tanpa batch (wave tanpa baris ledger): selisih =
+     *   fisik − qty wave minggu ini.
+     *
+     * Penanda koreksi memakai identitas PETUGAS (koreksi_by = angka), penanda
+     * validasi memakai identitas APPROVER (validated_by = setuju).
+     */
+    public function applyApprovedCorrections(OpnameExpiredSession $lockedSession, User $approver): int
+    {
+        $wavesTouched = 0;
+
+        $items = $lockedSession->items()->whereNotNull('verified_at')->with('batch')->get();
+
+        foreach ($items->groupBy('wave_id') as $waveId => $waveItems) {
+            $wave = OpnameExpiredWave::whereKey($waveId)->lockForUpdate()->firstOrFail();
+
+            $deltaCrt = 0.0;
+            $deltaPcs = 0.0;
+
+            foreach ($waveItems as $waveItem) {
+                $fisikCrt = (float) ($waveItem->qty_fisik_crt ?? 0);
+                $fisikPcs = (float) ($waveItem->qty_fisik_pcs ?? 0);
+
+                $source = $waveItem->batch ? $this->batchSourceItem($waveItem->batch) : null;
+
+                if ($source) {
+                    $deltaCrt += $fisikCrt - (float) $source->actual_qty;
+                    $deltaPcs += $fisikPcs - (float) ($source->qty_pcs ?? 0);
+                } else {
+                    // Wave tanpa baris ledger (warisan / carried murni):
+                    // acuan pembandingnya qty wave minggu ini.
+                    $deltaCrt += $fisikCrt - (float) $wave->qty_ini_crt;
+                    $deltaPcs += $fisikPcs - (float) $wave->qty_ini_pcs;
+                }
+            }
+
+            // Increment atomik: pembacaan lalu tulis biasa dapat menimpa
+            // koreksi transaksi pesaing yang commit di antara baca dan tulis.
+            $wave->increment('qty_koreksi_crt', $deltaCrt);
+            $wave->increment('qty_koreksi_pcs', $deltaPcs);
+            $wave->update([
+                'koreksi_by' => $lockedSession->submitted_by,
+                'koreksi_at' => $lockedSession->submitted_at ?? now(),
+                'validated_by' => $approver->id,
+                'validated_at' => now(),
+            ]);
+
+            $wavesTouched++;
+        }
+
+        return $wavesTouched;
     }
 
     private function sisaHari(Carbon $expiredDate, Carbon $now): int

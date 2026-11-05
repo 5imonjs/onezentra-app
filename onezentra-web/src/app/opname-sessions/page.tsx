@@ -12,7 +12,10 @@ import { SessionDetailModal, type SessionDetail } from '@/components/OpnameSessi
 const STATUS_META: Record<string, string> = {
   OPEN: 'bg-slate-100 text-foreground',
   IN_PROGRESS: 'bg-blue-50 text-blue-700',
+  PENDING_APPROVAL: 'bg-amber-50 text-amber-700',
+  APPROVED: 'bg-emerald-50 text-emerald-700',
   COMPLETED: 'bg-emerald-50 text-emerald-700',
+  REVISI: 'bg-orange-50 text-orange-700',
   CANCELLED: 'bg-red-50 text-red-700',
 };
 
@@ -121,7 +124,9 @@ export default function OpnameSessionsPage() {
               <option value="">Semua</option>
               <option value="OPEN">Terbuka</option>
               <option value="IN_PROGRESS">Berjalan</option>
-              <option value="COMPLETED">Selesai</option>
+              <option value="PENDING_APPROVAL">Menunggu Persetujuan</option>
+              <option value="APPROVED">Disetujui</option>
+              <option value="REVISI">Revisi</option>
               <option value="CANCELLED">Dibatalkan</option>
             </select>
           </div>
@@ -234,6 +239,7 @@ export default function OpnameSessionsPage() {
             progress={progress}
             canEdit={hasPermission('opname.session.edit')}
             canAdd={hasPermission('opname.session.create')}
+            canApprove={hasPermission('opname.session.approve')}
             onClose={() => { setSelectedId(null); setDetail(null); }}
             onChanged={async () => { await loadDetail(selectedId); load(); }}
           />

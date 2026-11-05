@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 // Hapus token mobile kedaluwarsa setiap hari agar tabel
 // personal_access_tokens tidak menumpuk (mobile login per-perangkat).
 Schedule::command('sanctum:prune-expired --hours=24')->daily();
+
+// Generate wave opname expired setiap Senin pagi: rantai roll-forward
+// mingguan tidak boleh bergantung seseorang mengingat klik "Generate".
+Schedule::command('opname-expired:generate')->weeklyOn(1, '06:00');

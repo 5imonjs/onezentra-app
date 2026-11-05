@@ -43,7 +43,7 @@ class OpnameEndToEndTest extends TestCase
             'sj_validation.view', 'sj_validation.create', 'sj_validation.validate', 'sj_validation.complete',
             'receiving.view', 'receiving.create', 'receiving.edit',
             'opname.view', 'opname.create', 'opname.edit',
-            'opname.session.view', 'opname.session.create', 'opname.session.edit',
+            'opname.session.view', 'opname.session.create', 'opname.session.edit', 'opname.session.approve',
             'npn.view',
         ] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
@@ -143,7 +143,7 @@ class OpnameEndToEndTest extends TestCase
         $this->assertNotNull($wave);
         $this->assertContains($sjBatch->batch_number, $wave->batch_numbers ?? []);
 
-        // 6. Sesi: buat -> mulai -> verifikasi -> selesai.
+        // 6. Sesi: buat -> mulai -> hitung fisik -> kirim -> approve.
         Sanctum::actingAs($this->planner);
         $sessionId = $this->postJson('/api/v1/opname-sessions', [
             'week_start' => '2026-09-07',
@@ -164,16 +164,25 @@ class OpnameEndToEndTest extends TestCase
             'qty_fisik_crt' => 9,
             'identified_via' => 'scan',
             'condition' => 'FISIK_BAGUS',
+            'disposition' => 'RETUR',
         ])->assertOk();
         // Batch SJ sudah ada: tidak ada label ganda.
         $this->assertSame(0, $verify->json('data.batches_issued'));
-        $this->postJson("/api/v1/opname-sessions/{$sessionId}/complete")->assertOk();
+        // Penghitungan sendiri tidak boleh menyetujui hasil sendiri.
+        $this->postJson("/api/v1/opname-sessions/{$sessionId}/submit")->assertOk();
+        $this->postJson("/api/v1/opname-sessions/{$sessionId}/approve")->assertForbidden();
 
-        // 7. Wave mencatat koreksi + validator; identitas utuh ujung-ke-ujung.
+        // 7. Approver independen menyetujui: koreksi diterapkan ke wave.
+        // Identitas audit: koreksi_by = penghitung, validated_by = approver.
+        Sanctum::actingAs($this->planner);
+        $this->postJson("/api/v1/opname-sessions/{$sessionId}/approve")->assertOk();
+
         $wave = $wave->fresh();
         $this->assertEquals(-1, (float) $wave->qty_koreksi_crt);
-        $this->assertSame($this->checker->id, (int) $wave->validated_by);
-        $this->assertSame('COMPLETED', $session->fresh()->status);
+        $this->assertSame($this->checker->id, (int) $wave->koreksi_by);
+        $this->assertSame($this->planner->id, (int) $wave->validated_by);
+        $session = OpnameExpiredSession::find($sessionId);
+        $this->assertSame('APPROVED', $session->status);
 
         // 8. Regresi: di produksi id baris penerimaan sudah jauh lebih besar
         // dari sj_validation_item_id. Relasi batch WAJIB memakai kolom

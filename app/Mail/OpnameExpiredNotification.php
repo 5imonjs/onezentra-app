@@ -20,11 +20,16 @@ class OpnameExpiredNotification extends Mailable
 
     public function envelope(): Envelope
     {
-        $subject = $this->kind === 'reminder'
-            ? '[Pengingat] Opname Expired minggu '.$this->weekStart.' belum dikirim'
-            : '[Opname Expired] Sesi minggu '.$this->weekStart.' selesai';
-
-        return new Envelope(subject: $subject);
+        return new Envelope(
+            subject: match ($this->kind) {
+                'reminder' => '[Pengingat] Opname Expired minggu '.$this->weekStart.' belum dikirim',
+                'submitted' => '[Opname Expired] Sesi minggu '.$this->weekStart.' menunggu persetujuan',
+                'approved' => '[Opname Expired] Sesi minggu '.$this->weekStart.' disetujui — koreksi berlaku',
+                'revisi' => '[Opname Expired] Sesi minggu '.$this->weekStart.' perlu revisi',
+                'cancelled' => '[Opname Expired] Sesi minggu '.$this->weekStart.' dibatalkan',
+                default => '[Opname Expired] Sesi minggu '.$this->weekStart.' selesai',
+            }
+        );
     }
 
     public function content(): Content

@@ -11,6 +11,7 @@ use App\Models\ReceivingItem;
 use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Services\OpnameExpiredService;
+use App\Services\OpnameSessionLifecycleService;
 use App\Support\EvidenceStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,8 +23,9 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Sesi opname lapangan (aturan A2): supervisor membuat sesi per minggu +
- * depo dan menugaskan petugas; petugas memverifikasi fisik per baris wave;
- * verifikasi menerbitkan Batch untuk baris ledger yang belum berlabel.
+ * depo dan menugaskan petugas; petugas menghitung fisik per batch dengan
+ * disposisi tindak lanjut; sesi dikirim untuk persetujuan; approver
+ * independen menyetujui — koreksi wave baru berlaku saat itu.
  */
 class OpnameExpiredSessionController extends Controller
 {
@@ -140,8 +142,7 @@ class OpnameExpiredSessionController extends Controller
 
         // Pembuatan sesi + ekspansi item atomik: double-submit tidak boleh
         // menggandakan sesi atas wave yang sama.
-        $service = app(OpnameExpiredService::class);
-        [$session, $itemCount] = DB::transaction(function () use ($validated, $weekStart, $user, $waves, $service): array {
+        [$session, $itemCount] = DB::transaction(function () use ($validated, $weekStart, $user, $waves): array {
             // Kunci baris wave lalu cek ulang di dalam transaksi: cek di luar
             // transaksi bisa dilewati dua request bersamaan sebelum salah satu
             // menulis item sesi.
@@ -202,7 +203,7 @@ class OpnameExpiredSessionController extends Controller
     {
         $this->authorizeSession($request, $session);
 
-        $session->load(['assignee', 'creator', 'items.wave', 'items.batch', 'items.verifier']);
+        $session->load(['assignee', 'creator', 'submitter', 'decider', 'items.wave', 'items.batch', 'items.verifier']);
 
         // Qty acuan per batch (sistem) agar petugas tahu angka pembanding
         // tiap label: satu query per sumber, bukan N+1.
@@ -234,10 +235,11 @@ class OpnameExpiredSessionController extends Controller
     public function start(Request $request, OpnameExpiredSession $session): JsonResponse
     {
         $this->authorizeSession($request, $session);
+        $this->authorizeSessionWorker($session, $request->user(), ['Mulai sesi']);
 
         $session = DB::transaction(function () use ($session) {
             $locked = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->status === OpnameExpiredSession::STATUS_OPEN, 422, 'Sesi sudah dimulai atau selesai.');
+            abort_unless($locked->status === OpnameExpiredSession::STATUS_OPEN, 422, 'Sesi sudah dimulai.');
 
             $locked->update([
                 'status' => OpnameExpiredSession::STATUS_IN_PROGRESS,
@@ -256,28 +258,46 @@ class OpnameExpiredSessionController extends Controller
     public function verifyItem(Request $request, OpnameExpiredSession $session, OpnameExpiredSessionItem $item, OpnameExpiredService $service): JsonResponse
     {
         $this->authorizeSession($request, $session);
+        $this->authorizeSessionWorker($session, $request->user(), ['Menghitung fisik']);
 
         abort_unless($item->session_id === $session->id, 404);
         // Alur baku: sesi harus dimulai dulu (Mulai Sesi) sebelum input
-        // lapangan. OPEN = belum dikerjakan; verifikasi saat OPEN membikin
-        // langkah "Mulai Sesi" jadi kosmetik dan status sesi tak akurat
-        // (bisa loncat OPEN → COMPLETED tanpa pernah IN_PROGRESS).
-        abort_unless(
-            $session->status === OpnameExpiredSession::STATUS_IN_PROGRESS,
-            422,
-            'Verifikasi hanya bisa saat sesi berjalan — klik "Mulai Sesi" dulu.'
-        );
+        // lapangan. OPEN = belum dikerjakan; penghitungan saat OPEN membikin
+        // langkah "Mulai Sesi" jadi kosmetik dan status sesi tak akurat.
+        abort_unless($session->acceptsCounting(), 422, 'Penghitungan hanya bisa saat sesi berjalan atau revisi — klik "Mulai Sesi" dulu.');
 
         $validated = $request->validate([
             'qty_fisik_crt' => 'required|numeric|min:0',
             'qty_fisik_pcs' => 'nullable|numeric|min:0',
             'condition' => ['nullable', 'string', 'max:32', Rule::in(ReceivingItem::CONDITIONS)],
+            // Disposisi wajib untuk hasil hitung yang berisi barang (aturan
+            // F.1). Khusus "tandai habis" (fisik 0) disposisi dilarang —
+            // tidak ada barang untuk ditindaklanjuti; koreksi pengurangan
+            // tetap menunggu validasi BLC di /approve.
+            'disposition' => ['nullable', 'string', Rule::in(OpnameExpiredSessionItem::DISPOSITIONS())],
             'notes' => 'nullable|string',
             'photo' => 'nullable|image|max:10240',
             // Base praktik: scan dulu, input qty kemudian. Identifikasi
             // manual hanya fallback label rusak — wajib tercatat.
             'identified_via' => 'required|string|in:scan,manual',
         ]);
+
+        $qtyCrt = (float) $validated['qty_fisik_crt'];
+        $qtyPcs = isset($validated['qty_fisik_pcs']) ? (float) $validated['qty_fisik_pcs'] : 0.0;
+        $isMarkedEmpty = $qtyCrt === 0.0 && $qtyPcs === 0.0;
+
+        if ($isMarkedEmpty) {
+            if (filled($validated['disposition'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'disposition' => ['Disposisi tidak berlaku saat fisik 0 (tandai habis) — tidak ada barang untuk ditindaklanjuti.'],
+                ]);
+            }
+            $validated['disposition'] = null;
+        } elseif (empty($validated['disposition'])) {
+            throw ValidationException::withMessages([
+                'disposition' => ['Disposisi wajib dipilih untuk hasil hitung yang berisi barang (aturan F.1).'],
+            ]);
+        }
 
         if (in_array($validated['condition'] ?? null, ReceivingItem::CONDITIONS_REQUIRING_PHOTO, true) && empty($item->photo) && ! $request->hasFile('photo')) {
             throw ValidationException::withMessages([
@@ -293,60 +313,115 @@ class OpnameExpiredSessionController extends Controller
             $data['photo'] = EvidenceStorage::putFile($request->file('photo'), 'validation-photos');
         }
 
+        // Sesi yang sedang REVISI kembali berjalan saat item pertama
+        // diperbaiki: petugas berputar kembali melalui siklus yang sama.
+        if ($session->status === OpnameExpiredSession::STATUS_REVISI) {
+            $this->reopenAfterRevision($session, $request->user());
+        }
+
         $result = $service->verifySessionItem($item, $data, $request->user());
 
         return response()->json([
-            'message' => "Baris terverifikasi ({$result['batches_issued']} label diterbitkan).",
+            'message' => "Baris terhitung ({$result['batches_issued']} label diterbitkan).",
             'data' => array_merge($result, ['item' => $item->fresh()->load('wave')]),
         ]);
     }
 
-    public function complete(Request $request, OpnameExpiredSession $session): JsonResponse
+    /**
+     * Petugas mengirim sesi untuk persetujuan (semua baris wajib terhitung).
+     * Koreksi wave berlaku di endpoint /approve — bukan di sini.
+     */
+    public function submit(Request $request, OpnameExpiredSession $session): JsonResponse
+    {
+        $this->authorizeSession($request, $session);
+        $this->authorizeSessionWorker($session, $request->user(), ['Mengirim sesi']);
+
+        app(OpnameSessionLifecycleService::class)->submit($session, $request->user());
+
+        return response()->json([
+            'message' => 'Sesi dikirim untuk persetujuan. Koreksi berlaku setelah disetujui.',
+            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+        ]);
+    }
+
+    public function approve(Request $request, OpnameExpiredSession $session): JsonResponse
     {
         $this->authorizeSession($request, $session);
 
-        // Kunci dulu, cek kemudian: interleaving complete↔cancel/verify
-        // terserialisasi; last-write-wins pasca-kunci tidak mungkin.
-        $session = DB::transaction(function () use ($session) {
-            $locked = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
-
-            $unverified = $locked->items()->whereNull('verified_at')->count();
-            abort_unless($unverified === 0, 422, "Masih ada {$unverified} baris belum diverifikasi.");
-
-            $locked->update([
-                'status' => OpnameExpiredSession::STATUS_COMPLETED,
-                'completed_at' => now(),
-            ]);
-
-            return $locked;
-        });
-
-        $fresh = $session->fresh()->load(['items.wave', 'items.batch']);
-
-        $this->emailService->send(
-            'opname_expired',
-            'completed',
-            $fresh,
-            new OpnameExpiredNotification('completed', substr((string) $fresh->week_start, 0, 10), [[
-                'kode_depo' => $fresh->kode_depo,
-                'nama_depo' => $fresh->nama_depo,
-                'total' => $fresh->items->count(),
-                'validated' => $fresh->items->count(),
-                'submitted' => true,
-            ]]),
-            $fresh->kode_depo
-        );
+        app(OpnameSessionLifecycleService::class)->approve($session, $request->user());
 
         return response()->json([
-            'message' => 'Sesi selesai.',
-            'data' => $fresh,
+            'message' => 'Sesi disetujui — koreksi wave berlaku.',
+            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+        ]);
+    }
+
+    public function revise(Request $request, OpnameExpiredSession $session): JsonResponse
+    {
+        $this->authorizeSession($request, $session);
+
+        $validated = $request->validate([
+            'reason' => 'required|string|min:5',
+        ]);
+
+        app(OpnameSessionLifecycleService::class)->revise($session, $request->user(), $validated['reason']);
+
+        return response()->json([
+            'message' => 'Sesi dikembalikan ke petugas untuk revisi.',
+            'data' => $session->fresh()->load(['items.wave', 'items.batch']),
+        ]);
+    }
+
+    /**
+     * Setelah revisi: item pertama yang diperbaiki mengembalikan sesi ke
+     * run (IN_PROGRESS). Kolom keputusan revisi dicatat di decision_note —
+     * riwayat lengkap ada di ApprovalHistory.
+     */
+    private function reopenAfterRevision(OpnameExpiredSession $session, User $actor): void
+    {
+        DB::transaction(function () use ($session, $actor): void {
+            $locked = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->status === OpnameExpiredSession::STATUS_REVISI, 422, 'Sesi tidak sedang dalam tahap revisi.');
+            abort_unless($locked->assigned_to === $actor->id, 403, 'Hanya petugas yang ditugaskan yang dapat merevisi.');
+
+            $locked->update(['status' => OpnameExpiredSession::STATUS_IN_PROGRESS]);
+        });
+    }
+
+    /**
+     * Ganti petugas sesi (oleh pembuat sesi, saat sesi belum tuntas) — sesi
+     * terjebak di petugas yang keluar/mutasi tidak lagi menggantung wave.
+     */
+    public function assign(Request $request, OpnameExpiredSession $session): JsonResponse
+    {
+        $this->authorizeSession($request, $session);
+
+        $validated = $request->validate([
+            'assigned_to' => 'required|exists:users,id',
+        ]);
+
+        abort_unless($session->created_by === $request->user()->id, 403, 'Hanya pembuat sesi yang dapat mengganti petugas.');
+        abort_unless($session->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
+
+        $newOfficer = User::findOrFail($validated['assigned_to']);
+        abort_unless($newOfficer->kode_depo === $session->kode_depo, 422, 'Petugas pengganti harus dari depo yang sama dengan sesi.');
+        abort_unless($newOfficer->status === 'active', 422, 'Petugas pengganti harus akun aktif.');
+
+        DB::transaction(function () use ($session, $newOfficer): void {
+            OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
+            $session->update(['assigned_to' => $newOfficer->id]);
+        });
+
+        return response()->json([
+            'message' => 'Petugas sesi diperbarui.',
+            'data' => $session->fresh()->load('assignee'),
         ]);
     }
 
     public function cancel(Request $request, OpnameExpiredSession $session): JsonResponse
     {
         $this->authorizeSession($request, $session);
+        $this->authorizeSessionWorker($session, $request->user(), ['Membatalkan sesi'], allowCreated: true);
 
         $validated = $request->validate(['notes' => 'nullable|string']);
 
@@ -359,6 +434,20 @@ class OpnameExpiredSessionController extends Controller
                 'notes' => $validated['notes'] ?? $locked->notes,
                 'completed_at' => now(),
             ]);
+
+            $this->emailService->send(
+                'opname_expired',
+                'cancelled',
+                $locked,
+                new OpnameExpiredNotification('cancelled', substr((string) $locked->week_start, 0, 10), [[
+                    'kode_depo' => $locked->kode_depo,
+                    'nama_depo' => $locked->nama_depo,
+                    'total' => 0,
+                    'validated' => 0,
+                    'submitted' => false,
+                ]]),
+                $locked->kode_depo
+            );
 
             return $locked;
         });
@@ -376,8 +465,7 @@ class OpnameExpiredSessionController extends Controller
     public function addWaves(Request $request, OpnameExpiredSession $session, OpnameExpiredService $service): JsonResponse
     {
         $this->authorizeSession($request, $session);
-
-        abort_unless($session->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
+        $this->authorizeSessionWorker($session, $request->user(), ['Menambah wave'], allowCreated: true);
 
         $validated = $request->validate([
             'wave_ids' => 'required|array|min:1|max:500|distinct',
@@ -389,8 +477,9 @@ class OpnameExpiredSessionController extends Controller
         $added = 0;
 
         DB::transaction(function () use ($user, $session, $waves, $service, &$added): void {
-            // Kunci sesi + cek ulang status di dalam transaksi: complete/cancel
-            // bersamaan tidak boleh menyisipkan item ke sesi yang sudah tutup.
+            // Kunci sesi + cek ulang status di dalam transaksi: approval/
+            // cancel bersamaan tidak boleh menyisipkan item ke sesi yang
+            // sudah tutup.
             $lockedSession = OpnameExpiredSession::whereKey($session->id)->lockForUpdate()->firstOrFail();
             abort_unless($lockedSession->isOpen(), 422, 'Sesi sudah selesai atau dibatalkan.');
 
@@ -441,11 +530,11 @@ class OpnameExpiredSessionController extends Controller
     }
 
     /**
-     * Pastikan tidak ada wave yang sedang berjalan di sesi lain (OPEN /
-     * IN_PROGRESS). Dipanggil dua kali: di luar transaksi sebagai fail-fast dan
-     * di dalam transaksi setelah baris wave dikunci, supaya dua request
-     * bersamaan tidak sama-sama lolos (TOCTOU) dan menugaskan wave yang sama
-     * dua kali — verifikasi ganda = koreksi ganda.
+     * Pastikan tidak ada wave yang sedang berjalan di sesi lain (belum
+     * tutup definitif). Dipanggil dua kali: di luar transaksi sebagai
+     * fail-fast dan di dalam transaksi setelah baris wave dikunci, supaya
+     * dua request bersamaan tidak sama-sama lolos (TOCTOU) dan menugaskan
+     * wave yang sama dua kali — verifikasi ganda = koreksi ganda.
      *
      * @param  Collection<int, OpnameExpiredWave>  $waves
      */
@@ -453,10 +542,7 @@ class OpnameExpiredSessionController extends Controller
     {
         foreach ($waves as $wave) {
             $lockedWave = OpnameExpiredSessionItem::where('wave_id', $wave->id)
-                ->whereHas('session', fn ($q) => $q->whereIn('status', [
-                    OpnameExpiredSession::STATUS_OPEN,
-                    OpnameExpiredSession::STATUS_IN_PROGRESS,
-                ]))
+                ->whereHas('session', fn ($q) => $q->whereIn('status', OpnameExpiredSession::OPEN_STATUSES))
                 ->exists();
 
             abort_if($lockedWave, 422, "Wave {$wave->kode_barang} sedang berjalan di sesi lain.");
@@ -470,5 +556,25 @@ class OpnameExpiredSessionController extends Controller
             403,
             'Anda tidak memiliki akses ke data ini.'
         );
+    }
+
+    /**
+     * Pemisahan tugas: aksi mengerjakan sesi (mulai, hitung, kirim,
+     * batalkan, tambah wave) hanya boleh oleh petugas yang ditugaskan —
+     * kecuali pembuat sesi untuk aksi administratif, bila diizinkan.
+     *
+     * @param  array<int, string>  $actions
+     */
+    private function authorizeSessionWorker(OpnameExpiredSession $session, User $user, array $actions, bool $allowCreated = false): void
+    {
+        if ($session->assigned_to === $user->id) {
+            return;
+        }
+
+        if ($allowCreated && $session->created_by === $user->id) {
+            return;
+        }
+
+        abort(403, implode('/', $actions).' hanya oleh petugas yang ditugaskan'.($allowCreated ? ' atau pembuat sesi.' : '.'));
     }
 }

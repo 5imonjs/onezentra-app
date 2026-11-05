@@ -198,9 +198,17 @@ class EmailNotificationSeeder extends Seeder
             ['label' => 'CC RFAH notifikasi Retribusi revisi', 'is_active' => true]
         );
 
-        // Opname expired: pengingat mingguan dan laporan sesi selesai.
-        foreach (['completed', 'reminder'] as $trigger) {
-            $label = $trigger === 'completed' ? 'selesai' : 'pengingat';
+        // Opname expired: pengingat mingguan, sesi menunggu persetujuan,
+        // keputusan approval (disetujui/revisi), dan pembatalan.
+        $opnameKinds = [
+            'completed' => 'selesai',
+            'reminder' => 'pengingat',
+            'submitted' => 'menunggu persetujuan',
+            'approved' => 'disetujui',
+            'revisi' => 'perlu revisi',
+            'cancelled' => 'dibatalkan',
+        ];
+        foreach ($opnameKinds as $trigger => $label) {
             EmailRecipient::updateOrCreate(
                 ['document_type' => 'opname_expired', 'trigger' => $trigger, 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
                 ['label' => "BLC notifikasi opname expired {$label}", 'is_active' => true]

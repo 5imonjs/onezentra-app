@@ -37,7 +37,7 @@ class EmailRecipientController extends Controller
         'standarisasi_tumpukan' => ['submitted', 'approved', 'rejected'],
         'biaya_thl' => ['submitted', 'checked', 'approved', 'rlh_approved', 'rejected', 'revisi'],
         'biaya_retribusi' => ['submitted', 'checked', 'approved', 'rlh_approved', 'rejected', 'revisi'],
-        'opname_expired' => ['completed', 'reminder'],
+        'opname_expired' => ['completed', 'reminder', 'submitted', 'approved', 'revisi', 'cancelled'],
     ];
 
     public function index(Request $request): JsonResponse
