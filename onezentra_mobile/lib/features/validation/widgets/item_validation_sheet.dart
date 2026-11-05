@@ -188,6 +188,15 @@ class _ItemValidationSheetState extends State<ItemValidationSheet> {
                         ? null
                         : 'Tanggal expired wajib diisi',
                   ),
+                  if (_expiredDate != null) ...[
+                    const SizedBox(height: AppTheme.space3),
+                    UmurStandarPanel(
+                      expiredDate: _expiredDate,
+                      standarUmur: widget.item.umur,
+                      kodeBarang: widget.item.kodeBarang,
+                      namaBarang: widget.item.namaBarang,
+                    ),
+                  ],
                 ],
                 const SizedBox(height: AppTheme.space3),
                 ExpansionTile(

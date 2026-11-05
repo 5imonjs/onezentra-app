@@ -278,6 +278,251 @@ class _PhotoEvidenceFieldState extends State<PhotoEvidenceField> {
   );
 }
 
+/// Panel pemeriksaan umur produk — sisa simpan vs standar umur master.
+///
+/// Logika sama dengan web (`validasi-sj/page.tsx`): tanggal acuan = tanggal
+/// hari ini, sisa = tanggal expired − hari ini, lalu dibandingkan ke standar
+/// umur master (bulan). Dipakai sheet validasi item & barang luar rencana.
+class UmurStandarPanel extends StatelessWidget {
+  const UmurStandarPanel({
+    required this.expiredDate,
+    required this.standarUmur,
+    this.kodeBarang,
+    this.namaBarang,
+    super.key,
+  });
+
+  final DateTime? expiredDate;
+  final int? standarUmur;
+  final String? kodeBarang;
+  final String? namaBarang;
+
+  @override
+  Widget build(BuildContext context) {
+    var expired = expiredDate;
+    var result = UmurCalculator.hitung(expired);
+    var status = expired == null
+        ? UmurCalculator.statusStandardTidakTersedia
+        : UmurCalculator.status(standarUmur: standarUmur, sisa: result);
+    var kadaluarsa = status == UmurCalculator.statusKadaluarsa;
+    var perluPerhatian = status == UmurCalculator.statusPerluPerhatian;
+    var aman = status == UmurCalculator.statusAman;
+    var statusColor = context.colors.textMuted;
+    var statusWell = context.colors.warningWell;
+    if (kadaluarsa) {
+      statusColor = context.colors.danger;
+      statusWell = context.colors.dangerWell;
+    } else if (perluPerhatian) {
+      statusColor = context.colors.warning;
+      statusWell = context.colors.warningWell;
+    } else if (aman) {
+      statusColor = context.colors.success;
+      statusWell = context.colors.successWell;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.space3),
+      decoration: BoxDecoration(
+        color: statusWell,
+        borderRadius: AppTheme.radiusLg,
+        border: Border.all(color: statusColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  expired == null
+                      ? 'Pemeriksaan umur produk'
+                      : 'Hasil pemeriksaan umur produk',
+                  style: GoogleFonts.roboto(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.space2,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: AppTheme.radiusFull,
+                ),
+                child: Text(
+                  status,
+                  style: GoogleFonts.roboto(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space3),
+          if (expired == null)
+            Text(
+              'Isi tanggal expired untuk melihat perbandingan sisa umur vs standar.',
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                height: 1.4,
+                color: context.colors.textSecondary,
+              ),
+            )
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _UmurStat(
+                    label: 'Sisa simpan',
+                    value: '${result.totalMonths}',
+                    suffix: 'bulan',
+                    valueColor: kadaluarsa
+                        ? context.colors.danger
+                        : perluPerhatian
+                        ? context.colors.warning
+                        : context.colors.success,
+                  ),
+                ),
+                Expanded(
+                  child: _UmurStat(
+                    label: 'Standar',
+                    value:
+                        '${standarUmur != null && standarUmur! > 0 ? standarUmur : 0}',
+                    suffix: 'bulan',
+                    valueColor: context.colors.textPrimary,
+                  ),
+                ),
+                Expanded(
+                  child: _UmurStat(
+                    label: 'Selisih',
+                    value: UmurCalculator.formatSelisih(
+                      expired,
+                      standarUmur ?? 0,
+                    ),
+                    suffix: 'selisih',
+                    valueColor: statusColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppTheme.space3),
+            Text(
+              status == UmurCalculator.statusStandardTidakTersedia
+                  ? 'Standar umur produk tidak tersedia. Data standar umur perlu diisi di database standar umur produk.'
+                  : kadaluarsa
+                  ? 'Produk sudah kadaluarsa dan perlu penanganan segera.'
+                  : perluPerhatian
+                  ? 'Sisa simpan kurang dari standar.'
+                  : 'Sisa simpan memenuhi standar.',
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                height: 1.4,
+                fontWeight: FontWeight.w600,
+                color: statusColor,
+              ),
+            ),
+            if (standarUmur != null && standarUmur! > 0) ...[
+              const SizedBox(height: AppTheme.space3),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Perbandingan terhadap standar',
+                        style: GoogleFonts.roboto(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: context.colors.textMuted,
+                        ),
+                      ),
+                      Text(
+                        standarUmur != null && standarUmur! > 0
+                            ? '${result.totalMonths / standarUmur! * 100}'
+                            : '0',
+                        style: GoogleFonts.roboto(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: context.colors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  LinearProgressIndicator(
+                    value: (result.totalMonths / (standarUmur ?? 1)).clamp(
+                      0.0,
+                      1.0,
+                    ),
+                    minHeight: 6,
+                    backgroundColor: context.colors.gray100,
+                    valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Satu statistik umur yang tampil di panel pemeriksaan umur.
+class _UmurStat extends StatelessWidget {
+  const _UmurStat({
+    required this.label,
+    required this.value,
+    required this.suffix,
+    required this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final String suffix;
+  final Color valueColor;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: GoogleFonts.roboto(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: context.colors.textMuted,
+        ),
+      ),
+      const SizedBox(height: 2),
+      Text(
+        value,
+        style: GoogleFonts.roboto(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: valueColor,
+        ),
+      ),
+      Text(
+        suffix,
+        style: GoogleFonts.roboto(
+          fontSize: 9.5,
+          fontWeight: FontWeight.w600,
+          color: context.colors.textMuted,
+        ),
+      ),
+    ],
+  );
+}
+
 /// Format tanggal Indonesia: dd/MM/yyyy (dipakai controller & pratinjau).
 String formatDateId(DateTime? value) {
   if (value == null) {

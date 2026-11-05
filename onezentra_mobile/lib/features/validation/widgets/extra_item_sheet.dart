@@ -278,6 +278,13 @@ class _ExtraItemSheetState extends State<ExtraItemSheet> {
                   });
                 },
               ),
+              if (_expiredDate != null) ...[
+                const SizedBox(height: AppTheme.space3),
+                UmurStandarPanel(
+                  expiredDate: _expiredDate,
+                  standarUmur: _npn?.umur,
+                ),
+              ],
               const SizedBox(height: AppTheme.space3),
               AppTextField(
                 controller: _notesController,

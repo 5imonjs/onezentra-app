@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/features/validation/widgets/validation_item_fields.dart';
 
 /// Pola tanggal expired (widget bersama sheet validasi).
@@ -67,4 +68,72 @@ void main() {
 
     expect(picked, DateTime(2027, 3, 15));
   });
+
+  test('UmurCalculator menghitung sisa umur dan status pemeriksaan', () {
+    var today = DateTime(2026, 11, 4);
+
+    var kadaluarsa = UmurCalculator.hitung(DateTime(2026, 11, 4), today: today);
+    expect(kadaluarsa.totalDays, 0);
+    expect(kadaluarsa.totalMonths, 0);
+    expect(
+      UmurCalculator.status(standarUmur: 12, sisa: kadaluarsa),
+      UmurCalculator.statusKadaluarsa,
+    );
+
+    var aman = UmurCalculator.hitung(DateTime(2027, 11, 4), today: today);
+    expect(aman.totalDays, greaterThan(0));
+    expect(aman.totalMonths, greaterThan(0));
+    expect(
+      UmurCalculator.status(standarUmur: 12, sisa: aman),
+      UmurCalculator.statusAman,
+    );
+
+    expect(
+      UmurCalculator.status(standarUmur: 0, sisa: aman),
+      UmurCalculator.statusStandardTidakTersedia,
+    );
+  });
+
+  testWidgets(
+    'UmurStandarPanel menampilkan status KADALUARSA untuk expired hari ini',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: UmurStandarPanel(
+              expiredDate: DateTime(2026, 11, 4),
+              standarUmur: 12,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('KADALUARSA'), findsOneWidget);
+      expect(
+        find.text('Produk sudah kadaluarsa dan perlu penanganan segera.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'UmurStandarPanel menampilkan status AMAN saat sisa memenuhi standar',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: UmurStandarPanel(
+              expiredDate: DateTime(2027, 11, 5),
+              standarUmur: 12,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('AMAN'), findsOneWidget);
+      expect(find.text('Sisa simpan memenuhi standar.'), findsOneWidget);
+    },
+  );
 }

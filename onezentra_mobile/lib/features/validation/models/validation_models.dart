@@ -50,6 +50,7 @@ class NpnProduct {
     this.nama,
     this.namaBaru,
     this.deskripsi,
+    this.umur,
   });
 
   factory NpnProduct.fromJson(Map<String, dynamic> json) => NpnProduct(
@@ -60,12 +61,11 @@ class NpnProduct {
     nama: _readString(json['szNickName']),
     namaBaru: _readString(json['szNickNameNew']),
     deskripsi: _readString(json['szShortDescription']),
+    umur: _readInt(json['umur']),
   );
 
-  /// Nama utama yang tampil: nickname lama dulu (identitas yang dipakai
-  /// gudang), lalu short description, lalu nickname baru sebagai cadangan.
-  String get displayName => nama ?? deskripsi ?? namaBaru ?? '';
-
+  /// Standar umur produk (bulan) dari master — bila tersedia.
+  final int? umur;
   final int id;
   final String? kodeBarang;
   final String? sapKode;
@@ -73,6 +73,121 @@ class NpnProduct {
   final String? nama;
   final String? namaBaru;
   final String? deskripsi;
+
+  /// Nama utama yang tampil: nickname lama dulu (identitas yang dipakai
+  /// gudang), lalu short description, lalu nickname baru sebagai cadangan.
+  String get displayName => nama ?? deskripsi ?? namaBaru ?? '';
+}
+
+/// Hasil perhitungan sisa umur produk (bulan + hari) terhadap tanggal acuan
+/// (tanggal hari ini) dan tanggal expired.
+class UmurResult {
+  const UmurResult({required this.totalMonths, required this.totalDays});
+
+  static const UmurResult kosong = UmurResult(totalMonths: 0, totalDays: 0);
+
+  final int totalMonths;
+  final int totalDays;
+}
+
+/// Pemeriksaan umur produk — sisa simpan, standar umur, status.
+///
+/// Logika ini sama dengan web (`validasi-sj/page.tsx`): tanggal acuan =
+/// tanggal hari ini, sisa = expired − hari ini, lalu dibandingkan ke standar
+/// umur master (bulan).
+class UmurCalculator {
+  UmurCalculator._();
+
+  static const String statusStandardTidakTersedia = 'DATA LENGKAP';
+  static const String statusAman = 'AMAN';
+  static const String statusPerluPerhatian = 'PERLU PERHATIAN';
+  static const String statusKadaluarsa = 'KADALUARSA';
+
+  static DateTime _awalHari(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  static UmurResult hitung(DateTime? expired, {DateTime? today}) {
+    if (expired == null) {
+      return UmurResult.kosong;
+    }
+    var base = _awalHari(today ?? DateTime.now());
+    var end = _awalHari(expired);
+    var totalDays = end.difference(base).inDays;
+    if (totalDays <= 0) {
+      return UmurResult(totalMonths: 0, totalDays: totalDays);
+    }
+    var monthDiff = (end.year - base.year) * 12 + (end.month - base.month);
+    if (end.day < base.day) {
+      monthDiff -= 1;
+    }
+    var totalMonths = monthDiff < 0 ? 0 : monthDiff;
+    return UmurResult(totalMonths: totalMonths, totalDays: totalDays);
+  }
+
+  static String status({required int? standarUmur, required UmurResult? sisa}) {
+    var standard = standarUmur ?? 0;
+    if (standard <= 0) {
+      return statusStandardTidakTersedia;
+    }
+    if (sisa == null || sisa.totalDays <= 0) {
+      return statusKadaluarsa;
+    }
+    if (sisa.totalMonths < standard) {
+      return statusPerluPerhatian;
+    }
+    return statusAman;
+  }
+
+  static int _daysInMonth(int year, int month) {
+    const lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    var days = lengths[(month - 1) % 12];
+    var isLeap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+    if (month == 2 && isLeap) {
+      days = 29;
+    }
+    return days;
+  }
+
+  static DateTime _addMonthsClamped(DateTime start, int months, {int? day}) {
+    var startDay = day ?? start.day;
+    var monthIndex = start.month - 1 + months;
+    var year = start.year + (monthIndex ~/ 12).floor();
+    var month = (monthIndex % 12) + 1;
+    var lastDay = _daysInMonth(year, month);
+    var targetDay = startDay < lastDay ? startDay : lastDay;
+    return DateTime(year, month, targetDay);
+  }
+
+  static String formatSelisih(
+    DateTime expired,
+    int standarBulan, {
+    DateTime? today,
+  }) {
+    var base = _awalHari(today ?? DateTime.now());
+    var expiredDay = _awalHari(expired);
+    var standard = _addMonthsClamped(base, standarBulan);
+    var isBeforeStandard = expiredDay.isBefore(standard);
+    var start = isBeforeStandard ? expiredDay : standard;
+    var end = isBeforeStandard ? standard : expiredDay;
+    // ignore: unnecessary_final
+    var years = end.year - start.year;
+    var months = end.month - start.month;
+    var days = end.day - start.day;
+    if (days < 0) {
+      months -= 1;
+      days += _daysInMonth(end.year, end.month);
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    var parts = <String>[
+      if (years > 0) '$years tahun',
+      if (months > 0) '$months bulan',
+      if (days > 0) '$days hari',
+    ];
+    return '${isBeforeStandard ? '-' : '+'}${parts.isEmpty ? '0 hari' : parts.join(' ')}';
+  }
 }
 
 /// Status label and progress rules for an SJ validation session.
@@ -303,6 +418,7 @@ class SjValidationItem {
     this.status = 'PENDING',
     this.standarisasi,
     this.batch,
+    this.umur,
   });
 
   factory SjValidationItem.fromJson(Map<String, dynamic> json) {
@@ -327,6 +443,7 @@ class SjValidationItem {
           ? null
           : ItemStandarisasi.fromJson(standarisasi),
       batch: batch == null ? null : ValidationBatch.fromJson(batch),
+      umur: _readInt(json['umur']),
     );
   }
   final int id;
@@ -348,6 +465,9 @@ class SjValidationItem {
   /// Batch label yang dibuat server saat item ini divalidasi. Null berarti item
   /// belum divalidasi, jadi belum ada label yang bisa dicetak.
   final ValidationBatch? batch;
+
+  /// Standar umur produk (bulan) yang dipakai pemeriksaan expired.
+  final int? umur;
 
   bool get isPending => status == 'PENDING';
 
@@ -419,6 +539,7 @@ class SjValidationExtraItem {
     this.decisionNotes,
     this.approverName,
     this.batch,
+    this.umur,
   });
 
   factory SjValidationExtraItem.fromJson(Map<String, dynamic> json) =>
@@ -446,6 +567,7 @@ class SjValidationExtraItem {
                 Map<String, dynamic>.from(json['batch'] as Map),
               )
             : null,
+        umur: _readInt(json['umur']),
       );
   final int id;
   final int validationId;
@@ -455,6 +577,9 @@ class SjValidationExtraItem {
   final String namaBarang;
   final double qty;
   final String? satuan;
+
+  /// Standar umur produk (bulan) yang dipakai pemeriksaan expired.
+  final int? umur;
 
   /// Keputusan planner (Fase 2): PENDING / APPROVED / REJECTED.
   final String status;
