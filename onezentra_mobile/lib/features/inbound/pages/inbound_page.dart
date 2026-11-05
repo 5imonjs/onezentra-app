@@ -170,12 +170,14 @@ class _InboundPageState extends State<InboundPage> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: context.colors.surfaceCard.withValues(alpha: 0.1),
+            // Hero panel pakai ink konstan (selalu gelap), jadi isi tile
+            // harus dari token statik — bukan surface yang ikut tema.
+            color: AppTheme.foreground.withValues(alpha: 0.08),
             borderRadius: AppTheme.radiusLg,
           ),
-          child: Icon(
+          child: const Icon(
             Icons.inventory_2_rounded,
-            color: context.colors.foreground,
+            color: AppTheme.foreground,
             size: 22,
           ),
         ),
@@ -189,7 +191,9 @@ class _InboundPageState extends State<InboundPage> {
                 style: GoogleFonts.roboto(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: context.colors.foreground,
+                  // Panel hero selalu gelap (ink) — teks pakai token statik
+                  // terang, bukan foreground tema yang jadi gelap di light.
+                  color: AppTheme.foreground,
                 ),
               ),
               const SizedBox(height: 2),
@@ -458,7 +462,7 @@ class _InboundPageState extends State<InboundPage> {
             ),
             borderRadius: AppTheme.radius2xl,
             border: Border.all(
-              color: context.colors.foreground.withValues(alpha: 0.08),
+              color: AppTheme.foreground.withValues(alpha: 0.08),
             ),
           ),
           child: Column(
@@ -472,7 +476,10 @@ class _InboundPageState extends State<InboundPage> {
                       style: GoogleFonts.robotoMono(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: context.colors.foreground,
+                        // Panel hero selalu gelap (ink) — teks pakai token
+                        // statik terang, bukan foreground tema yang jadi gelap
+                        // di light.
+                        color: AppTheme.foreground,
                       ),
                     ),
                   ),
@@ -652,15 +659,17 @@ class _InboundPageState extends State<InboundPage> {
           vertical: AppTheme.space2,
         ),
         decoration: highlight
-            ? BoxDecoration(
-                color: context.colors.foreground,
+            ? const BoxDecoration(
+                // Panel hero selalu gelap (ink): isi field & teks pakai token
+                // statik terang dari AppTheme, bukan token yang ikut tema.
+                color: AppTheme.foreground,
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
-                color: context.colors.foreground.withValues(alpha: 0.07),
+                color: AppTheme.foreground.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
                 border: Border.all(
-                  color: context.colors.foreground.withValues(alpha: 0.08),
+                  color: AppTheme.foreground.withValues(alpha: 0.08),
                 ),
               ),
         child: Column(
@@ -684,7 +693,7 @@ class _InboundPageState extends State<InboundPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.gray50 : context.colors.foreground,
+                color: highlight ? AppTheme.gray50 : AppTheme.foreground,
               ),
             ),
           ],

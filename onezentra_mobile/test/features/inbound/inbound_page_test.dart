@@ -176,6 +176,49 @@ void main() {
     expect(repository.listCalls, greaterThan(0));
   });
 
+  testWidgets(
+    'hero penerimaan memakai token teks panel gelap yang terbaca di light',
+    (tester) async {
+      var repository = _FakeInboundRepository(
+        records: [_record],
+        detail: _detail,
+      );
+      var auth = await _loginAuth();
+
+      await _pumpInboundPage(tester, auth, repository);
+
+      // Hero header pakai panel gelap konstan (ink). Di tema terang teks-nya
+      // harus token statik terang dari AppTheme, bukan foreground yang ikut
+      // tema (yang jadi gelap dan tak terbaca di atas panel gelap).
+      var heroTitle = find.descendant(
+        of: find.byType(SingleChildScrollView),
+        matching: find.text('Penerimaan'),
+      );
+      expect(heroTitle, findsOneWidget);
+      var heroStyle = tester.widget<Text>(heroTitle).style;
+      expect(heroStyle?.color, isNotNull);
+      expect(
+        heroStyle!.color!.computeLuminance(),
+        greaterThan(0.5),
+        reason: 'Judul hero harus terbaca di atas panel gelap di tema terang',
+      );
+
+      // Detail hero memakai field + judul yang sama token statik terang.
+      await tester.tap(find.text('PO-042'));
+      await tester.pumpAndSettle();
+
+      var heroPo = find.text('PO-042');
+      expect(heroPo, findsOneWidget);
+      var poStyle = tester.widget<Text>(heroPo).style;
+      expect(poStyle?.color, isNotNull);
+      expect(
+        poStyle!.color!.computeLuminance(),
+        greaterThan(0.5),
+        reason: 'Judul hero detail harus terbaca di atas panel gelap di light',
+      );
+    },
+  );
+
   testWidgets('tap baris membuka rincian item', (tester) async {
     var repository = _FakeInboundRepository(
       records: [_record],
