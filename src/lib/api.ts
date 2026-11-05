@@ -504,7 +504,12 @@ export const opnameSessions = {
       headers: { 'Content-Type': 'multipart/form-data' },
     } : undefined);
   },
-  complete: (id: number) => apiClient.post(`/opname-sessions/${id}/complete`),
+  // Base praktik: kirim sesi (penghitung) lalu approve/revise (approver).
+  // Koreksi wave baru berlaku saat /approve.
+  submit: (id: number) => apiClient.post(`/opname-sessions/${id}/submit`),
+  approve: (id: number) => apiClient.post(`/opname-sessions/${id}/approve`),
+  revise: (id: number, reason: string) => apiClient.post(`/opname-sessions/${id}/revise`, { reason }),
+  assign: (id: number, assignedTo: number) => apiClient.put(`/opname-sessions/${id}/assign`, { assigned_to: assignedTo }),
   cancel: (id: number, notes?: string) => apiClient.post(`/opname-sessions/${id}/cancel`, notes ? { notes } : {}),
 };
 
