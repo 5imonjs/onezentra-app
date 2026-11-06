@@ -76,6 +76,11 @@ class OpnameExpiredSessionItem {
     this.verifiedVia,
     this.expectedCrt,
     this.expectedPcs,
+    this.batchNumber,
+    this.barcodeLabel,
+    this.qtyWaveCrt,
+    this.qtyWavePcs,
+    this.statusIni,
   });
 
   factory OpnameExpiredSessionItem.fromJson(Map<String, dynamic> json) =>
@@ -92,6 +97,14 @@ class OpnameExpiredSessionItem {
           _readMap(json['wave'])?['expired_date_ini'],
         ),
         sisaHari: _readInt(_readMap(json['wave'])?['sisa_hari']),
+        // Label batch fisik terpasang di gudang — petugas mencocokkan
+        // nomor batch ini dengan label tercetak saat memverifikasi.
+        batchNumber: _readString(_readMap(json['batch'])?['batch_number']),
+        barcodeLabel: _readString(_readMap(json['batch'])?['barcode_label']),
+        // Qty wave minggu ini: acuan stok sesi dari backend.
+        qtyWaveCrt: _readDouble(_readMap(json['wave'])?['qty_ini_crt']),
+        qtyWavePcs: _readDouble(_readMap(json['wave'])?['qty_ini_pcs']),
+        statusIni: _readString(_readMap(json['wave'])?['status_ini']),
         qtyFisikCrt: _readDouble(json['qty_fisik_crt']),
         qtyFisikPcs: _readDouble(json['qty_fisik_pcs']),
         condition: _readString(json['condition']),
@@ -114,6 +127,11 @@ class OpnameExpiredSessionItem {
   final String? namaDepo;
   final String? expiredDateIni;
   final int? sisaHari;
+  final String? batchNumber;
+  final String? barcodeLabel;
+  final double? qtyWaveCrt;
+  final double? qtyWavePcs;
+  final String? statusIni;
   final double? qtyFisikCrt;
   final double? qtyFisikPcs;
   final String? condition;

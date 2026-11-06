@@ -39,6 +39,9 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   late final OpnameExpiredSessionProvider _provider =
       OpnameExpiredSessionProvider(repository: widget.repository);
 
+  // Filter cepat nama produk / kode barang / nomor batch di halaman detail.
+  String _search = '';
+
   @override
   void initState() {
     super.initState();
@@ -134,6 +137,24 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     BuildContext context,
   ) {
     var session = provider.selected!;
+    var needle = _search.trim().toLowerCase();
+    var items = session.items.where((item) {
+      if (needle.isEmpty) {
+        return true;
+      }
+      // Cari cepat: nama/kode barang, nomor batch, atau barcode label.
+      return (item.namaBarang ?? '').toLowerCase().contains(needle) ||
+          (item.kodeBarang ?? '').toLowerCase().contains(needle) ||
+          (item.batchNumber ?? '').toLowerCase().contains(needle) ||
+          (item.barcodeLabel ?? '').toLowerCase().contains(needle);
+    }).toList();
+    // Kelompok per barang (cluster): satu wave = satu produk = N baris
+    // batch. Urutan asli backend dipertahankan.
+    var clusters = <int, List<OpnameExpiredSessionItem>>{};
+    for (var item in items) {
+      clusters.putIfAbsent(item.waveId, () => []).add(item);
+    }
+
     return RefreshIndicator(
       onRefresh: () => provider.show(session.id),
       child: SingleChildScrollView(
@@ -144,15 +165,47 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
           children: [
             _buildSessionMetaCard(session, context, provider),
             const SizedBox(height: AppTheme.space4),
-            ...session.items.map(
-              (item) => _OpnameSessionItemTile(
-                key: ValueKey<int>(item.id),
-                item: item,
-                onCount: session.acceptsCounting
-                    ? () => _showVerifySheet(context, session, item)
-                    : null,
+            if (session.items.length > 1) ...[
+              TextField(
+                onChanged: (value) => setState(() => _search = value),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  prefixIcon: Icon(Icons.search_rounded, size: 20),
+                  hintText: 'Cari nama produk / kode batch...',
+                  border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: AppTheme.space4),
+            ],
+            if (items.isEmpty && needle.isNotEmpty)
+              const AppEmptyState(
+                icon: Icons.search_off_rounded,
+                title: 'Tidak ada yang cocok',
+                subtitle: 'Coba kata kunci lain — nama produk atau kode batch.',
+              )
+            else
+              for (var entry in clusters.entries) ...[
+                _OpnameClusterHeader(
+                  item: entry.value.first,
+                  total: entry.value.length,
+                  counted: entry.value.where((i) => i.isVerified).length,
+                ),
+                const SizedBox(height: AppTheme.space2),
+                ...entry.value.map(
+                  (item) => _OpnameSessionItemTile(
+                    key: ValueKey<int>(item.id),
+                    item: item,
+                    onCount: session.acceptsCounting
+                        ? () => _showVerifySheet(context, session, item)
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space4),
+              ],
             const SizedBox(height: AppTheme.space8),
           ],
         ),
@@ -356,6 +409,14 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                     item.namaBarang ?? item.kodeBarang ?? 'Item ${item.id}',
                     style: GoogleFonts.roboto(
                       fontSize: 12,
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.space2),
+                  Text(
+                    'Batch: ${item.batchNumber ?? '-'} · Acuan: CRT ${item.expectedCrt ?? '-'} / PCS ${item.expectedPcs ?? '-'}',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
                       color: context.colors.textSecondary,
                     ),
                   ),
@@ -569,7 +630,7 @@ class _OpnameSessionItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppCard(
-    padding: const EdgeInsets.all(AppTheme.space4),
+    padding: const EdgeInsets.all(AppTheme.space3),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -584,10 +645,10 @@ class _OpnameSessionItemTile extends StatelessWidget {
             const SizedBox(width: AppTheme.space2),
             Expanded(
               child: Text(
-                item.namaBarang ?? item.kodeBarang ?? 'Item ${item.id}',
+                item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(
+                style: GoogleFonts.robotoMono(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: context.colors.foreground,
@@ -598,7 +659,7 @@ class _OpnameSessionItemTile extends StatelessWidget {
         ),
         const SizedBox(height: AppTheme.space2),
         Text(
-          'Ekspektasi: CRT ${_formatQty(item.expectedCrt)} / PCS ${_formatQty(item.expectedPcs)}',
+          'Barcode: ${item.barcodeLabel ?? '-'} · Exp ${item.expiredDateIni ?? '-'}',
           style: GoogleFonts.roboto(
             fontSize: 11,
             color: context.colors.textSecondary,
@@ -606,9 +667,20 @@ class _OpnameSessionItemTile extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          'Fisik: CRT ${_formatQty(item.qtyFisikCrt)} / PCS ${_formatQty(item.qtyFisikPcs)}',
+          'Acuan: CRT ${_formatQty(item.expectedCrt)} / PCS ${_formatQty(item.expectedPcs)}'
+          '${item.qtyWaveCrt != null ? ' · Wave ${_formatQty(item.qtyWaveCrt)} CRT' : ''}',
           style: GoogleFonts.roboto(
             fontSize: 11,
+            color: context.colors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'Fisik: CRT ${_formatQty(item.qtyFisikCrt)} / PCS ${_formatQty(item.qtyFisikPcs)}'
+          '${(item.condition != null && item.condition!.isNotEmpty) ? ' · ${item.condition}' : ''}',
+          style: GoogleFonts.roboto(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
             color: context.colors.foreground,
           ),
         ),
@@ -626,6 +698,8 @@ class _OpnameSessionItemTile extends StatelessWidget {
           const SizedBox(height: AppTheme.space2),
           Text(
             'Catatan: ${item.notes}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.roboto(
               fontSize: 11,
               color: context.colors.textSecondary,
@@ -635,13 +709,88 @@ class _OpnameSessionItemTile extends StatelessWidget {
         if (onCount != null) ...[
           const SizedBox(height: AppTheme.space3),
           AppSecondaryButton(
-            text: 'Hitung Fisik',
+            text: item.isVerified ? 'Hitung Ulang' : 'Hitung Fisik',
             onPressed: onCount,
             isFullWidth: false,
             width: 150,
             height: 44,
           ),
         ],
+      ],
+    ),
+  );
+
+  static String _formatQty(double? value) {
+    if (value == null) {
+      return '-';
+    }
+    return value == value.truncateToDouble()
+        ? value.toInt().toString()
+        : value.toString();
+  }
+}
+
+/// Header cluster per barang: kode + nama + qty wave + progres hitung.
+class _OpnameClusterHeader extends StatelessWidget {
+  const _OpnameClusterHeader({
+    required this.item,
+    required this.total,
+    required this.counted,
+  });
+
+  final OpnameExpiredSessionItem item;
+  final int total;
+  final int counted;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppTheme.space3,
+      vertical: AppTheme.space2,
+    ),
+    decoration: BoxDecoration(
+      color: context.colors.foreground.withValues(alpha: 0.06),
+      borderRadius: AppTheme.radiusLg,
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${item.kodeBarang ?? '?'} — ${item.namaBarang ?? '-'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.roboto(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.foreground,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Wave ${_formatQty(item.qtyWaveCrt)} CRT'
+                '${(item.qtyWavePcs ?? 0) > 0 ? ' / ${_formatQty(item.qtyWavePcs)} PCS' : ''}'
+                '${(item.statusIni ?? '').isNotEmpty ? ' · ${item.statusIni}' : ''}',
+                style: GoogleFonts.roboto(
+                  fontSize: 11,
+                  color: context.colors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          '$counted/$total',
+          style: GoogleFonts.roboto(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: counted == total
+                ? context.colors.success
+                : context.colors.textSecondary,
+          ),
+        ),
       ],
     ),
   );

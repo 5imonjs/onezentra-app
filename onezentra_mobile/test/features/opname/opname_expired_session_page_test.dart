@@ -200,4 +200,118 @@ void main() {
       findsOneWidget,
     );
   });
+
+  test('item sesi mengurai kode batch, barcode, dan qty wave dari backend', () {
+    var item = OpnameExpiredSessionItem.fromJson({
+      'id': 11,
+      'session_id': 1,
+      'wave_id': 99,
+      'batch_id': 5,
+      'qty_fisik_crt': '5.00',
+      'disposition': 'RETUR',
+      'batch': {
+        'batch_number': 'BATCH-20261105-AB2',
+        'barcode_label': 'LBL-1024',
+      },
+      'wave': {
+        'id': 99,
+        'kode_barang': 'KB-900',
+        'nama_barang': 'Sirup Herbal 200ml',
+        'kode_depo': 'DP01',
+        'expired_date_ini': '2026-12-01',
+        'qty_ini_crt': 12,
+        'qty_ini_pcs': 0,
+        'status_ini': 'AMAN',
+      },
+      'expected_crt': '11.00',
+      'expected_pcs': null,
+    });
+
+    expect(item.batchNumber, 'BATCH-20261105-AB2');
+    expect(item.barcodeLabel, 'LBL-1024');
+    expect(item.qtyWaveCrt, 12);
+    expect(item.statusIni, 'AMAN');
+    expect(item.expectedCrt, 11);
+  });
+
+  testWidgets(
+    'detail sesi: item dikelompokkan per barang, kode batch & qty tampil',
+    (tester) async {
+      const barangA1 = OpnameExpiredSessionItem(
+        id: 11,
+        sessionId: 1,
+        waveId: 99,
+        kodeBarang: 'KB-900',
+        namaBarang: 'Sirup Herbal 200ml',
+        batchNumber: 'BATCH-11',
+        barcodeLabel: 'LBL-11',
+        expiredDateIni: '2026-12-01',
+        qtyWaveCrt: 12,
+        statusIni: 'AMAN',
+        expectedCrt: 6,
+      );
+      const barangA2 = OpnameExpiredSessionItem(
+        id: 12,
+        sessionId: 1,
+        waveId: 99,
+        kodeBarang: 'KB-900',
+        namaBarang: 'Sirup Herbal 200ml',
+        batchNumber: 'BATCH-12',
+        expiredDateIni: '2027-01-05',
+        qtyWaveCrt: 8,
+        statusIni: 'AMAN',
+        expectedCrt: 8,
+      );
+      const barangB = OpnameExpiredSessionItem(
+        id: 13,
+        sessionId: 1,
+        waveId: 100,
+        kodeBarang: 'KB-901',
+        namaBarang: 'Susu Kental Manis',
+        batchNumber: 'BATCH-13',
+        expiredDateIni: '2026-11-10',
+        qtyWaveCrt: 4,
+        statusIni: 'KRITIS',
+        expectedCrt: 4,
+      );
+      var repository = _FakeOpnameExpiredSessionRepository(
+        sessions: [
+          const OpnameExpiredSession(
+            id: 1,
+            weekStart: '2026-11-02',
+            weekEnd: '2026-11-08',
+            kodeDepo: 'DP01',
+            namaDepo: 'Depo Utama',
+            status: 'IN_PROGRESS',
+            items: [barangA1, barangA2, barangB],
+          ),
+        ],
+      );
+      var auth = await _loginAuth();
+
+      await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+      await tester.tap(find.text('Sesi minggu 2026-11-02'));
+      await tester.pumpAndSettle();
+
+      // Header cluster per barang muncul sekali dengan qty wave + progres
+      // (progres dihitung per cluster: 2 baris batch KB-900).
+      expect(find.text('KB-900 — Sirup Herbal 200ml'), findsExactly(1));
+      expect(find.text('0/2'), findsOneWidget);
+      // Kode batch tiap baris tampil mencocokkan label fisik.
+      expect(find.text('BATCH-11'), findsOneWidget);
+      expect(find.text('BATCH-12'), findsOneWidget);
+      expect(find.text('BATCH-13'), findsOneWidget);
+      // Barcode label & qty acuan baris.
+      expect(find.text('Barcode: LBL-11 · Exp 2026-12-01'), findsOneWidget);
+      expect(find.text('Acuan: CRT 6 / PCS - · Wave 12 CRT'), findsOneWidget);
+
+      // Search cepat: mengetik nama produk menyaring cluster lain keluar.
+      await tester.enterText(find.byType(TextField), 'Susu Kental');
+      await tester.pumpAndSettle();
+
+      expect(find.text('KB-900 — Sirup Herbal 200ml'), findsNothing);
+      expect(find.text('KB-901 — Susu Kental Manis'), findsOneWidget);
+      expect(find.text('BATCH-13'), findsOneWidget);
+    },
+  );
 }
