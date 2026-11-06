@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AdminDatabaseController;
+use App\Http\Controllers\Api\V1\AppReleaseController;
 use App\Http\Controllers\Api\V1\ApprovalAssignmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BatchController;
@@ -38,6 +39,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1,login-web');
+    // Info update app mobile tanpa store — publik, tanpa data sensitif.
+    Route::get('app/update-info', [AppReleaseController::class, 'latest'])->middleware('throttle:12,1,app-update');
     // Mobile (Bearer token, per-perangkat). Web SPA tetap cookie-only via /login.
     Route::post('mobile/login', [AuthController::class, 'mobileLogin'])->middleware('throttle:10,1,login-mobile');
     Route::post('mobile/logout', [AuthController::class, 'mobileLogout'])->middleware(['auth:sanctum', 'throttle:30,1,api']);

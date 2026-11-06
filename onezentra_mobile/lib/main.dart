@@ -10,6 +10,7 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/core/theme/theme_provider.dart';
 import 'package:onezentra_mobile/core/network/api_client.dart';
 import 'package:onezentra_mobile/core/network/network_status_provider.dart';
+import 'package:onezentra_mobile/core/app_update/app_update_gate.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/pages/login_page.dart';
 import 'package:onezentra_mobile/features/gate/pages/gate_page.dart';
@@ -141,8 +142,9 @@ class _OneZentraAppState extends State<OneZentraApp>
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: tp.mode,
-            builder: (context, child) =>
-                NetworkBannerHost(child: child ?? const SizedBox.shrink()),
+            builder: (context, child) => NetworkBannerHost(
+              child: AppUpdateGate(child: child ?? const SizedBox.shrink()),
+            ),
             // Pin ke bahasa Indonesia: pemilih tanggal (CupertinoDatePicker)
             // mengikuti locale — tanpa pin ini rodanya berurutan MM/DD/YYYY
             // (format AS) padahal hasilnya ditampilkan dd/MM/yyyy, ambigu

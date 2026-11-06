@@ -54,3 +54,6 @@ flutter:
     # Font Roboto & Roboto Mono di-bundle agar app tidak mengambil font dari
     # internet saat runtime (offline-first, ukuran & startup lebih pasti).
     - assets/google_fonts/
+    # Dibaca rootBundle untuk mengetahui versi terinstal (pengganti
+    # package_info_plus) — bundel yang sama, tanpa plugin tambahan.
+    - pubspec.yaml
