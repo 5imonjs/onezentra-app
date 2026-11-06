@@ -52,7 +52,7 @@ class _ItemValidationSheetState extends State<ItemValidationSheet> {
     _condition = ValidationCondition.values.contains(widget.item.condition)
         ? widget.item.condition
         : 'FISIK_BAGUS';
-    _expiredDate = DateTime.tryParse(widget.item.expiredDate ?? '');
+    _expiredDate = parseDateOnlyLocal(widget.item.expiredDate ?? '');
     _expiredController.text = formatDateId(_expiredDate);
   }
 

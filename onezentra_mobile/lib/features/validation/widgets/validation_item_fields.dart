@@ -523,6 +523,34 @@ class _UmurStat extends StatelessWidget {
   );
 }
 
+/// Parse tanggal date-only ('yyyy-mm-dd') dari backend menjadi tanggal
+/// LOKAL, bukan UTC-midnight bawaan DateTime.tryParse — bila tidak, di
+/// zona waktu di belakang UTC tanggal tampil mundur sehari dan setiap
+/// "edit" terasa memaksa nilai berubah.
+DateTime? parseDateOnlyLocal(String? value) {
+  var raw = (value ?? '').trim();
+  if (raw.isEmpty) {
+    return null;
+  }
+  var dateOnly = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(raw);
+  if (dateOnly != null) {
+    return DateTime(
+      int.parse(dateOnly[1]!),
+      int.parse(dateOnly[2]!),
+      int.parse(dateOnly[3]!),
+    );
+  }
+  // Timestamp (mis. WIB tengah malam yang di-serialize sebagai UTC
+  // sebelumnya, 2027-06-05T17:00Z) — konversi ke kalender lokal dulu,
+  // baru ambil komponen tanggalnya; bukan komponen UTC.
+  var parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    return null;
+  }
+  var local = parsed.toLocal();
+  return DateTime(local.year, local.month, local.day);
+}
+
 /// Format tanggal Indonesia: dd/MM/yyyy (dipakai controller & pratinjau).
 String formatDateId(DateTime? value) {
   if (value == null) {

@@ -27,6 +27,34 @@ void main() {
     expect(formatDateId(null), '');
   });
 
+  test(
+    'parseDateOnlyLocal memikir tanggal date-only sebagai tanggal lokal',
+    () {
+      // DateTime.tryParse keliru membacanya sebagai UTC 00:00 sehingga di
+      // zona waktu di belakang UTC tanggal tampil mundur sehari dan tiap
+      // buka-edit terasa memaksa nilai berubah — regresi untuk bug itu.
+      var parsed = parseDateOnlyLocal('2027-06-06')!;
+      expect(parsed.year, 2027);
+      expect(parsed.month, 6);
+      expect(parsed.day, 6);
+      expect(parsed.isUtc, isFalse);
+      // Round-trip tampil: simpan → muat lagi harus tetap 06/06/2027.
+      expect(formatDateId(parseDateOnlyLocal('2027-06-06')), '06/06/2027');
+      // Timestamp UTC dari server — dinormalisasi ke kalender lokal
+      // (di WIB berarti 06/06; di UTC berarti 05/06) — bukan komponen UTC,
+      // jangan asumsikan suffix offset dari mesin penguji.
+      var ts = '2027-06-05T17:00:00.000Z';
+      var local = DateTime.parse(ts).toLocal();
+      var normalized = parseDateOnlyLocal(ts)!;
+      expect(
+        [normalized.year, normalized.month, normalized.day],
+        [local.year, local.month, local.day],
+      );
+      expect(parseDateOnlyLocal(''), isNull);
+      expect(parseDateOnlyLocal(null), isNull);
+    },
+  );
+
   testWidgets('pickExpiredDate mengembalikan tanggal yang dipilih', (
     tester,
   ) async {

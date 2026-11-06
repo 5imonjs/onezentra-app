@@ -9,6 +9,7 @@ import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/validation/models/validation_models.dart';
 import 'package:onezentra_mobile/features/validation/providers/validation_provider.dart';
+import 'package:onezentra_mobile/features/validation/widgets/validation_item_fields.dart';
 import 'package:onezentra_mobile/features/validation/widgets/label_print_sheet.dart';
 import 'package:onezentra_mobile/features/validation/widgets/extra_item_sheet.dart';
 import 'package:onezentra_mobile/features/validation/widgets/item_validation_sheet.dart';
@@ -1522,7 +1523,7 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
   }
 
   static String _shortDate(String value) {
-    var date = DateTime.tryParse(value);
+    var date = parseDateOnlyLocal(value);
     if (date == null) {
       return value;
     }
