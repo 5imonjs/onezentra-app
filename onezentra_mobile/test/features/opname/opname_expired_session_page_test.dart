@@ -23,6 +23,7 @@ class _FakeOpnameExpiredSessionRepository
   final List<OpnameExpiredSession> sessions;
   final bool fail;
   int listCalls = 0;
+  bool? lastMine;
 
   @override
   Future<List<OpnameExpiredSession>> list({
@@ -32,6 +33,7 @@ class _FakeOpnameExpiredSessionRepository
     bool? mine,
   }) async {
     listCalls++;
+    lastMine = mine;
     if (fail) {
       throw const ApiException(
         'Gagal memuat sesi opname. Silakan coba lagi.',
@@ -158,6 +160,8 @@ void main() {
     expect(find.text('Terbuka'), findsOneWidget);
     expect(find.text('Sesi minggu 2026-11-02'), findsOneWidget);
     expect(find.text('Depo Utama'), findsOneWidget);
+    // Beranda = daftar tugas: hanya sesi yang ditugaskan ke user.
+    expect(repository.lastMine, isTrue);
   });
 
   testWidgets('membuka detail sesi menampilkan aksi mulai sesi', (

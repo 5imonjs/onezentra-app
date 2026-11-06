@@ -115,10 +115,10 @@ void main() {
     expect(find.text('Validasi SJ'), findsOneWidget);
     expect(find.text('Check Out Point'), findsOneWidget);
     expect(find.text('Bongkar & selesaikan penerimaan'), findsOneWidget);
-    // Bagian opname stok: sesi petugas + monitoring depo.
+    // Bagian opname: satu pintu — tugas sesi untuk user (dibuat dari web).
     expect(find.text('Opname stok'), findsOneWidget);
-    expect(find.text('Sesi Opname'), findsOneWidget);
     expect(find.text('Opname Expired'), findsOneWidget);
+    expect(find.text('Sesi Opname'), findsNothing);
     expect(
       find.text('Gate, validasi, dan penerimaan dalam satu tempat'),
       findsOneWidget,
@@ -175,9 +175,7 @@ void main() {
   testWidgets('bagian opname muncul untuk petugas opname tanpa izin gate', (
     tester,
   ) async {
-    var auth = await _loginAuth(
-      permissions: ['opname.session.view', 'opname.view'],
-    );
+    var auth = await _loginAuth(permissions: ['opname.session.view']);
 
     await _pumpHomePage(tester, auth);
 
@@ -185,8 +183,19 @@ void main() {
     expect(find.text('Check In Point'), findsNothing);
     expect(find.text('Riwayat'), findsNothing);
     expect(find.text('Opname stok'), findsOneWidget);
-    expect(find.text('Sesi Opname'), findsOneWidget);
     expect(find.text('Opname Expired'), findsOneWidget);
+  });
+
+  testWidgets('monitoring opname (hanya opname.view) tidak muncul di beranda', (
+    tester,
+  ) async {
+    var auth = await _loginAuth(permissions: ['opname.view']);
+
+    await _pumpHomePage(tester, auth);
+
+    // Mobile = tugas lapangan; tugas sesi butuh izin sesi. Monitoring via web.
+    expect(find.text('Opname stok'), findsNothing);
+    expect(find.text('Opname Expired'), findsNothing);
   });
 
   testWidgets('tanpa permission apa pun hanya pesan hubungi admin', (
@@ -227,7 +236,7 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     var phoneCards = find.byType(AppCard);
-    expect(phoneCards, findsNWidgets(6));
+    expect(phoneCards, findsNWidgets(5));
     var phoneFirst = tester.getRect(phoneCards.at(0));
     var phoneSecond = tester.getRect(phoneCards.at(1));
     expect(phoneFirst.left, closeTo(phoneSecond.left, 0.1));
@@ -238,16 +247,14 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     var wideCards = find.byType(AppCard);
-    expect(wideCards, findsNWidgets(6));
-    var rects = [for (var i = 0; i < 6; i++) tester.getRect(wideCards.at(i))];
-    // Tiga langkah alur kerja sebaris; dua kartu opname sebaris di section
-    // berikutnya; Riwayat penuh lebar di bawahnya.
+    expect(wideCards, findsNWidgets(5));
+    var rects = [for (var i = 0; i < 5; i++) tester.getRect(wideCards.at(i))];
+    // Tiga langkah alur kerja sebaris; kartu opname & Riwayat di bawahnya.
     expect(rects[0].top, closeTo(rects[1].top, 0.1));
     expect(rects[0].top, closeTo(rects[2].top, 0.1));
-    expect(rects[3].top, closeTo(rects[4].top, 0.1));
     expect(rects[3].top, greaterThan(rects[0].bottom));
-    expect(rects[5].top, greaterThan(rects[3].bottom));
-    expect(rects[5].width, greaterThan(rects[3].width));
+    expect(rects[4].top, greaterThan(rects[3].bottom));
+    expect(rects[4].width, greaterThan(rects[3].width));
     for (var rect in rects) {
       expect(rect.height, lessThan(200));
     }
@@ -265,7 +272,7 @@ void main() {
     await _pumpHomePage(tester, auth);
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(AppCard), findsNWidgets(6));
+    expect(find.byType(AppCard), findsNWidgets(5));
   });
 
   testWidgets('banner retry tampil saat refresh izin gagal', (tester) async {
