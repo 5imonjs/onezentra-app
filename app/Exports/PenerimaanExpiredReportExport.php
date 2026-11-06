@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Concerns\FromQuery;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -36,7 +35,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Huruf kolom pada formula dibangun dari konstanta di bawah, bukan ditulis
  * manual — kalau urutan kolom berubah, formulanya ikut menyesuaikan.
  */
-class PenerimaanExpiredReportExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, WithEvents, WithHeadings, WithMapping, WithStyles
+class PenerimaanExpiredReportExport implements FromQuery, WithColumnFormatting, WithEvents, WithHeadings, WithMapping, WithStyles
 {
     /**
      * Posisi kolom (1-based) pada sheet export — sumber tunggal untuk semua
@@ -169,6 +168,15 @@ class PenerimaanExpiredReportExport implements FromQuery, ShouldAutoSize, WithCo
         // Sheet::getDelegate() yang mengembalikan Worksheet — tidak ada
         // getWorksheet() di versi Maatwebsite ini.
         $sheet = $event->sheet->getDelegate();
+
+        // Lebar kolom TETAP (bukan ShouldAutoSize): AutoSize wajib membaca
+        // seluruh dataset untuk menghitung lebar → pemakan memori terbesar
+        // dan penyebab utama OOM/502 pada export besar di server kecil.
+        // Urutan lebar mengikuti urutan kolom di headings().
+        foreach ([6, 20, 18, 38, 20, 20, 12, 12, 14, 16, 12, 20, 12] as $i => $width) {
+            $sheet->getColumnDimension(self::letterForColumn($i + 1))->setWidth($width);
+        }
+
         $today = Carbon::today()->startOfDay();
         $lastColumn = self::letterForColumn(count($this->headings()));
 
