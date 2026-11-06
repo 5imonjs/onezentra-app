@@ -52,6 +52,10 @@ export function getErrorMessage(e: unknown, fallback = 'Terjadi kesalahan'): str
     : undefined;
   if (err.response?.status === 403) return data?.message ?? alias ?? 'Anda tidak memiliki izin untuk melakukan aksi ini.';
 
+  if (err.response?.status === 502 || err.response?.status === 504) {
+    return 'Server membutuhkan waktu lebih lama atau sedang sibuk. Coba lagi sebentar — kalau masih gagal, persempit filter (tanggal/depo) lalu export.';
+  }
+
   // Timeout upload (ECONNABORTED): beri tahu user apa yang terjadi dan apa
   // yang bisa dilakukan, bukan pesan teknis mentah dari axios.
   if (err.code === 'ECONNABORTED' || /timeout of .* exceeded|timeout/i.test(err.message ?? '')) {
@@ -105,6 +109,12 @@ export const apiClient = axios.create({
     'Accept': 'application/json',
   },
 });
+
+/**
+ * Timeout khusus export laporan (.xlsx hasil gabungan banyak join + formula):
+ * 15 dtk bawaan terlalu cepat habis sebelum server sempat men-generate file.
+ */
+export const REPORT_EXPORT_TIMEOUT_MS = 300000;
 
 /**
  * Timeout khusus upload multipart (lampiran banyak/besar): 15 dtk bawaan
@@ -702,17 +712,17 @@ export const sjValidations = {
 
 export const reports = {
   selisihQty: (params?: Record<string, unknown>) => apiClient.get('/reports/selisih-qty', { params }),
-  selisihQtyExport: (params?: Record<string, unknown>) => apiClient.get('/reports/selisih-qty/export', { params, responseType: 'blob' }),
+  selisihQtyExport: (params?: Record<string, unknown>) => apiClient.get('/reports/selisih-qty/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
   rencanaKirim: (params?: Record<string, unknown>) => apiClient.get('/reports/rencana-kirim', { params }),
-  rencanaKirimExport: (params?: Record<string, unknown>) => apiClient.get('/reports/rencana-kirim/export', { params, responseType: 'blob' }),
+  rencanaKirimExport: (params?: Record<string, unknown>) => apiClient.get('/reports/rencana-kirim/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
   penerimaan: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan', { params }),
-  penerimaanExport: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan/export', { params, responseType: 'blob' }),
+  penerimaanExport: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
   penerimaanBatchExpired: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan-batch-expired', { params }),
-  penerimaanBatchExpiredExport: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan-batch-expired/export', { params, responseType: 'blob' }),
+  penerimaanBatchExpiredExport: (params?: Record<string, unknown>) => apiClient.get('/reports/penerimaan-batch-expired/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
   biayaThl: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl', { params }),
-  biayaThlExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl/export', { params, responseType: 'blob' }),
+  biayaThlExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
   biayaRetribusi: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi', { params }),
-  biayaRetribusiExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi/export', { params, responseType: 'blob' }),
+  biayaRetribusiExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
   deleteRows: (type: string, ids: number[]) => apiClient.delete('/reports/rows', { data: { type, ids } }),
 };
 
