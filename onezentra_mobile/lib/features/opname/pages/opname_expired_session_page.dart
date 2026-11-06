@@ -1386,22 +1386,36 @@ class _OpnameSessionItemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     var colors = context.colors;
     var deltaInfo = _deltaInfo(context);
+    var verified = item.isVerified;
 
+    // Warna membedakan baris yang sudah/belum diinput: sudah dihitung
+    // bernuansa hijau (latar + garis pinggir), belum tetap netral.
     return AppCard(
       padding: const EdgeInsets.all(AppTheme.space3),
+      color: verified ? colors.success.withValues(alpha: 0.06) : null,
+      border: verified
+          ? Border.all(color: colors.success.withValues(alpha: 0.55))
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: item.isVerified ? colors.success : colors.border,
+              if (verified)
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 18,
+                  color: colors.success,
+                )
+              else
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors.border,
+                  ),
                 ),
-              ),
               const SizedBox(width: AppTheme.space2),
               Expanded(
                 child: Text(
@@ -1431,6 +1445,28 @@ class _OpnameSessionItemTile extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       color: deltaInfo.$2,
+                    ),
+                  ),
+                )
+              else
+                // Status input yang jelas saat belum ada chip hasil hitung.
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: verified
+                        ? colors.success.withValues(alpha: 0.12)
+                        : colors.textMuted.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    verified ? 'Sudah diinput' : 'Belum diinput',
+                    style: GoogleFonts.roboto(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: verified ? colors.success : colors.textMuted,
                     ),
                   ),
                 ),

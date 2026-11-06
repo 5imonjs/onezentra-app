@@ -11,6 +11,7 @@ import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
 import 'package:onezentra_mobile/features/auth/repositories/auth_repository.dart';
 import 'package:onezentra_mobile/features/opname/models/opname_expired_session_models.dart';
 import 'package:onezentra_mobile/features/opname/pages/opname_expired_session_page.dart';
+import 'package:onezentra_mobile/shared/widgets/app_widgets.dart';
 import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
 
 class _FakeOpnameExpiredSessionRepository
@@ -351,6 +352,72 @@ void main() {
       expect(find.text('BATCH-13'), findsOneWidget);
     },
   );
+
+  testWidgets('detail sesi: baris sudah diinput dibedakan warna dari belum', (
+    tester,
+  ) async {
+    // Produk A sudah diinput petugas (tanpa acuan → chip status input),
+    // Produk B belum disentuh sama sekali.
+    const sudah = OpnameExpiredSessionItem(
+      id: 21,
+      sessionId: 1,
+      waveId: 99,
+      kodeBarang: 'KB-910',
+      namaBarang: 'Produk A',
+      batchNumber: 'PROD-A',
+      barcodeLabel: 'LBL-21',
+      expiredDateIni: '2027-01-10',
+      qtyWaveCrt: 5,
+      statusIni: 'AMAN',
+      qtyFisikCrt: 5,
+      verifiedAt: '2026-11-06T02:30:00Z',
+      verifiedVia: 'manual',
+    );
+    const belum = OpnameExpiredSessionItem(
+      id: 22,
+      sessionId: 1,
+      waveId: 100,
+      kodeBarang: 'KB-911',
+      namaBarang: 'Produk B',
+      batchNumber: 'PROD-B',
+      expiredDateIni: '2026-12-20',
+      qtyWaveCrt: 3,
+      statusIni: 'AMAN',
+      expectedCrt: 3,
+    );
+    var repository = _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [sudah, belum],
+        ),
+      ],
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    // Status input jelas: hijau "Sudah diinput" vs abu "Belum diinput".
+    expect(find.text('Sudah diinput'), findsOneWidget);
+    expect(find.text('Belum diinput'), findsOneWidget);
+    // Penanda visual hijau: ikon ✓ hanya di baris yang sudah dihitung.
+    expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+    // Kartu yang sudah diinput bernuansa hijau (warna latar tidak null).
+    expect(
+      tester
+          .widgetList<AppCard>(find.byType(AppCard))
+          .where((c) => c.color != null)
+          .length,
+      greaterThanOrEqualTo(1),
+    );
+  });
 
   // Fixture sesi berjalan dengan satu label batch untuk uji sheet hitung.
   _FakeOpnameExpiredSessionRepository buildCountingFixture({
