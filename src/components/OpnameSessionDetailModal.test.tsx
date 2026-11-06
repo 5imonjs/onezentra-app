@@ -138,33 +138,25 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
     expect(screen.getAllByText(/Teridentifikasi/).length).toBeGreaterThan(1);
   });
 
-  it('baris terverifikasi menampilkan acuan + selisih berwarna (merah bila fisik kurang) + disposisi', () => {
-    renderModal([item(1), item(2, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 49, expected_crt: '50', disposition: 'RETUR' })]);
+  it('baris terverifikasi menampilkan acuan + selisih berwarna (merah bila fisik kurang)', () => {
+    renderModal([item(1), item(2, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 49, expected_crt: '50' })]);
 
     expect(screen.getByText('Acuan 50 CRT')).toBeInTheDocument();
     const diff = screen.getByText('Selisih -1');
     expect(diff).toHaveClass('text-red-600');
-    expect(screen.getByText('Disposisi: RETUR')).toBeInTheDocument();
   });
 
-  it('disposisi wajib: simpan tanpa memilih disposisi gagal, dengan disposisi terkirim ke backend', async () => {
+  it('tanpa disposisi: simpan langsung terkirim bidang tanpa disposisi (proses dilepas)', async () => {
     renderModal([item(1, { expected_crt: '11' })]);
     openCountingForm();
 
     fireEvent.input(screen.getByLabelText('Fisik CRT *'), { target: { value: '11' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan Hitungan' }));
 
-    // Validasi frontend: disposisi belum dipilih.
-    expect(notifyGlobal).toHaveBeenCalledWith('Pilih disposisi tindak lanjut (LANJUT / RETUR / DISPOSAL).', 'error');
-    expect(api.verifyItem).not.toHaveBeenCalled();
-
-    fireEvent.change(screen.getByLabelText('Disposisi *'), { target: { value: 'LANJUT' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Simpan Hitungan' }));
-
-    // Terkirim sebagai FormData dengan disposition (divalidasi ulang di backend).
+    // Langsung terkirim — frontend tidak lagi menuntut disposisi.
     await vi.waitFor(() => expect(api.verifyItem).toHaveBeenCalledTimes(1));
     const fd = (api.verifyItem.mock.calls as unknown as Array<[number, number, FormData]>)[0][2];
-    expect(fd.get('disposition')).toBe('LANJUT');
+    expect(fd.has('disposition')).toBe(false);
   });
 
   it('penghitung mengirim sesi (bukan menyelesaikan sendiri): tombol Kirim Sesi terkunci sampai semua baris terhitung', async () => {
@@ -265,7 +257,6 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit Hitungan' })[0]);
 
     expect(screen.getByLabelText('Fisik CRT *')).toHaveValue(48);
-    expect(screen.getByLabelText('Disposisi *')).toHaveValue('LANJUT');
     expect(screen.getByLabelText('Kondisi')).toHaveValue('FISIK_BAGUS');
   });
 
@@ -281,7 +272,7 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
       'Batch',
       'Produk',
       'Status',
-      'Hasil & Disposisi',
+      'Hasil Hitung',
       'Aksi',
     ]);
     expect(screen.getAllByText(/Terhitung: 50/)).toHaveLength(1);
