@@ -59,6 +59,8 @@ interface NpnItem {
   szBarcodeTersier: string;
   szStatus: string;
   dtmValidEnd: string;
+  is_provisional?: boolean;
+  provisional_note?: string | null;
   SAPszSalesOrgId: string;
   szTaxTypeId: string;
   decRate: number;
@@ -78,6 +80,12 @@ export default function NpnPage() {
   const [sortKey, setSortKey] = useState<string>('szNickName');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [showImport, setShowImport] = useState(false);
+  // NPN Provisi — barang sudah diterima tapi belum ada di NPN/BOS/SAP.
+  // Tetap jalan penuh di penerimaan & opname expired; hanya identitas
+  // yang belum diverifikasi.
+  const [showAddProvisional, setShowAddProvisional] = useState(false);
+  const [provisionalForm, setProvisionalForm] = useState({ szNickName: '', BOSnetszProductId: '', szCompUomId: '', szBarcode: '', provisional_note: '' });
+  const [savingProvisional, setSavingProvisional] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ message: string; ok?: boolean; imported?: number; updated?: number; errors?: { row: number; errors: string[] }[] } | null>(null);
 
@@ -224,6 +232,32 @@ export default function NpnPage() {
       return;
     }
     setSelectedFile(file);
+  };
+
+  const submitProvisional = async () => {
+    if (!provisionalForm.szNickName.trim()) {
+      notifyGlobal('Nama produk wajib diisi untuk produk provisi.', 'error');
+      return;
+    }
+    setSavingProvisional(true);
+    try {
+      await npn.create({
+        szNickName: provisionalForm.szNickName.trim(),
+        BOSnetszProductId: provisionalForm.BOSnetszProductId.trim() || undefined,
+        szCompUomId: provisionalForm.szCompUomId.trim() || undefined,
+        szBarcode: provisionalForm.szBarcode.trim() || undefined,
+        provisional_note: provisionalForm.provisional_note.trim() || undefined,
+        is_provisional: true,
+      });
+      notifyGlobal('Produk provisi terdaftar — bisa dipakai penerimaan & opname expired. Sinkronkan ke master BOS/SAP setelah tersedia.', 'success');
+      setShowAddProvisional(false);
+      setProvisionalForm({ szNickName: '', BOSnetszProductId: '', szCompUomId: '', szBarcode: '', provisional_note: '' });
+      loadItems();
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal mendaftarkan produk provisi'));
+    } finally {
+      setSavingProvisional(false);
+    }
   };
 
   const handleImport = async () => {
@@ -386,6 +420,14 @@ export default function NpnPage() {
                 </button>
                 )}
                 {hasPermission('npn.create') && (
+                  <button onClick={() => setShowAddProvisional(true)} className="btn-secondary" title="Barang diterima tapi belum ada di NPN/BOS — tetap jalan di penerimaan & opname expired">
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                      Produk Provisi
+                    </span>
+                  </button>
+                )}
+                {hasPermission('npn.create') && (
                   <button onClick={() => setShowImport(true)} className="btn-primary">
                     <span className="flex items-center gap-2">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
@@ -453,7 +495,10 @@ export default function NpnPage() {
                     <td className="px-5 py-3 text-center text-sm text-muted-foreground">{(page - 1) * 20 + index + 1}</td>
                     <td className="px-5 py-3 text-sm"><div className="font-medium text-foreground">{item.szNickName || '-'}</div></td>
                     <td className="px-5 py-3 text-sm text-foreground">{item.szNickNameNew || '-'}</td>
-                    <td className="px-5 py-3 text-sm font-mono text-foreground">{item.BOSnetszProductId || '-'}</td>
+                    <td className="px-5 py-3 text-sm font-mono text-foreground">{item.BOSnetszProductId || '-'}
+                    {item.is_provisional && (
+                      <span title={item.provisional_note || 'Produk provisi — belum diverifikasi di NPN/BOS/SAP'} className="ml-1.5 inline-flex align-middle rounded border border-amber-300 bg-amber-50 px-1 py-0.5 text-[10px] font-sans font-bold text-amber-700">Provisi</span>
+                    )}</td>
                     <td className="px-5 py-3 text-sm font-mono text-foreground">{item.SAPszProductId || '-'}</td>
                     <td className="px-5 py-3 text-sm text-muted-foreground">{item.szShortDescription || '-'}</td>
                     <td className="px-5 py-3 text-sm">{item.szBarcode ? <span className="font-mono text-foreground">{item.szBarcode}</span> : <span className="text-gray-400 italic">Belum diisi</span>}</td>
@@ -715,6 +760,48 @@ export default function NpnPage() {
         )}
       </Modal>
 
+      {/* Tambah Produk Provisi Modal */}
+      <Modal open={showAddProvisional} onClose={() => setShowAddProvisional(false)} title="Tambah Produk Provisi" subtitle="Barang sudah diterima tapi belum terdaftar di NPN/BOS/SAP" size="md"
+        footer={
+          <>
+            <button onClick={() => setShowAddProvisional(false)} className="btn-secondary">Batal</button>
+            <button onClick={submitProvisional} disabled={savingProvisional || !provisionalForm.szNickName.trim()} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+              {savingProvisional ? (
+                <span className="flex items-center gap-2"><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg> Mendaftar...</span>
+              ) : 'Daftarkan Provisi'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
+            <strong>Produk provisi</strong> bisa langsung dipakai di alur validasi SJ, penerimaan (bongkar), dan opname expired seperti produk biasa — bedanya hanya identitasnya <strong>belum diverifikasi BOS/SAP</strong>. Tandai &amp; sinkronkan ke master BOS/SAP setelah tersedia; data tidak hilang karena memang larinya ke penerimaan &amp; opname expired.
+          </div>
+          <div>
+            <label htmlFor="provisional-name" className="block text-xs font-semibold text-muted-foreground mb-1.5">Nama produk *</label>
+            <input id="provisional-name" value={provisionalForm.szNickName} onChange={(e) => setProvisionalForm({ ...provisionalForm, szNickName: e.target.value })} placeholder="Mis. Sirup Herbal XYZ 500ml" className="input-field text-sm" autoFocus />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="provisional-bos" className="block text-xs font-semibold text-muted-foreground mb-1.5">Kode sementara</label>
+              <input id="provisional-bos" value={provisionalForm.BOSnetszProductId} onChange={(e) => setProvisionalForm({ ...provisionalForm, BOSnetszProductId: e.target.value })} placeholder="Otomatis bila kosong (T-…)" className="input-field text-sm font-mono" />
+              <p className="mt-1 text-[10px] text-muted-foreground">Kode asli BOS/SAP baru bisa ditautkan setelah registrasi resmi.</p>
+            </div>
+            <div>
+              <label htmlFor="provisional-uom" className="block text-xs font-semibold text-muted-foreground mb-1.5">Satuan</label>
+              <input id="provisional-uom" value={provisionalForm.szCompUomId} onChange={(e) => setProvisionalForm({ ...provisionalForm, szCompUomId: e.target.value })} placeholder="CRT / PCS" className="input-field text-sm font-mono" />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="provisional-barcode" className="block text-xs font-semibold text-muted-foreground mb-1.5">Barcode (opsional)</label>
+            <input id="provisional-barcode" value={provisionalForm.szBarcode} onChange={(e) => setProvisionalForm({ ...provisionalForm, szBarcode: e.target.value })} placeholder="899…" className="input-field text-sm font-mono" />
+          </div>
+          <div>
+            <label htmlFor="provisional-note" className="block text-xs font-semibold text-muted-foreground mb-1.5">Catatan</label>
+            <input id="provisional-note" value={provisionalForm.provisional_note} onChange={(e) => setProvisionalForm({ ...provisionalForm, provisional_note: e.target.value })} placeholder="Asal barang / SJ / referensi SJ" className="input-field text-sm" />
+          </div>
+        </div>
+      </Modal>
       {/* Import Modal */}
       <Modal open={showImport} onClose={() => { setShowImport(false); setImportResult(null); setSelectedFile(null); }} title="Import NPN" subtitle="Upload file Excel untuk import data" size="md"
         footer={

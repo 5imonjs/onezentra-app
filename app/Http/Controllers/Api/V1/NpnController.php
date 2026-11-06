@@ -14,8 +14,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
-use Maatwebsite\Excel\Validators\ValidationException;
+use Maatwebsite\Excel\Validators\ValidationException as ExcelValidationException;
 
 class NpnController extends Controller
 {
@@ -73,9 +74,28 @@ class NpnController extends Controller
             'SAPszProductId' => 'nullable|string|max:20',
             'szNickName' => 'nullable|string|max:50',
             'szShortDescription' => 'nullable|string|max:255',
+            'szCompUomId' => 'nullable|string|max:20',
+            'BOSnetszUomId' => 'nullable|string|max:20',
+            'szBarcode' => 'nullable|string|max:20',
+            'is_provisional' => 'nullable|boolean',
+            'provisional_note' => 'nullable|string|max:255',
         ]);
 
         $validated['created_by'] = Auth::id();
+        // NPN provisi: ditambahkan manual karena barang sudah diterima tapi
+        // belum terdaftar di master BOS/SAP. Wajib nama produk; kode
+        // sementara bisa dikosongkan — sistem membangkitkannya.
+        if (! empty($validated['is_provisional'])) {
+            if (blank($validated['szNickName'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'szNickName' => ['Nama produk wajib diisi untuk produk provisi (belum ada di NPN).'],
+                ]);
+            }
+            if (blank($validated['BOSnetszProductId'] ?? null)) {
+                $validated['BOSnetszProductId'] = $this->uniqueProvisionalCode();
+            }
+        }
+
         // Kunci depo untuk user scoped agar tidak bisa menyuntik baris ke depo lain.
         $validated = $this->currentUser()->depotAttributes($validated);
         $npn = Npn::create($validated);
@@ -203,7 +223,7 @@ class NpnController extends Controller
                 'imported' => $import->imported,
                 'updated' => $import->updated,
             ]);
-        } catch (ValidationException $e) {
+        } catch (ExcelValidationException $e) {
             $failures = $e->failures();
             Log::error('NPN Import Validation Error', ['failures' => $failures]);
 
@@ -399,5 +419,20 @@ class NpnController extends Controller
             'offset' => $offset,
             'has_more' => $offset + $returned < $total,
         ]);
+    }
+
+    /**
+     * Bangkitkan kode sementara untuk NPN provisi (belum ada di master
+     * BOS/SAP) — format T-YYMMDD-#### dengan cek bentrok acak. Kode
+     * diganti saat registrasi asli; provisi tetap terlacak lewat flag
+     * `is_provisional`.
+     */
+    private function uniqueProvisionalCode(): string
+    {
+        do {
+            $code = sprintf('T-%s-%04d', now()->format('ymd'), random_int(1, 9999));
+        } while (Npn::where('BOSnetszProductId', $code)->exists());
+
+        return $code;
     }
 }

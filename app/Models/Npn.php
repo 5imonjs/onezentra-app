@@ -34,6 +34,7 @@ class Npn extends Model
         'decStoreTemp',
         'szBarcode', 'szBarcodeSekunder', 'szBarcodeTersier',
         'szStatus', 'dtmValidEnd',
+        'is_provisional', 'provisional_note',
         'SAPszSalesOrgId', 'szTaxTypeId', 'decRate',
     ];
 
@@ -89,6 +90,7 @@ class Npn extends Model
             'decHeight' => 'decimal:2',
             'decVolume' => 'decimal:2',
             'dtmValidEnd' => 'datetime',
+            'is_provisional' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

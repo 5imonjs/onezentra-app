@@ -374,6 +374,7 @@ export const permissions = {
 
 export const npn = {
   list: (params?: Record<string, unknown>) => apiClient.get('/npn', { params }),
+  create: (data: Record<string, unknown>) => apiClient.post('/npn', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/npn/${id}`, data),
   delete: (id: number) => apiClient.delete(`/npn/${id}`),
   bulkDelete: (ids: number[]) => apiClient.post('/npn/bulk-delete', { ids }),
