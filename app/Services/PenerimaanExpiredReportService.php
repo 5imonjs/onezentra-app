@@ -74,6 +74,14 @@ class PenerimaanExpiredReportService
      * laporan (dengan cluster kosong) — laporan penerimaan tidak boleh
      * kehilangan baris hanya karena master belum lengkap.
      *
+     * Anti-duplikasi join master (ketiganya deterministik, cocok ≤1 baris):
+     * - `npn.BOSnetszProductId` sudah unique index — join langsung aman.
+     * - `standar_umur_produk.material` hanya index biasa → dedup MIN(id)
+     *   per material via subquery (format sama dengan cp_ids di bawah).
+     * - `cluster_principal.product_sku` unik, tapi satu join OR
+     *   (nickname lama ATAU baru) bisa cocok ke 2 baris bila keduanya
+     *   punya baris CP → diganti dua join terpisah, yang baru menang.
+     *
      * @param  array<string, string|null>  $filters
      */
     public static function query(array $filters, ?User $user = null): Builder
@@ -85,8 +93,8 @@ class PenerimaanExpiredReportService
             // manual gudang sebagai kolom PRODUK. kode_barang (BOSnet 14 digit)
             // tetap ikut terbawa karena sudah jadi kolom asli receiving_items.
             ->addSelect('npn.szNickName as sku')
-            ->addSelect(DB::raw('COALESCE(cp.principal_1, cp_nick.principal_1, sup.principal) as principal_1'))
-            ->addSelect(DB::raw('COALESCE(cp.principal_2, cp_nick.principal_2) as principal_2'))
+            ->addSelect(DB::raw('COALESCE(cp.principal_1, cp_nick_new.principal_1, cp_nick_old.principal_1, sup.principal) as principal_1'))
+            ->addSelect(DB::raw('COALESCE(cp.principal_2, cp_nick_new.principal_2, cp_nick_old.principal_2) as principal_2'))
             ->leftJoin('npn', 'npn.BOSnetszProductId', '=', 'receiving_items.kode_barang')
             // Anti-duplikasi: bosnetsz_product_id tidak unik di master
             // (1 BOS bisa menunjuk 2 baris) — tanpa dedup, baris laporan
@@ -102,13 +110,32 @@ class PenerimaanExpiredReportService
                 'receiving_items.kode_barang'
             )
             ->leftJoin('cluster_principal as cp', 'cp.id', '=', 'cp_ids.id')
-            // Transisi: baris CP yang belum di-backfill ID stabil masih
-            // terjangkau lewat nickname lama maupun baru.
-            ->leftJoin('cluster_principal as cp_nick', function ($join): void {
-                $join->on('cp_nick.product_sku', '=', 'npn.szNickName')
-                    ->orOn('cp_nick.product_sku', '=', 'npn.szNickNameNew');
+            // Transisi nickname: yang BARU dulu, yang lama hanya bila yang
+            // baru tidak ada. Satu join OR akan menggandakan baris bila
+            // nickname lama & baru sama-sama punya baris CP.
+            ->leftJoin('cluster_principal as cp_nick_new', 'cp_nick_new.product_sku', '=', 'npn.szNickNameNew')
+            ->leftJoin('cluster_principal as cp_nick_old', function ($join): void {
+                $join->on('cp_nick_old.product_sku', '=', 'npn.szNickName')
+                    ->whereNull('cp_nick_new.id');
             })
-            ->leftJoin('standar_umur_produk as sup', 'sup.material', '=', 'npn.SAPszProductId')
+            // material tidak unik di standar_umur_produk — dedup MIN(id)
+            // per material supaya satu baris ledger tidak mengganda.
+            ->leftJoinSub(
+                DB::table('standar_umur_produk')
+                    ->selectRaw('material, MIN(id) as id')
+                    ->whereNotNull('material')
+                    ->groupBy('material'),
+                'sup_ids',
+                'sup_ids.material',
+                '=',
+                'npn.SAPszProductId'
+            )
+            ->leftJoin('standar_umur_produk as sup', 'sup.id', '=', 'sup_ids.id')
+            // Join receivings agar filter & urutan tanggal memakai fallback
+            // yang sama dengan tanggal yang ditampilkan di baris
+            // (getTanggalPenerimaanFallback: scan → arrival → start →
+            // receiving.created_at → item.created_at).
+            ->leftJoin('receivings', 'receivings.id', '=', 'receiving_items.receiving_id')
             ->with(['receiving.rencanaKirim'])
             ->whereNotNull('receiving_items.kode_barang');
 
@@ -119,11 +146,11 @@ class PenerimaanExpiredReportService
         }
 
         if (! empty($filters['tanggal_from'])) {
-            $query->whereRaw('COALESCE(receiving_items.tanggal_penerimaan, DATE(receiving_items.scan_time), DATE(receiving_items.created_at)) >= ?', [$filters['tanggal_from']]);
+            $query->whereRaw('COALESCE(receiving_items.tanggal_penerimaan, DATE(receiving_items.scan_time), DATE(receivings.actual_arrival_time), DATE(receivings.actual_start_time), DATE(receivings.created_at), DATE(receiving_items.created_at)) >= ?', [$filters['tanggal_from']]);
         }
 
         if (! empty($filters['tanggal_to'])) {
-            $query->whereRaw('COALESCE(receiving_items.tanggal_penerimaan, DATE(receiving_items.scan_time), DATE(receiving_items.created_at)) <= ?', [$filters['tanggal_to']]);
+            $query->whereRaw('COALESCE(receiving_items.tanggal_penerimaan, DATE(receiving_items.scan_time), DATE(receivings.actual_arrival_time), DATE(receivings.actual_start_time), DATE(receivings.created_at), DATE(receiving_items.created_at)) <= ?', [$filters['tanggal_to']]);
         }
 
         if (! empty($filters['kode_depo']) && ! ($user && $user->isDepotScoped())) {
@@ -158,7 +185,7 @@ class PenerimaanExpiredReportService
             ->orderByRaw('sup.cluster IS NULL')
             ->orderBy('sup.cluster')
             ->orderBy('receiving_items.kode_barang')
-            ->orderByRaw('COALESCE(receiving_items.tanggal_penerimaan, DATE(receiving_items.scan_time), DATE(receiving_items.created_at)) DESC')
+            ->orderByRaw('COALESCE(receiving_items.tanggal_penerimaan, DATE(receiving_items.scan_time), DATE(receivings.actual_arrival_time), DATE(receivings.actual_start_time), DATE(receivings.created_at), DATE(receiving_items.created_at)) DESC')
             ->orderByDesc('receiving_items.id');
     }
 
@@ -275,9 +302,17 @@ class PenerimaanExpiredReportService
     /**
      * Selisih tanggal dalam bentuk "X Thn Y Bln Z Hr" — padanan DATEDIF
      * yang dipakai di kolom SISA SIMPAN file Excel.
+     *
+     * Expired SEBELUM tanggal terima adalah data anomali: Excel
+     * (DATEDIF(J,I)) gagal dan menampilkan "-", jadi PHP melakukan hal yang
+     * sama alih-alih menampilkan interval absolut yang menyesatkan.
      */
     public static function sisaSimpan(Carbon $dari, Carbon $sampai): string
     {
+        if ($sampai->lessThan($dari)) {
+            return '-';
+        }
+
         $selisih = $dari->diff($sampai);
 
         return $selisih->y.' Thn '.$selisih->m.' Bln '.$selisih->d.' Hr';

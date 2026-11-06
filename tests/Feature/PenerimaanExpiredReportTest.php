@@ -6,7 +6,9 @@ use App\Imports\ReceivingItemImport;
 use App\Models\ClusterPrincipal;
 use App\Models\Npn;
 use App\Models\Permission;
+use App\Models\Receiving;
 use App\Models\ReceivingItem;
+use App\Models\RencanaKirim;
 use App\Models\Role;
 use App\Models\StandarUmurProduk;
 use App\Models\User;
@@ -593,18 +595,26 @@ class PenerimaanExpiredReportTest extends TestCase
             $sheet->rangeToArray('A1:M1')[0]
         );
 
-        // WEEKDAY & SISA SIMPAN harus formula Excel, bukan teks beku, supaya
-        // ikut bergerak saat file dibuka di hari berikutnya.
+        // WEEKDAY, SISA SIMPAN & SISA HARI harus formula Excel, bukan teks
+        // beku, supaya ikut bergerak saat file dibuka di hari berikutnya.
+        // Definisi batasnya sama dengan hitungan PHP di layar: expired hari
+        // ini masih Future (sisa 0 hari = KRITIS di opname, bukan EXPIRED).
         $weekday = $sheet->getCell('K2')->getValue();
         $this->assertStringStartsWith('=', $weekday);
         $this->assertStringContainsString('TODAY()', $weekday);
         $this->assertStringContainsString('"Future"', $weekday);
         // Rumus menunjuk persis ke kolom expired (I) sesuai format standar.
-        $this->assertStringContainsString('I2>TODAY()', $weekday);
+        $this->assertStringContainsString('I2>=TODAY()', $weekday);
 
         $sisaSimpan = $sheet->getCell('L2')->getValue();
         $this->assertStringStartsWith('=', $sisaSimpan);
         $this->assertStringContainsString('DATEDIF(J2,I2,"Y")', $sisaSimpan);
+
+        // SISA HARI juga live terhadap TODAY() (bukan angka beku dari PHP),
+        // supaya tidak drift dari WEEKDAY saat file dibuka di hari lain.
+        $sisaHari = $sheet->getCell('M2')->getValue();
+        $this->assertStringStartsWith('=', $sisaHari);
+        $this->assertStringContainsString('I2-TODAY()', $sisaHari);
 
         // Baris expired dicorat merah otomatis.
         $this->assertSame('FEE2E2', $sheet->getStyle('A2')->getFill()->getStartColor()->getRGB());
@@ -620,7 +630,7 @@ class PenerimaanExpiredReportTest extends TestCase
         );
 
         // TANGGAL EXPIRED harus ANGKA (serial Excel), bukan teks. Kalau teks,
-        // IF(I2>TODAY()) membandingkan string dengan angka dan selalu bernilai
+        // IF(I2>=TODAY()) membandingkan string dengan angka dan selalu bernilai
         // SALAH — semua batch berbulan-bulan ke depan akan terbaca "Past".
         $expiredCell = $sheet->getCell('I2');
         $this->assertIsNumeric(
@@ -644,6 +654,104 @@ class PenerimaanExpiredReportTest extends TestCase
         );
 
         $this->assertNotSame('FEE2E2', $sheet->getStyle('A2')->getFill()->getStartColor()->getRGB());
+    }
+
+    public function test_date_filter_follows_receiving_fallback_date(): void
+    {
+        // Baris tanpa tanggal_penerimaan & scan_time: tanggal yang tampil
+        // jatuh ke receiving.actual_arrival_time (2026-09-01), sedangkan
+        // created_at barisnya hari ini (2026-10-05, dipatok setUp). Filter
+        // September harus tetap menemukan baris ini — filter memakai fallback
+        // yang sama dengan tanggal yang ditampilkan.
+        $this->makeClusterMaster('BRG-A', 'SAP-A', 'Small Cup');
+
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-FALLBACK-01',
+            'kode_depo' => '0127',
+            'nama_depo' => 'Singkawang',
+            'status' => 'SCHEDULED',
+        ]);
+
+        $receiving = Receiving::create([
+            'rencana_kirim_id' => $rencana->id,
+            'status' => 'COMPLETED',
+            'actual_arrival_time' => '2026-09-01 08:00:00',
+        ]);
+
+        ReceivingItem::create([
+            'source' => 'VALIDASI_SJ',
+            'receiving_id' => $receiving->id,
+            'kode_barang' => 'BRG-A',
+            'nama_barang' => 'Produk BRG-A',
+            'actual_qty' => 10,
+            'qty_pcs' => 240,
+            'satuan' => 'CRT',
+            'expired_date' => '2026-12-01',
+            'tanggal_penerimaan' => null,
+            'scan_time' => null,
+            'kode_depo' => '0127',
+            'nama_depo' => 'Singkawang',
+            'condition' => 'FISIK_BAGUS',
+        ]);
+
+        $res = $this->getJson('/api/v1/reports/penerimaan-batch-expired?tanggal_from=2026-09-01&tanggal_to=2026-09-30')->assertOk();
+        $res->assertJsonPath('summary.total_item', 1)
+            ->assertJsonPath('data.0.tanggal_penerimaan', '2026-09-01');
+    }
+
+    public function test_duplicate_master_rows_do_not_duplicate_report_rows(): void
+    {
+        // standar_umur_produk.material tidak unik + nickname lama & baru
+        // sama-sama punya baris cluster_principal: tanpa dedup, satu baris
+        // ledger mengganda dan total summary membengkak.
+        // CP dibuat SEBELUM NPN supaya kunci stabilnya kosong (hook saving
+        // tidak menemukan NPN) — yang diuji di sini join nickname-nya.
+        ClusterPrincipal::create(['product_sku' => 'SZOLD1', 'principal_1' => 'LAMAS', 'principal_2' => 'LAMAS-Sub']);
+        ClusterPrincipal::create(['product_sku' => 'SZNEW1', 'principal_1' => 'BARUS', 'principal_2' => 'BARUS-Sub']);
+
+        Npn::create([
+            'BOSnetszProductId' => '90103211143200',
+            'SAPszProductId' => 'SAP-DUP-01',
+            'szNickName' => 'SZOLD1',
+            'szNickNameNew' => 'SZNEW1',
+            'szStatus' => 'EXISTING',
+        ]);
+
+        StandarUmurProduk::create([
+            'material' => 'SAP-DUP-01',
+            'material_description' => 'Produk Duplikat',
+            'cluster' => 'Small Cup',
+            'umur' => 24,
+        ]);
+        StandarUmurProduk::create([
+            'material' => 'SAP-DUP-01',
+            'material_description' => 'Produk Duplikat Duplikat',
+            'cluster' => 'Small Cup',
+            'umur' => 24,
+        ]);
+
+        $this->makeItem('90103211143200');
+
+        $res = $this->getJson('/api/v1/reports/penerimaan-batch-expired')->assertOk();
+        $res->assertJsonCount(1, 'data')
+            ->assertJsonPath('summary.total_item', 1)
+            ->assertJsonPath('data.0.cluster', 'Small Cup')
+            // Nickname baru menang secara deterministik bila keduanya ada.
+            ->assertJsonPath('data.0.principal_1', 'BARUS')
+            ->assertJsonPath('data.0.principal_2', 'BARUS-Sub');
+    }
+
+    public function test_sisa_simpan_is_dash_when_expired_before_receipt(): void
+    {
+        // Expired sebelum tanggal terima = data anomali; Excel (DATEDIF)
+        // menampilkan "-", PHP melakukan hal yang sama alih-alih interval
+        // absolut yang menyesatkan.
+        $this->makeClusterMaster('BRG-A', 'SAP-A', 'Small Cup');
+        $this->makeItem('BRG-A', '2026-08-01', '2026-09-01');
+
+        $this->getJson('/api/v1/reports/penerimaan-batch-expired')
+            ->assertOk()
+            ->assertJsonPath('data.0.sisa_simpan', '-');
     }
 
     public function test_pagination_numbers_rows_continuously(): void

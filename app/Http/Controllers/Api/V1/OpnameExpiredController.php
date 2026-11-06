@@ -39,15 +39,19 @@ class OpnameExpiredController extends Controller
 
         $query = OpnameExpiredWave::with('validator')
             ->select('opname_expired_waves.*')
-            ->addSelect(DB::raw('COALESCE(cp.principal_1, cp_nick.principal_1, cp_sku.principal_1) as principal_1'))
-            ->addSelect(DB::raw('COALESCE(cp.principal_2, cp_nick.principal_2, cp_sku.principal_2) as principal_2'))
+            ->addSelect(DB::raw('COALESCE(cp.principal_1, cp_nick_new.principal_1, cp_nick_old.principal_1, cp_sku.principal_1) as principal_1'))
+            ->addSelect(DB::raw('COALESCE(cp.principal_2, cp_nick_new.principal_2, cp_nick_old.principal_2, cp_sku.principal_2) as principal_2'))
             ->leftJoin('npn', 'npn.BOSnetszProductId', '=', 'opname_expired_waves.kode_barang')
             ->leftJoinSub($cpDedup, 'cp_ids', 'cp_ids.bosnetsz_product_id', '=', 'opname_expired_waves.kode_barang')
             ->leftJoin('cluster_principal as cp', 'cp.id', '=', 'cp_ids.id')
-            ->leftJoin('cluster_principal as cp_nick', function ($join): void {
-                // Nama lama DAN nama baru: gramatik boleh berubah, ID stabil tetap.
-                $join->on('cp_nick.product_sku', '=', 'npn.szNickName')
-                    ->orOn('cp_nick.product_sku', '=', 'npn.szNickNameNew');
+            // Nama lama DAN nama baru: gramatik boleh berubah, ID stabil tetap.
+            // Dua join terpisah (bukan satu join OR): product_sku unik, tapi
+            // satu OR bisa cocok ke 2 baris bila nickname lama & baru sama-sama
+            // punya baris CP — menggandakan baris wave. Yang baru menang.
+            ->leftJoin('cluster_principal as cp_nick_new', 'cp_nick_new.product_sku', '=', 'npn.szNickNameNew')
+            ->leftJoin('cluster_principal as cp_nick_old', function ($join): void {
+                $join->on('cp_nick_old.product_sku', '=', 'npn.szNickName')
+                    ->whereNull('cp_nick_new.id');
             })
             ->leftJoin('cluster_principal as cp_sku', 'cp_sku.product_sku', '=', 'opname_expired_waves.kode_barang');
 
@@ -55,7 +59,32 @@ class OpnameExpiredController extends Controller
             $request->user()->applyDepotFilter($query, 'opname_expired_waves.kode_depo');
         }
 
-        if ($request->week_start) {
+        // Filter rentang tanggal bebas (dari–sampai) menimpa dropdown minggu.
+        // Wave yang dipantau berujung di week_end; sebuah wave tercakup
+        // bila minggu monitoringnya bersinggungan dengan rentang.
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+        ]);
+        if (
+            $request->filled('date_from') &&
+            $request->filled('date_to') &&
+            Carbon::parse((string) $request->date_to)->startOfDay()
+                ->lt(Carbon::parse((string) $request->date_from)->startOfDay())
+        ) {
+            return response()->json([
+                'message' => 'Tanggal akhir tidak boleh mendahului tanggal mulai.',
+            ], 422);
+        }
+        $fromTo = $request->filled('date_from') || $request->filled('date_to');
+        if ($fromTo) {
+            if ($request->filled('date_to')) {
+                $query->where('opname_expired_waves.week_start', '<=', Carbon::parse((string) $request->date_to)->toDateString());
+            }
+            if ($request->filled('date_from')) {
+                $query->where('opname_expired_waves.week_end', '>=', Carbon::parse((string) $request->date_from)->toDateString());
+            }
+        } elseif ($request->week_start) {
             $query->where('opname_expired_waves.week_start', $request->week_start);
         } else {
             $latest = $query->clone()->value('week_start');
@@ -87,10 +116,12 @@ class OpnameExpiredController extends Controller
                     ->orWhereRaw('opname_expired_waves.nama_barang LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('opname_expired_waves.sumber_material LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('cp.principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('cp_nick.principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp_nick_new.principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp_nick_old.principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('cp_sku.principal_1 LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('cp.principal_2 LIKE ? ESCAPE ?', [$like, '\\'])
-                    ->orWhereRaw('cp_nick.principal_2 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp_nick_new.principal_2 LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('cp_nick_old.principal_2 LIKE ? ESCAPE ?', [$like, '\\'])
                     ->orWhereRaw('cp_sku.principal_2 LIKE ? ESCAPE ?', [$like, '\\']);
             });
         }
@@ -135,12 +166,22 @@ class OpnameExpiredController extends Controller
             ->orderByDesc('week_start')
             ->pluck('week_start');
 
+        // Bila mode rentang dipakai, ringkasan dihitung di atas rentang yang
+        // sama; bila tidak, jatuh ke minggu tunggal (perilaku lama).
+        $byRange = $fromTo && ! $request->week_start;
         $weekStart = $request->week_start ?? $weeks->first();
 
-        $statusSummary = $weekStart ? $this->statusSummary($weekStart, $request) : $this->emptySummary();
-        $prevWeekStart = $weekStart ? Carbon::parse($weekStart)->subWeek()->toDateString() : null;
-        $prevStatusSummary = $prevWeekStart ? $this->statusSummary($prevWeekStart, $request) : $this->emptySummary();
-        $depotSummary = $weekStart ? $this->depotSummary($weekStart, $request) : [];
+        $statusSummary = $byRange
+            ? $this->statusSummary($request, null, true)
+            : ($weekStart ? $this->statusSummary($request, (string) $weekStart) : $this->emptySummary());
+        $prevWeekStart = null;
+        if (! $byRange && $weekStart) {
+            $prevWeekStart = Carbon::parse((string) $weekStart)->subWeek()->toDateString();
+        }
+        $prevStatusSummary = $prevWeekStart ? $this->statusSummary($request, $prevWeekStart) : $this->emptySummary();
+        $depotSummary = $byRange
+            ? $this->depotSummary($request, null, true)
+            : ($weekStart ? $this->depotSummary($request, (string) $weekStart) : []);
 
         return response()->json([
             'data' => $waves,
@@ -400,7 +441,14 @@ class OpnameExpiredController extends Controller
             $query->where('kode_depo', $request->kode_depo);
         }
 
-        if ($request->week_start) {
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+        ]);
+        $fromTo = $request->filled('date_from') || $request->filled('date_to');
+        if ($fromTo) {
+            $this->applyWaveRange($query, $request);
+        } elseif ($request->week_start) {
             $query->where('week_start', $request->week_start);
         } else {
             $latest = $query->clone()->value('week_start');
@@ -437,9 +485,33 @@ class OpnameExpiredController extends Controller
         return array_fill_keys(['AMAN', 'PERHATIAN', 'KRITIS', 'EXPIRED'], ['count' => 0, 'qty_crt' => 0]);
     }
 
-    private function statusSummary(string $weekStart, Request $request): array
+    /**
+     * Terapkan filter rentang tanggal (date_from/date_to) — overlap minggu.
+     * Wave tercakup bila minggu monitoringnya bersinggungan dengan rentang;
+     * week_start tanpa rentang dipakai bila tersedia nilai week_start.
+     */
+    private function applyWaveRange($query, Request $request): void
     {
-        $query = OpnameExpiredWave::query()->where('week_start', $weekStart);
+        if ($request->filled('date_to')) {
+            $query->where('week_start', '<=', Carbon::parse((string) $request->date_to)->toDateString());
+        }
+        if ($request->filled('date_from')) {
+            $query->where('week_end', '>=', Carbon::parse((string) $request->date_from)->toDateString());
+        }
+        if (! $request->filled('date_to') && ! $request->filled('date_from') && $request->week_start) {
+            $query->where('week_start', $request->week_start);
+        }
+    }
+
+    private function statusSummary(Request $request, ?string $weekStart = null, bool $useRange = false): array
+    {
+        $query = OpnameExpiredWave::query();
+
+        if ($useRange) {
+            $this->applyWaveRange($query, $request);
+        } elseif ($weekStart !== null) {
+            $query->where('week_start', $weekStart);
+        }
 
         if ($request->user()->isDepotScoped()) {
             $request->user()->applyDepotFilter($query, 'kode_depo');
@@ -469,13 +541,19 @@ class OpnameExpiredController extends Controller
         return $summary;
     }
 
-    private function depotSummary(string $weekStart, Request $request): array
+    private function depotSummary(Request $request, ?string $weekStart = null, bool $useRange = false): array
     {
         // Sumber opsi dropdown filter depo di web. Sengaja TIDAK memakai
         // kode_depo/search dari request: opsi harus tetap lengkap (semua depo
         // pada minggu itu, dalam scope user) walau tabel sedang difilter,
         // supaya dropdown tidak kolaps setelah satu depo dipilih.
-        $query = OpnameExpiredWave::query()->where('week_start', $weekStart);
+        $query = OpnameExpiredWave::query();
+
+        if ($useRange) {
+            $this->applyWaveRange($query, $request);
+        } elseif ($weekStart !== null) {
+            $query->where('week_start', $weekStart);
+        }
 
         if ($request->user()->isDepotScoped()) {
             $request->user()->applyDepotFilter($query, 'kode_depo');

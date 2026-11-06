@@ -483,7 +483,11 @@ export default function PenerimaanBatchExpiredReportPage() {
                     <td className="table-cell text-sm text-foreground tabular-nums whitespace-nowrap">
                       <span className="block">{row.sisa_simpan}</span>
                       <span className={`block text-[11px] ${(row.sisa_hari ?? 0) < 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                        {(row.sisa_hari ?? 0) < 0 ? `lewat ${Math.abs(row.sisa_hari ?? 0)} hari` : `${row.sisa_hari ?? 0} hari lagi`}
+                        {row.sisa_hari === null || !row.tanggal_expired
+                          ? 'Tanpa tanggal expired'
+                          : row.sisa_hari < 0
+                            ? `lewat ${Math.abs(row.sisa_hari)} hari`
+                            : `${row.sisa_hari} hari lagi`}
                       </span>
                     </td>
                   </tr>

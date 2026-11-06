@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\Batch;
 use App\Models\Receiving;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
@@ -118,7 +119,7 @@ class ReceivingImport implements ToCollection, WithHeadingRow
 
             if ($latestValidation && $latestValidation->items->count() > 0) {
                 foreach ($latestValidation->items as $svItem) {
-                    ReceivingItem::create([
+                    $item = ReceivingItem::create([
                         'receiving_id' => $receiving->id,
                         'sj_validation_item_id' => $svItem->id,
                         'rencana_kirim_item_id' => $svItem->rencana_kirim_item_id,
@@ -136,10 +137,14 @@ class ReceivingImport implements ToCollection, WithHeadingRow
                         'nama_depo' => $rencanaKirim->nama_depo,
                         'tanggal_penerimaan' => now()->toDateString(),
                     ]);
+
+                    // Aturan baku: tiap baris ledger wajib tepat satu batch.
+                    // Idempoten — label SJ yang sudah ada dikembalikan apa adanya.
+                    Batch::issueForReceivingItem($item);
                 }
             } else {
                 foreach ($rencanaKirim->items as $ri) {
-                    ReceivingItem::create([
+                    $item = ReceivingItem::create([
                         'receiving_id' => $receiving->id,
                         'rencana_kirim_item_id' => $ri->id,
                         'kode_barang' => $ri->kode_barang,
@@ -154,6 +159,11 @@ class ReceivingImport implements ToCollection, WithHeadingRow
                         'nama_depo' => $rencanaKirim->nama_depo,
                         'tanggal_penerimaan' => now()->toDateString(),
                     ]);
+
+                    // Aturan baku: tiap baris ledger wajib tepat satu batch —
+                    // termasuk baris fallback tanpa validasi (tanpa expired_date
+                    // untuk sementara; opname menunggukan expired terisi).
+                    Batch::issueForReceivingItem($item);
                 }
             }
 

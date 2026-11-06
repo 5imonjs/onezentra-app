@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Services\OpnameExpiredService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
@@ -180,6 +181,80 @@ class OpnameExpiredTest extends TestCase
             'qty_ini_crt' => 10,
             'qty_lalu_crt' => 10,
         ]);
+    }
+
+    public function test_generate_carries_forward_across_skipped_week(): void
+    {
+        // Minggu 2026-09-14 dan 2026-09-21 sengaja tidak di-generate.
+        // Bawaan harus melompat ke snapshot terakhir per kunci (2026-09-07),
+        // bukan hanya tepat satu minggu sebelumnya — kalau tidak, stok
+        // hilang dari monitoring selamanya hanya karena satu minggu terlewat.
+        $this->receipt('B-SKIP-01', 'Produk Lompat Minggu', 10, '2027-02-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $this->travelTo('2026-09-28 10:00:00');
+        $result = app(OpnameExpiredService::class)->generate();
+
+        $this->assertSame('2026-09-28', $result['week_start']);
+
+        $wave = OpnameExpiredWave::where('week_start', '2026-09-28')
+            ->where('kode_barang', 'B-SKIP-01')
+            ->first();
+
+        $this->assertNotNull($wave);
+        $this->assertEquals(10, $wave->qty_lalu_crt);
+        $this->assertEquals(10, $wave->qty_ini_crt);
+    }
+
+    public function test_generate_includes_new_receipt_whose_date_passed_skipped_week(): void
+    {
+        // Penerimaan susulan produk yang sama dengan tanggal di minggu yang
+        // terlewat (2026-09-14, tidak pernah di-generate) harus tetap masuk
+        // generate berikutnya beserta qty-nya — bukan tenggelam karena kuncinya
+        // sudah ada di wave lama.
+        $this->receipt('B-SKIP-02', 'Produk Susulan Lewat', 10, '2027-02-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $this->travelTo('2026-09-28 10:00:00');
+        $this->receipt('B-SKIP-02', 'Produk Susulan Lewat', 5, '2027-02-01', '2026-09-16', null, 'VALIDASI_SJ');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $wave = OpnameExpiredWave::where('week_start', '2026-09-28')
+            ->where('kode_barang', 'B-SKIP-02')
+            ->first();
+
+        $this->assertNotNull($wave);
+        $this->assertEquals(10, $wave->qty_lalu_crt);
+        $this->assertEquals(15, $wave->qty_ini_crt);
+        $this->assertSame('NAIK +5', $wave->perubahan);
+    }
+
+    public function test_generate_includes_late_input_after_snapshot_for_monitored_product(): void
+    {
+        // Penerimaan bulan lalu yang baru di-input hari ini untuk produk yang
+        // SUDAH dimonitor: snapshot minggu jangkar (2026-09-07) diambil
+        // sebelum baris susulan di-input, jadi baris itu belum tercermin di
+        // wave mana pun — harus masuk generate berikutnya beserta qty-nya.
+        $this->receipt('B-LATE-01', 'Produk Input Susulan', 10, '2027-02-01', '2026-09-09', null, 'VALIDASI_SJ');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $this->travelTo('2026-09-16 10:00:00');
+        $this->receipt('B-LATE-01', 'Produk Input Susulan', 5, '2027-02-01', '2026-09-09', null, 'VALIDASI_SJ');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $wave = OpnameExpiredWave::where('week_start', '2026-09-14')
+            ->where('kode_barang', 'B-LATE-01')
+            ->first();
+
+        $this->assertNotNull($wave);
+        $this->assertEquals(10, $wave->qty_lalu_crt);
+        $this->assertEquals(15, $wave->qty_ini_crt);
+        $this->assertSame('NAIK +5', $wave->perubahan);
     }
 
     public function test_manual_receipt_import_via_api_sets_import_source(): void
@@ -887,6 +962,32 @@ class OpnameExpiredTest extends TestCase
         $this->assertSame('PRIN-NEW', $res->json('data.data.0.principal_2'));
     }
 
+    public function test_index_does_not_duplicate_wave_when_both_nicknames_have_master_rows(): void
+    {        // Nickname lama & baru sama-sama punya baris cluster_principal:
+        // satu join OR akan menggandakan wave. Yang baru menang secara
+        // deterministik, wave tetap 1 baris.
+        // CP dibuat SEBELUM NPN supaya kunci stabilnya kosong (hook saving
+        // tidak menemukan NPN) — yang diuji di sini join nickname-nya.
+        ClusterPrincipal::create(['product_sku' => 'NAMA-LAMA-DUP', 'principal_1' => 'PRIN-OLD']);
+        ClusterPrincipal::create(['product_sku' => 'NAMA-BARU-DUP', 'principal_1' => 'PRIN-NEW']);
+        Npn::create([
+            'BOSnetszProductId' => 'B-NICK-DUP',
+            'SAPszProductId' => 'SAP-NICK-DUP',
+            'szNickName' => 'NAMA-LAMA-DUP',
+            'szNickNameNew' => 'NAMA-BARU-DUP',
+            'szStatus' => 'EXISTING',
+        ]);
+        $this->receipt('B-NICK-DUP', 'Produk Nama Ganda', 4, '2027-02-01', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $res = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')->assertOk();
+
+        $this->assertSame(1, $res->json('data.total'));
+        $this->assertSame(1, count($res->json('data.data')));
+        $this->assertSame('PRIN-NEW', $res->json('data.data.0.principal_1'));
+    }
+
     public function test_index_sorts_by_allowlisted_columns(): void
     {
         $this->receipt('B-SORT-B', 'Produk B', 2, '2027-02-01', '2026-09-09');
@@ -1091,5 +1192,23 @@ class OpnameExpiredTest extends TestCase
 
         $mixedOnly = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=mixed')->assertOk();
         $this->assertSame(['B-MIX-01'], collect($mixedOnly->json('data.data'))->pluck('kode_barang')->all());
+    }
+
+    public function test_list_accepts_date_range_overlap_instead_of_week_dropdown(): void
+    {
+        // Dua wave berurutan: 07 (lama) & 21 (baru). Rentang tanggal 20–27
+        // hanya bersinggungan dengan minggu 21, bukan minggu 07.
+        $this->receipt('B-RG-A', 'Produk Minggu Lama', 3, '2027-02-01', '2026-09-07');
+        $this->receipt('B-RG-B', 'Produk Minggu Baru', 7, '2027-02-01', '2026-09-21');
+        app(OpnameExpiredService::class)->generate(Carbon::parse('2026-09-07'));
+        app(OpnameExpiredService::class)->generate(Carbon::parse('2026-09-21'));
+
+        $res = $this->getJson('/api/v1/opname-expired?date_from=2026-09-20&date_to=2026-09-27')->assertOk();
+        $this->assertSame(
+            ['2026-09-21'],
+            collect($res->json('data.data'))->pluck('week_start')->unique()->values()->all(),
+        );
+        // Rentang terbalik ditolak.
+        $this->getJson('/api/v1/opname-expired?date_from=2026-09-27&date_to=2026-09-20')->assertStatus(422);
     }
 }

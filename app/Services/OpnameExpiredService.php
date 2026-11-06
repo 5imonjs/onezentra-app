@@ -113,11 +113,23 @@ class OpnameExpiredService
         });
     }
 
+    /**
+     * Bawaan (carried) untuk generate minggu target: wave TERBARU per kunci
+     * (barang|depo|expired) sebelum minggu target — bukan hanya tepat satu
+     * minggu sebelumnya.
+     *
+     * Kalau satu minggu terlewat (tidak di-generate), rantai roll-forward
+     * yang hanya membaca `subWeek()` putus dan stok minggu itu hilang dari
+     * monitoring selamanya, meski barangnya masih ada. Mengambil snapshot
+     * terakhir per kunci membuat bawaan melompat ke minggu yang benar-benar
+     * ada, sehingga stok tetap terbawa ke minggu target berikutnya.
+     */
     private function carriedBatches(Carbon $weekStart, ?User $user): array
     {
-        $prevWeekStart = $weekStart->copy()->subWeek();
-
-        $query = OpnameExpiredWave::query()->where('week_start', $prevWeekStart->toDateString());
+        $query = OpnameExpiredWave::query()
+            ->where('week_start', '<', $weekStart->toDateString())
+            ->orderByDesc('week_start')
+            ->orderByDesc('id');
 
         if ($user?->isDepotScoped()) {
             $user->applyDepotFilter($query, 'kode_depo');
@@ -125,8 +137,14 @@ class OpnameExpiredService
 
         $result = [];
         foreach ($query->get() as $row) {
-            $depo = $row->kode_depo ?: self::DEPO_GENERAL;
-            $result[implode('|', [$row->kode_barang, $depo, $row->expired_date_ini?->toDateString()])] = $row;
+            $key = implode('|', [
+                $row->kode_barang,
+                $row->kode_depo ?: self::DEPO_GENERAL,
+                $row->expired_date_ini?->toDateString(),
+            ]);
+
+            // Urutan DESC: yang pertama terlihat per kunci adalah yang terbaru.
+            $result[$key] ??= $row;
         }
 
         return $result;
@@ -204,10 +222,15 @@ class OpnameExpiredService
      *      Tanggal di file adalah info historis, bukan penentu minggu — baseline
      *      yang diimport minggu ini dipantau minggu ini.
      *    - VALIDASI_SJ: tanggal penerimaan aktual (terima/scan/created).
-     * 2. BELUM TERMUAT di wave manapun — termasuk yang tanggalnya di luar
-     *    jendela sasaran. Tanpa pintu kedua ini setiap baris yang terlewatkan
-     *    jendela (mis. penerimaan bulan lalu yang baru terdata / tanggal keliru
-     *    di file) tidak akan pernah ter-generate selamanya.
+     * 2. BELUM TERMUAT pada/after minggu jangkarnya — termasuk yang tanggalnya
+     *    di luar jendela sasaran. Tanpa pintu kedua ini setiap baris yang
+     *    terlewatkan jendela (mis. penerimaan bulan lalu yang baru terdata /
+     *    tanggal keliru di file) tidak akan pernah ter-generate selamanya.
+     *    Baris yang sudah tercermin di snapshot minggu jangkarnya tetap
+     *    dikecualikan agar qty tidak terhitung dua kali. Snapshot yang
+     *    diambil sebelum baris di-input tidak dihitung sebagai pencerminan
+     *    (penerimaan susulan yang di-input belakangan tetap masuk generate
+     *    berikutnya).
      */
     private function eligibleItems(Carbon $weekStart, ?User $user = null)
     {
@@ -240,18 +263,31 @@ class OpnameExpiredService
                 ->orWhereIn('id', $cancelledLedgerItemIds))
             ->pluck('id');
 
-        // Kunci-kunci yang pernah termuat ke wave manapun (carried atau minggu
-        // lampau) — dipakai pintu kedua agar barang yang terlewat jendela tidak
-        // terhitung dua kali.
-        $waveKeys = OpnameExpiredWave::query()
-            ->select('kode_barang', 'kode_depo', 'expired_date_ini')
-            ->get()
-            ->map(fn ($row) => implode('|', [
+        // Wave per kunci (barang|depo|expired), urut terbaru dulu — dipakai
+        // pintu kedua untuk memutuskan apakah satu baris ledger sudah
+        // tercermin di snapshot mana pun. Bukan sekadar "pernah ada di wave
+        // manapun": penerimaan susulan produk yang sama dengan tanggal di
+        // minggu yang terlewat — atau yang di-input SETELAH snapshot minggu
+        // jangkarnya diambil (mis. penerimaan bulan lalu yang baru di-input
+        // hari ini) — harus tetap bisa masuk generate berikutnya, kalau tidak
+        // qty-nya hilang selamanya.
+        $wavesByKey = [];
+        foreach (OpnameExpiredWave::query()
+            ->select('kode_barang', 'kode_depo', 'expired_date_ini', 'week_start', 'updated_at')
+            ->orderByDesc('week_start')
+            ->orderByDesc('id')
+            ->get() as $row) {
+            $key = implode('|', [
                 $row->kode_barang,
                 $row->kode_depo ?: self::DEPO_GENERAL,
                 $row->expired_date_ini?->toDateString(),
-            ]))
-            ->flip();
+            ]);
+
+            $wavesByKey[$key][] = [
+                'week_start' => (string) $row->week_start,
+                'updated_at' => $row->updated_at,
+            ];
+        }
 
         return ReceivingItem::with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
             ->whereNotNull('expired_date')
@@ -261,25 +297,73 @@ class OpnameExpiredService
                 fn ($q) => $q->whereNotIn('id', $cancelledItemIds)
             )
             ->get()
-            ->filter(function (ReceivingItem $item) use ($weekRange, $waveKeys): bool {
+            ->filter(function (ReceivingItem $item) use ($weekRange, $wavesByKey): bool {
                 // Pintu 1: jendela minggu (aturan lama).
                 $day = $this->monitoringAnchor($item);
                 if ($day !== null && $day >= $weekRange[0] && $day <= $weekRange[1]) {
                     return true;
                 }
 
-                // Pintu 2: belum pernah masuk wave manapun — barang ini
-                // termastikan tidak pernah ter-generate sekalipun jendela
-                // minggunya sudah lewat.
+                // Pintu 2: belum tercermin di snapshot mana pun pada/after
+                // minggu jangkarnya. Snapshot yang diambil SEBELUM baris ini
+                // di-input (updated_at < created_at) tidak bisa merefleksikan
+                // baris ini — mis. penerimaan bulan lalu yang baru di-input
+                // hari ini untuk produk yang sudah dimonitor — jadi barisnya
+                // tetap masuk generate berikutnya. Baris yang sudah tercermin
+                // tetap dikecualikan agar qty tidak terhitung dua kali.
                 $key = implode('|', [
                     $item->kode_barang,
                     $item->getKodeDepoFallback() ?: self::DEPO_GENERAL,
                     $item->expired_date?->toDateString(),
                 ]);
 
-                return ! $waveKeys->has($key);
+                $wavesForKey = $wavesByKey[$key] ?? [];
+
+                if ($wavesForKey === []) {
+                    return true;
+                }
+
+                if ($day === null) {
+                    // Tanpa jangkar: tercermin hanya bila ada snapshot yang
+                    // diambil setelah baris ini di-input.
+                    foreach ($wavesForKey as $wave) {
+                        if ($this->snapshotReflects($wave['updated_at'], $item)) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+
+                $anchorMonday = Carbon::parse($day)->startOfWeek(Carbon::MONDAY)->toDateString();
+
+                foreach ($wavesForKey as $wave) {
+                    if ($wave['week_start'] < $anchorMonday) {
+                        break;
+                    }
+
+                    if ($this->snapshotReflects($wave['updated_at'], $item)) {
+                        return false;
+                    }
+                }
+
+                return true;
             })
             ->values();
+    }
+
+    /**
+     * Apakah snapshot wave (updated_at-nya) bisa merefleksikan baris ledger
+     * ini: snapshot diambil pada/after baris di-input. Wave tanpa updated_at
+     * tidak dipakai sebagai bukti tercermin.
+     */
+    private function snapshotReflects(mixed $updatedAt, ReceivingItem $item): bool
+    {
+        if ($updatedAt === null || $item->created_at === null) {
+            return false;
+        }
+
+        return Carbon::parse($updatedAt)->greaterThanOrEqualTo($item->created_at);
     }
 
     /**

@@ -47,7 +47,7 @@ class PenerimaanExpiredReportExport implements FromQuery, ShouldAutoSize, WithCo
      *   J TANGGAL PENERIMAAN | K WEEKDAY | L SISA SIMPAN | M SISA HARI
      *
      * TANGGAL EXPIRED sengaja berada di kolom I sehingga formula WEEKDAY
-     * terbaca persis seperti format standar gudang: =IF(I2>TODAY(),...).
+     * terbaca persis seperti format standar gudang: =IF(I2>=TODAY(),...).
      */
     public const CLUSTER_COLUMN = 2;
 
@@ -113,18 +113,19 @@ class PenerimaanExpiredReportExport implements FromQuery, ShouldAutoSize, WithCo
             $this->expiredByRow[$row] = $expired->toDateString();
         }
 
-        $sisaHari = $expired
-            ? (int) Carbon::today()->startOfDay()->diffInDays($expired, false)
-            : null;
-
         $eks = self::letterForColumn(self::EXPIRED_COLUMN);
         $penerimaan = self::letterForColumn(self::PENERIMAAN_COLUMN);
 
         // Tanggal harus ditulis sebagai SERIAL ANGKA Excel, bukan string
-        // ("2027-04-10 00:00:00"). Kalau string, perbandingan G2>TODAY()
+        // ("2027-04-10 00:00:00"). Kalau string, perbandingan G2>=TODAY()
         // membandingkan TEKS dengan angka dan selalu salah (hasilnya Past
         // untuk batch yang jelas masih months), serta DATEDIF gagal.
         // Tampilan dd-mm-yyyy/Amplop datang dari columnFormats().
+        //
+        // WEEKDAY & SISA HARI sama-sama live terhadap TODAY() supaya tidak
+        // drift: batch yang expired hari ini masih Future (sisa 0 hari =
+        // KRITIS di opname, bukan EXPIRED), selaras dengan hitungan PHP di
+        // layar (`expired < today` = Past).
         return [
             $this->rowNumber,
             $item->cluster ?: 'TANPA CLUSTER',
@@ -141,11 +142,11 @@ class PenerimaanExpiredReportExport implements FromQuery, ShouldAutoSize, WithCo
             $item->totalPcs(),
             self::toExcelDate($expired),
             self::toExcelDate($tanggalMasuk),
-            "=IF({$eks}{$row}=\"\",\"-\",IF({$eks}{$row}>TODAY(),\"Future\",\"Past\"))",
+            "=IF({$eks}{$row}=\"\",\"-\",IF({$eks}{$row}>=TODAY(),\"Future\",\"Past\"))",
             $tanggalMasuk && $expired
                 ? "=IFERROR(DATEDIF({$penerimaan}{$row},{$eks}{$row},\"Y\")&\" Thn \"&DATEDIF({$penerimaan}{$row},{$eks}{$row},\"YM\")&\" Bln \"&DATEDIF({$penerimaan}{$row},{$eks}{$row},\"MD\")&\" Hr\",\"-\")"
                 : '-',
-            $sisaHari ?? '-',
+            "=IF({$eks}{$row}=\"\",\"-\",{$eks}{$row}-TODAY())",
         ];
     }
 

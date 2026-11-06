@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Imports\ReceivingImport;
 use App\Imports\ReceivingImportFailed;
+use App\Models\Batch;
 use App\Models\Permission;
 use App\Models\Receiving;
+use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
+use App\Models\RencanaKirimItem;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -280,6 +283,50 @@ class DepotScopeConsistencyTest extends TestCase
 
         $this->assertSame(1, $import->imported, 'Admin master tidak dibatasi depo');
         $this->assertSame($rencana->id, Receiving::firstOrFail()->rencana_kirim_id);
+    }
+
+    /**
+     * Aturan baku: tiap baris ledger wajib tepat satu batch — termasuk baris
+     * yang lahir dari import dokumen receiving (jalur fallback tanpa validasi
+     * maupun jalur salinan validasi SJ). Sebelumnya import ini tidak
+     * menerbitkan batch sama sekali, sehingga baris import tidak punya jejak
+     * batch_number di wave opname.
+     */
+    public function test_import_menerbitkan_batch_untuk_setiap_baris_ledger(): void
+    {
+        $admin = $this->depotUser('AA');
+        $viewAll = Permission::firstOrCreate(['slug' => 'depot.view_all'], ['name' => 'Lihat semua depo']);
+        $admin->roles->first()->permissions()->syncWithoutDetaching([$viewAll->id]);
+        $admin = $admin->fresh()->load('roles');
+
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-BATCH-001',
+            'kode_depo' => 'BB',
+            'nama_depo' => 'Depo BB',
+            'status' => 'VERIFIED',
+        ]);
+
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $rencana->id,
+            'item_number' => 1,
+            'kode_barang' => 'BRG-BATCH-01',
+            'nama_barang' => 'Produk Batch',
+            'jumlah' => 10,
+            'satuan' => 'CRT',
+        ]);
+
+        $import = new ReceivingImport($admin);
+        $import->collection(collect([
+            ['po_transporter' => 'PO-BATCH-001', 'driver_name' => 'Driver B'],
+        ]));
+
+        $this->assertSame(1, $import->imported);
+
+        $item = ReceivingItem::firstOrFail();
+        $batch = Batch::where('receiving_item_id', $item->id)->first();
+
+        $this->assertNotNull($batch, 'Baris ledger import wajib membawa tepat satu batch');
+        $this->assertNotNull($batch->batch_number);
     }
 
     /**
