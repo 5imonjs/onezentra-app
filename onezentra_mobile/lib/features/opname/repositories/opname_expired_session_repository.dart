@@ -6,6 +6,15 @@ typedef OpnameExpiredSessionGet = Future<dynamic> Function(String endpoint);
 typedef OpnameExpiredSessionRequest =
     Future<dynamic> Function(String endpoint, Map<String, dynamic> body);
 
+/// Multipart POST transport for counts that carry photo evidence.
+typedef OpnameExpiredSessionPostMultipart =
+    Future<dynamic> Function(
+      String endpoint,
+      Map<String, String> fields, {
+      required String fileField,
+      required String filePath,
+    });
+
 /// Data access for Opname Expired sessions (aturan A2).
 ///
 /// Membawa siklus hidup sesi: list, show, start, tambah wave, verifikasi
@@ -15,6 +24,7 @@ class OpnameExpiredSessionRepository {
     OpnameExpiredSessionGet? get,
     OpnameExpiredSessionRequest? post,
     OpnameExpiredSessionRequest? put,
+    OpnameExpiredSessionPostMultipart? postMultipart,
   }) : _get = get ?? ApiClient().get,
        _post =
            post ??
@@ -23,11 +33,13 @@ class OpnameExpiredSessionRepository {
        _put =
            put ??
            ((String endpoint, Map<String, dynamic> body) =>
-               ApiClient().put(endpoint, body));
+               ApiClient().put(endpoint, body)),
+       _postMultipart = postMultipart ?? ApiClient().postMultipart;
 
   final OpnameExpiredSessionGet _get;
   final OpnameExpiredSessionRequest _post;
   final OpnameExpiredSessionRequest _put;
+  final OpnameExpiredSessionPostMultipart _postMultipart;
 
   static Map<String, dynamic> _expectObject(dynamic response) {
     if (response is! Map) {
@@ -113,13 +125,31 @@ class OpnameExpiredSessionRepository {
     return _sessionFromBody(body);
   }
 
+  /// Simpan hasil hitung satu baris. [photoPath] mengubah request menjadi
+  /// multipart dengan file di field `photo` — wajib untuk kondisi
+  /// bermasalah (FISIK_RUSAK dst.), sejajar form validasi SJ.
   Future<dynamic> verifyItem(
     int sessionId,
     int itemId,
-    Map<String, dynamic> data,
-  ) async => _expectObject(
-    await _post('/opname-sessions/$sessionId/items/$itemId', data),
-  );
+    Map<String, dynamic> data, {
+    String? photoPath,
+  }) async {
+    var endpoint = '/opname-sessions/$sessionId/items/$itemId';
+    if (photoPath != null && photoPath.isNotEmpty) {
+      return _expectObject(
+        await _postMultipart(
+          endpoint,
+          {
+            for (var entry in data.entries)
+              entry.key: entry.value?.toString() ?? '',
+          },
+          fileField: 'photo',
+          filePath: photoPath,
+        ),
+      );
+    }
+    return _expectObject(await _post(endpoint, data));
+  }
 
   Future<OpnameExpiredSession> submit(int id) async {
     var body = _expectObject(await _post('/opname-sessions/$id/submit', {}));

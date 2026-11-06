@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
+import 'package:onezentra_mobile/features/gate/pages/gate_scanner_page.dart';
 import 'package:onezentra_mobile/features/opname/models/opname_expired_session_models.dart';
 import 'package:onezentra_mobile/features/opname/providers/opname_expired_session_provider.dart';
 import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
@@ -20,11 +22,64 @@ AppBadgeVariant _sessionBadgeVariant(String status) => switch (status) {
   _ => AppBadgeVariant.gray,
 };
 
+/// Kondisi fisik batch — sejajar `ReceivingItem::CONDITIONS` backend.
+const Map<String, String> _conditionLabels = {
+  'FISIK_BAGUS': 'Fisik bagus',
+  'FISIK_RUSAK': 'Fisik rusak',
+  'QTY_KURANG': 'Qty kurang',
+  'ISI_KEMASAN_KURANG': 'Isi kemasan kurang',
+  'EXPIRED_TIDAK_STANDAR': 'Expired tidak standar',
+  'LAINNYA': 'Lainnya',
+};
+
+/// Kondisi yang wajib disertai foto bukti — sejajar
+/// `ReceivingItem::CONDITIONS_REQUIRING_PHOTO` backend.
+const List<String> _photoRequired = [
+  'FISIK_RUSAK',
+  'QTY_KURANG',
+  'ISI_KEMASAN_KURANG',
+  'EXPIRED_TIDAK_STANDAR',
+  'LAINNYA',
+];
+
+String _conditionLabel(String? condition) =>
+    _conditionLabels[condition?.trim().toUpperCase()] ?? condition ?? '-';
+
+String _dispositionLabel(String? value) => switch (value) {
+  'LANJUT' => 'Lanjut',
+  'RETUR' => 'Retur',
+  'DISPOSAL' => 'Disposal',
+  _ => value ?? '-',
+};
+
+String _formatQty(double? value) {
+  if (value == null) {
+    return '-';
+  }
+  return value == value.truncateToDouble()
+      ? value.toInt().toString()
+      : value.toString();
+}
+
+/// Panduan langkah sesuai status — petugas tidak perlu menebak yang mana
+/// berikutnya (pemisahan tugas: counter tidak bisa menyetujui dirinya).
+String _statusHint(String status) => switch (status) {
+  'OPEN' => 'Tekan "Mulai Sesi" untuk memulai, lalu hitung tiap baris.',
+  'IN_PROGRESS' =>
+    'Hitung semua baris sampai 0 sisa, lalu kirim untuk persetujuan BLC.',
+  'PENDING_APPROVAL' =>
+    'Menunggu keputusan BLC. Koreksi wave baru berlaku setelah disetujui.',
+  'REVISI' => 'Perbaiki baris yang ditandai, lalu kirim ulang untuk review.',
+  'APPROVED' => 'Sesi disetujui — koreksi wave telah berlaku.',
+  'COMPLETED' => 'Sesi selesai — koreksi wave telah berlaku.',
+  _ => '',
+};
+
 /// Sesi Opname Expired — alur kerja lapangan (aturan A2).
 ///
-/// Halaman sederhana: daftar sesi → buka detail → mulai sesi → hitung fisik
-/// per item → kirim untuk persetujuan → setujui/revisi. Tanpa boilerplate
-/// berlebih; aksi berat diarahkan ke backend (opname-sessions).
+/// Daftar sesi → detail dengan ringkasan progres → hitung fisik per label
+/// batch (scan kamera + qty + kondisi + disposisi) → kirim untuk
+/// persetujuan. Aksi berat diarahkan ke backend (opname-sessions).
 class OpnameExpiredSessionPage extends StatefulWidget {
   const OpnameExpiredSessionPage({super.key, this.repository});
 
@@ -154,6 +209,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     for (var item in items) {
       clusters.putIfAbsent(item.waveId, () => []).add(item);
     }
+    var countedTotal = session.items.where((i) => i.isVerified).length;
 
     return RefreshIndicator(
       onRefresh: () => provider.show(session.id),
@@ -163,17 +219,37 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSessionMetaCard(session, context, provider),
+            _buildSessionHeaderCard(session, context, provider, countedTotal),
             const SizedBox(height: AppTheme.space4),
             if (session.items.length > 1) ...[
               TextField(
                 onChanged: (value) => setState(() => _search = value),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
-                  prefixIcon: Icon(Icons.search_rounded, size: 20),
+                  filled: true,
+                  fillColor: context.colors.surfaceCard,
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  suffixIcon: _search.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          tooltip: 'Bersihkan',
+                          onPressed: () => setState(() => _search = ''),
+                        ),
                   hintText: 'Cari nama produk / kode batch...',
-                  border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
-                  contentPadding: EdgeInsets.symmetric(
+                  hintStyle: GoogleFonts.roboto(
+                    fontSize: 13,
+                    color: context.colors.textMuted,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: AppTheme.radiusLg,
+                    borderSide: BorderSide(color: context.colors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: AppTheme.radiusLg,
+                    borderSide: BorderSide(color: context.colors.border),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
                     vertical: 10,
                     horizontal: 12,
                   ),
@@ -213,55 +289,123 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     );
   }
 
-  Widget _buildSessionMetaCard(
+  Widget _buildSessionHeaderCard(
     OpnameExpiredSession session,
     BuildContext context,
     OpnameExpiredSessionProvider provider,
-  ) => AppCard(
-    padding: const EdgeInsets.all(AppTheme.space4),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            AppBadge(
-              text: OpnameSessionStatus.label(session.status),
-              variant: _sessionBadgeVariant(session.status),
-            ),
-            const SizedBox(width: AppTheme.space2),
-            Expanded(
-              child: Text(
-                'Sesi minggu ${session.weekStart ?? '-'}',
-                style: GoogleFonts.roboto(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.foreground,
+    int countedTotal,
+  ) {
+    var total = session.items.length;
+    var progress = total == 0 ? 0.0 : countedTotal / total;
+    var hint = _statusHint(session.status);
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppTheme.space4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              AppBadge(
+                text: OpnameSessionStatus.label(session.status),
+                variant: _sessionBadgeVariant(session.status),
+              ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: Text(
+                  'Sesi minggu ${session.weekStart ?? '-'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: context.colors.foreground,
+                  ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Text(
+            session.namaDepo ?? session.kodeDepo ?? '-',
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              color: context.colors.textSecondary,
+            ),
+          ),
+          if (hint.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.space2),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 14,
+                  color: context.colors.info,
+                ),
+                const SizedBox(width: AppTheme.space2),
+                Expanded(
+                  child: Text(
+                    hint,
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      height: 1.4,
+                      color: context.colors.info,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
-        ),
-        const SizedBox(height: AppTheme.space2),
-        Text(
-          session.namaDepo ?? session.kodeDepo ?? '-',
-          style: GoogleFonts.roboto(
-            fontSize: 12,
-            color: context.colors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: AppTheme.space2),
-        Text(
-          '${session.items.length} item verifikasi',
-          style: GoogleFonts.roboto(
-            fontSize: 12,
-            color: context.colors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: AppTheme.space3),
-        ..._buildSessionActions(session, provider, context),
-      ],
-    ),
-  );
+          if (total > 0) ...[
+            const SizedBox(height: AppTheme.space3),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: context.colors.border,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        progress == 1
+                            ? context.colors.success
+                            : AppTheme.primary600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.space3),
+                Text(
+                  '$countedTotal/$total terhitung',
+                  style: GoogleFonts.roboto(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: countedTotal == total
+                        ? context.colors.success
+                        : context.colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (session.acceptsCounting &&
+              total > 0 &&
+              countedTotal == total) ...[
+            const SizedBox(height: AppTheme.space3),
+            AppPrimaryButton(
+              text: 'Kirim untuk Persetujuan',
+              leadingIcon: Icons.send_rounded,
+              onPressed: () => provider.submit(session.id),
+              isLoading: provider.isLoading,
+            ),
+          ],
+          ..._buildSessionActions(session, provider, context),
+        ],
+      ),
+    );
+  }
 
   List<Widget> _buildSessionActions(
     OpnameExpiredSession session,
@@ -270,12 +414,14 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
   ) {
     if (session.isOpen) {
       return [
+        const SizedBox(height: AppTheme.space3),
         AppPrimaryButton(
           text: 'Mulai Sesi',
+          leadingIcon: Icons.play_arrow_rounded,
           onPressed: () => provider.start(session.id),
           isLoading: provider.isLoading,
         ),
-        const SizedBox(height: AppTheme.space3),
+        const SizedBox(height: AppTheme.space2),
         AppSecondaryButton(
           text: 'Batalkan Sesi',
           onPressed: () => provider.cancel(session.id),
@@ -287,23 +433,29 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
       ];
     }
 
-    if (session.acceptsCounting) {
-      var allVerified =
-          session.items.isNotEmpty && session.items.every((i) => i.isVerified);
-      if (allVerified) {
-        return [
-          AppPrimaryButton(
-            text: 'Kirim Sesi untuk Persetujuan',
-            onPressed: () => provider.submit(session.id),
-            isLoading: provider.isLoading,
-          ),
-        ];
-      }
-      return const <Widget>[];
-    }
-
     if (session.isPendingApproval) {
+      // Pemisahan tugas: hanya pemegang izin approve yang bisa memutuskan —
+      // counter tidak dapat menyetujui hitungannya sendiri (dicek juga
+      // backend). Petugas hanya melihat status menunggu.
+      var canDecide =
+          context.read<AuthProvider>().user?.hasPermission(
+            'opname.session.approve',
+          ) ??
+          false;
+      var waitingText = Text(
+        'Menunggu keputusan approver. Petugas penghitung tidak dapat '
+        'menyetujui hitungannya sendiri (pemisahan tugas).',
+        style: GoogleFonts.roboto(
+          fontSize: 11,
+          height: 1.4,
+          color: context.colors.textMuted,
+        ),
+      );
+      if (!canDecide) {
+        return [const SizedBox(height: AppTheme.space3), waitingText];
+      }
       return [
+        const SizedBox(height: AppTheme.space3),
         AppPrimaryButton(
           text: 'Setujui Sesi',
           onPressed: () => provider.approve(session.id),
@@ -318,6 +470,8 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
           width: 180,
           height: 44,
         ),
+        const SizedBox(height: AppTheme.space3),
+        waitingText,
       ];
     }
 
@@ -366,152 +520,20 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     BuildContext context,
     OpnameExpiredSession session,
     OpnameExpiredSessionItem item,
-  ) async {
-    var qtyCrtController = TextEditingController(
-      text: item.qtyFisikCrt?.toString() ?? '',
-    );
-    var qtyPcsController = TextEditingController(
-      text: item.qtyFisikPcs?.toString() ?? '',
-    );
-    var disposition = item.disposition ?? 'LANJUT';
-    var identifiedVia = item.verifiedVia ?? 'scan';
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setState) {
-          var qtyCrt =
-              double.tryParse(qtyCrtController.text.replaceAll(',', '.')) ?? 0;
-          var qtyPcs =
-              double.tryParse(qtyPcsController.text.replaceAll(',', '.')) ?? 0;
-          var hasBarang = qtyCrt > 0 || qtyPcs > 0;
-
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Hitung Fisik',
-                    style: GoogleFonts.roboto(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: context.colors.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.space2),
-                  Text(
-                    item.namaBarang ?? item.kodeBarang ?? 'Item ${item.id}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 12,
-                      color: context.colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.space2),
-                  Text(
-                    'Batch: ${item.batchNumber ?? '-'} · Acuan: CRT ${item.expectedCrt ?? '-'} / PCS ${item.expectedPcs ?? '-'}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 11,
-                      color: context.colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.space3),
-                  AppTextField(
-                    controller: qtyCrtController,
-                    label: 'Qty Fisik (CRT)',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.space2),
-                  AppTextField(
-                    controller: qtyPcsController,
-                    label: 'Qty Fisik (PCS)',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                  ),
-                  if (hasBarang) ...[
-                    const SizedBox(height: AppTheme.space3),
-                    DropdownButtonFormField<String>(
-                      initialValue: disposition,
-                      decoration: const InputDecoration(
-                        labelText: 'Disposisi',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'LANJUT',
-                          child: Text('LANJUT'),
-                        ),
-                        DropdownMenuItem(value: 'RETUR', child: Text('RETUR')),
-                        DropdownMenuItem(
-                          value: 'DISPOSAL',
-                          child: Text('DISPOSAL'),
-                        ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => disposition = value ?? 'LANJUT'),
-                    ),
-                  ],
-                  const SizedBox(height: AppTheme.space3),
-                  DropdownButtonFormField<String>(
-                    initialValue: identifiedVia,
-                    decoration: const InputDecoration(
-                      labelText: 'Dikenali via',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'scan', child: Text('Scan')),
-                      DropdownMenuItem(value: 'manual', child: Text('Manual')),
-                    ],
-                    onChanged: (value) =>
-                        setState(() => identifiedVia = value ?? 'scan'),
-                  ),
-                  const SizedBox(height: AppTheme.space4),
-                  AppPrimaryButton(
-                    text: 'Simpan',
-                    onPressed: () async {
-                      var navigator = Navigator.of(context);
-                      var qtyCrtValue =
-                          double.tryParse(
-                            qtyCrtController.text.replaceAll(',', '.'),
-                          ) ??
-                          0;
-                      var qtyPcsValue =
-                          double.tryParse(
-                            qtyPcsController.text.replaceAll(',', '.'),
-                          ) ??
-                          0;
-                      var dispValue = (qtyCrtValue == 0 && qtyPcsValue == 0)
-                          ? null
-                          : disposition;
-                      var data = <String, dynamic>{
-                        'qty_fisik_crt': qtyCrtValue,
-                        'qty_fisik_pcs': qtyPcsValue,
-                        'disposition': dispValue,
-                        'notes': item.notes,
-                        'identified_via': identifiedVia,
-                      };
-                      await _provider.verifyItem(session.id, item.id, data);
-                      navigator.pop();
-                    },
-                    isLoading: _provider.isLoading,
-                  ),
-                  const SizedBox(height: AppTheme.space4),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
+  ) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _VerifySheet(
+      session: session,
+      item: item,
+      // Sheet menangani state simpan & error sendiri; onVerify mengembalikan
+      // pesan error (null = sukses) supaya sheet bisa tampil inline.
+      onVerify: (data, photoPath) =>
+          _provider.verifyItem(session.id, item.id, data, photoPath: photoPath),
+    ),
+  );
 
   Widget _buildNoAccess() => SingleChildScrollView(
     padding: const EdgeInsets.all(AppTheme.space5),
@@ -539,6 +561,708 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             ),
           ),
         ],
+      ),
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sheet hitung fisik
+// ---------------------------------------------------------------------------
+
+/// Sheet input hitung fisik satu label batch.
+///
+/// Logika input profesional & jujur:
+/// - label diidentifikasi dengan kamera (scan) — hasil scan yang TIDAK
+///   cocok diblok; identifikasi manual tetap bisa tapi tercatat "manual";
+/// - aksi cepat: "Sesuai acuan" dan "Habis (0)" untuk mempercepat lapangan;
+/// - disposisi wajib dipilih eksplisit saat barang ada (aturan F.1),
+///   otomatis kosong saat tandai habis;
+/// - kondisi bermasalah wajib foto bukti (sejajar validasi SJ);
+/// - selisih terhadap acuan tampil live sebelum simpan.
+class _VerifySheet extends StatefulWidget {
+  const _VerifySheet({
+    required this.session,
+    required this.item,
+    required this.onVerify,
+  });
+
+  final OpnameExpiredSession session;
+  final OpnameExpiredSessionItem item;
+
+  /// Mengembalikan pesan error (null = sukses).
+  final Future<String?> Function(Map<String, dynamic> data, String? photoPath)
+  onVerify;
+
+  @override
+  State<_VerifySheet> createState() => _VerifySheetState();
+}
+
+class _VerifySheetState extends State<_VerifySheet> {
+  late final TextEditingController _qtyCrt = TextEditingController(
+    text: widget.item.qtyFisikCrt?.toString() ?? '',
+  );
+  late final TextEditingController _qtyPcs = TextEditingController(
+    text: widget.item.qtyFisikPcs?.toString() ?? '',
+  );
+  late final TextEditingController _notes = TextEditingController(
+    text: widget.item.notes ?? '',
+  );
+
+  late String _condition = 'FISIK_BAGUS';
+  String? _disposition;
+  // Identifikasi jujur: default manual (label rusak dll.); berubah otomatis
+  // menjadi 'scan' hanya setelah hasil kamera benar-benar cocok.
+  String _identifiedVia = 'manual';
+  String? _scannedLabel;
+  String? _photoPath;
+  String? _errorMessage;
+  bool _saving = false;
+
+  String get _barcodeLabel => widget.item.barcodeLabel ?? '';
+  String get _batchNumber => widget.item.batchNumber ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _condition = widget.item.condition ?? 'FISIK_BAGUS';
+    _disposition = widget.item.disposition;
+  }
+
+  double get _qtyCrtValue =>
+      double.tryParse(_qtyCrt.text.replaceAll(',', '.')) ?? 0;
+  double get _qtyPcsValue =>
+      double.tryParse(_qtyPcs.text.replaceAll(',', '.')) ?? 0;
+  bool get _isMarkedEmpty => _qtyCrtValue == 0 && _qtyPcsValue == 0;
+
+  /// Selisih terhadap acuan, untuk preview live.
+  double? get _delta {
+    var expected = widget.item.expectedCrt;
+    if (expected == null || _qtyCrt.text.trim().isEmpty) {
+      return null;
+    }
+    return _qtyCrtValue - expected;
+  }
+
+  @override
+  void dispose() {
+    _qtyCrt.dispose();
+    _qtyPcs.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    try {
+      var picked = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+        maxWidth: 1600,
+      );
+      if (picked != null) {
+        setState(() {
+          _photoPath = picked.path;
+          _errorMessage = null;
+        });
+      }
+    } catch (_) {
+      setState(() {
+        _errorMessage =
+            'Kamera tidak dapat dijalankan. Foto bukti tidak dapat diambil.';
+      });
+    }
+  }
+
+  Future<void> _scanLabel() async {
+    var result = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => const GateScannerPage(
+          title: 'Pindai Label Batch',
+          hint: 'Arahkan kamera ke barcode label batch di rak.',
+          subtitle: 'Hasil pindai dicocokkan dengan label baris ini.',
+          cameraErrorHint:
+              'Kamera tidak dapat dijalankan. Tutup halaman ini dan lanjut '
+              'mengisi manual — identifikasi tercatat "manual".',
+        ),
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    var normalized = result.trim().toUpperCase();
+    var matches =
+        normalized == _barcodeLabel.toUpperCase() ||
+        (_batchNumber.isNotEmpty && normalized == _batchNumber.toUpperCase());
+    setState(() {
+      if (matches) {
+        _scannedLabel = result.trim();
+        _identifiedVia = 'scan';
+        _errorMessage = null;
+      } else {
+        _identifiedVia = 'manual';
+        _scannedLabel = null;
+        _errorMessage =
+            'Silakan diulang — hasil pindai '
+            '(${result.trim()}) tidak cocok dengan label ini.';
+      }
+    });
+  }
+
+  void _applyAcuan() {
+    setState(() {
+      var expectedCrt = widget.item.expectedCrt;
+      var expectedPcs = widget.item.expectedPcs;
+      _qtyCrt.text = expectedCrt != null ? _formatQty(expectedCrt) : '';
+      _qtyPcs.text = expectedPcs != null ? _formatQty(expectedPcs) : '';
+      if (_qtyCrt.text == '0' || expectedCrt == 0) {
+        _disposition = null;
+      }
+      _errorMessage = null;
+    });
+  }
+
+  void _applyHabis() {
+    setState(() {
+      _qtyCrt.text = '0';
+      _qtyPcs.text = '0';
+      // Tandai habis: tidak ada barang untuk didisposisikan.
+      _disposition = null;
+      _errorMessage = null;
+    });
+  }
+
+  Future<void> _save() async {
+    var navigator = Navigator.of(context);
+    var error = _validate();
+    if (error != null) {
+      setState(() => _errorMessage = error);
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _errorMessage = null;
+    });
+    var data = <String, dynamic>{
+      'qty_fisik_crt': _qtyCrtValue,
+      'qty_fisik_pcs': _qtyPcsValue,
+      'condition': _condition,
+      // Disposisi dilarang saat tandai habis — tidak ada barang
+      // untuk ditindaklanjuti; koreksi menunggu validasi BLC.
+      'disposition': _isMarkedEmpty ? null : _disposition,
+      'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      'identified_via': _identifiedVia,
+    };
+    var submitError = await widget.onVerify(data, _photoPath);
+    if (!mounted) {
+      return;
+    }
+    if (submitError != null) {
+      setState(() {
+        _saving = false;
+        _errorMessage = submitError;
+      });
+      return;
+    }
+    navigator.pop();
+  }
+
+  String? _validate() {
+    if (_qtyCrt.text.trim().isEmpty ||
+        double.tryParse(_qtyCrt.text.replaceAll(',', '.')) == null) {
+      return 'Qty fisik (CRT) wajib diisi angka.';
+    }
+    if (_qtyCrtValue < 0 || _qtyPcsValue < 0) {
+      return 'Qty tidak boleh negatif.';
+    }
+    if (!_isMarkedEmpty && _disposition == null) {
+      return 'Disposisi wajib dipilih untuk hasil hitung yang berisi barang.';
+    }
+    if (_photoRequired.contains(_condition) && _photoPath == null) {
+      return 'Foto bukti wajib untuk kondisi "${_conditionLabel(_condition)}".';
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    var delta = _delta;
+    var item = widget.item;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.92,
+        ),
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: colors.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.border,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Hitung Fisik',
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: colors.foreground,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      tooltip: 'Tutup',
+                      color: colors.textMuted,
+                    ),
+                  ],
+                ),
+                _buildTargetCard(colors, item),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    _QuickChip(
+                      label:
+                          'Sesuai acuan (${_formatQty(item.expectedCrt)} CRT)',
+                      icon: Icons.done_all_rounded,
+                      onTap: _applyAcuan,
+                    ),
+                    _QuickChip(
+                      label: 'Habis (0)',
+                      icon: Icons.inventory_2_outlined,
+                      onTap: _applyHabis,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppTextField(
+                        controller: _qtyCrt,
+                        key: const Key('verify_qty_crt'),
+                        label: 'Qty Fisik (CRT)',
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AppTextField(
+                        controller: _qtyPcs,
+                        key: const Key('verify_qty_pcs'),
+                        label: 'Qty PCS',
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ],
+                ),
+                if (delta != null && delta != 0) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        delta > 0
+                            ? Icons.trending_up_rounded
+                            : Icons.trending_down_rounded,
+                        size: 16,
+                        color: delta > 0 ? colors.warning : colors.danger,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Selisih ${delta > 0 ? '+' : ''}${_formatQty(delta)} CRT dari acuan',
+                          style: GoogleFonts.roboto(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: delta > 0 ? colors.warning : colors.danger,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  if (_isMarkedEmpty)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 16,
+                          color: colors.warning,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Tandai habis — fisik 0; koreksi menunggu '
+                            'validasi BLC saat approve.',
+                            style: GoogleFonts.roboto(
+                              fontSize: 11,
+                              height: 1.35,
+                              color: colors.warning,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  else if (delta != null)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 16,
+                          color: colors.success,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Sesuai acuan',
+                          style: GoogleFonts.roboto(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colors.success,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+                const SizedBox(height: 12),
+                _buildScanRow(colors),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _condition,
+                  decoration: const InputDecoration(
+                    labelText: 'Kondisi fisik',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (var entry in _conditionLabels.entries)
+                      DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _condition = value ?? 'FISIK_BAGUS'),
+                ),
+                if (_photoRequired.contains(_condition)) ...[
+                  const SizedBox(height: 10),
+                  _buildPhotoRow(colors),
+                ],
+                if (!_isMarkedEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Disposisi *',
+                    style: GoogleFonts.roboto(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildDispositionChips(colors),
+                ],
+                const SizedBox(height: 12),
+                AppTextField(
+                  controller: _notes,
+                  label: 'Catatan (opsional)',
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: colors.dangerWell,
+                      borderRadius: AppTheme.radiusLg,
+                      border: Border.all(
+                        color: colors.danger.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 18,
+                          color: colors.dangerText,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: GoogleFonts.roboto(
+                              fontSize: 12,
+                              height: 1.4,
+                              color: colors.dangerText,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                AppPrimaryButton(
+                  text: 'Simpan Hasil Hitung',
+                  onPressed: _save,
+                  isLoading: _saving,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTargetCard(ThemeColors colors, OpnameExpiredSessionItem item) =>
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: context.colors.surfaceCard,
+          borderRadius: AppTheme.radiusLg,
+          border: Border.all(color: context.colors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
+              style: GoogleFonts.robotoMono(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: context.colors.foreground,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${item.namaBarang ?? '-'} · Barcode ${item.barcodeLabel ?? '-'}'
+              ' · Exp ${item.expiredDateIni ?? '-'}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.roboto(
+                fontSize: 11,
+                height: 1.35,
+                color: context.colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Acuan sistem: CRT ${_formatQty(item.expectedCrt)}'
+              ' / PCS ${_formatQty(item.expectedPcs)}',
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: context.colors.foreground,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildScanRow(ThemeColors colors) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Expanded(
+            child: AppSecondaryButton(
+              text: 'Pindai Label Batch',
+              onPressed: _scanLabel,
+              height: 44,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 6),
+      Row(
+        children: [
+          Icon(
+            _identifiedVia == 'scan'
+                ? Icons.qr_code_scanner_rounded
+                : Icons.keyboard_rounded,
+            size: 14,
+            color: _identifiedVia == 'scan' ? colors.success : colors.textMuted,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              _identifiedVia == 'scan'
+                  ? 'Tercatat: label terverifikasi scan ($_scannedLabel).'
+                  : 'Tercatat: identifikasi manual — pindai bila memungkinkan.',
+              style: GoogleFonts.roboto(
+                fontSize: 11,
+                height: 1.35,
+                color: _identifiedVia == 'scan'
+                    ? colors.success
+                    : colors.textMuted,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  Widget _buildPhotoRow(ThemeColors colors) => Row(
+    children: [
+      Expanded(
+        child: OutlinedButton.icon(
+          onPressed: _pickPhoto,
+          icon: Icon(
+            _photoPath == null
+                ? Icons.photo_camera_outlined
+                : Icons.check_circle_outline_rounded,
+            size: 18,
+            color: _photoPath == null ? colors.warning : colors.success,
+          ),
+          label: Text(
+            _photoPath == null ? 'Ambil Foto Bukti *' : 'Foto siap — ganti',
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: _photoPath == null ? colors.warning : colors.success,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(
+              color: _photoPath == null ? colors.warning : colors.success,
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildDispositionChips(ThemeColors colors) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (var entry in const {
+        'LANJUT': Icons.warehouse_rounded,
+        'RETUR': Icons.assignment_return_rounded,
+        'DISPOSAL': Icons.delete_forever_rounded,
+      }.entries)
+        _DispositionChip(
+          value: entry.key,
+          label: _dispositionLabel(entry.key),
+          icon: entry.value,
+          selected: _disposition == entry.key,
+          colors: colors,
+          onTap: () => setState(() {
+            _disposition = entry.key;
+            _errorMessage = null;
+          }),
+        ),
+    ],
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Elemen kecil
+// ---------------------------------------------------------------------------
+
+class _QuickChip extends StatelessWidget {
+  const _QuickChip({required this.label, required this.icon, this.onTap});
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => ActionChip(
+    label: Text(
+      label,
+      style: GoogleFonts.roboto(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: context.colors.foreground,
+      ),
+    ),
+    avatar: Icon(icon, size: 16, color: AppTheme.primary600),
+    backgroundColor: context.colors.surfaceCard,
+    side: BorderSide(color: context.colors.border),
+    onPressed: onTap,
+  );
+}
+
+class _DispositionChip extends StatelessWidget {
+  const _DispositionChip({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.colors,
+    this.onTap,
+  });
+
+  final String value;
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback? onTap;
+  final ThemeColors colors;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: selected ? colors.primaryWell : Colors.transparent,
+    borderRadius: AppTheme.radiusLg,
+    child: InkWell(
+      borderRadius: AppTheme.radiusLg,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: AppTheme.radiusLg,
+          border: Border.all(
+            color: colors.primaryWellBorder,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: colors.primaryWellText),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: colors.primaryWellText,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -622,115 +1346,167 @@ class _OpnameSessionTile extends StatelessWidget {
   );
 }
 
+/// Tile baris verifikasi batch: label fisik (nomor batch + barcode),
+/// pembanding acuan ↔ fisik dengan chip selisih, kondisi & disposisi.
 class _OpnameSessionItemTile extends StatelessWidget {
   const _OpnameSessionItemTile({required this.item, super.key, this.onCount});
 
   final OpnameExpiredSessionItem item;
   final VoidCallback? onCount;
 
+  /// Selisih CRT fisik vs acuan (null saat belum dihitung / tanpa acuan).
+  (String, Color)? _deltaInfo(BuildContext context) {
+    if (!item.isVerified) {
+      return null;
+    }
+    var expected = item.expectedCrt;
+    var actual = item.qtyFisikCrt;
+    if (expected == null || actual == null) {
+      return null;
+    }
+    var delta = actual - expected;
+    if ((item.qtyFisikCrt ?? 0) == 0 && (item.qtyFisikPcs ?? 0) == 0) {
+      return ('Habis', context.colors.warning);
+    }
+    if (delta == 0) {
+      return ('Sesuai', context.colors.success);
+    }
+    return (
+      'Selisih ${delta > 0 ? '+' : ''}${_formatQty(delta)}',
+      delta > 0 ? context.colors.warning : context.colors.danger,
+    );
+  }
+
   @override
-  Widget build(BuildContext context) => AppCard(
-    padding: const EdgeInsets.all(AppTheme.space3),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            AppBadge(
-              text: item.isVerified ? 'Sudah dihitung' : 'Belum dihitung',
-              variant: item.isVerified
-                  ? AppBadgeVariant.success
-                  : AppBadgeVariant.gray,
-            ),
-            const SizedBox(width: AppTheme.space2),
-            Expanded(
-              child: Text(
-                item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.robotoMono(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.foreground,
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    var deltaInfo = _deltaInfo(context);
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppTheme.space3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: item.isVerified ? colors.success : colors.border,
                 ),
               ),
+              const SizedBox(width: AppTheme.space2),
+              Expanded(
+                child: Text(
+                  item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colors.foreground,
+                  ),
+                ),
+              ),
+              if (deltaInfo != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: deltaInfo.$2.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    deltaInfo.$1,
+                    style: GoogleFonts.roboto(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: deltaInfo.$2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            'Barcode ${item.barcodeLabel ?? '-'} · Exp ${item.expiredDateIni ?? '-'}',
+            style: GoogleFonts.roboto(
+              fontSize: 11,
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Acuan CRT ${_formatQty(item.expectedCrt)} / PCS ${_formatQty(item.expectedPcs)}',
+            style: GoogleFonts.roboto(fontSize: 11, color: colors.textMuted),
+          ),
+          if (item.isVerified) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Fisik CRT ${_formatQty(item.qtyFisikCrt)} / PCS ${_formatQty(item.qtyFisikPcs)}',
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: colors.foreground,
+              ),
+            ),
+            const SizedBox(height: AppTheme.space2),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (item.condition != null && item.condition!.isNotEmpty)
+                  Text(
+                    _conditionLabel(item.condition),
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                if (item.disposition != null)
+                  Text(
+                    'Disposisi ${_dispositionLabel(item.disposition)}',
+                    style: GoogleFonts.roboto(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+            if (item.notes != null && item.notes!.isNotEmpty) ...[
+              const SizedBox(height: AppTheme.space2),
+              Text(
+                'Catatan: ${item.notes}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.roboto(
+                  fontSize: 11,
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
+          ],
+          if (onCount != null) ...[
+            const SizedBox(height: AppTheme.space3),
+            AppSecondaryButton(
+              text: item.isVerified ? 'Hitung Ulang' : 'Hitung Fisik',
+              onPressed: onCount,
+              height: 44,
             ),
           ],
-        ),
-        const SizedBox(height: AppTheme.space2),
-        Text(
-          'Barcode: ${item.barcodeLabel ?? '-'} · Exp ${item.expiredDateIni ?? '-'}',
-          style: GoogleFonts.roboto(
-            fontSize: 11,
-            color: context.colors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          'Acuan: CRT ${_formatQty(item.expectedCrt)} / PCS ${_formatQty(item.expectedPcs)}'
-          '${item.qtyWaveCrt != null ? ' · Wave ${_formatQty(item.qtyWaveCrt)} CRT' : ''}',
-          style: GoogleFonts.roboto(
-            fontSize: 11,
-            color: context.colors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          'Fisik: CRT ${_formatQty(item.qtyFisikCrt)} / PCS ${_formatQty(item.qtyFisikPcs)}'
-          '${(item.condition != null && item.condition!.isNotEmpty) ? ' · ${item.condition}' : ''}',
-          style: GoogleFonts.roboto(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: context.colors.foreground,
-          ),
-        ),
-        if (item.disposition != null) ...[
-          const SizedBox(height: AppTheme.space2),
-          Text(
-            'Disposisi: ${item.disposition}',
-            style: GoogleFonts.roboto(
-              fontSize: 11,
-              color: context.colors.textSecondary,
-            ),
-          ),
         ],
-        if (item.notes != null && item.notes!.isNotEmpty) ...[
-          const SizedBox(height: AppTheme.space2),
-          Text(
-            'Catatan: ${item.notes}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              fontSize: 11,
-              color: context.colors.textSecondary,
-            ),
-          ),
-        ],
-        if (onCount != null) ...[
-          const SizedBox(height: AppTheme.space3),
-          AppSecondaryButton(
-            text: item.isVerified ? 'Hitung Ulang' : 'Hitung Fisik',
-            onPressed: onCount,
-            isFullWidth: false,
-            width: 150,
-            height: 44,
-          ),
-        ],
-      ],
-    ),
-  );
-
-  static String _formatQty(double? value) {
-    if (value == null) {
-      return '-';
-    }
-    return value == value.truncateToDouble()
-        ? value.toInt().toString()
-        : value.toString();
+      ),
+    );
   }
 }
 
-/// Header cluster per barang: kode + nama + qty wave + progres hitung.
+/// Header cluster per barang: kode + nama + qty wave + progres hitung
+/// dengan aksen rail warna.
 class _OpnameClusterHeader extends StatelessWidget {
   const _OpnameClusterHeader({
     required this.item,
@@ -744,9 +1520,11 @@ class _OpnameClusterHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(
-      horizontal: AppTheme.space3,
-      vertical: AppTheme.space2,
+    padding: const EdgeInsets.only(
+      left: 10,
+      right: AppTheme.space3,
+      top: AppTheme.space2,
+      bottom: AppTheme.space2,
     ),
     decoration: BoxDecoration(
       color: context.colors.foreground.withValues(alpha: 0.06),
@@ -754,6 +1532,17 @@ class _OpnameClusterHeader extends StatelessWidget {
     ),
     child: Row(
       children: [
+        Container(
+          width: 3,
+          height: 28,
+          decoration: BoxDecoration(
+            color: counted == total
+                ? context.colors.success
+                : AppTheme.primary600,
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+        const SizedBox(width: AppTheme.space2),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,13 +1583,4 @@ class _OpnameClusterHeader extends StatelessWidget {
       ],
     ),
   );
-
-  static String _formatQty(double? value) {
-    if (value == null) {
-      return '-';
-    }
-    return value == value.truncateToDouble()
-        ? value.toInt().toString()
-        : value.toString();
-  }
 }

@@ -158,11 +158,36 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
   Future<void> addWaves(int id, List<int> waveIds) =>
       _execute(() => _repository.addWaves(id, waveIds));
 
-  Future<void> verifyItem(
+  /// Simpan hasil hitung dari sheet input: sheet memakai state simpan
+  /// sendiri (tanpa spinner global), jadi method ini mengembalikan pesan
+  /// error (null = sukses) dan menyegarkan detail sesi saat berhasil.
+  /// [photoPath] mengisi foto bukti wajib untuk kondisi bermasalah.
+  Future<String?> verifyItem(
     int sessionId,
     int itemId,
-    Map<String, dynamic> data,
-  ) => _execute(() => _repository.verifyItem(sessionId, itemId, data));
+    Map<String, dynamic> data, {
+    String? photoPath,
+  }) async {
+    try {
+      await _repository.verifyItem(
+        sessionId,
+        itemId,
+        data,
+        photoPath: photoPath,
+      );
+      await show(sessionId);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e, stack) {
+      debugPrint(
+        'OpnameExpiredSessionProvider.verifyItem: unhandled '
+        '${e.runtimeType}: $e',
+      );
+      debugPrintStack(stackTrace: stack, maxFrames: 8);
+      return 'Terjadi kesalahan tidak terduga. Silakan coba lagi.';
+    }
+  }
 
   Future<void> submit(int id) => _execute(() => _repository.submit(id));
 

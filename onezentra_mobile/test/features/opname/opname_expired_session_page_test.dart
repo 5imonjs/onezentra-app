@@ -24,6 +24,7 @@ class _FakeOpnameExpiredSessionRepository
   final bool fail;
   int listCalls = 0;
   bool? lastMine;
+  final List<Map<String, dynamic>> verifyPayloads = [];
 
   @override
   Future<List<OpnameExpiredSession>> list({
@@ -51,6 +52,17 @@ class _FakeOpnameExpiredSessionRepository
       }
     }
     throw const ApiException('Sesi tidak ditemukan.', 0);
+  }
+
+  @override
+  Future<dynamic> verifyItem(
+    int sessionId,
+    int itemId,
+    Map<String, dynamic> data, {
+    String? photoPath,
+  }) async {
+    verifyPayloads.add({...data, 'photo_path': photoPath, 'item_id': itemId});
+    return <String, dynamic>{'batches_issued': 1};
   }
 }
 
@@ -301,9 +313,8 @@ void main() {
       expect(find.text('BATCH-11'), findsOneWidget);
       expect(find.text('BATCH-12'), findsOneWidget);
       expect(find.text('BATCH-13'), findsOneWidget);
-      // Barcode label & qty acuan baris.
-      expect(find.text('Barcode: LBL-11 · Exp 2026-12-01'), findsOneWidget);
-      expect(find.text('Acuan: CRT 6 / PCS - · Wave 12 CRT'), findsOneWidget);
+      // Qty acuan baris (qty wave ada di header cluster).
+      expect(find.text('Acuan CRT 6 / PCS -'), findsOneWidget);
 
       // Search cepat: mengetik nama produk menyaring cluster lain keluar.
       await tester.enterText(find.byType(TextField), 'Susu Kental');
@@ -314,4 +325,157 @@ void main() {
       expect(find.text('BATCH-13'), findsOneWidget);
     },
   );
+
+  // Fixture sesi berjalan dengan satu label batch untuk uji sheet hitung.
+  _FakeOpnameExpiredSessionRepository buildCountingFixture() {
+    const item = OpnameExpiredSessionItem(
+      id: 31,
+      sessionId: 1,
+      waveId: 200,
+      kodeBarang: 'KB-777',
+      namaBarang: 'Vitamin Sirup 60ml',
+      batchNumber: 'BATCH-31',
+      barcodeLabel: 'LBL-31',
+      expiredDateIni: '2026-12-31',
+      qtyWaveCrt: 10,
+      statusIni: 'AMAN',
+      expectedCrt: 10,
+    );
+    return _FakeOpnameExpiredSessionRepository(
+      sessions: [
+        const OpnameExpiredSession(
+          id: 1,
+          weekStart: '2026-11-02',
+          weekEnd: '2026-11-08',
+          kodeDepo: 'DP01',
+          namaDepo: 'Depo Utama',
+          status: 'IN_PROGRESS',
+          items: [item],
+        ),
+      ],
+    );
+  }
+
+  Future<void> openVerifySheet(WidgetTester tester) async {
+    await tester.tap(find.text('Sesi minggu 2026-11-02'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hitung Fisik'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'hitung fisik: disposisi wajib eksplisit — simpan diblok tanpa disposisi',
+    (tester) async {
+      var repository = buildCountingFixture();
+      var auth = await _loginAuth();
+
+      await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+      await openVerifySheet(tester);
+
+      // Isi qty lalu simpan TANPA memilih disposisi (aturan F.1): diblok,
+      // request TIDAK dikirim.
+      await tester.enterText(find.byKey(const Key('verify_qty_crt')), '6');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Simpan Hasil Hitung'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Disposisi wajib dipilih'), findsOneWidget);
+      expect(repository.verifyPayloads, isEmpty);
+    },
+  );
+
+  testWidgets('hitung fisik: payload lengkap & identifikasi manual tercatat', (
+    tester,
+  ) async {
+    var repository = buildCountingFixture();
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await openVerifySheet(tester);
+
+    // Qty fisik diisi manual (bukan scan) — tercatat jujur 'manual'.
+    await tester.enterText(find.byKey(const Key('verify_qty_crt')), '8');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Lanjut'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lanjut'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Selisih -2'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+
+    expect(repository.verifyPayloads, hasLength(1));
+    var payload = repository.verifyPayloads.single;
+    expect(payload['qty_fisik_crt'], 8.0);
+    expect(payload['condition'], 'FISIK_BAGUS');
+    expect(payload['disposition'], 'LANJUT');
+    expect(payload['identified_via'], 'manual');
+    expect(payload['item_id'], 31);
+    // Sheet tertutup kembali ke detail.
+    expect(find.text('Simpan Hasil Hitung'), findsNothing);
+  });
+
+  testWidgets('tandai habis (0): tanpa disposisi, bidang disposition null', (
+    tester,
+  ) async {
+    var repository = buildCountingFixture();
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await openVerifySheet(tester);
+
+    // Aksi cepat "Habis (0)" — segmen disposisi sudah tidak tampil.
+    await tester.ensureVisible(find.text('Habis (0)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Habis (0)'));
+    await tester.pumpAndSettle();
+
+    // Backend melarang disposisi saat fisik 0 — sheet tidak menampilkannya.
+    expect(find.text('Habis (0)'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+
+    expect(repository.verifyPayloads, hasLength(1));
+    var payload = repository.verifyPayloads.single;
+    expect(payload['qty_fisik_crt'], 0.0);
+    expect(payload['disposition'], isNull);
+  });
+
+  testWidgets('kondisi bermasalah: simpan diblok tanpa foto bukti', (
+    tester,
+  ) async {
+    var repository = buildCountingFixture();
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await openVerifySheet(tester);
+
+    // Pilih kondisi yang mewajibkan foto (dropdown kondisi fisik).
+    await tester.tap(find.text('Fisik bagus'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fisik rusak').last);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('verify_qty_crt')), '5');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Lanjut'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lanjut'));
+    await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Simpan Hasil Hitung'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Foto bukti wajib'), findsOneWidget);
+    expect(repository.verifyPayloads, isEmpty);
+  });
 }
