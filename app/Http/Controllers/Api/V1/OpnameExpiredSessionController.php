@@ -220,9 +220,23 @@ class OpnameExpiredSessionController extends Controller
                     : ($bySj[$item->batch->sj_validation_item_id] ?? null))
                 : null;
 
+            // Data penerimaan untuk analisa petugas (yang juga penerima
+            // barang): apakah selisih sudah terjadi sejak terima. Aksesor
+            // tanggal_penerimaan berupa string (dengan fallback scan-time
+            // untuk baris validasi SJ) — ambil 10 digit pertama.
+            $tanggalTerima = $source?->tanggal_penerimaan;
+            $tanggalTerima = is_string($tanggalTerima)
+                ? substr($tanggalTerima, 0, 10)
+                : $tanggalTerima?->toDateString();
+
             return array_merge($item->toArray(), [
                 'expected_crt' => $source ? (float) $source->actual_qty : null,
                 'expected_pcs' => $source && $source->qty_pcs !== null ? (float) $source->qty_pcs : null,
+                'tanggal_penerimaan' => $tanggalTerima,
+                'condition_terima' => $source?->condition,
+                'selisih_terima' => $source
+                    ? (float) $source->actual_qty - (float) $source->expected_qty
+                    : null,
             ]);
         })->all();
 

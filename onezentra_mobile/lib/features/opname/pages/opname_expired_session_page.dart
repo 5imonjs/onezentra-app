@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
 import 'package:onezentra_mobile/features/auth/providers/auth_provider.dart';
-import 'package:onezentra_mobile/features/gate/pages/gate_scanner_page.dart';
 import 'package:onezentra_mobile/features/opname/models/opname_expired_session_models.dart';
 import 'package:onezentra_mobile/features/opname/providers/opname_expired_session_provider.dart';
 import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
@@ -78,8 +77,8 @@ String _statusHint(String status) => switch (status) {
 /// Sesi Opname Expired — alur kerja lapangan (aturan A2).
 ///
 /// Daftar sesi → detail dengan ringkasan progres → hitung fisik per label
-/// batch (scan kamera + qty + kondisi + disposisi) → kirim untuk
-/// persetujuan. Aksi berat diarahkan ke backend (opname-sessions).
+/// batch (qty + kondisi + disposisi) → kirim untuk persetujuan. Aksi berat
+/// diarahkan ke backend (opname-sessions).
 class OpnameExpiredSessionPage extends StatefulWidget {
   const OpnameExpiredSessionPage({super.key, this.repository});
 
@@ -573,8 +572,8 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
 /// Sheet input hitung fisik satu label batch.
 ///
 /// Logika input profesional & jujur:
-/// - label diidentifikasi dengan kamera (scan) — hasil scan yang TIDAK
-///   cocok diblok; identifikasi manual tetap bisa tapi tercatat "manual";
+/// - identifikasi label selalu manual saat ini (fitur pindai kamera
+///   di-offkan) — backend tetap menerima `identified_via: manual`;
 /// - aksi cepat: "Sesuai acuan" dan "Habis (0)" untuk mempercepat lapangan;
 /// - disposisi wajib dipilih eksplisit saat barang ada (aturan F.1),
 ///   otomatis kosong saat tandai habis;
@@ -611,16 +610,9 @@ class _VerifySheetState extends State<_VerifySheet> {
 
   late String _condition = 'FISIK_BAGUS';
   String? _disposition;
-  // Identifikasi jujur: default manual (label rusak dll.); berubah otomatis
-  // menjadi 'scan' hanya setelah hasil kamera benar-benar cocok.
-  String _identifiedVia = 'manual';
-  String? _scannedLabel;
   String? _photoPath;
   String? _errorMessage;
   bool _saving = false;
-
-  String get _barcodeLabel => widget.item.barcodeLabel ?? '';
-  String get _batchNumber => widget.item.batchNumber ?? '';
 
   @override
   void initState() {
@@ -673,41 +665,6 @@ class _VerifySheetState extends State<_VerifySheet> {
     }
   }
 
-  Future<void> _scanLabel() async {
-    var result = await Navigator.of(context).push<String>(
-      MaterialPageRoute<String>(
-        builder: (_) => const GateScannerPage(
-          title: 'Pindai Label Batch',
-          hint: 'Arahkan kamera ke barcode label batch di rak.',
-          subtitle: 'Hasil pindai dicocokkan dengan label baris ini.',
-          cameraErrorHint:
-              'Kamera tidak dapat dijalankan. Tutup halaman ini dan lanjut '
-              'mengisi manual — identifikasi tercatat "manual".',
-        ),
-      ),
-    );
-    if (result == null || !mounted) {
-      return;
-    }
-    var normalized = result.trim().toUpperCase();
-    var matches =
-        normalized == _barcodeLabel.toUpperCase() ||
-        (_batchNumber.isNotEmpty && normalized == _batchNumber.toUpperCase());
-    setState(() {
-      if (matches) {
-        _scannedLabel = result.trim();
-        _identifiedVia = 'scan';
-        _errorMessage = null;
-      } else {
-        _identifiedVia = 'manual';
-        _scannedLabel = null;
-        _errorMessage =
-            'Silakan diulang — hasil pindai '
-            '(${result.trim()}) tidak cocok dengan label ini.';
-      }
-    });
-  }
-
   void _applyAcuan() {
     setState(() {
       var expectedCrt = widget.item.expectedCrt;
@@ -750,7 +707,7 @@ class _VerifySheetState extends State<_VerifySheet> {
       // untuk ditindaklanjuti; koreksi menunggu validasi BLC.
       'disposition': _isMarkedEmpty ? null : _disposition,
       'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-      'identified_via': _identifiedVia,
+      'identified_via': 'manual',
     };
     var submitError = await widget.onVerify(data, _photoPath);
     if (!mounted) {
@@ -956,7 +913,7 @@ class _VerifySheetState extends State<_VerifySheet> {
                     ),
                 ],
                 const SizedBox(height: 12),
-                _buildScanRow(colors),
+
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _condition,
@@ -1065,6 +1022,7 @@ class _VerifySheetState extends State<_VerifySheet> {
             const SizedBox(height: 2),
             Text(
               '${item.namaBarang ?? '-'} · Barcode ${item.barcodeLabel ?? '-'}'
+              ' · Terima ${item.tanggalPenerimaan ?? '-'}'
               ' · Exp ${item.expiredDateIni ?? '-'}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -1084,53 +1042,40 @@ class _VerifySheetState extends State<_VerifySheet> {
                 color: context.colors.foreground,
               ),
             ),
+            // Bantuan analisa: batch ini diterima oleh orang yang sama —
+            // ia bisa menyimpulkan kapan masalahnya mulai.
+            if (item.selisihTerima != null && item.selisihTerima != 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Sudah selisih saat terima: '
+                  '${item.selisihTerima! > 0 ? '+' : ''}'
+                  '${_formatQty(item.selisihTerima)} CRT '
+                  '(terima ${_formatQty(item.expectedCrt)} CRT)',
+                  style: GoogleFonts.roboto(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: context.colors.warning,
+                  ),
+                ),
+              )
+            else if (item.conditionTerima != null &&
+                item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Sudah bermasalah saat terima: '
+                  '${_conditionLabel(item.conditionTerima)}',
+                  style: GoogleFonts.roboto(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: context.colors.warning,
+                  ),
+                ),
+              ),
           ],
         ),
       );
-
-  Widget _buildScanRow(ThemeColors colors) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        children: [
-          Expanded(
-            child: AppSecondaryButton(
-              text: 'Pindai Label Batch',
-              onPressed: _scanLabel,
-              height: 44,
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 6),
-      Row(
-        children: [
-          Icon(
-            _identifiedVia == 'scan'
-                ? Icons.qr_code_scanner_rounded
-                : Icons.keyboard_rounded,
-            size: 14,
-            color: _identifiedVia == 'scan' ? colors.success : colors.textMuted,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              _identifiedVia == 'scan'
-                  ? 'Tercatat: label terverifikasi scan ($_scannedLabel).'
-                  : 'Tercatat: identifikasi manual — pindai bila memungkinkan.',
-              style: GoogleFonts.roboto(
-                fontSize: 11,
-                height: 1.35,
-                color: _identifiedVia == 'scan'
-                    ? colors.success
-                    : colors.textMuted,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ],
-  );
 
   Widget _buildPhotoRow(ThemeColors colors) => Row(
     children: [
@@ -1433,9 +1378,12 @@ class _OpnameSessionItemTile extends StatelessWidget {
           ),
           const SizedBox(height: AppTheme.space2),
           Text(
-            'Barcode ${item.barcodeLabel ?? '-'} · Exp ${item.expiredDateIni ?? '-'}',
+            'Barcode ${item.barcodeLabel ?? '-'}'
+            '${item.tanggalPenerimaan != null ? ' · Terima ${item.tanggalPenerimaan}' : ''}'
+            ' · Exp ${item.expiredDateIni ?? '-'}',
             style: GoogleFonts.roboto(
               fontSize: 11,
+              height: 1.35,
               color: colors.textSecondary,
             ),
           ),
@@ -1444,6 +1392,35 @@ class _OpnameSessionItemTile extends StatelessWidget {
             'Acuan CRT ${_formatQty(item.expectedCrt)} / PCS ${_formatQty(item.expectedPcs)}',
             style: GoogleFonts.roboto(fontSize: 11, color: colors.textMuted),
           ),
+          // Bantuan analisa sejak penerimaan — petugas (yang menerima
+          // barang ini) langsung melihat kapan masalahnya dimulai.
+          if (item.selisihTerima != null && item.selisihTerima != 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Sudah selisih saat terima: '
+                '${item.selisihTerima! > 0 ? '+' : ''}'
+                '${_formatQty(item.selisihTerima)} CRT dari rencana terima',
+                style: GoogleFonts.roboto(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: colors.warning,
+                ),
+              ),
+            )
+          else if (item.conditionTerima != null &&
+              item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Kondisi saat terima: ${_conditionLabel(item.conditionTerima)}',
+                style: GoogleFonts.roboto(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: colors.warning,
+                ),
+              ),
+            ),
           if (item.isVerified) ...[
             const SizedBox(height: 2),
             Text(

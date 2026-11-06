@@ -691,6 +691,13 @@ class OpnameExpiredSessionTest extends TestCase
         $items = collect($res->json('data.items'));
         $this->assertSame([5.0, 10.0], $items->pluck('expected_crt')->map(fn ($v) => (float) $v)->sort()->values()->all());
         $this->assertSame($b1->batch_number, $items->firstWhere('expected_crt', 10.0)['batch']['batch_number']);
+
+        // Konteks penerimaan per baris: petugas (yang juga penerima barang)
+        // menganalisa apakah selisih sudah terjadi sejak terima.
+        $first = $items->first();
+        $this->assertSame('2026-09-09', $first['tanggal_penerimaan']);
+        $this->assertSame('FISIK_BAGUS', $first['condition_terima']);
+        $this->assertSame(0.0, (float) $first['selisih_terima']);
     }
 
     public function test_verify_problem_condition_requires_photo(): void

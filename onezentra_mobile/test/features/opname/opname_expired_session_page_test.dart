@@ -237,6 +237,9 @@ void main() {
       },
       'expected_crt': '11.00',
       'expected_pcs': null,
+      'tanggal_penerimaan': '2026-09-09',
+      'condition_terima': 'QTY_KURANG',
+      'selisih_terima': '-2.00',
     });
 
     expect(item.batchNumber, 'BATCH-20261105-AB2');
@@ -244,6 +247,9 @@ void main() {
     expect(item.qtyWaveCrt, 12);
     expect(item.statusIni, 'AMAN');
     expect(item.expectedCrt, 11);
+    expect(item.tanggalPenerimaan, '2026-09-09');
+    expect(item.conditionTerima, 'QTY_KURANG');
+    expect(item.selisihTerima, -2);
   });
 
   testWidgets(
@@ -258,6 +264,9 @@ void main() {
         batchNumber: 'BATCH-11',
         barcodeLabel: 'LBL-11',
         expiredDateIni: '2026-12-01',
+        tanggalPenerimaan: '2026-09-09',
+        conditionTerima: 'QTY_KURANG',
+        selisihTerima: -2,
         qtyWaveCrt: 12,
         statusIni: 'AMAN',
         expectedCrt: 6,
@@ -315,6 +324,15 @@ void main() {
       expect(find.text('BATCH-13'), findsOneWidget);
       // Qty acuan baris (qty wave ada di header cluster).
       expect(find.text('Acuan CRT 6 / PCS -'), findsOneWidget);
+      // Konteks penerimaan per baris + petunjuk analisa selisih terima.
+      expect(
+        find.text('Barcode LBL-11 · Terima 2026-09-09 · Exp 2026-12-01'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Sudah selisih saat terima: -2 CRT dari rencana terima'),
+        findsOneWidget,
+      );
 
       // Search cepat: mengetik nama produk menyaring cluster lain keluar.
       await tester.enterText(find.byType(TextField), 'Susu Kental');
@@ -337,6 +355,9 @@ void main() {
       batchNumber: 'BATCH-31',
       barcodeLabel: 'LBL-31',
       expiredDateIni: '2026-12-31',
+      tanggalPenerimaan: '2026-09-09',
+      conditionTerima: 'FISIK_BAGUS',
+      selisihTerima: 0,
       qtyWaveCrt: 10,
       statusIni: 'AMAN',
       expectedCrt: 10,
@@ -359,6 +380,8 @@ void main() {
   Future<void> openVerifySheet(WidgetTester tester) async {
     await tester.tap(find.text('Sesi minggu 2026-11-02'));
     await tester.pumpAndSettle();
+    // Fitur pindai label di-offkan — sheet berbasiskan isi manual.
+    expect(find.text('Pindai Label Batch'), findsNothing);
     await tester.tap(find.text('Hitung Fisik'));
     await tester.pumpAndSettle();
   }

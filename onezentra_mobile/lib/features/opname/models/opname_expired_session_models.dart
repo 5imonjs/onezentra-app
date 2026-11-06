@@ -81,6 +81,9 @@ class OpnameExpiredSessionItem {
     this.qtyWaveCrt,
     this.qtyWavePcs,
     this.statusIni,
+    this.tanggalPenerimaan,
+    this.conditionTerima,
+    this.selisihTerima,
   });
 
   factory OpnameExpiredSessionItem.fromJson(Map<String, dynamic> json) =>
@@ -101,6 +104,12 @@ class OpnameExpiredSessionItem {
         // nomor batch ini dengan label tercetak saat memverifikasi.
         batchNumber: _readString(_readMap(json['batch'])?['batch_number']),
         barcodeLabel: _readString(_readMap(json['batch'])?['barcode_label']),
+        // Konteks penerimaan per batch untuk analisa (petugas = penerima
+        // barang): tanggal terima, kondisi saat terima, dan selisih yang
+        // sudah ada sejak terima.
+        tanggalPenerimaan: _readString(json['tanggal_penerimaan']),
+        conditionTerima: _readString(json['condition_terima']),
+        selisihTerima: _readDouble(json['selisih_terima']),
         // Qty wave minggu ini: acuan stok sesi dari backend.
         qtyWaveCrt: _readDouble(_readMap(json['wave'])?['qty_ini_crt']),
         qtyWavePcs: _readDouble(_readMap(json['wave'])?['qty_ini_pcs']),
@@ -132,6 +141,9 @@ class OpnameExpiredSessionItem {
   final double? qtyWaveCrt;
   final double? qtyWavePcs;
   final String? statusIni;
+  final String? tanggalPenerimaan;
+  final String? conditionTerima;
+  final double? selisihTerima;
   final double? qtyFisikCrt;
   final double? qtyFisikPcs;
   final String? condition;
