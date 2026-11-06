@@ -1476,6 +1476,39 @@ class _OpnameSessionItemTile extends StatelessWidget {
               color: colors.textSecondary,
             ),
           ),
+          // Penanda barang baru: diterima di minggu sesi ini — warna
+          // khusus agar stok baru langsung terbedakan dari barang bawaan.
+          if (item.diterimaMingguIni)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: colors.primaryWell,
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(color: colors.primaryWellBorder),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.local_shipping_rounded,
+                      size: 11,
+                      color: colors.primaryWellText,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Terima minggu ini',
+                      style: GoogleFonts.roboto(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: colors.primaryWellText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 2),
           Text(
             'Acuan CRT ${_formatQty(item.expectedCrt)} / PCS ${_formatQty(item.expectedPcs)}',

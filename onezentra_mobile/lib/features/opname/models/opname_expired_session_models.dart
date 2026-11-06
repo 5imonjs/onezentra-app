@@ -86,6 +86,7 @@ class OpnameExpiredSessionItem {
     this.selisihTerima,
     this.umurSimpanHari,
     this.sisaHariBatch,
+    this.diterimaMingguIni = false,
   });
 
   factory OpnameExpiredSessionItem.fromJson(Map<String, dynamic> json) =>
@@ -116,6 +117,10 @@ class OpnameExpiredSessionItem {
         // yang dirancang saat terima & sisa hari sekarang.
         umurSimpanHari: _readInt(json['umur_simpan_hari']),
         sisaHariBatch: _readInt(json['sisa_hari']),
+        // Penanda barang baru diterima di minggu sesi penerimaan —
+        // dibedakan warna agar stok baru terlihat berbeda dari barang
+        // bawaan minggu sebelumnya.
+        diterimaMingguIni: json['diterima_minggu_ini'] == true,
         // Qty wave minggu ini: acuan stok sesi dari backend.
         qtyWaveCrt: _readDouble(_readMap(json['wave'])?['qty_ini_crt']),
         qtyWavePcs: _readDouble(_readMap(json['wave'])?['qty_ini_pcs']),
@@ -152,6 +157,7 @@ class OpnameExpiredSessionItem {
   final double? selisihTerima;
   final int? umurSimpanHari;
   final int? sisaHariBatch;
+  final bool diterimaMingguIni;
   final double? qtyFisikCrt;
   final double? qtyFisikPcs;
   final String? condition;

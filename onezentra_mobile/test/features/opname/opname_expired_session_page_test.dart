@@ -243,6 +243,7 @@ void main() {
       'selisih_terima': '-2.00',
       'umur_simpan_hari': 145,
       'sisa_hari': 25,
+      'diterima_minggu_ini': true,
     });
 
     expect(item.batchNumber, 'BATCH-20261105-AB2');
@@ -255,6 +256,7 @@ void main() {
     expect(item.selisihTerima, -2);
     expect(item.umurSimpanHari, 145);
     expect(item.sisaHariBatch, 25);
+    expect(item.diterimaMingguIni, isTrue);
   });
 
   testWidgets(
@@ -274,6 +276,7 @@ void main() {
         selisihTerima: -2,
         umurSimpanHari: 83,
         sisaHariBatch: 25,
+        diterimaMingguIni: true,
         qtyWaveCrt: 12,
         statusIni: 'AMAN',
         expectedCrt: 6,
@@ -337,6 +340,8 @@ void main() {
       );
       // Sisa umur simpan — informasi "ngeh" barang yang dikelola.
       expect(find.text('Umur simpan 83 hari · Sisa 25 hari'), findsOneWidget);
+      // Penanda barang baru diterima minggu sesi — warna khusus.
+      expect(find.text('Terima minggu ini'), findsOneWidget);
       expect(
         find.text('Sudah selisih saat terima: -2 CRT dari rencana terima'),
         findsOneWidget,

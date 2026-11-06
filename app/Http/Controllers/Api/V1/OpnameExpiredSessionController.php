@@ -213,7 +213,7 @@ class OpnameExpiredSessionController extends Controller
         $bySj = ReceivingItem::whereIn('sj_validation_item_id', $batches->pluck('sj_validation_item_id')->filter()->all())
             ->get()->keyBy('sj_validation_item_id');
 
-        $items = $session->items->map(function (OpnameExpiredSessionItem $item) use ($byReceiving, $bySj): array {
+        $items = $session->items->map(function (OpnameExpiredSessionItem $item) use ($byReceiving, $bySj, $session): array {
             $source = $item->batch
                 ? ($item->batch->receiving_item_id
                     ? ($byReceiving[$item->batch->receiving_item_id] ?? null)
@@ -228,6 +228,18 @@ class OpnameExpiredSessionController extends Controller
             $tanggalTerima = is_string($tanggalTerima)
                 ? substr($tanggalTerima, 0, 10)
                 : $tanggalTerima?->toDateString();
+
+            // Penanda "barang baru diterima minggu ini": tanggal terima
+            // batch berada di rentang minggu sesi — pembawa warna khusus
+            // di mobile/web agar stok baru terbedakan dari barang bawaan.
+            $diterimaMingguIni = false;
+            if ($tanggalTerima !== null && $session->week_start && $session->week_end) {
+                $diterimaMingguIni = Carbon::parse($tanggalTerima)->startOfDay()
+                    ->between(
+                        Carbon::parse($session->week_start)->startOfDay(),
+                        Carbon::parse($session->week_end)->startOfDay(),
+                    );
+            }
 
             // Sisa umur simpan agar petugas "ngeh" dengan barang yang
             // dikelolanya: umur simpan dirancang saat terima (expired −
@@ -262,6 +274,7 @@ class OpnameExpiredSessionController extends Controller
                     : null,
                 'umur_simpan_hari' => $umurSimpan,
                 'sisa_hari' => $sisaHariItem,
+                'diterima_minggu_ini' => $diterimaMingguIni,
             ]);
         })->all();
 

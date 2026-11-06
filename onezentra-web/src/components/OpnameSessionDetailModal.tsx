@@ -30,6 +30,8 @@ export interface SessionDetailItem {
   // Laravel decimal:2 tiba sebagai string, karenanya number | string.
   expected_crt?: number | string | null;
   expected_pcs?: number | string | null;
+  /** Penanda batch diterima di minggu sesi — barang stok baru. */
+  diterima_minggu_ini?: boolean;
   wave?: {
     id: number;
     kode_barang: string;
@@ -485,6 +487,14 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                               <td className="px-4 py-3 text-xs text-foreground max-w-[280px]">
                                 <span className="block truncate">{it.wave?.nama_barang || '-'}</span>
                                 <span className="text-gray-400">exp {fmtDate(it.wave?.expired_date_ini)}</span>
+                                {it.diterima_minggu_ini && (
+                                  <span
+                                    className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold text-[10px] text-accent-text bg-chip-primary border border-chip-primary-border"
+                                    title="Batch ini diterima di minggu sesi ini — stok baru, belum carry-over minggu lalu"
+                                  >
+                                    Terima minggu ini
+                                  </span>
+                                )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 {isCounted

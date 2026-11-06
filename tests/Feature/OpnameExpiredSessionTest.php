@@ -717,6 +717,24 @@ class OpnameExpiredSessionTest extends TestCase
             ),
             $row['sisa_hari'],
         );
+
+        // Penanda barang baru: terima 2026-09-09 berada di minggu sesi
+        // (2026-09-07 s/d 2026-09-13) → semua baris ditandai.
+        $items->each(
+            fn ($it) => $this->assertTrue(
+                $it['diterima_minggu_ini'],
+                "item {$it['id']}",
+            ),
+        );
+
+        // Barang bawaan minggu sebelumnya (terima di luar rentang) —
+        // tanpa penanda.
+        $b1->receivingItem->update(['tanggal_penerimaan' => '2026-08-20']);
+        $items = collect($this->getJson("/api/v1/opname-sessions/{$sessionId}")
+            ->assertOk()
+            ->json('data.items'));
+        $this->assertFalse($items->firstWhere('expected_crt', 10.0)['diterima_minggu_ini']);
+        $this->assertTrue($items->firstWhere('expected_crt', 5.0)['diterima_minggu_ini']);
     }
 
     public function test_verify_problem_condition_requires_photo(): void
