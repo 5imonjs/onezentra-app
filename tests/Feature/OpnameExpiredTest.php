@@ -809,17 +809,19 @@ class OpnameExpiredTest extends TestCase
     }
 
     public function test_import_rows_anchor_to_import_week_regardless_of_file_date(): void
-    {        // Aturan baku: baris IMPORT ditambatkan ke minggu IMPORT (scan/created),
-        // bukan tanggal file. Baris bertanggal lama tapi diimport minggu ini
-        // tetap eligible minggu ini; baris SJ bertanggal lama tidak.
+    {
+        // Import berjangkar minggu IMPORT (scan/created) — bukan tanggal file;
+        // baris bertanggal lama tapi diimport minggu ini tetap eligible; baris
+        // SJ bertanggal lama juga ter-generate bila belum pernah masuk wave
+        // (barang tidak tenggelam hanya karena minggu monitoringnya lewat).
         $baseline = $this->receipt('B-ANCHOR-IM', 'Baseline Lama', 2, '2027-02-01', '2026-08-06');
         $sj = $this->receipt('B-ANCHOR-SJ', 'SJ Lama', 2, '2027-02-01', '2026-08-06', null, 'VALIDASI_SJ');
 
         $res = $this->getJson('/api/v1/opname-expired/pending?week_start=2026-09-07')->assertOk();
 
         $this->assertSame(1, $res->json('data.eligible.import'));
-        $this->assertSame(0, $res->json('data.eligible.sj'));
-        $this->assertSame(1, $res->json('data.pending.total'));
+        $this->assertSame(1, $res->json('data.eligible.sj'));
+        $this->assertSame(2, $res->json('data.pending.total'));
 
         app(OpnameExpiredService::class)->generate();
 
@@ -827,7 +829,10 @@ class OpnameExpiredTest extends TestCase
             'week_start' => '2026-09-07',
             'kode_barang' => 'B-ANCHOR-IM',
         ]);
-        $this->assertDatabaseMissing('opname_expired_waves', [
+        // Perilaku lama: baris SJ bertanggal lama ditepian. Sekarang: baris
+        // yang belum pernah ter-generate tetap ikut sehingga barang tidak
+        // tenggelam — semantics yang disengaja.
+        $this->assertDatabaseHas('opname_expired_waves', [
             'week_start' => '2026-09-07',
             'kode_barang' => 'B-ANCHOR-SJ',
         ]);

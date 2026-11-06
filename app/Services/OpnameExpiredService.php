@@ -157,7 +157,7 @@ class OpnameExpiredService
         $eligible = ['total' => 0, 'sj' => 0, 'import' => 0];
         $pending = ['total' => 0, 'sj' => 0, 'import' => 0];
 
-        foreach ($this->eligibleItems($weekStart, $user)->get() as $item) {
+        foreach ($this->eligibleItems($weekStart, $user) as $item) {
             $depo = $item->getKodeDepoFallback() ?: self::DEPO_GENERAL;
 
             if ($user?->isDepotScoped() && ! $user->canAccessDepotRow($depo, $item->getNamaDepoFallback())) {
@@ -196,17 +196,23 @@ class OpnameExpiredService
     /**
      * Query dasar baris ledger yang memenuhi syarat generate.
      *
-     * Jangkar minggu MONITORING berbeda per sumber (aturan baku):
-     * - IMPORT_MANUAL (baseline): minggu IMPORT (scan_time/created_at).
-     *   Tanggal di file adalah info historis, bukan penentu minggu — baseline
-     *   yang diimport minggu ini dipantau minggu ini.
-     * - VALIDASI_SJ: tanggal penerimaan aktual (terima/scan/created).
+     * Dua pintu masuk (aturan yang berlaku bersamaan), keduanya mengecualikan
+     * batch CANCELLED:
      *
-     * Keduanya tetap mengecualikan dokumen berlabel CANCELLED.
+     * 1. JENDELA MINGGU sasaran — perilaku lama tetap berjalan:
+     *    - IMPORT_MANUAL (baseline): minggu IMPORT (scan_time/created_at).
+     *      Tanggal di file adalah info historis, bukan penentu minggu — baseline
+     *      yang diimport minggu ini dipantau minggu ini.
+     *    - VALIDASI_SJ: tanggal penerimaan aktual (terima/scan/created).
+     * 2. BELUM TERMUAT di wave manapun — termasuk yang tanggalnya di luar
+     *    jendela sasaran. Tanpa pintu kedua ini setiap baris yang terlewatkan
+     *    jendela (mis. penerimaan bulan lalu yang baru terdata / tanggal keliru
+     *    di file) tidak akan pernah ter-generate selamanya.
      */
     private function eligibleItems(Carbon $weekStart, ?User $user = null)
     {
-        $weekRange = [$weekStart->toDateString(), $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->toDateString()];
+        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+        $weekRange = [$weekStart->toDateString(), $weekEnd->toDateString()];
 
         // Batch label punya status sendiri (ACTIVE / CANCELLED). Batch yang
         // dibatalkan — mis. karena sesi validasi di-cancel — labelnya sudah
@@ -234,6 +240,19 @@ class OpnameExpiredService
                 ->orWhereIn('id', $cancelledLedgerItemIds))
             ->pluck('id');
 
+        // Kunci-kunci yang pernah termuat ke wave manapun (carried atau minggu
+        // lampau) — dipakai pintu kedua agar barang yang terlewat jendela tidak
+        // terhitung dua kali.
+        $waveKeys = OpnameExpiredWave::query()
+            ->select('kode_barang', 'kode_depo', 'expired_date_ini')
+            ->get()
+            ->map(fn ($row) => implode('|', [
+                $row->kode_barang,
+                $row->kode_depo ?: self::DEPO_GENERAL,
+                $row->expired_date_ini?->toDateString(),
+            ]))
+            ->flip();
+
         return ReceivingItem::with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
             ->whereNotNull('expired_date')
             ->whereNotNull('kode_barang')
@@ -241,15 +260,45 @@ class OpnameExpiredService
                 $cancelledItemIds->isNotEmpty(),
                 fn ($q) => $q->whereNotIn('id', $cancelledItemIds)
             )
-            ->whereRaw(
-                'CASE WHEN source = ? THEN COALESCE(DATE(scan_time), DATE(created_at)) ELSE COALESCE(tanggal_penerimaan, DATE(scan_time), DATE(created_at)) END BETWEEN ? AND ?',
-                [ReceivingItem::SOURCE_IMPORT, ...$weekRange]
-            );
+            ->get()
+            ->filter(function (ReceivingItem $item) use ($weekRange, $waveKeys): bool {
+                // Pintu 1: jendela minggu (aturan lama).
+                $day = $this->monitoringAnchor($item);
+                if ($day !== null && $day >= $weekRange[0] && $day <= $weekRange[1]) {
+                    return true;
+                }
+
+                // Pintu 2: belum pernah masuk wave manapun — barang ini
+                // termastikan tidak pernah ter-generate sekalipun jendela
+                // minggunya sudah lewat.
+                $key = implode('|', [
+                    $item->kode_barang,
+                    $item->getKodeDepoFallback() ?: self::DEPO_GENERAL,
+                    $item->expired_date?->toDateString(),
+                ]);
+
+                return ! $waveKeys->has($key);
+            })
+            ->values();
+    }
+
+    /**
+     * Jangkar minggu monitoring per baris, sesuai aturan baku:
+     * - IMPORT_MANUAL: tanggal scan/created;
+     * - VALIDASI_SJ: tanggal penerimaan / scan / created (yang pertama ada).
+     */
+    private function monitoringAnchor(ReceivingItem $item): ?string
+    {
+        $raw = $item->source === ReceivingItem::SOURCE_IMPORT
+            ? ($item->scan_time ?? $item->created_at)
+            : ($item->tanggal_penerimaan ?? $item->scan_time ?? $item->created_at);
+
+        return $raw ? Carbon::parse($raw)->toDateString() : null;
     }
 
     private function receivingAggregates(Carbon $weekStart, ?User $user): array
     {
-        $items = $this->eligibleItems($weekStart, $user)->get();
+        $items = $this->eligibleItems($weekStart, $user);
 
         $aggregates = [];
 
@@ -373,7 +422,7 @@ class OpnameExpiredService
     {
         $weekStart = Carbon::parse($wave->week_start)->startOfWeek(Carbon::MONDAY);
 
-        return $this->eligibleItems($weekStart)->get()->filter(
+        return $this->eligibleItems($weekStart)->filter(
             fn (ReceivingItem $item) => $item->kode_barang === $wave->kode_barang
                 && ($item->getKodeDepoFallback() ?: self::DEPO_GENERAL) === ($wave->kode_depo ?: self::DEPO_GENERAL)
                 && $item->expired_date?->toDateString() === $wave->expired_date_ini?->toDateString()
