@@ -122,7 +122,7 @@ class ReportController extends Controller
         // Workbook besar butuh waktu & ruang — jangan biarkan PHP
         // (bila < 300s default_ini) mematikan request sebelum xlsx selesai.
         set_time_limit(300);
-        ini_set('memory_limit', '512M');
+        ini_set('memory_limit', '1G');
         $request->validate([
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
@@ -200,7 +200,7 @@ class ReportController extends Controller
         // Workbook besar butuh waktu & ruang — jangan biarkan PHP
         // (bila < 300s default_ini) mematikan request sebelum xlsx selesai.
         set_time_limit(300);
-        ini_set('memory_limit', '512M');
+        ini_set('memory_limit', '1G');
         $this->validateRencanaKirimRequest($request);
 
         $filename = 'laporan-rencana-kirim_'.date('Y-m-d_His').'.xlsx';
@@ -319,7 +319,7 @@ class ReportController extends Controller
         // Workbook besar butuh waktu & ruang — jangan biarkan PHP
         // (bila < 300s default_ini) mematikan request sebelum xlsx selesai.
         set_time_limit(300);
-        ini_set('memory_limit', '512M');
+        ini_set('memory_limit', '1G');
         $this->validatePenerimaanRequest($request);
 
         $filename = 'laporan-penerimaan_'.date('Y-m-d_His').'.xlsx';
@@ -367,7 +367,7 @@ class ReportController extends Controller
         // Workbook besar butuh waktu & ruang — jangan biarkan PHP
         // (bila < 300s default_ini) mematikan request sebelum xlsx selesai.
         set_time_limit(300);
-        ini_set('memory_limit', '512M');
+        ini_set('memory_limit', '1G');
         $filters = PenerimaanExpiredReportService::validate($request);
         $query = PenerimaanExpiredReportService::query($filters, $request->user());
 
@@ -416,7 +416,7 @@ class ReportController extends Controller
         // Workbook besar butuh waktu & ruang — jangan biarkan PHP
         // (bila < 300s default_ini) mematikan request sebelum xlsx selesai.
         set_time_limit(300);
-        ini_set('memory_limit', '512M');
+        ini_set('memory_limit', '1G');
         $this->validateBiayaRequest($request);
 
         $filename = 'laporan-biaya-thl_'.date('Y-m-d_His').'.xlsx';
@@ -462,7 +462,7 @@ class ReportController extends Controller
         // Workbook besar butuh waktu & ruang — jangan biarkan PHP
         // (bila < 300s default_ini) mematikan request sebelum xlsx selesai.
         set_time_limit(300);
-        ini_set('memory_limit', '512M');
+        ini_set('memory_limit', '1G');
         $this->validateBiayaRequest($request);
 
         $filename = 'laporan-biaya-retribusi_'.date('Y-m-d_His').'.xlsx';
