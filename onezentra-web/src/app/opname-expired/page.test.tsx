@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OpnameExpiredPage from './page';
 
@@ -99,5 +99,24 @@ describe('OpnameExpiredPage', () => {
     expect(await screen.findByText(/belum di-generate/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Threshold/ })).toBeInTheDocument();
+  });
+
+  it('mengganti picker minggu dengan dua input rentang tanggal manual', async () => {
+    const { container } = render(<OpnameExpiredPage />);
+
+    expect(container.querySelector('#week-start')).not.toBeInTheDocument();
+    const fromInput = container.querySelector('#oe-from') as HTMLInputElement;
+    const toInput = container.querySelector('#oe-to') as HTMLInputElement;
+    expect(fromInput).toBeInTheDocument();
+    expect(toInput).toBeInTheDocument();
+
+    fireEvent.change(fromInput, { target: { value: '2026-11-05' } });
+    fireEvent.change(toInput, { target: { value: '2026-11-07' } });
+
+    await waitFor(() => {
+      expect(list).toHaveBeenLastCalledWith(
+        expect.objectContaining({ date_from: '2026-11-05', date_to: '2026-11-07' }),
+      );
+    });
   });
 });
