@@ -343,6 +343,10 @@ class ReceivingItemController extends Controller
             'expired_date' => 'sometimes|date',
             'tanggal_penerimaan' => 'nullable|date',
             'condition' => 'nullable|string|max:32',
+            // Klasifikasi sumber ledger (SJ vs import manual) bisa ditetapkan
+            // ulang lewat update — mis. data baseline hasil input manual yang
+            // kemudian divalidasi SJ, agar kembali ke bucket yang benar.
+            'source' => 'sometimes|in:VALIDASI_SJ,IMPORT_MANUAL',
             'sumber_material' => 'nullable|string|max:200',
             'kode_depo' => 'nullable|string|max:20',
             'nama_depo' => 'nullable|string|max:100',
@@ -357,6 +361,7 @@ class ReceivingItemController extends Controller
             'expired_date' => $validated['expired_date'] ?? null,
             'tanggal_penerimaan' => $validated['tanggal_penerimaan'] ?? null,
             'condition' => $validated['condition'] ?? null,
+            'source' => $validated['source'] ?? null,
             'sumber_material' => $validated['sumber_material'] ?? null,
             'kode_depo' => $validated['kode_depo'] ?? null,
             'nama_depo' => $validated['nama_depo'] ?? null,

@@ -153,4 +153,27 @@ class ReceivingItemControllerTest extends TestCase
         $this->putJson("/api/v1/receiving-items/{$item->id}", ['qty_crt' => 1])
             ->assertForbidden();
     }
+
+    public function test_update_receiving_item_can_reclassify_source_to_manual_import(): void
+    {
+        // SJ validation memetakan item ke VALIDASI_SJ. Klasifikasi sumber
+        // harus bisa ditetapkan ulang lewat update supaya data baseline hasil
+        // input manual yang kemudian divalidasi SJ kembali ke bucket import
+        // di source filter batch expired.
+        $item = $this->makeItem('VALIDASI_SJ');
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", ['source' => 'IMPORT_MANUAL'])
+            ->assertOk()
+            ->assertJsonPath('data.source', 'IMPORT_MANUAL');
+
+        $this->assertSame('IMPORT_MANUAL', $item->fresh()->source);
+    }
+
+    public function test_update_receiving_item_rejects_unknown_source(): void
+    {
+        $item = $this->makeItem('VALIDASI_SJ');
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", ['source' => 'BOGUS'])
+            ->assertStatus(422);
+    }
 }
