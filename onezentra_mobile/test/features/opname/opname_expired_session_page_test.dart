@@ -170,7 +170,7 @@ void main() {
 
     expect(find.text('Sesi Opname Expired'), findsOneWidget);
     expect(find.text('Terbuka'), findsOneWidget);
-    expect(find.text('Sesi minggu 2026-11-02'), findsOneWidget);
+    expect(find.text('Sesi minggu 02/11/2026'), findsOneWidget);
     expect(find.text('Depo Utama'), findsOneWidget);
     // Beranda = daftar tugas: hanya sesi yang ditugaskan ke user.
     expect(repository.lastMine, isTrue);
@@ -193,7 +193,7 @@ void main() {
     var auth = await _loginAuth();
 
     await _pumpOpnameExpiredSessionPage(tester, auth, repository);
-    await tester.tap(find.text('Sesi minggu 2026-11-02'));
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
     await tester.pumpAndSettle();
 
     expect(find.text('Mulai Sesi'), findsOneWidget);
@@ -311,7 +311,7 @@ void main() {
       var auth = await _loginAuth();
 
       await _pumpOpnameExpiredSessionPage(tester, auth, repository);
-      await tester.tap(find.text('Sesi minggu 2026-11-02'));
+      await tester.tap(find.text('Sesi minggu 02/11/2026'));
       await tester.pumpAndSettle();
 
       // Header cluster per barang muncul sekali dengan qty wave + progres
@@ -326,7 +326,7 @@ void main() {
       expect(find.text('Acuan CRT 6 / PCS -'), findsOneWidget);
       // Konteks penerimaan per baris + petunjuk analisa selisih terima.
       expect(
-        find.text('Barcode LBL-11 · Terima 2026-09-09 · Exp 2026-12-01'),
+        find.text('Barcode LBL-11 · Terima 09/09/2026 · Exp 01/12/2026'),
         findsOneWidget,
       );
       expect(
@@ -378,7 +378,7 @@ void main() {
   }
 
   Future<void> openVerifySheet(WidgetTester tester) async {
-    await tester.tap(find.text('Sesi minggu 2026-11-02'));
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
     await tester.pumpAndSettle();
     // Fitur pindai label di-offkan — sheet berbasiskan isi manual.
     expect(find.text('Pindai Label Batch'), findsNothing);
@@ -473,7 +473,7 @@ void main() {
     expect(payload['disposition'], isNull);
   });
 
-  testWidgets('kondisi bermasalah: simpan diblok tanpa foto bukti', (
+  testWidgets('dropdown kondisi fisik dihapus — kondisi selalu FISIK_BAGUS', (
     tester,
   ) async {
     var repository = buildCountingFixture();
@@ -482,23 +482,9 @@ void main() {
     await _pumpOpnameExpiredSessionPage(tester, auth, repository);
     await openVerifySheet(tester);
 
-    // Pilih kondisi yang mewajibkan foto (dropdown kondisi fisik).
-    await tester.tap(find.text('Fisik bagus'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Fisik rusak').last);
-    await tester.pumpAndSettle();
-
-    await tester.enterText(find.byKey(const Key('verify_qty_crt')), '5');
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Lanjut'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Lanjut'));
-    await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Simpan Hasil Hitung'));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Foto bukti wajib'), findsOneWidget);
-    expect(repository.verifyPayloads, isEmpty);
+    // Dropdown kedaluwarsa (kondisi fisik) tidak ada lagi.
+    expect(find.text('Kondisi fisik'), findsNothing);
+    expect(find.text('Fisik bagus'), findsNothing);
+    expect(find.text('Fisik rusak'), findsNothing);
   });
 }

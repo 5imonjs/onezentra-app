@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import 'package:onezentra_mobile/core/theme/app_theme.dart';
@@ -22,6 +22,8 @@ AppBadgeVariant _sessionBadgeVariant(String status) => switch (status) {
 };
 
 /// Kondisi fisik batch — sejajar `ReceivingItem::CONDITIONS` backend.
+/// (Label ini dipakai untuk menampilkan kondisi terima analisa; pilihan
+/// kondisi di sheet dihapus — mobile selalu mengirim FISIK_BAGUS.)
 const Map<String, String> _conditionLabels = {
   'FISIK_BAGUS': 'Fisik bagus',
   'FISIK_RUSAK': 'Fisik rusak',
@@ -30,16 +32,6 @@ const Map<String, String> _conditionLabels = {
   'EXPIRED_TIDAK_STANDAR': 'Expired tidak standar',
   'LAINNYA': 'Lainnya',
 };
-
-/// Kondisi yang wajib disertai foto bukti — sejajar
-/// `ReceivingItem::CONDITIONS_REQUIRING_PHOTO` backend.
-const List<String> _photoRequired = [
-  'FISIK_RUSAK',
-  'QTY_KURANG',
-  'ISI_KEMASAN_KURANG',
-  'EXPIRED_TIDAK_STANDAR',
-  'LAINNYA',
-];
 
 String _conditionLabel(String? condition) =>
     _conditionLabels[condition?.trim().toUpperCase()] ?? condition ?? '-';
@@ -58,6 +50,19 @@ String _formatQty(double? value) {
   return value == value.truncateToDouble()
       ? value.toInt().toString()
       : value.toString();
+}
+
+/// Format tanggal tampilan dd/MM/yyyy — baku warga gudang; input tetap ISO
+/// dari backend (yyyy-MM-dd), fallback string asli bila tak terurai.
+final DateFormat _dateOut = DateFormat('dd/MM/yyyy');
+
+String _formatDate(String? iso) {
+  var raw = iso?.trim();
+  if (raw == null || raw.isEmpty) {
+    return '-';
+  }
+  var parsed = DateTime.tryParse(raw);
+  return parsed != null ? _dateOut.format(parsed) : raw;
 }
 
 /// Panduan langkah sesuai status — petugas tidak perlu menebak yang mana
@@ -312,7 +317,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               const SizedBox(width: AppTheme.space2),
               Expanded(
                 child: Text(
-                  'Sesi minggu ${session.weekStart ?? '-'}',
+                  'Sesi minggu ${_formatDate(session.weekStart)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
@@ -576,8 +581,9 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
 ///   di-offkan) — backend tetap menerima `identified_via: manual`;
 /// - aksi cepat: "Sesuai acuan" dan "Habis (0)" untuk mempercepat lapangan;
 /// - disposisi wajib dipilih eksplisit saat barang ada (aturan F.1),
-///   otomatis kosong saat tandai habis;
-/// - kondisi bermasalah wajib foto bukti (sejajar validasi SJ);
+///   otomatis kosong saat tandai habis; kondisi fisik dikirim bawaan
+///   FISIK_BAGUS — kondisi bermasalah ditindak via disposisi (retur/
+///   disposal); foto bukti tetap didukung backend bila kelak diperlukan;
 /// - selisih terhadap acuan tampil live sebelum simpan.
 class _VerifySheet extends StatefulWidget {
   const _VerifySheet({
@@ -608,18 +614,13 @@ class _VerifySheetState extends State<_VerifySheet> {
     text: widget.item.notes ?? '',
   );
 
-  late String _condition = 'FISIK_BAGUS';
+  // Kondisi fisik tidak diminta dari petugas — opname expired sudah
+  // bermuara ke disposisi (lanjut/retur/disposal). Backend tetap menyimpan
+  // kondisi; mobile mengirim bawaan FISIK_BAGUS.
+  static const String _condition = 'FISIK_BAGUS';
   String? _disposition;
-  String? _photoPath;
   String? _errorMessage;
   bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _condition = widget.item.condition ?? 'FISIK_BAGUS';
-    _disposition = widget.item.disposition;
-  }
 
   double get _qtyCrtValue =>
       double.tryParse(_qtyCrt.text.replaceAll(',', '.')) ?? 0;
@@ -642,27 +643,6 @@ class _VerifySheetState extends State<_VerifySheet> {
     _qtyPcs.dispose();
     _notes.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickPhoto() async {
-    try {
-      var picked = await ImagePicker().pickImage(
-        source: ImageSource.camera,
-        imageQuality: 80,
-        maxWidth: 1600,
-      );
-      if (picked != null) {
-        setState(() {
-          _photoPath = picked.path;
-          _errorMessage = null;
-        });
-      }
-    } catch (_) {
-      setState(() {
-        _errorMessage =
-            'Kamera tidak dapat dijalankan. Foto bukti tidak dapat diambil.';
-      });
-    }
   }
 
   void _applyAcuan() {
@@ -709,7 +689,7 @@ class _VerifySheetState extends State<_VerifySheet> {
       'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       'identified_via': 'manual',
     };
-    var submitError = await widget.onVerify(data, _photoPath);
+    var submitError = await widget.onVerify(data, null);
     if (!mounted) {
       return;
     }
@@ -733,9 +713,6 @@ class _VerifySheetState extends State<_VerifySheet> {
     }
     if (!_isMarkedEmpty && _disposition == null) {
       return 'Disposisi wajib dipilih untuk hasil hitung yang berisi barang.';
-    }
-    if (_photoRequired.contains(_condition) && _photoPath == null) {
-      return 'Foto bukti wajib untuk kondisi "${_conditionLabel(_condition)}".';
     }
     return null;
   }
@@ -913,28 +890,6 @@ class _VerifySheetState extends State<_VerifySheet> {
                     ),
                 ],
                 const SizedBox(height: 12),
-
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _condition,
-                  decoration: const InputDecoration(
-                    labelText: 'Kondisi fisik',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (var entry in _conditionLabels.entries)
-                      DropdownMenuItem(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      ),
-                  ],
-                  onChanged: (value) =>
-                      setState(() => _condition = value ?? 'FISIK_BAGUS'),
-                ),
-                if (_photoRequired.contains(_condition)) ...[
-                  const SizedBox(height: 10),
-                  _buildPhotoRow(colors),
-                ],
                 if (!_isMarkedEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
@@ -1022,8 +977,8 @@ class _VerifySheetState extends State<_VerifySheet> {
             const SizedBox(height: 2),
             Text(
               '${item.namaBarang ?? '-'} · Barcode ${item.barcodeLabel ?? '-'}'
-              ' · Terima ${item.tanggalPenerimaan ?? '-'}'
-              ' · Exp ${item.expiredDateIni ?? '-'}',
+              ' · Terima ${_formatDate(item.tanggalPenerimaan)}'
+              ' · Exp ${_formatDate(item.expiredDateIni)}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.roboto(
@@ -1076,37 +1031,6 @@ class _VerifySheetState extends State<_VerifySheet> {
           ],
         ),
       );
-
-  Widget _buildPhotoRow(ThemeColors colors) => Row(
-    children: [
-      Expanded(
-        child: OutlinedButton.icon(
-          onPressed: _pickPhoto,
-          icon: Icon(
-            _photoPath == null
-                ? Icons.photo_camera_outlined
-                : Icons.check_circle_outline_rounded,
-            size: 18,
-            color: _photoPath == null ? colors.warning : colors.success,
-          ),
-          label: Text(
-            _photoPath == null ? 'Ambil Foto Bukti *' : 'Foto siap — ganti',
-            style: GoogleFonts.roboto(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: _photoPath == null ? colors.warning : colors.success,
-            ),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(
-              color: _photoPath == null ? colors.warning : colors.success,
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
-      ),
-    ],
-  );
 
   Widget _buildDispositionChips(ThemeColors colors) => Wrap(
     spacing: 8,
@@ -1259,7 +1183,7 @@ class _OpnameSessionTile extends StatelessWidget {
             const SizedBox(width: AppTheme.space2),
             Expanded(
               child: Text(
-                'Sesi minggu ${session.weekStart ?? '-'}',
+                'Sesi minggu ${_formatDate(session.weekStart)}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.roboto(
@@ -1379,8 +1303,8 @@ class _OpnameSessionItemTile extends StatelessWidget {
           const SizedBox(height: AppTheme.space2),
           Text(
             'Barcode ${item.barcodeLabel ?? '-'}'
-            '${item.tanggalPenerimaan != null ? ' · Terima ${item.tanggalPenerimaan}' : ''}'
-            ' · Exp ${item.expiredDateIni ?? '-'}',
+            '${item.tanggalPenerimaan != null ? ' · Terima ${_formatDate(item.tanggalPenerimaan)}' : ''}'
+            ' · Exp ${_formatDate(item.expiredDateIni)}',
             style: GoogleFonts.roboto(
               fontSize: 11,
               height: 1.35,
