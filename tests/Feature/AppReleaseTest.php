@@ -89,7 +89,7 @@ class AppReleaseTest extends TestCase
 
     public function test_release_command_registers_apk_and_sha256(): void
     {
-        Storage::disk('public')->deleteDirectory('releases');
+        Storage::disk('local')->deleteDirectory('releases');
         $apk = tempnam(sys_get_temp_dir(), 'app').'.apk';
         file_put_contents($apk, str_repeat('dummy-apk-bytes', 1024));
 
@@ -101,14 +101,38 @@ class AppReleaseTest extends TestCase
             '--notes' => 'Perbaikan uji rilis',
         ])->assertExitCode(0);
 
-        Storage::disk('public')->assertExists('releases/onezentra-2.apk');
+        Storage::disk('local')->assertExists('releases/onezentra-2.apk');
         $release = AppRelease::where('version_code', 2)->firstOrFail();
         $this->assertSame('1.0.2', $release->version_name);
         $this->assertSame('perbaikan uji rilis', mb_strtolower($release->notes));
         $this->assertSame(hash_file('sha256', $apk), $release->sha256);
         $this->assertSame(1, $release->min_supported_code);
+        $this->assertStringContainsString('/api/v1/releases/2', $release->apk_url);
 
         unlink($apk);
+    }
+
+    public function test_download_endpoint_streams_the_apk_and_404s_otherwise(): void
+    {
+        Storage::disk('local')->deleteDirectory('releases');
+        $apk = sys_get_temp_dir().'/download-test.apk';
+        file_put_contents($apk, 'apk-bytes');
+        $expectedSha = hash_file('sha256', $apk);
+
+        $this->artisan('app:release-apk', [
+            'apk' => $apk,
+            '--version-name' => '1.0.2',
+            '--version-code' => 12,
+            '--notes' => 'x',
+        ])->assertExitCode(0);
+        unlink($apk);
+
+        $res = $this->get('/api/v1/releases/12');
+        $res->assertOk()
+            ->assertHeader('Content-Type', 'application/vnd.android.package-archive')
+            ->assertHeader('SHA256', $expectedSha);
+
+        $this->get('/api/v1/releases/999')->assertNotFound();
     }
 
     public function test_release_command_fails_for_missing_apk_or_missing_flags(): void

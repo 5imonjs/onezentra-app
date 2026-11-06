@@ -9,9 +9,10 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Publikasikan APK mobile baru tanpa store: salin file ke storage publik,
- * hitung sha256, catat baris rilis. Dipanggil setelah build release dibuat
- * (`flutter build apk --release`).
+ * Publikasikan APK mobile baru tanpa store: salin file ke disk internal
+ * (di luar public/), hitung sha256, daftarkan rilis; APK disajikan lewat
+ * route /api/v1/releases/{versionCode}. Dipanggil setelah build release
+ * dibuat (`flutter build apk --release`).
  *
  * Contoh:
  *   php artisan app:release-apk build/app/outputs/flutter-apk/app-release.apk \
@@ -47,13 +48,14 @@ class PublishAppRelease extends Command
             return self::FAILURE;
         }
 
-        // Nama file stabil untuk cache CDN/browser: app/onezentra-<code>.apk
+        // Nama file stabil: releases/onezentra-<code>.apk pada disk local
+        // (storage/app) — disajikan lewat route download, bukan public/.
         $destination = "releases/onezentra-{$versionCode}.apk";
         $stream = fopen($apkPath, 'rb');
-        Storage::disk('public')->put($destination, $stream);
+        Storage::disk('local')->put($destination, $stream);
         fclose($stream);
 
-        $apkUrl = Storage::disk('public')->url($destination);
+        $apkUrl = route('api.releases.download', ['versionCode' => $versionCode]);
         $sha256 = hash_file('sha256', $apkPath);
 
         $release = AppRelease::query()->updateOrCreate(

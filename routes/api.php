@@ -41,6 +41,11 @@ Route::prefix('v1')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1,login-web');
     // Info update app mobile tanpa store — publik, tanpa data sensitif.
     Route::get('app/update-info', [AppReleaseController::class, 'latest'])->middleware('throttle:12,1,app-update');
+    // Unduh APK rilis dari server itu sendiri — publik, terantunthrottle.
+    Route::get('releases/{versionCode}', [AppReleaseController::class, 'download'])
+        ->whereNumber('versionCode')
+        ->name('api.releases.download')
+        ->middleware('throttle:120,1,app-download');
     // Mobile (Bearer token, per-perangkat). Web SPA tetap cookie-only via /login.
     Route::post('mobile/login', [AuthController::class, 'mobileLogin'])->middleware('throttle:10,1,login-mobile');
     Route::post('mobile/logout', [AuthController::class, 'mobileLogout'])->middleware(['auth:sanctum', 'throttle:30,1,api']);
