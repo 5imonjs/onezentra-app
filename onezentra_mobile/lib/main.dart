@@ -17,6 +17,10 @@ import 'package:onezentra_mobile/features/gate/repositories/gate_repository.dart
 import 'package:onezentra_mobile/features/history/pages/history_page.dart';
 import 'package:onezentra_mobile/features/home/pages/home_page.dart';
 import 'package:onezentra_mobile/features/inbound/repositories/inbound_repository.dart';
+import 'package:onezentra_mobile/features/opname/pages/opname_expired_page.dart';
+import 'package:onezentra_mobile/features/opname/pages/opname_expired_session_page.dart';
+import 'package:onezentra_mobile/features/opname/repositories/opname_expired_repository.dart';
+import 'package:onezentra_mobile/features/opname/repositories/opname_expired_session_repository.dart';
 import 'package:onezentra_mobile/features/unload/pages/unload_page.dart';
 import 'package:onezentra_mobile/features/unload/repositories/unload_repository.dart';
 import 'package:onezentra_mobile/features/validation/pages/validation_page.dart';
@@ -178,6 +182,8 @@ const Map<String, List<String>> _routePermissions = {
   '/bongkar': ['receiving.view'],
   '/hasil-penerimaan': _historyViewPermissions,
   '/riwayat': _historyViewPermissions,
+  '/opname-expired': ['opname.view'],
+  '/opname-expired-sessions': ['opname.session.view'],
 };
 
 /// App Router Configuration — home menus plus their detail routes.
@@ -192,6 +198,8 @@ GoRouter buildRouter(
   ValidationRepository? validationRepository,
   InboundRepository? inboundRepository,
   UnloadRepository? unloadRepository,
+  OpnameExpiredRepository? opnameExpiredRepository,
+  OpnameExpiredSessionRepository? opnameExpiredSessionRepository,
 }) => GoRouter(
   initialLocation: '/',
   // Redirect dievaluasi ulang saat auth berubah (login/logout/expiry),
@@ -235,6 +243,18 @@ GoRouter buildRouter(
       path: '/bongkar',
       name: 'bongkar',
       builder: (context, state) => UnloadPage(repository: unloadRepository),
+    ),
+    GoRoute(
+      path: '/opname-expired',
+      name: 'opname_expired',
+      builder: (context, state) =>
+          OpnameExpiredPage(repository: opnameExpiredRepository),
+    ),
+    GoRoute(
+      path: '/opname-expired-sessions',
+      name: 'opname_expired_sessions',
+      builder: (context, state) =>
+          OpnameExpiredSessionPage(repository: opnameExpiredSessionRepository),
     ),
     GoRoute(
       path: '/riwayat',
