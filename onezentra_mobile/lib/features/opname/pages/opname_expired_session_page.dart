@@ -245,16 +245,29 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
 
     return RefreshIndicator(
       onRefresh: () => provider.show(session.id),
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(AppTheme.space4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSessionHeaderCard(session, context, provider, countedTotal),
-            const SizedBox(height: AppTheme.space4),
-            if (session.items.length > 1) ...[
-              TextField(
+      // Header tetap (hero + pencarian) tidak ikut bergerak; hanya daftar
+      // barang yang digulir — pas saat daftar batch panjang.
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.space4,
+              AppTheme.space4,
+              AppTheme.space4,
+              0,
+            ),
+            child: _buildSessionHeaderCard(session, provider, countedTotal),
+          ),
+          if (session.items.length > 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.space4,
+                AppTheme.space4,
+                AppTheme.space4,
+                0,
+              ),
+              child: TextField(
                 onChanged: (value) => setState(() => _search = value),
                 decoration: InputDecoration(
                   isDense: true,
@@ -287,43 +300,55 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: AppTheme.space4),
-            ],
-            if (items.isEmpty && needle.isNotEmpty)
-              const AppEmptyState(
-                icon: Icons.search_off_rounded,
-                title: 'Tidak ada yang cocok',
-                subtitle: 'Coba kata kunci lain — nama produk atau kode batch.',
-              )
-            else
-              for (var entry in clusters.entries) ...[
-                _OpnameClusterHeader(
-                  item: entry.value.first,
-                  total: entry.value.length,
-                  counted: entry.value.where((i) => i.isVerified).length,
-                ),
-                const SizedBox(height: AppTheme.space2),
-                ...entry.value.map(
-                  (item) => _OpnameSessionItemTile(
-                    key: ValueKey<int>(item.id),
-                    item: item,
-                    onCount: session.acceptsCounting
-                        ? () => _showVerifySheet(context, session, item)
-                        : null,
+            ),
+          Expanded(
+            child: needle.isNotEmpty && items.isEmpty
+                ? const SingleChildScrollView(
+                    physics: AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(AppTheme.space4),
+                    child: AppEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: 'Tidak ada yang cocok',
+                      subtitle:
+                          'Coba kata kunci lain — nama produk atau kode batch.',
+                    ),
+                  )
+                : ListView(
+                    // Selalu dapat digulir agar pull-to-refresh tetap bekerja
+                    // saat daftar lebih pendek dari layar.
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(AppTheme.space4),
+                    children: [
+                      for (var entry in clusters.entries) ...[
+                        _OpnameClusterHeader(
+                          item: entry.value.first,
+                          total: entry.value.length,
+                          counted: entry.value
+                              .where((i) => i.isVerified)
+                              .length,
+                        ),
+                        const SizedBox(height: AppTheme.space2),
+                        ...entry.value.map(
+                          (item) => _OpnameSessionItemTile(
+                            key: ValueKey<int>(item.id),
+                            item: item,
+                            onCount: session.acceptsCounting
+                                ? () => _showVerifySheet(context, session, item)
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.space4),
+                      ],
+                    ],
                   ),
-                ),
-                const SizedBox(height: AppTheme.space4),
-              ],
-            const SizedBox(height: AppTheme.space8),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSessionHeaderCard(
     OpnameExpiredSession session,
-    BuildContext context,
     OpnameExpiredSessionProvider provider,
     int countedTotal,
   ) {

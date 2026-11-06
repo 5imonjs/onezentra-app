@@ -328,7 +328,6 @@ void main() {
       // Kode batch tiap baris tampil mencocokkan label fisik.
       expect(find.text('BATCH-11'), findsOneWidget);
       expect(find.text('BATCH-12'), findsOneWidget);
-      expect(find.text('BATCH-13'), findsOneWidget);
       // Qty acuan baris (qty wave ada di header cluster).
       expect(find.text('Acuan CRT 6 / PCS -'), findsOneWidget);
       // Konteks penerimaan per baris + petunjuk analisa selisih terima.
@@ -342,6 +341,11 @@ void main() {
         find.text('Sudah selisih saat terima: -2 CRT dari rencana terima'),
         findsOneWidget,
       );
+
+      // Daftar lambat (lazy): baris di luar layar terbentuk saat digulir.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+      await tester.pumpAndSettle();
+      expect(find.text('BATCH-13'), findsOneWidget);
 
       // Search cepat: mengetik nama produk menyaring cluster lain keluar.
       await tester.enterText(find.byType(TextField), 'Susu Kental');
@@ -406,6 +410,9 @@ void main() {
 
     // Status input jelas: hijau "Sudah diinput" vs abu "Belum diinput".
     expect(find.text('Sudah diinput'), findsOneWidget);
+    // Daftar lambat (lazy): baris kedua terbentuk saat digulir.
+    await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+    await tester.pumpAndSettle();
     expect(find.text('Belum diinput'), findsOneWidget);
     // Penanda visual hijau: ikon ✓ hanya di baris yang sudah dihitung.
     expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
