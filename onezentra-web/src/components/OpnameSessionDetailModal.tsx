@@ -73,13 +73,6 @@ const STATUS_META: Record<string, string> = {
   CANCELLED: 'bg-red-50 text-red-700',
 };
 
-// Disposisi tindak lanjut per batch — keputusan yang memanggil approve.
-const DISPOSITIONS = [
-  { value: 'LANJUT', label: 'LANJUT (FIFO)' },
-  { value: 'RETUR', label: 'RETUR' },
-  { value: 'DISPOSAL', label: 'DISPOSAL' },
-] as const;
-
 const fmtDate = formatDateId;
 
 // Alur baku sesi dalam 5 langkah (dihilangkan untuk CANCELLED):
@@ -133,16 +126,12 @@ function FlowStepper({ status }: { status: string }) {
 // Panduan langkah berikutnya per status — menghilangkan tebakan user.
 const STATUS_HINTS: Record<string, string> = {
   OPEN: 'Belum dimulai — klik "Mulai Sesi" dulu; setelah itu petugas bisa scan label & hitung tiap baris.',
-  IN_PROGRESS: 'Daftar batch + qty acuan tampil di bawah — untuk tiap baris: klik "Isi Hitungan" (atau scan) lalu pilih disposisi, atau "Tandai Habis" bila batch kosong di lapangan. Baris yang sudah terhitung bisa diedit ulang. Sesi dikirim setelah semua baris tuntas.',
+  IN_PROGRESS: 'Daftar batch + qty acuan tampil di bawah — untuk tiap baris: klik "Isi Hitungan" (atau scan) lalu isi qty fisik, atau "Tandai Habis" bila batch kosong di lapangan. Baris yang sudah terhitung bisa diedit ulang. Sesi dikirim setelah semua baris tuntas.',
   PENDING_APPROVAL: 'Menunggu persetujuan approver independen — koreksi wave baru berlaku setelah disetujui. Penghitung tidak boleh menyetujui hitungannya sendiri.',
   APPROVED: 'Disetujui: koreksi tiap wave tercatat & tervalidasi, label batch terbit, selisih siap ditindak (retur/disposal).',
   REVISI: 'Approver meminta perbaikan — lihat catatan, perbaiki baris yang salah, lalu kirim ulang sesi.',
   CANCELLED: 'Sesi dibatalkan — tidak ada hasil yang ditulis ke wave.',
 };
-
-function dispositionLabel(value: string | null): string {
-  return DISPOSITIONS.find((d) => d.value === value)?.value ?? value ?? '';
-}
 
 export function SessionDetailModal({ sessionId, detail, detailLoading, progress, canEdit, canAdd, canApprove, onClose, onChanged }: {
   sessionId: number;
@@ -173,7 +162,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
   // menunjukkan batch + qty — tinggal edit atau tandai habis). Toggle ini
   // memungkinkan antar petugas mengunci acuan kembali (hitung buta).
   const [showExpected, setShowExpected] = useState(true);
-  const [forms, setForms] = useState<Record<number, { qty_fisik_crt: string; qty_fisik_pcs: string; condition: string; disposition: string; notes: string; photo: File | null }>>({});
+  const [forms, setForms] = useState<Record<number, { qty_fisik_crt: string; qty_fisik_pcs: string; condition: string; notes: string; photo: File | null }>>({});
   // Target aksi cepat "Tandai Habis" — tercatat di sesi, tidak menghapus
   // apa pun dari database; koreksi menunggu persetujuan BLC.
   const [habisItem, setHabisItem] = useState<SessionDetailItem | null>(null);
@@ -188,9 +177,9 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
     setForms({});
   }, [sessionId]);
 
-  const setForm = (id: number, patch: Partial<{ qty_fisik_crt: string; qty_fisik_pcs: string; condition: string; disposition: string; notes: string; photo: File | null }>) =>
+  const setForm = (id: number, patch: Partial<{ qty_fisik_crt: string; qty_fisik_pcs: string; condition: string; notes: string; photo: File | null }>) =>
     setForms((p) => {
-      const prev = p[id] ?? { qty_fisik_crt: '', qty_fisik_pcs: '', condition: 'FISIK_BAGUS', disposition: '', notes: '', photo: null };
+      const prev = p[id] ?? { qty_fisik_crt: '', qty_fisik_pcs: '', condition: 'FISIK_BAGUS', notes: '', photo: null };
       return { ...p, [id]: { ...prev, ...patch } };
     });
 
@@ -218,10 +207,6 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
       notifyGlobal('Scan / identifikasi batch dulu sebelum verifikasi.', 'error');
       return;
     }
-    if (!f.disposition) {
-      notifyGlobal('Pilih disposisi tindak lanjut (LANJUT / RETUR / DISPOSAL).', 'error');
-      return;
-    }
     // Sejajar validasi penerimaan: kondisi bermasalah wajib foto.
     if (conditionRequiresPhoto(f.condition) && !f.photo) {
       notifyGlobal('Kondisi ini wajib disertai foto bukti.', 'error');
@@ -231,7 +216,6 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
     fd.append('qty_fisik_crt', f.qty_fisik_crt);
     if (f.qty_fisik_pcs) fd.append('qty_fisik_pcs', f.qty_fisik_pcs);
     if (f.condition) fd.append('condition', f.condition);
-    fd.append('disposition', f.disposition);
     if (f.notes) fd.append('notes', f.notes);
     if (f.photo) fd.append('photo', f.photo);
     fd.append('identified_via', via);
@@ -260,7 +244,6 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
       qty_fisik_crt: item.qty_fisik_crt != null ? String(item.qty_fisik_crt) : '',
       qty_fisik_pcs: item.qty_fisik_pcs != null ? String(item.qty_fisik_pcs) : '',
       condition: item.condition ?? 'FISIK_BAGUS',
-      disposition: item.disposition ?? '',
       notes: item.notes ?? '',
       photo: null,
     });
@@ -464,7 +447,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Produk</th>
                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hasil &amp; Disposisi</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hasil Hitung</th>
                         <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aksi</th>
                       </tr>
                     </thead>
@@ -523,13 +506,8 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                                     <span className={`block ${diffCrt === 0 ? 'text-muted-foreground' : diffCrt != null && diffCrt < 0 ? 'text-red-600 font-semibold' : diffCrt != null ? 'text-emerald-600 font-semibold' : ''}`}>
                                       {diffCrt === 0 ? 'Sesuai' : diffCrt != null ? (diffCrt < 0 ? `Selisih ${diffCrt}` : `Selisih +${diffCrt}`) : ''}
                                     </span>
-                                    {Number(it.qty_fisik_crt) === 0 && !it.disposition && (
+                                    {Number(it.qty_fisik_crt) === 0 && (
                                       <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded font-semibold bg-red-50 text-red-700">Habis (kosong)</span>
-                                    )}
-                                    {it.disposition && (
-                                      <span className={`inline-block mt-0.5 px-1.5 py-0.5 rounded font-semibold ${it.disposition === 'DISPOSAL' ? 'bg-red-50 text-red-700' : it.disposition === 'RETUR' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-foreground'}`}>
-                                        Disposisi: {dispositionLabel(it.disposition)}
-                                      </span>
                                     )}
                                   </div>
                                 ) : (
@@ -613,7 +591,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                                     <span className="font-semibold text-emerald-700">Teridentifikasi ({via === 'scan' ? 'scan' : 'manual'})</span>
                                     <button type="button" onClick={() => clearIdentification(it.id)} className="text-slate-400 hover:text-red-500 underline">Tutup form</button>
                                   </div>
-                                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
+                                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
                                     <div>
                                       <label htmlFor={`vf-crt-${it.id}`} className="block text-[11px] font-semibold text-muted-foreground mb-1">Fisik CRT *</label>
                                       <input id={`vf-crt-${it.id}`} min="0" step="1" type="number" value={forms[it.id]?.qty_fisik_crt || ''} onChange={(e) => setForm(it.id, { qty_fisik_crt: e.target.value })} className="input-field text-sm" />
@@ -626,13 +604,6 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                                       <label htmlFor={`vf-cond-${it.id}`} className="block text-[11px] font-semibold text-muted-foreground mb-1">Kondisi</label>
                                       <select id={`vf-cond-${it.id}`} value={forms[it.id]?.condition || 'FISIK_BAGUS'} onChange={(e) => setForm(it.id, { condition: e.target.value })} className="input-field text-sm">
                                         {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <label htmlFor={`vf-disp-${it.id}`} className="block text-[11px] font-semibold text-muted-foreground mb-1">Disposisi *</label>
-                                      <select id={`vf-disp-${it.id}`} value={forms[it.id]?.disposition || ''} onChange={(e) => setForm(it.id, { disposition: e.target.value })} className="input-field text-sm" required>
-                                        <option value="">Pilih...</option>
-                                        {DISPOSITIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                                       </select>
                                     </div>
                                     <div>

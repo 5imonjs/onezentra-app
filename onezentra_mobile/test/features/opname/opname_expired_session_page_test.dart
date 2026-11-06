@@ -469,7 +469,7 @@ void main() {
   }
 
   testWidgets(
-    'hitung fisik: disposisi wajib eksplisit — simpan diblok tanpa disposisi',
+    'hitung fisik: tanpa disposisi — simpan langsung diterima (proses dilepas)',
     (tester) async {
       var repository = buildCountingFixture();
       var auth = await _loginAuth();
@@ -477,8 +477,8 @@ void main() {
       await _pumpOpnameExpiredSessionPage(tester, auth, repository);
       await openVerifySheet(tester);
 
-      // Isi qty lalu simpan TANPA memilih disposisi (aturan F.1): diblok,
-      // request TIDAK dikirim.
+      // Tindak lanjut fisik (retur/disposal) tidak lagi bagian sheet hitung:
+      // isi qty dan simpan tanpa memilih apa pun.
       await tester.enterText(find.byKey(const Key('verify_qty_crt')), '6');
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
@@ -486,8 +486,11 @@ void main() {
       await tester.tap(find.text('Simpan Hasil Hitung'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Disposisi wajib dipilih'), findsOneWidget);
-      expect(repository.verifyPayloads, isEmpty);
+      expect(repository.verifyPayloads, hasLength(1));
+      // Bidang disposisi tidak dikirim sama sekali.
+      expect(repository.verifyPayloads.single, isNot(contains('disposition')));
+      // Sheet tertutup kembali ke detail.
+      expect(find.text('Simpan Hasil Hitung'), findsNothing);
     },
   );
 
@@ -503,10 +506,6 @@ void main() {
     // Qty fisik diisi manual (bukan scan) — tercatat jujur 'manual'.
     await tester.enterText(find.byKey(const Key('verify_qty_crt')), '8');
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Lanjut'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Lanjut'));
-    await tester.pumpAndSettle();
 
     expect(find.textContaining('Selisih -2'), findsOneWidget);
 
@@ -519,14 +518,13 @@ void main() {
     var payload = repository.verifyPayloads.single;
     expect(payload['qty_fisik_crt'], 8.0);
     expect(payload['condition'], 'FISIK_BAGUS');
-    expect(payload['disposition'], 'LANJUT');
     expect(payload['identified_via'], 'manual');
     expect(payload['item_id'], 31);
     // Sheet tertutup kembali ke detail.
     expect(find.text('Simpan Hasil Hitung'), findsNothing);
   });
 
-  testWidgets('tandai habis (0): tanpa disposisi, bidang disposition null', (
+  testWidgets('tandai habis (0): payload tanpa disposisi sama sekali', (
     tester,
   ) async {
     var repository = buildCountingFixture();
@@ -535,13 +533,12 @@ void main() {
     await _pumpOpnameExpiredSessionPage(tester, auth, repository);
     await openVerifySheet(tester);
 
-    // Aksi cepat "Habis (0)" — segmen disposisi sudah tidak tampil.
+    // Aksi cepat "Habis (0)".
     await tester.ensureVisible(find.text('Habis (0)'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Habis (0)'));
     await tester.pumpAndSettle();
 
-    // Backend melarang disposisi saat fisik 0 — sheet tidak menampilkannya.
     expect(find.text('Habis (0)'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Simpan Hasil Hitung'));
@@ -552,7 +549,7 @@ void main() {
     expect(repository.verifyPayloads, hasLength(1));
     var payload = repository.verifyPayloads.single;
     expect(payload['qty_fisik_crt'], 0.0);
-    expect(payload['disposition'], isNull);
+    expect(payload, isNot(contains('disposition')));
   });
 
   testWidgets('dropdown kondisi fisik dihapus — kondisi selalu FISIK_BAGUS', (

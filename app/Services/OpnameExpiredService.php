@@ -450,7 +450,7 @@ class OpnameExpiredService
                 'qty_fisik_crt' => $data['qty_fisik_crt'],
                 'qty_fisik_pcs' => $data['qty_fisik_pcs'] ?? null,
                 'condition' => $data['condition'] ?? null,
-                'disposition' => $data['disposition'],
+                'disposition' => $data['disposition'] ?? null,
                 'photo' => $data['photo'] ?? $item->photo,
                 'notes' => $data['notes'] ?? null,
                 'verified_at' => now(),

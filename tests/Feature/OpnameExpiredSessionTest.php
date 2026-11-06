@@ -548,25 +548,26 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertNull($item->fresh()->verified_at);
     }
 
-    public function test_verify_requires_disposition(): void
+    public function test_verify_allows_count_without_disposition(): void
     {
         $session = $this->makeSession();
 
         Sanctum::actingAs($this->field);
         $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
 
-        // Hasil hitung tanpa disposisi ditolak: opname expired tanpa tindak
-        // lanjut tidak menutup siklus.
+        // Disposisi sudah bukan bagian alur hitung: hasil tanpa disposisi
+        // diterima langsung — tindak lanjut fisik diurus terpisah di lapangan.
         $item = $session->items()->first();
         $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
             'qty_fisik_crt' => 5,
             'identified_via' => 'scan',
-        ])->assertStatus(422);
-        $this->assertNull($item->fresh()->verified_at);
+        ])->assertOk();
+        $this->assertNotNull($item->fresh()->verified_at);
+        $this->assertNull($item->fresh()->disposition);
 
-        // Disposisi di luar daftar juga ditolak.
+        // Disposisi di luar daftar tetap ditolak bila berusaha dikirim.
         $this->postJson("/api/v1/opname-sessions/{$session->id}/items/{$item->id}", [
-            'qty_fisik_crt' => 5,
+            'qty_fisik_crt' => 6,
             'identified_via' => 'scan',
             'disposition' => 'DIBAKAR',
         ])->assertStatus(422);

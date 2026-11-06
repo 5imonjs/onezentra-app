@@ -655,11 +655,9 @@ class _VerifySheetState extends State<_VerifySheet> {
     text: widget.item.notes ?? '',
   );
 
-  // Kondisi fisik tidak diminta dari petugas — opname expired sudah
-  // bermuara ke disposisi (lanjut/retur/disposal). Backend tetap menyimpan
+  // Kondisi fisik tidak diminta dari petugas — backend tetap menyimpan
   // kondisi; mobile mengirim bawaan FISIK_BAGUS.
   static const String _condition = 'FISIK_BAGUS';
-  String? _disposition;
   String? _errorMessage;
   bool _saving = false;
 
@@ -692,9 +690,6 @@ class _VerifySheetState extends State<_VerifySheet> {
       var expectedPcs = widget.item.expectedPcs;
       _qtyCrt.text = expectedCrt != null ? _formatQty(expectedCrt) : '';
       _qtyPcs.text = expectedPcs != null ? _formatQty(expectedPcs) : '';
-      if (_qtyCrt.text == '0' || expectedCrt == 0) {
-        _disposition = null;
-      }
       _errorMessage = null;
     });
   }
@@ -703,8 +698,6 @@ class _VerifySheetState extends State<_VerifySheet> {
     setState(() {
       _qtyCrt.text = '0';
       _qtyPcs.text = '0';
-      // Tandai habis: tidak ada barang untuk didisposisikan.
-      _disposition = null;
       _errorMessage = null;
     });
   }
@@ -724,9 +717,9 @@ class _VerifySheetState extends State<_VerifySheet> {
       'qty_fisik_crt': _qtyCrtValue,
       'qty_fisik_pcs': _qtyPcsValue,
       'condition': _condition,
-      // Disposisi dilarang saat tandai habis — tidak ada barang
-      // untuk ditindaklanjuti; koreksi menunggu validasi BLC.
-      'disposition': _isMarkedEmpty ? null : _disposition,
+      // Proses disposisi (lanjut/retur/disposal) sudah dilepas dari alur
+      // hitung — tindak lanjut fisik diurus terpisah di lapangan;
+      // koreksi tetap menunggu validasi BLC di web.
       'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       'identified_via': 'manual',
     };
@@ -751,9 +744,6 @@ class _VerifySheetState extends State<_VerifySheet> {
     }
     if (_qtyCrtValue < 0 || _qtyPcsValue < 0) {
       return 'Qty tidak boleh negatif.';
-    }
-    if (!_isMarkedEmpty && _disposition == null) {
-      return 'Disposisi wajib dipilih untuk hasil hitung yang berisi barang.';
     }
     return null;
   }
@@ -930,20 +920,8 @@ class _VerifySheetState extends State<_VerifySheet> {
                       ],
                     ),
                 ],
-                const SizedBox(height: 12),
-                if (!_isMarkedEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'Disposisi *',
-                    style: GoogleFonts.roboto(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildDispositionChips(colors),
-                ],
+                // Tanpa disposisi: tindak lanjut fisik (retur/disposal)
+                // diurus terpisah di lapangan, bukan bagian sheet hitung.
                 const SizedBox(height: 12),
                 AppTextField(
                   controller: _notes,
@@ -1076,29 +1054,6 @@ class _VerifySheetState extends State<_VerifySheet> {
       ],
     ),
   );
-
-  Widget _buildDispositionChips(ThemeColors colors) => Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    children: [
-      for (var entry in const {
-        'LANJUT': Icons.warehouse_rounded,
-        'RETUR': Icons.assignment_return_rounded,
-        'DISPOSAL': Icons.delete_forever_rounded,
-      }.entries)
-        _DispositionChip(
-          value: entry.key,
-          label: _dispositionLabel(entry.key),
-          icon: entry.value,
-          selected: _disposition == entry.key,
-          colors: colors,
-          onTap: () => setState(() {
-            _disposition = entry.key;
-            _errorMessage = null;
-          }),
-        ),
-    ],
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1126,59 +1081,6 @@ class _QuickChip extends StatelessWidget {
     backgroundColor: context.colors.surfaceCard,
     side: BorderSide(color: context.colors.border),
     onPressed: onTap,
-  );
-}
-
-class _DispositionChip extends StatelessWidget {
-  const _DispositionChip({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.colors,
-    this.onTap,
-  });
-
-  final String value;
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback? onTap;
-  final ThemeColors colors;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: selected ? colors.primaryWell : Colors.transparent,
-    borderRadius: AppTheme.radiusLg,
-    child: InkWell(
-      borderRadius: AppTheme.radiusLg,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: AppTheme.radiusLg,
-          border: Border.all(
-            color: colors.primaryWellBorder,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: colors.primaryWellText),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.roboto(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: colors.primaryWellText,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
   );
 }
 

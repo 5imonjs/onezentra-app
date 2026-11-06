@@ -316,10 +316,10 @@ class OpnameExpiredSessionController extends Controller
             'qty_fisik_crt' => 'required|numeric|min:0',
             'qty_fisik_pcs' => 'nullable|numeric|min:0',
             'condition' => ['nullable', 'string', 'max:32', Rule::in(ReceivingItem::CONDITIONS)],
-            // Disposisi wajib untuk hasil hitung yang berisi barang (aturan
-            // F.1). Khusus "tandai habis" (fisik 0) disposisi dilarang —
-            // tidak ada barang untuk ditindaklanjuti; koreksi pengurangan
-            // tetap menunggu validasi BLC di /approve.
+            // Proses disposisi (LANJUT/RETUR/DISPOSAL) tidak lagi menjadi
+            // bagian alur hitung — field tetap diterima bila client lampau
+            // mengirimnya, namun tidak diminta dari petugas. Koreksi
+            // pengurangan tetap menunggu validasi BLC di /approve.
             'disposition' => ['nullable', 'string', Rule::in(OpnameExpiredSessionItem::DISPOSITIONS())],
             'notes' => 'nullable|string',
             'photo' => 'nullable|image|max:10240',
@@ -339,10 +339,6 @@ class OpnameExpiredSessionController extends Controller
                 ]);
             }
             $validated['disposition'] = null;
-        } elseif (empty($validated['disposition'])) {
-            throw ValidationException::withMessages([
-                'disposition' => ['Disposisi wajib dipilih untuk hasil hitung yang berisi barang (aturan F.1).'],
-            ]);
         }
 
         if (in_array($validated['condition'] ?? null, ReceivingItem::CONDITIONS_REQUIRING_PHOTO, true) && empty($item->photo) && ! $request->hasFile('photo')) {
