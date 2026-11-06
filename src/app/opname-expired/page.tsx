@@ -129,6 +129,18 @@ const fmtDate = formatDateId;
 
 const fnum = (v: number) => v.toLocaleString('id-ID');
 
+/** 'YYYY-MM-DD' -> startOfWeek Senin ('YYYY-MM-DD') tanpa pergeseran zona. */
+function mondayOfWeek(dateIso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso);
+  if (!match) return dateIso;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const mondayOffset = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - mondayOffset);
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${mm}-${dd}`;
+}
+
 function badge(status?: string | null) {
   const s = status || '-';
   const meta = STATUS_META[s] || { label: s, badge: 'bg-popover text-foreground', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-foreground' };
@@ -287,8 +299,8 @@ export default function OpnameExpiredPage() {
   const { hasPermission } = useAuthStore();
   const [waves, setWaves] = useState<Wave[]>([]);
   const [pagination, setPagination] = useState<ListResponse['data'] | null>(null);
-  const [weeks, setWeeks] = useState<string[]>([]);
-  const [weekStart, setWeekStart] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [searchApply, setSearchApply] = useState('');
   // Filter sumber data: '' semua, 'sj' murni sistem, 'import' manual, 'mixed' campuran.
   const [sourceFilter, setSourceFilter] = useState('');
@@ -343,12 +355,20 @@ export default function OpnameExpiredPage() {
     return Array.from(seen, ([kode_depo, nama_depo]) => ({ kode_depo, nama_depo }));
   }, [depotSummary]);
 
+  /**
+   * Minggu aktif untuk aksi berbasis week_start (generate/pending/progress/
+   * remind): minggu ISO week yang menanggung tanggal awal rentang yang
+   * pengguna pilih manual lewat dua input tanggal.
+   */
+  const weekStartValue = useMemo((): string | undefined => (dateFrom ? mondayOfWeek(dateFrom) : undefined), [dateFrom]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
       const res = await opnameExpired.list({
-        week_start: weekStart || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
         search: searchApply || undefined,
         statuses: tabStatuses?.join(',') || undefined,
         source: sourceFilter || undefined,
@@ -365,7 +385,6 @@ export default function OpnameExpiredPage() {
         return new Set(Array.from(prev).filter((id) => visible.has(id)));
       });
       setPagination(res.data.data);
-      setWeeks(res.data.meta.weeks ?? []);
       setThresholds(res.data.meta.thresholds ?? {});
       setStatusSummary(res.data.meta.status_summary ?? {});
       setPrevWeekStart(res.data.meta.prev_week_start ?? null);
@@ -382,7 +401,7 @@ export default function OpnameExpiredPage() {
     } finally {
       setLoading(false);
     }
-  }, [weekStart, searchApply, tabStatuses, page, sort, sourceFilter, depoFilter]);
+  }, [dateFrom, dateTo, searchApply, tabStatuses, page, sort, sourceFilter, depoFilter]);
 
   const handleSort = (key: SortKey) => {
     setSort((prev) => prev.key === key
@@ -407,7 +426,7 @@ export default function OpnameExpiredPage() {
     }
   }, []);
 
-  useEffect(() => { loadPending(weekStart || undefined); }, [loadPending, weekStart]);
+  useEffect(() => { loadPending(weekStartValue); }, [loadPending, weekStartValue]);
 
   // Progres kirim per depo: sudah vs belum kirim hasil opname minggu ini.
   const loadProgress = useCallback(async (week?: string) => {
@@ -423,24 +442,20 @@ export default function OpnameExpiredPage() {
     }
   }, []);
 
-  useEffect(() => { loadProgress(weekStart || undefined); }, [loadProgress, weekStart]);
+  useEffect(() => { loadProgress(weekStartValue); }, [loadProgress, weekStartValue]);
 
   const handleRemind = async () => {
     setReminding(true);
     try {
-      const res = await opnameExpired.remind({ week_start: weekStart || undefined }) as { data: { message?: string } };
+      const res = await opnameExpired.remind({ week_start: weekStartValue }) as { data: { message?: string } };
       notifyGlobal(res.data.message ?? 'Pengingat dikirim.', 'success');
-      await loadProgress(weekStart || undefined);
+      await loadProgress(weekStartValue);
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal mengirim pengingat'));
     } finally {
       setReminding(false);
     }
   };
-
-  useEffect(() => {
-    if (weeks.length > 0 && !weekStart) setWeekStart(weeks[0]);
-  }, [weeks, weekStart]);
 
   const totalActions = STATUS_ORDER.reduce((acc, s) => acc + (statusSummary[s]?.count ?? 0), 0);
   const totalBatch = totalActions;
@@ -493,8 +508,7 @@ export default function OpnameExpiredPage() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const res = await opnameExpired.generate(weekStart || undefined) as { data: { data: { week_start: string } } };
-      setWeekStart(res.data.data.week_start);
+      const res = await opnameExpired.generate(weekStartValue) as { data: { data: { week_start: string } } };
       setPage(1);
       await load();
       await loadPending(res.data.data.week_start);
@@ -508,11 +522,11 @@ export default function OpnameExpiredPage() {
 
   const handleExport = async () => {
     try {
-      const res = await opnameExpired.export({ week_start: weekStart || undefined, statuses: tabStatuses?.join(',') || undefined, source: sourceFilter || undefined, kode_depo: depoFilter || undefined });
+      const res = await opnameExpired.export({ date_from: dateFrom || undefined, date_to: dateTo || undefined, statuses: tabStatuses?.join(',') || undefined, source: sourceFilter || undefined, kode_depo: depoFilter || undefined });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `opname_expired_${weekStart || 'now'}.xlsx`);
+      link.setAttribute('download', `opname_expired_${dateFrom && dateTo ? `${dateFrom}_${dateTo}` : (weekStartValue ?? 'now')}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -589,7 +603,7 @@ export default function OpnameExpiredPage() {
       fail === 0 ? 'success' : 'error'
     );
     load();
-    loadProgress(weekStart || undefined);
+    loadProgress(weekStartValue);
   };
 
   const openSettings = async () => {
@@ -664,7 +678,7 @@ export default function OpnameExpiredPage() {
                   <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{fnum(totalBatch)}</p>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 tabular-nums mt-0.5 truncate">{weekStart ? `${new Date(weekStart).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - ${weekEndLabel(weekStart)} ${new Date(weekStart).getFullYear()}` : '—'}</p>
+              <p className="text-[11px] text-slate-400 tabular-nums mt-0.5 truncate">{dateFrom && dateTo ? `${new Date(dateFrom).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - ${new Date(dateTo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${new Date(dateTo).getFullYear()}` : '—'}</p>
             </div>
 
             {STATUS_ORDER.map((s) => {
@@ -711,7 +725,7 @@ export default function OpnameExpiredPage() {
         {progressError && (depoProgress === null || depoProgress.length === 0) && (
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-700" role="alert">
             <span>Progres depo gagal dimuat.</span>
-            <button type="button" onClick={() => loadProgress(weekStart || undefined)} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+            <button type="button" onClick={() => loadProgress(weekStartValue)} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
           </div>
         )}
         {depoProgress !== null && depoProgress.length > 0 && (
@@ -757,19 +771,20 @@ export default function OpnameExpiredPage() {
 
         {/* Filter + Tabs + Table */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-          {/* Toolbar: week + search */}
+          {/* Toolbar: rentang tanggal manual + search */}
           <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-border">
-            <label htmlFor="week-start" className="flex items-center gap-2">
-              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</span>
-              <select id="week-start" value={weekStart} onChange={(e) => { setWeekStart(e.target.value); setPage(1); }} className="select-field-sm min-w-[210px]">
-                <option value="">— Pilih Minggu —</option>
-                {weeks.map((w) => (
-                  <option key={w} value={w}>
-                    {new Date(w).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {weekEndLabel(w)} {new Date(w).getFullYear()}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
+                <label htmlFor="oe-from" className="flex items-center gap-2">
+                  <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dari Tanggal</span>
+                  <input id="oe-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
+                </label>
+                <label htmlFor="oe-to" className="flex items-center gap-2">
+                  <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sampai Tanggal</span>
+                  <input id="oe-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
+                </label>
+              </div>
+            </div>
             <SearchBox
               key={searchApply}
               initial={searchApply}
@@ -841,7 +856,7 @@ export default function OpnameExpiredPage() {
             <div className="ml-auto flex flex-wrap items-center gap-2 px-2">
             <ManualBatchManager
               buttonClassName="btn-primary"
-              onChanged={() => { setPage(1); load(); loadPending(weekStart || undefined); loadProgress(weekStart || undefined); }}
+              onChanged={() => { setPage(1); load(); loadPending(weekStartValue); loadProgress(weekStartValue); }}
             />
             {hasPermission('opname.delete') && waves.length > 0 && (
               <button
@@ -868,7 +883,7 @@ export default function OpnameExpiredPage() {
             {pendingError && (pending?.pending.total ?? 0) === 0 && (
               <button
                 type="button"
-                onClick={() => loadPending(weekStart || undefined)}
+                onClick={() => loadPending(weekStartValue)}
                 title="Cek ulang baris yang siap di-generate"
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold bg-amber-50 text-amber-700 border border-dashed border-amber-300 hover:bg-amber-100 transition-colors"
               >
@@ -1316,8 +1331,4 @@ export default function OpnameExpiredPage() {
     </div>
   </DashboardLayout>
   );
-}
-
-function weekEndLabel(weekStart: string): string {
-  return new Date(new Date(weekStart).getTime() + 6 * 86400000).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
 }
