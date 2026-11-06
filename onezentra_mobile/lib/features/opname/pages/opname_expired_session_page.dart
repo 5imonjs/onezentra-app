@@ -490,7 +490,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               countedTotal == total) ...[
             const SizedBox(height: AppTheme.space3),
             AppPrimaryButton(
-              text: 'Kirim untuk Persetujuan',
+              text: 'Kirim Hasil Opname',
               leadingIcon: Icons.send_rounded,
               onPressed: () => provider.submit(session.id),
               isLoading: provider.isLoading,
@@ -529,86 +529,36 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     }
 
     if (session.isPendingApproval) {
-      // Pemisahan tugas: hanya pemegang izin approve yang bisa memutuskan —
-      // counter tidak dapat menyetujui hitungannya sendiri (dicek juga
-      // backend). Petugas hanya melihat status menunggu.
-      var canDecide =
-          context.read<AuthProvider>().user?.hasPermission(
-            'opname.session.approve',
-          ) ??
-          false;
-      var waitingText = Text(
-        'Menunggu keputusan approver. Petugas penghitung tidak dapat '
-        'menyetujui hitungannya sendiri (pemisahan tugas).',
-        style: GoogleFonts.roboto(
-          fontSize: 11,
-          height: 1.4,
-          color: context.colors.textMuted,
-        ),
-      );
-      if (!canDecide) {
-        return [const SizedBox(height: AppTheme.space3), waitingText];
-      }
+      // Tanpa aksi approval di mobile: pengecekan hasil dilakukan di
+      // sistem web (pemisahan tugas). Petugas hanya melihat info status —
+      // proses lapangan tidak tertahan menunggu keputusan.
       return [
         const SizedBox(height: AppTheme.space3),
-        AppPrimaryButton(
-          text: 'Setujui Sesi',
-          onPressed: () => provider.approve(session.id),
-          isLoading: provider.isLoading,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.cloud_done_outlined,
+              size: 14,
+              color: context.colors.success,
+            ),
+            const SizedBox(width: AppTheme.space2),
+            Expanded(
+              child: Text(
+                'Hasil sudah dikirim — akan dicek di sistem web.',
+                style: GoogleFonts.roboto(
+                  fontSize: 11,
+                  height: 1.4,
+                  color: context.colors.textMuted,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: AppTheme.space3),
-        AppSecondaryButton(
-          text: 'Revisi Sesi',
-          onPressed: () => _confirmRevise(context, session),
-          isLoading: provider.isLoading,
-          isFullWidth: false,
-          width: 180,
-          height: 44,
-        ),
-        const SizedBox(height: AppTheme.space3),
-        waitingText,
       ];
     }
 
     return const <Widget>[];
-  }
-
-  Future<void> _confirmRevise(
-    BuildContext context,
-    OpnameExpiredSession session,
-  ) async {
-    var controller = TextEditingController();
-    var confirmed = false;
-    var result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Revisi Sesi'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Alasan revisi (min. 5 karakter)',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Revisi'),
-          ),
-        ],
-      ),
-    );
-
-    confirmed = result ?? false;
-    if (confirmed) {
-      var reason = controller.text.trim();
-      if (reason.length >= 5) {
-        await _provider.revise(session.id, reason);
-      }
-    }
   }
 
   Future<void> _showVerifySheet(

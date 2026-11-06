@@ -610,4 +610,50 @@ void main() {
       expect(find.text('Durasi opname'), findsNothing);
     },
   );
+
+  testWidgets(
+    'detail sesi menunggu: tanpa fungsi approve/reject — dicek di web',
+    (tester) async {
+      var repository = _FakeOpnameExpiredSessionRepository(
+        sessions: [
+          const OpnameExpiredSession(
+            id: 1,
+            weekStart: '2026-11-02',
+            weekEnd: '2026-11-08',
+            kodeDepo: 'DP01',
+            namaDepo: 'Depo Utama',
+            status: 'PENDING_APPROVAL',
+            items: [
+              OpnameExpiredSessionItem(
+                id: 31,
+                sessionId: 1,
+                waveId: 200,
+                kodeBarang: 'KB-777',
+                namaBarang: 'Vitamin Sirup 60ml',
+                batchNumber: 'BATCH-31',
+                qtyFisikCrt: 10,
+                verifiedAt: '2026-11-06T02:30:00Z',
+              ),
+            ],
+          ),
+        ],
+      );
+      var auth = await _loginAuth(
+        permissions: ['opname.session.view', 'opname.session.approve'],
+      );
+
+      await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+      await tester.tap(find.text('Sesi minggu 02/11/2026'));
+      await tester.pumpAndSettle();
+
+      // Keputusan dilakukan di sistem web — mobile hanya informasi.
+      expect(
+        find.text('Hasil sudah dikirim — akan dicek di sistem web.'),
+        findsOneWidget,
+      );
+      expect(find.text('Setujui Sesi'), findsNothing);
+      expect(find.text('Revisi Sesi'), findsNothing);
+      expect(find.text('Batalkan Sesi'), findsNothing);
+    },
+  );
 }

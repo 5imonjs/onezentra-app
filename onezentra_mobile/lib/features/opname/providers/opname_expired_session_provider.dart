@@ -191,10 +191,8 @@ class OpnameExpiredSessionProvider extends ChangeNotifier {
 
   Future<void> submit(int id) => _execute(() => _repository.submit(id));
 
-  Future<void> approve(int id) => _execute(() => _repository.approve(id));
-
-  Future<void> revise(int id, String reason) =>
-      _execute(() => _repository.revise(id, reason));
+  // approve/revise sengaja tidak ada di mobile: pengecekan hasil dilakukan
+  // di sistem web (pemisahan tugas) agar proses lapangan tidak tertahan.
 
   Future<void> cancel(int id, {String? notes}) =>
       _execute(() => _repository.cancel(id, notes: notes));
