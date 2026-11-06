@@ -330,51 +330,114 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     var total = session.items.length;
     var progress = total == 0 ? 0.0 : countedTotal / total;
     var hint = _statusHint(session.status);
+    var colors = context.colors;
 
-    return AppCard(
+    // Hero sesi: gradien + ikon tile selaras halaman lain (beranda,
+    // sesi validasi) agar aplikasi terasa satu bahasa desain.
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.space4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colors.surfaceCard, colors.surface, colors.surfaceHover],
+        ),
+        borderRadius: AppTheme.radius2xl,
+        border: Border.all(color: colors.foreground.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.surfaceHover,
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppTheme.primary600.withValues(alpha: 0.9),
+                      AppTheme.primary600,
+                    ],
+                  ),
+                  borderRadius: AppTheme.radiusXl,
+                ),
+                child: const Icon(
+                  Icons.inventory_2_rounded,
+                  size: 22,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SESI OPNAME EXPIRED',
+                      style: GoogleFonts.roboto(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: colors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Sesi minggu ${_formatDate(session.weekStart)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.roboto(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: colors.foreground,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppTheme.space2),
               AppBadge(
                 text: OpnameSessionStatus.label(session.status),
                 variant: _sessionBadgeVariant(session.status),
               ),
-              const SizedBox(width: AppTheme.space2),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Row(
+            children: [
+              Icon(Icons.warehouse_rounded, size: 14, color: colors.textMuted),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Sesi minggu ${_formatDate(session.weekStart)}',
+                  session.namaDepo ?? session.kodeDepo ?? '-',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: context.colors.foreground,
+                    fontSize: 12,
+                    color: colors.textSecondary,
                   ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: AppTheme.space3),
-          Text(
-            session.namaDepo ?? session.kodeDepo ?? '-',
-            style: GoogleFonts.roboto(
-              fontSize: 12,
-              color: context.colors.textSecondary,
-            ),
           ),
           if (hint.isNotEmpty) ...[
             const SizedBox(height: AppTheme.space2),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  size: 14,
-                  color: context.colors.info,
-                ),
+                Icon(Icons.info_outline_rounded, size: 14, color: colors.info),
                 const SizedBox(width: AppTheme.space2),
                 Expanded(
                   child: Text(
@@ -382,7 +445,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                     style: GoogleFonts.roboto(
                       fontSize: 11,
                       height: 1.4,
-                      color: context.colors.info,
+                      color: colors.info,
                     ),
                   ),
                 ),
@@ -401,11 +464,9 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 6,
-                      backgroundColor: context.colors.border,
+                      backgroundColor: colors.border,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        progress == 1
-                            ? context.colors.success
-                            : AppTheme.primary600,
+                        progress == 1 ? colors.success : AppTheme.primary600,
                       ),
                     ),
                   ),
@@ -417,8 +478,8 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: countedTotal == total
-                        ? context.colors.success
-                        : context.colors.textSecondary,
+                        ? colors.success
+                        : colors.textSecondary,
                   ),
                 ),
               ],
@@ -1243,7 +1304,8 @@ class _SessionDurationState extends State<_SessionDuration> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: colors.surfaceCard,
+        // Inset lembut: menyatu rapi dengan hero gradien di belakangnya.
+        color: colors.foreground.withValues(alpha: 0.04),
         borderRadius: AppTheme.radiusLg,
         border: Border.all(color: colors.border),
       ),
@@ -1303,52 +1365,106 @@ class _OpnameSessionTile extends StatelessWidget {
   final OpnameExpiredSession session;
   final VoidCallback? onTap;
 
+  IconData get _statusIcon => switch (session.status) {
+    'IN_PROGRESS' => Icons.play_arrow_rounded,
+    'PENDING_APPROVAL' => Icons.schedule_rounded,
+    'APPROVED' || 'COMPLETED' => Icons.check_circle_rounded,
+    'REVISI' => Icons.replay_rounded,
+    _ => Icons.hourglass_empty_rounded,
+  };
+
   @override
-  Widget build(BuildContext context) => AppCard(
-    padding: const EdgeInsets.all(AppTheme.space4),
-    onTap: onTap,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            AppBadge(
-              text: OpnameSessionStatus.label(session.status),
-              variant: _sessionBadgeVariant(session.status),
+  Widget build(BuildContext context) {
+    var colors = context.colors;
+    var counted = session.items.where((i) => i.isVerified).length;
+    var total = session.items.length;
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppTheme.space3),
+      onTap: onTap,
+      child: Row(
+        children: [
+          // Ikon tile gradien selaras kartu menu beranda.
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.primary600.withValues(alpha: 0.22),
+                  AppTheme.primary600.withValues(alpha: 0.08),
+                ],
+              ),
+              borderRadius: AppTheme.radiusXl,
             ),
-            const SizedBox(width: AppTheme.space2),
-            Expanded(
-              child: Text(
-                'Sesi minggu ${_formatDate(session.weekStart)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            child: Icon(_statusIcon, size: 22, color: AppTheme.primary600),
+          ),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sesi minggu ${_formatDate(session.weekStart)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.roboto(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: colors.foreground,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.warehouse_rounded,
+                      size: 13,
+                      color: colors.textMuted,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        session.namaDepo ?? session.kodeDepo ?? '-',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.roboto(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppTheme.space2),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              AppBadge(
+                text: OpnameSessionStatus.label(session.status),
+                variant: _sessionBadgeVariant(session.status),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                total > 0 && counted > 0
+                    ? '$counted/$total terhitung'
+                    : '$total item',
                 style: GoogleFonts.roboto(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.foreground,
+                  fontSize: 11,
+                  color: colors.textMuted,
                 ),
               ),
-            ),
-            Text(
-              '${session.items.length} item',
-              style: GoogleFonts.roboto(
-                fontSize: 11,
-                color: context.colors.textMuted,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space2),
-        Text(
-          session.namaDepo ?? session.kodeDepo ?? '-',
-          style: GoogleFonts.roboto(
-            fontSize: 12,
-            color: context.colors.textSecondary,
+            ],
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 /// Tile baris verifikasi batch: label fisik (nomor batch + barcode),
@@ -1642,14 +1758,33 @@ class _OpnameClusterHeader extends StatelessWidget {
     ),
     child: Row(
       children: [
+        // Ikon tile tinted selaras bahasa desain beranda & sesi validasi.
         Container(
-          width: 3,
-          height: 28,
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                (counted == total
+                        ? context.colors.success
+                        : AppTheme.primary600)
+                    .withValues(alpha: 0.18),
+                (counted == total
+                        ? context.colors.success
+                        : AppTheme.primary600)
+                    .withValues(alpha: 0.06),
+              ],
+            ),
+            borderRadius: AppTheme.radiusLg,
+          ),
+          child: Icon(
+            counted == total ? Icons.check_rounded : Icons.inventory_2_rounded,
+            size: 17,
             color: counted == total
                 ? context.colors.success
                 : AppTheme.primary600,
-            borderRadius: BorderRadius.circular(99),
           ),
         ),
         const SizedBox(width: AppTheme.space2),
