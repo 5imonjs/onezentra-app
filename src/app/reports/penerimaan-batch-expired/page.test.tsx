@@ -125,6 +125,35 @@ describe('PenerimaanBatchExpiredReportPage', () => {
     expect(within(table).getByText('lewat 34 hari')).toBeInTheDocument();
   });
 
+  it('baris tanpa tanggal expired tidak menampilkan "0 hari lagi"', async () => {
+    list.mockResolvedValue({
+      data: {
+        current_page: 1,
+        last_page: 1,
+        per_page: 25,
+        total: 1,
+        data: [
+          row({
+            tanggal_expired: null,
+            weekday: '-',
+            sisa_simpan: '-',
+            sisa_hari: null,
+            is_expired: false,
+          }),
+        ],
+        summary: { ...summary, total_item: 1, total_qty_dus: 10, total_qty_pcs: 240, item_expired: 0, item_future: 0, item_tanpa_expired: 1 },
+        cluster_options: ['Small Cup'],
+      },
+    });
+
+    render(<PenerimaanBatchExpiredReportPage />);
+
+    const table = await screen.findByRole('table');
+
+    expect(within(table).getByText('Tanpa tanggal expired')).toBeInTheDocument();
+    expect(within(table).queryByText('0 hari lagi')).not.toBeInTheDocument();
+  });
+
   it('menampilkan ringkasan dari seluruh baris terfilter', async () => {
     render(<PenerimaanBatchExpiredReportPage />);
 

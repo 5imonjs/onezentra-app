@@ -46,7 +46,6 @@ interface DepotSummaryRow {
 }
 
 interface ListMeta {
-  weeks: string[];
   status_summary: StatusSummary;
   depot_summary: DepotSummaryRow[];
 }
@@ -104,8 +103,8 @@ export default function OpnameExpiredReportPage() {
   const { hasPermission } = useAuthStore();
   const [waves, setWaves] = useState<Wave[]>([]);
   const [pagination, setPagination] = useState<ListResponse['data'] | null>(null);
-  const [weeks, setWeeks] = useState<string[]>([]);
-  const [weekStart, setWeekStart] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [kodeDepo, setKodeDepo] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -147,17 +146,18 @@ export default function OpnameExpiredReportPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await opnameExpired.list({
-        week_start: weekStart || undefined,
+      const params: Record<string, unknown> = {
         kode_depo: kodeDepo || undefined,
         status: statusFilter || undefined,
         per_page: ITEMS_PER_PAGE,
         page,
-      }) as { data: ListResponse };
+      };
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    const res = await opnameExpired.list(params) as { data: ListResponse };
       if (reqIdRef.current !== reqId) return;
       setWaves(res.data.data.data);
       setPagination(res.data.data);
-      setWeeks(res.data.meta.weeks ?? []);
       setStatusSummary(res.data.meta.status_summary ?? {});
       setDepotSummary(res.data.meta.depot_summary ?? []);
     } catch (e) {
@@ -166,7 +166,7 @@ export default function OpnameExpiredReportPage() {
     } finally {
       if (reqIdRef.current === reqId) setLoading(false);
     }
-  }, [weekStart, kodeDepo, statusFilter, page, hasPermission]);
+  }, [dateFrom, dateTo, kodeDepo, statusFilter, page, hasPermission]);
 
   const { selectedIds, toggle, toggleAll, clear, deleting, removeSelected } = useReportRowDelete('opname_wave', () => load());
 
@@ -191,10 +191,6 @@ export default function OpnameExpiredReportPage() {
   }, [loadDepots]);
 
   useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    if (weeks.length > 0 && !weekStart) setWeekStart(weeks[0]);
-  }, [weeks, weekStart]);
 
   const summary = useMemo(() => {
     const totalBatch = STATUS_ORDER.reduce((a, s) => a + (statusSummary[s]?.count ?? 0), 0);
@@ -222,6 +218,8 @@ export default function OpnameExpiredReportPage() {
   }, [depotSummary]);
 
   const resetFilters = () => {
+    setDateFrom('');
+    setDateTo('');
     setKodeDepo('');
     setStatusFilter('');
     setPage(1);
@@ -231,14 +229,15 @@ export default function OpnameExpiredReportPage() {
     setExporting(true);
     try {
       const params: Record<string, unknown> = {};
-      if (weekStart) params.week_start = weekStart;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
       if (kodeDepo) params.kode_depo = kodeDepo;
       if (statusFilter) params.status = statusFilter;
       const res = await opnameExpired.export(params);
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `laporan-opname-expired-${weekStart || 'now'}.xlsx`);
+      link.setAttribute('download', `laporan-opname-expired-${dateFrom || dateTo || 'now'}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -275,14 +274,9 @@ export default function OpnameExpiredReportPage() {
     );
   };
 
-  const weekEnd = (w: string) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(w);
-    if (!m) return '';
-    const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) + 6 * 86400000);
-    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
-  };
-
-  const weekLabel = weekStart ? `${fmtDate(weekStart)} s.d. ${weekEnd(weekStart)}` : '';
+  const rangeLabel = dateFrom || dateTo
+    ? `${dateFrom ? fmtDate(dateFrom) : '?'} – ${dateTo ? fmtDate(dateTo) : '?'}`
+    : '';
 
   const canExport = !loading && !exporting && waves.length > 0;
 
@@ -347,9 +341,9 @@ export default function OpnameExpiredReportPage() {
               <span className={`w-1.5 h-1.5 rounded-full ${summary.berisikoCount > 0 ? 'bg-red-400' : 'bg-emerald-400'}`} aria-hidden="true" />
               {fnum(summary.berisikoCount)} berisiko • {summary.pctBerisiko}%
             </span>
-            {weekLabel && (
+            {rangeLabel && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1.5 text-xs font-semibold border border-white/10 text-ink-fg tabular-nums">
-                {weekLabel}
+                {rangeLabel}
               </span>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 backdrop-blur px-3 py-1.5 text-xs font-semibold border border-emerald-500/30 text-emerald-300">
@@ -391,27 +385,33 @@ export default function OpnameExpiredReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-foreground">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Minggu opname, depo, dan status batch</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Tgl awal–akhir, depo, dan status batch</p>
                 </div>
               </div>
               {(kodeDepo || statusFilter) && (
                 <button onClick={resetFilters} className="text-xs font-bold text-accent-text hover:text-accent-text transition-colors">Reset filter</button>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.2fr)_minmax(190px,1fr)_minmax(180px,1fr)_auto] mt-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_auto] mt-4">
               <div>
-                <label htmlFor="oe-week" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Minggu Opname</label>
-                <select
-                  id="oe-week"
-                  value={weekStart}
-                  onChange={(e) => { setWeekStart(e.target.value); setPage(1); }}
-                  className="select-field w-full text-sm py-2 bg-popover focus:bg-card"
-                >
-                  <option value="">— Pilih Minggu —</option>
-                  {weeks.map((w) => (
-                    <option key={w} value={w}>{w} s.d. {weekEnd(w)}</option>
-                  ))}
-                </select>
+                <label htmlFor="oe-date-from" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dari Tgl</label>
+                <input
+                  id="oe-date-from"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                  className="input-field w-full text-sm py-2 bg-popover focus:bg-card"
+                />
+              </div>
+              <div>
+                <label htmlFor="oe-date-to" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Sampai Tgl</label>
+                <input
+                  id="oe-date-to"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                  className="input-field w-full text-sm py-2 bg-popover focus:bg-card"
+                />
               </div>
               <div>
                 <label htmlFor="oe-depo" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Depo</label>
@@ -457,7 +457,7 @@ export default function OpnameExpiredReportPage() {
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
               <p className="text-xs text-slate-400 tabular-nums" aria-live="polite">
-                {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter depo/status — seluruh batch minggu ini'}
+                {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter tanggal/depo/status — seluruh batch'}
               </p>
             </div>
           </div>
