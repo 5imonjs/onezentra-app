@@ -240,6 +240,8 @@ void main() {
       'tanggal_penerimaan': '2026-09-09',
       'condition_terima': 'QTY_KURANG',
       'selisih_terima': '-2.00',
+      'umur_simpan_hari': 145,
+      'sisa_hari': 25,
     });
 
     expect(item.batchNumber, 'BATCH-20261105-AB2');
@@ -250,6 +252,8 @@ void main() {
     expect(item.tanggalPenerimaan, '2026-09-09');
     expect(item.conditionTerima, 'QTY_KURANG');
     expect(item.selisihTerima, -2);
+    expect(item.umurSimpanHari, 145);
+    expect(item.sisaHariBatch, 25);
   });
 
   testWidgets(
@@ -267,6 +271,8 @@ void main() {
         tanggalPenerimaan: '2026-09-09',
         conditionTerima: 'QTY_KURANG',
         selisihTerima: -2,
+        umurSimpanHari: 83,
+        sisaHariBatch: 25,
         qtyWaveCrt: 12,
         statusIni: 'AMAN',
         expectedCrt: 6,
@@ -329,6 +335,8 @@ void main() {
         find.text('Barcode LBL-11 · Terima 09/09/2026 · Exp 01/12/2026'),
         findsOneWidget,
       );
+      // Sisa umur simpan — informasi "ngeh" barang yang dikelola.
+      expect(find.text('Umur simpan 83 hari · Sisa 25 hari'), findsOneWidget);
       expect(
         find.text('Sudah selisih saat terima: -2 CRT dari rencana terima'),
         findsOneWidget,

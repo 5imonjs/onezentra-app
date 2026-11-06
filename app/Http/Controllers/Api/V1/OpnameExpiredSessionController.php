@@ -229,6 +229,29 @@ class OpnameExpiredSessionController extends Controller
                 ? substr($tanggalTerima, 0, 10)
                 : $tanggalTerima?->toDateString();
 
+            // Sisa umur simpan agar petugas "ngeh" dengan barang yang
+            // dikelolanya: umur simpan dirancang saat terima (expired −
+            // tanggal terima) dan sisa hari yang hidup saat ini (expired −
+            // hari ini) — bukan angka statis saat wave dibuat.
+            $umurSimpan = null;
+            $sisaHariItem = null;
+            $expiredBatch = $source?->expired_date?->toDateString();
+            if ($expiredBatch !== null) {
+                $expiredDay = Carbon::parse($expiredBatch)->startOfDay();
+                if ($tanggalTerima !== null) {
+                    $terimaDay = Carbon::parse($tanggalTerima)->startOfDay();
+                    $umurSimpan =
+                        $expiredDay < $terimaDay
+                            ? -(int) $terimaDay->diffInDays($expiredDay)
+                            : (int) $terimaDay->diffInDays($expiredDay);
+                }
+                $today = Carbon::today();
+                $sisaHariItem =
+                    $expiredDay < $today
+                        ? -(int) $today->diffInDays($expiredDay)
+                        : (int) $today->diffInDays($expiredDay);
+            }
+
             return array_merge($item->toArray(), [
                 'expected_crt' => $source ? (float) $source->actual_qty : null,
                 'expected_pcs' => $source && $source->qty_pcs !== null ? (float) $source->qty_pcs : null,
@@ -237,6 +260,8 @@ class OpnameExpiredSessionController extends Controller
                 'selisih_terima' => $source
                     ? (float) $source->actual_qty - (float) $source->expected_qty
                     : null,
+                'umur_simpan_hari' => $umurSimpan,
+                'sisa_hari' => $sisaHariItem,
             ]);
         })->all();
 

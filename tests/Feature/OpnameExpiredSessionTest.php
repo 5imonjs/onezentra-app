@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\OpnameExpiredService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -698,6 +699,23 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame('2026-09-09', $first['tanggal_penerimaan']);
         $this->assertSame('FISIK_BAGUS', $first['condition_terima']);
         $this->assertSame(0.0, (float) $first['selisih_terima']);
+
+        // Sisa umur simpan per batch: umur saat terima (expired − terima)
+        // dan sisa hari hidup saat ini — diambil dari baris B-EXP-01
+        // (expired 2027-02-01).
+        $row = $items->firstWhere('expected_crt', 10.0);
+        $this->assertSame(
+            (int) Carbon::parse('2026-09-09')->startOfDay()->diffInDays(
+                Carbon::parse('2027-02-01')->startOfDay(),
+            ),
+            $row['umur_simpan_hari'],
+        );
+        $this->assertSame(
+            (int) Carbon::today()->startOfDay()->diffInDays(
+                Carbon::parse('2027-02-01')->startOfDay(),
+            ),
+            $row['sisa_hari'],
+        );
     }
 
     public function test_verify_problem_condition_requires_photo(): void

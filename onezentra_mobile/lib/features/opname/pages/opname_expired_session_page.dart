@@ -955,82 +955,86 @@ class _VerifySheetState extends State<_VerifySheet> {
     );
   }
 
-  Widget _buildTargetCard(ThemeColors colors, OpnameExpiredSessionItem item) =>
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: context.colors.surfaceCard,
-          borderRadius: AppTheme.radiusLg,
-          border: Border.all(color: context.colors.border),
+  Widget _buildTargetCard(
+    ThemeColors colors,
+    OpnameExpiredSessionItem item,
+  ) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: context.colors.surfaceCard,
+      borderRadius: AppTheme.radiusLg,
+      border: Border.all(color: context.colors.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
+          style: GoogleFonts.robotoMono(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: context.colors.foreground,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              item.batchNumber ?? item.kodeBarang ?? 'Item ${item.id}',
-              style: GoogleFonts.robotoMono(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: context.colors.foreground,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${item.namaBarang ?? '-'} · Barcode ${item.barcodeLabel ?? '-'}'
-              ' · Terima ${_formatDate(item.tanggalPenerimaan)}'
-              ' · Exp ${_formatDate(item.expiredDateIni)}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+        const SizedBox(height: 2),
+        Text(
+          '${item.namaBarang ?? '-'} · Barcode ${item.barcodeLabel ?? '-'}'
+          ' · Terima ${_formatDate(item.tanggalPenerimaan)}'
+          ' · Exp ${_formatDate(item.expiredDateIni)}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.roboto(
+            fontSize: 11,
+            height: 1.35,
+            color: context.colors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Acuan sistem: CRT ${_formatQty(item.expectedCrt)}'
+          ' / PCS ${_formatQty(item.expectedPcs)}'
+          '${item.umurSimpanHari != null ? ' · Umur simpan ${item.umurSimpanHari} hari' : ''}'
+          '${item.sisaHariBatch != null ? ' · Sisa ${item.sisaHariBatch} hari' : ''}',
+          style: GoogleFonts.roboto(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: context.colors.foreground,
+          ),
+        ),
+        // Bantuan analisa: batch ini diterima oleh orang yang sama —
+        // ia bisa menyimpulkan kapan masalahnya mulai.
+        if (item.selisihTerima != null && item.selisihTerima != 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Sudah selisih saat terima: '
+              '${item.selisihTerima! > 0 ? '+' : ''}'
+              '${_formatQty(item.selisihTerima)} CRT '
+              '(terima ${_formatQty(item.expectedCrt)} CRT)',
               style: GoogleFonts.roboto(
                 fontSize: 11,
-                height: 1.35,
-                color: context.colors.textSecondary,
+                fontWeight: FontWeight.w600,
+                color: context.colors.warning,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Acuan sistem: CRT ${_formatQty(item.expectedCrt)}'
-              ' / PCS ${_formatQty(item.expectedPcs)}',
+          )
+        else if (item.conditionTerima != null &&
+            item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Sudah bermasalah saat terima: '
+              '${_conditionLabel(item.conditionTerima)}',
               style: GoogleFonts.roboto(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: context.colors.foreground,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: context.colors.warning,
               ),
             ),
-            // Bantuan analisa: batch ini diterima oleh orang yang sama —
-            // ia bisa menyimpulkan kapan masalahnya mulai.
-            if (item.selisihTerima != null && item.selisihTerima != 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Sudah selisih saat terima: '
-                  '${item.selisihTerima! > 0 ? '+' : ''}'
-                  '${_formatQty(item.selisihTerima)} CRT '
-                  '(terima ${_formatQty(item.expectedCrt)} CRT)',
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: context.colors.warning,
-                  ),
-                ),
-              )
-            else if (item.conditionTerima != null &&
-                item.conditionTerima!.toUpperCase() != 'FISIK_BAGUS')
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Sudah bermasalah saat terima: '
-                  '${_conditionLabel(item.conditionTerima)}',
-                  style: GoogleFonts.roboto(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: context.colors.warning,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      );
+          ),
+      ],
+    ),
+  );
 
   Widget _buildDispositionChips(ThemeColors colors) => Wrap(
     spacing: 8,
@@ -1316,6 +1320,43 @@ class _OpnameSessionItemTile extends StatelessWidget {
             'Acuan CRT ${_formatQty(item.expectedCrt)} / PCS ${_formatQty(item.expectedPcs)}',
             style: GoogleFonts.roboto(fontSize: 11, color: colors.textMuted),
           ),
+          // Sisa umur simpan — petugas "ngeh" dengan barang dikelolanya:
+          // umur dirancang saat terima vs sisa hari hidup saat ini.
+          if (item.umurSimpanHari != null || item.sisaHariBatch != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.hourglass_bottom_rounded,
+                    size: 12,
+                    color: (item.sisaHariBatch ?? 999) <= 7
+                        ? colors.danger
+                        : colors.textMuted,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      [
+                        if (item.umurSimpanHari != null)
+                          'Umur simpan ${item.umurSimpanHari} hari',
+                        if (item.sisaHariBatch != null)
+                          'Sisa ${item.sisaHariBatch} hari',
+                      ].join(' · '),
+                      style: GoogleFonts.roboto(
+                        fontSize: 11,
+                        fontWeight: (item.sisaHariBatch ?? 999) <= 7
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                        color: (item.sisaHariBatch ?? 999) <= 7
+                            ? colors.danger
+                            : colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // Bantuan analisa sejak penerimaan — petugas (yang menerima
           // barang ini) langsung melihat kapan masalahnya dimulai.
           if (item.selisihTerima != null && item.selisihTerima != 0)
