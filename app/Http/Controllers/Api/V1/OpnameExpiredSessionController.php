@@ -267,6 +267,13 @@ class OpnameExpiredSessionController extends Controller
 
         $data = $session->toArray();
         $data['items'] = $items;
+        // Momen penghitungan selesai (verifikasi baris terakhir) — dipakai
+        // UI untuk menampilkan durasi mulai→selesai opname.
+        $data['finished_at'] = $session->items
+            ->pluck('verified_at')
+            ->filter()
+            ->max()
+            ?->toISOString();
 
         return response()->json(['data' => $data]);
     }

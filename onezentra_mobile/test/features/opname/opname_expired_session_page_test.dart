@@ -353,7 +353,11 @@ void main() {
   );
 
   // Fixture sesi berjalan dengan satu label batch untuk uji sheet hitung.
-  _FakeOpnameExpiredSessionRepository buildCountingFixture() {
+  _FakeOpnameExpiredSessionRepository buildCountingFixture({
+    String? startedAt,
+    String? submittedAt,
+    String? finishedAt,
+  }) {
     const item = OpnameExpiredSessionItem(
       id: 31,
       sessionId: 1,
@@ -372,12 +376,15 @@ void main() {
     );
     return _FakeOpnameExpiredSessionRepository(
       sessions: [
-        const OpnameExpiredSession(
+        OpnameExpiredSession(
           id: 1,
           weekStart: '2026-11-02',
           weekEnd: '2026-11-08',
           kodeDepo: 'DP01',
           namaDepo: 'Depo Utama',
+          startedAt: startedAt,
+          submittedAt: submittedAt,
+          finishedAt: finishedAt,
           status: 'IN_PROGRESS',
           items: [item],
         ),
@@ -495,4 +502,45 @@ void main() {
     expect(find.text('Fisik bagus'), findsNothing);
     expect(find.text('Fisik rusak'), findsNothing);
   });
+
+  testWidgets('header sesi: durasi opname terukur mulai → selesai', (
+    tester,
+  ) async {
+    var now = DateTime.now().toUtc();
+    var repository = buildCountingFixture(
+      startedAt: now.subtract(const Duration(seconds: 72)).toIso8601String(),
+      // Verifikasi selesai 60 detik setelah mulai — durasi terkunci.
+      finishedAt: now.subtract(const Duration(seconds: 12)).toIso8601String(),
+    );
+    var auth = await _loginAuth();
+
+    await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+    await tester.tap(find.text('Sesi minggu 02/11/2026'));
+    await tester.pumpAndSettle();
+
+    // Durasi terkunci: 72−12 = 60 detik → tampil menit–detik.
+    expect(find.text('Durasi opname'), findsOneWidget);
+    expect(find.text('1 mnt 00 dtk'), findsOneWidget);
+  });
+
+  testWidgets(
+    'header sesi: durasi berjalan berdetak saat opname belum tuntas',
+    (tester) async {
+      var now = DateTime.now().toUtc();
+      var repository = buildCountingFixture(
+        startedAt: now.subtract(const Duration(seconds: 65)).toIso8601String(),
+      );
+      var auth = await _loginAuth();
+
+      await _pumpOpnameExpiredSessionPage(tester, auth, repository);
+      await tester.tap(find.text('Sesi minggu 02/11/2026'));
+      // Timer berdetak per detik — pumpAndSettle akan tak kunjung selesai;
+      // cukup pump untuk menampilkan frame pertama.
+      await tester.pump();
+
+      expect(find.text('Durasi berjalan'), findsOneWidget);
+      expect(find.textContaining('1 mnt'), findsOneWidget);
+      expect(find.text('Durasi opname'), findsNothing);
+    },
+  );
 }

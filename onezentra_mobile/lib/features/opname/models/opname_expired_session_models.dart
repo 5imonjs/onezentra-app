@@ -182,6 +182,7 @@ class OpnameExpiredSession {
     this.createdBy,
     this.submittedBy,
     this.submittedAt,
+    this.finishedAt,
     this.decidedBy,
     this.decidedAt,
     this.decisionNote,
@@ -204,6 +205,7 @@ class OpnameExpiredSession {
       createdBy: _readInt(json['created_by']),
       submittedBy: _readInt(json['submitted_by']),
       submittedAt: _readString(json['submitted_at']),
+      finishedAt: _readString(json['finished_at']),
       decidedBy: _readInt(json['decided_by']),
       decidedAt: _readString(json['decided_at']),
       decisionNote: _readString(json['decision_note']),
@@ -233,6 +235,7 @@ class OpnameExpiredSession {
   final int? createdBy;
   final int? submittedBy;
   final String? submittedAt;
+  final String? finishedAt;
   final int? decidedBy;
   final String? decidedAt;
   final String? decisionNote;

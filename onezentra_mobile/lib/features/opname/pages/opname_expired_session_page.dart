@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -54,7 +56,7 @@ String _formatQty(double? value) {
 
 /// Format tanggal tampilan dd/MM/yyyy — baku warga gudang; input tetap ISO
 /// dari backend (yyyy-MM-dd), fallback string asli bila tak terurai.
-final DateFormat _dateOut = DateFormat('dd/MM/yyyy');
+String _dateOut(DateTime parsed) => DateFormat('dd/MM/yyyy').format(parsed);
 
 String _formatDate(String? iso) {
   var raw = iso?.trim();
@@ -62,7 +64,33 @@ String _formatDate(String? iso) {
     return '-';
   }
   var parsed = DateTime.tryParse(raw);
-  return parsed != null ? _dateOut.format(parsed) : raw;
+  return parsed != null ? _dateOut(parsed) : raw;
+}
+
+/// Durasi menit–detik: "1 j 04 mnt 05 dtk", selalu menampilkan detik
+/// (dan menit) sesuai kebutuhan lapangan.
+String _formatDuration(Duration duration) {
+  if (duration.isNegative) {
+    return '-';
+  }
+  var hours = duration.inHours;
+  var minutes = duration.inMinutes.remainder(60);
+  var seconds = duration.inSeconds.remainder(60);
+  String pad(int value) => value.toString().padLeft(2, '0');
+  return [
+    if (hours > 0) '$hours j',
+    if (hours > 0) '${pad(minutes)} mnt',
+    if (hours == 0) '$minutes mnt',
+    '${pad(seconds)} dtk',
+  ].join(' ');
+}
+
+DateTime? _parseTimestamp(String? iso) {
+  var raw = iso?.trim();
+  if (raw == null || raw.isEmpty) {
+    return null;
+  }
+  return DateTime.tryParse(raw);
 }
 
 /// Panduan langkah sesuai status — petugas tidak perlu menebak yang mana
@@ -362,6 +390,8 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
             ),
           ],
           if (total > 0) ...[
+            const SizedBox(height: AppTheme.space3),
+            _SessionDuration(session: session),
             const SizedBox(height: AppTheme.space3),
             Row(
               children: [
@@ -1141,9 +1171,111 @@ class _DispositionChip extends StatelessWidget {
   );
 }
 
+/// Strip durasi opname di header sesi: dari "Mulai Sesi" sampai penghitungan
+/// selesai (kirim untuk persetujuan / verifikasi terakhir).
+///
+/// - sesi berjalan: durasi hidup berdetak per detik (menit–detik) — petugas
+///   dan supervisor melihat pace opname;
+/// - sesi terkirim: durasi terkunci mulai → submitted_at, tetap tampil
+///   sebagai laporan selesai (jelas, fungsional, terukur).
+class _SessionDuration extends StatefulWidget {
+  const _SessionDuration({required this.session});
+
+  final OpnameExpiredSession session;
+
+  @override
+  State<_SessionDuration> createState() => _SessionDurationState();
+}
+
+class _SessionDurationState extends State<_SessionDuration> {
+  DateTime? _started;
+  DateTime? _ended;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _started = _parseTimestamp(widget.session.startedAt);
+    _ended =
+        _parseTimestamp(widget.session.submittedAt) ??
+        _parseTimestamp(widget.session.finishedAt);
+    if (_started != null && _ended == null) {
+      // Sesi berjalan: detik berdetak di UI.
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _SessionDuration oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sesi bisa berubah status (mis. submit) — apit waktu akhir baru.
+    var newEnded =
+        _parseTimestamp(widget.session.submittedAt) ??
+        _parseTimestamp(widget.session.finishedAt);
+    if (newEnded != null && newEnded != _ended) {
+      _ended = newEnded;
+      _timer?.cancel();
+      _timer = null;
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var started = _started;
+    if (started == null) {
+      return const SizedBox.shrink();
+    }
+    var colors = context.colors;
+    var isRunning = _ended == null;
+    var duration = (_ended ?? DateTime.now()).difference(started);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        borderRadius: AppTheme.radiusLg,
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isRunning ? Icons.timer_rounded : Icons.timer_outlined,
+            size: 16,
+            color: isRunning ? AppTheme.primary600 : colors.textMuted,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            isRunning ? 'Durasi berjalan' : 'Durasi opname',
+            style: GoogleFonts.roboto(fontSize: 11, color: colors.textMuted),
+          ),
+          const Spacer(),
+          Text(
+            _formatDuration(duration),
+            style: GoogleFonts.robotoMono(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: isRunning ? colors.foreground : colors.success,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _OpnameSessionLoading extends StatelessWidget {
   const _OpnameSessionLoading();
-
   @override
   Widget build(BuildContext context) => Center(
     child: Column(
