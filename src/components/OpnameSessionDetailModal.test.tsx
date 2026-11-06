@@ -38,6 +38,7 @@ const item = (id: number, patch: Partial<SessionDetailItem> = {}): SessionDetail
   verified_by: null,
   expected_crt: null,
   expected_pcs: null,
+  diterima_minggu_ini: false,
   wave: {
     id: 900 + id,
     kode_barang: `KB-${id}`,
@@ -144,6 +145,16 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
     expect(screen.getByText('Acuan 50 CRT')).toBeInTheDocument();
     const diff = screen.getByText('Selisih -1');
     expect(diff).toHaveClass('text-red-600');
+  });
+
+  it('batch yang diterima minggu sesi ditandai "Terima minggu ini"; barang bawaan tidak', () => {
+    renderModal([
+      item(1, { diterima_minggu_ini: true }),
+      item(2, { diterima_minggu_ini: false }),
+    ]);
+
+    expect(screen.getByText('Terima minggu ini')).toBeInTheDocument();
+    expect(screen.getAllByText(/BATCH-\d+/)).toHaveLength(2);
   });
 
   it('tanpa disposisi: simpan langsung terkirim bidang tanpa disposisi (proses dilepas)', async () => {
