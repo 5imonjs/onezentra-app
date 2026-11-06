@@ -34,7 +34,8 @@ class _ExtraItemSheetState extends State<ExtraItemSheet> {
   final _satuanController = TextEditingController();
   final _notesController = TextEditingController();
   final _expiredController = TextEditingController();
-  String _condition = 'FISIK_BAGUS';
+  // Tidak disekresi otomatis — pengguna wajib memilih dengan sengaja.
+  String? _condition;
   DateTime? _expiredDate;
   String? _photoPath;
   bool _saving = false;
@@ -442,6 +443,10 @@ class _ExtraItemSheetState extends State<ExtraItemSheet> {
   }
 
   Future<void> _save() async {
+    if (_condition == null) {
+      setState(() => _error = 'Pilih kondisi fisik dulu.');
+      return;
+    }
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -484,7 +489,7 @@ class _ExtraItemSheetState extends State<ExtraItemSheet> {
           : _satuanController.text.trim().isEmpty
           ? null
           : _satuanController.text.trim(),
-      condition: _condition,
+      condition: _condition!,
       expiredDate: _expiredDate == null
           ? null
           : '${_expiredDate!.year.toString().padLeft(4, '0')}-'

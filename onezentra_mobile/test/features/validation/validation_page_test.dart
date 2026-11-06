@@ -587,6 +587,18 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
+  // Kondisi fisik tidak terisi otomatis — pilih "Fisik bagus" lewat dropdown.
+  Future<void> pickFisikBagus(WidgetTester tester) async {
+    var dropdown = find.byType(DropdownButtonFormField<String>);
+    expect(dropdown, findsOneWidget);
+    await tester.ensureVisible(dropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(dropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fisik bagus').last);
+    await tester.pumpAndSettle();
+  }
+
   testWidgets(
     'tanpa sj_validation.view hanya kartu izin, API tidak dipanggil',
     (tester) async {
@@ -706,6 +718,14 @@ void main() {
       isEmpty,
       reason: 'Qty rencana tidak boleh terisi sebagai qty aktual otomatis.',
     );
+    // Kondisi wajib: simpan tanpa memilih diblok — pengguna harus sadar.
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Pilih kondisi fisik dulu.'), findsOneWidget);
+    expect(repository.scanCalls, 0);
+
+    await pickFisikBagus(tester);
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
@@ -1423,6 +1443,7 @@ void main() {
     expect(find.text('Tanggal expired *'), findsOneWidget);
     expect(repository.scanCalls, 0);
 
+    await pickFisikBagus(tester);
     var saveButton = find.widgetWithText(AppPrimaryButton, 'Simpan Validasi');
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton);
@@ -2176,6 +2197,8 @@ void main() {
     );
     expect(qtyFinder, findsOneWidget);
     await tester.enterText(qtyFinder, '5');
+    // Kondisi wajib: pilih "Fisik bagus" — tidak diisi otomatis.
+    await pickFisikBagus(tester);
     // Ambil foto bukti lewat picker tersuntik; scroll dulu karena tombol
     // berada di bawah viewport sheet.
     await tester.ensureVisible(find.text('Kamera'));
@@ -2231,6 +2254,8 @@ void main() {
     await tester.enterText(fields.at(2), 'Barang Tak Terencana');
     await tester.enterText(fields.at(3), 'PCS');
     await tester.enterText(fields.at(4), '2');
+    // Kondisi wajib: pilih "Fisik bagus" — tidak diisi otomatis.
+    await pickFisikBagus(tester);
     // Ambil foto bukti lewat picker tersuntik; scroll dulu karena tombol
     // berada di bawah viewport sheet.
     await tester.ensureVisible(find.text('Kamera'));

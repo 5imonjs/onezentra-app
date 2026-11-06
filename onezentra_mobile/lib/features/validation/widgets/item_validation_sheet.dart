@@ -30,7 +30,7 @@ class _ItemValidationSheetState extends State<ItemValidationSheet> {
   final _barcodeController = TextEditingController();
   final _notesController = TextEditingController();
   final _expiredController = TextEditingController();
-  String _condition = 'FISIK_BAGUS';
+  String? _condition;
   DateTime? _expiredDate;
   String? _photoPath;
   bool _saving = false;
@@ -49,9 +49,9 @@ class _ItemValidationSheetState extends State<ItemValidationSheet> {
     super.initState();
     _barcodeController.text = widget.item.barcode ?? '';
     _notesController.text = widget.item.notes ?? '';
-    _condition = ValidationCondition.values.contains(widget.item.condition)
-        ? widget.item.condition
-        : 'FISIK_BAGUS';
+    // Kondisi TIK diciptakan otomatis — pengguna harus memilih dengan sengaja;
+    // "Fisik bagus" tidak dipilih dulu di sini (menghindari klik asal).
+    _condition = null;
     _expiredDate = parseDateOnlyLocal(widget.item.expiredDate ?? '');
     _expiredController.text = formatDateId(_expiredDate);
   }
@@ -143,29 +143,12 @@ class _ItemValidationSheetState extends State<ItemValidationSheet> {
                   ),
                 ],
                 const SizedBox(height: AppTheme.space3),
-                DropdownButtonFormField<String>(
-                  initialValue: _condition,
-                  decoration: const InputDecoration(
-                    labelText: 'Kondisi',
-                    border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppTheme.space3,
-                      vertical: AppTheme.space2,
-                    ),
-                  ),
-                  items: ValidationCondition.values
-                      .map(
-                        (c) => DropdownMenuItem<String>(
-                          value: c,
-                          child: Text(ValidationCondition.label(c)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _condition = value);
-                    }
-                  },
+                ConditionChipRow(
+                  value: _condition,
+                  onChanged: (value) => setState(() {
+                    _condition = value;
+                    _error = null;
+                  }),
                 ),
                 if (ValidationCondition.requiresPhoto.contains(_condition))
                   Padding(
@@ -319,6 +302,10 @@ class _ItemValidationSheetState extends State<ItemValidationSheet> {
   }
 
   Future<void> _save() async {
+    if (_condition == null) {
+      setState(() => _error = 'Pilih kondisi fisik dulu.');
+      return;
+    }
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -354,7 +341,7 @@ class _ItemValidationSheetState extends State<ItemValidationSheet> {
       barcode: _barcodeController.text.trim().isEmpty
           ? null
           : _barcodeController.text.trim(),
-      condition: _condition,
+      condition: _condition!,
       expiredDate: _expiredDate == null
           ? null
           : '${_expiredDate!.year.toString().padLeft(4, '0')}-'

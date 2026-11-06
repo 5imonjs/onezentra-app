@@ -22,6 +22,11 @@ typedef EvidencePhotoPicker =
 
 /// Baris chip pilihan kondisi barang — pola pill InkWell yang sama di kedua
 /// sheet validasi.
+///
+/// Kondisi TIDAK boleh terisi otomatis: pengguna wajib melihat & memilih
+/// pilihan dengan sengaja — sebelumnya terisinya otomatis "FISIK_BAGUS"
+/// membuat pelanggan selesai sesi dengan hasil yang hanya "sengaja-kurang",
+/// padahal seharusnya menjadi pilihan sadar.
 class ConditionChipRow extends StatelessWidget {
   const ConditionChipRow({
     required this.value,
@@ -29,16 +34,20 @@ class ConditionChipRow extends StatelessWidget {
     super.key,
   });
 
-  /// Kondisi terpilih saat ini.
-  final String value;
+  /// Kondisi terpilih saat ini. Null = belum dipilih — render tombol
+  /// pemilih dengan placeholder "Pilih kondisi fisik …".
+  final String? value;
 
   /// Dipanggil dengan nilai kondisi baru saat chip ditekan.
   final ValueChanged<String> onChanged;
 
   @override
-  // ignore: prefer_const_constructors
   Widget build(BuildContext context) => DropdownButtonFormField<String>(
     initialValue: value,
+    hint: Text(
+      'Pilih kondisi',
+      style: GoogleFonts.roboto(fontSize: 14, color: context.colors.textMuted),
+    ),
     decoration: const InputDecoration(
       labelText: 'Kondisi fisik',
       border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
@@ -52,6 +61,8 @@ class ConditionChipRow extends StatelessWidget {
         )
         .toList(),
     onChanged: (v) => v != null ? onChanged(v) : null,
+    // Trigger native validation when saving via form key.
+    validator: (v) => v == null ? 'Pilih kondisi fisik dulu.' : null,
   );
 }
 
