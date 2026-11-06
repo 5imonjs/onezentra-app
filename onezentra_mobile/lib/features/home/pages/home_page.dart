@@ -86,6 +86,26 @@ class _HomePageState extends State<HomePage> {
       ),
     ];
 
+    // Opname stok: tugas petugas luar (sesi hitung) vs monitoring depo.
+    var opnameMenus = [
+      _HomeMenu(
+        'Sesi Opname',
+        'Hitung fisik & disposisi barang kadaluarsa',
+        Icons.checklist_rtl_rounded,
+        context.colors.success,
+        ['opname.session.view'],
+        '/opname-expired-sessions',
+      ),
+      _HomeMenu(
+        'Opname Expired',
+        'Monitoring & koreksi barang kadaluarsa',
+        Icons.hourglass_bottom_rounded,
+        context.colors.info,
+        ['opname.view'],
+        '/opname-expired',
+      ),
+    ];
+
     var visibleWorkflow = workflowMenus
         .where(
           (menu) =>
@@ -100,7 +120,17 @@ class _HomePageState extends State<HomePage> {
               (user?.hasAnyPermission(menu.permissions) ?? false),
         )
         .toList();
-    var hasMenu = visibleWorkflow.isNotEmpty || visibleHistory.isNotEmpty;
+    var visibleOpname = opnameMenus
+        .where(
+          (menu) =>
+              menu.permissions.isEmpty ||
+              (user?.hasAnyPermission(menu.permissions) ?? false),
+        )
+        .toList();
+    var hasMenu =
+        visibleWorkflow.isNotEmpty ||
+        visibleHistory.isNotEmpty ||
+        visibleOpname.isNotEmpty;
 
     return Scaffold(
       backgroundColor: context.colors.background,
@@ -211,8 +241,25 @@ class _HomePageState extends State<HomePage> {
                             fit: BoxFit.contain,
                           ),
                         ],
-                        if (visibleHistory.isNotEmpty) ...[
+                        if (visibleOpname.isNotEmpty) ...[
                           if (visibleWorkflow.isNotEmpty)
+                            const SizedBox(height: AppTheme.space6),
+                          _sectionHeader(
+                            theme,
+                            'Opname stok',
+                            'Barang kadaluarsa: hitung, kirim, tunggu persetujuan BLC.',
+                          ),
+                          const SizedBox(height: AppTheme.space4),
+                          _menuGrid(
+                            context,
+                            theme,
+                            visibleOpname,
+                            numbered: false,
+                          ),
+                        ],
+                        if (visibleHistory.isNotEmpty) ...[
+                          if (visibleWorkflow.isNotEmpty ||
+                              visibleOpname.isNotEmpty)
                             const SizedBox(height: AppTheme.space6),
                           _sectionHeader(
                             theme,

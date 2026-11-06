@@ -123,8 +123,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
+            // Tanggal margin jauh: selalu tersisa > standar simpan
+            // (12 bulan) regarapun tanggal ujinya, test tidak time-bomb.
             body: UmurStandarPanel(
-              expiredDate: DateTime(2027, 11, 5),
+              expiredDate: DateTime(2030, 11, 5),
               standarUmur: 12,
             ),
           ),
