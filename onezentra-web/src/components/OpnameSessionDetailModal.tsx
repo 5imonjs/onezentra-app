@@ -139,10 +139,10 @@ function FlowStepper({ status }: { status: string }) {
 const STATUS_HINTS: Record<string, string> = {
   OPEN: 'Belum dimulai — klik "Mulai Sesi" dulu; setelah itu petugas bisa scan label & hitung tiap baris.',
   IN_PROGRESS: 'Daftar batch + qty acuan tampil di bawah — untuk tiap baris: klik "Isi Hitungan" (atau scan) lalu isi qty fisik, atau "Tandai Habis" bila batch kosong di lapangan. Baris yang sudah terhitung bisa diedit ulang. Sesi dikirim setelah semua baris tuntas.',
-  PENDING_APPROVAL: 'Menunggu persetujuan approver independen — koreksi wave baru berlaku setelah disetujui. Penghitung tidak boleh menyetujui hitungannya sendiri.',
-  APPROVED: 'Disetujui: koreksi tiap wave tercatat & tervalidasi, label batch terbit, selisih siap ditindak (retur/disposal).',
+  PENDING_APPROVAL: 'Menunggu persetujuan approver independen — koreksi baris monitoring baru berlaku setelah disetujui. Penghitung tidak boleh menyetujui hitungannya sendiri.',
+  APPROVED: 'Disetujui: koreksi tiap baris monitoring tercatat & tervalidasi, label lot terbit, selisih siap ditindak (retur/disposal).',
   REVISI: 'Approver meminta perbaikan — lihat catatan, perbaiki baris yang salah, lalu kirim ulang sesi.',
-  CANCELLED: 'Sesi dibatalkan — tidak ada hasil yang ditulis ke wave. Setelah qty dikoreksi lewat Inbound/Opname Expired, buat sesi baru untuk wave yang sama agar dihitung ulang dengan snapshot terbaru.',
+  CANCELLED: 'Sesi dibatalkan — tidak ada hasil yang ditulis ke baris monitoring. Setelah qty dikoreksi lewat Inbound/Monitoring Kedaluwarsa, buat sesi baru untuk baris monitoring yang sama agar dihitung ulang dengan snapshot terbaru.',
 };
 
 export function SessionDetailModal({ sessionId, detail, detailLoading, progress, canEdit, canAdd, canApprove, onClose, onChanged }: {
@@ -253,7 +253,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
     if (f.notes) fd.append('notes', f.notes);
     if (f.photo) fd.append('photo', f.photo);
     fd.append('identified_via', via);
-    await act(() => opnameSessions.verifyItem(sessionId, item.id, fd), 'Baris terhitung. Koreksi wave berlaku setelah sesi disetujui.');
+    await act(() => opnameSessions.verifyItem(sessionId, item.id, fd), 'Baris terhitung. Koreksi baris monitoring berlaku setelah sesi disetujui.');
 
     // Kembalikan fokus ke antrean: form yang sudah terhitung tertutup,
     // baris berikutnya tinggal di-scan.
@@ -395,7 +395,7 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                 </>
               )}
               {canAdd && open && (
-                <button onClick={() => setShowAddWaves(true)} disabled={busy} title="Tambah wave minggu+depo ini yang belum masuk sesi" className="btn-secondary text-sm disabled:opacity-50">+ Tambah wave</button>
+                <button onClick={() => setShowAddWaves(true)} disabled={busy} title="Tambah baris monitoring minggu+depo ini yang belum masuk sesi" className="btn-secondary text-sm disabled:opacity-50">+ Tambah Baris Monitoring</button>
               )}
               {canCount && remaining > 0 && (
                 <label
@@ -734,15 +734,15 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
             if (target) markHabis(target);
           }
         }}
-        title={confirm === 'submit' ? 'Kirim Sesi untuk Persetujuan' : confirm === 'approve' ? 'Setujui Sesi Opname' : confirm === 'revise' ? 'Minta Revisi' : confirm === 'habis' ? 'Tandai Habis (kosong)' : 'Batalkan Sesi'}
+        title={confirm === 'submit' ? 'Kirim Sesi untuk Persetujuan' : confirm === 'approve' ? 'Setujui Stock Opname' : confirm === 'revise' ? 'Minta Revisi' : confirm === 'habis' ? 'Tandai Habis (kosong)' : 'Batalkan Sesi'}
         message={confirm === 'submit'
-          ? `Semua ${progress.total} baris harus terhitung (kini ${progress.done}). Hasil dikirim ke approver; koreksi wave berlaku setelah disetujui. Lanjutkan?`
+          ? `Semua ${progress.total} baris harus terhitung (kini ${progress.done}). Hasil dikirim ke approver; koreksi baris monitoring berlaku setelah disetujui. Lanjutkan?`
           : confirm === 'approve'
-            ? 'Koreksi selisih akan diterapkan ke wave dan wave menjadi tervalidasi. Penghitung tidak boleh menyetujui hitungannya sendiri. Lanjutkan?'
+            ? 'Koreksi selisih akan diterapkan ke baris monitoring dan baris monitoring menjadi tervalidasi. Penghitung tidak boleh menyetujui hitungannya sendiri. Lanjutkan?'
             : confirm === 'revise'
               ? 'Tuliskan alasan revisi untuk petugas.'
               : confirm === 'habis'
-                ? `Batch ${habisItem?.batch?.batch_number ?? '-'} dicatat FISIK 0 di sesi ini — tidak ada data yang dihapus dari database; koreksi pengurangan berlaku setelah BLC menyetujui sesi. Gunakan hanya bila barang benar-benar tidak ada di depo; barang yang pindah rak tetap dihitung di baris batch ini. Lanjutkan?`
+                ? `Lot ${habisItem?.batch?.batch_number ?? '-'} dicatat FISIK 0 di sesi ini — tidak ada data yang dihapus dari database; koreksi pengurangan berlaku setelah BLC menyetujui sesi. Gunakan hanya bila barang benar-benar tidak ada di depo; barang yang pindah rak tetap dihitung di baris lot ini. Lanjutkan?`
                 : 'Sesi dibatalkan tanpa menulis hasil. Lanjutkan?'}
         confirmLabel={confirm === 'submit' ? 'Ya, kirim' : confirm === 'approve' ? 'Ya, setujui' : confirm === 'cancel' ? 'Ya, batalkan' : confirm === 'habis' ? 'Ya, tandai habis' : 'Lanjut'}
         variant={confirm === 'cancel' || confirm === 'habis' ? 'danger' : 'info'}
@@ -822,7 +822,7 @@ function AddWavesModal({ session, onClose, onAdded }: {
         setWaves(all);
         setPicked(new Set(all.map((w) => w.id)));
       } catch (e) {
-        notifyGlobal(getErrorMessage(e, 'Gagal memuat wave'));
+        notifyGlobal(getErrorMessage(e, 'Gagal memuat baris monitoring'));
       } finally {
         setLoading(false);
       }
@@ -832,26 +832,26 @@ function AddWavesModal({ session, onClose, onAdded }: {
 
   const save = async () => {
     if (picked.size === 0) {
-      notifyGlobal('Pilih minimal satu wave.', 'error');
+      notifyGlobal('Pilih minimal satu baris monitoring.', 'error');
       return;
     }
     setSaving(true);
     try {
       const res = await opnameSessions.addWaves(session.id, Array.from(picked)) as { data: { message?: string } };
-      notifyGlobal(res.data.message ?? 'Wave ditambahkan.', 'success');
+      notifyGlobal(res.data.message ?? 'Baris monitoring ditambahkan.', 'success');
       onAdded();
     } catch (e) {
-      notifyGlobal(getErrorMessage(e, 'Gagal menambah wave'));
+      notifyGlobal(getErrorMessage(e, 'Gagal menambah baris monitoring'));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal open onClose={onClose} title="Tambah Wave ke Sesi" subtitle={`Wave minggu ${session.week_start} depo ${session.nama_depo || session.kode_depo} yang belum masuk sesi`} size="lg"
+    <Modal open onClose={onClose} title="Tambah Baris Monitoring ke Sesi" subtitle={`Baris monitoring minggu ${session.week_start} depo ${session.nama_depo || session.kode_depo} yang belum masuk sesi`} size="lg"
       footer={<><button onClick={onClose} className="btn-secondary">Batal</button><button onClick={save} disabled={saving || picked.size === 0} className="btn-primary disabled:opacity-50">{saving ? 'Menyimpan...' : `Tambah (${picked.size})`}</button></>}>
-      {loading ? <p className="text-sm text-muted-foreground">Memuat wave...</p> : waves.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Semua wave minggu ini sudah masuk sesi.</p>
+      {loading ? <p className="text-sm text-muted-foreground">Memuat baris monitoring...</p> : waves.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Semua baris monitoring minggu ini sudah masuk sesi.</p>
       ) : (
         <div className="max-h-80 overflow-auto border border-border rounded-xl divide-y divide-gray-100">
           {waves.map((w) => (

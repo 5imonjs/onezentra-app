@@ -407,13 +407,13 @@ export default function PenerimaanPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Inbound</h1>
-                <p className="mt-0.5 text-ink-fg-muted">Hasil penerimaan SJ — tiap batch menjadi sumber Opname Expired</p>
+                <p className="mt-0.5 text-ink-fg-muted">Hasil penerimaan SJ — tiap lot menjadi sumber Monitoring Kedaluwarsa</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
                 <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                Batch
+                Lot
                 <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white">{pagination?.total ?? groups.length}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold backdrop-blur">
@@ -434,7 +434,7 @@ export default function PenerimaanPage() {
                 onChange={(v) => { setSearch(v); setPage(1); }}
                 placeholder="Cari kode / nama barang / sumber material / PO..."
                 resultCount={combos.length}
-                resultLabel="batch"
+                resultLabel="lot"
               />
               {canFilterDepo && depots.length > 1 && (
                 <div className="relative shrink-0">
@@ -456,10 +456,10 @@ export default function PenerimaanPage() {
             </div>
             <div className="flex items-center gap-2">
               {hasPermission('opname.view') && (
-                <button onClick={() => router.push('/opname-expired')} title="Input dan import batch manual dikelola di Opname Expired" className="btn-primary">
+                <button onClick={() => router.push('/opname-expired')} title="Input dan import stok manual dikelola di Monitoring Kedaluwarsa" className="btn-primary">
                   <span className="flex items-center gap-2">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                    Batch Manual
+                    Stok Manual
                   </span>
                 </button>
               )}
@@ -525,17 +525,17 @@ export default function PenerimaanPage() {
               )}
               {!search.trim() && rawGroups.length === 0 && (
                 <p className="mt-2 text-xs text-slate-400">
-                  Halaman ini hanya menampilkan item validasi SJ. Batch manual dikelola di{' '}
+                  Halaman ini hanya menampilkan item validasi SJ. Stok manual dikelola di{' '}
                   {hasPermission('opname.view') ? (
                     <button
                       type="button"
                       onClick={() => router.push('/opname-expired')}
                       className="font-semibold text-accent-text hover:underline"
                     >
-                      Opname Expired
+                      Monitoring Kedaluwarsa
                     </button>
                   ) : (
-                    'Opname Expired'
+                    'Monitoring Kedaluwarsa'
                   )}
                   .
                 </p>
@@ -553,7 +553,7 @@ export default function PenerimaanPage() {
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Qty CRT</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" title="Nilai otomatis: QTY CRT × faktor konversi (master)">PCS (auto)</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Satuan</th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Expired</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Kedaluwarsa</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Kondisi</th>
                       {/* Aksi selalu ada: kolom ini memuat cetak label (bukan
                           hanya Edit), jadi tidak boleh hilang saat user tanpa

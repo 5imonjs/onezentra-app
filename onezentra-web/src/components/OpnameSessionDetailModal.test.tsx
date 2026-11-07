@@ -186,7 +186,7 @@ describe('SessionDetailModal — UI sesi opname sesuai praktik WMS', () => {
     expect(screen.queryByRole('button', { name: 'Setujui' })).not.toBeInTheDocument();
   });
 
-  it('submit: konfirmasi kirim memanggil endpoint /submit (koreksi wave menunggu approve)', async () => {
+  it('submit: konfirmasi kirim memanggil endpoint /submit (koreksi baris monitoring menunggu approve)', async () => {
     renderModal([
       item(1, { verified_at: '2026-10-09T02:00:00Z', qty_fisik_crt: 50, expected_crt: '50', disposition: 'LANJUT' }),
       item(2, { verified_at: '2026-10-09T02:05:00Z', qty_fisik_crt: 12, expected_crt: '12', disposition: 'DISPOSAL' }),

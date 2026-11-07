@@ -69,34 +69,34 @@ describe('Sidebar — ikon menu', () => {
     expect(setting).not.toEqual(penerima);
   });
 
-  it('membedakan ikon menu "Monitoring" dan "Hitung Fisik" (grup Opname Stok)', () => {
+  it('membedakan ikon menu "Monitoring Kedaluwarsa" dan "Stock Opname" (grup Stok & Kedaluwarsa)', () => {
     nav.pathname = '/opname-sessions';
     renderSidebar();
 
-    const monitoring = screen.getByText('Monitoring').closest('a')?.querySelector('path')?.getAttribute('d');
-    const hitungFisik = screen.getByText('Hitung Fisik').closest('a')?.querySelector('path')?.getAttribute('d');
+    const monitoring = screen.getByText('Monitoring Kedaluwarsa').closest('a')?.querySelector('path')?.getAttribute('d');
+    const stock = screen.getByText('Stock Opname').closest('a')?.querySelector('path')?.getAttribute('d');
 
     expect(monitoring).toBeTruthy();
-    expect(hitungFisik).toBeTruthy();
-    expect(monitoring).not.toEqual(hitungFisik);
+    expect(stock).toBeTruthy();
+    expect(monitoring).not.toEqual(stock);
   });
 
-  it('menaruh Laporan di grup Opname Stok dan memberi nama grup yang jelas', () => {
+  it('menaruh Laporan Monitoring di grup Stok & Kedaluwarsa dan memberi nama grup yang jelas', () => {
     nav.pathname = '/reports/opname-expired';
     renderSidebar();
 
     expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
-    expect(screen.getByText('Opname Stok')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Laporan' })).toBeInTheDocument();
+    expect(screen.getByText('Stok & Kedaluwarsa')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Laporan Monitoring' })).toBeInTheDocument();
     expect(screen.queryByText('Laporan Replenishment')).not.toBeInTheDocument();
   });
 
-  it('menyembunyikan "Hitung Fisik" dari viewer murni (opname.view tanpa opname.session.view)', () => {
+  it('menyembunyikan "Stock Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {
     nav.pathname = '/opname-expired';
     auth.can = (permission: string) => permission !== 'opname.session.view';
     renderSidebar();
 
-    expect(screen.getByText('Monitoring')).toBeInTheDocument();
-    expect(screen.queryByText('Hitung Fisik')).not.toBeInTheDocument();
+    expect(screen.getByText('Monitoring Kedaluwarsa')).toBeInTheDocument();
+    expect(screen.queryByText('Stock Opname')).not.toBeInTheDocument();
   });
 });

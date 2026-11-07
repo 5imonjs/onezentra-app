@@ -85,7 +85,7 @@ describe('OpnameExpiredReportPage', () => {
   it('menampilkan laporan saat punya reports.view dan opname.view', async () => {
     render(<OpnameExpiredReportPage />);
 
-    expect(await screen.findByRole('heading', { name: /laporan opname expired/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /laporan monitoring kedaluwarsa/i })).toBeInTheDocument();
     expect(list).toHaveBeenCalled();
   });
 });

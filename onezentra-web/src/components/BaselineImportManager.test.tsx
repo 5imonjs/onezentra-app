@@ -48,7 +48,7 @@ function baseline(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('BaselineImportManager — koreksi data awal', () => {
+describe('BaselineImportManager — koreksi saldo awal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.baselineManifests.mockResolvedValue({ data: { data: [baseline()] } });
@@ -56,30 +56,30 @@ describe('BaselineImportManager — koreksi data awal', () => {
 
   afterEach(cleanup);
 
-  it('menampilkan form import saat data awal belum terpasang', async () => {
+  it('menampilkan form import saat saldo awal belum terpasang', async () => {
     api.baselineManifests.mockResolvedValueOnce({ data: { data: [] } });
 
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
-    expect(await screen.findByText('Data awal = posisi stok sebelum sistem ini.')).toBeTruthy();
+    expect(await screen.findByText('Saldo awal = saldo pembuka sebelum sistem ini.')).toBeTruthy();
     expect(screen.getByLabelText('Kode Depo *')).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Import Data Awal/i })).toBeDisabled();
-    expect(screen.getByText(/Belum ada data awal terpasang/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Import Saldo Awal/i })).toBeDisabled();
+    expect(screen.getByText(/Belum ada saldo awal terpasang/)).toBeTruthy();
   });
 
-  it('menampilkan data awal terpasang dan mengirim koreksi tanggal', async () => {
+  it('menampilkan saldo awal terpasang dan mengirim koreksi tanggal', async () => {
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
-    expect(await screen.findByText('Data awal terpasang')).toBeTruthy();
+    expect(await screen.findByText('Saldo awal terpasang')).toBeTruthy();
 
-    const dateInput = screen.getByLabelText('Tanggal posisi baru') as HTMLInputElement;
+    const dateInput = screen.getByLabelText('Tanggal saldo baru') as HTMLInputElement;
     fireEvent.change(dateInput, { target: { value: '2026-09-06' } });
     fireEvent.click(screen.getByRole('button', { name: /Simpan koreksi/i }));
 
     await waitFor(() => {
       expect(api.baselineUpdate).toHaveBeenCalledWith(7, { baseline_date: '2026-09-06' });
     });
-    expect(await screen.findByText(/Opname sudah disinkronkan/)).toBeTruthy();
+    expect(await screen.findByText(/Baris monitoring sudah disinkronkan/)).toBeTruthy();
   });
 
   it('menonaktifkan koreksi saat sesi opname masih terbuka', async () => {
@@ -89,7 +89,7 @@ describe('BaselineImportManager — koreksi data awal', () => {
 
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
-    expect(await screen.findByText(/Sesi opname depo ini masih terbuka/)).toBeTruthy();
+    expect(await screen.findByText(/Stock opname depo ini masih terbuka/)).toBeTruthy();
     expect((screen.getByRole('button', { name: /Simpan koreksi/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -100,7 +100,7 @@ describe('BaselineImportManager — koreksi data awal', () => {
 
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
-    expect(await screen.findByText(/Sesi opname minggu ini sudah final/)).toBeTruthy();
+    expect(await screen.findByText(/Stock opname minggu ini sudah final/)).toBeTruthy();
     expect((screen.getByRole('button', { name: /Simpan koreksi/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

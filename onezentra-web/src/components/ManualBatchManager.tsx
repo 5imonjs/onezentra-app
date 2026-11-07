@@ -273,7 +273,7 @@ export default function ManualBatchManager({
       const duplicates = Number(res.data.duplicates ?? 0);
       const synced = Boolean(res.data.opname_synced);
       setSuccessMsg(
-        `Import stok manual selesai: ${imported} baris masuk, ${skipped} dilewati${duplicates > 0 ? `, ${duplicates} duplikat (sudah pernah diimport) dilewati` : ''}.${synced ? ' Opname sudah disinkronkan.' : ' Generate opname gagal; jalankan Generate manual.'}`
+        `Import stok manual selesai: ${imported} baris masuk, ${skipped} dilewati${duplicates > 0 ? `, ${duplicates} duplikat (sudah pernah diimport) dilewati` : ''}.${synced ? ' Baris monitoring sudah disinkronkan.' : ' Buat baris monitoring gagal; jalankan manual.'}`
       );
       setSelectedFile(null);
       await load();
@@ -286,17 +286,17 @@ export default function ManualBatchManager({
     }
   };
 
-  /** Generate opname minggu berjalan langsung dari modal (tanpa arg = minggu sekarang). */
+  /** Buat baris monitoring minggu berjalan langsung dari modal (tanpa arg = minggu sekarang). */
   const generateOpname = async () => {
     setGenerating(true);
     try {
       await opnameExpired.generate();
-      notifyGlobal('Opname expired minggu ini berhasil di-generate.', 'success');
+      notifyGlobal('Baris monitoring minggu ini berhasil dibuat.', 'success');
       await refreshPendingPreview();
       onChanged?.();
       setSuccessMsg(null);
     } catch (err) {
-      notifyGlobal(getErrorMessage(err, 'Gagal generate opname'));
+      notifyGlobal(getErrorMessage(err, 'Gagal membuat baris monitoring'));
     } finally {
       setGenerating(false);
     }
@@ -435,10 +435,10 @@ export default function ManualBatchManager({
                 <p className="font-semibold">{successMsg}</p>
                 {pendingPreview && pendingPreview.total > 0 ? (
                   <p className="text-emerald-700 mt-0.5">
-                    Siap generate minggu {pendingPreview.week_start}: {pendingPreview.sj} baris SJ + {pendingPreview.import} baris stok manual{pendingPreview.legacy > 0 ? ` + ${pendingPreview.legacy} baris data awal` : ''} ({pendingPreview.total} baru).
+                    Siap generate minggu {pendingPreview.week_start}: {pendingPreview.sj} baris SJ + {pendingPreview.import} baris stok manual{pendingPreview.legacy > 0 ? ` + ${pendingPreview.legacy} baris saldo awal` : ''} ({pendingPreview.total} baru).
                   </p>
                 ) : (
-                  <p className="text-emerald-700 mt-0.5">Semua baris sudah masuk analisa opname.</p>
+                  <p className="text-emerald-700 mt-0.5">Semua baris sudah masuk monitoring kedaluwarsa.</p>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -450,11 +450,11 @@ export default function ManualBatchManager({
                       ) : (
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M6.75 11.25a7.5 7.5 0 1010.5 0L12 7.5l-5.25 3.75z" /></svg>
                       )}
-                      Generate sekarang
+                      Buat sekarang
                     </span>
                   </button>
                 ) : pendingPreview && pendingPreview.total > 0 ? (
-                  <span className="text-xs text-emerald-700">Jalankan Generate di menu Opname Expired</span>
+                  <span className="text-xs text-emerald-700">Jalankan Buat Baris Monitoring di menu Monitoring Kedaluwarsa</span>
                 ) : null}
                 <button type="button" onClick={() => setSuccessMsg(null)} className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors" aria-label="Tutup pesan">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>

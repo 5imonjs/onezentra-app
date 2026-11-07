@@ -85,7 +85,7 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
       setWaves(all);
       setPicked(new Set(all.map((w) => w.id)));
     } catch (e) {
-      notifyGlobal(getErrorMessage(e, 'Gagal memuat wave'));
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat baris monitoring'));
     } finally {
       setLoadingWaves(false);
     }
@@ -95,7 +95,7 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
 
   const save = async () => {
     if (!assignedTo || picked.size === 0) {
-      notifyGlobal('Pilih petugas dan minimal satu baris wave.', 'error');
+      notifyGlobal('Pilih petugas dan minimal satu baris monitoring.', 'error');
       return;
     }
     setSaving(true);
@@ -107,7 +107,7 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
         assigned_to: Number(assignedTo),
         wave_ids: Array.from(picked),
       });
-      notifyGlobal('Sesi opname dibuat.', 'success');
+      notifyGlobal('Sesi stock opname dibuat.', 'success');
       onCreated();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal membuat sesi'));
@@ -117,7 +117,7 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
   };
 
   return (
-    <Modal open onClose={onClose} title="Buat Sesi Opname" subtitle="Pilih minggu + depo, tugaskan wave ke petugas lapangan" size="xl"
+    <Modal open onClose={onClose} title="Buat Sesi Stock Opname" subtitle="Pilih minggu + depo, tugaskan baris monitoring ke petugas lapangan" size="xl"
       footer={<><button onClick={onClose} className="btn-secondary">Batal</button><button onClick={save} disabled={saving} className="btn-primary disabled:opacity-50">{saving ? 'Menyimpan...' : 'Buat Sesi'}</button></>}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -156,9 +156,9 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
         </div>
       </div>
       <div className="mt-4">
-        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Baris wave ({picked.size}/{waves.length})</p>
-        {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat wave...</p> : waves.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Tidak ada wave minggu ini — Generate dulu di Opname Expired.</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Baris Monitoring ({picked.size}/{waves.length})</p>
+        {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat baris monitoring...</p> : waves.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Tidak ada baris monitoring minggu ini — buat baris monitoring dulu di Monitoring Kedaluwarsa.</p>
         ) : (
           <div className="max-h-64 overflow-auto border border-border rounded-xl divide-y divide-gray-100">
             {waves.map((w) => (
