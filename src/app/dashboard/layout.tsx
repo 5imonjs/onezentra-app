@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import GlobalToast from '@/components/GlobalToast';
+import GlobalConfirm from '@/components/GlobalConfirm';
 import { useAuthStore } from '@/store/auth';
 
 // Urutan menu mengikuti Sidebar: arahkan user tanpa dashboard.view ke menu
@@ -143,6 +144,7 @@ export default function DashboardLayout({
     <div className="flex h-dvh flex-col overflow-hidden bg-gray-100">
       <a href="#main-content" className="skip-link">Langsung ke konten utama</a>
       <GlobalToast />
+      <GlobalConfirm />
 
       {/* Topbar mobile: satu-satunya pemicu drawer di layar kecil. */}
       <header className="z-20 shrink-0 border-b border-border/80 bg-white/85 backdrop-blur-md lg:hidden">

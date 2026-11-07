@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { auth, getErrorMessage } from '@/lib/api';
-import Toast from '@/components/Toast';
+import { notifyGlobal } from '@/store/globalToast';
 import Modal from '@/components/Modal';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useAuthStore } from '@/store/auth';
@@ -13,7 +13,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ full_name: user?.full_name || '', email: user?.email || '' });
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const setToast = (payload: { message: string; type: 'success' | 'error' }) => notifyGlobal(payload.message, payload.type);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current_password: '', password: '', password_confirmation: '' });
@@ -71,7 +71,6 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">

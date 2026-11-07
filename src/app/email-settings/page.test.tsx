@@ -2,12 +2,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import EmailSettingsPage from './page';
 
-const { hasPermission, get, update, sendTest, notificationLogs } = vi.hoisted(() => ({
+const { hasPermission, get, update, sendTest, notificationLogs, notifyGlobal } = vi.hoisted(() => ({
   hasPermission: vi.fn((_permission: string): boolean => true),
   get: vi.fn(),
   update: vi.fn(),
   sendTest: vi.fn(),
   notificationLogs: vi.fn(),
+  notifyGlobal: vi.fn(),
 }));
 
 vi.mock('@/app/dashboard/layout', () => ({
@@ -22,6 +23,8 @@ vi.mock('@/lib/api', () => ({
   emailSettings: { get, update, test: sendTest, notificationLogs },
   getErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
+
+vi.mock('@/store/globalToast', () => ({ notifyGlobal }));
 
 vi.mock('@/lib/dates', () => ({ formatDateId: (value: string) => value }));
 
@@ -99,7 +102,7 @@ describe('EmailSettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Kirim Test Email' }));
 
     await waitFor(() => expect(sendTest).toHaveBeenCalledWith('uji@example.com'));
-    expect(await screen.findByText('Email test terkirim')).toBeInTheDocument();
+    await waitFor(() => expect(notifyGlobal).toHaveBeenCalledWith('Email test terkirim', 'success'));
   });
 
   it('menonaktifkan seluruh kontrol dan menyembunyikan tombol simpan tanpa emails.edit', async () => {

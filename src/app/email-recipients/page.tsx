@@ -6,7 +6,7 @@ import { emailRecipients, getErrorMessage } from '@/lib/api';
 import SearchInput from '@/components/SearchInput';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import Toast from '@/components/Toast';
+import { notifyGlobal } from '@/store/globalToast';
 import { useAuthStore } from '@/store/auth';
 
 interface Recipient {
@@ -230,7 +230,7 @@ export default function EmailRecipientsPage() {
 
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const setToast = (payload: { message: string; type: 'success' | 'error' }) => notifyGlobal(payload.message, payload.type);
 
   // Filter & pencarian dilakukan di server; paginasi per DEPO (bukan per
   // baris) agar grup TO/CC tiap depo tetap utuh dalam satu halaman.
@@ -582,7 +582,6 @@ export default function EmailRecipientsPage() {
 
   return (
     <DashboardLayout>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
