@@ -1973,8 +1973,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: context.colors.success,
-              foregroundColor: context.colors.textPrimary,
+              backgroundColor: AppTheme.success,
+              foregroundColor: AppTheme.ink900,
             ),
             child: const Text('Ya, Selesaikan'),
           ),
@@ -1985,8 +1985,9 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
       var completed = await provider.completeActive();
       if (completed && mounted) {
         // Selesai validasi → lanjutkan ke Check Out Point (Receiving/Bongkar).
+        // Pakai push (bukan go) agar Back kembali ke Validasi/Home, bukan menutup aplikasi.
         try {
-          context.go('/bongkar');
+          await context.push('/bongkar');
         } catch (_) {
           // Route /bongkar mungkin belum terdaftar (misal dalam tes),
           // abaikan saja.

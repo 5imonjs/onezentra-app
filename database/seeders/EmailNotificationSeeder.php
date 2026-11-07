@@ -61,6 +61,14 @@ class EmailNotificationSeeder extends Seeder
             ['document_type' => 'receiving', 'trigger' => 'completed', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
             ['label' => 'CC admin distribusi info selesai bongkar', 'is_active' => true]
         );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'gate', 'trigger' => 'checked_in', 'kode_depo' => null, 'field' => 'TO', 'recipient_type' => 'role', 'role_slug' => 'blc'],
+            ['label' => 'BLC penerima info check-in gate', 'is_active' => true]
+        );
+        EmailRecipient::updateOrCreate(
+            ['document_type' => 'gate', 'trigger' => 'checked_in', 'kode_depo' => null, 'field' => 'CC', 'recipient_type' => 'role', 'role_slug' => 'admin_distirbusi'],
+            ['label' => 'CC admin distribusi info check-in gate', 'is_active' => true]
+        );
 
         // Selisih qty notifications
         EmailRecipient::updateOrCreate(

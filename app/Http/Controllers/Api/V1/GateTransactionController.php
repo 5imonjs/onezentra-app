@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Mail\GateCheckedIn;
 use App\Models\GateTransaction;
 use App\Models\RencanaKirim;
+use App\Services\EmailNotificationService;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class GateTransactionController extends Controller
 {
+    public function __construct(private readonly EmailNotificationService $emailService) {}
+
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -116,6 +120,14 @@ class GateTransactionController extends Controller
 
             return $transaction;
         });
+
+        $this->emailService->send(
+            'gate',
+            'checked_in',
+            $transaction,
+            new GateCheckedIn($transaction),
+            $transaction->rencanaKirim?->kode_depo,
+        );
 
         return response()->json([
             'message' => 'Gate transaction recorded successfully',

@@ -431,25 +431,6 @@ export default function ValidasiSjPage() {
     }
   };
 
-  const openExtraItem = (extra: ValidationExtraItem) => {
-    if (!canEditItems(active, { canCorrectCompleted: active?.can_correct_completed })) {
-      notifyGlobal('Validasi sudah selesai sehingga hasil item tidak dapat diubah.', 'error');
-      return;
-    }
-    setSelected(extra as unknown as ValidationItem);
-    setForm({
-      actual_qty: extra.qty != null ? String(extra.qty) : '',
-      expired_date: toDateInput(extra.expired_date),
-      condition: extra.condition || 'FISIK_BAGUS',
-      notes: extra.notes ?? '',
-      barcode: ((extra as unknown) as ValidationItem).barcode ?? (extra as { batch?: { barcode_label?: string } }).batch?.barcode_label ?? '',
-      tier: 1,
-      tinggi_tumpukan: 1,
-    });
-    setPhoto(null);
-    setPhotoPreview('');
-  };
-
   const openItem = (item: ValidationItem) => {
     // Penjaga lapis kedua: tombol sudah disembunyikan saat dokumen selesai,
     // tapi form ini juga bisa terbuka lewat jalur lain (draft yang dipulihkan,
@@ -1409,13 +1390,13 @@ export default function ValidasiSjPage() {
                                 className={`inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${item.standarisasi?.status === 'pending' ? 'border-border bg-slate-100 text-slate-400 cursor-not-allowed' : item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-chip-primary-border bg-chip-primary text-accent-text hover:bg-chip-primary'}`}
                               >
                                 {item.standarisasi?.status && item.standarisasi.status !== 'approved' && <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
-                                {item.standarisasi?.status === 'pending' ? 'Menunggu Approval' : 'Validasi'}
+                                {item.standarisasi?.status === 'pending' ? 'Menunggu Approval' : item.standarisasi?.status && item.standarisasi.status !== 'approved' ? 'Buat Standarisasi' : 'Validasi'}
                               </button>
                             ) : (
                               (active.status === 'IN_PROGRESS' || active?.can_correct_completed) ? (
                                 <button type="button" onClick={() => openItem(item)} title="Ubah hasil validasi item ini" className="inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-popover">
                                   <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
-                                  Ubah
+                                  Ubah Hasil Validasi
                                 </button>
                               ) : null
                             )}
@@ -1487,7 +1468,7 @@ export default function ValidasiSjPage() {
                       <li key={extra.id} className="flex flex-col gap-1.5 px-5 py-3 even:bg-overlay-30">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-sm font-bold text-foreground">{extra.nama_barang} <span className="ml-1 font-mono text-[11px] font-medium text-muted-foreground">{extra.kode_barang}</span></p>
-                          <button type="button" onClick={() => openExtraItem(extra)} className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-popover" title="Ubah catatan luar rencana">Ubah</button>
+                          <button type="button" disabled title="Barang luar rencana tidak dapat diubah setelah dilaporkan." className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-border bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-400">Tidak dapat diubah</button>
                         </div>
                           <div className="flex items-center gap-2">
                             <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${extra.condition === 'FISIK_TIDAK_ADA' ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>

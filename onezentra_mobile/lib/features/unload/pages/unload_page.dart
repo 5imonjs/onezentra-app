@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -681,6 +682,15 @@ class _UnloadPageState extends State<UnloadPage> {
         _scanController.clear();
         unload.clearActive();
         await unload.refresh();
+        if (mounted) {
+          // Setelah receiving selesai, kembali eksplisit ke menu utama agar
+          // tombol Back tidak mengandalkan stack yang mungkin sudah kosong.
+          try {
+            context.go('/home');
+          } catch (_) {
+            // Router mungkin tidak terdaftar (misal dalam tes); abaikan saja.
+          }
+        }
       }
     }
   }
@@ -726,14 +736,14 @@ class _UnloadPageState extends State<UnloadPage> {
         ),
         decoration: highlight
             ? const BoxDecoration(
-                color: AppTheme.gray500,
+                color: AppTheme.foreground,
                 borderRadius: AppTheme.radiusLg,
               )
             : BoxDecoration(
-                color: AppTheme.gray500.withValues(alpha: 0.07),
+                color: AppTheme.foreground.withValues(alpha: 0.07),
                 borderRadius: AppTheme.radiusLg,
                 border: Border.all(
-                  color: AppTheme.gray500.withValues(alpha: 0.08),
+                  color: AppTheme.foreground.withValues(alpha: 0.08),
                 ),
               ),
         child: Column(
@@ -746,7 +756,7 @@ class _UnloadPageState extends State<UnloadPage> {
                 fontWeight: FontWeight.w500,
                 color: highlight
                     ? AppTheme.gray50.withValues(alpha: 0.65)
-                    : AppTheme.gray500,
+                    : AppTheme.gray400,
               ),
             ),
             const SizedBox(height: 2),
@@ -757,7 +767,7 @@ class _UnloadPageState extends State<UnloadPage> {
               style: GoogleFonts.robotoMono(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: highlight ? AppTheme.gray50 : AppTheme.gray500,
+                color: highlight ? AppTheme.gray50 : AppTheme.foreground,
               ),
             ),
           ],

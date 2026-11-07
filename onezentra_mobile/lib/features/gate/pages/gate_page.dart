@@ -239,9 +239,9 @@ class _GatePageState extends State<GatePage> {
           children: [
             _iconBox(
               38,
-              AppTheme.primary50,
+              context.colors.primaryWell,
               Icons.qr_code_scanner_rounded,
-              iconColor: AppTheme.primary600,
+              iconColor: context.colors.primaryWellText,
             ),
             const SizedBox(width: AppTheme.space3),
             Expanded(
@@ -568,7 +568,7 @@ class _GatePageState extends State<GatePage> {
               style: GoogleFonts.roboto(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: highlight ? AppTheme.primary950 : AppTheme.dangerText,
+                color: highlight ? AppTheme.primary950 : AppTheme.gray400,
               ),
             ),
             const SizedBox(height: 2),
