@@ -114,6 +114,7 @@ const emptyEdit: EditForm = {
 
 const docTypeLabel: Record<string, string> = {
   rencana_kirim: 'Rencana Kirim',
+  gate: 'Check In / Gate',
   sj_ba: 'Validasi Dokumen',
   receiving: 'Receiving',
   selisih: 'Selisih Qty',
@@ -127,6 +128,9 @@ const triggerOptions: Record<string, { value: string; label: string; description
   rencana_kirim: [
     { value: 'created', label: 'Rencana Kirim dibuat', description: 'Terpicu saat jadwal Rencana Kirim baru dibuat (pemroses: modul Rencana Kirim).' },
     { value: 'cancelled', label: 'Rencana Kirim dibatalkan', description: 'Terpicu saat Rencana Kirim dibatalkan dari status apa pun yang valid (pemroses: modul Rencana Kirim).' },
+  ],
+  gate: [
+    { value: 'checked_in', label: 'Check In selesai', description: 'Terpicu saat unit check-in di gate dan rencana berubah menjadi CHECKED_IN (pemroses: modul Check In / Gate).' },
   ],
   sj_ba: [
     { value: 'validated', label: 'Validasi SJ/BA selesai', description: 'Terpicu saat dokumen SJ/BA selesai divalidasi (pemroses: modul Validasi Dokumen).' },
@@ -524,7 +528,7 @@ export default function EmailRecipientsPage() {
           <p className="mt-0.5 text-xs text-muted-foreground">
             {docTypeLabel[r.document_type] || r.document_type} · {triggerLabel(r.document_type, r.trigger)}
           </p>
-          {r.label && <p className="mt-0.5 text-xs text-gray-400">{r.label}</p>}
+          {r.label && <p className="mt-0.5 text-xs text-muted-foreground">{r.label}</p>}
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${r.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-muted-foreground'}`}>
@@ -565,7 +569,7 @@ export default function EmailRecipientsPage() {
         )}
       </div>
       {list.length === 0 ? (
-        <p className="px-1 py-3 text-xs text-gray-400">
+        <p className="px-1 py-3 text-xs text-muted-foreground">
           {depoKey === null
             ? 'Belum ada penerima Global. Depo tanpa penerima sendiri tidak dikirimi email.'
             : `Belum ada penerima ${field} khusus depo ini — email memakai penerima Global (bila ada).`}
@@ -905,7 +909,7 @@ export default function EmailRecipientsPage() {
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground bg-slate-50 rounded-lg px-3 py-2">
+            <p className="text-xs text-muted-foreground bg-popover rounded-lg px-3 py-2">
               Panduan: satu baris = satu penerima. Pilih jenis dokumen &amp; trigger, lalu tambahkan banyak user/email/role ke field TO atau CC sekaligus. Depo kosong = berlaku global.
             </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -928,7 +932,7 @@ export default function EmailRecipientsPage() {
                   ))}
                 </select>
                 {triggerDescription(createForm.document_type, createForm.trigger) && (
-                  <p className="mt-1.5 text-xs text-gray-400">{triggerDescription(createForm.document_type, createForm.trigger)}</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">{triggerDescription(createForm.document_type, createForm.trigger)}</p>
                 )}
               </div>
               {!depoLocked && (
