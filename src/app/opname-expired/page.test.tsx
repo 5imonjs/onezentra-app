@@ -2,11 +2,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OpnameExpiredPage from './page';
 
-const { hasPermission, list, pending, progress, getErrorMessage, notifyGlobal } = vi.hoisted(() => ({
+const { hasPermission, list, pending, progress, baselineManifests, getErrorMessage, notifyGlobal } = vi.hoisted(() => ({
   hasPermission: vi.fn((_slug: string) => true),
   list: vi.fn(),
   pending: vi.fn(),
   progress: vi.fn(),
+  baselineManifests: vi.fn(),
   getErrorMessage: vi.fn((_e: unknown, fallback: string) => fallback),
   notifyGlobal: vi.fn(),
 }));
@@ -16,7 +17,10 @@ vi.mock('@/app/dashboard/layout', () => ({
 }));
 
 vi.mock('@/store/auth', () => ({
-  useAuthStore: () => ({ hasPermission }),
+  useAuthStore: () => ({
+    hasPermission,
+    user: { kode_depo: 'DPO', nama_depo: 'Depo Test' },
+  }),
 }));
 
 vi.mock('@/store/globalToast', () => ({ notifyGlobal }));
@@ -29,11 +33,14 @@ vi.mock('@/components/ConfirmDialog', () => ({ default: () => null }));
 
 vi.mock('@/components/ManualBatchManager', () => ({ default: () => null }));
 
+vi.mock('@/components/BaselineImportManager', () => ({ default: () => null }));
+
 vi.mock('@/lib/api', () => ({
   opnameExpired: {
     list,
     pending,
     progress,
+    baselineManifests,
     generate: vi.fn(),
     export: vi.fn(),
     settings: vi.fn(),
@@ -74,6 +81,26 @@ describe('OpnameExpiredPage', () => {
       },
     });
     progress.mockResolvedValue({ data: { data: { depots: [] } } });
+    baselineManifests.mockResolvedValue({
+      data: {
+        data: [{
+          id: 7,
+          kode_depo: 'DPO',
+          nama_depo: 'Depo Test',
+          baseline_date: '2026-09-01',
+          imported_at: '2026-09-05T09:00:00+00:00',
+          file_name: 'baseline.xlsx',
+          row_count: 12,
+          items_count: 12,
+          total_qty_crt: 120,
+          total_qty_pcs: 1200,
+          notes: null,
+          imported_by: 'Admin Gudang',
+          has_open_session: false,
+          has_finalized_current_week: false,
+        }],
+      },
+    });
   });
 
   afterEach(() => {
@@ -84,9 +111,10 @@ describe('OpnameExpiredPage', () => {
     render(<OpnameExpiredPage />);
 
     expect(await screen.findByRole('heading', { name: 'Opname Expired' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Alur data opname expired')).toHaveTextContent('Rencana Kirim');
-    expect(screen.getByLabelText('Alur data opname expired')).toHaveTextContent('Validasi SJ');
-    expect(screen.getByLabelText('Alur data opname expired')).toHaveTextContent('Inbound');
+    const flow = screen.getByLabelText('Alur opname expired');
+    expect(flow).toHaveTextContent('1. Data Awal');
+    expect(flow).toHaveTextContent('2. Hitung Fisik');
+    expect(flow).toHaveTextContent('3. Selesai');
   });
 
   it('menyembunyikan Generate & Threshold tanpa izin opname.create/opname.edit', async () => {
@@ -102,12 +130,27 @@ describe('OpnameExpiredPage', () => {
     expect(screen.queryByText(/belum di-generate/)).not.toBeInTheDocument();
   });
 
-  it('menampilkan Generate & Threshold saat izin lengkap', async () => {
+  it('menampilkan langkah berikutnya dan aksi sekunder saat izin lengkap', async () => {
     render(<OpnameExpiredPage />);
 
-    expect(await screen.findByText(/belum di-generate/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Generate' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Threshold/ })).toBeInTheDocument();
+    expect(await screen.findByText(/baris baru belum masuk analisa/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate sekarang' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lainnya' }));
+
+    expect(screen.getByRole('menuitem', { name: /Import Data Awal/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Tambah Stok Manual/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Pengaturan threshold/ })).toBeInTheDocument();
+  });
+
+  it('memprioritaskan pemasangan data awal saat baseline depo belum ada', async () => {
+    baselineManifests.mockResolvedValue({ data: { data: [] } });
+
+    render(<OpnameExpiredPage />);
+
+    expect(await screen.findByText('Data awal belum dipasang')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import Data Awal' })).toBeInTheDocument();
+    expect(screen.queryByText(/baris baru belum masuk analisa/)).not.toBeInTheDocument();
   });
 
   it('mengganti picker minggu dengan dua input rentang tanggal manual', async () => {
