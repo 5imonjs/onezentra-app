@@ -19,14 +19,13 @@ const operasionalMenus = [
 ];
 
 // Opname Stok dapat grup sendiri. Alur inbound (fisik) berakhir di "Inbound (SJ)",
-// sedangkan opname adalah stock-take terjadwal: monitoring baris expired (Opname
-// Expired), verifikasi lapangan (Sesi Opname), lalu laporan hasil opname.
-// Menaruh laporan opname di grup umum "Laporan" membuatnya jauh dari alur
-// dan bisa membingungkan pengguna.
+// sedangkan opname adalah stock-take terjadwal dengan tiga tahap: monitoring
+// baris expired, hitung fisik di lapangan, lalu laporan hasilnya. Nama grup
+// membawa konteks "Opname", jadi label item dibuat pendek agar tidak berulang.
 const opnameMenus = [
-  { name: 'Opname Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
-  { name: 'Sesi Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
-  { name: 'Laporan Opname', path: '/reports/opname-expired', icon: 'chart', permission: 'reports.view' },
+  { name: 'Monitoring', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
+  { name: 'Hitung Fisik', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
+  { name: 'Laporan', path: '/reports/opname-expired', icon: 'chart', permission: 'reports.view' },
 ];
 
 const masterDataMenus = [
