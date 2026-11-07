@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\OpnameExpiredBaselineImport;
+use App\Models\OpnameExpiredSession;
 use App\Models\Permission;
 use App\Models\ReceivingItem;
 use App\Models\Role;
@@ -284,5 +285,124 @@ class ReceivingItemControllerTest extends TestCase
 
         $this->putJson("/api/v1/receiving-items/{$item->id}", ['source' => 'BOGUS'])
             ->assertStatus(422);
+    }
+
+    public function test_baseline_manifest_can_be_listed_and_date_corrected(): void
+    {
+        $this->travelTo('2026-09-10 10:00:00');
+
+        $manifest = OpnameExpiredBaselineImport::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+            'file_name' => 'baseline.xlsx',
+            'imported_by' => $this->user->id,
+            'imported_at' => now(),
+        ]);
+
+        // Penerimaan 5 Sep awalnya dianggap stok baru karena masih setelah
+        // cutoff 1 Sep. Setelah cutoff dikoreksi ke 6 Sep, baris ini harus
+        // otomatis tercakup baseline — tanpa menghapus/mengubah ledger.
+        $item = ReceivingItem::create([
+            'source' => 'IMPORT_MANUAL',
+            'kode_barang' => 'TES-BASE-CORR',
+            'nama_barang' => 'Test Koreksi Baseline',
+            'actual_qty' => 4,
+            'expected_qty' => 4,
+            'qty_pcs' => 40,
+            'satuan' => 'CRT',
+            'expired_date' => '2026-12-01',
+            'tanggal_penerimaan' => '2026-09-05',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'condition' => 'GOOD',
+        ]);
+
+        $service = app(OpnameExpiredService::class);
+        $this->assertNull($service->baselineCoverageReason($item->fresh()));
+
+        $list = $this->getJson('/api/v1/receiving-items/baseline')->assertOk();
+        $this->assertSame('2026-09-01', $list->json('data.0.baseline_date'));
+        $this->assertSame('DPO', $list->json('data.0.kode_depo'));
+
+        $this->putJson("/api/v1/receiving-items/baseline/{$manifest->id}", [
+            'baseline_date' => '2026-09-06',
+        ])->assertOk()
+            ->assertJsonPath('opname_synced', true)
+            ->assertJsonPath('data.baseline_date', '2026-09-06');
+
+        $this->assertSame('date', app(OpnameExpiredService::class)->baselineCoverageReason($item->fresh()));
+        $this->assertStringContainsString('2026-09-01 -> 2026-09-06', (string) $manifest->fresh()->notes);
+        $this->assertEquals(4, (float) $item->fresh()->actual_qty);
+    }
+
+    public function test_baseline_date_correction_rejects_future_date(): void
+    {
+        $manifest = OpnameExpiredBaselineImport::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+            'file_name' => 'baseline.xlsx',
+            'imported_by' => $this->user->id,
+            'imported_at' => now(),
+        ]);
+
+        $this->putJson("/api/v1/receiving-items/baseline/{$manifest->id}", [
+            'baseline_date' => now()->addDay()->toDateString(),
+        ])->assertStatus(422)->assertJsonValidationErrors('baseline_date');
+    }
+
+    public function test_baseline_date_correction_is_blocked_while_session_is_open(): void
+    {
+        $manifest = OpnameExpiredBaselineImport::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+            'file_name' => 'baseline.xlsx',
+            'imported_by' => $this->user->id,
+            'imported_at' => now(),
+        ]);
+
+        OpnameExpiredSession::create([
+            'week_start' => '2026-09-07',
+            'week_end' => '2026-09-13',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->user->id,
+            'status' => OpnameExpiredSession::STATUS_OPEN,
+            'created_by' => $this->user->id,
+        ]);
+
+        $this->putJson("/api/v1/receiving-items/baseline/{$manifest->id}", [
+            'baseline_date' => '2026-09-06',
+        ])->assertStatus(422)->assertJsonValidationErrors('baseline_date');
+
+        $this->assertSame('2026-09-01', $manifest->fresh()->baseline_date->toDateString());
+    }
+
+    public function test_baseline_date_correction_is_blocked_when_current_week_session_is_final(): void
+    {
+        $manifest = OpnameExpiredBaselineImport::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+            'file_name' => 'baseline.xlsx',
+            'imported_by' => $this->user->id,
+            'imported_at' => now(),
+        ]);
+
+        OpnameExpiredSession::create([
+            'week_start' => now()->startOfWeek()->toDateString(),
+            'week_end' => now()->endOfWeek()->toDateString(),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->user->id,
+            'status' => OpnameExpiredSession::STATUS_APPROVED,
+            'created_by' => $this->user->id,
+        ]);
+
+        $this->putJson("/api/v1/receiving-items/baseline/{$manifest->id}", [
+            'baseline_date' => '2026-09-06',
+        ])->assertStatus(422)->assertJsonValidationErrors('baseline_date');
     }
 }

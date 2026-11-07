@@ -142,7 +142,7 @@ const STATUS_HINTS: Record<string, string> = {
   PENDING_APPROVAL: 'Menunggu persetujuan approver independen — koreksi wave baru berlaku setelah disetujui. Penghitung tidak boleh menyetujui hitungannya sendiri.',
   APPROVED: 'Disetujui: koreksi tiap wave tercatat & tervalidasi, label batch terbit, selisih siap ditindak (retur/disposal).',
   REVISI: 'Approver meminta perbaikan — lihat catatan, perbaiki baris yang salah, lalu kirim ulang sesi.',
-  CANCELLED: 'Sesi dibatalkan — tidak ada hasil yang ditulis ke wave.',
+  CANCELLED: 'Sesi dibatalkan — tidak ada hasil yang ditulis ke wave. Setelah qty dikoreksi lewat Inbound/Opname Expired, buat sesi baru untuk wave yang sama agar dihitung ulang dengan snapshot terbaru.',
 };
 
 export function SessionDetailModal({ sessionId, detail, detailLoading, progress, canEdit, canAdd, canApprove, onClose, onChanged }: {

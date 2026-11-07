@@ -318,6 +318,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/template', [ReceivingItemController::class, 'template'])->middleware(['permission:penerimaan.view', 'throttle:30,1,heavy-read']);
         Route::post('/import', [ReceivingItemController::class, 'import'])->middleware(['permission:penerimaan.create', 'throttle:20,1,heavy-write']);
         Route::post('/import-baseline', [ReceivingItemController::class, 'importBaseline'])->middleware(['permission:penerimaan.create', 'throttle:20,1,heavy-write']);
+        // Manifes baseline: daftar posisi terpasang + koreksi cutoff tanpa
+        // menambah/menghapus baris ledger.
+        Route::get('/baseline', [ReceivingItemController::class, 'baselineManifests'])->middleware('permission:penerimaan.view');
+        Route::put('/baseline/{baselineImport}', [ReceivingItemController::class, 'updateBaseline'])->middleware(['permission:penerimaan.edit', 'throttle:20,1,heavy-write']);
         // Rute statis wajib sebelum {receivingItem}.
         Route::delete('/bulk', [ReceivingItemController::class, 'bulkDestroy'])->middleware(['permission:penerimaan.delete', 'throttle:20,1,heavy-write']);
         Route::put('/{receivingItem}', [ReceivingItemController::class, 'update'])->middleware('permission:penerimaan.edit');

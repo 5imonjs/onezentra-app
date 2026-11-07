@@ -113,6 +113,8 @@ String _statusHint(String status) => switch (status) {
   'PENDING_APPROVAL' =>
     'Menunggu keputusan BLC. Koreksi wave baru berlaku setelah disetujui.',
   'REVISI' => 'Perbaiki baris yang ditandai, lalu kirim ulang untuk review.',
+  'CANCELLED' =>
+    'Sesi dibatalkan. Setelah qty dikoreksi, buat sesi baru untuk wave yang sama.',
   'APPROVED' => 'Sesi disetujui — koreksi wave telah berlaku.',
   'COMPLETED' => 'Sesi selesai — koreksi wave telah berlaku.',
   _ => '',

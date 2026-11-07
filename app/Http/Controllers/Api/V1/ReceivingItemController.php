@@ -8,6 +8,7 @@ use App\Imports\ReceivingItemImport;
 use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\OpnameExpiredBaselineImport;
+use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\ReceivingItem;
 use App\Services\OpnameExpiredService;
@@ -736,6 +737,169 @@ class ReceivingItemController extends Controller
                 'message' => 'Import baseline gagal. Silakan periksa file dan coba lagi.',
             ], 500);
         }
+    }
+
+    /**
+     * Daftar manifes baseline yang bisa diakses user. Dipakai UI untuk
+     * menampilkan posisi baseline terpasang dan mengoreksi tanggalnya.
+     */
+    public function baselineManifests(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $query = OpnameExpiredBaselineImport::query()
+            ->with('importer:id,full_name')
+            ->withCount('items')
+            ->orderByDesc('imported_at');
+
+        if ($user->isDepotScoped()) {
+            $query->whereIn('kode_depo', $user->depot_codes);
+        } elseif ($request->filled('kode_depo')) {
+            $query->where('kode_depo', (string) $request->string('kode_depo'));
+        }
+
+        $service = app(OpnameExpiredService::class);
+        $manifests = $query->get();
+        $finalizedDepots = OpnameExpiredSession::query()
+            ->whereIn('kode_depo', $manifests->pluck('kode_depo')->filter()->unique()->values()->all())
+            ->where('week_start', today()->startOfWeek()->toDateString())
+            ->whereIn('status', [OpnameExpiredSession::STATUS_APPROVED, OpnameExpiredSession::STATUS_COMPLETED])
+            ->pluck('kode_depo')
+            ->flip();
+
+        return response()->json([
+            'data' => $manifests->map(fn (OpnameExpiredBaselineImport $baseline): array => [
+                'id' => $baseline->id,
+                'kode_depo' => $baseline->kode_depo,
+                'nama_depo' => $baseline->nama_depo,
+                'baseline_date' => $baseline->baseline_date?->toDateString(),
+                'imported_at' => $baseline->imported_at?->toIso8601String(),
+                'file_name' => $baseline->file_name,
+                'row_count' => (int) $baseline->row_count,
+                'items_count' => (int) $baseline->items_count,
+                'total_qty_crt' => (float) $baseline->total_qty_crt,
+                'total_qty_pcs' => (float) $baseline->total_qty_pcs,
+                'notes' => $baseline->notes,
+                'imported_by' => $baseline->importer?->full_name,
+                'has_open_session' => $service->hasOpenSessionForDepot($baseline->kode_depo),
+                'has_finalized_current_week' => isset($finalizedDepots[$baseline->kode_depo]),
+            ]),
+        ]);
+    }
+
+    /**
+     * Koreksi tanggal posisi baseline pada manifes yang sudah ada.
+     *
+     * Baseline tetap satu kali per depo — yang dikoreksi hanya cutoff
+     * tanggalnya. Baris ledger tidak dihapus/diubah; cakupan otomatis
+     * dihitung ulang dari `baseline_date` baru, lalu Generate dijalankan agar
+     * wave minggu berjalan langsung mencerminkan posisi yang benar.
+     */
+    public function updateBaseline(Request $request, OpnameExpiredBaselineImport $baselineImport): JsonResponse
+    {
+        abort_unless(
+            $request->user()->canAccessDepotRow($baselineImport->kode_depo, $baselineImport->nama_depo),
+            403,
+            'Anda tidak memiliki akses ke data ini.'
+        );
+
+        $validated = $request->validate([
+            'baseline_date' => 'required|date|before_or_equal:today',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $service = app(OpnameExpiredService::class);
+        $this->assertBaselineCorrectionAllowed((string) $baselineImport->kode_depo, $service);
+
+        $oldDate = $baselineImport->baseline_date?->toDateString();
+        $newDate = (string) $validated['baseline_date'];
+        $dateChanged = $oldDate !== $newDate;
+        $notes = array_key_exists('notes', $validated)
+            ? $validated['notes']
+            : $baselineImport->notes;
+
+        if ($dateChanged) {
+            // Jejak audit koreksi ikut disimpan di manifes (bukan menimpa
+            // catatan lama) supaya perubahan cutoff tidak terlihat seperti
+            // tanggal asli saat import.
+            $audit = sprintf(
+                'Koreksi baseline %s -> %s oleh %s pada %s.',
+                $oldDate ?? '-',
+                $newDate,
+                $request->user()->full_name,
+                now()->toDateTimeString(),
+            );
+            $notes = trim(($notes ? $notes."\n" : '').$audit);
+        }
+
+        $baselineImport->update([
+            'baseline_date' => $newDate,
+            'notes' => $notes,
+        ]);
+
+        $synced = false;
+        if ($dateChanged) {
+            try {
+                // Service baru: cache cutoff lama tidak boleh dipakai untuk
+                // generate setelah tanggal baseline berubah.
+                app(OpnameExpiredService::class)->generate(null, $request->user());
+                $synced = true;
+            } catch (\Throwable $e) {
+                Log::error('Opname generate after baseline date correction failed', [
+                    'baseline_import_id' => $baselineImport->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $fresh = $baselineImport->fresh();
+        $message = $dateChanged
+            ? "Tanggal posisi baseline diperbarui dari {$oldDate} ke {$newDate}."
+            : 'Catatan baseline diperbarui.';
+
+        return response()->json([
+            'message' => $message,
+            'opname_synced' => $synced,
+            'data' => [
+                'id' => $fresh->id,
+                'kode_depo' => $fresh->kode_depo,
+                'nama_depo' => $fresh->nama_depo,
+                'baseline_date' => $fresh->baseline_date?->toDateString(),
+                'notes' => $fresh->notes,
+            ],
+        ]);
+    }
+
+    /**
+     * Koreksi cutoff baseline mengubah stok yang dihitung. Saat sesi depo
+     * masih terbuka, snapshot lapangan bisa bertentangan dengan hasil
+     * koreksi; saat sesi minggu ini sudah final, posisinya tidak boleh
+     * diubah lagi. Sesi yang dibatalkan tidak menghalangi koreksi/restart.
+     */
+    private function assertBaselineCorrectionAllowed(string $kodeDepo, OpnameExpiredService $service): void
+    {
+        if ($service->hasOpenSessionForDepot($kodeDepo)) {
+            throw ValidationException::withMessages([
+                'baseline_date' => ['Sesi opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum mengoreksi baseline.'],
+            ]);
+        }
+
+        $finalizedThisWeek = $this->hasFinalizedCurrentWeekSession($kodeDepo);
+
+        if ($finalizedThisWeek) {
+            throw ValidationException::withMessages([
+                'baseline_date' => ['Sesi opname minggu ini sudah final. Koreksi baseline tidak bisa mengubah posisi yang sudah disetujui.'],
+            ]);
+        }
+    }
+
+    private function hasFinalizedCurrentWeekSession(string $kodeDepo): bool
+    {
+        return OpnameExpiredSession::query()
+            ->where('kode_depo', $kodeDepo)
+            ->where('week_start', today()->startOfWeek()->toDateString())
+            ->whereIn('status', [OpnameExpiredSession::STATUS_APPROVED, OpnameExpiredSession::STATUS_COMPLETED])
+            ->exists();
     }
 
     private function assertNoOpenOpnameSession(?string $kodeDepo): void

@@ -416,6 +416,50 @@ class OpnameExpiredSessionTest extends TestCase
         $this->assertSame('0.00', (string) $session->items->first()->wave->fresh()->qty_koreksi_crt);
     }
 
+    public function test_cancelled_session_can_be_restarted_with_fresh_snapshot(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+
+        $item = OpnameExpiredSessionItem::where('session_id', $session->id)
+            ->whereHas('wave', fn ($q) => $q->where('kode_barang', 'B-SES-01'))
+            ->firstOrFail();
+        $this->assertEquals(10, (float) $item->qty_sistem_crt);
+        $waveId = $item->wave_id;
+
+        // Sesi yang terlanjur membekukan qty salah dibatalkan, bukan diedit.
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/cancel", ['notes' => 'Salah hitung'])
+            ->assertOk();
+        $this->assertSame('CANCELLED', $session->fresh()->status);
+
+        // Koreksi ledger + generate ulang setelah sesi dibatalkan.
+        ReceivingItem::where('kode_barang', 'B-SES-01')->firstOrFail()->update(['actual_qty' => 12]);
+        app(OpnameExpiredService::class)->generate();
+
+        // Wave yang sama boleh dimasukkan ke sesi baru: CANCELLED bukan pengunci.
+        Sanctum::actingAs($this->supervisor);
+        $res = $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => [$waveId],
+        ])->assertCreated();
+        $restarted = OpnameExpiredSession::findOrFail($res->json('data.id'));
+        $this->assertNotSame($session->id, $restarted->id);
+
+        // Snapshot sesi baru memakai qty hasil koreksi, bukan snapshot lama.
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$restarted->id}/start")->assertOk();
+
+        $newItem = OpnameExpiredSessionItem::where('session_id', $restarted->id)
+            ->where('wave_id', $waveId)
+            ->firstOrFail();
+        $this->assertEquals(12, (float) $newItem->qty_sistem_crt);
+    }
+
     public function test_session_expands_one_wave_into_per_batch_items(): void
     {
         // Dua baris ledger satu kunci (barang+depo+expired) = satu wave,
