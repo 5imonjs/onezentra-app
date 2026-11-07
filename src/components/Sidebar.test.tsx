@@ -69,16 +69,16 @@ describe('Sidebar — ikon menu', () => {
     expect(setting).not.toEqual(penerima);
   });
 
-  it('membedakan ikon menu "Batch Expired" dan "Sesi Opname" (grup Opname)', () => {
+  it('membedakan ikon menu "Opname Expired" dan "Sesi Opname" (grup Opname)', () => {
     nav.pathname = '/opname-sessions';
     renderSidebar();
 
-    const batchExpired = screen.getByText('Batch Expired').closest('a')?.querySelector('path')?.getAttribute('d');
+    const opnameExpired = screen.getByText('Opname Expired').closest('a')?.querySelector('path')?.getAttribute('d');
     const sesiOpname = screen.getByText('Sesi Opname').closest('a')?.querySelector('path')?.getAttribute('d');
 
-    expect(batchExpired).toBeTruthy();
+    expect(opnameExpired).toBeTruthy();
     expect(sesiOpname).toBeTruthy();
-    expect(batchExpired).not.toEqual(sesiOpname);
+    expect(opnameExpired).not.toEqual(sesiOpname);
   });
 
   it('menyembunyikan "Sesi Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {
@@ -86,7 +86,7 @@ describe('Sidebar — ikon menu', () => {
     auth.can = (permission: string) => permission !== 'opname.session.view';
     renderSidebar();
 
-    expect(screen.getByText('Batch Expired')).toBeInTheDocument();
+    expect(screen.getByText('Opname Expired')).toBeInTheDocument();
     expect(screen.queryByText('Sesi Opname')).not.toBeInTheDocument();
   });
 });

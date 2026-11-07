@@ -250,7 +250,7 @@ export default function PenerimaanReportPage() {
             <div className="min-w-0">
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan</p>
               <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Inbound</h1>
-              <p className="text-ink-fg-muted mt-0.5 text-sm">Ledger receiving • SJ + manual • sumber Batch Expired</p>
+              <p className="text-ink-fg-muted mt-0.5 text-sm">Ledger receiving • SJ + manual • sumber Opname Expired</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-4">

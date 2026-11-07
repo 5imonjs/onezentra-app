@@ -80,6 +80,15 @@ describe('OpnameExpiredPage', () => {
     cleanup();
   });
 
+  it('menampilkan judul Opname Expired dan alur data end-to-end', async () => {
+    render(<OpnameExpiredPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Opname Expired' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Alur data opname expired')).toHaveTextContent('Rencana Kirim');
+    expect(screen.getByLabelText('Alur data opname expired')).toHaveTextContent('Validasi SJ');
+    expect(screen.getByLabelText('Alur data opname expired')).toHaveTextContent('Inbound');
+  });
+
   it('menyembunyikan Generate & Threshold tanpa izin opname.create/opname.edit', async () => {
     // Role seperti "viewer" hanya punya opname.view: dulu tombol ini tampil dan
     // klik-nya berujung 403. Sekarang tidak dirender sama sekali.

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { opnameExpired, npn, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
-import { formatDateId } from '@/lib/dates';
+import { formatDateId, todayLocal } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ReceivingItemEditModal from '@/components/ReceivingItemEditModal';
@@ -27,6 +27,13 @@ interface ManualBatch {
   nama_depo: string | null;
   condition?: string | null;
   notes?: string | null;
+  source?: string | null;
+  baseline_coverage?: 'manual' | 'date' | null;
+  baseline_cover_note?: string | null;
+  baseline_covered_at?: string | null;
+  baseline_import_id?: number | null;
+  is_baseline_row?: boolean;
+  has_tanggal_penerimaan?: boolean;
 }
 
 interface NpnProduct {
@@ -56,7 +63,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   // Banner sukses (simpan manual / import) + aksi generate opname langsung.
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   // Pratinjau gabungan: baris SJ + import yang siap masuk generate minggu ini.
-  const [pendingPreview, setPendingPreview] = useState<{ total: number; sj: number; import: number; week_start: string } | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<{ total: number; sj: number; import: number; legacy: number; week_start: string } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -67,6 +74,18 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Baseline awal legacy: hanya sekali per depo. Sengaja dipisah dari import
+  // manual biasa agar baris lama tidak tercampur dengan Receiving baru.
+  const [baselineFile, setBaselineFile] = useState<File | null>(null);
+  const [baselineImporting, setBaselineImporting] = useState(false);
+  const [baselineAck, setBaselineAck] = useState(false);
+  const [baselineDepo, setBaselineDepo] = useState('');
+  const [baselineNamaDepo, setBaselineNamaDepo] = useState('');
+  // Tanggal posisi baseline (inklusif): penerimaan s.d. tanggal ini dianggap
+  // sudah masuk baseline, walau baru diinput belakangan.
+  const [baselineDate, setBaselineDate] = useState(todayLocal());
+  const baselineInputRef = useRef<HTMLInputElement>(null);
 
   const [searchKode, setSearchKode] = useState('');
   const [searchResults, setSearchResults] = useState<NpnProduct[]>([]);
@@ -112,7 +131,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
 
   const refreshPendingPreview = useCallback(async () => {
     try {
-      const res = await opnameExpired.pending() as { data: { data: { pending: { total: number; sj: number; import: number }; week_start: string } } };
+      const res = await opnameExpired.pending() as { data: { data: { pending: { total: number; sj: number; import: number; legacy: number }; week_start: string } } };
       setPendingPreview({ ...res.data.data.pending, week_start: res.data.data.week_start });
     } catch {
       setPendingPreview(null);
@@ -130,6 +149,8 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
         kode_depo: user.kode_depo || '',
         nama_depo: user.nama_depo || '',
       }));
+      setBaselineDepo((prev) => prev || user.kode_depo || '');
+      setBaselineNamaDepo((prev) => prev || user.nama_depo || '');
     }
   }, [open, user]);
 
@@ -228,6 +249,56 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   };
 
   const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+
+  const handleBaselineImport = async () => {
+    if (!baselineFile) {
+      notifyGlobal('Pilih file Excel baseline terlebih dahulu.');
+      return;
+    }
+    if (baselineFile.size > MAX_IMPORT_BYTES) {
+      const mb = (baselineFile.size / (1024 * 1024)).toFixed(1);
+      notifyGlobal(`Ukuran file ${mb} MB melebihi batas 10 MB`);
+      return;
+    }
+    if (!baselineAck) {
+      notifyGlobal('Centang konfirmasi bahwa baseline hanya boleh diimpor sekali.');
+      return;
+    }
+    if (!baselineDepo.trim()) {
+      notifyGlobal('Kode depo wajib diisi untuk baseline.');
+      return;
+    }
+    if (!baselineDate) {
+      notifyGlobal('Tanggal posisi baseline wajib diisi.');
+      return;
+    }
+
+    setBaselineImporting(true);
+    try {
+      const res = await opnameExpired.baselineImport(baselineFile, {
+        kode_depo: baselineDepo.trim(),
+        nama_depo: baselineNamaDepo.trim() || undefined,
+        baseline_date: baselineDate,
+      });
+      const { imported, skipped } = res.data;
+      const duplicates = Number(res.data.duplicates ?? 0);
+      const baselineDateLabel = res.data.baseline_date ? formatDateId(res.data.baseline_date) : baselineDate;
+      setSuccessMsg(
+        `Baseline legacy selesai (posisi s.d. ${baselineDateLabel}): ${imported} baris masuk, ${skipped} dilewati${duplicates > 0 ? `, ${duplicates} duplikat dilewati` : ''}.`
+      );
+      setBaselineFile(null);
+      setBaselineAck(false);
+      setBaselineDate(todayLocal());
+      if (baselineInputRef.current) baselineInputRef.current.value = '';
+      await load();
+      await refreshPendingPreview();
+      onChanged?.();
+    } catch (err) {
+      handleImportError(err);
+    } finally {
+      setBaselineImporting(false);
+    }
+  };
 
   const handleImport = async (file: File) => {
     if (file.size > MAX_IMPORT_BYTES) {
@@ -399,13 +470,112 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
           </div>
           <p className="text-[11px] text-slate-400">Maks 10 MB • .xlsx, .xls, .csv • Taruh file di sini atau klik untuk browse</p>
 
+          <details className="rounded-2xl border border-violet-200 bg-violet-50/50 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-violet-900">
+              Import Baseline Legacy (sekali per depo)
+            </summary>
+            <div className="mt-3 space-y-3">
+              <p className="text-[11px] leading-relaxed text-violet-800">
+                Untuk migrasi saldo awal dari Excel lama. Baris masuk ke ledger sebagai
+                <span className="font-semibold"> LEGACY_IMPORT</span>, tidak dihitung sebagai Receiving baru,
+                dan hanya bisa dilakukan <span className="font-semibold">satu kali per depo</span>. Semua
+                penerimaan dengan tanggal terima <span className="font-semibold">s.d. tanggal posisi baseline</span> dianggap
+                sudah tercakup dan tidak dihitung dua kali — termasuk yang baru diinput belakangan.
+                Isi tanggal sesuai posisi akhir data Excel. Jika baseline adalah posisi awal hari ini
+                (sebelum barang baru masuk), isi <span className="font-semibold">kemarin</span> agar penerimaan hari ini
+                tetap dihitung sebagai stok baru; jika Excel sudah memuat penerimaan hari ini, biarkan hari ini.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label htmlFor="baseline-depo" className="block text-xs font-medium text-foreground mb-1">Kode Depo *</label>
+                  <input
+                    id="baseline-depo"
+                    value={baselineDepo}
+                    onChange={(e) => setBaselineDepo(e.target.value)}
+                    disabled={Boolean(user?.kode_depo)}
+                    className="input-field disabled:bg-popover disabled:cursor-not-allowed"
+                    placeholder="Contoh: 001"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="baseline-nama-depo" className="block text-xs font-medium text-foreground mb-1">Nama Depo</label>
+                  <input
+                    id="baseline-nama-depo"
+                    value={baselineNamaDepo}
+                    onChange={(e) => setBaselineNamaDepo(e.target.value)}
+                    className="input-field"
+                    placeholder="Nama depo (opsional)"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="baseline-date" className="block text-xs font-medium text-foreground mb-1">Tanggal Posisi Baseline *</label>
+                  <input
+                    id="baseline-date"
+                    type="date"
+                    value={baselineDate}
+                    max={todayLocal()}
+                    onChange={(e) => setBaselineDate(e.target.value)}
+                    disabled={baselineImporting}
+                    className="input-field disabled:bg-popover disabled:cursor-not-allowed"
+                  />
+                  <p className="mt-1 text-[10px] leading-relaxed text-violet-700">
+                    Batas terakhir tanggal penerimaan yang sudah masuk baseline.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => baselineInputRef.current?.click()} className="btn-secondary text-sm px-3 py-1.5" disabled={baselineImporting}>
+                  Pilih File Baseline
+                </button>
+                <input
+                  ref={baselineInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  disabled={baselineImporting}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) setBaselineFile(f); }}
+                />
+                <span className="text-xs text-violet-900">
+                  {baselineFile ? `${baselineFile.name} (${formatFileSize(baselineFile.size)})` : 'Belum ada file dipilih'}
+                </span>
+                {baselineFile && !baselineImporting && (
+                  <button
+                    type="button"
+                    onClick={() => { setBaselineFile(null); if (baselineInputRef.current) baselineInputRef.current.value = ''; }}
+                    className="text-violet-500 hover:text-red-500 transition-colors p-1"
+                    aria-label="Hapus file baseline"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                )}
+              </div>
+              <label className="flex items-start gap-2 text-xs text-violet-900">
+                <input type="checkbox" checked={baselineAck} onChange={(e) => setBaselineAck(e.target.checked)} className="mt-0.5 accent-violet-600" />
+                <span>Saya paham baseline hanya boleh diimpor sekali dan tidak dapat diulang untuk depo ini.</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleBaselineImport}
+                disabled={baselineImporting || !baselineFile || !baselineAck}
+                className="btn-primary text-sm disabled:opacity-50"
+              >
+                <span className="flex items-center gap-2">
+                  {baselineImporting ? (
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  ) : null}
+                  {baselineImporting ? 'Mengimpor baseline...' : 'Import Baseline'}
+                </span>
+              </button>
+            </div>
+          </details>
+
           {successMsg && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
               <div className="min-w-0">
                 <p className="font-semibold">{successMsg}</p>
                 {pendingPreview && pendingPreview.total > 0 ? (
                   <p className="text-emerald-700 mt-0.5">
-                    Siap generate minggu {pendingPreview.week_start}: {pendingPreview.sj} baris SJ + {pendingPreview.import} baris import ({pendingPreview.total} baru).
+                    Siap generate minggu {pendingPreview.week_start}: {pendingPreview.sj} baris SJ + {pendingPreview.import} baris import{pendingPreview.legacy > 0 ? ` + ${pendingPreview.legacy} baris legacy` : ''} ({pendingPreview.total} baru).
                   </p>
                 ) : (
                   <p className="text-emerald-700 mt-0.5">Batch belum masuk analisa opname sampai di-generate.</p>
@@ -424,7 +594,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                     </span>
                   </button>
                 ) : (
-                  <span className="text-xs text-emerald-700">Jalankan Generate di menu Batch Expired</span>
+                  <span className="text-xs text-emerald-700">Jalankan Generate di menu Opname Expired</span>
                 )}
                 <button type="button" onClick={() => setSuccessMsg(null)} className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors" aria-label="Tutup pesan">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>

@@ -19,11 +19,11 @@ const operasionalMenus = [
 ];
 
 // Opname dapat grup sendiri. Alur inbound (fisik) berakhir di "Inbound (SJ)",
-// sedangkan opname adalah stock-take terjadwal: monitoring wave (Batch Expired)
-// lalu verifikasi lapangan (Sesi Opname). Menaruh keduanya di dalam "Inventory"
-// membuatnya tampak sebagai lanjutan alur inbound yang sama.
+// sedangkan opname adalah stock-take terjadwal: monitoring wave (Opname
+// Expired) lalu verifikasi lapangan (Sesi Opname). Menaruh keduanya di dalam
+// "Inventory" membuatnya tampak sebagai lanjutan alur inbound yang sama.
 const opnameMenus = [
-  { name: 'Batch Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
+  { name: 'Opname Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
   { name: 'Sesi Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
 ];
 
@@ -47,7 +47,7 @@ const reportItems = [
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.selisih_qty' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
-  { name: 'Laporan Batch Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
+  { name: 'Laporan Opname Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
 ];
 
 const systemItems = [

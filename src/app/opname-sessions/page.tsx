@@ -29,6 +29,8 @@ export default function OpnameSessionsPage() {
   const [week, setWeek] = useState('');
   const [status, setStatus] = useState('');
   const [mine, setMine] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   // Filter depo hanya untuk user global (depot.view_all); user depot-scoped
   // terkunci ke depo sendiri oleh backend (index() mengabaikan kode_depo).
   const canFilterDepo = hasPermission('depot.view_all');
@@ -47,6 +49,7 @@ export default function OpnameSessionsPage() {
         week_start: week || undefined,
         status: status || undefined,
         mine: mine || undefined,
+        search: search || undefined,
         kode_depo: kodeDepo || undefined,
         per_page: 25,
       }) as { data: { data: { data: SessionDetail[] } } };
@@ -56,7 +59,7 @@ export default function OpnameSessionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [week, status, mine, kodeDepo]);
+  }, [week, status, mine, kodeDepo, search]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -114,6 +117,24 @@ export default function OpnameSessionsPage() {
         </div>
 
         <div className="bg-card rounded-2xl border border-border p-4 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <label htmlFor="ss-search" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Cari</label>
+            <input
+              id="ss-search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setSearch(searchInput.trim()); }}
+              placeholder="Kode/nama depo, catatan, petugas, atau #ID..."
+              className="input-field text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearch(searchInput.trim())}
+            className="btn-secondary text-sm mb-0.5"
+          >
+            Cari
+          </button>
           <div>
             <label htmlFor="ss-week" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Minggu</label>
             <input id="ss-week" type="date" value={week} onChange={(e) => setWeek(e.target.value)} className="input-field text-sm" />
@@ -152,8 +173,8 @@ export default function OpnameSessionsPage() {
             <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="w-4 h-4 accent-primary-600" />
             Tugas saya
           </label>
-          {(week || status || mine || kodeDepo) && (
-            <button onClick={() => { setWeek(''); setStatus(''); setMine(false); setKodeDepo(''); }} className="btn-secondary text-sm mb-0.5">Reset</button>
+          {(week || status || mine || kodeDepo || search) && (
+            <button onClick={() => { setWeek(''); setStatus(''); setMine(false); setKodeDepo(''); setSearchInput(''); setSearch(''); }} className="btn-secondary text-sm mb-0.5">Reset</button>
           )}
         </div>
 
@@ -167,7 +188,7 @@ export default function OpnameSessionsPage() {
         ) : sessions.length === 0 ? (
           <div className="border border-dashed border-border rounded-2xl py-12 text-center">
             <p className="text-sm text-muted-foreground font-medium">Belum ada sesi opname.</p>
-            <p className="text-xs text-gray-400 mt-1">Buat sesi dari wave Batch Expired, tugaskan ke petugas lapangan.</p>
+            <p className="text-xs text-gray-400 mt-1">Buat sesi dari wave Opname Expired, tugaskan ke petugas lapangan.</p>
           </div>
         ) : (
           <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
