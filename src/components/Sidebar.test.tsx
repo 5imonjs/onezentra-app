@@ -69,7 +69,7 @@ describe('Sidebar — ikon menu', () => {
     expect(setting).not.toEqual(penerima);
   });
 
-  it('membedakan ikon menu "Opname Expired" dan "Sesi Opname" (grup Opname)', () => {
+  it('membedakan ikon menu "Opname Expired" dan "Sesi Opname" (grup Opname Stok)', () => {
     nav.pathname = '/opname-sessions';
     renderSidebar();
 
@@ -79,6 +79,16 @@ describe('Sidebar — ikon menu', () => {
     expect(opnameExpired).toBeTruthy();
     expect(sesiOpname).toBeTruthy();
     expect(opnameExpired).not.toEqual(sesiOpname);
+  });
+
+  it('menaruh Laporan Opname di grup Opname Stok dan memberi nama grup yang jelas', () => {
+    nav.pathname = '/reports/opname-expired';
+    renderSidebar();
+
+    expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
+    expect(screen.getByText('Opname Stok')).toBeInTheDocument();
+    expect(screen.getByText('Laporan Opname')).toBeInTheDocument();
+    expect(screen.queryByText('Laporan Replenishment')).not.toBeInTheDocument();
   });
 
   it('menyembunyikan "Sesi Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {

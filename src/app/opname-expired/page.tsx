@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
-import { formatDateId, formatDurationId } from '@/lib/dates';
+import { formatDateId, formatDurationId, todayLocal } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ManualBatchManager from '@/components/ManualBatchManager';
@@ -27,7 +27,7 @@ interface Wave {
   // Jejak batch penyusun baris agregat ini (diisi Generate).
   batch_numbers?: string[] | null;
   // Komposisi sumber: {sj, import, legacy} — penanda SJ murni / Import manual /
-  // baseline legacy / Campuran.
+  // baseline legacy / Gabungan.
   source_mix?: { sj: number; import: number; legacy?: number } | null;
   sumber_material: string;
   tanggal_penerimaan: string | null;
@@ -144,6 +144,17 @@ function mondayOfWeek(dateIso: string): string {
   return `${date.getFullYear()}-${mm}-${dd}`;
 }
 
+/** Geser tanggal ISO sebanyak N hari tanpa pergeseran zona waktu. */
+function addDaysIso(dateIso: string, days: number): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso);
+  if (!match) return dateIso;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  date.setDate(date.getDate() + days);
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${mm}-${dd}`;
+}
+
 function badge(status?: string | null) {
   const s = status || '-';
   const meta = STATUS_META[s] || { label: s, badge: 'bg-popover text-foreground', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-foreground', panel: 'bg-popover border-border' };
@@ -176,18 +187,13 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
             type="checkbox"
             checked={selected}
             onChange={() => onToggle(w.id)}
-            aria-label={`Pilih wave ${w.kode_barang}`}
+            aria-label={`Pilih baris ${w.kode_barang}`}
             className="w-4 h-4 accent-red-600 cursor-pointer"
           />
         </td>
       )}
       <td className="px-5 py-3 whitespace-nowrap">
-        <div className="flex items-center gap-1.5">
-          {badge(w.status_ini)}
-          {w.sisa_hari < 0 && (
-            <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">EXPIRED</span>
-          )}
-        </div>
+        {badge(w.status_ini)}
       </td>
       <td className="px-5 py-3 min-w-50 max-w-80">
         <span className="block font-mono text-sm font-medium text-foreground">{w.kode_barang}</span>
@@ -251,10 +257,10 @@ function sourceBadge(mix?: { sj: number; import: number; legacy?: number } | nul
     const parts = [
       sj > 0 ? `${sj} SJ` : null,
       imp > 0 ? `${imp} stok manual` : null,
-      legacy > 0 ? `${legacy} data awal` : null,
+      legacy > 0 ? `${legacy} Data Awal` : null,
     ].filter(Boolean).join(' + ');
     return (
-      <span title={parts} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 whitespace-nowrap">Campuran</span>
+      <span title={parts} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 whitespace-nowrap">Gabungan</span>
     );
   }
   if (legacy > 0) {
@@ -264,7 +270,7 @@ function sourceBadge(mix?: { sj: number; import: number; legacy?: number } | nul
   }
   if (imp > 0) {
     return (
-      <span title={`${imp} baris stok manual`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-foreground whitespace-nowrap">Manual</span>
+      <span title={`${imp} baris stok manual`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-foreground whitespace-nowrap">Stok Manual</span>
     );
   }
   if (sj > 0) {
@@ -312,6 +318,13 @@ function DaysBar({ sisaHari, maxHari, status }: { sisaHari: number; maxHari: num
 }
 
 type BannerTone = 'violet' | 'amber' | 'emerald' | 'slate';
+type StepState = 'done' | 'active' | 'idle';
+
+const STEP_TONE: Record<StepState, string> = {
+  done: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-200',
+  active: 'border-primary-500/30 bg-primary-500/15 text-primary-200',
+  idle: 'border-white/10 bg-white/10 text-ink-fg-muted',
+};
 
 const BANNER_TONE: Record<BannerTone, { wrap: string; icon: string; title: string; text: string }> = {
   violet: {
@@ -381,10 +394,12 @@ export default function OpnameExpiredPage() {
   const canViewReceiving = hasPermission('penerimaan.view');
   const [waves, setWaves] = useState<Wave[]>([]);
   const [pagination, setPagination] = useState<ListResponse['data'] | null>(null);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  // Halaman ini bekerja per minggu opname. Semua aksi (daftar, pending,
+  // progres, generate, export) memakai week_start yang sama agar tidak ada
+  // dua konsep tanggal yang saling bertentangan.
+  const [weekStart, setWeekStart] = useState(() => mondayOfWeek(todayLocal()));
   const [searchApply, setSearchApply] = useState('');
-  // Filter sumber data: '' semua, 'sj' murni sistem, 'import' manual, 'mixed' campuran.
+  // Filter sumber data: '' semua, 'sj' murni sistem, 'import' manual, 'mixed' gabungan.
   const [sourceFilter, setSourceFilter] = useState('');
   // Filter depo: '' semua; opsi dari meta.depot_summary (semua depo minggu ini).
   const [depoFilter, setDepoFilter] = useState('');
@@ -443,19 +458,20 @@ export default function OpnameExpiredPage() {
   }, [depotSummary]);
 
   /**
-   * Minggu aktif untuk aksi berbasis week_start (generate/pending/progress/
-   * remind): minggu ISO week yang menanggung tanggal awal rentang yang
-   * pengguna pilih manual lewat dua input tanggal.
+   * Minggu aktif adalah satu-satunya sumber tanggal untuk halaman ini.
+   * Input tanggal dinormalisasi ke Senin agar daftar, pending, progres,
+   * generate, dan export selalu membaca minggu yang sama.
    */
-  const weekStartValue = useMemo((): string | undefined => (dateFrom ? mondayOfWeek(dateFrom) : undefined), [dateFrom]);
+  const weekEnd = useMemo(() => addDaysIso(weekStart, 6), [weekStart]);
+  const weekRangeLabel = `${formatDateId(weekStart)} – ${formatDateId(weekEnd)}`;
+  const isCurrentWeek = weekStart === mondayOfWeek(todayLocal());
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
       const res = await opnameExpired.list({
-        date_from: dateFrom || undefined,
-        date_to: dateTo || undefined,
+        week_start: weekStart,
         search: searchApply || undefined,
         statuses: tabStatuses?.join(',') || undefined,
         source: sourceFilter || undefined,
@@ -488,7 +504,7 @@ export default function OpnameExpiredPage() {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, searchApply, tabStatuses, page, sort, sourceFilter, depoFilter]);
+  }, [weekStart, searchApply, tabStatuses, page, sort, sourceFilter, depoFilter]);
 
   const handleSort = (key: SortKey) => {
     setSort((prev) => prev.key === key
@@ -513,7 +529,7 @@ export default function OpnameExpiredPage() {
     }
   }, []);
 
-  useEffect(() => { loadPending(weekStartValue); }, [loadPending, weekStartValue]);
+  useEffect(() => { loadPending(weekStart); }, [loadPending, weekStart]);
 
   // Progres kirim per depo: sudah vs belum kirim hasil opname minggu ini.
   const loadProgress = useCallback(async (week?: string) => {
@@ -529,7 +545,7 @@ export default function OpnameExpiredPage() {
     }
   }, []);
 
-  useEffect(() => { loadProgress(weekStartValue); }, [loadProgress, weekStartValue]);
+  useEffect(() => { loadProgress(weekStart); }, [loadProgress, weekStart]);
 
   // Status data awal hanya relevan untuk akun depo. Akun pusat/global tidak
   // dipaksa memilih satu depo di sini.
@@ -564,17 +580,17 @@ export default function OpnameExpiredPage() {
   const refreshAfterDataChange = useCallback(() => {
     setPage(1);
     load();
-    loadPending(weekStartValue);
-    loadProgress(weekStartValue);
+    loadPending(weekStart);
+    loadProgress(weekStart);
     loadBaselineStatus();
-  }, [load, loadBaselineStatus, loadPending, loadProgress, weekStartValue]);
+  }, [load, loadBaselineStatus, loadPending, loadProgress, weekStart]);
 
   const handleRemind = async () => {
     setReminding(true);
     try {
-      const res = await opnameExpired.remind({ week_start: weekStartValue }) as { data: { message?: string } };
+      const res = await opnameExpired.remind({ week_start: weekStart }) as { data: { message?: string } };
       notifyGlobal(res.data.message ?? 'Pengingat dikirim.', 'success');
-      await loadProgress(weekStartValue);
+      await loadProgress(weekStart);
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal mengirim pengingat'));
     } finally {
@@ -583,8 +599,24 @@ export default function OpnameExpiredPage() {
   };
 
   const totalActions = STATUS_ORDER.reduce((acc, s) => acc + (statusSummary[s]?.count ?? 0), 0);
-  const totalBatch = totalActions;
+  const totalRows = totalActions;
   const berisikoCrt = (statusSummary.EXPIRED?.qty_crt ?? 0) + (statusSummary.KRITIS?.qty_crt ?? 0) + (statusSummary.PERHATIAN?.qty_crt ?? 0);
+
+  // Progres sesi minggu aktif. depoProgress adalah sumber yang tidak ikut
+  // filter tab/search, sehingga cocok untuk menentukan langkah alur.
+  const progressTotal = depoProgress?.reduce((sum, d) => sum + d.total, 0) ?? 0;
+  const progressValidated = depoProgress?.reduce((sum, d) => sum + d.validated, 0) ?? 0;
+  const weekRows = depoProgress && depoProgress.length > 0
+    ? progressTotal
+    : Object.values(statusSummary).reduce((sum, s) => sum + (s?.count ?? 0), 0);
+  const allRowsValidated = Boolean(depoProgress && depoProgress.length > 0 && depoProgress.every((d) => d.submitted));
+  const hasOpenSession = Boolean(depoProgress?.some((d) => d.has_session));
+  const progressPct = progressTotal > 0 ? Math.round((progressValidated / progressTotal) * 100) : 0;
+  const hasWeekRows = weekRows > 0 || waves.length > 0;
+
+  const stepOne: StepState = baselineStatus === 'installed' ? 'done' : baselineStatus === 'missing' ? 'active' : 'idle';
+  const stepTwo: StepState = allRowsValidated ? 'done' : (baselineStatus !== 'missing' && hasWeekRows ? 'active' : 'idle');
+  const stepThree: StepState = allRowsValidated ? 'done' : 'idle';
 
   // Dipakai empty-state: apakah pencarian aktif (UI saja).
   const hasSearch = searchApply.trim().length > 0;
@@ -633,13 +665,13 @@ export default function OpnameExpiredPage() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const res = await opnameExpired.generate(weekStartValue) as { data: { data: { week_start: string } } };
+      const res = await opnameExpired.generate(weekStart) as { data: { data: { week_start: string } } };
       setPage(1);
       await load();
       await loadPending(res.data.data.week_start);
       await loadProgress(res.data.data.week_start);
     } catch (e) {
-      notifyGlobal(getErrorMessage(e, 'Gagal generate opname'));
+      notifyGlobal(getErrorMessage(e, 'Gagal membentuk baris opname'));
     } finally {
       setGenerating(false);
     }
@@ -647,11 +679,11 @@ export default function OpnameExpiredPage() {
 
   const handleExport = async () => {
     try {
-      const res = await opnameExpired.export({ date_from: dateFrom || undefined, date_to: dateTo || undefined, statuses: tabStatuses?.join(',') || undefined, source: sourceFilter || undefined, kode_depo: depoFilter || undefined });
+      const res = await opnameExpired.export({ week_start: weekStart, statuses: tabStatuses?.join(',') || undefined, source: sourceFilter || undefined, kode_depo: depoFilter || undefined });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `opname_expired_${dateFrom && dateTo ? `${dateFrom}_${dateTo}` : (weekStartValue ?? 'now')}.xlsx`);
+      link.setAttribute('download', `opname_expired_${weekStart}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -671,7 +703,7 @@ export default function OpnameExpiredPage() {
     setSingleDeleting(true);
     try {
       await opnameExpired.delete(deleteTargetId);
-      notifyGlobal('Wave berhasil dihapus', 'success');
+      notifyGlobal('Baris opname berhasil dihapus', 'success');
       load();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Hapus gagal'), 'error');
@@ -724,11 +756,11 @@ export default function OpnameExpiredPage() {
     setShowBulkDelete(false);
     setSelectedWaveIds(new Set());
     notifyGlobal(
-      fail === 0 ? `${ok} wave dihapus.` : `${ok} wave dihapus, ${fail} gagal (kemungkinan depo lain).`,
+      fail === 0 ? `${ok} baris opname dihapus.` : `${ok} baris opname dihapus, ${fail} gagal (kemungkinan depo lain).`,
       fail === 0 ? 'success' : 'error'
     );
     load();
-    loadProgress(weekStartValue);
+    loadProgress(weekStart);
   };
 
   const openSettings = async () => {
@@ -778,27 +810,27 @@ export default function OpnameExpiredPage() {
     if (baselineStatus === 'missing') {
       return {
         tone: 'violet' as const,
-        eyebrow: 'Langkah berikutnya',
-        title: 'Data awal belum dipasang',
-        description: 'Import posisi stok sebelum sistem sekali per depo agar stok lama tidak dihitung dua kali.',
+        eyebrow: 'Yang perlu dilakukan',
+        title: 'Data Awal belum dipasang',
+        description: 'Pasang posisi stok sebelum sistem sekali per depo agar stok lama tidak dihitung dua kali.',
         action: hasPermission('penerimaan.create') ? (
           <button type="button" onClick={() => setBaselineOpen(true)} className="btn-primary text-sm">
             Import Data Awal
           </button>
         ) : (
-          <span className="text-xs font-semibold text-violet-800">Minta admin depo memasang data awal.</span>
+          <span className="text-xs font-semibold text-violet-800">Minta admin depo memasang Data Awal.</span>
         ),
       };
     }
     if (pendingError) {
       return {
         tone: 'amber' as const,
-        eyebrow: 'Langkah berikutnya',
-        title: 'Gagal mengecek data baru',
-        description: 'Data baru belum bisa dipastikan masuk analisa. Coba muat ulang pengecekan.',
+        eyebrow: 'Yang perlu dilakukan',
+        title: 'Gagal memeriksa data baru',
+        description: 'Data baru belum bisa dipastikan masuk analisa. Coba periksa lagi.',
         action: (
-          <button type="button" onClick={() => loadPending(weekStartValue)} className="btn-secondary text-sm">
-            Coba lagi
+          <button type="button" onClick={() => loadPending(weekStart)} className="btn-secondary text-sm">
+            Periksa lagi
           </button>
         ),
       };
@@ -806,42 +838,70 @@ export default function OpnameExpiredPage() {
     if ((pending?.pending.total ?? 0) > 0) {
       return {
         tone: 'amber' as const,
-        eyebrow: 'Langkah berikutnya',
+        eyebrow: 'Yang perlu dilakukan',
         title: `${fnum(pending?.pending.total ?? 0)} baris baru belum masuk analisa`,
-        description: `Minggu ${pending?.week_start ?? '-'}: ${pending?.pending.sj ?? 0} baris SJ + ${pending?.pending.import ?? 0} baris stok manual${(pending?.pending.legacy ?? 0) > 0 ? ` + ${pending?.pending.legacy} baris data awal` : ''}.`,
+        description: `Minggu ${formatDateId(pending?.week_start)}: ${pending?.pending.sj ?? 0} baris SJ + ${pending?.pending.import ?? 0} baris stok manual${(pending?.pending.legacy ?? 0) > 0 ? ` + ${pending?.pending.legacy} baris Data Awal` : ''}.`,
         action: hasPermission('opname.create') ? (
           <button type="button" onClick={handleGenerate} disabled={generating} className="btn-primary text-sm disabled:opacity-50">
-            {generating ? 'Generate...' : 'Generate sekarang'}
+            {generating ? 'Membentuk...' : 'Bentuk Baris Opname'}
           </button>
         ) : (
-          <span className="text-xs font-semibold text-amber-800">Minta admin generate analisa.</span>
+          <span className="text-xs font-semibold text-amber-800">Minta admin membentuk baris opname.</span>
         ),
       };
     }
-    if (waves.length > 0) {
+    if (baselineStatus === 'loading' && !hasWeekRows) return null;
+    if (!hasWeekRows) {
+      return {
+        tone: 'slate' as const,
+        eyebrow: 'Yang perlu dilakukan',
+        title: 'Belum ada baris opname minggu ini',
+        description: 'Tambahkan stok manual atau pastikan penerimaan SJ sudah masuk, lalu bentuk baris opname.',
+        action: hasPermission('opname.create') ? (
+          <button type="button" onClick={handleGenerate} disabled={generating} className="btn-primary text-sm disabled:opacity-50">
+            {generating ? 'Membentuk...' : 'Bentuk Baris Opname'}
+          </button>
+        ) : null,
+      };
+    }
+    if (allRowsValidated) {
       return {
         tone: 'emerald' as const,
-        eyebrow: 'Langkah berikutnya',
-        title: 'Analisa siap dihitung fisik',
-        description: 'Wave minggu ini sudah terbentuk. Lanjutkan ke sesi opname untuk input hasil hitung lapangan.',
+        eyebrow: 'Yang perlu dilakukan',
+        title: 'Opname minggu ini selesai',
+        description: 'Semua baris sudah tervalidasi. Hasil hitung fisik bisa dilihat di Sesi Opname.',
         action: hasPermission('opname.session.view') ? (
           <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
-            Buka Sesi Opname
+            Lihat Hasil Opname
             <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </Link>
         ) : null,
       };
     }
-    if (baselineStatus === 'loading') return null;
+    if (hasOpenSession) {
+      return {
+        tone: 'emerald' as const,
+        eyebrow: 'Yang perlu dilakukan',
+        title: 'Hitung fisik sedang berjalan',
+        description: `${fnum(progressValidated)} dari ${fnum(progressTotal)} baris sudah tervalidasi. Lanjutkan sesi yang sudah dibuka.`,
+        action: hasPermission('opname.session.view') ? (
+          <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
+            Lanjutkan Sesi Opname
+            <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+          </Link>
+        ) : null,
+      };
+    }
     return {
-      tone: 'slate' as const,
-      eyebrow: 'Langkah berikutnya',
-      title: 'Belum ada data opname minggu ini',
-      description: 'Tambahkan stok manual atau pastikan penerimaan SJ sudah masuk, lalu generate analisa.',
-      action: hasPermission('opname.create') ? (
-        <button type="button" onClick={handleGenerate} disabled={generating} className="btn-primary text-sm disabled:opacity-50">
-          {generating ? 'Generate...' : 'Generate'}
-        </button>
+      tone: 'emerald' as const,
+      eyebrow: 'Yang perlu dilakukan',
+      title: 'Baris opname siap dihitung',
+      description: 'Baris opname minggu ini sudah terbentuk. Buat sesi agar petugas bisa input hasil hitung lapangan.',
+      action: hasPermission('opname.session.view') ? (
+        <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
+          Buat Sesi Opname
+          <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        </Link>
       ) : null,
     };
   })();
@@ -859,7 +919,7 @@ export default function OpnameExpiredPage() {
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Monitoring operasional</p>
                 <h1 className="text-2xl font-bold leading-tight">Opname Expired</h1>
-                <p className="text-ink-fg-muted mt-0.5 text-sm">Data awal → hitung fisik → selesai. Pantau batch mendekati/melewati expired minggu ini.</p>
+                <p className="text-ink-fg-muted mt-0.5 text-sm">Pantau batch berdasarkan tanggal expired, termasuk yang masih Aman. Hitung fisik dilakukan di Sesi Opname.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -926,7 +986,7 @@ export default function OpnameExpiredPage() {
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100 disabled:opacity-50"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-primary-500" aria-hidden="true" />
-                        {(pending?.pending.total ?? 0) > 0 ? 'Generate baris baru' : 'Generate ulang'}
+                        {(pending?.pending.total ?? 0) > 0 ? 'Bentuk Baris Baru' : 'Perbarui Baris Opname'}
                       </button>
                     )}
                     {hasPermission('opname.view') && (
@@ -948,7 +1008,7 @@ export default function OpnameExpiredPage() {
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true" />
-                        Pengaturan threshold
+                        Pengaturan Status Expired
                       </button>
                     )}
                   </div>
@@ -957,15 +1017,28 @@ export default function OpnameExpiredPage() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold" aria-label="Alur opname expired">
-            <span className={`rounded-full border px-2.5 py-1 ${baselineStatus === 'missing' ? 'border-primary-500/30 bg-primary-500/15 text-primary-200' : baselineStatus === 'installed' ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-200' : 'border-white/10 bg-white/10 text-ink-fg-muted'}`}>
+            <span
+              className={`rounded-full border px-2.5 py-1 ${STEP_TONE[stepOne]}`}
+              title="Data Awal: posisi stok sebelum sistem, dipasang sekali per depo."
+              aria-current={stepOne === 'active' ? 'step' : undefined}
+            >
               1. Data Awal
             </span>
             <span aria-hidden="true" className="text-ink-fg-muted">→</span>
-            <span className={`rounded-full border px-2.5 py-1 ${baselineStatus === 'installed' ? 'border-primary-500/30 bg-primary-500/15 text-primary-200' : 'border-white/10 bg-white/10 text-ink-fg-muted'}`}>
+            <span
+              className={`rounded-full border px-2.5 py-1 ${STEP_TONE[stepTwo]}`}
+              title="Hitung Fisik: input hasil hitung lapangan lewat Sesi Opname."
+              aria-current={stepTwo === 'active' ? 'step' : undefined}
+            >
               2. Hitung Fisik
             </span>
             <span aria-hidden="true" className="text-ink-fg-muted">→</span>
-            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-ink-fg-muted">3. Selesai</span>
+            <span
+              className={`rounded-full border px-2.5 py-1 ${STEP_TONE[stepThree]}`}
+              title="Selesai: semua baris minggu ini sudah tervalidasi."
+            >
+              3. Selesai
+            </span>
           </div>
         </div>
 
@@ -988,11 +1061,11 @@ export default function OpnameExpiredPage() {
                   <svg className="w-5 h-5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Total Batch</p>
-                  <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{fnum(totalBatch)}</p>
+                  <p className="text-xs text-muted-foreground">Total Baris</p>
+                  <p className="text-2xl font-bold text-foreground tabular-nums mt-1">{fnum(totalRows)}</p>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400 tabular-nums mt-0.5 truncate">{dateFrom && dateTo ? `${new Date(dateFrom).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - ${new Date(dateTo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${new Date(dateTo).getFullYear()}` : '—'}</p>
+              <p className="text-[11px] text-slate-400 tabular-nums mt-0.5 truncate">{weekRangeLabel}</p>
             </div>
 
             {STATUS_ORDER.map((s) => {
@@ -1009,7 +1082,7 @@ export default function OpnameExpiredPage() {
                 <div
                   key={s}
                   className="px-2 py-1"
-                  title={`${meta.label}: ${fnum(c?.count ?? 0)} batch · ${fnum(c?.qty_crt ?? 0)} CRT`}
+                  title={`${meta.label}: ${fnum(c?.count ?? 0)} baris · ${fnum(c?.qty_crt ?? 0)} CRT`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconTone}`}>
@@ -1046,20 +1119,20 @@ export default function OpnameExpiredPage() {
           </div>
         </div>
 
-        {/* Progres kirim per depo: pantau siapa sudah / belum kirim */}
+        {/* Progres sesi per depo: pantau siapa sudah / belum submit */}
         {progressError && (depoProgress === null || depoProgress.length === 0) && (
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-700" role="alert">
-            <span>Progres depo gagal dimuat.</span>
-            <button type="button" onClick={() => loadProgress(weekStartValue)} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
+            <span>Progres sesi gagal dimuat.</span>
+            <button type="button" onClick={() => loadProgress(weekStart)} className="font-semibold hover:underline whitespace-nowrap">Coba lagi</button>
           </div>
         )}
-        {depoProgress !== null && depoProgress.length > 0 && (
+        {depoProgress !== null && depoProgress.length > 1 && (
           <div className="bg-card rounded-2xl shadow-sm border border-border px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-sm font-bold text-foreground">
-                Progres Depo
+                Progres Sesi per Depo
                 <span className="ml-2 font-medium text-slate-400">
-                  {depoProgress.filter((d) => d.submitted).length}/{depoProgress.length} sudah kirim
+                  {depoProgress.filter((d) => d.submitted).length}/{depoProgress.length} depo sudah submit · {progressPct}% baris tervalidasi
                 </span>
               </h2>
               {hasPermission('opname.create') && depoProgress.some((d) => !d.submitted) && (
@@ -1067,10 +1140,10 @@ export default function OpnameExpiredPage() {
                   type="button"
                   onClick={handleRemind}
                   disabled={reminding}
-                  title="Kirim email pengingat ke depo yang belum kirim (penerima diatur di Penerima Email)"
+                  title="Kirim email pengingat ke depo yang belum submit (penerima diatur di Penerima Email)"
                   className="btn-secondary text-sm disabled:opacity-50"
                 >
-                  {reminding ? 'Mengirim...' : 'Ingatkan yang belum kirim'}
+                  {reminding ? 'Mengirim...' : 'Ingatkan depo yang belum submit'}
                 </button>
               )}
             </div>
@@ -1086,7 +1159,7 @@ export default function OpnameExpiredPage() {
                         <div className={`h-full rounded-full ${d.submitted ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
-                    <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">{d.validated}/{d.total}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap" title={`${d.validated} dari ${d.total} baris tervalidasi`}>{d.validated}/{d.total}</span>
                   </div>
                 );
               })}
@@ -1096,18 +1169,51 @@ export default function OpnameExpiredPage() {
 
         {/* Filter + Tabs + Table */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-          {/* Toolbar: rentang tanggal manual + search */}
+          {/* Toolbar: minggu opname + search */}
           <div className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-border">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2">
-                <label htmlFor="oe-from" className="flex items-center gap-2">
-                  <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dari Tanggal</span>
-                  <input id="oe-from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
-                </label>
-                <label htmlFor="oe-to" className="flex items-center gap-2">
-                  <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sampai Tanggal</span>
-                  <input id="oe-to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="input-field text-sm py-2 bg-popover focus:bg-card" />
-                </label>
+              <label htmlFor="oe-week" className="flex items-center gap-2">
+                <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</span>
+                <input
+                  id="oe-week"
+                  type="date"
+                  value={weekStart}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (!value) return;
+                    setWeekStart(mondayOfWeek(value));
+                    setPage(1);
+                  }}
+                  title="Pilih tanggal mana pun dalam minggu; sistem memakai hari Senin sebagai awal minggu."
+                  className="input-field text-sm py-2 bg-popover focus:bg-card"
+                />
+              </label>
+              <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">{weekRangeLabel}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => { setWeekStart(addDaysIso(weekStart, -7)); setPage(1); }}
+                  aria-label="Minggu sebelumnya"
+                  className="rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-bold text-foreground transition-colors hover:bg-slate-100"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWeekStart(mondayOfWeek(todayLocal())); setPage(1); }}
+                  disabled={isCurrentWeek}
+                  className="rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Minggu ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWeekStart(addDaysIso(weekStart, 7)); setPage(1); }}
+                  aria-label="Minggu berikutnya"
+                  className="rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-bold text-foreground transition-colors hover:bg-slate-100"
+                >
+                  ›
+                </button>
               </div>
             </div>
             <SearchBox
@@ -1122,7 +1228,7 @@ export default function OpnameExpiredPage() {
                   value={depoFilter}
                   onChange={(e) => { setDepoFilter(e.target.value); setPage(1); }}
                   aria-label="Filter depo"
-                  title="Saring wave berdasarkan depo"
+                  title="Saring baris opname berdasarkan depo"
                   className="select-field-sm min-w-[160px]"
                 >
                   <option value="">Semua Depo</option>
@@ -1133,19 +1239,19 @@ export default function OpnameExpiredPage() {
               </label>
             )}
             <label className="flex items-center gap-2">
-              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sumber</span>
+              <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Asal Data</span>
               <select
                 value={sourceFilter}
                 onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
-                aria-label="Filter sumber data"
-                title="SJ = murni penerimaan sistem, Stok Manual = input tambahan, Data Awal = posisi sebelum sistem, Campuran = lebih dari satu sumber"
+                aria-label="Filter asal data"
+                title="Penerimaan SJ = penerimaan sistem, Stok Manual = input tambahan, Data Awal = posisi sebelum sistem, Gabungan = lebih dari satu sumber"
                 className="select-field-sm min-w-[150px]"
               >
-                <option value="">Semua sumber</option>
-                <option value="sj">SJ (sistem)</option>
+                <option value="">Semua asal</option>
+                <option value="sj">Penerimaan SJ</option>
                 <option value="import">Stok Manual</option>
                 <option value="legacy">Data Awal</option>
-                <option value="mixed">Campuran</option>
+                <option value="mixed">Gabungan</option>
               </select>
             </label>
           </div>
@@ -1182,7 +1288,7 @@ export default function OpnameExpiredPage() {
 
           {selectedWaveIds.size > 0 && canDeleteWaves && (
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-100 bg-red-50 px-5 py-2.5">
-              <span className="text-sm font-semibold text-red-700">{selectedWaveIds.size} wave dipilih</span>
+              <span className="text-sm font-semibold text-red-700">{selectedWaveIds.size} baris dipilih</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1197,7 +1303,7 @@ export default function OpnameExpiredPage() {
                   disabled={bulkDeleting}
                   className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
                 >
-                  Hapus terpilih
+                  Hapus baris terpilih
                 </button>
               </div>
             </div>
@@ -1239,9 +1345,9 @@ export default function OpnameExpiredPage() {
                 ) : (
                   <>
                     <p className="text-sm font-medium text-muted-foreground">
-                      {tabKey === 'AMAN' ? 'Tidak ada batch berstatus Aman minggu ini.' : 'Tidak ada batch dengan kriteria ini.'}
+                      {tabKey === 'AMAN' ? 'Tidak ada baris berstatus Aman minggu ini.' : 'Tidak ada baris dengan kriteria ini.'}
                     </p>
-                    <p className="text-xs text-slate-400">Ganti filter minggu/tab, atau Generate Opname Expired untuk minggu tersebut.</p>
+                    <p className="text-xs text-slate-400">Ganti minggu/tab, atau bentuk baris opname untuk minggu tersebut.</p>
                   </>
                 )}
               </div>
@@ -1250,7 +1356,7 @@ export default function OpnameExpiredPage() {
             <>
               <div className="hidden md:block max-h-[560px] overflow-x-auto overflow-y-auto" id="opname-table-panel" role="tabpanel" aria-labelledby={`tab-${tabKey}`}>
                 <table className="w-full min-w-[1040px] border-collapse">
-                  <caption className="sr-only">Daftar opname expired</caption>
+                  <caption className="sr-only">Daftar baris opname expired</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-border bg-popover">
                       {hasPermission('opname.delete') && (
@@ -1262,7 +1368,7 @@ export default function OpnameExpiredPage() {
                               const all = waves.every((w) => prev.has(w.id));
                               return all ? new Set() : new Set(waves.map((w) => w.id));
                             })}
-                            aria-label="Pilih semua wave yang tampil"
+                            aria-label="Pilih semua baris yang tampil"
                             className="w-4 h-4 accent-red-600 cursor-pointer"
                           />
                         </th>
@@ -1270,15 +1376,15 @@ export default function OpnameExpiredPage() {
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Status" sortKey="status" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Produk" sortKey="produk" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Depo" sortKey="depo" sort={sort} onSort={handleSort} /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Sumber</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Asal Data</th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Principal 1" sortKey="principal_1" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Principal 2" sortKey="principal_2" sort={sort} onSort={handleSort} /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="CRT/Ball" sortKey="crt" sort={sort} onSort={handleSort} align="right" /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="PCS" sortKey="pcs" sort={sort} onSort={handleSort} align="right" /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Tgl Penerimaan" sortKey="penerimaan" sort={sort} onSort={handleSort} /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Expired" sortKey="expired" sort={sort} onSort={handleSort} /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Sisa" sortKey="sisa" sort={sort} onSort={handleSort} /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Tindakan</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="Qty CRT" sortKey="crt" sort={sort} onSort={handleSort} align="right" /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="Qty PCS" sortKey="pcs" sort={sort} onSort={handleSort} align="right" /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Tanggal Masuk" sortKey="penerimaan" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Tanggal Expired" sortKey="expired" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Sisa Hari" sortKey="sisa" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1312,7 +1418,6 @@ export default function OpnameExpiredPage() {
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-1">
                           {badge(w.status_ini)}
-                          {w.sisa_hari < 0 && <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">EXPIRED</span>}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -1320,8 +1425,8 @@ export default function OpnameExpiredPage() {
                           <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                           {w.nama_depo || w.kode_depo || '-'}
                         </span>
-                        <span className="tabular-nums text-foreground"><span className="text-slate-400">CRT/Ball:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt))}</span></span>
-                        <span className="tabular-nums text-foreground"><span className="text-slate-400">PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs))}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Qty CRT:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt))}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Qty PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs))}</span></span>
                         {sourceBadge(w.source_mix)}
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 1:</span> <span className="font-semibold">{w.principal_1 || '-'}</span></span>
@@ -1330,11 +1435,11 @@ export default function OpnameExpiredPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded-lg bg-popover px-2.5 py-2">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Penerimaan</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Masuk</p>
                           <p className="mt-0.5 font-medium text-foreground">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</p>
                         </div>
                         <div className="rounded-lg bg-popover px-2.5 py-2">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Expired</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Expired</p>
                           <p className="mt-0.5 font-medium text-foreground">{fmtDate(w.expired_date_ini)}</p>
                         </div>
                       </div>
@@ -1435,7 +1540,7 @@ export default function OpnameExpiredPage() {
                     )}
                   </div>
                   <div className="bg-popover rounded-xl p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Expired Date</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tanggal Expired</p>
                     <p className="text-lg font-bold text-foreground mt-1">{fmtDate(current.expired_date_ini)}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <DaysBar sisaHari={current.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={current.status_ini} />
@@ -1447,7 +1552,7 @@ export default function OpnameExpiredPage() {
                     <p className="text-sm font-semibold text-foreground mt-1">{current.nama_depo || current.kode_depo || '-'}</p>
                   </div>
                   <div className="bg-popover rounded-xl p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber Material</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Asal Material</p>
                     <p className="text-sm font-semibold text-foreground mt-1 wrap-break-word">{current.sumber_material || '-'}</p>
                   </div>
                 </div>
@@ -1458,20 +1563,20 @@ export default function OpnameExpiredPage() {
                   <p className="text-sm text-foreground mt-0.5 leading-snug">{current.rekomendasi || '-'}</p>
                 </div>
 
-                {/* Batch penyusun: jejak identitas tiap baris ledger agregat ini */}
+                {/* Batch Fisik Penyusun: jejak batch ledger yang membentuk baris ini */}
                 <div className="rounded-xl border border-border px-4 py-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Batch Penyusun ({(current.batch_numbers || []).length}) · Sumber: {(() => {
+                    Batch Fisik Penyusun ({(current.batch_numbers || []).length}) · Asal: {(() => {
                       const sj = num(current.source_mix?.sj);
                       const imp = num(current.source_mix?.import);
                       const legacy = num(current.source_mix?.legacy);
                       const parts = [
                         sj > 0 ? `${sj} SJ` : null,
                         imp > 0 ? `${imp} stok manual` : null,
-                        legacy > 0 ? `${legacy} data awal` : null,
+                        legacy > 0 ? `${legacy} Data Awal` : null,
                       ].filter(Boolean);
                       if (parts.length === 0) return '-';
-                      return parts.length > 1 ? `Campuran (${parts.join(' + ')})` : parts[0];
+                      return parts.length > 1 ? `Gabungan (${parts.join(' + ')})` : parts[0];
                     })()}
                   </p>
                   {(current.batch_numbers || []).length > 0 ? (
@@ -1481,7 +1586,7 @@ export default function OpnameExpiredPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-400 mt-1">Belum ada — Generate ulang untuk mengisi jejak batch.</p>
+                    <p className="text-xs text-slate-400 mt-1">Belum ada — perbarui baris opname untuk mengisi jejak batch fisik.</p>
                   )}
                 </div>
 
@@ -1504,7 +1609,7 @@ export default function OpnameExpiredPage() {
                           <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{num(current.qty_lalu_crt) > 0 || num(current.qty_lalu_pcs) > 0 ? `${fnum(num(current.qty_lalu_crt))} / ${fnum(num(current.qty_lalu_pcs))}` : '—'}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 text-muted-foreground text-xs">Expired Date</td>
+                          <td className="px-3 py-2 text-muted-foreground text-xs">Tanggal Expired</td>
                           <td className="px-3 py-2 text-right text-foreground">{fmtDate(current.expired_date_ini)}</td>
                           <td className="px-3 py-2 text-right text-muted-foreground">{fmtDate(current.expired_date_lalu)}</td>
                         </tr>
@@ -1542,7 +1647,7 @@ export default function OpnameExpiredPage() {
                   onClick={() => navNext(-1)}
                   disabled={currentIndex <= 0}
                   className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  aria-label="Batch sebelumnya"
+                  aria-label="Baris sebelumnya"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                 </button>
@@ -1556,7 +1661,7 @@ export default function OpnameExpiredPage() {
                   onClick={() => navNext(1)}
                   disabled={currentIndex >= waves.length - 1}
                   className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  aria-label="Batch berikutnya"
+                  aria-label="Baris berikutnya"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
@@ -1579,7 +1684,7 @@ export default function OpnameExpiredPage() {
         onChanged={refreshAfterDataChange}
       />
 
-      <Modal open={showSettings} onClose={() => setShowSettings(false)} title="Threshold Opname" subtitle="Ambang batas status expired" size="md"
+      <Modal open={showSettings} onClose={() => setShowSettings(false)} title="Pengaturan Status Expired" subtitle="Ambang batas status expired" size="md"
         footer={
           <>
             <button onClick={() => { setThresholdForm({ threshold_aman: 90, threshold_perhatian: 30, threshold_kritis: 7 }); setThresholdErrors([]); }} className="btn-secondary">Reset</button>
@@ -1599,17 +1704,17 @@ export default function OpnameExpiredPage() {
           <div>
             <label htmlFor="threshold-aman" className="block text-xs font-medium text-muted-foreground mb-1">Threshold AMAN (hari, ≥ ini = Aman)</label>
             <input id="threshold-aman" type="number" min={0} step={1} value={thresholdForm.threshold_aman} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_aman: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa ≥ hari ini → status <span className="text-emerald-600 font-medium">Aman</span></p>
+            <p className="text-[11px] text-slate-400 mt-1">Baris dengan sisa ≥ hari ini → status <span className="text-emerald-600 font-medium">Aman</span></p>
           </div>
           <div>
             <label htmlFor="threshold-perhatian" className="block text-xs font-medium text-muted-foreground mb-1">Threshold PERHATIAN (hari)</label>
             <input id="threshold-perhatian" type="number" min={0} step={1} value={thresholdForm.threshold_perhatian} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_perhatian: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Batch dengan sisa &lt; threshold AMAN → status <span className="text-amber-600 font-medium">Perhatian</span></p>
+            <p className="text-[11px] text-slate-400 mt-1">Baris dengan sisa &lt; threshold AMAN → status <span className="text-amber-600 font-medium">Perhatian</span></p>
           </div>
           <div>
             <label htmlFor="threshold-kritis" className="block text-xs font-medium text-muted-foreground mb-1">Threshold KRITIS — ambang &ldquo;SEGERA&rdquo; (hari)</label>
             <input id="threshold-kritis" type="number" min={0} step={1} value={thresholdForm.threshold_kritis} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Batch berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Tidak menggeser batas status (batas Kritis = threshold PERHATIAN).</p>
+            <p className="text-[11px] text-slate-400 mt-1">Baris berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Tidak menggeser batas status (batas Kritis = threshold PERHATIAN).</p>
           </div>
         </div>
       </Modal>
@@ -1618,8 +1723,8 @@ export default function OpnameExpiredPage() {
         open={showBulkDelete}
         onClose={() => setShowBulkDelete(false)}
         onConfirm={confirmBulkDeleteWaves}
-        title={`Hapus ${selectedWaveIds.size} Wave`}
-        message="Wave terpilih akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Generate ulang akan membuatnya kembali. Lanjutkan?"
+        title={`Hapus ${selectedWaveIds.size} Baris Opname`}
+        message="Baris opname terpilih akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Bentuk Baris Opname akan membuatnya kembali. Lanjutkan?"
         confirmLabel="Ya, hapus"
         variant="danger"
       />
@@ -1628,8 +1733,8 @@ export default function OpnameExpiredPage() {
         open={showSingleDelete}
         onClose={() => { if (singleDeleting) return; setShowSingleDelete(false); setDeleteTargetId(null); }}
         onConfirm={confirmSingleDelete}
-        title="Hapus Wave"
-        message="Wave ini akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Generate ulang akan membuatnya kembali. Lanjutkan?"
+        title="Hapus Baris Opname"
+        message="Baris opname ini akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Bentuk Baris Opname akan membuatnya kembali. Lanjutkan?"
         confirmLabel="Ya, hapus"
         variant="danger"
         loading={singleDeleting}
