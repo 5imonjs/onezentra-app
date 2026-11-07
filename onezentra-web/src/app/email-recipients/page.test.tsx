@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import EmailRecipientsPage from './page';
 
-const { hasPermission, list, create, bulk, update, remove, options, updateDepotSetting } = vi.hoisted(() => ({
+const { hasPermission, list, create, bulk, update, remove, options, updateDepotSetting, notifyGlobal } = vi.hoisted(() => ({
   hasPermission: vi.fn((_permission: string): boolean => true),
   list: vi.fn(),
   create: vi.fn(),
@@ -11,6 +11,7 @@ const { hasPermission, list, create, bulk, update, remove, options, updateDepotS
   remove: vi.fn(),
   options: vi.fn(),
   updateDepotSetting: vi.fn(),
+  notifyGlobal: vi.fn(),
 }));
 
 vi.mock('@/app/dashboard/layout', () => ({
@@ -20,6 +21,8 @@ vi.mock('@/app/dashboard/layout', () => ({
 vi.mock('@/store/auth', () => ({
   useAuthStore: () => ({ hasPermission }),
 }));
+
+vi.mock('@/store/globalToast', () => ({ notifyGlobal }));
 
 vi.mock('@/lib/api', () => ({
   emailRecipients: { list, create, bulk, update, delete: remove, options, updateDepotSetting },
@@ -155,8 +158,8 @@ describe('EmailRecipientsPage', () => {
     fireEvent.change(screen.getByLabelText('Role (semua anggota)'), { target: { value: 'rfah' } });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
 
-    expect(await screen.findByText('Gagal menyimpan')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Tambah Penerima CC' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Tambah Penerima CC' })).toBeInTheDocument();
+    await waitFor(() => expect(notifyGlobal).toHaveBeenCalledWith(expect.stringContaining('Gagal menyimpan'), 'error'));
   });
 
   it('tombol Tambah Penerima generik mewarisi fokus depo yang aktif', async () => {

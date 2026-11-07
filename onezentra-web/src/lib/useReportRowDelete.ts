@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import { getErrorMessage, reports } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
+import { confirmGlobal } from '@/store/globalConfirm';
 
 export type ReportDeleteType =
   | 'rencana_kirim'
@@ -31,7 +32,13 @@ export function useReportRowDelete(type: ReportDeleteType, onDeleted: () => void
 
   const removeSelected = useCallback(async () => {
     if (deleting || selectedIds.length === 0) return;
-    if (!window.confirm(`Hapus permanen ${selectedIds.length} baris laporan ini? Tindakan tidak bisa dibatalkan.`)) return;
+    const confirmed = await confirmGlobal({
+      title: 'Hapus Baris Laporan',
+      message: `Hapus permanen ${selectedIds.length} baris laporan ini? Tindakan tidak bisa dibatalkan.`,
+      confirmLabel: 'Ya, hapus',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     setDeleting(true);
     try {

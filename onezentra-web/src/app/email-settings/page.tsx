@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { emailSettings, getErrorMessage } from '@/lib/api';
 import { formatDateId } from '@/lib/dates';
-import Toast from '@/components/Toast';
+import { notifyGlobal } from '@/store/globalToast';
 import { useAuthStore } from '@/store/auth';
 
 interface EmailSetting {
@@ -108,7 +108,7 @@ export default function EmailSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [testEmail, setTestEmail] = useState('');
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const setToast = (payload: { message: string; type: 'success' | 'error' }) => notifyGlobal(payload.message, payload.type);
 
   const load = async () => {
     try {
@@ -186,7 +186,6 @@ export default function EmailSettingsPage() {
 
   return (
     <DashboardLayout>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="space-y-6">
         <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-4">

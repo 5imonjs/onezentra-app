@@ -8,7 +8,6 @@ import { notifyGlobal } from '@/store/globalToast';
 import SearchInput from '@/components/SearchInput';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import Modal from '@/components/Modal';
-import Toast from '@/components/Toast';
 import BarcodeScanner, { SCAN_FORMATS_1D } from '@/components/BarcodeScanner';
 import { useAuthStore } from '@/store/auth';
 import { todayLocal } from '@/lib/dates';
@@ -129,7 +128,7 @@ export default function ReceivingPage() {
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const setToast = (payload: { message: string; type: 'success' | 'error' }) => notifyGlobal(payload.message, payload.type);
   const [notifiedRecipients, setNotifiedRecipients] = useState<{ to: string[]; cc: string[] } | null>(null);
 
   // Anti race: respons basi (filter/search sudah berubah) dibuang agar tidak
@@ -329,7 +328,6 @@ export default function ReceivingPage() {
 
   return (
     <DashboardLayout>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="space-y-5">
         {/* Header — reflektif; angka status dari total server */}
         <header className="rounded-2xl bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 p-6 text-white shadow-sm">
