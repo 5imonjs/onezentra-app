@@ -18,13 +18,15 @@ const operasionalMenus = [
   { name: 'Inbound (SJ)', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
 ];
 
-// Opname dapat grup sendiri. Alur inbound (fisik) berakhir di "Inbound (SJ)",
-// sedangkan opname adalah stock-take terjadwal: monitoring wave (Opname
-// Expired) lalu verifikasi lapangan (Sesi Opname). Menaruh keduanya di dalam
-// "Inventory" membuatnya tampak sebagai lanjutan alur inbound yang sama.
+// Opname Stok dapat grup sendiri. Alur inbound (fisik) berakhir di "Inbound (SJ)",
+// sedangkan opname adalah stock-take terjadwal: monitoring baris expired (Opname
+// Expired), verifikasi lapangan (Sesi Opname), lalu laporan hasil opname.
+// Menaruh laporan opname di grup umum "Laporan" membuatnya jauh dari alur
+// dan bisa membingungkan pengguna.
 const opnameMenus = [
   { name: 'Opname Expired', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
   { name: 'Sesi Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
+  { name: 'Laporan Opname', path: '/reports/opname-expired', icon: 'chart', permission: 'reports.view' },
 ];
 
 const masterDataMenus = [
@@ -47,7 +49,6 @@ const reportItems = [
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.selisih_qty' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
-  { name: 'Laporan Opname Expired', path: '/reports/opname-expired', icon: 'clock', permission: 'reports.view' },
 ];
 
 const systemItems = [
@@ -397,7 +398,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
 
         <div className="mt-3 space-y-1">
           <CollapsibleGroup
-            title="Inventory"
+            title="Alur Inbound"
             icon="road"
             items={operasionalMenus}
             isExpanded={isExpanded}
@@ -411,7 +412,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
           <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-gray-300/60 to-transparent" />
 
           <CollapsibleGroup
-            title="Opname"
+            title="Opname Stok"
             icon="clipboard-check"
             items={opnameMenus}
             isExpanded={isExpanded}
