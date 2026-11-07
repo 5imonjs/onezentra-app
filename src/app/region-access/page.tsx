@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { validateRegion } from "@/lib/accessGateway";
+import { getErrorMessage } from "@/lib/api";
 
 export default function RegionAccessPage() {
   const [regionCode, setRegionCode] = useState("");
@@ -13,26 +15,15 @@ export default function RegionAccessPage() {
     setStatus("loading");
     setMsg("");
     try {
-      const res = await fetch("/api/v1/region-validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ region_code: regionCode }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStatus("success");
-        setMsg("Region " + (data.region_code || regionCode) + " valid.");
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("region_access", JSON.stringify({ regionCode, regionId: data.region_id }));
-        }
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setStatus("error");
-        setMsg(data.message || "Region tidak valid atau tidak aktif.");
+      const data = await validateRegion(regionCode.trim());
+      setStatus("success");
+      setMsg("Region " + (data.region_code || regionCode) + " valid.");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("region_access", JSON.stringify({ regionCode: regionCode.trim(), regionId: data.region_id }));
       }
-    } catch {
+    } catch (err) {
       setStatus("error");
-      setMsg("Gagal menghubungi server Region.");
+      setMsg(getErrorMessage(err, "Region tidak valid atau tidak aktif."));
     }
   };
 

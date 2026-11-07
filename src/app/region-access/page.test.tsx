@@ -2,11 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RegionAccessPage from './page';
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+const { push, validateRegion } = vi.hoisted(() => ({ push: vi.fn(), validateRegion: vi.fn() }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
 }));
+
+vi.mock('@/lib/accessGateway', () => ({ validateRegion }));
+vi.mock('@/lib/api', () => ({ getErrorMessage: (_e: unknown, fallback: string) => fallback }));
 
 describe('RegionAccessPage', () => {
   beforeEach(() => {
@@ -20,11 +23,13 @@ describe('RegionAccessPage', () => {
   });
 
   it('hanya meminta kode region dan menyimpan konfigurasi tanpa port', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ region_code: 'REGION-A', region_id: 'REGION-A' }),
+    validateRegion.mockResolvedValue({
+      region_code: 'REGION-A',
+      region_id: 'REGION-A',
+      region_name: 'Region A',
+      valid: true,
+      message: 'Region validated',
     });
-    vi.stubGlobal('fetch', fetchMock);
 
     render(<RegionAccessPage />);
 
@@ -34,10 +39,7 @@ describe('RegionAccessPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Validasi Region' }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/v1/region-validate', expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ region_code: 'REGION-A' }),
-      }));
+      expect(validateRegion).toHaveBeenCalledWith('REGION-A');
       expect(JSON.parse(sessionStorage.getItem('region_access') ?? '{}')).toEqual({
         regionCode: 'REGION-A',
         regionId: 'REGION-A',
