@@ -69,34 +69,34 @@ describe('Sidebar — ikon menu', () => {
     expect(setting).not.toEqual(penerima);
   });
 
-  it('membedakan ikon menu "Opname Expired" dan "Sesi Opname" (grup Opname Stok)', () => {
+  it('membedakan ikon menu "Monitoring" dan "Hitung Fisik" (grup Opname Stok)', () => {
     nav.pathname = '/opname-sessions';
     renderSidebar();
 
-    const opnameExpired = screen.getByText('Opname Expired').closest('a')?.querySelector('path')?.getAttribute('d');
-    const sesiOpname = screen.getByText('Sesi Opname').closest('a')?.querySelector('path')?.getAttribute('d');
+    const monitoring = screen.getByText('Monitoring').closest('a')?.querySelector('path')?.getAttribute('d');
+    const hitungFisik = screen.getByText('Hitung Fisik').closest('a')?.querySelector('path')?.getAttribute('d');
 
-    expect(opnameExpired).toBeTruthy();
-    expect(sesiOpname).toBeTruthy();
-    expect(opnameExpired).not.toEqual(sesiOpname);
+    expect(monitoring).toBeTruthy();
+    expect(hitungFisik).toBeTruthy();
+    expect(monitoring).not.toEqual(hitungFisik);
   });
 
-  it('menaruh Laporan Opname di grup Opname Stok dan memberi nama grup yang jelas', () => {
+  it('menaruh Laporan di grup Opname Stok dan memberi nama grup yang jelas', () => {
     nav.pathname = '/reports/opname-expired';
     renderSidebar();
 
     expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
     expect(screen.getByText('Opname Stok')).toBeInTheDocument();
-    expect(screen.getByText('Laporan Opname')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Laporan' })).toBeInTheDocument();
     expect(screen.queryByText('Laporan Replenishment')).not.toBeInTheDocument();
   });
 
-  it('menyembunyikan "Sesi Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {
+  it('menyembunyikan "Hitung Fisik" dari viewer murni (opname.view tanpa opname.session.view)', () => {
     nav.pathname = '/opname-expired';
     auth.can = (permission: string) => permission !== 'opname.session.view';
     renderSidebar();
 
-    expect(screen.getByText('Opname Expired')).toBeInTheDocument();
-    expect(screen.queryByText('Sesi Opname')).not.toBeInTheDocument();
+    expect(screen.getByText('Monitoring')).toBeInTheDocument();
+    expect(screen.queryByText('Hitung Fisik')).not.toBeInTheDocument();
   });
 });
