@@ -1,0 +1,106 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import BaselineImportManager from './BaselineImportManager';
+
+const { api, notifyGlobal, authUser } = vi.hoisted(() => ({
+  notifyGlobal: vi.fn(),
+  authUser: { kode_depo: 'DPO', nama_depo: 'Depo Test' },
+  api: {
+    baselineManifests: vi.fn(),
+    baselineUpdate: vi.fn(() => Promise.resolve({
+      data: { message: 'Tanggal posisi data awal diperbarui dari 2026-09-01 ke 2026-09-06.', opname_synced: true },
+    })),
+    baselineImport: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/api', () => ({
+  opnameExpired: api,
+  getErrorMessage: (_error: unknown, fallback?: string) => fallback ?? 'error',
+}));
+
+vi.mock('@/store/globalToast', () => ({ notifyGlobal }));
+
+vi.mock('@/store/auth', () => ({
+  useAuthStore: () => ({
+    hasPermission: () => true,
+    user: authUser,
+  }),
+}));
+
+function baseline(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 7,
+    kode_depo: 'DPO',
+    nama_depo: 'Depo Test',
+    baseline_date: '2026-09-01',
+    imported_at: '2026-09-05T09:00:00+00:00',
+    file_name: 'baseline.xlsx',
+    row_count: 12,
+    items_count: 12,
+    total_qty_crt: 120,
+    total_qty_pcs: 1200,
+    notes: null,
+    imported_by: 'Admin Gudang',
+    has_open_session: false,
+    has_finalized_current_week: false,
+    ...overrides,
+  };
+}
+
+describe('BaselineImportManager — koreksi data awal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.baselineManifests.mockResolvedValue({ data: { data: [baseline()] } });
+  });
+
+  afterEach(cleanup);
+
+  it('menampilkan form import saat data awal belum terpasang', async () => {
+    api.baselineManifests.mockResolvedValueOnce({ data: { data: [] } });
+
+    render(<BaselineImportManager open onClose={vi.fn()} />);
+
+    expect(await screen.findByText('Data awal = posisi stok sebelum sistem ini.')).toBeTruthy();
+    expect(screen.getByLabelText('Kode Depo *')).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Import Data Awal/i })).toBeDisabled();
+    expect(screen.getByText(/Belum ada data awal terpasang/)).toBeTruthy();
+  });
+
+  it('menampilkan data awal terpasang dan mengirim koreksi tanggal', async () => {
+    render(<BaselineImportManager open onClose={vi.fn()} />);
+
+    expect(await screen.findByText('Data awal terpasang')).toBeTruthy();
+
+    const dateInput = screen.getByLabelText('Tanggal posisi baru') as HTMLInputElement;
+    fireEvent.change(dateInput, { target: { value: '2026-09-06' } });
+    fireEvent.click(screen.getByRole('button', { name: /Simpan koreksi/i }));
+
+    await waitFor(() => {
+      expect(api.baselineUpdate).toHaveBeenCalledWith(7, { baseline_date: '2026-09-06' });
+    });
+    expect(await screen.findByText(/Opname sudah disinkronkan/)).toBeTruthy();
+  });
+
+  it('menonaktifkan koreksi saat sesi opname masih terbuka', async () => {
+    api.baselineManifests.mockResolvedValueOnce({
+      data: { data: [baseline({ has_open_session: true })] },
+    });
+
+    render(<BaselineImportManager open onClose={vi.fn()} />);
+
+    expect(await screen.findByText(/Sesi opname depo ini masih terbuka/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: /Simpan koreksi/i }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('menonaktifkan koreksi saat sesi minggu ini sudah final', async () => {
+    api.baselineManifests.mockResolvedValueOnce({
+      data: { data: [baseline({ has_finalized_current_week: true })] },
+    });
+
+    render(<BaselineImportManager open onClose={vi.fn()} />);
+
+    expect(await screen.findByText(/Sesi opname minggu ini sudah final/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: /Simpan koreksi/i }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});

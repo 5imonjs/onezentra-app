@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
@@ -9,6 +9,7 @@ import { formatDateId, formatDurationId } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ManualBatchManager from '@/components/ManualBatchManager';
+import BaselineImportManager from '@/components/BaselineImportManager';
 import { useAuthStore } from '@/store/auth';
 
 interface Wave {
@@ -249,8 +250,8 @@ function sourceBadge(mix?: { sj: number; import: number; legacy?: number } | nul
   if (kinds > 1) {
     const parts = [
       sj > 0 ? `${sj} SJ` : null,
-      imp > 0 ? `${imp} import` : null,
-      legacy > 0 ? `${legacy} legacy` : null,
+      imp > 0 ? `${imp} stok manual` : null,
+      legacy > 0 ? `${legacy} data awal` : null,
     ].filter(Boolean).join(' + ');
     return (
       <span title={parts} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 whitespace-nowrap">Campuran</span>
@@ -258,12 +259,12 @@ function sourceBadge(mix?: { sj: number; import: number; legacy?: number } | nul
   }
   if (legacy > 0) {
     return (
-      <span title={`${legacy} baris baseline legacy`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-700 whitespace-nowrap">Legacy</span>
+      <span title={`${legacy} baris data awal`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-700 whitespace-nowrap">Data Awal</span>
     );
   }
   if (imp > 0) {
     return (
-      <span title={`${imp} baris import`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-foreground whitespace-nowrap">Import</span>
+      <span title={`${imp} baris stok manual`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-foreground whitespace-nowrap">Manual</span>
     );
   }
   if (sj > 0) {
@@ -310,8 +311,74 @@ function DaysBar({ sisaHari, maxHari, status }: { sisaHari: number; maxHari: num
   );
 }
 
+type BannerTone = 'violet' | 'amber' | 'emerald' | 'slate';
+
+const BANNER_TONE: Record<BannerTone, { wrap: string; icon: string; title: string; text: string }> = {
+  violet: {
+    wrap: 'border-violet-200 bg-violet-50',
+    icon: 'bg-violet-100 text-violet-700',
+    title: 'text-violet-950',
+    text: 'text-violet-800',
+  },
+  amber: {
+    wrap: 'border-amber-200 bg-amber-50',
+    icon: 'bg-amber-100 text-amber-700',
+    title: 'text-amber-950',
+    text: 'text-amber-800',
+  },
+  emerald: {
+    wrap: 'border-emerald-200 bg-emerald-50',
+    icon: 'bg-emerald-100 text-emerald-700',
+    title: 'text-emerald-950',
+    text: 'text-emerald-800',
+  },
+  slate: {
+    wrap: 'border-border bg-card',
+    icon: 'bg-slate-100 text-slate-600',
+    title: 'text-foreground',
+    text: 'text-muted-foreground',
+  },
+};
+
+function NextStepBanner({
+  tone,
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  tone: BannerTone;
+  eyebrow: string;
+  title: string;
+  description: string;
+  action: ReactNode;
+}) {
+  const styles = BANNER_TONE[tone];
+  return (
+    <div className={`rounded-2xl border px-5 py-4 ${styles.wrap}`} role="status">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.icon}`} aria-hidden="true">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <p className={`text-[10px] font-bold uppercase tracking-[0.16em] ${styles.text}`}>{eyebrow}</p>
+            <p className={`mt-0.5 text-sm font-bold ${styles.title}`}>{title}</p>
+            <p className={`mt-0.5 text-xs leading-relaxed ${styles.text}`}>{description}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">{action}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function OpnameExpiredPage() {
-  const { hasPermission } = useAuthStore();
+  const { hasPermission, user } = useAuthStore();
+  const kodeDepo = user?.kode_depo;
+  const canViewReceiving = hasPermission('penerimaan.view');
   const [waves, setWaves] = useState<Wave[]>([]);
   const [pagination, setPagination] = useState<ListResponse['data'] | null>(null);
   const [dateFrom, setDateFrom] = useState('');
@@ -345,7 +412,12 @@ export default function OpnameExpiredPage() {
     threshold_kritis: 7,
   });
   const [thresholdErrors, setThresholdErrors] = useState<string[]>([]);
+  const [showMore, setShowMore] = useState(false);
+  const [baselineOpen, setBaselineOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [baselineStatus, setBaselineStatus] = useState<'loading' | 'missing' | 'installed' | 'unknown'>('loading');
   const tablistRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   const current = useMemo(() => waves.find((w) => w.id === selectedId) ?? null, [waves, selectedId]);
   const currentIndex = useMemo(() => waves.findIndex((w) => w.id === selectedId), [waves, selectedId]);
@@ -458,6 +530,44 @@ export default function OpnameExpiredPage() {
   }, []);
 
   useEffect(() => { loadProgress(weekStartValue); }, [loadProgress, weekStartValue]);
+
+  // Status data awal hanya relevan untuk akun depo. Akun pusat/global tidak
+  // dipaksa memilih satu depo di sini.
+  const loadBaselineStatus = useCallback(async () => {
+    if (!kodeDepo || !canViewReceiving) {
+      setBaselineStatus('unknown');
+      return;
+    }
+    try {
+      const res = await opnameExpired.baselineManifests({ kode_depo: kodeDepo }) as {
+        data: { data: { kode_depo: string | null }[] };
+      };
+      const list = res.data?.data ?? [];
+      setBaselineStatus(list.some((b) => b.kode_depo === kodeDepo) ? 'installed' : 'missing');
+    } catch {
+      setBaselineStatus('unknown');
+    }
+  }, [canViewReceiving, kodeDepo]);
+
+  useEffect(() => { loadBaselineStatus(); }, [loadBaselineStatus]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMore(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const refreshAfterDataChange = useCallback(() => {
+    setPage(1);
+    load();
+    loadPending(weekStartValue);
+    loadProgress(weekStartValue);
+    loadBaselineStatus();
+  }, [load, loadBaselineStatus, loadPending, loadProgress, weekStartValue]);
 
   const handleRemind = async () => {
     setReminding(true);
@@ -662,6 +772,80 @@ export default function OpnameExpiredPage() {
   // Dipakai baris memo: boolean stabil per render (bukan hasil panggil di JSX).
   const canDeleteWaves = hasPermission('opname.delete');
 
+  // Satu langkah berikutnya yang paling relevan — menggantikan deretan tombol
+  // aksi di toolbar. Aksi sekunder tetap tersedia lewat menu "Lainnya".
+  const nextStep = (() => {
+    if (baselineStatus === 'missing') {
+      return {
+        tone: 'violet' as const,
+        eyebrow: 'Langkah berikutnya',
+        title: 'Data awal belum dipasang',
+        description: 'Import posisi stok sebelum sistem sekali per depo agar stok lama tidak dihitung dua kali.',
+        action: hasPermission('penerimaan.create') ? (
+          <button type="button" onClick={() => setBaselineOpen(true)} className="btn-primary text-sm">
+            Import Data Awal
+          </button>
+        ) : (
+          <span className="text-xs font-semibold text-violet-800">Minta admin depo memasang data awal.</span>
+        ),
+      };
+    }
+    if (pendingError) {
+      return {
+        tone: 'amber' as const,
+        eyebrow: 'Langkah berikutnya',
+        title: 'Gagal mengecek data baru',
+        description: 'Data baru belum bisa dipastikan masuk analisa. Coba muat ulang pengecekan.',
+        action: (
+          <button type="button" onClick={() => loadPending(weekStartValue)} className="btn-secondary text-sm">
+            Coba lagi
+          </button>
+        ),
+      };
+    }
+    if ((pending?.pending.total ?? 0) > 0) {
+      return {
+        tone: 'amber' as const,
+        eyebrow: 'Langkah berikutnya',
+        title: `${fnum(pending?.pending.total ?? 0)} baris baru belum masuk analisa`,
+        description: `Minggu ${pending?.week_start ?? '-'}: ${pending?.pending.sj ?? 0} baris SJ + ${pending?.pending.import ?? 0} baris stok manual${(pending?.pending.legacy ?? 0) > 0 ? ` + ${pending?.pending.legacy} baris data awal` : ''}.`,
+        action: hasPermission('opname.create') ? (
+          <button type="button" onClick={handleGenerate} disabled={generating} className="btn-primary text-sm disabled:opacity-50">
+            {generating ? 'Generate...' : 'Generate sekarang'}
+          </button>
+        ) : (
+          <span className="text-xs font-semibold text-amber-800">Minta admin generate analisa.</span>
+        ),
+      };
+    }
+    if (waves.length > 0) {
+      return {
+        tone: 'emerald' as const,
+        eyebrow: 'Langkah berikutnya',
+        title: 'Analisa siap dihitung fisik',
+        description: 'Wave minggu ini sudah terbentuk. Lanjutkan ke sesi opname untuk input hasil hitung lapangan.',
+        action: hasPermission('opname.session.view') ? (
+          <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
+            Buka Sesi Opname
+            <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+          </Link>
+        ) : null,
+      };
+    }
+    if (baselineStatus === 'loading') return null;
+    return {
+      tone: 'slate' as const,
+      eyebrow: 'Langkah berikutnya',
+      title: 'Belum ada data opname minggu ini',
+      description: 'Tambahkan stok manual atau pastikan penerimaan SJ sudah masuk, lalu generate analisa.',
+      action: hasPermission('opname.create') ? (
+        <button type="button" onClick={handleGenerate} disabled={generating} className="btn-primary text-sm disabled:opacity-50">
+          {generating ? 'Generate...' : 'Generate'}
+        </button>
+      ) : null,
+    };
+  })();
+
   return (
     <DashboardLayout>
       <div className="space-y-5">
@@ -675,7 +859,7 @@ export default function OpnameExpiredPage() {
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Monitoring operasional</p>
                 <h1 className="text-2xl font-bold leading-tight">Opname Expired</h1>
-                <p className="text-ink-fg-muted mt-0.5 text-sm">Queue kerja mingguan batch mendekati/melewati expired — sumber Inbound (SJ), import manual, dan baseline legacy.</p>
+                <p className="text-ink-fg-muted mt-0.5 text-sm">Data awal → hitung fisik → selesai. Pantau batch mendekati/melewati expired minggu ini.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -683,32 +867,117 @@ export default function OpnameExpiredPage() {
                 type="button"
                 onClick={load}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white backdrop-blur transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                title="Muat ulang data"
+                aria-label="Muat ulang data"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white backdrop-blur transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <svg aria-hidden="true" className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-                {loading ? 'Memuat...' : 'Muat ulang'}
               </button>
               {hasPermission('opname.session.view') && (
                 <Link
                   href="/opname-sessions"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white backdrop-blur transition-colors hover:bg-white/20"
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-600"
                 >
                   Sesi Opname
                   <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </Link>
               )}
+              <div className="relative" ref={moreMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowMore((v) => !v)}
+                  aria-expanded={showMore}
+                  aria-haspopup="menu"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white backdrop-blur transition-colors hover:bg-white/20"
+                >
+                  Lainnya
+                  <svg aria-hidden="true" className={`h-3.5 w-3.5 transition-transform ${showMore ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                </button>
+                {showMore && (
+                  <div role="menu" aria-label="Aksi lainnya" className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-border bg-card p-1.5 text-foreground shadow-xl">
+                    {hasPermission('penerimaan.create') && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setBaselineOpen(true); setShowMore(false); }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-violet-500" aria-hidden="true" />
+                        Import Data Awal
+                      </button>
+                    )}
+                    {hasPermission('penerimaan.create') && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setManualOpen(true); setShowMore(false); }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                        Tambah Stok Manual
+                      </button>
+                    )}
+                    {hasPermission('opname.create') && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { handleGenerate(); setShowMore(false); }}
+                        disabled={generating}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary-500" aria-hidden="true" />
+                        {(pending?.pending.total ?? 0) > 0 ? 'Generate baris baru' : 'Generate ulang'}
+                      </button>
+                    )}
+                    {hasPermission('opname.view') && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { handleExport(); setShowMore(false); }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true" />
+                        Export Excel
+                      </button>
+                    )}
+                    {hasPermission('opname.edit') && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { openSettings(); setShowMore(false); }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true" />
+                        Pengaturan threshold
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-ink-fg-muted" aria-label="Alur data opname expired">
-            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1">Rencana Kirim</span>
-            <span aria-hidden="true">→</span>
-            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1">Validasi SJ</span>
-            <span aria-hidden="true">→</span>
-            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1">Inbound</span>
-            <span aria-hidden="true">→</span>
-            <span className="rounded-full border border-primary-500/30 bg-primary-500/15 px-2.5 py-1 text-primary-200">Opname Expired</span>
+          <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold" aria-label="Alur opname expired">
+            <span className={`rounded-full border px-2.5 py-1 ${baselineStatus === 'missing' ? 'border-primary-500/30 bg-primary-500/15 text-primary-200' : baselineStatus === 'installed' ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-200' : 'border-white/10 bg-white/10 text-ink-fg-muted'}`}>
+              1. Data Awal
+            </span>
+            <span aria-hidden="true" className="text-ink-fg-muted">→</span>
+            <span className={`rounded-full border px-2.5 py-1 ${baselineStatus === 'installed' ? 'border-primary-500/30 bg-primary-500/15 text-primary-200' : 'border-white/10 bg-white/10 text-ink-fg-muted'}`}>
+              2. Hitung Fisik
+            </span>
+            <span aria-hidden="true" className="text-ink-fg-muted">→</span>
+            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-ink-fg-muted">3. Selesai</span>
           </div>
         </div>
+
+        {nextStep && (
+          <NextStepBanner
+            tone={nextStep.tone}
+            eyebrow={nextStep.eyebrow}
+            title={nextStep.title}
+            description={nextStep.description}
+            action={nextStep.action}
+          />
+        )}
 
         {/* KPI strip */}
         <div className="bg-card rounded-2xl shadow-sm border border-border px-5 py-4">
@@ -869,13 +1138,13 @@ export default function OpnameExpiredPage() {
                 value={sourceFilter}
                 onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
                 aria-label="Filter sumber data"
-                title="SJ = murni penerimaan sistem, Import = input manual, Legacy = baseline awal, Campuran = lebih dari satu sumber"
+                title="SJ = murni penerimaan sistem, Stok Manual = input tambahan, Data Awal = posisi sebelum sistem, Campuran = lebih dari satu sumber"
                 className="select-field-sm min-w-[150px]"
               >
                 <option value="">Semua sumber</option>
                 <option value="sj">SJ (sistem)</option>
-                <option value="import">Import (manual)</option>
-                <option value="legacy">Legacy (baseline)</option>
+                <option value="import">Stok Manual</option>
+                <option value="legacy">Data Awal</option>
                 <option value="mixed">Campuran</option>
               </select>
             </label>
@@ -909,72 +1178,30 @@ export default function OpnameExpiredPage() {
               })}
             </div>
 
-            {/* Action buttons */}
-            <div className="ml-auto flex flex-wrap items-center gap-2 px-2">
-            <ManualBatchManager
-              buttonClassName="btn-primary"
-              onChanged={() => { setPage(1); load(); loadPending(weekStartValue); loadProgress(weekStartValue); }}
-            />
-            {hasPermission('opname.delete') && waves.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowBulkDelete(true)}
-                disabled={selectedWaveIds.size === 0 || bulkDeleting}
-                title="Hapus wave yang dicentang"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Hapus terpilih ({selectedWaveIds.size})
-              </button>
-            )}
-            {hasPermission('opname.create') && (pending?.pending.total ?? 0) > 0 && (
-              <button
-                type="button"
-                onClick={handleGenerate}
-                title={`Siap generate minggu ${pending?.week_start}: ${pending?.pending.sj} baris SJ + ${pending?.pending.import} baris import${(pending?.pending.legacy ?? 0) > 0 ? ` + ${pending?.pending.legacy} baris legacy` : ''}`}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
-              >
-                <span className="w-2 h-2 rounded-full bg-amber-500" aria-hidden="true" />
-                {pending?.pending.total} baris belum di-generate
-              </button>
-            )}
-            {pendingError && (pending?.pending.total ?? 0) === 0 && (
-              <button
-                type="button"
-                onClick={() => loadPending(weekStartValue)}
-                title="Cek ulang baris yang siap di-generate"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold bg-amber-50 text-amber-700 border border-dashed border-amber-300 hover:bg-amber-100 transition-colors"
-              >
-                Cek baris gagal — coba lagi
-              </button>
-            )}
-            {hasPermission('opname.create') && (
-              <button onClick={handleGenerate} disabled={generating} className="btn-primary disabled:opacity-50">
-                <span className="flex items-center gap-2">
-                  {generating ? (
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  ) : (
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M6.75 11.25a7.5 7.5 0 1010.5 0L12 7.5l-5.25 3.75z" /></svg>
-                  )}
-                  Generate
-                </span>
-              </button>
-            )}
-            {hasPermission('opname.view') && <button onClick={handleExport} className="btn-primary">
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                Export
-              </span>
-            </button>}
-            {hasPermission('opname.edit') && (
-            <button onClick={openSettings} className="btn-secondary">
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                Threshold
-              </span>
-            </button>
-            )}
-            </div>
           </div>
+
+          {selectedWaveIds.size > 0 && canDeleteWaves && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-100 bg-red-50 px-5 py-2.5">
+              <span className="text-sm font-semibold text-red-700">{selectedWaveIds.size} wave dipilih</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedWaveIds(new Set())}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100"
+                >
+                  Batal pilih
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkDelete(true)}
+                  disabled={bulkDeleting}
+                  className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                >
+                  Hapus terpilih
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Table */}
           {loading && waves.length === 0 ? (
@@ -1240,8 +1467,8 @@ export default function OpnameExpiredPage() {
                       const legacy = num(current.source_mix?.legacy);
                       const parts = [
                         sj > 0 ? `${sj} SJ` : null,
-                        imp > 0 ? `${imp} import` : null,
-                        legacy > 0 ? `${legacy} legacy` : null,
+                        imp > 0 ? `${imp} stok manual` : null,
+                        legacy > 0 ? `${legacy} data awal` : null,
                       ].filter(Boolean);
                       if (parts.length === 0) return '-';
                       return parts.length > 1 ? `Campuran (${parts.join(' + ')})` : parts[0];
@@ -1338,6 +1565,19 @@ export default function OpnameExpiredPage() {
           )}
         </aside>
       </div>
+
+      <BaselineImportManager
+        open={baselineOpen}
+        onClose={() => setBaselineOpen(false)}
+        onChanged={refreshAfterDataChange}
+      />
+
+      <ManualBatchManager
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+        hideTrigger
+        onChanged={refreshAfterDataChange}
+      />
 
       <Modal open={showSettings} onClose={() => setShowSettings(false)} title="Threshold Opname" subtitle="Ambang batas status expired" size="md"
         footer={

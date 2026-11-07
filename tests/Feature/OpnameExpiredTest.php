@@ -279,6 +279,27 @@ class OpnameExpiredTest extends TestCase
         $this->assertSame('NAIK +5', $wave->perubahan);
     }
 
+    public function test_manual_stock_import_via_api_auto_generates_wave(): void
+    {
+        $file = $this->baselineFile([
+            ['B-AUTO-IMP', 'Produk Auto Import', 4, 48, '2027-01-01', '2026-09-09'],
+        ]);
+
+        $response = $this->post('/api/v1/receiving-items/import', ['file' => $file], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('imported', 1)
+            ->assertJsonPath('opname_synced', true);
+
+        $this->assertDatabaseHas('opname_expired_waves', [
+            'kode_barang' => 'B-AUTO-IMP',
+            'kode_depo' => 'DPO',
+            'qty_ini_crt' => 4,
+        ]);
+    }
+
     public function test_manual_receipt_import_via_api_sets_import_source(): void
     {
         Npn::create([
@@ -1255,7 +1276,9 @@ class OpnameExpiredTest extends TestCase
             'kode_depo' => 'DPO',
             'nama_depo' => 'Depo Test',
             'baseline_date' => '2026-09-01',
-        ])->assertOk()->assertJsonPath('imported', 1);
+        ])->assertOk()
+            ->assertJsonPath('imported', 1)
+            ->assertJsonPath('opname_synced', true);
 
         $legacy = ReceivingItem::where('source', ReceivingItem::SOURCE_LEGACY)->firstOrFail();
         $this->assertNotNull($legacy->baseline_import_id);

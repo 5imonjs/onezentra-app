@@ -585,12 +585,28 @@ class ReceivingItemController extends Controller
             $import = new ReceivingItemImport($request->user());
             DB::transaction(fn () => Excel::import($import, $request->file('file')));
 
+            // Stok manual yang baru masuk langsung disinkronkan ke wave minggu
+            // berjalan. Kegagalan generate tidak boleh membatalkan import —
+            // respons memberi tahu UI agar menawarkan Generate manual.
+            $synced = false;
+            if ($import->imported > 0) {
+                try {
+                    app(OpnameExpiredService::class)->generate(null, $request->user());
+                    $synced = true;
+                } catch (\Throwable $e) {
+                    Log::error('Opname generate after manual stock import failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             return response()->json([
-                'message' => 'Import penerimaan manual selesai.',
+                'message' => 'Import stok manual selesai.',
                 'imported' => $import->imported,
                 'skipped' => $import->skipped,
                 'duplicates' => $import->duplicates,
                 'weeks' => $import->weeks,
+                'opname_synced' => $synced,
             ]);
         } catch (ExcelValidationException $e) {
             $failures = $e->failures();
@@ -700,8 +716,10 @@ class ReceivingItemController extends Controller
             // Baseline baru langsung masuk analisa tanpa menunggu Generate
             // manual. Aman: generate idempotent per kunci wave dan dibatasi
             // ke depo yang boleh diakses user.
+            $synced = false;
             try {
                 app(OpnameExpiredService::class)->generate(null, $user);
+                $synced = true;
             } catch (\Throwable $e) {
                 Log::error('Opname generate after baseline failed', [
                     'baseline_import_id' => $baseline->id,
@@ -716,6 +734,7 @@ class ReceivingItemController extends Controller
                 'duplicates' => $import->duplicates,
                 'baseline_import_id' => $baseline->id,
                 'baseline_date' => $baseline->baseline_date?->toDateString(),
+                'opname_synced' => $synced,
             ]);
         } catch (ExcelValidationException $e) {
             $baseline->delete();

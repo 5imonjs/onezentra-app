@@ -76,10 +76,10 @@ String _sourceLabel(Map<String, dynamic>? mix) {
     return 'Campuran';
   }
   if (legacy > 0) {
-    return 'Legacy (baseline)';
+    return 'Data Awal';
   }
   if (import > 0) {
-    return 'Import (manual)';
+    return 'Stok Manual';
   }
   if (sj > 0) {
     return 'SJ (sistem)';
