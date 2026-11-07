@@ -120,6 +120,55 @@ class AuthTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_stateful_login_rejects_a_region_that_does_not_match_the_account_region(): void
+    {
+        DB::table('regions')->insert([
+            ['code' => 'REG-001', 'name' => 'Region 001', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['code' => 'REG-002', 'name' => 'Region 002', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        User::factory()->create([
+            'email' => 'sKaw-region@example.com',
+            'password' => 'secret-123',
+            'scope_level' => 'depot',
+            'region_id' => 'REG-001',
+        ]);
+
+        $this->withHeaders([
+            'Origin' => 'http://localhost:3000',
+            'Referer' => 'http://localhost:3000/',
+        ])->postJson('/api/v1/login', [
+            'email' => 'sKaw-region@example.com',
+            'password' => 'secret-123',
+            'region_code' => 'REG-002',
+        ])->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'Region Access tidak sesuai dengan region akun Anda.');
+
+        $this->assertGuest();
+    }
+
+    public function test_stateful_login_allows_master_scope_from_another_region(): void
+    {
+        DB::table('regions')->insert([
+            ['code' => 'REG-001', 'name' => 'Region 001', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['code' => 'REG-002', 'name' => 'Region 002', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        User::factory()->adminMaster()->create([
+            'email' => 'master-region@example.com',
+            'password' => 'secret-123',
+            'region_id' => 'REG-001',
+        ]);
+
+        $this->withHeaders([
+            'Origin' => 'http://localhost:3000',
+            'Referer' => 'http://localhost:3000/',
+        ])->postJson('/api/v1/login', [
+            'email' => 'master-region@example.com',
+            'password' => 'secret-123',
+            'region_code' => 'REG-002',
+        ])->assertOk()
+            ->assertSessionHas('region_code', 'REG-002');
+    }
+
     public function test_login_inactive_account_gets_distinct_message_only_after_correct_password(): void
     {
         User::factory()->create([

@@ -130,6 +130,8 @@ class AuthController extends Controller
                     ]);
                 }
 
+                $this->assertUserAllowedRegion($user, $region->code);
+
                 $currentRegionCode = $request->session()->get('region_code')
                     ?? $request->session()->get('region_id');
 
@@ -153,6 +155,8 @@ class AuthController extends Controller
                         'email' => ['Region Access belum dikonfigurasi atau tidak valid. Silakan konfigurasi terlebih dahulu.'],
                     ]);
                 }
+
+                $this->assertUserAllowedRegion($user, (string) $regionCode);
             }
         }
 
@@ -308,6 +312,64 @@ class AuthController extends Controller
             'message' => 'Profile updated',
             'user' => $user->load('roles'),
         ]);
+    }
+
+    /**
+     * Region Access di halaman login adalah konteks gateway: user hanya boleh
+     * masuk bila region yang dipilih sesuai region akunnya. Master dan user
+     * global (depot.view_all) boleh dari region mana pun. User legacy tanpa
+     * region/depo yang bisa dipetakan tetap diizinkan agar tidak terkunci.
+     */
+    private function assertUserAllowedRegion(User $user, ?string $regionCode): void
+    {
+        if (blank($regionCode) || $user->isMasterScope() || ! $user->isDepotScoped()) {
+            return;
+        }
+
+        $allowedRegions = $this->allowedRegionCodesForUser($user);
+
+        if ($allowedRegions !== [] && ! in_array((string) $regionCode, $allowedRegions, true)) {
+            throw ValidationException::withMessages([
+                'email' => ['Region Access tidak sesuai dengan region akun Anda.'],
+            ]);
+        }
+    }
+
+    /**
+     * @return string[]
+     */
+    private function allowedRegionCodesForUser(User $user): array
+    {
+        if (! blank($user->region_id)) {
+            return [(string) $user->region_id];
+        }
+
+        $assignedRegions = DB::table('user_depots')
+            ->join('depot_settings', 'depot_settings.kode_depo', '=', 'user_depots.kode_depo')
+            ->where('user_depots.user_id', $user->id)
+            ->whereNotNull('depot_settings.region_id')
+            ->pluck('depot_settings.region_id')
+            ->map(fn ($region): string => (string) $region)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($assignedRegions !== []) {
+            return $assignedRegions;
+        }
+
+        if (! blank($user->kode_depo)) {
+            $legacyRegion = DepotSetting::query()
+                ->where('kode_depo', $user->kode_depo)
+                ->whereNotNull('region_id')
+                ->value('region_id');
+
+            if (! blank($legacyRegion)) {
+                return [(string) $legacyRegion];
+            }
+        }
+
+        return [];
     }
 
     /**
