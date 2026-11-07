@@ -118,6 +118,8 @@ class MobileAuthTest extends TestCase
             'email' => 'web@onezentra.com',
             'password' => 'secret-123',
             'status' => 'active',
+            'scope_level' => 'depot',
+            'region_id' => '001',
         ]);
 
         $this->withSession([

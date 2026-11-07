@@ -317,8 +317,8 @@ class AuthController extends Controller
     /**
      * Region Access di halaman login adalah konteks gateway: user hanya boleh
      * masuk bila region yang dipilih sesuai region akunnya. Master dan user
-     * global (depot.view_all) boleh dari region mana pun. User legacy tanpa
-     * region/depo yang bisa dipetakan tetap diizinkan agar tidak terkunci.
+     * global (depot.view_all) boleh dari region mana pun. User depo/region
+     * yang tidak terdaftar untuk region mana pun tidak bisa login.
      */
     private function assertUserAllowedRegion(User $user, ?string $regionCode): void
     {
@@ -328,7 +328,7 @@ class AuthController extends Controller
 
         $allowedRegions = $this->allowedRegionCodesForUser($user);
 
-        if ($allowedRegions !== [] && ! in_array((string) $regionCode, $allowedRegions, true)) {
+        if (! in_array((string) $regionCode, $allowedRegions, true)) {
             throw ValidationException::withMessages([
                 'email' => ['Region Access tidak sesuai dengan region akun Anda.'],
             ]);

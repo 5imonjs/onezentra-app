@@ -67,6 +67,8 @@ class AuthTest extends TestCase
         $user = User::factory()->create([
             'email' => 'region-login@example.com',
             'password' => 'secret-123',
+            'scope_level' => 'depot',
+            'region_id' => 'REG-001',
         ]);
 
         $this->withHeaders([
@@ -140,6 +142,37 @@ class AuthTest extends TestCase
             'email' => 'sKaw-region@example.com',
             'password' => 'secret-123',
             'region_code' => 'REG-002',
+        ])->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'Region Access tidak sesuai dengan region akun Anda.');
+
+        $this->assertGuest();
+    }
+
+    public function test_stateful_login_rejects_a_user_without_a_registered_region(): void
+    {
+        DB::table('regions')->insert([
+            'code' => 'REG-001',
+            'name' => 'Region 001',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        User::factory()->create([
+            'email' => 'unregistered-region@example.com',
+            'password' => 'secret-123',
+            'scope_level' => 'depot',
+            'region_id' => null,
+            'kode_depo' => 'TIDAK-ADA',
+            'nama_depo' => 'Tidak Terdaftar',
+        ]);
+
+        $this->withHeaders([
+            'Origin' => 'http://localhost:3000',
+            'Referer' => 'http://localhost:3000/',
+        ])->postJson('/api/v1/login', [
+            'email' => 'unregistered-region@example.com',
+            'password' => 'secret-123',
+            'region_code' => 'REG-001',
         ])->assertUnprocessable()
             ->assertJsonPath('errors.email.0', 'Region Access tidak sesuai dengan region akun Anda.');
 

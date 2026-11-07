@@ -108,6 +108,8 @@ class SanctumStatefulDomainTest extends TestCase
         $user = User::factory()->create([
             'email' => 'stateful@example.com',
             'password' => 'secret-123',
+            'scope_level' => 'depot',
+            'region_id' => '001',
         ]);
 
         $frontendOrigin = 'http://localhost:3000';
