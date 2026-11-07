@@ -47,6 +47,23 @@ interface NpnProduct {
   satuan?: string;
 }
 
+interface BaselineManifest {
+  id: number;
+  kode_depo: string | null;
+  nama_depo: string | null;
+  baseline_date: string | null;
+  imported_at: string | null;
+  file_name: string | null;
+  row_count: number;
+  items_count: number;
+  total_qty_crt: number;
+  total_qty_pcs: number;
+  notes: string | null;
+  imported_by: string | null;
+  has_open_session: boolean;
+  has_finalized_current_week: boolean;
+}
+
 const num = (v: unknown): number => Number(v ?? 0);
 
 export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-secondary text-sm px-4 py-2', buttonLabel = 'Batch Manual' }: { onChanged?: () => void; buttonClassName?: string; buttonLabel?: string }) {
@@ -86,6 +103,21 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   // sudah masuk baseline, walau baru diinput belakangan.
   const [baselineDate, setBaselineDate] = useState(todayLocal());
   const baselineInputRef = useRef<HTMLInputElement>(null);
+  // Manifes baseline yang sudah terpasang (satu per depo) + koreksi cutoff.
+  const [baselines, setBaselines] = useState<BaselineManifest[]>([]);
+  const [baselinesLoading, setBaselinesLoading] = useState(false);
+  const [baselineEditDate, setBaselineEditDate] = useState('');
+  const [baselineSaving, setBaselineSaving] = useState(false);
+
+  const currentBaseline = baselines.find((b) => b.kode_depo === baselineDepo.trim()) ?? null;
+  const currentBaselineDate = currentBaseline?.baseline_date ?? '';
+  const baselineCorrectionBlocked = Boolean(
+    currentBaseline?.has_open_session || currentBaseline?.has_finalized_current_week,
+  );
+
+  useEffect(() => {
+    setBaselineEditDate(currentBaselineDate);
+  }, [currentBaselineDate]);
 
   const [searchKode, setSearchKode] = useState('');
   const [searchResults, setSearchResults] = useState<NpnProduct[]>([]);
@@ -120,6 +152,22 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
   useEffect(() => {
     if (open) { setSuccessMsg(null); load(); }
   }, [open, load]);
+
+  const loadBaselines = useCallback(async () => {
+    setBaselinesLoading(true);
+    try {
+      const res = await opnameExpired.baselineManifests();
+      setBaselines((res.data?.data ?? []) as BaselineManifest[]);
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat baseline terpasang.'));
+    } finally {
+      setBaselinesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) loadBaselines();
+  }, [open, loadBaselines]);
 
   const closeModal = () => {
     setOpen(false);
@@ -187,7 +235,7 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
         setSearching(false);
       }
     }, 300);
-  }, []);
+  }, [setSearchResults, setShowDropdown, setActiveIndex, setSearching]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -291,12 +339,47 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
       setBaselineDate(todayLocal());
       if (baselineInputRef.current) baselineInputRef.current.value = '';
       await load();
+      await loadBaselines();
       await refreshPendingPreview();
       onChanged?.();
     } catch (err) {
       handleImportError(err);
     } finally {
       setBaselineImporting(false);
+    }
+  };
+
+  const handleBaselineDateUpdate = async () => {
+    if (!currentBaseline) {
+      notifyGlobal('Baseline untuk depo ini belum terpasang.');
+      return;
+    }
+    if (!baselineEditDate) {
+      notifyGlobal('Tanggal koreksi baseline wajib diisi.');
+      return;
+    }
+    if (baselineEditDate === currentBaseline.baseline_date) {
+      notifyGlobal('Tanggal baseline tidak berubah.');
+      return;
+    }
+
+    setBaselineSaving(true);
+    try {
+      const res = await opnameExpired.baselineUpdate(currentBaseline.id, {
+        baseline_date: baselineEditDate,
+      });
+      const synced = Boolean(res.data.opname_synced);
+      setSuccessMsg(
+        `${res.data.message ?? 'Tanggal baseline diperbarui.'}${synced ? ' Opname sudah disinkronkan.' : ' Generate opname gagal; jalankan Generate manual.'}`
+      );
+      await loadBaselines();
+      await load();
+      await refreshPendingPreview();
+      onChanged?.();
+    } catch (err) {
+      notifyGlobal(getErrorMessage(err, 'Gagal mengoreksi tanggal baseline.'));
+    } finally {
+      setBaselineSaving(false);
     }
   };
 
@@ -566,6 +649,83 @@ export default function ManualBatchManager({ onChanged, buttonClassName = 'btn-s
                   {baselineImporting ? 'Mengimpor baseline...' : 'Import Baseline'}
                 </span>
               </button>
+
+              <div className="border-t border-violet-200 pt-3">
+                {baselinesLoading ? (
+                  <p className="text-[11px] text-violet-700">Memuat baseline terpasang...</p>
+                ) : currentBaseline ? (
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-violet-200 bg-popover px-3 py-2">
+                      <p className="text-xs font-semibold text-violet-900">Baseline terpasang</p>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-violet-800">
+                        Posisi s.d. <span className="font-semibold">{formatDateId(currentBaseline.baseline_date)}</span>
+                        {' '}&middot; {currentBaseline.row_count} baris
+                        {currentBaseline.imported_by ? ` \u00b7 diimpor oleh ${currentBaseline.imported_by}` : ''}
+                        {currentBaseline.imported_at ? ` pada ${formatDateId(currentBaseline.imported_at)}` : ''}
+                      </p>
+                      {currentBaseline.has_open_session && (
+                        <p className="mt-1 text-[11px] font-medium text-amber-700">
+                          Sesi opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum mengoreksi baseline.
+                        </p>
+                      )}
+                      {!currentBaseline.has_open_session && currentBaseline.has_finalized_current_week && (
+                        <p className="mt-1 text-[11px] font-medium text-amber-700">
+                          Sesi opname minggu ini sudah final. Koreksi baseline tidak bisa mengubah posisi yang sudah disetujui.
+                        </p>
+                      )}
+                    </div>
+
+                    {hasPermission('penerimaan.edit') ? (
+                      <div className="space-y-2">
+                        <label htmlFor="baseline-edit-date" className="block text-xs font-medium text-foreground">
+                          Koreksi tanggal posisi baseline
+                        </label>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <input
+                            id="baseline-edit-date"
+                            type="date"
+                            value={baselineEditDate}
+                            max={todayLocal()}
+                            onChange={(e) => setBaselineEditDate(e.target.value)}
+                            disabled={baselineSaving || baselineCorrectionBlocked}
+                            className="input-field sm:max-w-48 disabled:bg-popover disabled:cursor-not-allowed"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleBaselineDateUpdate}
+                            disabled={
+                              baselineSaving
+                              || baselineCorrectionBlocked
+                              || !baselineEditDate
+                              || baselineEditDate === currentBaseline.baseline_date
+                            }
+                            className="btn-secondary text-sm px-3 py-1.5 disabled:opacity-50"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              {baselineSaving ? (
+                                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                              ) : null}
+                              {baselineSaving ? 'Menyimpan...' : 'Simpan koreksi'}
+                            </span>
+                          </button>
+                        </div>
+                        <p className="text-[10px] leading-relaxed text-violet-700">
+                          Koreksi memicu Generate ulang dan tidak mengubah/menghapus baris ledger.
+                          Jika sesi minggu ini sudah final, koreksi tidak bisa dilakukan.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-violet-700">
+                        Butuh izin edit penerimaan untuk mengoreksi tanggal baseline.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-violet-700">
+                    Belum ada baseline terpasang untuk depo {baselineDepo.trim() || '-'}.
+                  </p>
+                )}
+              </div>
             </div>
           </details>
 
