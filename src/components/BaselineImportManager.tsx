@@ -93,7 +93,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
       const first = response.errors[0];
       notifyGlobal(`${response.message ?? 'Import gagal'}\nBaris ${first.row}: ${(first.errors ?? []).join(', ')}`);
     } else {
-      notifyGlobal(getErrorMessage(err, 'Import data awal gagal'));
+      notifyGlobal(getErrorMessage(err, 'Import saldo awal gagal'));
     }
   };
 
@@ -105,7 +105,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
 
   const handleImport = async () => {
     if (!file) {
-      notifyGlobal('Pilih file Excel data awal terlebih dahulu.');
+      notifyGlobal('Pilih file Excel saldo awal terlebih dahulu.');
       return;
     }
     if (file.size > MAX_IMPORT_BYTES) {
@@ -114,15 +114,15 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
       return;
     }
     if (!ack) {
-      notifyGlobal('Centang konfirmasi bahwa data awal hanya boleh diimpor sekali.');
+      notifyGlobal('Centang konfirmasi bahwa saldo awal hanya boleh diimpor sekali.');
       return;
     }
     if (!depo.trim()) {
-      notifyGlobal('Kode depo wajib diisi untuk data awal.');
+      notifyGlobal('Kode depo wajib diisi untuk saldo awal.');
       return;
     }
     if (!baselineDate) {
-      notifyGlobal('Tanggal posisi data awal wajib diisi.');
+      notifyGlobal('Tanggal saldo awal wajib diisi.');
       return;
     }
 
@@ -138,7 +138,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
       const synced = Boolean(res.data.opname_synced);
       const dateLabel = res.data.baseline_date ? formatDateId(res.data.baseline_date) : baselineDate;
       setSuccessMsg(
-        `Data awal selesai (posisi s.d. ${dateLabel}): ${imported} baris masuk, ${skipped} dilewati${duplicates > 0 ? `, ${duplicates} duplikat dilewati` : ''}.${synced ? ' Opname sudah disinkronkan.' : ' Generate opname gagal; jalankan Generate manual.'}`
+        `Saldo awal selesai (saldo pembuka s.d. ${dateLabel}): ${imported} baris masuk, ${skipped} dilewati${duplicates > 0 ? `, ${duplicates} duplikat dilewati` : ''}.${synced ? ' Baris monitoring sudah disinkronkan.' : ' Buat baris monitoring gagal; jalankan manual.'}`
       );
       setFile(null);
       setAck(false);
@@ -155,15 +155,15 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
 
   const handleDateUpdate = async () => {
     if (!currentBaseline) {
-      notifyGlobal('Data awal untuk depo ini belum terpasang.');
+      notifyGlobal('Saldo awal untuk depo ini belum terpasang.');
       return;
     }
     if (!editDate) {
-      notifyGlobal('Tanggal koreksi data awal wajib diisi.');
+      notifyGlobal('Tanggal koreksi saldo awal wajib diisi.');
       return;
     }
     if (editDate === currentBaseline.baseline_date) {
-      notifyGlobal('Tanggal data awal tidak berubah.');
+      notifyGlobal('Tanggal saldo awal tidak berubah.');
       return;
     }
 
@@ -174,12 +174,12 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
       });
       const synced = Boolean(res.data.opname_synced);
       setSuccessMsg(
-        `${res.data.message ?? 'Tanggal data awal diperbarui.'}${synced ? ' Opname sudah disinkronkan.' : ' Generate opname gagal; jalankan Generate manual.'}`
+        `${res.data.message ?? 'Tanggal saldo awal diperbarui.'}${synced ? ' Baris monitoring sudah disinkronkan.' : ' Buat baris monitoring gagal; jalankan manual.'}`
       );
       await loadBaselines();
       onChanged?.();
     } catch (err) {
-      notifyGlobal(getErrorMessage(err, 'Gagal mengoreksi tanggal data awal.'));
+      notifyGlobal(getErrorMessage(err, 'Gagal mengoreksi tanggal saldo awal.'));
     } finally {
       setSaving(false);
     }
@@ -189,8 +189,8 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
     <Modal
       open={open}
       onClose={closeModal}
-      title="Import Data Awal"
-      subtitle="Sekali per depo — posisi stok sebelum sistem ini"
+      title="Import Saldo Awal"
+      subtitle="Sekali per depo — saldo pembuka sebelum sistem ini"
       size="xl"
       footer={<button type="button" onClick={closeModal} className="btn-secondary">Tutup</button>}
     >
@@ -204,7 +204,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
         {!user?.kode_depo && currentBaseline && (
           <div className="rounded-xl border border-border p-3">
             <label htmlFor="baseline-switch-depo" className="mb-1 block text-xs font-medium text-foreground">
-              Lihat / pasang data awal depo lain
+              Lihat / pasang saldo awal depo lain
             </label>
             <input
               id="baseline-switch-depo"
@@ -214,7 +214,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
               placeholder="Kode depo"
             />
             <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-              Ganti kode depo untuk melihat data awal terpasang atau memasang data awal depo lain.
+              Ganti kode depo untuk melihat saldo awal terpasang atau memasang saldo awal depo lain.
             </p>
           </div>
         )}
@@ -222,10 +222,10 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
         {!loading && !currentBaseline && (
           <>
             <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
-              <p className="text-sm font-semibold text-violet-900">Data awal = posisi stok sebelum sistem ini.</p>
+              <p className="text-sm font-semibold text-violet-900">Saldo awal = saldo pembuka sebelum sistem ini.</p>
               <p className="mt-1 text-xs leading-relaxed text-violet-800">
                 Isi tanggal terakhir yang sudah tercakup di file lama. Penerimaan setelah tanggal itu tetap
-                dihitung sebagai stok baru. Baris yang sudah diinput sebelum data awal dipasang tidak akan
+                dihitung sebagai stok baru. Baris yang sudah diinput sebelum saldo awal dipasang tidak akan
                 dihitung dua kali.
               </p>
             </div>
@@ -253,7 +253,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
                 />
               </div>
               <div>
-                <label htmlFor="baseline-date" className="mb-1 block text-xs font-medium text-foreground">Tanggal Posisi *</label>
+                <label htmlFor="baseline-date" className="mb-1 block text-xs font-medium text-foreground">Tanggal Saldo *</label>
                 <input
                   id="baseline-date"
                   type="date"
@@ -264,14 +264,14 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
                   className="input-field disabled:cursor-not-allowed disabled:bg-popover"
                 />
                 <p className="mt-1 text-[10px] leading-relaxed text-violet-700">
-                  Batas terakhir tanggal penerimaan yang sudah masuk data awal.
+                  Batas terakhir tanggal penerimaan yang sudah masuk saldo awal.
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => inputRef.current?.click()} className="btn-secondary text-sm px-3 py-1.5" disabled={importing}>
-                Pilih File Data Awal
+                Pilih File Saldo Awal
               </button>
               <input
                 ref={inputRef}
@@ -295,7 +295,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
                     if (inputRef.current) inputRef.current.value = '';
                   }}
                   className="p-1 text-violet-500 transition-colors hover:text-red-500"
-                  aria-label="Hapus file data awal"
+                  aria-label="Hapus file saldo awal"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -304,7 +304,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
 
             <label className="flex items-start gap-2 text-xs text-violet-900">
               <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5 accent-violet-600" />
-              <span>Saya paham data awal hanya boleh diimpor sekali dan tidak dapat diulang untuk depo ini.</span>
+              <span>Saya paham saldo awal hanya boleh diimpor sekali dan tidak dapat diulang untuk depo ini.</span>
             </label>
 
             <button
@@ -317,7 +317,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
                 {importing ? (
                   <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                 ) : null}
-                {importing ? 'Mengimpor data awal...' : 'Import Data Awal'}
+                {importing ? 'Mengimpor saldo awal...' : 'Import Saldo Awal'}
               </span>
             </button>
           </>
@@ -325,40 +325,40 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
 
         <div className="border-t border-violet-200 pt-4">
           {loading ? (
-            <p className="text-[11px] text-violet-700">Memuat data awal terpasang...</p>
+            <p className="text-[11px] text-violet-700">Memuat saldo awal terpasang...</p>
           ) : currentBaseline ? (
             <div className="space-y-3">
               <div className="rounded-xl border border-violet-200 bg-popover px-3 py-2">
-                <p className="text-xs font-semibold text-violet-900">Data awal terpasang</p>
+                <p className="text-xs font-semibold text-violet-900">Saldo awal terpasang</p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-violet-800">
-                  Posisi s.d. <span className="font-semibold">{formatDateId(currentBaseline.baseline_date)}</span>
+                  Saldo pembuka s.d. <span className="font-semibold">{formatDateId(currentBaseline.baseline_date)}</span>
                   {' '}&middot; {currentBaseline.row_count} baris
                   {currentBaseline.imported_by ? ` \u00b7 diimpor oleh ${currentBaseline.imported_by}` : ''}
                   {currentBaseline.imported_at ? ` pada ${formatDateId(currentBaseline.imported_at)}` : ''}
                 </p>
                 {currentBaseline.has_open_session && (
                   <p className="mt-1 text-[11px] font-medium text-amber-700">
-                    Sesi opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum mengoreksi data awal.
+                    Stock opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum mengoreksi saldo awal.
                   </p>
                 )}
                 {!currentBaseline.has_open_session && currentBaseline.has_finalized_current_week && (
                   <p className="mt-1 text-[11px] font-medium text-amber-700">
-                    Sesi opname minggu ini sudah final. Koreksi data awal tidak bisa mengubah posisi yang sudah disetujui.
+                    Stock opname minggu ini sudah final. Koreksi saldo awal tidak bisa mengubah saldo yang sudah disetujui.
                   </p>
                 )}
               </div>
 
               {hasPermission('penerimaan.edit') ? (
                 <div className="rounded-xl border border-border p-3">
-                  <p className="text-xs font-semibold text-foreground">Koreksi tanggal posisi</p>
+                  <p className="text-xs font-semibold text-foreground">Koreksi tanggal saldo</p>
                   <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
-                    Gunakan jika tanggal posisi data awal ternyata kurang tepat. Koreksi tidak mengubah
-                    atau menghapus baris ledger.
+                    Gunakan jika tanggal saldo awal ternyata kurang tepat. Koreksi tidak mengubah
+                    atau menghapus baris catatan stok.
                   </p>
                   <div className="mt-2 flex flex-wrap items-end gap-2">
                     <div>
                       <label htmlFor="baseline-edit-date" className="mb-1 block text-[11px] font-medium text-foreground">
-                        Tanggal posisi baru
+                        Tanggal saldo baru
                       </label>
                       <input
                         id="baseline-edit-date"
@@ -387,13 +387,13 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
                 </div>
               ) : (
                 <p className="text-[11px] text-violet-700">
-                  Butuh izin edit penerimaan untuk mengoreksi tanggal data awal.
+                  Butuh izin edit penerimaan untuk mengoreksi tanggal saldo awal.
                 </p>
               )}
             </div>
           ) : (
             <p className="text-[11px] text-violet-700">
-              Belum ada data awal terpasang untuk depo {depo.trim() || '-'}.
+              Belum ada saldo awal terpasang untuk depo {depo.trim() || '-'}.
             </p>
           )}
         </div>

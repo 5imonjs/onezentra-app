@@ -73,7 +73,7 @@ describe('ManualBatchManager — stok manual', () => {
       expect(api.manualImport).toHaveBeenCalledTimes(1);
     });
     expect(await screen.findByText(/Import stok manual selesai: 2 baris masuk/)).toBeTruthy();
-    expect(screen.getByText(/Opname sudah disinkronkan/)).toBeTruthy();
+    expect(screen.getByText(/Baris monitoring sudah disinkronkan/)).toBeTruthy();
     expect(onChanged).toHaveBeenCalled();
   });
 });

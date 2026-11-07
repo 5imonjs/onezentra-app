@@ -18,14 +18,14 @@ const operasionalMenus = [
   { name: 'Inbound (SJ)', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
 ];
 
-// Opname Stok dapat grup sendiri. Alur inbound (fisik) berakhir di "Inbound (SJ)",
-// sedangkan opname adalah stock-take terjadwal dengan tiga tahap: monitoring
-// baris expired, hitung fisik di lapangan, lalu laporan hasilnya. Nama grup
-// membawa konteks "Opname", jadi label item dibuat pendek agar tidak berulang.
+// Stok & Kedaluwarsa dapat grup sendiri. Alur inbound (fisik) berakhir di "Inbound (SJ)",
+// sedangkan opname adalah stock-take terjadwal dengan tiga tahap: pemantauan
+// kedaluwarsa, hitung fisik di lapangan, lalu laporan hasilnya. Nama grup
+// membawa konteks stok dan kedaluwarsa, jadi label item dibuat pendek.
 const opnameMenus = [
-  { name: 'Monitoring', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
-  { name: 'Hitung Fisik', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
-  { name: 'Laporan', path: '/reports/opname-expired', icon: 'chart', permission: 'reports.view' },
+  { name: 'Monitoring Kedaluwarsa', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
+  { name: 'Stock Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
+  { name: 'Laporan Monitoring', path: '/reports/opname-expired', icon: 'chart', permission: 'reports.view' },
 ];
 
 const masterDataMenus = [
@@ -44,7 +44,7 @@ const biayaMenus = [
 const reportItems = [
   { name: 'Laporan Replenishment', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.rencana_kirim' },
   { name: 'Laporan Inbound', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.penerimaan' },
-  { name: 'Penerimaan & Expired (Semua)', path: '/reports/penerimaan-batch-expired', icon: 'clipboard', permission: 'reports.penerimaan_batch_expired' },
+  { name: 'Penerimaan & Kedaluwarsa', path: '/reports/penerimaan-batch-expired', icon: 'clipboard', permission: 'reports.penerimaan_batch_expired' },
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.selisih_qty' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
@@ -411,7 +411,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
           <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-gray-300/60 to-transparent" />
 
           <CollapsibleGroup
-            title="Opname Stok"
+            title="Stok & Kedaluwarsa"
             icon="clipboard-check"
             items={opnameMenus}
             isExpanded={isExpanded}

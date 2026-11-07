@@ -107,17 +107,17 @@ describe('OpnameExpiredPage', () => {
     cleanup();
   });
 
-  it('menampilkan judul Opname Expired dan alur data end-to-end', async () => {
+  it('menampilkan judul Monitoring Kedaluwarsa dan alur data end-to-end', async () => {
     render(<OpnameExpiredPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Opname Expired' })).toBeInTheDocument();
-    const flow = screen.getByLabelText('Alur opname expired');
-    expect(flow).toHaveTextContent('1. Data Awal');
+    expect(await screen.findByRole('heading', { name: 'Monitoring Kedaluwarsa' })).toBeInTheDocument();
+    const flow = screen.getByLabelText('Alur monitoring kedaluwarsa');
+    expect(flow).toHaveTextContent('1. Saldo Awal');
     expect(flow).toHaveTextContent('2. Hitung Fisik');
     expect(flow).toHaveTextContent('3. Selesai');
   });
 
-  it('menyembunyikan Bentuk Baris & Pengaturan tanpa izin opname.create/opname.edit', async () => {
+  it('menyembunyikan Buat Baris & Pengaturan tanpa izin opname.create/opname.edit', async () => {
     // Role seperti "viewer" hanya punya opname.view: dulu tombol ini tampil dan
     // klik-nya berujung 403. Sekarang tidak dirender sama sekali.
     hasPermission.mockImplementation((slug: string) => slug === 'opname.view');
@@ -125,7 +125,7 @@ describe('OpnameExpiredPage', () => {
     render(<OpnameExpiredPage />);
 
     expect(await screen.findByText('Perlu Ditindak')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Bentuk Baris Opname' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Buat Baris Monitoring' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pengaturan/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/belum di-generate/)).not.toBeInTheDocument();
   });
@@ -134,22 +134,22 @@ describe('OpnameExpiredPage', () => {
     render(<OpnameExpiredPage />);
 
     expect(await screen.findByText(/baris baru belum masuk analisa/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Bentuk Baris Opname' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Buat Baris Monitoring' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Lainnya' }));
 
-    expect(screen.getByRole('menuitem', { name: /Import Data Awal/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Import Saldo Awal/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Tambah Stok Manual/ })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: /Pengaturan Status Expired/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Pengaturan Status Kedaluwarsa/ })).toBeInTheDocument();
   });
 
-  it('memprioritaskan pemasangan data awal saat baseline depo belum ada', async () => {
+  it('memprioritaskan pemasangan saldo awal saat baseline depo belum ada', async () => {
     baselineManifests.mockResolvedValue({ data: { data: [] } });
 
     render(<OpnameExpiredPage />);
 
-    expect(await screen.findByText('Data Awal belum dipasang')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Import Data Awal' })).toBeInTheDocument();
+    expect(await screen.findByText('Saldo Awal belum dipasang')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import Saldo Awal' })).toBeInTheDocument();
     expect(screen.queryByText(/baris baru belum masuk analisa/)).not.toBeInTheDocument();
   });
 
@@ -177,7 +177,7 @@ describe('OpnameExpiredPage', () => {
     });
   });
 
-  it('menandai opname selesai saat semua baris sudah tervalidasi', async () => {
+  it('menandai hitung fisik selesai saat semua baris sudah tervalidasi', async () => {
     pending.mockResolvedValue({
       data: {
         data: {
@@ -201,8 +201,8 @@ describe('OpnameExpiredPage', () => {
 
     render(<OpnameExpiredPage />);
 
-    expect(await screen.findByText('Opname minggu ini selesai')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Lihat Hasil Opname/ })).toHaveAttribute('href', '/opname-sessions');
+    expect(await screen.findByText('Hitung fisik minggu ini selesai')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Lihat Hasil Stock Opname/ })).toHaveAttribute('href', '/opname-sessions');
   });
 
   it('menampilkan status sesi berjalan saat sesi terbuka tapi belum semua tervalidasi', async () => {
@@ -229,7 +229,7 @@ describe('OpnameExpiredPage', () => {
 
     render(<OpnameExpiredPage />);
 
-    expect(await screen.findByText('Hitung fisik sedang berjalan')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Lanjutkan Sesi Opname/ })).toHaveAttribute('href', '/opname-sessions');
+    expect(await screen.findByText('Stock opname sedang berjalan')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Lanjutkan Stock Opname/ })).toHaveAttribute('href', '/opname-sessions');
   });
 });

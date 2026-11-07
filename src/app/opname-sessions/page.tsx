@@ -98,7 +98,7 @@ export default function OpnameSessionsPage() {
   if (!hasPermission('opname.session.view')) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat sesi opname.</div>
+        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat stock opname.</div>
       </DashboardLayout>
     );
   }
@@ -108,8 +108,8 @@ export default function OpnameSessionsPage() {
       <div className="p-4 sm:p-6 space-y-4 max-w-6xl mx-auto">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold leading-tight">Sesi Opname</h1>
-            <p className="text-ink-fg-muted mt-0.5 text-sm">Penugasan verifikasi lapangan per minggu + depo — label batch terbit saat baris diverifikasi</p>
+            <h1 className="text-2xl font-bold leading-tight">Stock Opname</h1>
+            <p className="text-ink-fg-muted mt-0.5 text-sm">Penugasan hitung fisik per minggu + depo — label lot terbit saat baris diverifikasi</p>
           </div>
           {hasPermission('opname.session.create') && (
             <button onClick={() => setShowCreate(true)} className="btn-primary">+ Buat Sesi</button>
@@ -187,14 +187,14 @@ export default function OpnameSessionsPage() {
           <p className="text-sm text-muted-foreground">Memuat...</p>
         ) : sessions.length === 0 ? (
           <div className="border border-dashed border-border rounded-2xl py-12 text-center">
-            <p className="text-sm text-muted-foreground font-medium">Belum ada sesi opname.</p>
-            <p className="text-xs text-gray-400 mt-1">Buat sesi dari wave Opname Expired, tugaskan ke petugas lapangan.</p>
+            <p className="text-sm text-muted-foreground font-medium">Belum ada sesi stock opname.</p>
+            <p className="text-xs text-gray-400 mt-1">Buat sesi dari baris monitoring kedaluwarsa, tugaskan ke petugas lapangan.</p>
           </div>
         ) : (
           <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
             <div className="max-h-[560px] overflow-x-auto overflow-y-auto">
               <table className="w-full min-w-[860px] border-collapse">
-                <caption className="sr-only">Daftar sesi opname</caption>
+                <caption className="sr-only">Daftar sesi stock opname</caption>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-border bg-popover">
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</th>

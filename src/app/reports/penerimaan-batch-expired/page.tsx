@@ -208,7 +208,7 @@ export default function PenerimaanBatchExpiredReportPage() {
       );
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `laporan-penerimaan-expired-produk-${toLocalISODate(new Date())}.xlsx`);
+      link.setAttribute('download', `laporan-penerimaan-kedaluwarsa-${toLocalISODate(new Date())}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -226,7 +226,7 @@ export default function PenerimaanBatchExpiredReportPage() {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Anda tidak memiliki izin untuk melihat Laporan Penerimaan &amp; Expired Produk.
+          Anda tidak memiliki izin untuk melihat Laporan Penerimaan &amp; Kedaluwarsa.
         </div>
       </DashboardLayout>
     );
@@ -241,9 +241,9 @@ export default function PenerimaanBatchExpiredReportPage() {
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div>
-              <h1 className="text-xl lg:text-2xl font-black tracking-tight">Laporan Penerimaan &amp; Expired Produk</h1>
+              <h1 className="text-xl lg:text-2xl font-black tracking-tight">Laporan Penerimaan &amp; Kedaluwarsa</h1>
               <p className="text-primary-200 text-sm mt-0.5">
-                Satu baris = satu penerimaan produk. Dikelompokkan per cluster, dengan status Future/Past dan sisa simpan.
+                Satu baris = satu baris GR. Dikelompokkan per cluster, dengan status kedaluwarsa dan masa simpan.
               </p>
             </div>
           </div>
@@ -304,11 +304,11 @@ export default function PenerimaanBatchExpiredReportPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="pe-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status Expired</label>
+                <label htmlFor="pe-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status Kedaluwarsa</label>
                 <select id="pe-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field w-full text-sm py-2 bg-popover focus:bg-card">
                   <option value="">Semua</option>
                   <option value="FUTURE">Future</option>
-                  <option value="EXPIRED">Past / Expired</option>
+                  <option value="EXPIRED">Sudah Kedaluwarsa</option>
                 </select>
               </div>
               <div>
@@ -352,9 +352,9 @@ export default function PenerimaanBatchExpiredReportPage() {
               <p className="text-[11px] text-muted-foreground mt-0.5">pcs-equivalent</p>
             </div>
             <div className={`rounded-2xl shadow-sm border p-5 card-hover ${summary.item_expired > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sudah Expired</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sudah Kedaluwarsa</p>
               <p className={`text-2xl font-black tabular-nums mt-1 ${summary.item_expired > 0 ? 'text-red-700' : 'text-emerald-700'}`}>{fmtNumber(summary.item_expired)}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{fmtNumber(summary.item_future)} masih future</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{fmtNumber(summary.item_future)} masih berlaku</p>
             </div>
           </div>
         )}
@@ -366,7 +366,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 018.25 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-foreground">Detail Penerimaan &amp; Expired</h2>
+                  <h2 className="text-base font-bold text-foreground">Detail Penerimaan &amp; Kedaluwarsa</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{rangeText}</p>
                 </div>
               </div>
@@ -384,7 +384,7 @@ export default function PenerimaanBatchExpiredReportPage() {
           </div>
           <div className="overflow-x-auto hidden lg:block">
             <table className="w-full min-w-325 border-collapse">
-              <caption className="sr-only">Laporan penerimaan produk dan status batch expired, dikelompokkan per cluster</caption>
+              <caption className="sr-only">Laporan penerimaan produk dan status kedaluwarsa lot, dikelompokkan per cluster</caption>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-border">
                   {canDelete && (
@@ -404,10 +404,10 @@ export default function PenerimaanBatchExpiredReportPage() {
                   <th scope="col" className="table-header whitespace-nowrap">Principal 2</th>
                   <th scope="col" className="table-header text-right whitespace-nowrap">Dus/Ball</th>
                   <th scope="col" className="table-header text-right whitespace-nowrap">PCS</th>
-                  <th scope="col" className="table-header whitespace-nowrap">Tgl Expired</th>
-                  <th scope="col" className="table-header whitespace-nowrap">Tgl Penerimaan</th>
-                  <th scope="col" className="table-header whitespace-nowrap">Weekday</th>
-                  <th scope="col" className="table-header whitespace-nowrap">Sisa Simpan</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Tanggal Kedaluwarsa</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Tanggal Masuk</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Status</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Masa Simpan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -477,7 +477,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                     <td className="table-cell text-sm text-foreground tabular-nums whitespace-nowrap">{fmtDate(row.tanggal_penerimaan)}</td>
                     <td className="table-cell whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${row.weekday === 'Future' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : row.weekday === 'Past' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-muted-foreground border-border'}`}>
-                        {row.weekday}
+                        {row.weekday === 'Future' ? 'Berlaku' : row.weekday === 'Past' ? 'Kedaluwarsa' : '-'}
                       </span>
                     </td>
                     <td className="table-cell text-sm text-foreground tabular-nums whitespace-nowrap">
@@ -511,7 +511,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                     <p className="text-[11px] text-muted-foreground truncate">{row.principal_1 ?? '-'}{(row.principal_2 ?? '-') !== '-' ? ` / ${row.principal_2}` : ''}</p>
                   </div>
                   <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${row.weekday === 'Future' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : row.weekday === 'Past' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-muted-foreground border-border'}`}>
-                    {row.weekday}
+                    {row.weekday === 'Future' ? 'Berlaku' : row.weekday === 'Past' ? 'Kedaluwarsa' : '-'}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">{row.nama_barang}</p>
@@ -525,7 +525,7 @@ export default function PenerimaanBatchExpiredReportPage() {
                     <p className="text-sm font-black tabular-nums text-foreground">{fmtNumber(row.qty_pcs)}</p>
                   </div>
                   <div className="rounded-xl bg-popover p-2">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Sisa Simpan</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Masa Simpan</p>
                     <p className="text-sm font-black tabular-nums text-foreground">{row.sisa_simpan}</p>
                   </div>
                 </div>

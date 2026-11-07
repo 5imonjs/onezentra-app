@@ -120,7 +120,7 @@ const docTypeLabel: Record<string, string> = {
   standarisasi_tumpukan: 'Standarisasi Tumpukan',
   biaya_thl: 'Biaya THL',
   biaya_retribusi: 'Biaya Retribusi',
-  opname_expired: 'Opname Expired',
+  opname_expired: 'Monitoring Kedaluwarsa',
 };
 
 const triggerOptions: Record<string, { value: string; label: string; description: string }[]> = {
@@ -161,8 +161,8 @@ const triggerOptions: Record<string, { value: string; label: string; description
     { value: 'revisi', label: 'Biaya Retribusi perlu revisi', description: 'Terpicu saat BAC/RLH mengirim pengajuan kembali untuk direvisi beserta catatan perbaikan (pemroses: approval Biaya Retribusi).' },
   ],
   opname_expired: [
-    { value: 'completed', label: 'Opname Expired selesai', description: 'Terpicu saat sesi Opname Expired selesai (pemroses: modul Opname Expired).' },
-    { value: 'reminder', label: 'Pengingat Opname Expired', description: 'Terpicu saat pengingat dikirim ke depo yang belum kirim (pemroses: modul Opname Expired).' },
+    { value: 'completed', label: 'Stock opname selesai', description: 'Terpicu saat sesi stock opname selesai (pemroses: modul Monitoring Kedaluwarsa).' },
+    { value: 'reminder', label: 'Pengingat Monitoring Kedaluwarsa', description: 'Terpicu saat pengingat dikirim ke depo yang belum submit (pemroses: modul Monitoring Kedaluwarsa).' },
   ],
 };
 

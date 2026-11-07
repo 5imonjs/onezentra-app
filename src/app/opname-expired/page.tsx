@@ -257,7 +257,7 @@ function sourceBadge(mix?: { sj: number; import: number; legacy?: number } | nul
     const parts = [
       sj > 0 ? `${sj} SJ` : null,
       imp > 0 ? `${imp} stok manual` : null,
-      legacy > 0 ? `${legacy} Data Awal` : null,
+      legacy > 0 ? `${legacy} Saldo Awal` : null,
     ].filter(Boolean).join(' + ');
     return (
       <span title={parts} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 whitespace-nowrap">Gabungan</span>
@@ -265,7 +265,7 @@ function sourceBadge(mix?: { sj: number; import: number; legacy?: number } | nul
   }
   if (legacy > 0) {
     return (
-      <span title={`${legacy} baris data awal`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-700 whitespace-nowrap">Data Awal</span>
+      <span title={`${legacy} baris saldo awal`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-700 whitespace-nowrap">Saldo Awal</span>
     );
   }
   if (imp > 0) {
@@ -703,7 +703,7 @@ export default function OpnameExpiredPage() {
     setSingleDeleting(true);
     try {
       await opnameExpired.delete(deleteTargetId);
-      notifyGlobal('Baris opname berhasil dihapus', 'success');
+      notifyGlobal('Baris monitoring berhasil dihapus', 'success');
       load();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Hapus gagal'), 'error');
@@ -811,14 +811,14 @@ export default function OpnameExpiredPage() {
       return {
         tone: 'violet' as const,
         eyebrow: 'Yang perlu dilakukan',
-        title: 'Data Awal belum dipasang',
-        description: 'Pasang posisi stok sebelum sistem sekali per depo agar stok lama tidak dihitung dua kali.',
+        title: 'Saldo Awal belum dipasang',
+        description: 'Pasang saldo pembuka sebelum sistem sekali per depo agar stok lama tidak dihitung dua kali.',
         action: hasPermission('penerimaan.create') ? (
           <button type="button" onClick={() => setBaselineOpen(true)} className="btn-primary text-sm">
-            Import Data Awal
+            Import Saldo Awal
           </button>
         ) : (
-          <span className="text-xs font-semibold text-violet-800">Minta admin depo memasang Data Awal.</span>
+          <span className="text-xs font-semibold text-violet-800">Minta admin depo memasang Saldo Awal.</span>
         ),
       };
     }
@@ -840,13 +840,13 @@ export default function OpnameExpiredPage() {
         tone: 'amber' as const,
         eyebrow: 'Yang perlu dilakukan',
         title: `${fnum(pending?.pending.total ?? 0)} baris baru belum masuk analisa`,
-        description: `Minggu ${formatDateId(pending?.week_start)}: ${pending?.pending.sj ?? 0} baris SJ + ${pending?.pending.import ?? 0} baris stok manual${(pending?.pending.legacy ?? 0) > 0 ? ` + ${pending?.pending.legacy} baris Data Awal` : ''}.`,
+        description: `Minggu ${formatDateId(pending?.week_start)}: ${pending?.pending.sj ?? 0} baris SJ + ${pending?.pending.import ?? 0} baris stok manual${(pending?.pending.legacy ?? 0) > 0 ? ` + ${pending?.pending.legacy} baris Saldo Awal` : ''}.`,
         action: hasPermission('opname.create') ? (
           <button type="button" onClick={handleGenerate} disabled={generating} className="btn-primary text-sm disabled:opacity-50">
-            {generating ? 'Membentuk...' : 'Bentuk Baris Opname'}
+            {generating ? 'Membentuk...' : 'Buat Baris Monitoring'}
           </button>
         ) : (
-          <span className="text-xs font-semibold text-amber-800">Minta admin membentuk baris opname.</span>
+          <span className="text-xs font-semibold text-amber-800">Minta admin membuat baris monitoring.</span>
         ),
       };
     }
@@ -855,11 +855,11 @@ export default function OpnameExpiredPage() {
       return {
         tone: 'slate' as const,
         eyebrow: 'Yang perlu dilakukan',
-        title: 'Belum ada baris opname minggu ini',
-        description: 'Tambahkan stok manual atau pastikan penerimaan SJ sudah masuk, lalu bentuk baris opname.',
+        title: 'Belum ada baris monitoring minggu ini',
+        description: 'Tambahkan stok manual atau pastikan penerimaan SJ sudah masuk, lalu buat baris monitoring.',
         action: hasPermission('opname.create') ? (
           <button type="button" onClick={handleGenerate} disabled={generating} className="btn-primary text-sm disabled:opacity-50">
-            {generating ? 'Membentuk...' : 'Bentuk Baris Opname'}
+            {generating ? 'Membentuk...' : 'Buat Baris Monitoring'}
           </button>
         ) : null,
       };
@@ -868,11 +868,11 @@ export default function OpnameExpiredPage() {
       return {
         tone: 'emerald' as const,
         eyebrow: 'Yang perlu dilakukan',
-        title: 'Opname minggu ini selesai',
-        description: 'Semua baris sudah tervalidasi. Hasil hitung fisik bisa dilihat di Sesi Opname.',
+        title: 'Hitung fisik minggu ini selesai',
+        description: 'Semua baris sudah tervalidasi. Hasil hitung fisik bisa dilihat di Stock Opname.',
         action: hasPermission('opname.session.view') ? (
           <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
-            Lihat Hasil Opname
+            Lihat Hasil Stock Opname
             <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </Link>
         ) : null,
@@ -882,11 +882,11 @@ export default function OpnameExpiredPage() {
       return {
         tone: 'emerald' as const,
         eyebrow: 'Yang perlu dilakukan',
-        title: 'Hitung fisik sedang berjalan',
+        title: 'Stock opname sedang berjalan',
         description: `${fnum(progressValidated)} dari ${fnum(progressTotal)} baris sudah tervalidasi. Lanjutkan sesi yang sudah dibuka.`,
         action: hasPermission('opname.session.view') ? (
           <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
-            Lanjutkan Sesi Opname
+            Lanjutkan Stock Opname
             <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </Link>
         ) : null,
@@ -895,11 +895,11 @@ export default function OpnameExpiredPage() {
     return {
       tone: 'emerald' as const,
       eyebrow: 'Yang perlu dilakukan',
-      title: 'Baris opname siap dihitung',
-      description: 'Baris opname minggu ini sudah terbentuk. Buat sesi agar petugas bisa input hasil hitung lapangan.',
+      title: 'Baris monitoring siap dihitung fisik',
+      description: 'Baris monitoring minggu ini sudah terbentuk. Buat sesi stock opname agar petugas bisa input hasil hitung lapangan.',
       action: hasPermission('opname.session.view') ? (
         <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
-          Buat Sesi Opname
+          Buat Sesi Stock Opname
           <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </Link>
       ) : null,
@@ -918,8 +918,8 @@ export default function OpnameExpiredPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Monitoring operasional</p>
-                <h1 className="text-2xl font-bold leading-tight">Opname Expired</h1>
-                <p className="text-ink-fg-muted mt-0.5 text-sm">Pantau batch berdasarkan tanggal expired, termasuk yang masih Aman. Hitung fisik dilakukan di Sesi Opname.</p>
+                <h1 className="text-2xl font-bold leading-tight">Monitoring Kedaluwarsa</h1>
+                <p className="text-ink-fg-muted mt-0.5 text-sm">Pantau lot berdasarkan tanggal kedaluwarsa, termasuk yang masih Aman. Hitung fisik dilakukan di Stock Opname.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -938,7 +938,7 @@ export default function OpnameExpiredPage() {
                   href="/opname-sessions"
                   className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-600"
                 >
-                  Sesi Opname
+                  Stock Opname
                   <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </Link>
               )}
@@ -963,7 +963,7 @@ export default function OpnameExpiredPage() {
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-violet-500" aria-hidden="true" />
-                        Import Data Awal
+                        Import Saldo Awal
                       </button>
                     )}
                     {hasPermission('penerimaan.create') && (
@@ -986,7 +986,7 @@ export default function OpnameExpiredPage() {
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100 disabled:opacity-50"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-primary-500" aria-hidden="true" />
-                        {(pending?.pending.total ?? 0) > 0 ? 'Bentuk Baris Baru' : 'Perbarui Baris Opname'}
+                        {(pending?.pending.total ?? 0) > 0 ? 'Buat Baris Monitoring Baru' : 'Perbarui Baris Monitoring'}
                       </button>
                     )}
                     {hasPermission('opname.view') && (
@@ -1008,7 +1008,7 @@ export default function OpnameExpiredPage() {
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true" />
-                        Pengaturan Status Expired
+                        Pengaturan Status Kedaluwarsa
                       </button>
                     )}
                   </div>
@@ -1016,18 +1016,18 @@ export default function OpnameExpiredPage() {
               </div>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold" aria-label="Alur opname expired">
+          <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold" aria-label="Alur monitoring kedaluwarsa">
             <span
               className={`rounded-full border px-2.5 py-1 ${STEP_TONE[stepOne]}`}
-              title="Data Awal: posisi stok sebelum sistem, dipasang sekali per depo."
+              title="Saldo Awal: saldo pembuka sebelum sistem, dipasang sekali per depo."
               aria-current={stepOne === 'active' ? 'step' : undefined}
             >
-              1. Data Awal
+              1. Saldo Awal
             </span>
             <span aria-hidden="true" className="text-ink-fg-muted">→</span>
             <span
               className={`rounded-full border px-2.5 py-1 ${STEP_TONE[stepTwo]}`}
-              title="Hitung Fisik: input hasil hitung lapangan lewat Sesi Opname."
+              title="Hitung Fisik: input hasil hitung lapangan lewat Stock Opname."
               aria-current={stepTwo === 'active' ? 'step' : undefined}
             >
               2. Hitung Fisik
@@ -1130,7 +1130,7 @@ export default function OpnameExpiredPage() {
           <div className="bg-card rounded-2xl shadow-sm border border-border px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-sm font-bold text-foreground">
-                Progres Sesi per Depo
+                Progres Stock Opname per Depo
                 <span className="ml-2 font-medium text-slate-400">
                   {depoProgress.filter((d) => d.submitted).length}/{depoProgress.length} depo sudah submit · {progressPct}% baris tervalidasi
                 </span>
@@ -1244,13 +1244,13 @@ export default function OpnameExpiredPage() {
                 value={sourceFilter}
                 onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
                 aria-label="Filter asal data"
-                title="Penerimaan SJ = penerimaan sistem, Stok Manual = input tambahan, Data Awal = posisi sebelum sistem, Gabungan = lebih dari satu sumber"
+                title="Penerimaan SJ = penerimaan sistem, Stok Manual = input tambahan, Saldo Awal = saldo pembuka sebelum sistem, Gabungan = lebih dari satu sumber"
                 className="select-field-sm min-w-[150px]"
               >
                 <option value="">Semua asal</option>
                 <option value="sj">Penerimaan SJ</option>
                 <option value="import">Stok Manual</option>
-                <option value="legacy">Data Awal</option>
+                <option value="legacy">Saldo Awal</option>
                 <option value="mixed">Gabungan</option>
               </select>
             </label>
@@ -1382,7 +1382,7 @@ export default function OpnameExpiredPage() {
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="Qty CRT" sortKey="crt" sort={sort} onSort={handleSort} align="right" /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right"><SortHeader label="Qty PCS" sortKey="pcs" sort={sort} onSort={handleSort} align="right" /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Tanggal Masuk" sortKey="penerimaan" sort={sort} onSort={handleSort} /></th>
-                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Tanggal Expired" sortKey="expired" sort={sort} onSort={handleSort} /></th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Tanggal Kedaluwarsa" sortKey="expired" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-left"><SortHeader label="Sisa Hari" sortKey="sisa" sort={sort} onSort={handleSort} /></th>
                       <th scope="col" className="whitespace-nowrap px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
                     </tr>
@@ -1439,7 +1439,7 @@ export default function OpnameExpiredPage() {
                           <p className="mt-0.5 font-medium text-foreground">{w.tanggal_penerimaan ? fmtDate(w.tanggal_penerimaan) : '-'}</p>
                         </div>
                         <div className="rounded-lg bg-popover px-2.5 py-2">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Expired</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Kedaluwarsa</p>
                           <p className="mt-0.5 font-medium text-foreground">{fmtDate(w.expired_date_ini)}</p>
                         </div>
                       </div>
@@ -1540,7 +1540,7 @@ export default function OpnameExpiredPage() {
                     )}
                   </div>
                   <div className="bg-popover rounded-xl p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tanggal Expired</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tanggal Kedaluwarsa</p>
                     <p className="text-lg font-bold text-foreground mt-1">{fmtDate(current.expired_date_ini)}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <DaysBar sisaHari={current.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={current.status_ini} />
@@ -1563,17 +1563,17 @@ export default function OpnameExpiredPage() {
                   <p className="text-sm text-foreground mt-0.5 leading-snug">{current.rekomendasi || '-'}</p>
                 </div>
 
-                {/* Batch Fisik Penyusun: jejak batch ledger yang membentuk baris ini */}
+                {/* Lot Penyusun: jejak lot yang membentuk baris monitoring ini */}
                 <div className="rounded-xl border border-border px-4 py-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Batch Fisik Penyusun ({(current.batch_numbers || []).length}) · Asal: {(() => {
+                    Lot Penyusun ({(current.batch_numbers || []).length}) · Asal: {(() => {
                       const sj = num(current.source_mix?.sj);
                       const imp = num(current.source_mix?.import);
                       const legacy = num(current.source_mix?.legacy);
                       const parts = [
                         sj > 0 ? `${sj} SJ` : null,
                         imp > 0 ? `${imp} stok manual` : null,
-                        legacy > 0 ? `${legacy} Data Awal` : null,
+                        legacy > 0 ? `${legacy} Saldo Awal` : null,
                       ].filter(Boolean);
                       if (parts.length === 0) return '-';
                       return parts.length > 1 ? `Gabungan (${parts.join(' + ')})` : parts[0];
@@ -1586,7 +1586,7 @@ export default function OpnameExpiredPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-400 mt-1">Belum ada — perbarui baris opname untuk mengisi jejak batch fisik.</p>
+                    <p className="text-xs text-slate-400 mt-1">Belum ada — perbarui baris monitoring untuk mengisi jejak lot.</p>
                   )}
                 </div>
 
@@ -1609,7 +1609,7 @@ export default function OpnameExpiredPage() {
                           <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{num(current.qty_lalu_crt) > 0 || num(current.qty_lalu_pcs) > 0 ? `${fnum(num(current.qty_lalu_crt))} / ${fnum(num(current.qty_lalu_pcs))}` : '—'}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 text-muted-foreground text-xs">Tanggal Expired</td>
+                          <td className="px-3 py-2 text-muted-foreground text-xs">Tanggal Kedaluwarsa</td>
                           <td className="px-3 py-2 text-right text-foreground">{fmtDate(current.expired_date_ini)}</td>
                           <td className="px-3 py-2 text-right text-muted-foreground">{fmtDate(current.expired_date_lalu)}</td>
                         </tr>
@@ -1684,7 +1684,7 @@ export default function OpnameExpiredPage() {
         onChanged={refreshAfterDataChange}
       />
 
-      <Modal open={showSettings} onClose={() => setShowSettings(false)} title="Pengaturan Status Expired" subtitle="Ambang batas status expired" size="md"
+      <Modal open={showSettings} onClose={() => setShowSettings(false)} title="Pengaturan Status Kedaluwarsa" subtitle="Ambang batas status kedaluwarsa" size="md"
         footer={
           <>
             <button onClick={() => { setThresholdForm({ threshold_aman: 90, threshold_perhatian: 30, threshold_kritis: 7 }); setThresholdErrors([]); }} className="btn-secondary">Reset</button>
@@ -1702,19 +1702,19 @@ export default function OpnameExpiredPage() {
           </div>
         )}
           <div>
-            <label htmlFor="threshold-aman" className="block text-xs font-medium text-muted-foreground mb-1">Threshold AMAN (hari, ≥ ini = Aman)</label>
+            <label htmlFor="threshold-aman" className="block text-xs font-medium text-muted-foreground mb-1">Ambang Aman (hari, ≥ ini = Aman)</label>
             <input id="threshold-aman" type="number" min={0} step={1} value={thresholdForm.threshold_aman} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_aman: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Baris dengan sisa ≥ hari ini → status <span className="text-emerald-600 font-medium">Aman</span></p>
+            <p className="text-[11px] text-slate-400 mt-1">Lot dengan sisa ≥ hari ini → status <span className="text-emerald-600 font-medium">Aman</span></p>
           </div>
           <div>
-            <label htmlFor="threshold-perhatian" className="block text-xs font-medium text-muted-foreground mb-1">Threshold PERHATIAN (hari)</label>
+            <label htmlFor="threshold-perhatian" className="block text-xs font-medium text-muted-foreground mb-1">Ambang Perhatian (hari)</label>
             <input id="threshold-perhatian" type="number" min={0} step={1} value={thresholdForm.threshold_perhatian} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_perhatian: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Baris dengan sisa &lt; threshold AMAN → status <span className="text-amber-600 font-medium">Perhatian</span></p>
+            <p className="text-[11px] text-slate-400 mt-1">Lot dengan sisa &lt; ambang Aman → status <span className="text-amber-600 font-medium">Perhatian</span></p>
           </div>
           <div>
-            <label htmlFor="threshold-kritis" className="block text-xs font-medium text-muted-foreground mb-1">Threshold KRITIS — ambang &ldquo;SEGERA&rdquo; (hari)</label>
+            <label htmlFor="threshold-kritis" className="block text-xs font-medium text-muted-foreground mb-1">Ambang Kritis — ambang &ldquo;SEGERA&rdquo; (hari)</label>
             <input id="threshold-kritis" type="number" min={0} step={1} value={thresholdForm.threshold_kritis} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Baris berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Tidak menggeser batas status (batas Kritis = threshold PERHATIAN).</p>
+            <p className="text-[11px] text-slate-400 mt-1">Lot berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Tidak menggeser batas status (batas Kritis = ambang Perhatian).</p>
           </div>
         </div>
       </Modal>
@@ -1723,8 +1723,8 @@ export default function OpnameExpiredPage() {
         open={showBulkDelete}
         onClose={() => setShowBulkDelete(false)}
         onConfirm={confirmBulkDeleteWaves}
-        title={`Hapus ${selectedWaveIds.size} Baris Opname`}
-        message="Baris opname terpilih akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Bentuk Baris Opname akan membuatnya kembali. Lanjutkan?"
+        title={`Hapus ${selectedWaveIds.size} Baris Monitoring`}
+        message="Baris monitoring terpilih akan dihapus dari minggu ini. Data catatan stok tidak ikut terhapus — Buat Baris Monitoring akan membuatnya kembali. Lanjutkan?"
         confirmLabel="Ya, hapus"
         variant="danger"
       />
@@ -1733,8 +1733,8 @@ export default function OpnameExpiredPage() {
         open={showSingleDelete}
         onClose={() => { if (singleDeleting) return; setShowSingleDelete(false); setDeleteTargetId(null); }}
         onConfirm={confirmSingleDelete}
-        title="Hapus Baris Opname"
-        message="Baris opname ini akan dihapus dari minggu ini. Data ledger tidak ikut terhapus — Bentuk Baris Opname akan membuatnya kembali. Lanjutkan?"
+        title="Hapus Baris Monitoring"
+        message="Baris monitoring ini akan dihapus dari minggu ini. Data catatan stok tidak ikut terhapus — Buat Baris Monitoring akan membuatnya kembali. Lanjutkan?"
         confirmLabel="Ya, hapus"
         variant="danger"
         loading={singleDeleting}

@@ -18,7 +18,7 @@ interface DepotProgress {
 }
 
 /**
- * Chart progres opname expired per depo di dashboard utama: batang
+ * Chart progres monitoring kedaluwarsa per depo di dashboard utama: batang
  * tervalidasi/total + titik status kirim. Terlihat semua depo bagi pemegang
  * `opname.progress_all` (backend membuka scope), depo sendiri bila tidak.
  */
@@ -43,7 +43,7 @@ export default function DashboardOpnameChart() {
       setDepots(res.data.data.depots);
     } catch (e) {
       if (reqIdRef.current !== reqId) return;
-      setError(getErrorMessage(e, 'Gagal memuat progres opname.'));
+      setError(getErrorMessage(e, 'Gagal memuat progres monitoring.'));
     } finally {
       if (reqIdRef.current === reqId) setLoading(false);
     }
@@ -57,8 +57,8 @@ export default function DashboardOpnameChart() {
 
   return (
     <DashboardPanel
-      ariaLabel="Progres opname expired"
-      title="Progres Opname Expired"
+      ariaLabel="Progres monitoring kedaluwarsa"
+      title="Progres Monitoring Kedaluwarsa"
       icon={OPNAME_ICON}
       subtitle={<>{weekStart ? `Minggu ${weekStart} · ` : ''}{done}/{depots.length} depo sudah kirim</>}
       actions={
@@ -67,13 +67,13 @@ export default function DashboardOpnameChart() {
             type="button"
             onClick={() => load()}
             disabled={loading}
-            aria-label="Muat ulang progres opname"
+            aria-label="Muat ulang progres monitoring"
             aria-describedby={error ? 'opname-chart-error' : undefined}
             className="p-2 text-gray-400 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 min-w-11 min-h-11 flex items-center justify-center"
           >
             <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
           </button>
-          <Link href="/opname-expired" className="whitespace-nowrap text-xs font-semibold text-accent-text hover:underline">Buka Opname Expired</Link>
+          <Link href="/opname-expired" className="whitespace-nowrap text-xs font-semibold text-accent-text hover:underline">Buka Monitoring Kedaluwarsa</Link>
         </>
       }
     >
@@ -88,7 +88,7 @@ export default function DashboardOpnameChart() {
             </button>
           </div>
         ) : depots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Belum ada wave minggu ini — Generate dulu di Opname Expired.</p>
+          <p className="text-sm text-muted-foreground">Belum ada baris monitoring minggu ini — buat baris monitoring dulu di Monitoring Kedaluwarsa.</p>
         ) : (
           <ul className="space-y-3">
             {depots.map((d) => {

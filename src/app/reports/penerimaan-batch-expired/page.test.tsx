@@ -114,12 +114,12 @@ describe('PenerimaanBatchExpiredReportPage', () => {
     expect(within(table).getByText('BRG-A')).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'Dus/Ball' })).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'PCS' })).toBeInTheDocument();
-    expect(within(table).getByRole('columnheader', { name: 'Weekday' })).toBeInTheDocument();
-    expect(within(table).getByRole('columnheader', { name: 'Sisa Simpan' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Masa Simpan' })).toBeInTheDocument();
 
-    // Future/Past dan "umur" tampil di layar, bukan hanya di file Excel.
-    expect(within(table).getByText('Future')).toBeInTheDocument();
-    expect(within(table).getByText('Past')).toBeInTheDocument();
+    // Status kedaluwarsa dan "umur" tampil di layar, bukan hanya di file Excel.
+    expect(within(table).getByText('Berlaku')).toBeInTheDocument();
+    expect(within(table).getByText('Kedaluwarsa')).toBeInTheDocument();
     expect(within(table).getByText('0 Thn 3 Bln 0 Hr')).toBeInTheDocument();
     // Tanggal expired yang lewat ditandai "lewat N hari".
     expect(within(table).getByText('lewat 34 hari')).toBeInTheDocument();
@@ -162,14 +162,14 @@ describe('PenerimaanBatchExpiredReportPage', () => {
     expect(totalCard).toHaveTextContent('2');
     expect(totalCard).toHaveTextContent('1 cluster');
 
-    const expiredCard = screen.getByText('Sudah Expired').parentElement as HTMLElement;
+    const expiredCard = screen.getByText('Sudah Kedaluwarsa', { selector: 'p' }).parentElement as HTMLElement;
     expect(expiredCard).toHaveTextContent('1');
   });
 
   it('mengirim filter status ke backend saat dipilih', async () => {
     render(<PenerimaanBatchExpiredReportPage />);
 
-    const select = (await screen.findByLabelText('Status Expired')) as HTMLSelectElement;
+    const select = (await screen.findByLabelText('Status Kedaluwarsa')) as HTMLSelectElement;
     select.value = 'EXPIRED';
     select.dispatchEvent(new Event('change', { bubbles: true }));
 

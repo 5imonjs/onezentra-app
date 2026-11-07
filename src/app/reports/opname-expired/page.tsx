@@ -237,7 +237,7 @@ export default function OpnameExpiredReportPage() {
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `laporan-opname-expired-${dateFrom || dateTo || 'now'}.xlsx`);
+      link.setAttribute('download', `laporan-monitoring-kedaluwarsa-${dateFrom || dateTo || 'now'}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -310,7 +310,7 @@ export default function OpnameExpiredReportPage() {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Anda tidak memiliki izin untuk melihat Laporan Opname Expired.
+          Anda tidak memiliki izin untuk melihat Laporan Monitoring Kedaluwarsa.
         </div>
       </DashboardLayout>
     );
@@ -327,14 +327,14 @@ export default function OpnameExpiredReportPage() {
             </div>
             <div className="min-w-0">
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan operasional · read-only</p>
-              <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Opname Expired</h1>
-              <p className="text-ink-fg-muted mt-0.5 text-sm">Ringkasan mingguan kedaluwarsa batch per status & depo</p>
+              <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Monitoring Kedaluwarsa</h1>
+              <p className="text-ink-fg-muted mt-0.5 text-sm">Ringkasan mingguan kedaluwarsa lot per status & depo</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-4">
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 backdrop-blur text-white px-3 py-1.5 text-xs font-semibold border border-white/10 tabular-nums">
               <span className="w-1.5 h-1.5 rounded-full bg-white" aria-hidden="true" />
-              {fnum(summary.totalBatch)} batch
+              {fnum(summary.totalBatch)} baris monitoring
               {activeFilterCount > 0 && <span className="text-white/60">• {activeFilterCount} filter</span>}
             </span>
             <span className={`inline-flex items-center gap-1.5 rounded-full backdrop-blur px-3 py-1.5 text-xs font-semibold border tabular-nums ${summary.berisikoCount > 0 ? 'bg-red-500/15 text-red-300 border-red-500/30' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'}`}>
@@ -385,7 +385,7 @@ export default function OpnameExpiredReportPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-foreground">Filter Laporan</h2>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Tgl awal–akhir, depo, dan status batch</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Tgl awal–akhir, depo, dan status kedaluwarsa</p>
                 </div>
               </div>
               {(kodeDepo || statusFilter) && (
@@ -457,7 +457,7 @@ export default function OpnameExpiredReportPage() {
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
               <p className="text-xs text-slate-400 tabular-nums" aria-live="polite">
-                {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter tanggal/depo/status — seluruh batch'}
+                {activeFilterCount > 0 ? `${activeFilterCount} filter aktif` : 'Tanpa filter tanggal/depo/status — seluruh baris monitoring'}
               </p>
             </div>
           </div>
@@ -472,7 +472,7 @@ export default function OpnameExpiredReportPage() {
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Batch</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Baris Monitoring</p>
                 <p className="text-2xl font-black text-foreground tabular-nums">{fnum(summary.totalBatch)}</p>
                 <p className="text-[11px] text-slate-400 tabular-nums">{fnum(summary.totalCrt)} CRT</p>
               </div>
@@ -485,7 +485,7 @@ export default function OpnameExpiredReportPage() {
                 <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Batch Berisiko</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Baris Berisiko</p>
                 <p className="text-2xl font-black tabular-nums">{fnum(summary.berisikoCount)}</p>
                 <p className="text-[11px] text-white/60 tabular-nums">{fnum(summary.berisikoCrt)} CRT • {summary.pctBerisiko}%</p>
               </div>
@@ -500,7 +500,7 @@ export default function OpnameExpiredReportPage() {
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">% Berisiko</p>
                 <p className="text-2xl font-black text-foreground tabular-nums">{summary.pctBerisiko}%</p>
-                <p className="text-[11px] text-slate-400">dari total batch</p>
+                <p className="text-[11px] text-slate-400">dari total baris monitoring</p>
               </div>
             </div>
           </div>
@@ -513,7 +513,7 @@ export default function OpnameExpiredReportPage() {
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total CRT</p>
                 <p className="text-2xl font-black text-foreground tabular-nums">{fnum(summary.totalCrt)}</p>
-                <p className="text-[11px] text-slate-400 tabular-nums">{fnum(summary.totalBatch)} batch</p>
+                <p className="text-[11px] text-slate-400 tabular-nums">{fnum(summary.totalBatch)} baris monitoring</p>
               </div>
             </div>
           </div>
@@ -526,7 +526,7 @@ export default function OpnameExpiredReportPage() {
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ringkasan distribusi</p>
                 <h2 className="text-base font-bold text-foreground">Rekap per Depo</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{fnum(depotRows.length)} depo • {fnum(summary.totalBatch)} batch</p>
+                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{fnum(depotRows.length)} depo • {fnum(summary.totalBatch)} baris monitoring</p>
               </div>
             </div>
           </div>
@@ -631,7 +631,7 @@ export default function OpnameExpiredReportPage() {
                 <div key={row.kode} className="p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-bold text-foreground truncate">{row.nama} <span className="ml-1 text-xs font-mono font-medium text-slate-400">{row.kode}</span></p>
-                    <p className="text-xs text-muted-foreground tabular-nums shrink-0">{fnum(totalCount)} batch • {fnum(totalCrt)} CRT</p>
+                    <p className="text-xs text-muted-foreground tabular-nums shrink-0">{fnum(totalCount)} baris monitoring • {fnum(totalCrt)} CRT</p>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     {STATUS_ORDER.map((s) => {
@@ -654,12 +654,12 @@ export default function OpnameExpiredReportPage() {
           </div>
         </div>
 
-        {/* Detail batch */}
+        {/* Detail baris monitoring */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           <div className="px-5 py-4 border-b border-border bg-card flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Data detail</p>
-              <h2 className="text-base font-bold text-foreground">Detail Batch</h2>
+              <h2 className="text-base font-bold text-foreground">Detail Baris Monitoring</h2>
               <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                 {statusFilter ? `Status: ${STATUS_META[statusFilter].label}` : 'Semua status'}
                 {selectedDepo ? ` · ${selectedDepo.nama_depo}` : ''}
@@ -668,7 +668,7 @@ export default function OpnameExpiredReportPage() {
             </div>
             {pagination && (
               <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-100 text-xs font-bold text-foreground tabular-nums">
-                {fnum(pagination.total)} batch
+                {fnum(pagination.total)} baris monitoring
               </span>
             )}
           </div>
@@ -690,7 +690,7 @@ export default function OpnameExpiredReportPage() {
                   <svg className="w-7 h-7 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
                 <div>
-                  <p className="text-sm text-foreground font-bold">Belum ada data batch pada kombinasi filter ini.</p>
+                  <p className="text-sm text-foreground font-bold">Belum ada data monitoring pada kombinasi filter ini.</p>
                   <p className="text-xs text-slate-400 mt-1">Coba ubah minggu, depo, atau status</p>
                 </div>
                 {activeFilterCount > 0 && (
@@ -703,7 +703,7 @@ export default function OpnameExpiredReportPage() {
               {/* Desktop */}
               <div className="overflow-x-auto hidden lg:block">
                 <table className="w-full min-w-225 border-collapse">
-                  <caption className="sr-only">Laporan opname expired</caption>
+                  <caption className="sr-only">Laporan monitoring kedaluwarsa</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-linear-to-b from-slate-50 to-gray-100 border-b border-border">
                       {canDelete && (
@@ -719,8 +719,8 @@ export default function OpnameExpiredReportPage() {
                       <th scope="col" className="table-header">Produk</th>
                       <th scope="col" className="table-header">Depo</th>
                       <th scope="col" className="table-header text-right">Qty</th>
-                      <th scope="col" className="table-header">Tgl Penerimaan</th>
-                      <th scope="col" className="table-header">Expired</th>
+                      <th scope="col" className="table-header">Tanggal Masuk</th>
+                      <th scope="col" className="table-header">Tanggal Kedaluwarsa</th>
                       <th scope="col" className="table-header">Perubahan</th>
                     </tr>
                   </thead>
@@ -787,11 +787,11 @@ export default function OpnameExpiredReportPage() {
                           {num(w.qty_ini_pcs) > 0 && <p className="text-[10px] text-slate-400 tabular-nums">/ {fnum(num(w.qty_ini_pcs))} PCS</p>}
                         </div>
                         <div className="rounded-xl bg-popover p-2 text-center border border-border">
-                          <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Sisa</p>
+                          <p className="font-bold tracking-widest text-slate-400 uppercase text-[9px]">Sisa Hari</p>
                           <p className="font-black text-foreground text-sm tabular-nums">{w.sisa_hari} <span className="text-[10px] font-bold text-slate-400">hr</span></p>
                         </div>
                         <div className={`rounded-xl p-2 text-center border ${meta ? meta.chip : 'bg-popover border-border'}`}>
-                          <p className="font-bold tracking-widest uppercase text-[9px] opacity-70">Expired</p>
+                          <p className="font-bold tracking-widest uppercase text-[9px] opacity-70">Kedaluwarsa</p>
                           <p className="font-black text-xs">{fmtDate(w.expired_date_ini)}</p>
                         </div>
                       </div>
