@@ -21,6 +21,7 @@ use App\Models\SjValidation;
 use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Services\ExportGuard;
+use App\Services\OpnameExpiredService;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -249,6 +250,8 @@ class ReceivingController extends Controller
                 "Receiving hanya dapat dibuat dari rencana berstatus VERIFIED (saat ini: {$rencanaKirim->status})."
             );
 
+            $this->assertNoOpenOpnameSession($rencanaKirim->kode_depo);
+
             // GUARD: Cek existence DENGAN lockForUpdate di dalam transaction untuk mencegah
             // race condition: dua request concurrent bisa lewat cek -> exists() sebelum create.
             $existingReceiving = Receiving::where('rencana_kirim_id', $rencanaKirim->id)
@@ -400,7 +403,11 @@ class ReceivingController extends Controller
         $attributes['nama_depo'] = $rencanaKirim->nama_depo;
 
         if (! isset($attributes['tanggal_penerimaan'])) {
-            $attributes['tanggal_penerimaan'] = now()->toDateString();
+            // Tanggal penerimaan = tanggal barang benar-benar diterima
+            // (check-in gate), bukan tanggal input. Jika check-in tidak
+            // tersedia, pakai hari ini sebagai fallback terbaik.
+            $attributes['tanggal_penerimaan'] = $rencanaKirim->checked_in_at?->toDateString()
+                ?? today()->toDateString();
         }
 
         if (isset($attributes['actual_qty']) && ! empty($attributes['kode_barang'])) {
@@ -474,6 +481,7 @@ class ReceivingController extends Controller
             422,
             "Scan hanya dapat dilakukan saat receiving berjalan (saat ini: {$receiving->status})."
         );
+        $this->assertNoOpenOpnameSession($receiving->rencanaKirim?->kode_depo);
         $validated = $request->validate([
             'barcode' => 'nullable|string|max:50',
             'kode_barang' => 'required|string|max:50',
@@ -481,6 +489,7 @@ class ReceivingController extends Controller
             'actual_qty' => 'required|numeric|min:0|max:999999',
             'satuan' => 'nullable|string|max:20',
             'expired_date' => 'nullable|date',
+            'tanggal_penerimaan' => 'nullable|date|before_or_equal:today',
             'condition' => 'nullable|string|in:GOOD,DAMAGED,MISSING,FISIK_BAGUS,FISIK_RUSAK,QTY_KURANG,ISI_KEMASAN_KURANG,EXPIRED_TIDAK_STANDAR,LAINNYA',
             'notes' => 'nullable|string|max:2000',
             'rencana_kirim_item_id' => 'nullable|exists:rencana_kirim_items,id',
@@ -619,6 +628,19 @@ class ReceivingController extends Controller
                 new ReceivingCompleted($receiving),
                 $receiving->rencanaKirim->kode_depo
             );
+
+            // Jangan tunggu jadwal Senin: stok expiring yang baru selesai
+            // langsung disinkronkan ke wave opname berjalan. Generate
+            // idempotent, dan guard sesi di atas memastikan tidak ada sesi
+            // opname depo ini yang sedang terbuka.
+            try {
+                app(OpnameExpiredService::class)->syncAfterReceiving($receiving);
+            } catch (\Throwable $e) {
+                Log::error('Opname sync after receiving failed', [
+                    'receiving_id' => $receiving->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return response()->json([
@@ -627,6 +649,19 @@ class ReceivingController extends Controller
                 : 'Receiving already completed.',
             'data' => $receiving->load('rencanaKirim'),
         ]);
+    }
+
+    /**
+     * Guard stok: penambahan/scan stok baru diblokir selama sesi opname depo
+     * masih terbuka (OPEN/IN_PROGRESS/PENDING_APPROVAL/REVISI). Tanpa guard
+     * ini, snapshot qty sistem yang dibekukan di /start akan berubah di
+     * tengah penghitungan dan selisih opname menjadi tidak sah.
+     */
+    private function assertNoOpenOpnameSession(?string $kodeDepo): void
+    {
+        if (app(OpnameExpiredService::class)->hasOpenSessionForDepot($kodeDepo)) {
+            abort(422, 'Tidak bisa menambah stok: sesi opname depo ini masih berjalan. Selesaikan sesi terlebih dahulu.');
+        }
     }
 
     /**

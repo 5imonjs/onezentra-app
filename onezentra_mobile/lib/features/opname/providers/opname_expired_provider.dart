@@ -17,6 +17,7 @@ class OpnameExpiredProvider extends ChangeNotifier {
   String? _error;
   int _requestId = 0;
   String? _weekStart;
+  String? _status;
   bool _bootstrapped = false;
   bool _disposed = false;
 
@@ -25,6 +26,9 @@ class OpnameExpiredProvider extends ChangeNotifier {
       _data?.waves ?? const <OpnameExpiredWave>[];
   OpnameExpiredMeta? get meta => _data?.meta;
   String? get weekStart => _weekStart;
+
+  /// Filter status aktif: null = semua, atau EXPIRED/KRITIS/PERHATIAN/AMAN.
+  String? get status => _status;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -53,7 +57,14 @@ class OpnameExpiredProvider extends ChangeNotifier {
     _error = null;
     _notify();
     try {
-      var result = await _repository.list(weekStart: _weekStart);
+      // Mobile tidak punya kontrol pagination; ambil satu halaman besar
+      // (backend membatasi 100) agar daftar monitoring mingguan tidak
+      // terpotong di 20 baris pertama.
+      var result = await _repository.list(
+        weekStart: _weekStart,
+        status: _status,
+        perPage: 100,
+      );
       if (requestId != _requestId) {
         return;
       }
@@ -82,6 +93,17 @@ class OpnameExpiredProvider extends ChangeNotifier {
     _weekStart = weekStart;
     _requestId++;
     load();
+  }
+
+  /// Ganti filter status di server agar daftar tetap konsisten walau
+  /// jumlah wave melebihi satu halaman.
+  Future<void> setStatus(String? status) async {
+    if (_status == status) {
+      return;
+    }
+    _status = status;
+    _requestId++;
+    await load();
   }
 
   @override

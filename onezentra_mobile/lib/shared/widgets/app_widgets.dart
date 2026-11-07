@@ -439,6 +439,11 @@ class AppBadge extends StatelessWidget {
         textColor = context.colors.warningText;
         borderColor = context.colors.warning;
         break;
+      case AppBadgeVariant.critical:
+        backgroundColor = context.colors.criticalWell;
+        textColor = context.colors.criticalText;
+        borderColor = context.colors.critical;
+        break;
       case AppBadgeVariant.danger:
         backgroundColor = context.colors.dangerWell;
         textColor = context.colors.dangerText;
@@ -492,7 +497,7 @@ class AppBadge extends StatelessWidget {
   }
 }
 
-enum AppBadgeVariant { success, warning, danger, info, primary, gray }
+enum AppBadgeVariant { success, warning, critical, danger, info, primary, gray }
 
 /// Counter tile used in the dark operational headers (Check In Point,
 /// Validasi SJ). Shared so the header rhythm cannot drift between pages.
@@ -502,10 +507,12 @@ class AppStatTile extends StatelessWidget {
     required this.value,
     required this.dotColor,
     super.key,
+    this.caption,
   });
   final String label;
   final int value;
   final Color dotColor;
+  final String? caption;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -556,6 +563,19 @@ class AppStatTile extends StatelessWidget {
             color: context.colors.foreground,
           ),
         ),
+        if (caption != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            caption!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              fontSize: 10,
+              height: 1.2,
+              color: context.colors.textMuted,
+            ),
+          ),
+        ],
       ],
     ),
   );

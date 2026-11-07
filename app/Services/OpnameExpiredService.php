@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\Batch;
+use App\Models\OpnameExpiredBaselineImport;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\OpnameSetting;
+use App\Models\Receiving;
 use App\Models\ReceivingItem;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -16,6 +18,9 @@ use Illuminate\Support\Facades\DB;
 class OpnameExpiredService
 {
     private const DEPO_GENERAL = 'GENERAL';
+
+    /** @var array<string, array{date: Carbon, at: Carbon}>|null */
+    private ?array $baselineCutoffsCache = null;
 
     public function generate(?Carbon $reference = null, ?User $user = null): array
     {
@@ -87,6 +92,7 @@ class OpnameExpiredService
                     'source_mix' => [
                         'sj' => ($carried?->source_mix['sj'] ?? 0) + ($agg['mix']['sj'] ?? 0),
                         'import' => ($carried?->source_mix['import'] ?? 0) + ($agg['mix']['import'] ?? 0),
+                        'legacy' => ($carried?->source_mix['legacy'] ?? 0) + ($agg['mix']['legacy'] ?? 0),
                     ],
                 ];
 
@@ -135,8 +141,28 @@ class OpnameExpiredService
             $user->applyDepotFilter($query, 'kode_depo');
         }
 
+        // Baseline adalah snapshot stok lengkap pada saat import. Wave yang
+        // terbentuk SEBELUM minggu baseline tidak boleh ikut dibawa lagi —
+        // kalau ikut, stok historis + baseline dihitung dua kali.
+        $baselineCutoffs = $this->baselineCutoffs();
+
         $result = [];
         foreach ($query->get() as $row) {
+            $depo = $row->kode_depo ?: self::DEPO_GENERAL;
+            $cutoff = $baselineCutoffs[$depo] ?? null;
+
+            if ($cutoff !== null) {
+                // Wave historis dipotong berdasarkan MINGGU IMPORT, bukan
+                // tanggal posisi baseline: wave adalah hasil generate saat
+                // input, sedangkan `baseline_date` hanya mengatur cakupan
+                // baris ledger. Mencampur keduanya membuat wave minggu yang
+                // sama dengan tanggal baseline ikut terbawa dan dobel.
+                $baselineWeekStart = $cutoff['at']->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+                if ((string) $row->week_start < $baselineWeekStart) {
+                    continue;
+                }
+            }
+
             $key = implode('|', [
                 $row->kode_barang,
                 $row->kode_depo ?: self::DEPO_GENERAL,
@@ -157,7 +183,7 @@ class OpnameExpiredService
      * angka "belum di-generate" tidak ambigu: baris = ReceivingItem yang lolos
      * filter eligible tapi kuncinya (barang|depo|expired) belum ada di wave.
      *
-     * @return array{week_start: string, week_end: string, wave_exists: bool, eligible: array{total: int, sj: int, import: int}, pending: array{total: int, sj: int, import: int}}
+     * @return array{week_start: string, week_end: string, wave_exists: bool, eligible: array{total: int, sj: int, import: int, legacy: int}, pending: array{total: int, sj: int, import: int, legacy: int}}
      */
     public function pendingSummary(?Carbon $reference = null, ?User $user = null): array
     {
@@ -172,8 +198,8 @@ class OpnameExpiredService
             ->map(fn ($w) => implode('|', [$w->kode_barang, $w->kode_depo ?: self::DEPO_GENERAL, $w->expired_date_ini?->toDateString()]))
             ->flip();
 
-        $eligible = ['total' => 0, 'sj' => 0, 'import' => 0];
-        $pending = ['total' => 0, 'sj' => 0, 'import' => 0];
+        $eligible = ['total' => 0, 'sj' => 0, 'import' => 0, 'legacy' => 0];
+        $pending = ['total' => 0, 'sj' => 0, 'import' => 0, 'legacy' => 0];
 
         foreach ($this->eligibleItems($weekStart, $user) as $item) {
             $depo = $item->getKodeDepoFallback() ?: self::DEPO_GENERAL;
@@ -185,6 +211,7 @@ class OpnameExpiredService
             $bucket = match ($item->source) {
                 ReceivingItem::SOURCE_VALIDASI => 'sj',
                 ReceivingItem::SOURCE_IMPORT => 'import',
+                ReceivingItem::SOURCE_LEGACY => 'legacy',
                 default => null,
             };
 
@@ -236,6 +263,11 @@ class OpnameExpiredService
     {
         $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
         $weekRange = [$weekStart->toDateString(), $weekEnd->toDateString()];
+
+        // Baseline awal per depo: baris Receiving/SJ yang tanggal efektifnya
+        // sudah tercakup oleh import legacy tidak boleh ditambahkan lagi —
+        // kalau tidak, produk + expired date yang sama dihitung dua kali
+        // (sekali dari baseline, sekali dari Receiving).
 
         // Batch label punya status sendiri (ACTIVE / CANCELLED). Batch yang
         // dibatalkan — mis. karena sesi validasi di-cancel — labelnya sudah
@@ -298,6 +330,10 @@ class OpnameExpiredService
             )
             ->get()
             ->filter(function (ReceivingItem $item) use ($weekRange, $wavesByKey): bool {
+                if ($this->isCoveredByBaseline($item)) {
+                    return false;
+                }
+
                 // Pintu 1: jendela minggu (aturan lama).
                 $day = $this->monitoringAnchor($item);
                 if ($day !== null && $day >= $weekRange[0] && $day <= $weekRange[1]) {
@@ -367,13 +403,151 @@ class OpnameExpiredService
     }
 
     /**
+     * Batas cakupan baseline per depo.
+     *
+     * `date` = tanggal posisi baseline (inklusif) untuk baris yang punya
+     * tanggal penerimaan. `at` = waktu import untuk baris tanpa tanggal.
+     *
+     * Sumber utama: manifes import baseline. Bila data legacy sudah ada tetapi
+     * manifes belum tercatat, pakai waktu input paling awal baris LEGACY_IMPORT
+     * depo itu.
+     *
+     * @return array<string, array{date: Carbon, at: Carbon}>
+     */
+    private function baselineCutoffs(): array
+    {
+        if ($this->baselineCutoffsCache !== null) {
+            return $this->baselineCutoffsCache;
+        }
+
+        $cutoffs = [];
+
+        foreach (OpnameExpiredBaselineImport::query()
+            ->whereNotNull('kode_depo')
+            ->orderBy('imported_at')
+            ->get(['kode_depo', 'baseline_date', 'imported_at']) as $import) {
+            $depo = (string) $import->kode_depo;
+            if (isset($cutoffs[$depo])) {
+                continue;
+            }
+
+            $at = $import->imported_at?->copy() ?? Carbon::parse($import->baseline_date ?? 'today');
+            $date = $import->baseline_date?->copy()->startOfDay() ?? $at->copy()->startOfDay();
+
+            $cutoffs[$depo] = ['date' => $date, 'at' => $at];
+        }
+
+        // Fallback untuk data legacy tanpa manifes.
+        foreach (ReceivingItem::query()
+            ->where('source', ReceivingItem::SOURCE_LEGACY)
+            ->whereNotNull('kode_depo')
+            ->orderBy('created_at')
+            ->get(['kode_depo', 'created_at']) as $legacy) {
+            $depo = (string) $legacy->kode_depo;
+            if (! isset($cutoffs[$depo]) && $legacy->created_at !== null) {
+                $at = Carbon::parse($legacy->created_at);
+                $cutoffs[$depo] = ['date' => $at->copy()->startOfDay(), 'at' => $at];
+            }
+        }
+
+        return $this->baselineCutoffsCache = $cutoffs;
+    }
+
+    /**
+     * Baris yang merupakan stok awal baseline itu sendiri — bukan duplikat
+     * Receiving baru. Source LEGACY_IMPORT adalah baseline; baris yang sudah
+     * direklasifikasi ke VALIDASI_SJ tetap membawa `baseline_import_id` dan
+     * tidak punya penanda covered manual.
+     */
+    public function isBaselineRow(ReceivingItem $item): bool
+    {
+        if ($item->source === ReceivingItem::SOURCE_LEGACY) {
+            return true;
+        }
+
+        if ($item->baseline_import_id !== null && $item->baseline_covered_at === null) {
+            return true;
+        }
+
+        // Jaring pengaman data legacy lama yang belum punya manifes: batch
+        // LEGACY-* menandai baris lahir dari baseline, walau source-nya sudah
+        // direklasifikasi ke VALIDASI_SJ.
+        $batchNumber = $item->batch?->batch_number ?? $item->verifiedBatch?->batch_number;
+
+        return is_string($batchNumber) && str_starts_with($batchNumber, 'LEGACY-');
+    }
+
+    /**
+     * Receiving/SJ yang sudah dicakup baseline tidak boleh dihitung lagi.
+     * Baris baseline itu sendiri bukan "covered duplicate".
+     */
+    public function isCoveredByBaseline(ReceivingItem $item): bool
+    {
+        return $this->baselineCoverageReason($item) !== null;
+    }
+
+    /**
+     * Alasan baris dianggap tercakup baseline:
+     * - `manual`: ditandai admin lewat koreksi (baseline_covered_at).
+     * - `date`: tanggal penerimaan efektif <= tanggal posisi baseline.
+     * - `null`: baris baseline itu sendiri, atau stok baru.
+     */
+    public function baselineCoverageReason(ReceivingItem $item): ?string
+    {
+        if ($this->isBaselineRow($item)) {
+            return null;
+        }
+
+        if ($item->baseline_covered_at !== null) {
+            return 'manual';
+        }
+
+        $depo = $item->getKodeDepoFallback() ?: self::DEPO_GENERAL;
+        $cutoff = $this->baselineCutoffs()[$depo] ?? null;
+
+        if ($cutoff === null) {
+            return null;
+        }
+
+        // Tanggal penerimaan adalah tanggal bisnis yang bisa dikoreksi.
+        // Semua penerimaan s.d. tanggal posisi baseline dianggap sudah
+        // tercakup, walau baru diinput setelah baseline.
+        //
+        // Baca kolom mentah: accessor `tanggal_penerimaan` mengembalikan
+        // fallback created_at saat kolom kosong, sehingga tidak bisa dipakai
+        // untuk membedakan tanggal bisnis dari waktu input.
+        $rawTanggal = $item->getRawOriginal('tanggal_penerimaan');
+        if ($rawTanggal !== null && $rawTanggal !== '') {
+            $tanggal = $rawTanggal instanceof \DateTimeInterface
+                ? $rawTanggal->format('Y-m-d')
+                : substr((string) $rawTanggal, 0, 10);
+
+            return $tanggal <= $cutoff['date']->toDateString() ? 'date' : null;
+        }
+
+        // Baris lama tanpa tanggal penerimaan: pakai momen efektif paling
+        // awal yang tersedia, lalu bandingkan dengan waktu import baseline.
+        $moment = $item->scan_time
+            ?? $item->receiving?->actual_arrival_time
+            ?? $item->receiving?->actual_start_time
+            ?? $item->receiving?->created_at
+            ?? $item->created_at;
+
+        if ($moment === null) {
+            return null;
+        }
+
+        return Carbon::parse($moment)->lessThanOrEqualTo($cutoff['at']) ? 'date' : null;
+    }
+
+    /**
      * Jangkar minggu monitoring per baris, sesuai aturan baku:
      * - IMPORT_MANUAL: tanggal scan/created;
      * - VALIDASI_SJ: tanggal penerimaan / scan / created (yang pertama ada).
      */
     private function monitoringAnchor(ReceivingItem $item): ?string
     {
-        $raw = $item->source === ReceivingItem::SOURCE_IMPORT
+        $raw = in_array($item->source, [ReceivingItem::SOURCE_IMPORT, ReceivingItem::SOURCE_LEGACY], true)
             ? ($item->scan_time ?? $item->created_at)
             : ($item->tanggal_penerimaan ?? $item->scan_time ?? $item->created_at);
 
@@ -411,7 +585,7 @@ class OpnameExpiredService
                     'qty_crt' => 0,
                     'qty_pcs' => 0,
                     'batches' => [],
-                    'mix' => ['sj' => 0, 'import' => 0],
+                    'mix' => ['sj' => 0, 'import' => 0, 'legacy' => 0],
                 ];
             }
 
@@ -423,6 +597,8 @@ class OpnameExpiredService
                 $aggregates[$key]['mix']['sj']++;
             } elseif ($item->source === ReceivingItem::SOURCE_IMPORT) {
                 $aggregates[$key]['mix']['import']++;
+            } elseif ($item->source === ReceivingItem::SOURCE_LEGACY) {
+                $aggregates[$key]['mix']['legacy']++;
             }
 
             // Jejak identitas: tiap baris ledger penyusun menyumbang nomor
@@ -486,7 +662,11 @@ class OpnameExpiredService
                     'qty_lalu_crt' => $carried->effectiveCrt(),
                     'qty_lalu_pcs' => $carried->effectivePcs(),
                     'batch_numbers' => $carried->batch_numbers ?? [],
-                    'source_mix' => $carried->source_mix ?? ['sj' => 0, 'import' => 0],
+                    'source_mix' => [
+                        'sj' => $carried->source_mix['sj'] ?? 0,
+                        'import' => $carried->source_mix['import'] ?? 0,
+                        'legacy' => $carried->source_mix['legacy'] ?? 0,
+                    ],
                 ]
             );
 
@@ -596,6 +776,93 @@ class OpnameExpiredService
     }
 
     /**
+     * Bekukan qty sistem saat sesi dimulai. Dipanggil sekali di /start;
+     * sesudah ini `show()` dan `applyApprovedCorrections()` memakai snapshot,
+     * bukan qty live yang bisa berubah karena Receiving baru.
+     */
+    public function freezeSessionSnapshots(OpnameExpiredSession $session, bool $onlyMissing = false): int
+    {
+        return DB::transaction(function () use ($session, $onlyMissing): int {
+            $query = $session->items()->with(['wave', 'batch'])->lockForUpdate();
+
+            if ($onlyMissing) {
+                $query->whereNull('qty_sistem_crt');
+            }
+
+            $items = $query->get();
+            $count = 0;
+
+            foreach ($items as $item) {
+                [$crt, $pcs] = $this->resolveExpectedQuantities($item);
+                $item->update([
+                    'qty_sistem_crt' => $crt,
+                    'qty_sistem_pcs' => $pcs,
+                ]);
+                $count++;
+            }
+
+            return $count;
+        });
+    }
+
+    /**
+     * Qty acuan sistem satu baris sesi. Batch-level memakai qty ledger batch;
+     * baris warisan memakai qty wave efektif (termasuk koreksi yang sudah
+     * disetujui sebelumnya).
+     *
+     * @return array{0: float, 1: float|null}
+     */
+    public function resolveExpectedQuantities(OpnameExpiredSessionItem $item): array
+    {
+        $source = $item->batch ? $this->batchSourceItem($item->batch) : null;
+
+        if ($source) {
+            return [
+                (float) $source->actual_qty,
+                $source->qty_pcs !== null ? (float) $source->qty_pcs : null,
+            ];
+        }
+
+        $wave = $item->wave;
+
+        return [
+            $wave ? $wave->effectiveCrt() : 0.0,
+            $wave ? $wave->effectivePcs() : null,
+        ];
+    }
+
+    /**
+     * Guard Receiving: selama sesi opname depo masih terbuka, penambahan
+     * stok baru diblokir agar snapshot yang dibekukan di /start tidak
+     * berubah di tengah penghitungan.
+     */
+    public function hasOpenSessionForDepot(?string $kodeDepo): bool
+    {
+        if (blank($kodeDepo)) {
+            return false;
+        }
+
+        return OpnameExpiredSession::query()
+            ->where('kode_depo', $kodeDepo)
+            ->whereIn('status', OpnameExpiredSession::OPEN_STATUSES)
+            ->exists();
+    }
+
+    /**
+     * Sinkronisasi setelah Receiving tervalidasi: jangan tunggu jadwal
+     * Senin. Generate bersifat idempotent (updateOrCreate per kunci), jadi
+     * aman dipanggil setiap kali receiving selesai.
+     */
+    public function syncAfterReceiving(Receiving $receiving): void
+    {
+        if ($receiving->status !== 'COMPLETED') {
+            return;
+        }
+
+        $this->generate(Carbon::today(), null);
+    }
+
+    /**
      * Terapkan koreksi wave hasil sesi yang DISETUJUI (dipanggil service
      * approval). Koreksi dihitung SEKALI dari hasil hitung terakhir tiap
      * item — bukan ditambah per event verifikasi — sehingga verifikasi
@@ -630,13 +897,28 @@ class OpnameExpiredService
                 $source = $waveItem->batch ? $this->batchSourceItem($waveItem->batch) : null;
 
                 if ($source) {
-                    $deltaCrt += $fisikCrt - (float) $source->actual_qty;
-                    $deltaPcs += $fisikPcs - (float) ($source->qty_pcs ?? 0);
+                    $expectedCrt = $waveItem->qty_sistem_crt !== null
+                        ? (float) $waveItem->qty_sistem_crt
+                        : (float) $source->actual_qty;
+                    $expectedPcs = $waveItem->qty_sistem_pcs !== null
+                        ? (float) $waveItem->qty_sistem_pcs
+                        : (float) ($source->qty_pcs ?? 0);
+
+                    $deltaCrt += $fisikCrt - $expectedCrt;
+                    $deltaPcs += $fisikPcs - $expectedPcs;
                 } else {
                     // Wave tanpa baris ledger (warisan / carried murni):
-                    // acuan pembandingnya qty wave minggu ini.
-                    $deltaCrt += $fisikCrt - (float) $wave->qty_ini_crt;
-                    $deltaPcs += $fisikPcs - (float) $wave->qty_ini_pcs;
+                    // acuan pembandingnya snapshot sesi, atau qty wave efektif
+                    // bila sesi lama belum punya snapshot.
+                    $expectedCrt = $waveItem->qty_sistem_crt !== null
+                        ? (float) $waveItem->qty_sistem_crt
+                        : $wave->effectiveCrt();
+                    $expectedPcs = $waveItem->qty_sistem_pcs !== null
+                        ? (float) $waveItem->qty_sistem_pcs
+                        : $wave->effectivePcs();
+
+                    $deltaCrt += $fisikCrt - $expectedCrt;
+                    $deltaPcs += $fisikPcs - $expectedPcs;
                 }
             }
 

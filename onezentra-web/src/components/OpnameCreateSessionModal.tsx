@@ -158,7 +158,7 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
       <div className="mt-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Baris wave ({picked.size}/{waves.length})</p>
         {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat wave...</p> : waves.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Tidak ada wave minggu ini — Generate dulu di Batch Expired.</p>
+          <p className="text-sm text-muted-foreground">Tidak ada wave minggu ini — Generate dulu di Opname Expired.</p>
         ) : (
           <div className="max-h-64 overflow-auto border border-border rounded-xl divide-y divide-gray-100">
             {waves.map((w) => (

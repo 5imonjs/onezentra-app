@@ -48,6 +48,8 @@ class Batch extends Model
             return $existing;
         }
 
+        $isLegacy = $item->source === ReceivingItem::SOURCE_LEGACY;
+
         return static::createWithRetry(array_merge([
             'receiving_item_id' => $item->id,
             'items_json' => [
@@ -57,10 +59,10 @@ class Batch extends Model
                 'qty_pcs' => $item->qty_pcs,
                 'expired_date' => $item->expired_date?->toDateString(),
                 'source' => $item->source,
-                'origin' => 'import',
+                'origin' => $isLegacy ? 'legacy_baseline' : 'import',
             ],
             'status' => 'ACTIVE',
-        ], $extra), 5, 'IMP-');
+        ], $extra), 5, $isLegacy ? 'LEGACY-' : 'IMP-');
     }
 
     /**

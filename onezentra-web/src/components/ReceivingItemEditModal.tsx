@@ -19,12 +19,20 @@ interface EditItem {
   satuan: string | null;
   expired_date: string | null;
   tanggal_penerimaan: string | null;
+  /** False = kolom tanggal kosong; nilai `tanggal_penerimaan` hanya fallback. */
+  has_tanggal_penerimaan?: boolean;
   condition?: string | null;
   sumber_material: string | null;
   kode_depo: string | null;
   nama_depo: string | null;
   notes?: string | null;
   photo?: string | null;
+  /** `manual` = ditandai admin; `date` = otomatis dari tanggal penerimaan. */
+  baseline_coverage?: 'manual' | 'date' | null;
+  baseline_cover_note?: string | null;
+  baseline_covered_at?: string | null;
+  baseline_import_id?: number | null;
+  is_baseline_row?: boolean;
 }
 
 interface Props {
@@ -41,6 +49,18 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
   const [busy, setBusy] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState('');
+  // Koreksi cakupan baseline untuk baris yang fisiknya sudah ada saat
+  // baseline diambil, tetapi baru diinput setelah baseline.
+  const [manualCovered, setManualCovered] = useState(false);
+  const [coverNote, setCoverNote] = useState('');
+
+  // Baris baseline = stok awal itu sendiri (LEGACY_IMPORT), termasuk yang
+  // sudah direklasifikasi ke VALIDASI_SJ tetapi masih membawa manifes baseline.
+  const isBaselineRow = !!item && (
+    item.source === 'LEGACY_IMPORT'
+    || (item.baseline_import_id != null && !item.baseline_covered_at)
+  );
+  const automaticCoverage = item?.baseline_coverage === 'date';
 
   const clearPhotoSelection = () => {
     setPhotoPreview((prev) => {
@@ -58,13 +78,15 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
         qty_pcs: item.qty_pcs != null ? String(item.qty_pcs) : '',
         satuan: item.satuan || 'CRT',
         expired_date: fmtDateInput(item.expired_date),
-        tanggal_penerimaan: fmtDateInput(item.tanggal_penerimaan),
+        tanggal_penerimaan: item.has_tanggal_penerimaan === false ? '' : fmtDateInput(item.tanggal_penerimaan),
         condition: canonicalCondition(item.condition),
         sumber_material: item.sumber_material || '',
         kode_depo: item.kode_depo || '',
         nama_depo: item.nama_depo || '',
         notes: item.notes || '',
       });
+      setManualCovered(item.baseline_coverage === 'manual');
+      setCoverNote(item.baseline_cover_note || '');
     }
   }, [item]);
 
@@ -91,8 +113,21 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
       return;
     }
 
+    // Jangan biarkan pengguna mengira tanggal lama terhapus: backend tidak
+    // menimpa tanggal dengan null. Baris yang memang belum punya tanggal
+    // boleh tetap kosong dan memakai tanggal sistem.
+    if (item.has_tanggal_penerimaan !== false && !form.tanggal_penerimaan) {
+      notifyGlobal('Tanggal penerimaan tidak boleh dikosongkan. Isi tanggal asli barang diterima.', 'error');
+      setBusy(false);
+      return;
+    }
+
+    const coverageRequested = !isBaselineRow && !automaticCoverage;
+    const originalTanggal = item.has_tanggal_penerimaan === false ? '' : (fmtDateInput(item.tanggal_penerimaan) || '');
+    const dateChanged = (form.tanggal_penerimaan || '') !== originalTanggal;
+
     try {
-      await opnameExpired.manualUpdate(item.id, {
+      const res = await opnameExpired.manualUpdate(item.id, {
         qty_crt: qtyCrt,
         qty_pcs: qtyPcs,
         satuan: form.satuan || 'CRT',
@@ -103,7 +138,19 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
         kode_depo: form.kode_depo || null,
         nama_depo: form.nama_depo || null,
         notes: form.notes || null,
+        ...(coverageRequested ? {
+          baseline_covered: manualCovered,
+          // String kosong (bukan null) agar upload foto pun tetap mengirim
+          // field ini; backend dapat mengosongkan catatan lama.
+          baseline_cover_note: manualCovered ? coverNote.trim() : null,
+        } : {}),
       }, photoFile);
+      if ((coverageRequested || dateChanged) && res.data?.message) {
+        const toastType = res.data.opname_synced === false
+          ? 'error'
+          : (!manualCovered && res.data.baseline_coverage === 'date' ? 'info' : 'success');
+        notifyGlobal(res.data.message, toastType);
+      }
       onSaved();
       onClose();
     } catch (err) {
@@ -194,6 +241,9 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
           <div>
             <label htmlFor="riem-tanggal-penerimaan" className="block text-sm font-medium text-foreground mb-1.5">Tanggal Penerimaan</label>
             <input id="riem-tanggal-penerimaan" type="date" value={form.tanggal_penerimaan || ''} onChange={set('tanggal_penerimaan')} className="input-field" />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Tanggal barang benar-benar diterima. Kosong = memakai tanggal sistem/scan.
+            </p>
           </div>
           <div>
             <label htmlFor="riem-condition" className="block text-sm font-medium text-foreground mb-1.5">Kondisi</label>
@@ -264,6 +314,66 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
             <label htmlFor="riem-notes" className="block text-sm font-medium text-foreground mb-1.5">Catatan</label>
             <textarea id="riem-notes" value={form.notes || ''} onChange={set('notes')} className="input-field" rows={2} />
           </div>
+          {item && (
+            <div className="col-span-2 rounded-xl border border-violet-200 bg-violet-50/60 px-3.5 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-violet-950">Cakupan Baseline</p>
+                  <p className="text-[11px] leading-relaxed text-violet-700 mt-0.5">
+                    Baris tetap tersimpan di ledger. Penanda ini hanya menentukan apakah baris dihitung ulang sebagai stok baru.
+                  </p>
+                </div>
+                {item.baseline_coverage && (
+                  <span className="badge border border-violet-300 bg-violet-100 text-violet-700 whitespace-nowrap">
+                    {item.baseline_coverage === 'manual' ? 'Ditandai manual' : 'Otomatis dari tanggal'}
+                  </span>
+                )}
+              </div>
+
+              {isBaselineRow ? (
+                <p className="mt-2 text-xs text-violet-800">
+                  Baris ini adalah stok awal baseline (LEGACY_IMPORT atau hasil reklasifikasi); tidak perlu ditandai dan tidak dihitung sebagai stok baru.
+                </p>
+              ) : item.baseline_coverage === 'date' ? (
+                <p className="mt-2 text-xs leading-relaxed text-violet-800">
+                  Tanggal penerimaan baris ini sudah tercakup tanggal posisi baseline, jadi otomatis tidak dihitung sebagai stok baru.
+                  Jika barang ini sebenarnya baru, ubah <span className="font-semibold">Tanggal Penerimaan</span> ke tanggal setelah baseline.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  <label className="flex items-start gap-2.5 text-xs text-violet-900">
+                    <input
+                      type="checkbox"
+                      checked={manualCovered}
+                      onChange={(e) => setManualCovered(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
+                    />
+                    <span>
+                      Barang ini sudah ada saat baseline diambil — <span className="font-semibold">jangan hitung sebagai stok baru</span>.
+                    </span>
+                  </label>
+                  {manualCovered && (
+                    <div>
+                      <label htmlFor="riem-baseline-note" className="block text-[11px] font-medium text-violet-800 mb-1">Alasan / catatan koreksi (opsional)</label>
+                      <input
+                        id="riem-baseline-note"
+                        value={coverNote}
+                        onChange={(e) => setCoverNote(e.target.value)}
+                        className="input-field"
+                        maxLength={1000}
+                        placeholder="Contoh: barang datang 3 Nov, baru diinput hari ini"
+                      />
+                    </div>
+                  )}
+                  {item.baseline_coverage === 'manual' && (
+                    <p className="text-[11px] leading-relaxed text-violet-700">
+                      Jika tanggal penerimaan masih s.d. tanggal baseline, baris tetap otomatis tidak dihitung setelah penanda dilepas.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </form>
     </Modal>

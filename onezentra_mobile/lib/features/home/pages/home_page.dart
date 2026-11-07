@@ -86,13 +86,21 @@ class _HomePageState extends State<HomePage> {
       ),
     ];
 
-    // Opname stok: satu pintu — tugas sesi hitung yang ditugaskan ke saya
-    // (sesi dibuat & ditugaskan dari web). Monitoring wave cukup di web.
+    // Opname stok: monitoring wave dan tugas hitung fisik. Sesi dibuat &
+    // ditugaskan dari web; mobile menampilkan keduanya sesuai izin.
     var opnameMenus = [
       _HomeMenu(
         'Opname Expired',
+        'Monitoring batch mendekati/melewati expired',
+        Icons.insights_rounded,
+        context.colors.info,
+        ['opname.view'],
+        '/opname-expired',
+      ),
+      _HomeMenu(
+        'Sesi Opname',
         'Tugas hitung fisik & disposisi barang kadaluarsa',
-        Icons.hourglass_bottom_rounded,
+        Icons.assignment_turned_in_rounded,
         context.colors.success,
         ['opname.session.view'],
         '/opname-expired-sessions',
@@ -240,7 +248,7 @@ class _HomePageState extends State<HomePage> {
                           _sectionHeader(
                             theme,
                             'Opname stok',
-                            'Sesi barang kadaluarsa yang ditugaskan ke Anda — hitung, kirim, tunggu persetujuan BLC.',
+                            'Monitoring batch expired dan tugas hitung fisik — sesi dibuat & ditugaskan dari web.',
                           ),
                           const SizedBox(height: AppTheme.space4),
                           _menuGrid(

@@ -29,14 +29,16 @@ double? _readDouble(dynamic value) {
 Map<String, dynamic>? _readMap(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : null;
 
-/// Status kedaluwarsa: AMAN / PERHATIAN / KRITIS (threshold OpnameSetting).
+/// Status kedaluwarsa: EXPIRED / KRITIS / PERHATIAN / AMAN
+/// (threshold OpnameSetting).
 class OpnameStatus {
   OpnameStatus._();
 
   static const Map<String, String> _labels = {
-    'AMAN': 'Aman',
-    'PERHATIAN': 'Perhatian',
+    'EXPIRED': 'Expired',
     'KRITIS': 'Kritis',
+    'PERHATIAN': 'Perhatian',
+    'AMAN': 'Aman',
   };
 
   static String label(String? status) {
@@ -65,7 +67,7 @@ class OpnameStatusCount {
   final double qtyCrt;
 }
 
-/// Ringkasan status AMAN / Perhatian / Kritis untuk satu minggu.
+/// Ringkasan status Expired / Kritis / Perhatian / Aman untuk satu minggu.
 class OpnameStatusSummary {
   const OpnameStatusSummary({required this.counts});
 
@@ -88,7 +90,21 @@ class OpnameStatusSummary {
   double get totalQtyCrt =>
       counts.values.fold<double>(0, (sum, c) => sum + c.qtyCrt);
 
+  /// Batch yang perlu ditindak: Expired + Kritis + Perhatian.
+  int get riskCount => _riskStatuses.fold<int>(
+    0,
+    (sum, status) => sum + (countOf(status)?.count ?? 0),
+  );
+
+  /// Qty CRT yang perlu ditindak: Expired + Kritis + Perhatian.
+  double get riskQtyCrt => _riskStatuses.fold<double>(
+    0,
+    (sum, status) => sum + (countOf(status)?.qtyCrt ?? 0),
+  );
+
   OpnameStatusCount? countOf(String status) => counts[status];
+
+  static const List<String> _riskStatuses = ['EXPIRED', 'KRITIS', 'PERHATIAN'];
 }
 
 /// Satu baris wave expired: produk + depo + expired + qty + status.

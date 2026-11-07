@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Npn;
 use App\Models\Permission;
 use App\Models\Receiving;
+use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\Role;
@@ -745,6 +746,54 @@ class SjValidationFlowTest extends TestCase
         $this->assertSame('VERIFIED', $rk->fresh()->status);
         $this->assertSame(1, Receiving::count());
         $this->assertSame(1, Receiving::where('rencana_kirim_id', $rk->id)->count());
+    }
+
+    public function test_complete_uses_gate_checkin_date_and_accepts_receipt_date_override(): void
+    {
+        $this->travelTo('2026-09-10 10:00:00');
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.create', 'sj_validation.validate', 'sj_validation.complete']));
+
+        // Validasi terlambat: barang tiba 8 Sep, validasi selesai 10 Sep.
+        $rk = $this->scheduledRencana($user);
+        $rk->update(['checked_in_at' => '2026-09-08 08:00:00']);
+        $validation = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk->po_transporter])->json('data');
+        $item = $validation['items'][0];
+
+        $this->post('/api/v1/sj-validations/'.$validation['id'].'/scan', [
+            'sj_validation_item_id' => $item['id'],
+            'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertOk();
+
+        $this->postJson('/api/v1/sj-validations/'.$validation['id'].'/complete')->assertOk();
+
+        $this->assertSame(
+            '2026-09-08',
+            substr((string) ReceivingItem::where('sj_validation_item_id', $item['id'])->firstOrFail()->tanggal_penerimaan, 0, 10),
+        );
+
+        // Override eksplisit tetap dihormati untuk koreksi manual.
+        $rk2 = $this->scheduledRencana($user);
+        $rk2->update(['checked_in_at' => '2026-09-09 08:00:00']);
+        $validation2 = $this->postJson('/api/v1/sj-validations/start-by-code', ['scan_code' => $rk2->po_transporter])->json('data');
+        $item2 = $validation2['items'][0];
+
+        $this->post('/api/v1/sj-validations/'.$validation2['id'].'/scan', [
+            'sj_validation_item_id' => $item2['id'],
+            'actual_qty' => 100,
+            'expired_date' => '2027-01-31',
+            'condition' => 'FISIK_BAGUS',
+        ])->assertOk();
+
+        $this->postJson('/api/v1/sj-validations/'.$validation2['id'].'/complete', [
+            'tanggal_penerimaan' => '2026-09-07',
+        ])->assertOk();
+
+        $this->assertSame(
+            '2026-09-07',
+            substr((string) ReceivingItem::where('sj_validation_item_id', $item2['id'])->firstOrFail()->tanggal_penerimaan, 0, 10),
+        );
     }
 
     public function test_complete_blocks_when_expired_date_is_missing(): void

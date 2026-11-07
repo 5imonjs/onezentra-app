@@ -294,30 +294,55 @@ class OpnameExpiredController extends Controller
     }
 
     /**
-     * Filter sumber data: sj (murni sistem) / import (manual) / mixed.
-     * Baris wave lama tanpa source_mix ikut tampil di semua filter
-     * (Generate ulang untuk mengisi penandanya).
+     * Filter sumber data: sj (murni sistem) / import (manual) / legacy
+     * (baseline awal) / mixed. Baris wave lama tanpa source_mix ikut tampil
+     * di filter lama (Generate ulang untuk mengisi penandanya).
      */
     private function applySourceFilter($query, mixed $source): void
     {
-        if (! in_array($source, ['sj', 'import', 'mixed'], true)) {
+        if (! in_array($source, ['sj', 'import', 'legacy', 'mixed'], true)) {
             return;
         }
 
         $query->where(function ($q) use ($source): void {
-            $q->whereNull('opname_expired_waves.source_mix')
-                ->orWhere(function ($q) use ($source): void {
-                    if ($source === 'sj') {
-                        $q->where('opname_expired_waves.source_mix->sj', '>', 0)
-                            ->where('opname_expired_waves.source_mix->import', '=', 0);
-                    } elseif ($source === 'import') {
-                        $q->where('opname_expired_waves.source_mix->import', '>', 0)
-                            ->where('opname_expired_waves.source_mix->sj', '=', 0);
-                    } else {
-                        $q->where('opname_expired_waves.source_mix->sj', '>', 0)
-                            ->where('opname_expired_waves.source_mix->import', '>', 0);
-                    }
-                });
+            if ($source !== 'legacy') {
+                $q->whereNull('opname_expired_waves.source_mix');
+            }
+
+            $q->orWhere(function ($q) use ($source): void {
+                if ($source === 'sj') {
+                    $q->where('opname_expired_waves.source_mix->sj', '>', 0)
+                        ->where(fn ($x) => $x->where('opname_expired_waves.source_mix->import', '=', 0)
+                            ->orWhereNull('opname_expired_waves.source_mix->import'))
+                        ->where(fn ($x) => $x->where('opname_expired_waves.source_mix->legacy', '=', 0)
+                            ->orWhereNull('opname_expired_waves.source_mix->legacy'));
+                } elseif ($source === 'import') {
+                    $q->where('opname_expired_waves.source_mix->import', '>', 0)
+                        ->where(fn ($x) => $x->where('opname_expired_waves.source_mix->sj', '=', 0)
+                            ->orWhereNull('opname_expired_waves.source_mix->sj'))
+                        ->where(fn ($x) => $x->where('opname_expired_waves.source_mix->legacy', '=', 0)
+                            ->orWhereNull('opname_expired_waves.source_mix->legacy'));
+                } elseif ($source === 'legacy') {
+                    $q->where('opname_expired_waves.source_mix->legacy', '>', 0)
+                        ->where(fn ($x) => $x->where('opname_expired_waves.source_mix->sj', '=', 0)
+                            ->orWhereNull('opname_expired_waves.source_mix->sj'))
+                        ->where(fn ($x) => $x->where('opname_expired_waves.source_mix->import', '=', 0)
+                            ->orWhereNull('opname_expired_waves.source_mix->import'));
+                } else {
+                    $q->where(function ($any) {
+                        $any->where(function ($pair) {
+                            $pair->where('opname_expired_waves.source_mix->sj', '>', 0)
+                                ->where('opname_expired_waves.source_mix->import', '>', 0);
+                        })->orWhere(function ($pair) {
+                            $pair->where('opname_expired_waves.source_mix->sj', '>', 0)
+                                ->where('opname_expired_waves.source_mix->legacy', '>', 0);
+                        })->orWhere(function ($pair) {
+                            $pair->where('opname_expired_waves.source_mix->import', '>', 0)
+                                ->where('opname_expired_waves.source_mix->legacy', '>', 0);
+                        });
+                    });
+                }
+            });
         });
     }
 

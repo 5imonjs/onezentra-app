@@ -507,6 +507,7 @@ export const opnameSessions = {
   officers: (kodeDepo: string) => apiClient.get('/opname-sessions/officers', { params: { kode_depo: kodeDepo } }),
   create: (data: Record<string, unknown>) => apiClient.post('/opname-sessions', data),
   get: (id: number) => apiClient.get(`/opname-sessions/${id}`),
+  history: (id: number) => apiClient.get(`/opname-sessions/${id}/history`),
   start: (id: number) => apiClient.post(`/opname-sessions/${id}/start`),
   addWaves: (id: number, waveIds: number[]) => apiClient.post(`/opname-sessions/${id}/waves`, { wave_ids: waveIds }),
   verifyItem: (id: number, itemId: number, data: FormData | Record<string, unknown>) => {
@@ -540,7 +541,10 @@ export const opnameExpired = {
       const formData = new FormData();
       formData.append('_method', 'PUT');
       for (const [key, value] of Object.entries(data)) {
-        if (value !== undefined && value !== null) formData.append(key, String(value));
+        if (value === undefined || value === null) continue;
+        // FormData selalu string; rule `boolean` Laravel hanya menerima
+        // '1'/'0' (bukan 'true'/'false').
+        formData.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : String(value));
       }
       formData.append('photo', photoFile);
       return apiClient.post(`/receiving-items/${id}`, formData, {
@@ -553,6 +557,18 @@ export const opnameExpired = {
     const formData = new FormData();
     formData.append('file', file);
     return apiClient.post('/receiving-items/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  // Baseline awal Excel legacy: sekali per depo, baris masuk ledger dengan
+  // source LEGACY_IMPORT. Bukan Receiving baru — hanya migrasi saldo awal.
+  baselineImport: (file: File, data?: { kode_depo?: string; nama_depo?: string; baseline_date?: string }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (data?.kode_depo) formData.append('kode_depo', data.kode_depo);
+    if (data?.nama_depo) formData.append('nama_depo', data.nama_depo);
+    if (data?.baseline_date) formData.append('baseline_date', data.baseline_date);
+    return apiClient.post('/receiving-items/import-baseline', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },

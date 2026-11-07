@@ -317,6 +317,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/', [ReceivingItemController::class, 'store'])->middleware('permission:penerimaan.create');
         Route::get('/template', [ReceivingItemController::class, 'template'])->middleware(['permission:penerimaan.view', 'throttle:30,1,heavy-read']);
         Route::post('/import', [ReceivingItemController::class, 'import'])->middleware(['permission:penerimaan.create', 'throttle:20,1,heavy-write']);
+        Route::post('/import-baseline', [ReceivingItemController::class, 'importBaseline'])->middleware(['permission:penerimaan.create', 'throttle:20,1,heavy-write']);
         // Rute statis wajib sebelum {receivingItem}.
         Route::delete('/bulk', [ReceivingItemController::class, 'bulkDestroy'])->middleware(['permission:penerimaan.delete', 'throttle:20,1,heavy-write']);
         Route::put('/{receivingItem}', [ReceivingItemController::class, 'update'])->middleware('permission:penerimaan.edit');
@@ -347,6 +348,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/officers', [OpnameExpiredSessionController::class, 'officers'])->middleware('permission:opname.session.create');
         Route::post('/', [OpnameExpiredSessionController::class, 'store'])->middleware('permission:opname.session.create');
         Route::get('/{session}', [OpnameExpiredSessionController::class, 'show'])->middleware('permission:opname.session.view');
+        Route::get('/{session}/history', [OpnameExpiredSessionController::class, 'history'])->middleware('permission:opname.session.view');
         Route::post('/{session}/start', [OpnameExpiredSessionController::class, 'start'])->middleware('permission:opname.session.edit');
         Route::post('/{session}/waves', [OpnameExpiredSessionController::class, 'addWaves'])->middleware('permission:opname.session.create');
         Route::post('/{session}/items/{item}', [OpnameExpiredSessionController::class, 'verifyItem'])->middleware('permission:opname.session.edit');

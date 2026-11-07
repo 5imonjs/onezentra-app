@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Batch;
 use App\Models\Npn;
+use App\Models\OpnameExpiredBaselineImport;
 use App\Models\ReceivingItem;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -27,7 +28,13 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
     /** Baris dilewati karena batch yang sama sudah ada di ledger. */
     public int $duplicates = 0;
 
-    public function __construct(private User $user) {}
+    public function __construct(
+        private User $user,
+        private string $source = ReceivingItem::SOURCE_IMPORT,
+        private ?OpnameExpiredBaselineImport $baselineImport = null,
+        private ?string $kodeDepoOverride = null,
+        private ?string $namaDepoOverride = null,
+    ) {}
 
     public function collection(Collection $collection): void
     {
@@ -40,7 +47,7 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
         // Hanya pindai depo efektif user: baris yang dibuat di bawah akan
         // memakai depo user (depotAttributes) bila user punya kode_depo,
         // sehingga ledger depo lain tak perlu dimuat (dulu seluruh tabel).
-        $existingQuery = ReceivingItem::where('source', ReceivingItem::SOURCE_IMPORT);
+        $existingQuery = ReceivingItem::where('source', $this->source);
         if ($this->user->isDepotScoped()) {
             $this->user->applyDepotFilter($existingQuery, 'kode_depo');
         } elseif (! blank($this->user->kode_depo)) {
@@ -103,7 +110,8 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
                 : null;
 
             $attributes = [
-                'source' => ReceivingItem::SOURCE_IMPORT,
+                'source' => $this->source,
+                'baseline_import_id' => $this->baselineImport?->id,
                 // Simpan kode resmi hasil resolusi NPN (bukan teks mentah SKU)
                 // supaya join laporan CLUSTER/PRINCIPAL selalu cocok.
                 'kode_barang' => $resolvedKode,
@@ -124,6 +132,15 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
             $attributes = $this->user->depotAttributes($attributes);
             $attributes['kode_depo'] ??= $kodeDepo;
             $attributes['nama_depo'] ??= $namaDepo;
+
+            // Import baseline bisa dijalankan admin global untuk satu depo
+            // eksplisit; override ini menang atas atribut user.
+            if ($this->kodeDepoOverride !== null) {
+                $attributes['kode_depo'] = $this->kodeDepoOverride;
+            }
+            if ($this->namaDepoOverride !== null) {
+                $attributes['nama_depo'] = $this->namaDepoOverride;
+            }
 
             // Cegah import ganda: batch (barang+depo+expired) yang sudah ada
             // di ledger — dari import sebelumnya maupun baris sebelumnya di

@@ -46,6 +46,9 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     required this.warningText,
     required this.warningWell,
     required this.warningDark,
+    required this.critical,
+    required this.criticalText,
+    required this.criticalWell,
     required this.danger,
     required this.dangerText,
     required this.dangerWell,
@@ -100,6 +103,12 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
   // di-tint (agar chip tidak hilang menyatu dengan outline box).
   final Color warningDark;
 
+  // Oranye kritis: pembeda EXPIRED (merah) dari KRITIS (oranye) supaya
+  // empat level risiko tetap terbaca, sejajar dengan palet web.
+  final Color critical;
+  final Color criticalText;
+  final Color criticalWell;
+
   // Sumur badge varian primary: dark = navy ink; light = indigo muda.
   final Color primaryWell;
   final Color primaryWellText;
@@ -132,6 +141,9 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     warningText: Color(0xFFFDE68A),
     warningWell: Color(0xFF2B1A03),
     warningDark: Color(0xFF451A03),
+    critical: Color(0xFFF97316),
+    criticalText: Color(0xFFFFEDD5),
+    criticalWell: Color(0xFF2B1603),
     danger: Color(0xFFEF4444),
     dangerText: Color(0xFFFECACA),
     dangerWell: Color(0xFF2C0A0E),
@@ -170,6 +182,9 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     warningText: Color(0xFF92400E),
     warningWell: Color(0xFFFFFBEB),
     warningDark: Color(0xFFFDE68A),
+    critical: Color(0xFFF97316),
+    criticalText: Color(0xFFC2410C),
+    criticalWell: Color(0xFFFFF7ED),
     danger: Color(0xFFEF4444),
     dangerText: Color(0xFFB91C1C),
     dangerWell: Color(0xFFFEF2F2),
@@ -209,6 +224,9 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     Color? warningText,
     Color? warningWell,
     Color? warningDark,
+    Color? critical,
+    Color? criticalText,
+    Color? criticalWell,
     Color? danger,
     Color? dangerText,
     Color? dangerWell,
@@ -245,6 +263,9 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
     warningText: warningText ?? this.warningText,
     warningWell: warningWell ?? this.warningWell,
     warningDark: warningDark ?? this.warningDark,
+    critical: critical ?? this.critical,
+    criticalText: criticalText ?? this.criticalText,
+    criticalWell: criticalWell ?? this.criticalWell,
     danger: danger ?? this.danger,
     dangerText: dangerText ?? this.dangerText,
     dangerWell: dangerWell ?? this.dangerWell,
@@ -288,6 +309,9 @@ class ThemeColors extends ThemeExtension<ThemeColors> {
       warningText: Color.lerp(warningText, other.warningText, t)!,
       warningWell: Color.lerp(warningWell, other.warningWell, t)!,
       warningDark: Color.lerp(warningDark, other.warningDark, t)!,
+      critical: Color.lerp(critical, other.critical, t)!,
+      criticalText: Color.lerp(criticalText, other.criticalText, t)!,
+      criticalWell: Color.lerp(criticalWell, other.criticalWell, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
       dangerText: Color.lerp(dangerText, other.dangerText, t)!,
       dangerWell: Color.lerp(dangerWell, other.dangerWell, t)!,

@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\OpnameExpiredBaselineImport;
 use App\Models\Permission;
 use App\Models\ReceivingItem;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\OpnameExpiredService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -78,6 +80,113 @@ class ReceivingItemControllerTest extends TestCase
         $this->assertSame('VALIDASI_SJ', $fresh->source);
         // User depot-scoped tidak bisa memindahkan baris ke depo lain.
         $this->assertSame('DPO', $fresh->kode_depo);
+    }
+
+    public function test_update_can_mark_and_unmark_baseline_coverage(): void
+    {
+        $this->travelTo('2026-09-10 10:00:00');
+
+        OpnameExpiredBaselineImport::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+            'file_name' => 'baseline.xlsx',
+            'imported_by' => $this->user->id,
+            'imported_at' => now(),
+        ]);
+
+        // Tanggal setelah baseline: belum otomatis tercakup, jadi bisa
+        // ditandai manual sebagai barang lama yang baru diinput.
+        $item = $this->makeItem('VALIDASI_SJ');
+        $item->update(['tanggal_penerimaan' => '2026-09-05']);
+
+        $service = app(OpnameExpiredService::class);
+        $this->assertNull($service->baselineCoverageReason($item->fresh()));
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", [
+            'qty_crt' => 10,
+            'baseline_covered' => true,
+            'baseline_cover_note' => 'Barang sudah ada saat baseline, baru diinput.',
+        ])->assertOk()
+            ->assertJsonPath('opname_synced', true);
+
+        $covered = $item->fresh();
+        $this->assertNotNull($covered->baseline_covered_at);
+        $this->assertSame($this->user->id, $covered->baseline_covered_by);
+        $this->assertSame('Barang sudah ada saat baseline, baru diinput.', $covered->baseline_cover_note);
+        $this->assertNotNull($covered->baseline_import_id);
+        $this->assertSame('manual', $service->baselineCoverageReason($covered));
+
+        // Mengedit baris yang sudah tercakup tidak boleh mereset waktu/petugas
+        // penanda — itu jejak audit kapan koreksi cakupan dilakukan.
+        $markedAt = $covered->baseline_covered_at->toDateTimeString();
+        $this->travelTo('2026-09-10 12:00:00');
+        $this->putJson("/api/v1/receiving-items/{$item->id}", [
+            'qty_crt' => 10,
+            'baseline_covered' => true,
+            'baseline_cover_note' => 'Barang sudah ada saat baseline, baru diinput.',
+        ])->assertOk();
+        $this->assertSame($markedAt, $item->fresh()->baseline_covered_at->toDateTimeString());
+
+        // Lepas penanda: baris kembali dihitung sebagai stok baru tanpa
+        // menghapus data ledger.
+        $this->putJson("/api/v1/receiving-items/{$item->id}", [
+            'baseline_covered' => false,
+        ])->assertOk();
+
+        $uncovered = $item->fresh();
+        $this->assertNull($uncovered->baseline_covered_at);
+        $this->assertNull($uncovered->baseline_covered_by);
+        $this->assertNull($uncovered->baseline_cover_note);
+        $this->assertNull($service->baselineCoverageReason($uncovered));
+        $this->assertDatabaseHas('receiving_items', ['id' => $item->id]);
+
+        // Mengubah tanggal penerimaan juga langsung menyinkronkan opname,
+        // karena tanggal menentukan cakupan baseline otomatis.
+        $this->putJson("/api/v1/receiving-items/{$item->id}", [
+            'tanggal_penerimaan' => '2026-09-06',
+        ])->assertOk()
+            ->assertJsonPath('opname_synced', true);
+    }
+
+    public function test_baseline_row_cannot_be_marked_as_covered_duplicate(): void
+    {
+        $manifest = OpnameExpiredBaselineImport::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+            'file_name' => 'baseline.xlsx',
+            'imported_by' => $this->user->id,
+            'imported_at' => now(),
+        ]);
+
+        // Simulasikan baris baseline yang sudah direklasifikasi ke VALIDASI_SJ:
+        // tetap stok awal, bukan duplikat yang boleh disembunyikan.
+        $item = $this->makeItem('LEGACY_IMPORT');
+        $item->update([
+            'source' => ReceivingItem::SOURCE_VALIDASI,
+            'baseline_import_id' => $manifest->id,
+        ]);
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", [
+            'baseline_covered' => true,
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('baseline_covered');
+    }
+
+    public function test_index_exposes_whether_receipt_date_is_stored(): void
+    {
+        $withDate = $this->makeItem('IMPORT_MANUAL');
+        $withoutDate = $this->makeItem('IMPORT_MANUAL');
+        // Accessor tetap mengembalikan fallback, tetapi modal edit tidak boleh
+        // menulis tanggal fallback itu saat pengguna hanya mengubah field lain.
+        $withoutDate->update(['tanggal_penerimaan' => null]);
+
+        $rows = collect($this->getJson('/api/v1/receiving-items')->assertOk()->json('data'))
+            ->keyBy('id');
+
+        $this->assertTrue($rows[$withDate->id]['has_tanggal_penerimaan']);
+        $this->assertFalse($rows[$withoutDate->id]['has_tanggal_penerimaan']);
     }
 
     public function test_update_other_depot_row_is_forbidden(): void

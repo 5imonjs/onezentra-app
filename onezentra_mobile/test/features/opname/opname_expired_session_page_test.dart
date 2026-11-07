@@ -144,9 +144,7 @@ void main() {
       await _pumpOpnameExpiredSessionPage(tester, auth, repository);
 
       expect(
-        find.text(
-          'Anda tidak memiliki izin untuk melihat Sesi Opname Expired.',
-        ),
+        find.text('Anda tidak memiliki izin untuk melihat Sesi Opname.'),
         findsOneWidget,
       );
       expect(repository.listCalls, 0);
@@ -169,7 +167,7 @@ void main() {
 
     await _pumpOpnameExpiredSessionPage(tester, auth, repository);
 
-    expect(find.text('Sesi Opname Expired'), findsOneWidget);
+    expect(find.text('Sesi Opname'), findsOneWidget);
     expect(find.text('Terbuka'), findsOneWidget);
     expect(find.text('Sesi minggu 02/11/2026'), findsOneWidget);
     expect(find.text('Depo Utama'), findsOneWidget);

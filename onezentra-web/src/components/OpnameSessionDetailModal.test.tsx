@@ -12,6 +12,7 @@ const { notifyGlobal, api } = vi.hoisted(() => ({
     revise: vi.fn(() => Promise.resolve({ data: {} })),
     cancel: vi.fn(() => Promise.resolve({ data: {} })),
     addWaves: vi.fn(() => Promise.resolve({ data: {} })),
+    history: vi.fn(() => Promise.resolve({ data: { data: [] } })),
   },
 }));
 

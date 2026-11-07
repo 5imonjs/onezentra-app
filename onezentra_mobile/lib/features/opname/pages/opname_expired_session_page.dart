@@ -18,9 +18,20 @@ AppBadgeVariant _sessionBadgeVariant(String status) => switch (status) {
   'PENDING_APPROVAL' => AppBadgeVariant.warning,
   'APPROVED' => AppBadgeVariant.success,
   'COMPLETED' => AppBadgeVariant.success,
-  'REVISI' => AppBadgeVariant.warning,
-  'CANCELLED' => AppBadgeVariant.gray,
+  'REVISI' => AppBadgeVariant.critical,
+  'CANCELLED' => AppBadgeVariant.danger,
   _ => AppBadgeVariant.gray,
+};
+
+IconData? _sessionIcon(String status) => switch (status) {
+  'OPEN' => Icons.lock_open_rounded,
+  'IN_PROGRESS' => Icons.play_circle_rounded,
+  'PENDING_APPROVAL' => Icons.hourglass_top_rounded,
+  'APPROVED' => Icons.verified_rounded,
+  'COMPLETED' => Icons.check_circle_rounded,
+  'REVISI' => Icons.edit_note_rounded,
+  'CANCELLED' => Icons.cancel_rounded,
+  _ => null,
 };
 
 /// Kondisi fisik batch — sejajar `ReceivingItem::CONDITIONS` backend.
@@ -205,7 +216,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
     return Scaffold(
       backgroundColor: context.colors.background,
       appBar: AppBar(
-        title: const Text('Sesi Opname Expired'),
+        title: const Text('Sesi Opname'),
         elevation: 0,
         actions: [
           IconButton(
@@ -436,6 +447,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
               AppBadge(
                 text: OpnameSessionStatus.label(session.status),
                 variant: _sessionBadgeVariant(session.status),
+                icon: _sessionIcon(session.status),
               ),
             ],
           ),
@@ -622,7 +634,7 @@ class _OpnameExpiredSessionPageState extends State<OpnameExpiredSessionPage> {
           const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
-              'Anda tidak memiliki izin untuk melihat Sesi Opname Expired.',
+              'Anda tidak memiliki izin untuk melihat Sesi Opname.',
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 height: 1.4,
@@ -1325,6 +1337,7 @@ class _OpnameSessionTile extends StatelessWidget {
               AppBadge(
                 text: OpnameSessionStatus.label(session.status),
                 variant: _sessionBadgeVariant(session.status),
+                icon: _sessionIcon(session.status),
               ),
               const SizedBox(height: 4),
               Text(

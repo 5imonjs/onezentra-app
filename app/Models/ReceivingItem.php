@@ -13,6 +13,12 @@ class ReceivingItem extends Model
 
     public const SOURCE_IMPORT = 'IMPORT_MANUAL';
 
+    /**
+     * Baseline awal dari Excel legacy. Bukan Receiving internal: tidak punya
+     * batch asli produsen dan hanya boleh diimpor sekali per depo.
+     */
+    public const SOURCE_LEGACY = 'LEGACY_IMPORT';
+
     public const CONDITIONS = [
         'FISIK_BAGUS',
         'FISIK_RUSAK',
@@ -59,7 +65,8 @@ class ReceivingItem extends Model
         'kode_barang', 'nama_barang', 'expected_qty', 'actual_qty',
         'satuan', 'condition', 'expired_date',         'notes', 'photo', 'scanned_by', 'scan_time',
         'selisih_qty', 'selisih_reason', 'validated_by',
-        'source', 'sumber_material', 'kode_depo', 'nama_depo',
+        'source', 'baseline_import_id', 'baseline_covered_at', 'baseline_covered_by',
+        'baseline_cover_note', 'sumber_material', 'kode_depo', 'nama_depo',
         'qty_pcs', 'conversion_factor', 'tanggal_penerimaan',
     ];
 
@@ -73,6 +80,7 @@ class ReceivingItem extends Model
             'expired_date' => 'date',
             'tanggal_penerimaan' => 'date',
             'scan_time' => 'datetime',
+            'baseline_covered_at' => 'datetime',
         ];
     }
 
@@ -126,6 +134,26 @@ class ReceivingItem extends Model
     public function validator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'validated_by');
+    }
+
+    public function baselineImport(): BelongsTo
+    {
+        return $this->belongsTo(OpnameExpiredBaselineImport::class, 'baseline_import_id');
+    }
+
+    public function baselineCoveredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'baseline_covered_by');
+    }
+
+    public function isBaselineCovered(): bool
+    {
+        return $this->baseline_covered_at !== null;
+    }
+
+    public function isLegacyBaseline(): bool
+    {
+        return $this->source === self::SOURCE_LEGACY;
     }
 
     public function getSumberMaterialFallback(): ?string

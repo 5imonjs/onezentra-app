@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Imports\ReceivingItemImport;
 use App\Models\Batch;
 use App\Models\Npn;
+use App\Models\OpnameExpiredBaselineImport;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\ReceivingItem;
+use App\Services\OpnameExpiredService;
 use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
@@ -60,6 +62,13 @@ class ReceivingItemController extends Controller
 
         $perPage = $this->perPage($request);
         $items = $query->paginate($perPage);
+
+        // Status cakupan baseline dihitung sekali per request agar UI bisa
+        // membedakan baris yang otomatis tercakup (tanggal) vs ditandai
+        // manual. Tanpa ini, pengguna hanya melihat data mentah dan rawan
+        // mengira stok baru ikut terhitung.
+        $service = app(OpnameExpiredService::class);
+        $items->getCollection()->transform(fn (ReceivingItem $item): ReceivingItem => $this->withBaselineCoverage($item, $service));
 
         return response()->json($items);
     }
@@ -215,6 +224,9 @@ class ReceivingItemController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $service = app(OpnameExpiredService::class);
+        $allItems->each(fn (ReceivingItem $item): ReceivingItem => $this->withBaselineCoverage($item, $service));
+
         $byKey = [];
         foreach ($allItems as $item) {
             $depoKey = $item->getRawOriginal('kode_depo') ?? '';
@@ -317,6 +329,8 @@ class ReceivingItemController extends Controller
         $attributes['kode_depo'] ??= $validated['kode_depo'] ?? null;
         $attributes['nama_depo'] ??= $validated['nama_depo'] ?? null;
 
+        $this->assertNoOpenOpnameSession($attributes['kode_depo'] ?? null);
+
         $item = ReceivingItem::create($attributes);
 
         // Aturan baku: tiap baris ledger wajib tepat satu batch.
@@ -346,12 +360,16 @@ class ReceivingItemController extends Controller
             // Klasifikasi sumber ledger (SJ vs import manual) bisa ditetapkan
             // ulang lewat update — mis. data baseline hasil input manual yang
             // kemudian divalidasi SJ, agar kembali ke bucket yang benar.
-            'source' => 'sometimes|in:VALIDASI_SJ,IMPORT_MANUAL',
+            'source' => 'sometimes|in:VALIDASI_SJ,IMPORT_MANUAL,LEGACY_IMPORT',
             'sumber_material' => 'nullable|string|max:200',
             'kode_depo' => 'nullable|string|max:20',
             'nama_depo' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'photo' => 'nullable|image|max:10240',
+            // Koreksi cakupan baseline: baris tetap di ledger, tetapi tidak
+            // dihitung lagi sebagai stok baru oleh Generate.
+            'baseline_covered' => 'sometimes|boolean',
+            'baseline_cover_note' => 'nullable|string|max:1000',
         ]);
 
         $attributes = array_filter([
@@ -368,9 +386,103 @@ class ReceivingItemController extends Controller
             'notes' => $validated['notes'] ?? null,
         ], fn ($value) => $value !== null);
 
+        // Koreksi cakupan baseline. Dipisahkan dari field stok karena tidak
+        // mengubah saldo ledger — hanya menentukan apakah baris dihitung ulang
+        // oleh Generate. Sesi opname yang sedang berjalan tetap diblokir agar
+        // snapshot dan hasil koreksi tidak saling bertentangan.
+        $coverageRequested = $request->exists('baseline_covered');
+        $wasCovered = $receivingItem->baseline_covered_at !== null;
+        $desiredCovered = $coverageRequested && $request->boolean('baseline_covered');
+        $service = app(OpnameExpiredService::class);
+
+        if ($coverageRequested) {
+            if ($service->isBaselineRow($receivingItem)) {
+                throw ValidationException::withMessages([
+                    'baseline_covered' => ['Baris ini adalah stok awal baseline; cakupannya tidak bisa diubah dari sini.'],
+                ]);
+            }
+
+            if ($service->hasOpenSessionForDepot($receivingItem->kode_depo)) {
+                throw ValidationException::withMessages([
+                    'baseline_covered' => ['Sesi opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum mengubah cakupan baseline.'],
+                ]);
+            }
+
+            if ($desiredCovered && ! $wasCovered) {
+                $manifest = OpnameExpiredBaselineImport::query()
+                    ->where('kode_depo', $receivingItem->kode_depo)
+                    ->latest('imported_at')
+                    ->first();
+
+                if ($manifest === null) {
+                    throw ValidationException::withMessages([
+                        'baseline_covered' => ['Belum ada baseline untuk depo ini. Impor baseline terlebih dahulu.'],
+                    ]);
+                }
+
+                $attributes['baseline_import_id'] = $manifest->id;
+                $attributes['baseline_covered_at'] = now();
+                $attributes['baseline_covered_by'] = $request->user()->id;
+                $attributes['baseline_cover_note'] = $validated['baseline_cover_note'] ?? 'Ditandai sudah tercakup baseline.';
+            } elseif ($desiredCovered && array_key_exists('baseline_cover_note', $validated)) {
+                // Sudah tercakup: jangan reset waktu/petugas penanda hanya
+                // karena baris diedit. Hanya catatan yang boleh diperbarui.
+                $attributes['baseline_cover_note'] = $validated['baseline_cover_note'];
+            } elseif (! $desiredCovered && $wasCovered) {
+                // Jangan hapus baris: cukup lepas penanda agar Generate
+                // menghitungnya lagi sebagai stok baru.
+                $attributes['baseline_import_id'] = null;
+                $attributes['baseline_covered_at'] = null;
+                $attributes['baseline_covered_by'] = null;
+                $attributes['baseline_cover_note'] = null;
+            }
+        }
+
+        $coverageChanged = $coverageRequested && $desiredCovered !== $wasCovered;
+
+        // Perubahan tanggal penerimaan bisa menggeser status cakupan baseline
+        // (otomatis dari tanggal). Sinkronkan wave saat tanggal berubah agar
+        // pengguna tidak perlu menebak apakah perlu Generate manual.
+        $oldTanggal = $receivingItem->getRawOriginal('tanggal_penerimaan');
+        $newTanggal = $attributes['tanggal_penerimaan'] ?? $oldTanggal;
+        $tanggalChanged = $request->exists('tanggal_penerimaan')
+            && substr((string) $oldTanggal, 0, 10) !== substr((string) $newTanggal, 0, 10);
+        $shouldSync = $coverageChanged || $tanggalChanged;
+
+        // Perubahan yang menggeser saldo/identitas stok harus diblokir selama
+        // sesi opname depo masih terbuka; koreksi catatan/foto tetap boleh.
+        // Cakupan baseline sudah punya pesan khusus di atas agar pengguna tidak
+        // bingung ketika yang dikoreksi bukan saldo.
+        $stockFields = ['qty_crt', 'qty_pcs', 'expired_date', 'tanggal_penerimaan', 'source', 'kode_depo'];
+        if (collect($stockFields)->contains(fn (string $field) => $request->exists($field))) {
+            $this->assertNoOpenOpnameSession($receivingItem->kode_depo);
+        }
+
         // Vocab kondisi dinormalisasi ke set kanonik (FISIK_*), lihat ReceivingItem::normalizeCondition.
         if (isset($attributes['condition'])) {
             $attributes['condition'] = ReceivingItem::normalizeCondition($attributes['condition']);
+        }
+
+        if (isset($attributes['source'])) {
+            // Baseline hanya lahir dari Import Baseline (punya manifes/cutoff).
+            // Membuat legacy lewat update akan menggeser cutoff depo tanpa
+            // jejak manifes dan bisa menyembunyikan stok.
+            if ($receivingItem->source !== ReceivingItem::SOURCE_LEGACY
+                && $attributes['source'] === ReceivingItem::SOURCE_LEGACY) {
+                throw ValidationException::withMessages([
+                    'source' => ['Baseline legacy hanya bisa dibuat lewat Import Baseline.'],
+                ]);
+            }
+
+            // Baris baseline boleh direklasifikasi menjadi SJ (mis. sudah
+            // divalidasi), tetapi tidak boleh dilempar ke import manual agar
+            // tidak lolos dari proteksi hapus baseline.
+            if ($receivingItem->source === ReceivingItem::SOURCE_LEGACY
+                && ! in_array($attributes['source'], [ReceivingItem::SOURCE_LEGACY, ReceivingItem::SOURCE_VALIDASI], true)) {
+                throw ValidationException::withMessages([
+                    'source' => ['Baris baseline legacy hanya boleh direklasifikasi ke VALIDASI_SJ.'],
+                ]);
+            }
         }
 
         // User depot-scoped tidak boleh memindahkan baris ke depo lain lewat
@@ -408,9 +520,55 @@ class ReceivingItemController extends Controller
 
         $receivingItem->update($attributes);
 
+        $fresh = $receivingItem->fresh();
+
+        $synced = false;
+        if ($shouldSync) {
+            // Koreksi cakupan/tanggal harus langsung terlihat di wave, tanpa
+            // meminta pengguna menekan Generate manual dan lupa. Dibungkus
+            // try/catch: kegagalan generate tidak boleh membatalkan koreksi.
+            try {
+                $service->generate(null, $request->user());
+                $synced = true;
+            } catch (\Throwable $e) {
+                Log::error('Opname generate after receiving item correction failed', [
+                    'receiving_item_id' => $receivingItem->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $coverage = $service->baselineCoverageReason($fresh);
+        $isBaselineRow = $service->isBaselineRow($fresh);
+
+        $message = 'Penerimaan diperbarui.';
+        if ($coverageChanged) {
+            if ($desiredCovered) {
+                $message = 'Baris ditandai sudah tercakup baseline dan tidak dihitung sebagai stok baru.';
+            } elseif ($coverage === 'date') {
+                $message = 'Penanda manual dilepas, tetapi baris tetap tidak dihitung karena tanggal penerimaan masih s.d. tanggal posisi baseline.';
+            } else {
+                $message = 'Penanda dilepas. Baris kembali dihitung sebagai stok baru.';
+            }
+
+            $message .= $synced ? ' Opname sudah disinkronkan.' : ' Generate opname gagal; jalankan Generate manual.';
+        } elseif ($tanggalChanged) {
+            if ($isBaselineRow) {
+                $message = 'Tanggal penerimaan diperbarui. Baris ini tetap stok awal baseline.';
+            } else {
+                $message = $coverage === 'date'
+                    ? 'Tanggal penerimaan diperbarui. Baris sekarang tercakup baseline dan tidak dihitung sebagai stok baru.'
+                    : 'Tanggal penerimaan diperbarui. Baris dihitung sebagai stok baru.';
+            }
+
+            $message .= $synced ? ' Opname sudah disinkronkan.' : ' Generate opname gagal; jalankan Generate manual.';
+        }
+
         return response()->json([
-            'message' => 'Penerimaan diperbarui.',
-            'data' => $receivingItem->fresh()->load('receiving.rencanaKirim'),
+            'message' => $message,
+            'opname_synced' => $synced,
+            'baseline_coverage' => $coverage,
+            'data' => $fresh->load('receiving.rencanaKirim'),
         ]);
     }
 
@@ -419,6 +577,8 @@ class ReceivingItemController extends Controller
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
+
+        $this->assertNoOpenOpnameSession($request->user()->kode_depo);
 
         try {
             $import = new ReceivingItemImport($request->user());
@@ -453,6 +613,138 @@ class ReceivingItemController extends Controller
         }
     }
 
+    /**
+     * Import baseline awal dari Excel legacy — hanya sekali per depo.
+     *
+     * Baris tetap masuk ke `receiving_items` (ledger tunggal) dengan
+     * source LEGACY_IMPORT + baseline_import_id. Manifes import menyimpan
+     * cutoff agar Receiving lama yang sudah tercakup tidak dihitung dua kali.
+     */
+    public function importBaseline(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'kode_depo' => 'nullable|string|max:20',
+            'nama_depo' => 'nullable|string|max:100',
+            // Tanggal posisi baseline (inklusif). Bukan tanggal input: file
+            // baseline bisa berisi saldo per akhir hari tertentu yang baru
+            // diimpor belakangan.
+            'baseline_date' => 'nullable|date|before_or_equal:today',
+        ]);
+
+        $user = $request->user();
+        $kodeDepo = $user->kode_depo ?: ($validated['kode_depo'] ?? null);
+
+        abort_if(blank($kodeDepo), 422, 'Kode depo wajib diisi untuk import baseline.');
+        abort_unless(
+            $user->canAccessDepotRow($kodeDepo),
+            403,
+            'Anda tidak memiliki akses ke depo ini.'
+        );
+
+        $this->assertNoOpenOpnameSession($kodeDepo);
+
+        $alreadyImported = OpnameExpiredBaselineImport::query()
+            ->where('kode_depo', $kodeDepo)
+            ->exists();
+
+        abort_if(
+            $alreadyImported,
+            422,
+            'Baseline untuk depo ini sudah pernah diimpor. Baseline hanya boleh satu kali; gunakan koreksi opname untuk penyesuaian.'
+        );
+
+        $file = $request->file('file');
+        $checksum = hash_file('sha256', $file->getRealPath()) ?: null;
+
+        $baseline = OpnameExpiredBaselineImport::create([
+            'kode_depo' => $kodeDepo,
+            'file_name' => $file->getClientOriginalName(),
+            'file_checksum' => $checksum,
+            'imported_by' => $user->id,
+            'imported_at' => now(),
+            'baseline_date' => $validated['baseline_date'] ?? today()->toDateString(),
+            'nama_depo' => $validated['nama_depo'] ?? null,
+        ]);
+
+        try {
+            $import = new ReceivingItemImport(
+                $user,
+                ReceivingItem::SOURCE_LEGACY,
+                $baseline,
+                $kodeDepo,
+                $validated['nama_depo'] ?? null,
+            );
+
+            DB::transaction(fn () => Excel::import($import, $file));
+
+            // Jangan kunci baseline sekali-seumur-hidup kalau file tidak
+            // menghasilkan satu baris pun. Duplikat tetap diterima karena
+            // berarti baris legacy sudah ada dan manifes ini mengadopsinya.
+            if ($import->imported === 0 && $import->duplicates === 0) {
+                $baseline->delete();
+
+                return response()->json([
+                    'message' => 'Tidak ada baris baseline yang valid. Periksa kolom wajib (produk, qty, expired).',
+                    'skipped' => $import->skipped,
+                ], 422);
+            }
+
+            $baseline->update([
+                'row_count' => $import->imported,
+                'total_qty_crt' => ReceivingItem::where('baseline_import_id', $baseline->id)->sum('actual_qty'),
+                'total_qty_pcs' => ReceivingItem::where('baseline_import_id', $baseline->id)->sum('qty_pcs'),
+            ]);
+
+            // Baseline baru langsung masuk analisa tanpa menunggu Generate
+            // manual. Aman: generate idempotent per kunci wave dan dibatasi
+            // ke depo yang boleh diakses user.
+            try {
+                app(OpnameExpiredService::class)->generate(null, $user);
+            } catch (\Throwable $e) {
+                Log::error('Opname generate after baseline failed', [
+                    'baseline_import_id' => $baseline->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return response()->json([
+                'message' => 'Import baseline legacy selesai.',
+                'imported' => $import->imported,
+                'skipped' => $import->skipped,
+                'duplicates' => $import->duplicates,
+                'baseline_import_id' => $baseline->id,
+                'baseline_date' => $baseline->baseline_date?->toDateString(),
+            ]);
+        } catch (ExcelValidationException $e) {
+            $baseline->delete();
+
+            return response()->json([
+                'message' => 'Import baseline gagal karena baris tidak valid.',
+                'skipped' => count($e->failures()),
+                'errors' => collect($e->failures())->map(fn ($f) => [
+                    'row' => $f->row(),
+                    'attribute' => $f->attribute(),
+                    'errors' => $f->errors(),
+                ])->toArray(),
+            ], 422);
+        } catch (\Exception $e) {
+            $baseline->delete();
+            Log::error('Baseline Import Error', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'message' => 'Import baseline gagal. Silakan periksa file dan coba lagi.',
+            ], 500);
+        }
+    }
+
+    private function assertNoOpenOpnameSession(?string $kodeDepo): void
+    {
+        if (app(OpnameExpiredService::class)->hasOpenSessionForDepot($kodeDepo)) {
+            abort(422, 'Tidak bisa menambah stok: sesi opname depo ini masih berjalan. Selesaikan sesi terlebih dahulu.');
+        }
+    }
+
     public function template()
     {
         return Excel::download(new ReceivingItemTemplate, 'template_penerimaan_manual.xlsx');
@@ -471,6 +763,8 @@ class ReceivingItemController extends Controller
             422,
             'Data hasil validasi SJ tidak dapat dihapus dari sini.'
         );
+
+        $this->assertNoOpenOpnameSession($receivingItem->kode_depo);
 
         $batch = $receivingItem->batch ?? $receivingItem->verifiedBatch;
         if ($batch && OpnameExpiredSessionItem::where('batch_id', $batch->id)->whereNotNull('verified_at')->exists()) {
@@ -511,6 +805,12 @@ class ReceivingItemController extends Controller
 
         if ($request->user()->isDepotScoped()) {
             $request->user()->applyDepotFilter($query, 'kode_depo');
+        }
+
+        // Hapus massal mengubah saldo depo: tolak bila salah satu depo target
+        // masih punya sesi opname terbuka.
+        foreach ((clone $query)->whereNotNull('kode_depo')->distinct()->pluck('kode_depo') as $kodeDepo) {
+            $this->assertNoOpenOpnameSession($kodeDepo);
         }
 
         // Aturan hapus ledger berlabel: label ikut terhapus bersama barisnya
@@ -566,5 +866,21 @@ class ReceivingItemController extends Controller
             ->get();
 
         return response()->json(['data' => $npnResults]);
+    }
+
+    private function withBaselineCoverage(ReceivingItem $item, OpnameExpiredService $service): ReceivingItem
+    {
+        $reason = $service->baselineCoverageReason($item);
+        $item->setAttribute('baseline_coverage', $reason);
+        $item->setAttribute('is_baseline_covered', $reason !== null);
+        $item->setAttribute('is_baseline_row', $service->isBaselineRow($item));
+
+        // Accessor `tanggal_penerimaan` mengembalikan fallback saat kolom
+        // kosong. Frontend perlu tahu apakah tanggal itu benar-benar tersimpan
+        // agar membuka modal edit tidak diam-diam menulis tanggal fallback.
+        $rawTanggal = $item->getRawOriginal('tanggal_penerimaan');
+        $item->setAttribute('has_tanggal_penerimaan', $rawTanggal !== null && $rawTanggal !== '');
+
+        return $item;
     }
 }

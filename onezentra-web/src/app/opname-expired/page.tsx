@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
@@ -24,8 +25,9 @@ interface Wave {
   principal_2?: string | null;
   // Jejak batch penyusun baris agregat ini (diisi Generate).
   batch_numbers?: string[] | null;
-  // Komposisi sumber: {sj, import} — penanda SJ murni / Import / Campuran.
-  source_mix?: { sj: number; import: number } | null;
+  // Komposisi sumber: {sj, import, legacy} — penanda SJ murni / Import manual /
+  // baseline legacy / Campuran.
+  source_mix?: { sj: number; import: number; legacy?: number } | null;
   sumber_material: string;
   tanggal_penerimaan: string | null;
   qty_ini_crt: number;
@@ -86,8 +88,8 @@ interface PendingSummary {
   week_start: string;
   week_end: string;
   wave_exists: boolean;
-  eligible: { total: number; sj: number; import: number };
-  pending: { total: number; sj: number; import: number };
+  eligible: { total: number; sj: number; import: number; legacy: number };
+  pending: { total: number; sj: number; import: number; legacy: number };
 }
 
 const ITEMS_PER_PAGE = 50;
@@ -96,11 +98,11 @@ const STATUS_ORDER = ['EXPIRED', 'KRITIS', 'PERHATIAN', 'AMAN'] as const;
 
 type TabKey = 'ACTION' | 'EXPIRED' | 'KRITIS' | 'PERHATIAN' | 'AMAN' | 'ALL';
 
-const STATUS_META: Record<string, { label: string; badge: string; dot: string; bar: string; text: string }> = {
-  EXPIRED: { label: 'Expired', badge: 'bg-red-50 text-red-700', dot: 'bg-red-500', bar: 'bg-red-500', text: 'text-red-600' },
-  KRITIS: { label: 'Kritis', badge: 'bg-orange-50 text-orange-700', dot: 'bg-orange-500', bar: 'bg-orange-500', text: 'text-orange-700' },
-  PERHATIAN: { label: 'Perhatian', badge: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500', bar: 'bg-amber-400', text: 'text-amber-700' },
-  AMAN: { label: 'Aman', badge: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500', bar: 'bg-emerald-500', text: 'text-emerald-700' },
+const STATUS_META: Record<string, { label: string; badge: string; dot: string; bar: string; text: string; panel: string }> = {
+  EXPIRED: { label: 'Expired', badge: 'bg-red-50 text-red-700', dot: 'bg-red-500', bar: 'bg-red-500', text: 'text-red-600', panel: 'bg-red-500/10 border-red-500/20' },
+  KRITIS: { label: 'Kritis', badge: 'bg-orange-50 text-orange-700', dot: 'bg-orange-500', bar: 'bg-orange-500', text: 'text-orange-700', panel: 'bg-orange-500/10 border-orange-500/20' },
+  PERHATIAN: { label: 'Perhatian', badge: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500', bar: 'bg-amber-400', text: 'text-amber-700', panel: 'bg-amber-500/10 border-amber-500/20' },
+  AMAN: { label: 'Aman', badge: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500', bar: 'bg-emerald-500', text: 'text-emerald-700', panel: 'bg-emerald-500/10 border-emerald-500/20' },
 };
 
 const num = (v: unknown): number => Number(v ?? 0);
@@ -143,7 +145,7 @@ function mondayOfWeek(dateIso: string): string {
 
 function badge(status?: string | null) {
   const s = status || '-';
-  const meta = STATUS_META[s] || { label: s, badge: 'bg-popover text-foreground', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-foreground' };
+  const meta = STATUS_META[s] || { label: s, badge: 'bg-popover text-foreground', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-foreground', panel: 'bg-popover border-border' };
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
@@ -238,12 +240,25 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
     </tr>
   );
 });
-function sourceBadge(mix?: { sj: number; import: number } | null) {
+function sourceBadge(mix?: { sj: number; import: number; legacy?: number } | null) {
   const sj = num(mix?.sj);
   const imp = num(mix?.import);
-  if (sj > 0 && imp > 0) {
+  const legacy = num(mix?.legacy);
+  const kinds = [sj > 0, imp > 0, legacy > 0].filter(Boolean).length;
+
+  if (kinds > 1) {
+    const parts = [
+      sj > 0 ? `${sj} SJ` : null,
+      imp > 0 ? `${imp} import` : null,
+      legacy > 0 ? `${legacy} legacy` : null,
+    ].filter(Boolean).join(' + ');
     return (
-      <span title={`${sj} baris SJ + ${imp} baris import`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 whitespace-nowrap">Campuran</span>
+      <span title={parts} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 whitespace-nowrap">Campuran</span>
+    );
+  }
+  if (legacy > 0) {
+    return (
+      <span title={`${legacy} baris baseline legacy`} className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-700 whitespace-nowrap">Legacy</span>
     );
   }
   if (imp > 0) {
@@ -651,17 +666,47 @@ export default function OpnameExpiredPage() {
     <DashboardLayout>
       <div className="space-y-5">
         {/* Header */}
-        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white">
+        <div className="bg-linear-to-r from-ink-900 via-ink-900 to-ink-800 rounded-2xl p-6 text-white shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex min-w-0 items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
                 <svg aria-hidden="true" className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold leading-tight">Batch Expired</h1>
-                <p className="text-ink-fg-muted mt-0.5">Queue kerja mingguan: batch mendekati kedaluwarsa & yang perlu ditindak</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Monitoring operasional</p>
+                <h1 className="text-2xl font-bold leading-tight">Opname Expired</h1>
+                <p className="text-ink-fg-muted mt-0.5 text-sm">Queue kerja mingguan batch mendekati/melewati expired — sumber Inbound (SJ), import manual, dan baseline legacy.</p>
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={load}
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white backdrop-blur transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <svg aria-hidden="true" className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                {loading ? 'Memuat...' : 'Muat ulang'}
+              </button>
+              {hasPermission('opname.session.view') && (
+                <Link
+                  href="/opname-sessions"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white backdrop-blur transition-colors hover:bg-white/20"
+                >
+                  Sesi Opname
+                  <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                </Link>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-ink-fg-muted" aria-label="Alur data opname expired">
+            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1">Rencana Kirim</span>
+            <span aria-hidden="true">→</span>
+            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1">Validasi SJ</span>
+            <span aria-hidden="true">→</span>
+            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1">Inbound</span>
+            <span aria-hidden="true">→</span>
+            <span className="rounded-full border border-primary-500/30 bg-primary-500/15 px-2.5 py-1 text-primary-200">Opname Expired</span>
           </div>
         </div>
 
@@ -684,14 +729,25 @@ export default function OpnameExpiredPage() {
             {STATUS_ORDER.map((s) => {
               const meta = STATUS_META[s];
               const c = statusSummary[s];
+              const iconTone = s === 'EXPIRED'
+                ? 'bg-red-500/10 text-red-500'
+                : s === 'KRITIS'
+                  ? 'bg-orange-500/10 text-orange-500'
+                  : s === 'PERHATIAN'
+                    ? 'bg-amber-500/10 text-amber-500'
+                    : 'bg-emerald-500/10 text-emerald-500';
               return (
-                <div key={s} className="px-2 py-1">
+                <div
+                  key={s}
+                  className="px-2 py-1"
+                  title={`${meta.label}: ${fnum(c?.count ?? 0)} batch · ${fnum(c?.qty_crt ?? 0)} CRT`}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                      {s === 'EXPIRED' && <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>}
-                      {s === 'KRITIS' && <svg className="w-5 h-5 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>}
-                      {s === 'PERHATIAN' && <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-                      {s === 'AMAN' && <svg className="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconTone}`}>
+                      {s === 'EXPIRED' && <svg aria-hidden="true" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>}
+                      {s === 'KRITIS' && <svg aria-hidden="true" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>}
+                      {s === 'PERHATIAN' && <svg aria-hidden="true" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                      {s === 'AMAN' && <svg aria-hidden="true" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>}
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground truncate">{meta.label}</p>
@@ -706,10 +762,10 @@ export default function OpnameExpiredPage() {
               );
             })}
 
-            <div className="px-2 py-1">
+            <div className="px-2 py-1" title={`${fnum(berisikoCrt)} CRT berisiko (Expired + Kritis + Perhatian)`}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                  <svg aria-hidden="true" className="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">CRT Berisiko</p>
@@ -813,12 +869,13 @@ export default function OpnameExpiredPage() {
                 value={sourceFilter}
                 onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
                 aria-label="Filter sumber data"
-                title="SJ = murni penerimaan sistem, Import = input manual, Campuran = keduanya"
+                title="SJ = murni penerimaan sistem, Import = input manual, Legacy = baseline awal, Campuran = lebih dari satu sumber"
                 className="select-field-sm min-w-[150px]"
               >
                 <option value="">Semua sumber</option>
                 <option value="sj">SJ (sistem)</option>
                 <option value="import">Import (manual)</option>
+                <option value="legacy">Legacy (baseline)</option>
                 <option value="mixed">Campuran</option>
               </select>
             </label>
@@ -873,7 +930,7 @@ export default function OpnameExpiredPage() {
               <button
                 type="button"
                 onClick={handleGenerate}
-                title={`Siap generate minggu ${pending?.week_start}: ${pending?.pending.sj} baris SJ + ${pending?.pending.import} baris import`}
+                title={`Siap generate minggu ${pending?.week_start}: ${pending?.pending.sj} baris SJ + ${pending?.pending.import} baris import${(pending?.pending.legacy ?? 0) > 0 ? ` + ${pending?.pending.legacy} baris legacy` : ''}`}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
               >
                 <span className="w-2 h-2 rounded-full bg-amber-500" aria-hidden="true" />
@@ -957,14 +1014,14 @@ export default function OpnameExpiredPage() {
                     <p className="text-sm font-medium text-muted-foreground">
                       {tabKey === 'AMAN' ? 'Tidak ada batch berstatus Aman minggu ini.' : 'Tidak ada batch dengan kriteria ini.'}
                     </p>
-                    <p className="text-xs text-slate-400">Ganti filter minggu/tab, atau Generate opname untuk minggu tersebut.</p>
+                    <p className="text-xs text-slate-400">Ganti filter minggu/tab, atau Generate Opname Expired untuk minggu tersebut.</p>
                   </>
                 )}
               </div>
             </div>
           ) : (
             <>
-              <div className="hidden md:block max-h-[560px] overflow-x-auto overflow-y-auto" id="opname-table-panel" role="tabpanel" aria-labelledby="tab-ACTION">
+              <div className="hidden md:block max-h-[560px] overflow-x-auto overflow-y-auto" id="opname-table-panel" role="tabpanel" aria-labelledby={`tab-${tabKey}`}>
                 <table className="w-full min-w-[1040px] border-collapse">
                   <caption className="sr-only">Daftar opname expired</caption>
                   <thead className="sticky top-0 z-10">
@@ -1169,7 +1226,7 @@ export default function OpnameExpiredPage() {
                 </div>
 
                 {/* Rekomendasi */}
-                <div className={`rounded-xl border px-4 py-3 ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).badge}`}>
+                <div className={`rounded-xl border px-4 py-3 ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).panel}`}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rekomendasi</p>
                   <p className="text-sm text-foreground mt-0.5 leading-snug">{current.rekomendasi || '-'}</p>
                 </div>
@@ -1177,9 +1234,18 @@ export default function OpnameExpiredPage() {
                 {/* Batch penyusun: jejak identitas tiap baris ledger agregat ini */}
                 <div className="rounded-xl border border-border px-4 py-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Batch Penyusun ({(current.batch_numbers || []).length}) · Sumber: {num(current.source_mix?.sj) > 0 && num(current.source_mix?.import) > 0
-                      ? `Campuran (${current.source_mix?.sj} SJ + ${current.source_mix?.import} import)`
-                      : num(current.source_mix?.import) > 0 ? `Import (${current.source_mix?.import} baris)` : num(current.source_mix?.sj) > 0 ? `SJ (${current.source_mix?.sj} baris)` : '-'}
+                    Batch Penyusun ({(current.batch_numbers || []).length}) · Sumber: {(() => {
+                      const sj = num(current.source_mix?.sj);
+                      const imp = num(current.source_mix?.import);
+                      const legacy = num(current.source_mix?.legacy);
+                      const parts = [
+                        sj > 0 ? `${sj} SJ` : null,
+                        imp > 0 ? `${imp} import` : null,
+                        legacy > 0 ? `${legacy} legacy` : null,
+                      ].filter(Boolean);
+                      if (parts.length === 0) return '-';
+                      return parts.length > 1 ? `Campuran (${parts.join(' + ')})` : parts[0];
+                    })()}
                   </p>
                   {(current.batch_numbers || []).length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 mt-2">

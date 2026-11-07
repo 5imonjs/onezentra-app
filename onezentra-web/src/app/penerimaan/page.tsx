@@ -123,6 +123,14 @@ interface ReceivingItem {
   nama_depo: string | null;
   condition: string | null;
   created_at: string;
+  /** `manual` = ditandai admin; `date` = otomatis dari tanggal penerimaan. */
+  baseline_coverage?: 'manual' | 'date' | null;
+  baseline_cover_note?: string | null;
+  baseline_covered_at?: string | null;
+  baseline_import_id?: number | null;
+  is_baseline_row?: boolean;
+  /** False = tanggal penerimaan tersimpan kosong; nilai tanggal hanya fallback. */
+  has_tanggal_penerimaan?: boolean;
   /**
    * Batch label untuk item ini (dari validasi SJ). `null` = belum ada batch,
    * atau sesi validasi dibatalkan sehingga label dicabut. Bedakan keduanya
@@ -399,7 +407,7 @@ export default function PenerimaanPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold leading-tight">Inbound</h1>
-                <p className="mt-0.5 text-ink-fg-muted">Hasil penerimaan SJ — tiap batch menjadi sumber Batch Expired</p>
+                <p className="mt-0.5 text-ink-fg-muted">Hasil penerimaan SJ — tiap batch menjadi sumber Opname Expired</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -448,7 +456,7 @@ export default function PenerimaanPage() {
             </div>
             <div className="flex items-center gap-2">
               {hasPermission('opname.view') && (
-                <button onClick={() => router.push('/opname-expired')} title="Input dan import batch manual dikelola di Batch Expired" className="btn-primary">
+                <button onClick={() => router.push('/opname-expired')} title="Input dan import batch manual dikelola di Opname Expired" className="btn-primary">
                   <span className="flex items-center gap-2">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                     Batch Manual
@@ -524,10 +532,10 @@ export default function PenerimaanPage() {
                       onClick={() => router.push('/opname-expired')}
                       className="font-semibold text-accent-text hover:underline"
                     >
-                      Batch Expired
+                      Opname Expired
                     </button>
                   ) : (
-                    'Batch Expired'
+                    'Opname Expired'
                   )}
                   .
                 </p>
@@ -665,7 +673,26 @@ function FragmentGroup({ group, isOpen, onToggle, colSpan, fnum, fmtDate, hasEdi
              <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{item.satuan || '-'}</td>
              <td className="px-5 py-3 whitespace-nowrap text-sm text-foreground">{fmtDate(item.expired_date)}</td>
               <td className="px-5 py-3 whitespace-nowrap">
-                <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
+                  {item.is_baseline_row ? (
+                    <span
+                      className="badge border border-violet-200 bg-violet-50 text-violet-700"
+                      title="Baris stok awal baseline; menjadi acuan dan tidak dihitung sebagai stok baru"
+                    >
+                      Baseline
+                    </span>
+                  ) : item.baseline_coverage ? (
+                    <span
+                      className="badge border border-violet-200 bg-violet-50 text-violet-700"
+                      title={item.baseline_coverage === 'manual'
+                        ? `Ditandai sudah tercakup baseline${item.baseline_cover_note ? `: ${item.baseline_cover_note}` : ''}`
+                        : 'Otomatis tidak dihitung: tanggal penerimaan s.d. tanggal posisi baseline'}
+                    >
+                      {item.baseline_coverage === 'manual' ? 'Baseline (manual)' : 'Baseline (tanggal)'}
+                    </span>
+                  ) : null}
+                </div>
               </td>
               <td className="px-5 py-3 whitespace-nowrap text-right">
                 <div className="flex items-center justify-end gap-1">
@@ -743,7 +770,26 @@ function FragmentGroupMobile({ group, isOpen, onToggle, fnum, fmtDate, hasEdit, 
                   </div>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={`badge ${conditionBadge(item.condition)}`}>{conditionLabel(item.condition)}</span>
+                    {item.is_baseline_row ? (
+                      <span
+                        className="badge border border-violet-200 bg-violet-50 text-violet-700"
+                        title="Baris stok awal baseline; menjadi acuan dan tidak dihitung sebagai stok baru"
+                      >
+                        Baseline
+                      </span>
+                    ) : item.baseline_coverage ? (
+                      <span
+                        className="badge border border-violet-200 bg-violet-50 text-violet-700"
+                        title={item.baseline_coverage === 'manual'
+                          ? `Ditandai sudah tercakup baseline${item.baseline_cover_note ? `: ${item.baseline_cover_note}` : ''}`
+                          : 'Otomatis tidak dihitung: tanggal penerimaan s.d. tanggal posisi baseline'}
+                      >
+                        {item.baseline_coverage === 'manual' ? 'Baseline (manual)' : 'Baseline (tanggal)'}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-1">
                     <LabelActions item={item} po={group.po} depo={group.depo} />
                     {hasEdit && (

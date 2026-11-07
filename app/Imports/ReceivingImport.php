@@ -109,6 +109,10 @@ class ReceivingImport implements ToCollection, WithHeadingRow
                 'checked_by' => $this->user->id,
             ]);
 
+            // Tanggal barang benar-benar diterima, bukan tanggal import.
+            $tanggalPenerimaan = $rencanaKirim->checked_in_at?->toDateString()
+                ?? today()->toDateString();
+
             // Salin item seperti store(): dari validasi SJ COMPLETED bila ada,
             // fallback dari rencana_kirim_items — actual dipakai sebagai received.
             $latestValidation = SjValidation::where('rencana_kirim_id', $rencanaKirim->id)
@@ -135,7 +139,7 @@ class ReceivingImport implements ToCollection, WithHeadingRow
                         'sumber_material' => $rencanaKirim->shipper_name,
                         'kode_depo' => $rencanaKirim->kode_depo,
                         'nama_depo' => $rencanaKirim->nama_depo,
-                        'tanggal_penerimaan' => now()->toDateString(),
+                        'tanggal_penerimaan' => $tanggalPenerimaan,
                     ]);
 
                     // Aturan baku: tiap baris ledger wajib tepat satu batch.
@@ -157,7 +161,7 @@ class ReceivingImport implements ToCollection, WithHeadingRow
                         'sumber_material' => $rencanaKirim->shipper_name,
                         'kode_depo' => $rencanaKirim->kode_depo,
                         'nama_depo' => $rencanaKirim->nama_depo,
-                        'tanggal_penerimaan' => now()->toDateString(),
+                        'tanggal_penerimaan' => $tanggalPenerimaan,
                     ]);
 
                     // Aturan baku: tiap baris ledger wajib tepat satu batch —

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Mail\OpnameExpiredNotification;
+use App\Models\ApprovalHistory;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -13,6 +14,7 @@ use App\Services\EmailNotificationService;
 use App\Services\OpnameExpiredService;
 use App\Services\OpnameSessionLifecycleService;
 use App\Support\EvidenceStorage;
+use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -55,6 +57,24 @@ class OpnameExpiredSessionController extends Controller
 
         if ($request->boolean('mine')) {
             $query->where('assigned_to', $request->user()->id);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $like = LikePattern::contains($search);
+            $isNumericId = ctype_digit($search);
+
+            $query->where(function ($q) use ($search, $like, $isNumericId): void {
+                $q->whereRaw('kode_depo LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('nama_depo LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('notes LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereHas('assignee', fn ($u) => $u->whereRaw('full_name LIKE ? ESCAPE ?', [$like, '\\']))
+                    ->orWhereHas('creator', fn ($u) => $u->whereRaw('full_name LIKE ? ESCAPE ?', [$like, '\\']));
+
+                if ($isNumericId) {
+                    $q->orWhere('id', (int) $search);
+                }
+            });
         }
 
         $sessions = $query->paginate($this->perPage($request));
@@ -264,9 +284,17 @@ class OpnameExpiredSessionController extends Controller
                         : (int) $today->diffInDays($expiredDay);
             }
 
+            $expectedCrt = $item->qty_sistem_crt !== null
+                ? (float) $item->qty_sistem_crt
+                : ($source ? (float) $source->actual_qty : null);
+            $expectedPcs = $item->qty_sistem_pcs !== null
+                ? (float) $item->qty_sistem_pcs
+                : ($source && $source->qty_pcs !== null ? (float) $source->qty_pcs : null);
+
             return array_merge($item->toArray(), [
-                'expected_crt' => $source ? (float) $source->actual_qty : null,
-                'expected_pcs' => $source && $source->qty_pcs !== null ? (float) $source->qty_pcs : null,
+                'expected_crt' => $expectedCrt,
+                'expected_pcs' => $expectedPcs,
+                'snapshot_frozen' => $item->qty_sistem_crt !== null,
                 'tanggal_penerimaan' => $tanggalTerima,
                 'condition_terima' => $source?->condition,
                 'selisih_terima' => $source
@@ -304,6 +332,10 @@ class OpnameExpiredSessionController extends Controller
                 'status' => OpnameExpiredSession::STATUS_IN_PROGRESS,
                 'started_at' => now(),
             ]);
+
+            // Bekukan qty sistem tepat saat sesi mulai: Receiving yang masuk
+            // setelah titik ini tidak boleh mengubah pembanding opname.
+            app(OpnameExpiredService::class)->freezeSessionSnapshots($locked);
 
             return $locked;
         });
@@ -576,6 +608,13 @@ class OpnameExpiredSessionController extends Controller
                     $added++;
                 }
             }
+
+            // Wave yang ditambahkan setelah sesi berjalan juga harus dibekukan
+            // saat ditambahkan — bukan mengikuti qty live di tengah hitung.
+            // Sesi OPEN akan dibekukan serentak saat /start.
+            if ($lockedSession->status !== OpnameExpiredSession::STATUS_OPEN) {
+                $service->freezeSessionSnapshots($lockedSession, true);
+            }
         });
 
         return response()->json([
@@ -602,6 +641,23 @@ class OpnameExpiredSessionController extends Controller
 
             abort_if($lockedWave, 422, "Wave {$wave->kode_barang} sedang berjalan di sesi lain.");
         }
+    }
+
+    /**
+     * Riwayat transisi sesi (append-only) untuk audit trail UI. Memakai
+     * ApprovalHistory yang sama dengan modul biaya.
+     */
+    public function history(Request $request, OpnameExpiredSession $session): JsonResponse
+    {
+        $this->authorizeSession($request, $session);
+
+        $histories = ApprovalHistory::with('actor')
+            ->where('subject_type', $session::class)
+            ->where('subject_id', $session->id)
+            ->orderBy('id')
+            ->get();
+
+        return response()->json(['data' => $histories]);
     }
 
     private function authorizeSession(Request $request, OpnameExpiredSession $session): void

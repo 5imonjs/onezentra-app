@@ -8,7 +8,7 @@ import { notifyGlobal } from '@/store/globalToast';
 
 // Modul yang boleh dikosongkan master. SEMUA modul operasional harus ada di
 // sini — reset yang hanya mencakup sebagian modul meninggalkan data yatim
-// (mis. wave Batch Expired yang masih membawa qty lama setelah receiving
+// (mis. wave Opname Expired yang masih membawa qty lama setelah receiving
 // direset). Urutan hapus di backend anak-dulu agar FK tidak meledak.
 const MODULES = [
   { key: 'rencana_kirim', label: 'Replenishment', note: 'Rencana + item, gate, receiving, dan validasi ikut terhapus via relasi' },
@@ -17,7 +17,7 @@ const MODULES = [
   { key: 'receiving', label: 'Check Out Point', note: 'Receiving + item (+batch receiving via cascade)' },
   { key: 'penerimaan', label: 'Inbound (SJ)', note: 'Tabel penerimaan legacy (tidak dibaca UI, tetap dibersihkan)' },
   { key: 'opname-session', label: 'Sesi Opname', note: 'Sesi opname + item (wave dibiarkan sebagai referensi)' },
-  { key: 'opname-wave', label: 'Batch Expired', note: 'Wave monitoring + item sesi yang menunjuk wave tersebut (sesi induk tetap ada)' },
+  { key: 'opname-wave', label: 'Opname Expired', note: 'Wave monitoring + item sesi yang menunjuk wave tersebut (sesi induk tetap ada)' },
   { key: 'standarisasi', label: 'Standarisasi', note: 'Pengajuan standarisasi tumpukan depo terpilih' },
   { key: 'biaya-thl', label: 'Biaya THL', note: 'Pengajuan THL + detail, kendaraan, foto, dan riwayat approval' },
   { key: 'biaya-retribusi', label: 'Biaya Retribusi', note: 'Pengajuan retribusi + detail, dokumen, riwayat approval (THL turunan ikut terhapus)' },
@@ -67,7 +67,7 @@ const LEGACY_TABLE_LABELS: Record<string, string> = {
   receiving_items: 'Item Check Out',
   penerimaan: 'Inbound (SJ)',
   opname_expired_sessions: 'Sesi Opname',
-  opname_expired_waves: 'Batch Expired',
+  opname_expired_waves: 'Opname Expired',
   standarisasi_tumpukan: 'Standarisasi',
   biaya_thls: 'Biaya THL',
   biaya_retribusis: 'Biaya Retribusi',

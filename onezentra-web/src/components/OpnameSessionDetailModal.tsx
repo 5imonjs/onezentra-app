@@ -77,6 +77,16 @@ const STATUS_META: Record<string, string> = {
 
 const fmtDate = formatDateId;
 
+interface SessionHistoryEntry {
+  id: number;
+  from_status: string | null;
+  to_status: string;
+  action: string;
+  reason: string | null;
+  created_at: string;
+  actor?: { full_name: string } | null;
+}
+
 // Alur baku sesi dalam 5 langkah (dihilangkan untuk CANCELLED):
 // Buat & tugaskan → Mulai → Hitung fisik + disposisi → Kirim → Setujui.
 // (disposisi inni step 4 juga tombol kecil L / R / D per row).
@@ -168,6 +178,10 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
   // Target aksi cepat "Tandai Habis" — tercatat di sesi, tidak menghapus
   // apa pun dari database; koreksi menunggu persetujuan BLC.
   const [habisItem, setHabisItem] = useState<SessionDetailItem | null>(null);
+  // Riwayat transisi sesi (append-only) untuk audit trail.
+  const [history, setHistory] = useState<SessionHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
     setBatchQuery('');
@@ -178,6 +192,24 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
     setHabisItem(null);
     setForms({});
   }, [sessionId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!sessionId) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    opnameSessions.history(sessionId)
+      .then((res) => {
+        if (!cancelled) setHistory((res.data?.data ?? []) as SessionHistoryEntry[]);
+      })
+      .catch((e) => {
+        if (!cancelled) setHistoryError(getErrorMessage(e, 'Gagal memuat riwayat sesi'));
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [sessionId, detail?.status]);
 
   const setForm = (id: number, patch: Partial<{ qty_fisik_crt: string; qty_fisik_pcs: string; condition: string; notes: string; photo: File | null }>) =>
     setForms((p) => {
@@ -409,6 +441,38 @@ export function SessionDetailModal({ sessionId, detail, detailLoading, progress,
                 </span>
               </div>
             )}
+
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between gap-2 px-3 py-2 bg-popover border-b border-border">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Riwayat Sesi ({history.length})
+                </p>
+                {historyLoading && <span className="text-[11px] text-muted-foreground">Memuat...</span>}
+              </div>
+              {historyError ? (
+                <p className="px-3 py-3 text-xs text-red-600">{historyError}</p>
+              ) : !historyLoading && history.length === 0 ? (
+                <p className="px-3 py-3 text-xs text-slate-400">Belum ada transisi tercatat.</p>
+              ) : (
+                <ol className="divide-y divide-border">
+                  {history.map((h) => (
+                    <li key={h.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 text-xs">
+                      <span className="font-semibold text-foreground">{h.action}</span>
+                      <span className="text-muted-foreground">
+                        {h.from_status || '-'} → {h.to_status}
+                      </span>
+                      <span className="text-muted-foreground">· {h.actor?.full_name || 'sistem'}</span>
+                      <span className="text-slate-400 ml-auto whitespace-nowrap">{fmtDate(h.created_at)}</span>
+                      {h.reason && (
+                        <span className="basis-full text-orange-700 bg-orange-50 border border-orange-100 rounded-md px-2 py-1">
+                          {h.reason}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
 
             <div className="border border-border rounded-xl overflow-hidden">
               <div className="flex flex-wrap items-center gap-2 p-3 bg-card/95 backdrop-blur border-b border-border">

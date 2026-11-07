@@ -23,11 +23,14 @@ use App\Models\User;
 use App\Services\OpnameExpiredService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
 class OpnameExpiredTest extends TestCase
@@ -80,6 +83,25 @@ class OpnameExpiredTest extends TestCase
             'condition' => 'GOOD',
             'scanned_by' => $this->user->id,
         ]);
+    }
+
+    /**
+     * @param  array<int, array<int, mixed>>  $rows
+     */
+    private function baselineFile(array $rows): UploadedFile
+    {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([
+            'kode_barang', 'nama_barang', 'qty_crt_zak', 'qty_pcs',
+            'tgl_expired_date', 'tgl_penerimaan',
+        ], null, 'A1');
+        $sheet->fromArray($rows, null, 'A2');
+
+        ob_start();
+        (new Xlsx($spreadsheet))->save('php://output');
+
+        return UploadedFile::fake()->createWithContent('baseline.xlsx', (string) ob_get_clean());
     }
 
     public function test_generate_creates_wave_with_remaining_days_and_status(): void
@@ -1179,10 +1201,10 @@ class OpnameExpiredTest extends TestCase
         app(OpnameExpiredService::class)->generate();
 
         $mixed = OpnameExpiredWave::where('kode_barang', 'B-MIX-01')->first();
-        $this->assertSame(['sj' => 1, 'import' => 1], $mixed->source_mix);
+        $this->assertSame(['sj' => 1, 'import' => 1, 'legacy' => 0], $mixed->source_mix);
 
         $pureImport = OpnameExpiredWave::where('kode_barang', 'B-MIX-02')->first();
-        $this->assertSame(['sj' => 0, 'import' => 1], $pureImport->source_mix);
+        $this->assertSame(['sj' => 0, 'import' => 1, 'legacy' => 0], $pureImport->source_mix);
 
         $sjOnly = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=sj')->assertOk();
         $this->assertSame([], collect($sjOnly->json('data.data'))->pluck('kode_barang')->all());
@@ -1210,5 +1232,118 @@ class OpnameExpiredTest extends TestCase
         );
         // Rentang terbalik ditolak.
         $this->getJson('/api/v1/opname-expired?date_from=2026-09-27&date_to=2026-09-20')->assertStatus(422);
+    }
+
+    public function test_baseline_legacy_import_is_one_time_and_cutoff_prevents_double_count(): void
+    {
+        // Wave minggu SEBELUM baseline: stok historis ini sudah terwakili
+        // oleh baseline dan tidak boleh ikut di-roll-forward lagi.
+        $this->travelTo('2026-09-02 09:00:00');
+        $this->receipt('B-BASE-01', 'Produk Baseline', 3, '2027-01-01', '2026-08-31');
+        app(OpnameExpiredService::class)->generate();
+
+        // Baris Receiving yang sudah ada SEBELUM baseline diimpor dianggap
+        // sudah tercakup baseline (tidak dihitung dua kali).
+        $this->travelTo('2026-09-09 09:00:00');
+        $this->receipt('B-BASE-01', 'Produk Baseline', 4, '2027-01-01', '2026-09-01');
+
+        $this->travelTo('2026-09-09 10:00:00');
+        $rows = [['B-BASE-01', 'Produk Baseline', 10, 10, '2027-01-01', '2026-09-01']];
+
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile($rows),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk()->assertJsonPath('imported', 1);
+
+        $legacy = ReceivingItem::where('source', ReceivingItem::SOURCE_LEGACY)->firstOrFail();
+        $this->assertNotNull($legacy->baseline_import_id);
+        $this->assertStringStartsWith('LEGACY-', (string) $legacy->verifiedBatch?->batch_number);
+        $this->assertDatabaseHas('opname_expired_baseline_imports', [
+            'kode_depo' => 'DPO',
+            'row_count' => 1,
+        ]);
+        $this->assertSame('2026-09-01', $legacy->baselineImport?->baseline_date?->toDateString());
+
+        // Baseline pertama otomatis men-generate. Hanya baris legacy yang
+        // masuk; Receiving lama (09:00) sudah tercakup cutoff.
+        $wave = OpnameExpiredWave::where('kode_barang', 'B-BASE-01')
+            ->where('week_start', '2026-09-07')
+            ->firstOrFail();
+        $this->assertEquals(10, (float) $wave->qty_ini_crt);
+        $this->assertSame(1, $wave->source_mix['legacy']);
+        $this->assertSame(0, $wave->source_mix['import']);
+
+        // Filter sumber legacy hanya menampilkan wave baseline murni.
+        $legacyOnly = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=legacy')->assertOk();
+        $this->assertSame(['B-BASE-01'], collect($legacyOnly->json('data.data'))->pluck('kode_barang')->all());
+
+        // Baseline hanya boleh sekali per depo.
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile($rows),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+        ])->assertStatus(422);
+
+        // Receiving baru SETELAH baseline tetap dihitung sebagai stok baru.
+        // Tanggal penerimaan harus setelah tanggal posisi baseline.
+        $this->travelTo('2026-09-09 11:00:00');
+        $this->receipt('B-BASE-01', 'Produk Baseline', 2, '2027-01-01', '2026-09-09');
+        app(OpnameExpiredService::class)->generate();
+
+        $wave->refresh();
+        $this->assertEquals(12, (float) $wave->qty_ini_crt);
+        $this->assertSame(['sj' => 0, 'import' => 1, 'legacy' => 1], $wave->source_mix);
+
+        // Penerimaan lama yang baru diinput SETELAH baseline tidak boleh
+        // dihitung lagi: tanggal penerimaannya masih tercakup baseline.
+        $this->travelTo('2026-09-09 11:30:00');
+        $late = $this->receipt('B-BASE-01', 'Produk Baseline', 5, '2027-01-01', '2026-09-01');
+        app(OpnameExpiredService::class)->generate();
+
+        $wave->refresh();
+        $this->assertEquals(12, (float) $wave->qty_ini_crt, 'Baris late-input sebelum baseline tidak boleh menambah qty.');
+        $this->assertSame('date', app(OpnameExpiredService::class)->baselineCoverageReason($late->fresh()));
+
+        $mixedOnly = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=mixed')->assertOk();
+        $this->assertSame(['B-BASE-01'], collect($mixedOnly->json('data.data'))->pluck('kode_barang')->all());
+
+        // Setelah ada Receiving baru, wave ini bukan lagi legacy murni.
+        $legacyAfter = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=legacy')->assertOk();
+        $this->assertSame([], collect($legacyAfter->json('data.data'))->pluck('kode_barang')->all());
+    }
+
+    public function test_reclassified_baseline_row_is_still_counted_as_baseline(): void
+    {
+        $this->travelTo('2026-09-09 09:00:00');
+
+        $rows = [['B-REBASE-01', 'Produk Rebaseline', 10, 10, '2027-01-01', '2026-09-08']];
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile($rows),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-08',
+        ])->assertOk();
+
+        $legacy = ReceivingItem::where('source', ReceivingItem::SOURCE_LEGACY)->firstOrFail();
+        $this->assertSame('2026-09-08', substr((string) $legacy->tanggal_penerimaan, 0, 10));
+        $legacy->update(['source' => ReceivingItem::SOURCE_VALIDASI]);
+        $reclassified = $legacy->fresh();
+        $this->assertSame('2026-09-08', substr((string) $reclassified->tanggal_penerimaan, 0, 10));
+
+        // Baris baseline yang direklasifikasi ke VALIDASI_SJ tetap menjadi
+        // stok awal, bukan "covered duplicate" yang dibuang dari wave.
+        $service = app(OpnameExpiredService::class);
+        $this->assertTrue($service->isBaselineRow($reclassified));
+        $this->assertNull($service->baselineCoverageReason($reclassified));
+
+        // Hapus wave hasil import agar generate benar-benar membangun ulang
+        // dari ledger, bukan sekadar menyisakan snapshot lama.
+        OpnameExpiredWave::where('week_start', '2026-09-07')->delete();
+
+        app(OpnameExpiredService::class)->generate();
+        $wave = OpnameExpiredWave::where('week_start', '2026-09-07')->firstOrFail();
+        $this->assertEquals(10, (float) $wave->qty_ini_crt);
     }
 }

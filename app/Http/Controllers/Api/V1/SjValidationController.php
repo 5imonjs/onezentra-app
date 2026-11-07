@@ -1069,7 +1069,15 @@ class SjValidationController extends Controller
             "Validasi berstatus {$sjValidation->status} tidak dapat diselesaikan."
         );
 
-        [$completedValidation, $receiving] = DB::transaction(function () use ($sjValidation) {
+        $validated = $request->validate([
+            // Opsional: koreksi tanggal penerimaan saat validasi terlambat.
+            // Default memakai tanggal check-in gate (kedatangan fisik), bukan
+            // tanggal input validasi.
+            'tanggal_penerimaan' => 'nullable|date|before_or_equal:today',
+        ]);
+        $tanggalPenerimaan = $validated['tanggal_penerimaan'] ?? null;
+
+        [$completedValidation, $receiving] = DB::transaction(function () use ($sjValidation, $tanggalPenerimaan) {
             // Kunci baris validasi: mencegah dua user menyelesaikan bersamaan
             // dan menciptakan Receiving + ReceivingItems dobel.
             $locked = SjValidation::query()
@@ -1105,7 +1113,7 @@ class SjValidationController extends Controller
                 'duration_seconds' => $this->elapsedSeconds($locked, $finishedAt),
             ]);
 
-            [$locked, $receiving] = $this->ensureReceiving($locked);
+            [$locked, $receiving] = $this->ensureReceiving($locked, $tanggalPenerimaan);
 
             // Maju satu arah saja di DALAM transaksi yang sama: crash di
             // antara commit receiving dan update RK meninggalkan kombinasi
@@ -1239,9 +1247,15 @@ class SjValidationController extends Controller
      * Pastikan tepat satu Receiving + ReceivingItems untuk validasi yang selesai.
      * Dipanggil di dalam transaksi complete() — idempoten, aman dipanggil ulang.
      */
-    protected function ensureReceiving(SjValidation $sjValidation): array
+    protected function ensureReceiving(SjValidation $sjValidation, ?string $tanggalPenerimaan = null): array
     {
         $rencanaKirim = $sjValidation->rencanaKirim;
+
+        // Tanggal penerimaan = tanggal kedatangan fisik (check-in gate) atau
+        // override eksplisit dari request. Tanggal input validasi hanya
+        // fallback terakhir.
+        $tanggalPenerimaan ??= $rencanaKirim->checked_in_at?->toDateString()
+            ?? today()->toDateString();
 
         // GUARD: Cek receiving dengan lockForUpdate untuk mencegah race condition &
         // juga handle kasus receiving yang sudah COMPLETED (tidak perlu create ulang).
@@ -1305,7 +1319,7 @@ class SjValidationController extends Controller
                 'sumber_material' => $rencanaKirim->shipper_name,
                 'kode_depo' => $rencanaKirim->kode_depo,
                 'nama_depo' => $rencanaKirim->nama_depo,
-                'tanggal_penerimaan' => today()->toDateString(),
+                'tanggal_penerimaan' => $tanggalPenerimaan,
             ]);
         }
 

@@ -7,6 +7,7 @@ use App\Models\ApprovalHistory;
 use App\Models\Batch;
 use App\Models\EmailRecipient;
 use App\Models\OpnameExpiredSession;
+use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\Permission;
 use App\Models\ReceivingItem;
@@ -44,7 +45,7 @@ class OpnameExpiredSessionTest extends TestCase
         $this->travelTo('2026-09-09 10:00:00');
 
         $role = Role::firstOrCreate(['slug' => 'opname_session_test'], ['name' => 'Opname Session Test']);
-        foreach (['opname.view', 'opname.create', 'opname.edit', 'opname.session.view', 'opname.session.create', 'opname.session.edit', 'opname.session.approve'] as $slug) {
+        foreach (['opname.view', 'opname.create', 'opname.edit', 'opname.session.view', 'opname.session.create', 'opname.session.edit', 'opname.session.approve', 'penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }
@@ -822,5 +823,80 @@ class OpnameExpiredSessionTest extends TestCase
         $this->putJson("/api/v1/opname-sessions/{$session->id}/assign", [
             'assigned_to' => $other->id,
         ])->assertStatus(422);
+    }
+
+    public function test_start_freezes_qty_system_snapshot_against_mid_session_receiving(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+
+        $item = OpnameExpiredSessionItem::where('session_id', $session->id)
+            ->whereHas('wave', fn ($q) => $q->where('kode_barang', 'B-SES-01'))
+            ->firstOrFail();
+
+        $this->assertEquals(10, (float) $item->qty_sistem_crt);
+
+        // Stok baru masuk setelah sesi dimulai. Generate ulang mengubah qty
+        // wave, tetapi acuan sesi harus tetap snapshot 10.
+        $this->travelTo('2026-09-09 11:00:00');
+        $this->receipt('B-SES-01', 7, '2027-02-01');
+        app(OpnameExpiredService::class)->generate();
+
+        $res = $this->getJson("/api/v1/opname-sessions/{$session->id}")->assertOk();
+        $payload = collect($res->json('data.items'))->firstWhere('id', $item->id);
+
+        $this->assertNotNull($payload);
+        $this->assertEquals(10, (float) $payload['expected_crt']);
+        $this->assertTrue((bool) $payload['snapshot_frozen']);
+    }
+
+    public function test_session_history_and_search_are_available_to_auditors(): void
+    {
+        $session = $this->countedAndSubmittedSession();
+
+        Sanctum::actingAs($this->approver);
+        $history = $this->getJson("/api/v1/opname-sessions/{$session->id}/history")->assertOk();
+        $this->assertNotEmpty($history->json('data'));
+        $this->assertSame('submit', $history->json('data.0.action'));
+
+        // Pencarian daftar mencakup nama petugas yang ditugaskan.
+        Sanctum::actingAs($this->supervisor);
+        $search = $this->getJson('/api/v1/opname-sessions?search=Petugas')->assertOk();
+        $ids = collect($search->json('data.data'))->pluck('id')->all();
+        $this->assertContains($session->id, $ids);
+    }
+
+    public function test_receiving_item_addition_is_blocked_while_depot_session_is_open(): void
+    {
+        $session = $this->makeSession();
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/start")->assertOk();
+
+        $this->postJson('/api/v1/receiving-items', [
+            'kode_barang' => 'B-BLOCK-01',
+            'nama_barang' => 'Produk Diblokir',
+            'qty_crt' => 1,
+            'qty_pcs' => 1,
+            'expired_date' => '2027-05-01',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('receiving_items', ['kode_barang' => 'B-BLOCK-01']);
+
+        // Perubahan saldo dan hapus baris juga mengubah stok: ditolak.
+        $manual = ReceivingItem::where('kode_barang', 'B-SES-01')->firstOrFail();
+        $this->putJson("/api/v1/receiving-items/{$manual->id}", ['qty_crt' => 99])->assertStatus(422);
+        $this->deleteJson("/api/v1/receiving-items/{$manual->id}")->assertStatus(422);
+
+        // Koreksi cakupan baseline juga ditolak: snapshot sesi sudah beku,
+        // jadi koreksi harus setelah sesi selesai/dibatalkan.
+        $this->putJson("/api/v1/receiving-items/{$manual->id}", ['baseline_covered' => true])->assertStatus(422);
+
+        // Koreksi non-stok (catatan) tetap boleh di tengah sesi.
+        $this->putJson("/api/v1/receiving-items/{$manual->id}", ['notes' => 'catatan lapangan'])->assertOk();
     }
 }
