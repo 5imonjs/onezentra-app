@@ -954,7 +954,7 @@ export default function RencanaKirimPage() {
                             onClick={() => handleStatusChange(item, 'SCHEDULED')}
                             disabled={statusBusyId === item.id}
                             aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-info hover:opacity-90 disabled:opacity-50 disabled:cursor-wait shadow-sm shadow-blue-600/25 rounded-lg transition-colors min-h-9"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-background bg-info hover:opacity-90 disabled:opacity-50 disabled:cursor-wait shadow-sm shadow-blue-600/25 rounded-lg transition-colors min-h-9"
                           >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             Jadwalkan
@@ -1063,7 +1063,7 @@ export default function RencanaKirimPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {hasPermission('rencana_kirim.edit') && item.status === 'DRAFT' && (
-                      <button onClick={() => handleStatusChange(item, 'SCHEDULED')} disabled={statusBusyId === item.id} aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-info hover:opacity-90 disabled:opacity-50 disabled:cursor-wait rounded-lg transition-colors min-h-9">
+                      <button onClick={() => handleStatusChange(item, 'SCHEDULED')} disabled={statusBusyId === item.id} aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-background bg-info hover:opacity-90 disabled:opacity-50 disabled:cursor-wait rounded-lg transition-colors min-h-9">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         Jadwalkan
                       </button>
@@ -1299,7 +1299,7 @@ export default function RencanaKirimPage() {
           <div className="flex w-full items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs">
               {typingItems.size > 0 ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-warning text-white px-3 py-1 font-bold shadow-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-warning text-background px-3 py-1 font-bold shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-white" /> Lengkapi NPN dulu
                 </span>
               ) : (
@@ -1363,7 +1363,7 @@ export default function RencanaKirimPage() {
                       }}
                       className={`flex flex-col items-center gap-1.5 flex-1 ${step.n <= currentStep || isDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                     >
-                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-success text-white' : 'bg-muted text-muted-foreground border border-border'}`}>
+                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-success text-background' : 'bg-muted text-muted-foreground border border-border'}`}>
                         {isDone && !isActive ? '✓' : step.n}
                       </span>
                       <span className={`text-[11px] font-semibold ${isActive ? 'text-accent-text' : isDone ? 'text-success' : 'text-muted-foreground'}`}>{step.label}</span>
@@ -1487,13 +1487,13 @@ export default function RencanaKirimPage() {
                     <h3 className="text-[15px] font-bold text-foreground tracking-tight">Daftar Barang</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">Kelola produk NPN • auto hitung umur & kubikasi</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-success text-white border-success shadow-sm' : 'bg-card text-foreground border-warning/30'}`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-success text-background border-success shadow-sm' : 'bg-card text-foreground border-warning/30'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-card' : 'bg-warning'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
                       </span>
                       {sectionComplete.barang && (
                         <>
                           <span className="inline-flex items-center rounded-full bg-foreground text-background px-2.5 py-1 text-xs font-bold">{totalQty} Qty</span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-info text-white px-2.5 py-1 text-xs font-bold">{totalKubikasiDisplay.toFixed(2)} m³</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-info text-background px-2.5 py-1 text-xs font-bold">{totalKubikasiDisplay.toFixed(2)} m³</span>
                         </>
                       )}
                     </div>
@@ -1655,7 +1655,7 @@ export default function RencanaKirimPage() {
               return (
               <div key={index} className={`group relative rounded-2xl border bg-card p-5 shadow-sm transition-all ${needsAttention ? 'border-warning/30 bg-warning/10' : 'border-border hover:border-border hover:shadow-md'}`}>
                 <div className="flex items-start gap-3">
-                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-warning text-white' : 'bg-card border border-border text-foreground shadow-sm'}`}>{item.item_number}</span>
+                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-warning text-background' : 'bg-card border border-border text-foreground shadow-sm'}`}>{item.item_number}</span>
                   <div className="flex-1 min-w-0 space-y-3">
                     <div>
                       <label htmlFor={`item-nama-${index}`} className="block text-xs font-semibold text-foreground mb-1.5">Nama Barang <span className="text-destructive">*</span></label>
