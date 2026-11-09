@@ -111,7 +111,8 @@ describe('OpnameExpiredPage', () => {
     render(<OpnameExpiredPage />);
 
     expect(await screen.findByRole('heading', { name: 'Monitoring Kedaluwarsa' })).toBeInTheDocument();
-    expect(screen.getByText('Pantau lot kedaluwarsa per minggu dan depo, termasuk status Aman.')).toBeInTheDocument();
+    // Header sekarang ringkas: satu judul + konteks minggu/depo, tanpa subtitle generik.
+    expect(screen.queryByText('Pantau lot kedaluwarsa per minggu dan depo, termasuk status Aman.')).not.toBeInTheDocument();
     // Header sekarang ringkas: tidak ada tombol Stock Opname generik yang bersaing
     // dengan CTA kontekstual di banner (buat/lanjutkan/lihat hasil sesi).
     expect(screen.queryByRole('link', { name: 'Stock Opname' })).not.toBeInTheDocument();
