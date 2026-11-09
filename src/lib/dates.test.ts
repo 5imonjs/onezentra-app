@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDateDmy, formatDateId, todayLocal, toDateInput, formatDurationId } from './dates';
+import { addDaysIso, formatDateDmy, formatDateId, mondayOfWeek, todayLocal, toDateInput, formatDurationId } from './dates';
 
 describe('toDateInput', () => {
   it('memotong bagian waktu tanpa menggeser hari', () => {
@@ -44,6 +44,27 @@ describe('todayLocal', () => {
   it('memakai komponen lokal (stabil di zona mana pun)', () => {
     expect(todayLocal(new Date(2026, 0, 15, 12, 0, 0))).toBe('2026-01-15');
     expect(todayLocal(new Date(2026, 11, 5, 0, 30, 0))).toBe('2026-12-05');
+  });
+});
+
+describe('mondayOfWeek', () => {
+  it('mengembalikan Senin pada minggu yang sama tanpa pergeseran zona', () => {
+    expect(mondayOfWeek('2026-11-02')).toBe('2026-11-02');
+    expect(mondayOfWeek('2026-11-05')).toBe('2026-11-02');
+    expect(mondayOfWeek('2026-11-08')).toBe('2026-11-02');
+    expect(mondayOfWeek('2026-11-09')).toBe('2026-11-09');
+  });
+
+  it('mengembalikan nilai asli bila tanggal tidak valid', () => {
+    expect(mondayOfWeek('bukan-tanggal')).toBe('bukan-tanggal');
+  });
+});
+
+describe('addDaysIso', () => {
+  it('menggeser hari melewati batas bulan/tahun', () => {
+    expect(addDaysIso('2026-11-30', 1)).toBe('2026-12-01');
+    expect(addDaysIso('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addDaysIso('2026-03-01', -1)).toBe('2026-02-28');
   });
 });
 

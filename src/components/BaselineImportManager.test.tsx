@@ -7,6 +7,7 @@ const { api, notifyGlobal, authUser } = vi.hoisted(() => ({
   authUser: { kode_depo: 'DPO', nama_depo: 'Depo Test' },
   api: {
     baselineManifests: vi.fn(),
+    baselineTemplate: vi.fn(),
     baselineUpdate: vi.fn(() => Promise.resolve({
       data: { message: 'Tanggal posisi data awal diperbarui dari 2026-09-01 ke 2026-09-06.', opname_synced: true },
     })),
@@ -67,6 +68,25 @@ describe('BaselineImportManager — koreksi saldo awal', () => {
     expect(screen.getByText(/Belum ada saldo awal terpasang/)).toBeTruthy();
   });
 
+  it('mengunduh template acuan saldo awal', async () => {
+    api.baselineManifests.mockResolvedValueOnce({ data: { data: [] } });
+    api.baselineTemplate.mockResolvedValue({ data: new Blob(['x']) });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    Object.defineProperty(window.URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:template') });
+    Object.defineProperty(window.URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+
+    render(<BaselineImportManager open onClose={vi.fn()} />);
+
+    expect(await screen.findByText('Saldo awal = saldo pembuka sebelum sistem ini.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^Template$/i }));
+
+    await waitFor(() => {
+      expect(api.baselineTemplate).toHaveBeenCalledTimes(1);
+    });
+    expect(click).toHaveBeenCalled();
+    click.mockRestore();
+  });
+
   it('menampilkan saldo awal terpasang dan mengirim koreksi tanggal', async () => {
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
@@ -89,7 +109,7 @@ describe('BaselineImportManager — koreksi saldo awal', () => {
 
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
-    expect(await screen.findByText(/Stock opname depo ini masih terbuka/)).toBeTruthy();
+    expect(await screen.findByText(/Stock Opname depo ini masih terbuka/)).toBeTruthy();
     expect((screen.getByRole('button', { name: /Simpan koreksi/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -100,7 +120,7 @@ describe('BaselineImportManager — koreksi saldo awal', () => {
 
     render(<BaselineImportManager open onClose={vi.fn()} />);
 
-    expect(await screen.findByText(/Stock opname minggu ini sudah final/)).toBeTruthy();
+    expect(await screen.findByText(/Stock Opname minggu ini sudah final/)).toBeTruthy();
     expect((screen.getByRole('button', { name: /Simpan koreksi/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

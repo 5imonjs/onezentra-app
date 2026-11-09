@@ -68,4 +68,25 @@ describe('CreateSessionModal — petugas dipanggil sesuai depo', () => {
     expect(officers).toHaveBeenCalledWith('9999');
     expect(screen.getByLabelText('Petugas *')).toHaveValue('');
   });
+
+  it('memakai minggu dari deep link dan mengirim filter depo ke server', async () => {
+    render(
+      <CreateSessionModal
+        userDepo={userDepo}
+        initialWeekStart="2026-11-05"
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Minggu (Senin) *')).toHaveValue('2026-11-02');
+    await waitFor(() => {
+      expect(expiredList).toHaveBeenCalledWith(expect.objectContaining({
+        week_start: '2026-11-02',
+        kode_depo: '0126',
+        per_page: 100,
+        page: 1,
+      }));
+    });
+  });
 });

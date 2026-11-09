@@ -69,7 +69,7 @@ describe('Sidebar — ikon menu', () => {
     expect(setting).not.toEqual(penerima);
   });
 
-  it('membedakan ikon menu "Monitoring Kedaluwarsa" dan "Stock Opname" (grup Stok & Kedaluwarsa)', () => {
+  it('membedakan ikon menu "Monitoring Kedaluwarsa" dan "Stock Opname" (grup Stok & Opname)', () => {
     nav.pathname = '/opname-sessions';
     renderSidebar();
 
@@ -81,14 +81,23 @@ describe('Sidebar — ikon menu', () => {
     expect(monitoring).not.toEqual(stock);
   });
 
-  it('menaruh Laporan Monitoring di grup Stok & Kedaluwarsa dan memberi nama grup yang jelas', () => {
+  it('menaruh laporan monitoring di grup Laporan, bukan di grup operasional Stok & Opname', () => {
     nav.pathname = '/reports/opname-expired';
     renderSidebar();
 
     expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
-    expect(screen.getByText('Stok & Kedaluwarsa')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Laporan Monitoring' })).toBeInTheDocument();
-    expect(screen.queryByText('Laporan Replenishment')).not.toBeInTheDocument();
+    expect(screen.getByText('Stok & Opname')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Laporan Monitoring Kedaluwarsa' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Laporan Batch Kedaluwarsa' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Laporan Replenishment' })).toBeInTheDocument();
+  });
+
+  it('menyembunyikan laporan monitoring bila salah satu izin lintas modul tidak dimiliki', () => {
+    nav.pathname = '/reports/opname-expired';
+    auth.can = (permission: string) => permission !== 'opname.view';
+    renderSidebar();
+
+    expect(screen.queryByRole('link', { name: 'Laporan Monitoring Kedaluwarsa' })).not.toBeInTheDocument();
   });
 
   it('menyembunyikan "Stock Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {

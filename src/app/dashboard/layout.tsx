@@ -11,29 +11,29 @@ import { useAuthStore } from '@/store/auth';
 
 // Urutan menu mengikuti Sidebar: arahkan user tanpa dashboard.view ke menu
 // pertama yang ia boleh akses, bukan dashboard kosong.
-const MENU_FALLBACK: [string, string][] = [
-  ['/dashboard', 'dashboard.view'],
-  ['/rencana-kirim', 'rencana_kirim.view'],
-  ['/gate', 'gate.view'],
-  ['/validasi-sj', 'sj_validation.view'],
-  ['/receiving', 'receiving.view'],
-  ['/penerimaan', 'penerimaan.view'],
-  ['/opname-expired', 'opname.view'],
-  ['/opname-sessions', 'opname.session.view'],
-  ['/npn', 'npn.view'],
-  ['/standar-umur', 'standar_umur.view'],
-  ['/standarisasi', 'standarisasi.view'],
-  ['/roles', 'roles.view'],
-  ['/users', 'users.view'],
-  ['/email-settings', 'emails.view'],
-  ['/email-recipients', 'emails.view'],
-  ['/reports/rencana-kirim', 'reports.rencana_kirim'],
-  ['/reports/penerimaan', 'reports.penerimaan'],
-  ['/reports/penerimaan-batch-expired', 'reports.penerimaan_batch_expired'],
-  ['/reports/selisih-qty', 'reports.selisih_qty'],
-  ['/reports/opname-expired', 'reports.view'],
-  ['/reports/biaya-thl', 'reports.biaya_thl'],
-  ['/reports/biaya-retribusi', 'reports.biaya_retribusi'],
+const MENU_FALLBACK: [string, string[]][] = [
+  ['/dashboard', ['dashboard.view']],
+  ['/rencana-kirim', ['rencana_kirim.view']],
+  ['/gate', ['gate.view']],
+  ['/validasi-sj', ['sj_validation.view']],
+  ['/receiving', ['receiving.view']],
+  ['/penerimaan', ['penerimaan.view']],
+  ['/opname-expired', ['opname.view']],
+  ['/opname-sessions', ['opname.session.view']],
+  ['/npn', ['npn.view']],
+  ['/standar-umur', ['standar_umur.view']],
+  ['/standarisasi', ['standarisasi.view']],
+  ['/roles', ['roles.view']],
+  ['/users', ['users.view']],
+  ['/email-settings', ['emails.view']],
+  ['/email-recipients', ['emails.view']],
+  ['/reports/rencana-kirim', ['reports.rencana_kirim']],
+  ['/reports/penerimaan', ['reports.penerimaan']],
+  ['/reports/penerimaan-batch-expired', ['reports.penerimaan_batch_expired']],
+  ['/reports/selisih-qty', ['reports.selisih_qty']],
+  ['/reports/opname-expired', ['reports.view', 'opname.view']],
+  ['/reports/biaya-thl', ['reports.biaya_thl']],
+  ['/reports/biaya-retribusi', ['reports.biaya_retribusi']],
 ];
 
 function SplashScreen({ leaving = false, immersive = false }: { leaving?: boolean; immersive?: boolean }) {
@@ -104,8 +104,8 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!mounted || isLoading || !user) return;
     const current = MENU_FALLBACK.find(([path]) => path === pathname);
-    if (current && !hasPermission(current[1])) {
-      const fallback = MENU_FALLBACK.find(([, perm]) => hasPermission(perm));
+    if (current && !current[1].every((permission) => hasPermission(permission))) {
+      const fallback = MENU_FALLBACK.find(([, permissions]) => permissions.every((permission) => hasPermission(permission)));
       router.push(fallback ? fallback[0] : '/login');
     }
   }, [mounted, isLoading, user, pathname, hasPermission, router]);

@@ -88,4 +88,19 @@ describe('OpnameExpiredReportPage', () => {
     expect(await screen.findByRole('heading', { name: /laporan monitoring kedaluwarsa/i })).toBeInTheDocument();
     expect(list).toHaveBeenCalled();
   });
+
+  it('bersifat read-only: tidak menampilkan kontrol hapus meski punya reports.delete', async () => {
+    render(<OpnameExpiredReportPage />);
+
+    await screen.findByRole('heading', { name: /laporan monitoring kedaluwarsa/i });
+    expect(screen.queryByRole('checkbox', { name: /pilih/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hapus permanen/i })).not.toBeInTheDocument();
+  });
+
+  it('menautkan laporan ke halaman monitoring operasional', async () => {
+    render(<OpnameExpiredReportPage />);
+
+    const link = await screen.findByRole('link', { name: /buka monitoring operasional/i });
+    expect(link).toHaveAttribute('href', '/opname-expired');
+  });
 });

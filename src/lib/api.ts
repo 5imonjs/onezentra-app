@@ -572,6 +572,8 @@ export const opnameExpired = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  // Template acuan saldo awal: kolom sama dengan stok manual, file dibedakan.
+  baselineTemplate: () => apiClient.get('/receiving-items/baseline/template', { responseType: 'blob' }),
   // Manifes baseline terpasang + koreksi cutoff tanggal tanpa mengubah ledger.
   baselineManifests: (params?: Record<string, unknown>) => apiClient.get('/receiving-items/baseline', { params }),
   baselineUpdate: (id: number, data: { baseline_date: string; notes?: string }) => apiClient.put(`/receiving-items/baseline/${id}`, data),

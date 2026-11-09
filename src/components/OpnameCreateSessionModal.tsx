@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import { opnameExpired, opnameSessions, getErrorMessage } from '@/lib/api';
+import { mondayOfWeek } from '@/lib/dates';
 import { notifyGlobal } from '@/store/globalToast';
 
 export interface WaveOption {
@@ -22,12 +23,13 @@ const todayMonday = (): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-export function CreateSessionModal({ userDepo, onClose, onCreated }: {
+export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCreated }: {
   userDepo: { kode_depo: string; nama_depo: string };
+  initialWeekStart?: string;
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [weekStart, setWeekStart] = useState(todayMonday());
+  const [weekStart, setWeekStart] = useState(() => initialWeekStart ? mondayOfWeek(initialWeekStart) : todayMonday());
   const [kodeDepo, setKodeDepo] = useState(userDepo.kode_depo);
   const [namaDepo, setNamaDepo] = useState(userDepo.nama_depo);
   const [assignedTo, setAssignedTo] = useState('');
@@ -71,13 +73,15 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
     setLoadingWaves(true);
     try {
       // Ambil SEMUA halaman: cap server 100/halaman, wave bisa ratusan.
+      // Filter depo dikirim ke server supaya hitungan halaman tidak salah
+      // ketika wave depo lain dibuang di sisi klien.
       const all: WaveOption[] = [];
       let page = 1;
       for (;;) {
-        const res = await opnameExpired.list({ week_start: weekStart || undefined, per_page: 100, page }) as {
-          data: { data: { data: (WaveOption & { kode_depo?: string })[] } };
+        const res = await opnameExpired.list({ week_start: weekStart || undefined, kode_depo: kodeDepo || undefined, per_page: 100, page }) as {
+          data: { data: { data: WaveOption[] } };
         };
-        const rows = res.data.data.data.filter((w) => !kodeDepo || w.kode_depo === kodeDepo);
+        const rows = res.data.data.data;
         all.push(...rows);
         if (rows.length < 100 || all.length >= 2000) break;
         page++;
@@ -107,7 +111,7 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
         assigned_to: Number(assignedTo),
         wave_ids: Array.from(picked),
       });
-      notifyGlobal('Sesi stock opname dibuat.', 'success');
+      notifyGlobal('Sesi Stock Opname dibuat.', 'success');
       onCreated();
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal membuat sesi'));
@@ -122,7 +126,17 @@ export function CreateSessionModal({ userDepo, onClose, onCreated }: {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label htmlFor="cs-week" className="block text-sm font-medium text-foreground mb-1.5">Minggu (Senin) *</label>
-          <input id="cs-week" type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="input-field" required />
+          <input
+            id="cs-week"
+            type="date"
+            value={weekStart}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value) setWeekStart(mondayOfWeek(value));
+            }}
+            className="input-field"
+            required
+          />
         </div>
         <div>
           <label htmlFor="cs-depo" className="block text-sm font-medium text-foreground mb-1.5">Kode Depo *</label>
