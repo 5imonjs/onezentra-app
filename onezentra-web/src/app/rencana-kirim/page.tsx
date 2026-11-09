@@ -72,7 +72,7 @@ interface RkStats {
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string; border: string }> = {
-  DRAFT: { label: 'Draft', color: 'text-foreground', bg: 'bg-card', dot: 'bg-gray-400', border: 'border-border' },
+  DRAFT: { label: 'Draft', color: 'text-foreground', bg: 'bg-card', dot: 'bg-muted-foreground', border: 'border-border' },
   SCHEDULED: { label: 'Dijadwalkan', color: 'text-blue-700', bg: 'bg-blue-50', dot: 'bg-blue-500', border: 'border-blue-100' },
   CHECKED_IN: { label: 'Check In', color: 'text-yellow-700', bg: 'bg-yellow-50', dot: 'bg-yellow-500', border: 'border-yellow-100' },
   VERIFIED: { label: 'Terverifikasi', color: 'text-purple-700', bg: 'bg-purple-50', dot: 'bg-purple-500', border: 'border-purple-100' },
@@ -183,7 +183,7 @@ function NamaDepoInput({
         <button
           type="button"
           onClick={() => { onClear(); setShowDropdown(false); }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded p-0.5"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded p-0.5"
           title="Kosongkan depo"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -815,7 +815,7 @@ export default function RencanaKirimPage() {
               onDateClick={handleDateClick}
               selectedDate={selectedDate}
             />
-            <p className="mt-3 text-center text-xs text-slate-400">Klik tanggal di kalender untuk langsung membuka form baru pada tanggal tersebut.</p>
+            <p className="mt-3 text-center text-xs text-muted-foreground">Klik tanggal di kalender untuk langsung membuka form baru pada tanggal tersebut.</p>
           </div>
 
           {/* Table */}
@@ -832,7 +832,7 @@ export default function RencanaKirimPage() {
                       </div>
                       <div>
                         <h2 className="text-base font-bold text-foreground">Daftar Rencana Pengiriman</h2>
-                        <p className="mt-0.5 text-xs text-slate-400">Pantau jadwal, kendaraan, tujuan, dan status pengiriman</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Pantau jadwal, kendaraan, tujuan, dan status pengiriman</p>
                       </div>
                     </div>
                     {hasPermission('rencana_kirim.create') && (
@@ -867,7 +867,7 @@ export default function RencanaKirimPage() {
                           <option value="COMPLETED">Selesai</option>
                           <option value="CANCELLED">Dibatalkan</option>
                         </select>
-                        <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
+                        <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
                       </div>
                       <div className="relative">
                         <select
@@ -883,7 +883,7 @@ export default function RencanaKirimPage() {
                             </option>
                           ))}
                         </select>
-                        <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
+                        <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" /></svg>
                       </div>
                     </div>
                   </div>
@@ -910,13 +910,13 @@ export default function RencanaKirimPage() {
                   <th scope="col" className="px-5 py-3 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {loading && items.length === 0 && (
                   <>
                     {Array.from({ length: 4 }).map((_, i) => (
                       <tr key={`skel-rk-${i}`} className="animate-pulse">
                         {Array.from({ length: 13 }).map((__, j) => (
-                          <td key={j} className="px-5 py-3.5"><div className="h-4 w-24 rounded bg-slate-100" /></td>
+                          <td key={j} className="px-5 py-3.5"><div className="h-4 w-24 rounded bg-muted" /></td>
                         ))}
                       </tr>
                     ))}
@@ -931,19 +931,19 @@ export default function RencanaKirimPage() {
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{fmt(item.driver_name)}</td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap"><span className="font-mono">{fmt(item.nopol)}</span></td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{fmt(item.expedisi)}</td>
-                    <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{item.jenis_kendaraan ? <span className="inline-flex rounded-md bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{item.jenis_kendaraan}</span> : '-'}</td>
+                    <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{item.jenis_kendaraan ? <span className="inline-flex rounded-md bg-info/10 border border-info/30 px-2 py-0.5 text-xs font-semibold text-info">{item.jenis_kendaraan}</span> : '-'}</td>
                     <td className="px-5 py-3.5 text-sm text-foreground whitespace-nowrap">{fmt(item.destination_name)}</td>
                     <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center justify-center min-w-[2.5rem] rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-bold text-foreground">{item.total_qty}</span>
+                      <span className="inline-flex items-center justify-center min-w-[2.5rem] rounded-lg bg-muted px-2.5 py-1 text-sm font-bold text-foreground">{item.total_qty}</span>
                     </td>
                     <td className="px-5 py-3.5 text-center whitespace-nowrap">
                       {typeof item.total_kubikasi === 'number'
-                        ? <span className="inline-flex items-center justify-center rounded-lg bg-teal-50 px-2.5 py-1 text-sm font-bold text-teal-700">{Number(item.total_kubikasi).toFixed(2)}</span>
+                        ? <span className="inline-flex items-center justify-center rounded-lg bg-info/10 px-2.5 py-1 text-sm font-bold text-info">{Number(item.total_kubikasi).toFixed(2)}</span>
                         : '-'}
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium shadow-sm ${statusConfig[item.status]?.bg || 'bg-card'} ${statusConfig[item.status]?.color || 'text-foreground'} ${statusConfig[item.status]?.border || 'border-border'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusConfig[item.status]?.dot || 'bg-gray-400'}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusConfig[item.status]?.dot || 'bg-muted-foreground'}`} />
                         {statusConfig[item.status]?.label || item.status}
                       </span>
                     </td>
@@ -954,7 +954,7 @@ export default function RencanaKirimPage() {
                             onClick={() => handleStatusChange(item, 'SCHEDULED')}
                             disabled={statusBusyId === item.id}
                             aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-blue-50 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-wait shadow-sm shadow-blue-600/25 rounded-lg transition-colors min-h-9"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-info hover:opacity-90 disabled:opacity-50 disabled:cursor-wait shadow-sm shadow-blue-600/25 rounded-lg transition-colors min-h-9"
                           >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             Jadwalkan
@@ -965,23 +965,23 @@ export default function RencanaKirimPage() {
                             onClick={() => handleStatusChange(item, 'CANCELLED')}
                             disabled={statusBusyId === item.id}
                             aria-label={`Batalkan rencana kirim ${item.po_transporter || ''}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-wait border border-red-200 rounded-lg transition-colors min-h-9"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-destructive bg-destructive/10 hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-wait border border-destructive/30 rounded-lg transition-colors min-h-9"
                           >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                             Batalkan
                           </button>
                         )}
                         <div className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 ml-1 shadow-sm">
-                          <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
+                          <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-muted-foreground hover:text-info hover:bg-info/10 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
                             <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                           </button>
                           {hasPermission('rencana_kirim.edit') && ['DRAFT', 'SCHEDULED'].includes(item.status) && (
-                            <button onClick={() => handleEdit(item)} aria-label={`Edit rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
+                            <button onClick={() => handleEdit(item)} aria-label={`Edit rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-muted-foreground hover:text-warning hover:bg-warning/10 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
                               <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                             </button>
                           )}
                           {hasPermission('rencana_kirim.delete') && ['DRAFT', 'CANCELLED'].includes(item.status) && (
-                            <button onClick={() => handleDelete(item.id)} disabled={deleting} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed">
+                            <button onClick={() => handleDelete(item.id)} disabled={deleting} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed">
                               <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                             </button>
                           )}
@@ -994,8 +994,8 @@ export default function RencanaKirimPage() {
                   <tr>
                     <td colSpan={13} className="px-5 py-16 text-center">
                       <div role="status" className="flex flex-col items-center gap-2">
-                        <div className="mx-auto mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-                          <svg className="h-7 w-7 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                        <div className="mx-auto mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                          <svg className="h-7 w-7 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                         </div>
                         {search.trim() ? (
                           <>
@@ -1005,11 +1005,11 @@ export default function RencanaKirimPage() {
                         ) : (
                           <>
                             <p className="text-sm font-medium text-foreground">Belum ada data rencana kirim.</p>
-                            <p className="text-xs text-slate-400">Buat rencana baru atau klik tanggal di kalender untuk mulai mengisi form.</p>
+                            <p className="text-xs text-muted-foreground">Buat rencana baru atau klik tanggal di kalender untuk mulai mengisi form.</p>
                           </>
                         )}
                         {!search.trim() && hasPermission('rencana_kirim.create') && (
-                          <button onClick={() => openCreate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98]">
+                          <button onClick={() => openCreate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-bold text-background shadow-sm transition-all hover:opacity-90 active:scale-[0.98]">
                             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             Buat Rencana
                           </button>
@@ -1023,16 +1023,16 @@ export default function RencanaKirimPage() {
           </div>
 
           {/* Mobile cards — tabel desktop disembunyikan di < lg; tanpa kartu ini daftar hilang di ponsel */}
-          <div className="lg:hidden divide-y divide-slate-100 max-h-[560px] overflow-y-auto">
+          <div className="lg:hidden divide-y divide-border max-h-[560px] overflow-y-auto">
             {loading && items.length === 0 && (
               <>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={`skel-rk-m-${i}`} className="animate-pulse p-4 space-y-3">
-                    <div className="h-4 w-2/3 rounded bg-slate-100" />
-                    <div className="h-3 w-1/3 rounded bg-slate-100" />
+                    <div className="h-4 w-2/3 rounded bg-muted" />
+                    <div className="h-3 w-1/3 rounded bg-muted" />
                     <div className="mt-3 grid grid-cols-2 gap-2">
-                      <div className="h-3 w-full rounded bg-slate-100" />
-                      <div className="h-3 w-full rounded bg-slate-100" />
+                      <div className="h-3 w-full rounded bg-muted" />
+                      <div className="h-3 w-full rounded bg-muted" />
                     </div>
                   </div>
                 ))}
@@ -1045,46 +1045,46 @@ export default function RencanaKirimPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-mono text-sm font-bold text-foreground truncate">{fmt(item.po_transporter)}</p>
-                      <p className="mt-0.5 text-xs text-slate-400">RK {item.rkh_date?.split('T')[0] || '-'} • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">RK {item.rkh_date?.split('T')[0] || '-'} • Dibuat {item.created_at?.split('T')[0] || '-'}</p>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-muted-foreground'}`} />
                       {st?.label || item.status}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                    <div><span className="text-slate-400">Driver: </span><span className="font-medium text-foreground">{fmt(item.driver_name)}</span></div>
-                    <div><span className="text-slate-400">Nopol: </span><span className="font-mono font-medium text-foreground">{fmt(item.nopol)}</span></div>
-                    <div><span className="text-slate-400">Expedisi: </span><span className="font-medium text-foreground">{fmt(item.expedisi)}</span></div>
-                    <div><span className="text-slate-400">Jenis: </span>{item.jenis_kendaraan ? <span className="inline-flex rounded-md bg-blue-50 border border-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700">{item.jenis_kendaraan}</span> : '-'}</div>
-                    <div className="col-span-2"><span className="text-slate-400">Tujuan: </span><span className="font-medium text-foreground">{fmt(item.destination_name)}</span></div>
-                    <div><span className="text-slate-400">Qty: </span><span className="font-bold text-foreground">{item.total_qty}</span></div>
-                    <div><span className="text-slate-400">Kubikasi: </span>{typeof item.total_kubikasi === 'number' ? <span className="font-bold text-teal-700">{Number(item.total_kubikasi).toFixed(2)} m³</span> : '-'}</div>
+                    <div><span className="text-muted-foreground">Driver: </span><span className="font-medium text-foreground">{fmt(item.driver_name)}</span></div>
+                    <div><span className="text-muted-foreground">Nopol: </span><span className="font-mono font-medium text-foreground">{fmt(item.nopol)}</span></div>
+                    <div><span className="text-muted-foreground">Expedisi: </span><span className="font-medium text-foreground">{fmt(item.expedisi)}</span></div>
+                    <div><span className="text-muted-foreground">Jenis: </span>{item.jenis_kendaraan ? <span className="inline-flex rounded-md bg-info/10 border border-info/30 px-1.5 py-0.5 text-[11px] font-semibold text-info">{item.jenis_kendaraan}</span> : '-'}</div>
+                    <div className="col-span-2"><span className="text-muted-foreground">Tujuan: </span><span className="font-medium text-foreground">{fmt(item.destination_name)}</span></div>
+                    <div><span className="text-muted-foreground">Qty: </span><span className="font-bold text-foreground">{item.total_qty}</span></div>
+                    <div><span className="text-muted-foreground">Kubikasi: </span>{typeof item.total_kubikasi === 'number' ? <span className="font-bold text-info">{Number(item.total_kubikasi).toFixed(2)} m³</span> : '-'}</div>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {hasPermission('rencana_kirim.edit') && item.status === 'DRAFT' && (
-                      <button onClick={() => handleStatusChange(item, 'SCHEDULED')} disabled={statusBusyId === item.id} aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-blue-50 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-wait rounded-lg transition-colors min-h-9">
+                      <button onClick={() => handleStatusChange(item, 'SCHEDULED')} disabled={statusBusyId === item.id} aria-label={`Jadwalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-info hover:opacity-90 disabled:opacity-50 disabled:cursor-wait rounded-lg transition-colors min-h-9">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         Jadwalkan
                       </button>
                     )}
                     {hasPermission('rencana_kirim.edit') && item.status === 'SCHEDULED' && (
-                      <button onClick={() => handleStatusChange(item, 'CANCELLED')} disabled={statusBusyId === item.id} aria-label={`Batalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-wait border border-red-200 rounded-lg transition-colors min-h-9">
+                      <button onClick={() => handleStatusChange(item, 'CANCELLED')} disabled={statusBusyId === item.id} aria-label={`Batalkan rencana kirim ${item.po_transporter || ''}`} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-destructive bg-destructive/10 hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-wait border border-destructive/30 rounded-lg transition-colors min-h-9">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         Batalkan
                       </button>
                     )}
                     <div className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 ml-auto">
-                      <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
+                      <button onClick={() => setViewItem(item)} aria-label={`Lihat detail rencana kirim ${item.po_transporter || ''}`} className="p-2 text-muted-foreground hover:text-info hover:bg-info/10 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
                         <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       </button>
                       {hasPermission('rencana_kirim.edit') && ['DRAFT', 'SCHEDULED'].includes(item.status) && (
-                        <button onClick={() => handleEdit(item)} aria-label={`Edit rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
+                        <button onClick={() => handleEdit(item)} aria-label={`Edit rencana kirim ${item.po_transporter || ''}`} className="p-2 text-muted-foreground hover:text-warning hover:bg-warning/10 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center">
                           <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                         </button>
                       )}
                       {hasPermission('rencana_kirim.delete') && ['DRAFT', 'CANCELLED'].includes(item.status) && (
-                        <button onClick={() => handleDelete(item.id)} disabled={deleting} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed">
+                        <button onClick={() => handleDelete(item.id)} disabled={deleting} aria-label={`Hapus rencana kirim ${item.po_transporter || ''}`} className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all min-w-9 min-h-9 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed">
                           <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                         </button>
                       )}
@@ -1095,8 +1095,8 @@ export default function RencanaKirimPage() {
             })}
             {!loading && items.length === 0 && (
               <div className="p-10 text-center">
-                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-                  <svg className="h-7 w-7 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                  <svg className="h-7 w-7 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
                 {search.trim() ? (
                   <>
@@ -1106,11 +1106,11 @@ export default function RencanaKirimPage() {
                 ) : (
                   <>
                     <p className="text-sm font-medium text-foreground">Belum ada data rencana kirim.</p>
-                    <p className="mt-0.5 text-xs text-slate-400">Buat rencana baru atau klik tanggal di kalender untuk mulai mengisi form.</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Buat rencana baru atau klik tanggal di kalender untuk mulai mengisi form.</p>
                   </>
                 )}
                 {!search.trim() && hasPermission('rencana_kirim.create') && (
-                  <button onClick={() => openCreate()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-ink-800 active:scale-[0.98]">
+                  <button onClick={() => openCreate()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-bold text-background shadow-sm transition-all hover:opacity-90 active:scale-[0.98]">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Buat Rencana
                   </button>
@@ -1149,7 +1149,7 @@ export default function RencanaKirimPage() {
               </button>
               )}
               {hasPermission('rencana_kirim.view') && (
-              <button onClick={() => viewItem && downloadSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-ink-900 text-white text-sm font-bold hover:bg-black shadow-lg">
+              <button onClick={() => viewItem && downloadSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-foreground text-background text-sm font-bold hover:opacity-90 shadow-lg">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                 Download PDF
               </button>
@@ -1161,7 +1161,7 @@ export default function RencanaKirimPage() {
       >
         {viewItem && (
           <div className="space-y-5">
-            <div className="rounded-2xl bg-ink-900 p-5 text-white">
+            <div className="rounded-2xl bg-foreground p-5 text-background">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
@@ -1182,25 +1182,25 @@ export default function RencanaKirimPage() {
                   <p className="text-lg font-black">{typeof viewItem.total_kubikasi === 'number' ? `${Number(viewItem.total_kubikasi).toFixed(2)}` : '-'} <span className="text-xs font-normal">m³</span></p>
                 </div>
                 <div className="rounded-xl bg-card text-foreground p-3 text-center">
-                  <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Tujuan</p>
+                  <p className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Tujuan</p>
                   <p className="text-sm font-black truncate">{fmt(viewItem.destination_name)}</p>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-muted-foreground uppercase"><span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-muted-foreground uppercase"><span className="w-6 h-6 rounded-lg bg-info/10 text-info flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg></span> Kendaraan</h4>
                 <div className="space-y-2.5 text-sm">
-                  <div className="flex justify-between"><span className="text-slate-400">Driver</span><span className="font-bold text-foreground">{fmt(viewItem.driver_name)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Nopol</span><span className="font-mono font-bold">{fmt(viewItem.nopol)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Expedisi</span><span className="font-medium">{fmt(viewItem.expedisi)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Jenis</span><span className="rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">{fmt(viewItem.jenis_kendaraan)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span className="font-bold text-foreground">{fmt(viewItem.driver_name)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Nopol</span><span className="font-mono font-bold">{fmt(viewItem.nopol)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Expedisi</span><span className="font-medium">{fmt(viewItem.expedisi)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Jenis</span><span className="rounded-full bg-info/10 border border-info/30 px-2 py-0.5 text-xs font-bold text-info">{fmt(viewItem.jenis_kendaraan)}</span></div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-muted-foreground uppercase"><span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">                  <h4 className="mb-3 flex items-center gap-2 text-xs font-black tracking-widest text-muted-foreground uppercase"><span className="w-6 h-6 rounded-lg bg-success/10 text-success flex items-center justify-center"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg></span> Pengiriman</h4>
                 <div className="space-y-2.5 text-sm">
-                  <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Pengirim</p><p className="font-bold text-foreground">{fmt(viewItem.shipper_name)}</p><p className="text-xs text-muted-foreground">{fmt(viewItem.shipper_address)}</p></div>
-                  <div><p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Kepada</p><p className="font-bold text-foreground">{fmt(viewItem.destination_name)}</p><p className="text-xs text-muted-foreground">{fmt(viewItem.destination_address) || '-'}</p></div>
+                  <div><p className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Pengirim</p><p className="font-bold text-foreground">{fmt(viewItem.shipper_name)}</p><p className="text-xs text-muted-foreground">{fmt(viewItem.shipper_address)}</p></div>
+                  <div><p className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Kepada</p><p className="font-bold text-foreground">{fmt(viewItem.destination_name)}</p><p className="text-xs text-muted-foreground">{fmt(viewItem.destination_address) || '-'}</p></div>
                 </div>
               </div>
             </div>
@@ -1210,24 +1210,24 @@ export default function RencanaKirimPage() {
                   <h4 className="text-xs font-black tracking-widest text-muted-foreground uppercase">Daftar barang • {viewItem.items.length}</h4>
                   <span className="text-xs font-mono text-muted-foreground">{viewItem.items.reduce((s, i) => s + Number(i.jumlah || 0), 0).toLocaleString('id-ID')} qty</span>
                 </div>
-                <div className="divide-y divide-slate-100 max-h-64 overflow-auto">
+                <div className="divide-y divide-border max-h-64 overflow-auto">
                   {viewItem.items.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-popover">
-                      <span className="w-6 h-6 rounded-lg bg-ink-900 text-white text-xs font-black flex items-center justify-center shrink-0">{item.item_number}</span>
+                      <span className="w-6 h-6 rounded-lg bg-foreground text-background text-xs font-black flex items-center justify-center shrink-0">{item.item_number}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-foreground truncate">{item.nama_barang}</p>
-                        <p className="text-xs font-mono text-slate-400">{item.kode_barang} • {Number(item.jumlah).toLocaleString('id-ID')} {item.satuan}</p>
+                        <p className="text-xs font-mono text-muted-foreground">{item.kode_barang} • {Number(item.jumlah).toLocaleString('id-ID')} {item.satuan}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-black text-foreground tabular-nums">{Number(item.jumlah).toLocaleString('id-ID')} <span className="text-xs font-medium text-slate-400">{item.satuan}</span></p>
-                        {item.keterangan ? <p className="text-[11px] text-slate-400 max-w-[220px] truncate">{item.keterangan}</p> : null}
+                        <p className="text-sm font-black text-foreground tabular-nums">{Number(item.jumlah).toLocaleString('id-ID')} <span className="text-xs font-medium text-muted-foreground">{item.satuan}</span></p>
+                        {item.keterangan ? <p className="text-[11px] text-muted-foreground max-w-[220px] truncate">{item.keterangan}</p> : null}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            {viewItem.notes && <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4"><h4 className="text-xs font-black tracking-widest text-amber-700 uppercase">Catatan</h4><p className="mt-2 text-sm text-foreground whitespace-pre-wrap">{viewItem.notes}</p></div>}
+            {viewItem.notes && <div className="rounded-2xl border border-warning/30 bg-warning/10 p-4"><h4 className="text-xs font-black tracking-widest text-foreground uppercase">Catatan</h4><p className="mt-2 text-sm text-foreground whitespace-pre-wrap">{viewItem.notes}</p></div>}
           </div>
         )}
       </Modal>
@@ -1247,9 +1247,9 @@ export default function RencanaKirimPage() {
         }
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <svg className="w-6 h-6 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.947 3.374h-14.71c-1.73 0-2.813-1.874-1.948-3.374L13.95 3.378c.866-1.5 3.032-1.5 3.899 0l8.454 12.373M12 15.75h.007v.008H12v-.008z" /></svg>
-            <div className="text-xs text-amber-900">
+          <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3">
+            <svg className="w-6 h-6 shrink-0 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c.866 1.5-.217 3.374-1.947 3.374h-14.71c-1.73 0-2.813-1.874-1.948-3.374L13.95 3.378c.866-1.5 3.032-1.5 3.899 0l8.454 12.373M12 15.75h.007v.008H12v-.008z" /></svg>
+            <div className="text-xs text-foreground">
               <strong>Berhenti sebentar.</strong> Rencana kirim yang sudah di-check-in di bongkar/penerimaan langsung jadi acuan scan. Kesalahan kode, jumlah, atau satuan akan menjadi selisih di seluruh alur — perbaiki sebelum simpan, bukan setelah.
             </div>
           </div>
@@ -1299,12 +1299,12 @@ export default function RencanaKirimPage() {
           <div className="flex w-full items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs">
               {typingItems.size > 0 ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 text-white px-3 py-1 font-bold shadow-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-warning text-white px-3 py-1 font-bold shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-white" /> Lengkapi NPN dulu
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <span className={`w-2 h-2 rounded-full ${canSave ? 'bg-emerald-500' : 'bg-gray-300'}`} /> {canSave ? 'Siap simpan' : !isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat' : 'Isi minimal 1 barang'}
+                  <span className={`w-2 h-2 rounded-full ${canSave ? 'bg-success' : 'bg-muted-foreground'}`} /> {canSave ? 'Siap simpan' : !isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat' : 'Isi minimal 1 barang'}
                 </span>
               )}
             </div>
@@ -1330,7 +1330,7 @@ export default function RencanaKirimPage() {
       >
         <div className="space-y-5">
           {editingId && editLocked && (
-            <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${editingStatus === 'CANCELLED' ? 'bg-red-50 border-red-200 text-red-700' : editingStatus === 'COMPLETED' ? 'bg-slate-100 border-border text-foreground' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+            <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${editingStatus === 'CANCELLED' ? 'bg-destructive/10 border-destructive/30 text-destructive' : editingStatus === 'COMPLETED' ? 'bg-muted border-border text-foreground' : 'bg-warning/10 border-warning/30 text-foreground'}`}>
               {editingStatus === 'CANCELLED'
                 ? 'Rencana kirim ini sudah dibatalkan. Perubahan tidak dapat disimpan.'
                 : editingStatus === 'COMPLETED'
@@ -1362,22 +1362,22 @@ export default function RencanaKirimPage() {
                       }}
                       className={`flex flex-col items-center gap-1.5 flex-1 ${step.n <= currentStep || isDone ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                     >
-                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-muted-foreground border border-border'}`}>
+                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${isActive ? 'bg-primary-600 text-white shadow-primary-600/25 scale-105' : isDone || isPast ? 'bg-success text-white' : 'bg-muted text-muted-foreground border border-border'}`}>
                         {isDone && !isActive ? '✓' : step.n}
                       </span>
-                      <span className={`text-[11px] font-semibold ${isActive ? 'text-accent-text' : isDone ? 'text-emerald-600' : 'text-gray-400'}`}>{step.label}</span>
+                      <span className={`text-[11px] font-semibold ${isActive ? 'text-accent-text' : isDone ? 'text-success' : 'text-muted-foreground'}`}>{step.label}</span>
                     </button>
-                    {idx < 4 && <div className={`h-0.5 flex-1 rounded-full transition-colors ${currentStep > step.n || isDone ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
+                    {idx < 4 && <div className={`h-0.5 flex-1 rounded-full transition-colors ${currentStep > step.n || isDone ? 'bg-success' : 'bg-border'}`} />}
                   </div>
                 );
               })}
             </div>
             <div className="mt-3 flex items-center justify-between text-xs">
               <span className="font-medium text-muted-foreground">Langkah {currentStep} dari 5</span>
-              <span className={`font-semibold ${canSave ? 'text-emerald-600' : 'text-accent-text'}`}>{completedCount}/5 lengkap • {canSave ? 'Siap simpan' : 'Lengkapi dulu'}</span>
+              <span className={`font-semibold ${canSave ? 'text-success' : 'text-accent-text'}`}>{completedCount}/5 lengkap • {canSave ? 'Siap simpan' : 'Lengkapi dulu'}</span>
             </div>
-            <div className="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-              <div className="h-full rounded-full bg-linear-to-r from-primary-500 to-emerald-500 transition-all duration-500" style={{ width: `${(completedCount / 5) * 100}%` }} />
+            <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full bg-linear-to-r from-primary-500 to-success transition-all duration-500" style={{ width: `${(completedCount / 5) * 100}%` }} />
             </div>
           </div>
 
@@ -1386,17 +1386,17 @@ export default function RencanaKirimPage() {
             <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-chip-primary flex items-center justify-center text-accent-text text-xs font-bold">1</span> Informasi Dokumen</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="f-po-transporter" className="block text-xs font-medium text-muted-foreground mb-1">PO Transporter <span className="text-red-500">*</span></label>
+                <label htmlFor="f-po-transporter" className="block text-xs font-medium text-muted-foreground mb-1">PO Transporter <span className="text-destructive">*</span></label>
                 <input id="f-po-transporter" aria-invalid={poDuplicate || undefined} type="text" value={createForm.po_transporter ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, po_transporter: e.target.value }))} placeholder="cth: PO-2026-0001" className="input-field text-sm py-2 uppercase" />
-                <p className="text-[10px] text-gray-400 mt-0.5">Nomor PO transporter (SJ/BA)</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Nomor PO transporter (SJ/BA)</p>
                 {poDuplicate && (
-                  <p role="alert" className="mt-1 text-xs font-semibold text-amber-600">PO Transporter ini sudah dipakai rencana kirim lain di depo yang sama.</p>
+                  <p role="alert" className="mt-1 text-xs font-semibold text-warning">PO Transporter ini sudah dipakai rencana kirim lain di depo yang sama.</p>
                 )}
               </div>
               <div>
-                <label htmlFor="f-rkh-date" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal RKH <span className="text-red-500">*</span></label>
+                <label htmlFor="f-rkh-date" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal RKH <span className="text-destructive">*</span></label>
                 <input id="f-rkh-date" type="date" min={editingId ? undefined : todayDateStr()} value={createForm.rkh_date ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, rkh_date: e.target.value }))} className="input-field text-sm py-2" />
-                <p className="text-[10px] text-gray-400 mt-0.5">Tanggal pengiriman rencana</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Tanggal pengiriman rencana</p>
               </div>
             </div>
           </div>
@@ -1404,22 +1404,22 @@ export default function RencanaKirimPage() {
 
           {currentStep === 2 && (
           <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">2</span> Kendaraan & Driver</h3>
+            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-info/10 flex items-center justify-center text-info text-xs font-bold">2</span> Kendaraan & Driver</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="f-driver" className="block text-xs font-medium text-muted-foreground mb-1">Nama Driver <span className="text-red-500">*</span></label>
+                <label htmlFor="f-driver" className="block text-xs font-medium text-muted-foreground mb-1">Nama Driver <span className="text-destructive">*</span></label>
                 <input id="f-driver" type="text" value={createForm.driver_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, driver_name: e.target.value }))} placeholder="cth: Budi Santoso" className="input-field text-sm py-2" />
               </div>
               <div>
-                <label htmlFor="f-expedisi" className="block text-xs font-medium text-muted-foreground mb-1">Expedisi / Nama Kendaraan <span className="text-red-500">*</span></label>
+                <label htmlFor="f-expedisi" className="block text-xs font-medium text-muted-foreground mb-1">Expedisi / Nama Kendaraan <span className="text-destructive">*</span></label>
                 <input id="f-expedisi" type="text" value={createForm.expedisi ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, expedisi: e.target.value }))} placeholder="cth: CTP / Nama ekspedisi" className="input-field text-sm py-2" />
               </div>
               <div>
-                <label htmlFor="f-nopol" className="block text-xs font-medium text-muted-foreground mb-1">Nopol <span className="text-red-500">*</span></label>
+                <label htmlFor="f-nopol" className="block text-xs font-medium text-muted-foreground mb-1">Nopol <span className="text-destructive">*</span></label>
                 <input id="f-nopol" type="text" value={createForm.nopol ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, nopol: e.target.value }))} placeholder="cth: DA 8323 BU" className="input-field text-sm py-2 uppercase" />
               </div>
               <div>
-                <label htmlFor="f-jenis" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Kendaraan <span className="text-red-500">*</span></label>
+                <label htmlFor="f-jenis" className="block text-xs font-medium text-muted-foreground mb-1">Jenis Kendaraan <span className="text-destructive">*</span></label>
                 <select id="f-jenis" value={createForm.jenis_kendaraan ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, jenis_kendaraan: e.target.value }))} className="select-field text-sm py-2">
                   <option value="">Pilih jenis kendaraan</option>
                   {jenisKendaraanOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
@@ -1431,12 +1431,12 @@ export default function RencanaKirimPage() {
 
           {currentStep === 3 && (
           <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs font-bold">3</span> Alamat Pengiriman & Tujuan</h3>
+            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center text-success text-xs font-bold">3</span> Alamat Pengiriman & Tujuan</h3>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Asal Pengirim</h4>
                 <div>
-                  <label htmlFor="f-shipper-name" className="block text-xs font-medium text-muted-foreground mb-1">Asal Pengirim <span className="text-red-500">*</span></label>
+                  <label htmlFor="f-shipper-name" className="block text-xs font-medium text-muted-foreground mb-1">Asal Pengirim <span className="text-destructive">*</span></label>
                   <input id="f-shipper-name" type="text" value={createForm.shipper_name ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, shipper_name: e.target.value }))} placeholder="cth: PT Sinar Abadi" className="input-field text-sm py-2" />
                 </div>
                 <div>
@@ -1451,7 +1451,7 @@ export default function RencanaKirimPage() {
               <div className="space-y-3 rounded-xl bg-overlay-70 p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">Ditujukan</h4>
                 <div>
-                  <label htmlFor="f-nama-depo" className="block text-xs font-medium text-muted-foreground mb-1">Nama Depo <span className="text-red-500">*</span>{!!editingId && !hasPermission('depot.move') && (<span className="ml-1 font-normal normal-case text-gray-400">(terkunci — butuh izin Pindah Depo)</span>)}</label>
+                  <label htmlFor="f-nama-depo" className="block text-xs font-medium text-muted-foreground mb-1">Nama Depo <span className="text-destructive">*</span>{!!editingId && !hasPermission('depot.move') && (<span className="ml-1 font-normal normal-case text-muted-foreground">(terkunci — butuh izin Pindah Depo)</span>)}</label>
                   <NamaDepoInput value={createForm.nama_depo ?? ''} depoList={depoList} onChange={handleNamaDepoChange} onClear={clearNamaDepo} disabled={!!editingId && !hasPermission('depot.move')} />
                 </div>
                 <div>
@@ -1459,14 +1459,14 @@ export default function RencanaKirimPage() {
                   <input id="f-kode-depo" type="text" value={createForm.kode_depo ?? ''} disabled className="input-field text-sm py-2 uppercase" placeholder="Otomatis terisi" />
                 </div>
                 <div>
-                  <label htmlFor="f-dest-name" className="block text-xs font-medium text-muted-foreground mb-1">Ditujukan <span className="text-red-500">*</span></label>
-                  <input id="f-dest-name" type="text" value={createForm.destination_name ?? createForm.nama_depo ?? ''} disabled placeholder="Otomatis dari Nama Depo" className="input-field cursor-not-allowed bg-gray-100 text-sm py-2 text-foreground" />
+                  <label htmlFor="f-dest-name" className="block text-xs font-medium text-muted-foreground mb-1">Ditujukan <span className="text-destructive">*</span></label>
+                  <input id="f-dest-name" type="text" value={createForm.destination_name ?? createForm.nama_depo ?? ''} disabled placeholder="Otomatis dari Nama Depo" className="input-field cursor-not-allowed bg-muted text-sm py-2 text-foreground" />
                 </div>
                 <div>
                   <label htmlFor="f-dest-addr" className="block text-xs font-medium text-muted-foreground mb-1">Alamat Tujuan</label>
                   <textarea id="f-dest-addr" value={createForm.destination_address ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, destination_address: e.target.value }))} placeholder="cth: Jl. Karang Intan No.1, Singkawang" rows={2} className="input-field resize-none text-sm py-2" />
-                  <p className="text-[10px] text-gray-400 mt-0.5">Terisi otomatis dari depo tujuan — boleh diubah manual</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Alamat lengkap tujuan (akan tampil di Detail & PDF di bawah Singkawang)</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Terisi otomatis dari depo tujuan — boleh diubah manual</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Alamat lengkap tujuan (akan tampil di Detail & PDF di bawah Singkawang)</p>
                 </div>
               </div>
             </div>
@@ -1476,48 +1476,48 @@ export default function RencanaKirimPage() {
           {currentStep === 4 && (
           <div className="animate-fade-in space-y-4">
             {/* Header card - lebih premium */}
-            <div className="rounded-2xl border border-amber-200/50 bg-amber-50 p-5 shadow-sm">
+            <div className="rounded-2xl border border-warning/30 bg-warning/10 p-5 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-amber-500 flex items-center justify-center shadow shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-warning flex items-center justify-center shadow shrink-0">
                     <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                   </div>
                   <div>
                     <h3 className="text-[15px] font-bold text-foreground tracking-tight">Daftar Barang</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">Kelola produk NPN • auto hitung umur & kubikasi</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm' : 'bg-card text-amber-700 border-amber-200'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-card' : 'bg-amber-500'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border ${sectionComplete.barang ? 'bg-success text-white border-success shadow-sm' : 'bg-card text-foreground border-warning/30'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sectionComplete.barang ? 'bg-card' : 'bg-warning'}`} />{sectionComplete.barang ? `${itemCount} barang siap` : 'Belum ada barang'}
                       </span>
                       {sectionComplete.barang && (
                         <>
-                          <span className="inline-flex items-center rounded-full bg-ink-900 text-white px-2.5 py-1 text-xs font-bold">{totalQty} Qty</span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-teal-600 text-white px-2.5 py-1 text-xs font-bold">{totalKubikasiDisplay.toFixed(2)} m³</span>
+                          <span className="inline-flex items-center rounded-full bg-foreground text-background px-2.5 py-1 text-xs font-bold">{totalQty} Qty</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-info text-white px-2.5 py-1 text-xs font-bold">{totalKubikasiDisplay.toFixed(2)} m³</span>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
-                <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border shadow-sm ${sectionComplete.barang ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-card text-gray-400 border-border'}`}>
+                <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border shadow-sm ${sectionComplete.barang ? 'bg-success/10 text-success border-success/30' : 'bg-card text-muted-foreground border-border'}`}>
                   {sectionComplete.barang ? '✓ Lengkap' : '• Belum'}
                 </span>
               </div>
             </div>
 
             {!isMainFormValid ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex gap-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center shrink-0"><svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-3 3h6M12 3v3m0 12.75h.008v.008H12v-.008z" /></svg></div>
-                <div className="text-xs leading-relaxed text-amber-800"><b>Lengkapi dulu</b> Informasi Dokumen, Kendaraan & Alamat — baru kelola barang. Progress {completedCount}/5.</div>
+              <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 flex gap-3">
+                <div className="w-8 h-8 rounded-lg bg-warning flex items-center justify-center shrink-0"><svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-3 3h6M12 3v3m0 12.75h.008v.008H12v-.008z" /></svg></div>
+                <div className="text-xs leading-relaxed text-foreground"><b>Lengkapi dulu</b> Informasi Dokumen, Kendaraan & Alamat — baru kelola barang. Progress {completedCount}/5.</div>
               </div>
             ) : itemCount === 0 ? (
               <div className="rounded-2xl border-2 border-dashed border-border bg-overlay-50 p-8 text-center">
                 <div className="w-14 h-14 mx-auto rounded-2xl bg-card border border-border shadow-sm flex items-center justify-center mb-3">
-                  <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                  <svg className="w-7 h-7 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                 </div>
                 <h4 className="text-sm font-bold text-foreground">Belum ada barang</h4>
                 <p className="text-xs text-muted-foreground mt-1">Tambah manual atau import Excel — minimal 1 barang dengan jumlah &gt;0</p>
                 <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
-                  <button onClick={() => setShowBarangModal(true)} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-ink-900 text-white text-sm font-semibold hover:bg-black shadow-lg">
+                  <button onClick={() => setShowBarangModal(true)} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-foreground text-background text-sm font-semibold hover:opacity-90 shadow-lg">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah Barang
                   </button>
@@ -1537,21 +1537,21 @@ export default function RencanaKirimPage() {
                     Kelola <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                   </button>
                 </div>
-                <div className="divide-y divide-gray-100 max-h-52 overflow-auto">
+                <div className="divide-y divide-border max-h-52 overflow-auto">
                   {createItems.filter(i=>i.kode_barang).map((it, idx) => (
                     <div key={idx} className="flex items-center gap-3 px-4 py-2.5 hover:bg-popover">
-                      <span className="w-6 h-6 rounded-lg bg-ink-900 text-white text-xs font-bold flex items-center justify-center shrink-0">{idx+1}</span>
+                      <span className="w-6 h-6 rounded-lg bg-foreground text-background text-xs font-bold flex items-center justify-center shrink-0">{idx+1}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">{it.nama_barang}</p>
-                        <p className="text-xs font-mono text-gray-400">{it.kode_barang} • {it.umur != null ? `${it.umur} bln` : '-'}</p>
+                        <p className="text-xs font-mono text-muted-foreground">{it.kode_barang} • {it.umur != null ? `${it.umur} bln` : '-'}</p>
                       </div>
                       <span className="text-sm font-bold text-foreground whitespace-nowrap">{it.jumlah} <span className="text-xs font-normal text-muted-foreground">{it.satuan}</span></span>
-                      <span className="text-xs font-mono font-semibold text-teal-600 whitespace-nowrap">{itemKubikasi(it).toFixed(2)} m³</span>
+                      <span className="text-xs font-mono font-semibold text-info whitespace-nowrap">{itemKubikasi(it).toFixed(2)} m³</span>
                     </div>
                   ))}
                 </div>
-                <div className="flex items-center justify-between px-4 py-3 bg-ink-900 text-white">
-                  <span className="text-xs font-medium text-ink-fg-muted">Total {itemCount} barang</span>
+                <div className="flex items-center justify-between px-4 py-3 bg-foreground text-background">
+                  <span className="text-xs font-medium text-background/70">Total {itemCount} barang</span>
                   <span className="text-sm font-bold">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
                 </div>
               </div>
@@ -1562,7 +1562,7 @@ export default function RencanaKirimPage() {
 
           {currentStep === 5 && (
           <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-fade-in">
-            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-foreground text-xs font-bold">5</span> Catatan</h3>
+            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-foreground text-xs font-bold">5</span> Catatan</h3>
             <textarea id="f-notes" aria-label="Catatan tambahan" value={createForm.notes ?? ''} onChange={(e) => setCreateForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Catatan tambahan untuk pengiriman ini..." rows={3} className="input-field text-sm py-2 w-full resize-none" />
           </div>
           )}
@@ -1591,9 +1591,9 @@ export default function RencanaKirimPage() {
                 Selanjutnya →
               </button>
             ) : currentStep === 4 ? (
-              <span className="text-xs text-gray-400">Isi barang lalu Simpan</span>
+              <span className="text-xs text-muted-foreground">Isi barang lalu Simpan</span>
             ) : (
-              <span className="text-xs text-emerald-600 font-semibold">Siap simpan ✓</span>
+              <span className="text-xs text-success font-semibold">Siap simpan ✓</span>
             )}
           </div>
         </div>
@@ -1621,13 +1621,13 @@ export default function RencanaKirimPage() {
       >
         <div className="space-y-4">
           {duplicateCount > 0 && (
-            <div role="alert" className="flex gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3">
-              <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center shrink-0">
+            <div role="alert" className="flex gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+              <div className="w-8 h-8 rounded-lg bg-destructive flex items-center justify-center shrink-0">
                 <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
-              <div className="text-xs leading-relaxed text-red-800">
+              <div className="text-xs leading-relaxed text-destructive">
                 <b>{duplicateCount} nama barang terduplikasi.</b> Satu produk hanya boleh muncul sekali per rencana —
                 gabungkan jumlahnya ke baris pertama, atau hapus baris yang tidak dipakai. Rencana tidak bisa disimpan selama duplikat ada.
               </div>
@@ -1643,12 +1643,12 @@ export default function RencanaKirimPage() {
               const needsAttention = typingItems.has(index) || (item.nama_barang.trim().length > 0 && !item.kode_barang) || isDuplicate;
               const rowKubikasi = itemKubikasi(item);
               return (
-              <div key={index} className={`group relative rounded-2xl border bg-card p-5 shadow-sm transition-all ${needsAttention ? 'border-amber-200 bg-amber-50/20' : 'border-border hover:border-border hover:shadow-md'}`}>
+              <div key={index} className={`group relative rounded-2xl border bg-card p-5 shadow-sm transition-all ${needsAttention ? 'border-warning/30 bg-warning/10' : 'border-border hover:border-border hover:shadow-md'}`}>
                 <div className="flex items-start gap-3">
-                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-amber-500 text-white' : 'bg-card border border-border text-foreground shadow-sm'}`}>{item.item_number}</span>
+                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${needsAttention ? 'bg-warning text-white' : 'bg-card border border-border text-foreground shadow-sm'}`}>{item.item_number}</span>
                   <div className="flex-1 min-w-0 space-y-3">
                     <div>
-                      <label htmlFor={`item-nama-${index}`} className="block text-xs font-semibold text-foreground mb-1.5">Nama Barang <span className="text-red-500">*</span></label>
+                      <label htmlFor={`item-nama-${index}`} className="block text-xs font-semibold text-foreground mb-1.5">Nama Barang <span className="text-destructive">*</span></label>
                       <NpnSearchInput
                         inputId={`item-nama-${index}`}
                         namaValue={item.nama_barang}
@@ -1659,11 +1659,11 @@ export default function RencanaKirimPage() {
                       />
                       {item.kode_barang ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-ink-900 text-white px-2.5 py-1 text-xs font-mono font-bold">{item.kode_barang}</span>
-                          <span title="Umur diambil dari master Standar Umur Produk" className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${item.umur != null ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>{item.umur != null ? `${item.umur} bulan` : 'Umur belum diset'}</span>
-                          <span className="inline-flex items-center rounded-full bg-teal-50 text-teal-700 border border-teal-200 px-2.5 py-1 text-xs font-bold">{rowKubikasi > 0 ? `${rowKubikasi.toFixed(2)} m³` : '0 m³'}</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-foreground text-background px-2.5 py-1 text-xs font-mono font-bold">{item.kode_barang}</span>
+                          <span title="Umur diambil dari master Standar Umur Produk" className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${item.umur != null ? 'bg-success/10 text-success border-success/30' : 'bg-warning/10 text-foreground border-warning/30'}`}>{item.umur != null ? `${item.umur} bulan` : 'Umur belum diset'}</span>
+                          <span className="inline-flex items-center rounded-full bg-info/10 text-info border border-info/30 px-2.5 py-1 text-xs font-bold">{rowKubikasi > 0 ? `${rowKubikasi.toFixed(2)} m³` : '0 m³'}</span>
                           {isDuplicate && (
-                            <span role="alert" className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 border border-red-300 px-2.5 py-1 text-xs font-bold">
+                            <span role="alert" className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive border border-destructive/30 px-2.5 py-1 text-xs font-bold">
                               <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                               </svg>
@@ -1677,7 +1677,7 @@ export default function RencanaKirimPage() {
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-2 sm:col-span-1">
-                        <label htmlFor={`item-jumlah-${index}`} className="block text-xs font-semibold text-foreground mb-1">Jumlah <span className="text-red-500">*</span></label>
+                        <label htmlFor={`item-jumlah-${index}`} className="block text-xs font-semibold text-foreground mb-1">Jumlah <span className="text-destructive">*</span></label>
                         <input id={`item-jumlah-${index}`} type="number" value={item.jumlah || ''} onChange={(e) => updateItem(index, 'jumlah', parseFloat(e.target.value) || 0)} placeholder="0" min="0" className="w-full px-3 py-2.5 text-center text-base font-black text-foreground bg-card border border-border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm" />
                       </div>
                       <div>
@@ -1695,7 +1695,7 @@ export default function RencanaKirimPage() {
                       <input type="text" aria-label="Keterangan barang (opsional)" value={item.keterangan} onChange={(e) => updateItem(index, 'keterangan', e.target.value)} placeholder="Keterangan (opsional)" className="w-full px-3 py-2 text-sm bg-popover border border-border rounded-xl focus:bg-card focus:ring-2 focus:ring-primary-500" />
                     </div>
                   </div>
-                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} aria-label={`Hapus barang ${item.item_number}`} className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-30 shrink-0 transition-colors">
+                  <button onClick={() => removeItem(index)} disabled={createItems.length <= 1} aria-label={`Hapus barang ${item.item_number}`} className="w-8 h-8 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/10 disabled:opacity-30 shrink-0 transition-colors">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
@@ -1703,15 +1703,15 @@ export default function RencanaKirimPage() {
               );
             })}
             <button onClick={addItem} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-border bg-card text-sm font-bold text-foreground hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text transition-colors">
-              <span className="w-7 h-7 rounded-xl bg-ink-900 text-white flex items-center justify-center"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></span>
+              <span className="w-7 h-7 rounded-xl bg-foreground text-background flex items-center justify-center"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></span>
               Tambah barang lagi
             </button>
-            <div className="flex items-center justify-between rounded-2xl bg-ink-900 text-white px-4 py-3">
-              <span className="text-xs font-bold tracking-widest text-ink-fg-muted uppercase">Total • {itemCount} barang</span>
+            <div className="flex items-center justify-between rounded-2xl bg-foreground text-background px-4 py-3">
+              <span className="text-xs font-bold tracking-widest text-background/70 uppercase">Total • {itemCount} barang</span>
               <span className="text-sm font-black">{totalQty} Qty • {totalKubikasiDisplay.toFixed(2)} m³</span>
             </div>
             {createItems.some(i => i.kode_barang && i.umur == null) && (
-              <p className="px-1 text-[11px] leading-relaxed text-gray-400">Umur produk diambil dari master Standar Umur Produk dan dipakai untuk pemeriksaan sisa umur di Validasi SJ. Produk tanpa umur tidak dapat diperiksa sisa umurnya — hubungi administrator untuk melengkapi master.</p>
+              <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">Umur produk diambil dari master Standar Umur Produk dan dipakai untuk pemeriksaan sisa umur di Validasi SJ. Produk tanpa umur tidak dapat diperiksa sisa umurnya — hubungi administrator untuk melengkapi master.</p>
             )}
           </div>
         </div>
@@ -1749,14 +1749,14 @@ export default function RencanaKirimPage() {
             </button>
           </div>
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${selectedFile ? 'border-amber-300 bg-amber-50/30' : 'border-border hover:border-amber-300 hover:bg-popover'}`}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${selectedFile ? 'border-warning/30 bg-warning/10' : 'border-border hover:border-warning/30 hover:bg-popover'}`}
             onClick={() => fileInputRef.current?.click()}
           >
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="hidden" />
             {selectedFile ? (
               <div className="flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center">
-                  <svg className="w-7 h-7 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                <div className="w-14 h-14 rounded-2xl bg-warning/10 flex items-center justify-center">
+                  <svg className="w-7 h-7 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">{selectedFile.name}</p>
@@ -1765,30 +1765,30 @@ export default function RencanaKirimPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-                  <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+                  <svg className="w-7 h-7 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Klik untuk pilih file</p>
-                  <p className="text-xs text-gray-400 mt-1">Mendukung .xlsx, .xls, .csv (maks 10MB)</p>
+                  <p className="text-xs text-muted-foreground mt-1">Mendukung .xlsx, .xls, .csv (maks 10MB)</p>
                 </div>
               </div>
             )}
           </div>
-          <p className="text-xs text-gray-400">Format: 1 baris = 1 barang. Kolom: Kode Barang, Nama Barang, Jumlah, Satuan, Keterangan. Barang akan dicocokkan dengan data NPN.</p>
+          <p className="text-xs text-muted-foreground">Format: 1 baris = 1 barang. Kolom: Kode Barang, Nama Barang, Jumlah, Satuan, Keterangan. Barang akan dicocokkan dengan data NPN.</p>
 
           {importResult && (
-            <div className={`p-4 rounded-xl animate-fade-in ${importResult.ok ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+            <div className={`p-4 rounded-xl animate-fade-in ${importResult.ok ? 'bg-success/10 border border-success/30' : 'bg-destructive/10 border border-destructive/30'}`}>
               <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${importResult.ok ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${importResult.ok ? 'bg-success/10' : 'bg-destructive/10'}`}>
                   {importResult.ok ? (
-                    <svg className="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                    <svg className="w-5 h-5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                   ) : (
-                    <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                    <svg className="w-5 h-5 text-destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                   )}
                 </div>
                 <div>
-                  <p className={`text-sm font-medium ${importResult.ok ? 'text-emerald-700' : 'text-red-700'}`}>{importResult.message}</p>
+                  <p className={`text-sm font-medium ${importResult.ok ? 'text-success' : 'text-destructive'}`}>{importResult.message}</p>
                   {importResult.matched !== undefined && (
                     <div className="flex items-center gap-3 mt-2">
                       <span className="badge badge-success">Cocok: {importResult.matched} barang</span>
