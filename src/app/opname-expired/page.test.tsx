@@ -136,10 +136,12 @@ describe('OpnameExpiredPage', () => {
   it('menampilkan langkah berikutnya dan aksi sekunder saat izin lengkap', async () => {
     render(<OpnameExpiredPage />);
 
-    expect(await screen.findByText(/baris baru belum masuk analisa/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Buat Baris Monitoring' })).toBeInTheDocument();
-
+    // Langkah berikutnya kini berada di bagian atas menu Aksi, bukan kartu banner terpisah.
     fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
+
+    expect(await screen.findByText('Langkah berikutnya')).toBeInTheDocument();
+    expect(screen.getByText(/baris baru belum masuk analisa/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Buat Baris Monitoring' })).toBeInTheDocument();
 
     // Menu dikelompokkan agar fungsi input, proses, laporan, dan pengaturan tidak tercampur.
     expect(screen.getByText('Input data')).toBeInTheDocument();
@@ -156,13 +158,14 @@ describe('OpnameExpiredPage', () => {
 
     render(<OpnameExpiredPage />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
+
     expect(await screen.findByText('Saldo Awal belum dipasang')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pasang Saldo Awal' })).toBeInTheDocument();
     expect(screen.queryByText(/baris baru belum masuk analisa/)).not.toBeInTheDocument();
 
-    // Saat saldo awal belum ada, CTA hanya muncul sekali di banner langkah
-    // berikutnya; menu "Aksi" tidak boleh menduplikasi tombol yang sama.
-    fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
+    // Saat saldo awal belum ada, CTA hanya muncul sekali sebagai langkah
+    // berikutnya di menu Aksi; grup Input data tidak boleh menduplikasinya.
     expect(screen.queryByRole('menuitem', { name: /Saldo Awal/ })).not.toBeInTheDocument();
   });
 
@@ -237,6 +240,7 @@ describe('OpnameExpiredPage', () => {
 
     render(<OpnameExpiredPage />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
     expect(await screen.findByText('Hitung fisik minggu ini selesai')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /Lihat Hasil Stock Opname/ });
     expect(link.getAttribute('href')).toContain('/opname-sessions?');
@@ -269,6 +273,7 @@ describe('OpnameExpiredPage', () => {
 
     render(<OpnameExpiredPage />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
     expect(await screen.findByText('Stock Opname sedang berjalan')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /Lanjutkan Stock Opname/ });
     expect(link.getAttribute('href')).toContain('/opname-sessions?');
@@ -314,6 +319,7 @@ describe('OpnameExpiredPage', () => {
 
     render(<OpnameExpiredPage />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
     expect(await screen.findByText('Baris monitoring siap dihitung fisik')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /Buat Sesi Stock Opname/ });
     expect(link.getAttribute('href')).toContain('/opname-sessions?');
