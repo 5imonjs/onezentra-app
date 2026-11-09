@@ -595,6 +595,8 @@
      Memetakan nama standar ke ramp oz-* yang sudah ada, sehingga utilitas
      Tailwind `bg-background`, `text-foreground`, `bg-card`, dll. tersedia
      di Light dan Dark tanpa sistem tema ganda. */
+  --background: var(--oz-canvas);
+  --foreground: var(--oz-text);
   --card: var(--oz-card);
   --card-foreground: var(--oz-text);
   --popover: var(--oz-raised);
