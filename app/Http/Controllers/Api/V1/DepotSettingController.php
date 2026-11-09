@@ -51,8 +51,9 @@ class DepotSettingController extends Controller
             ->where('is_active', true)
             ->first();
 
-        abort_unless($setting, 404, 'Setting depo tidak ditemukan.');
-
+        // Dipakai auto-fill form (rencana kirim): "belum ada setting" adalah
+        // keadaan normal, bukan error. Kembalikan 200 + null agar console
+        // browser tidak banjir 404 padahal form tetap bisa diisi manual.
         return response()->json(['data' => $setting]);
     }
 
