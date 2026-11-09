@@ -1236,8 +1236,8 @@ export default function RencanaKirimPage() {
       <Modal open={showSavePreview} onClose={() => setShowSavePreview(false)} title="Periksa ulang sebelum simpan" subtitle="Satu salah ketik = selisih di penerimaan & opname. Pastikan barang di bawah BENAR sebelum dikirim." size="lg"
         footer={
           <>
-            <button onClick={() => setShowSavePreview(false)} className="btn-secondary">Kembali & Cek Dulu</button>
-            <button onClick={() => { setShowSavePreview(false); handleCreate(); }} className="btn-primary shadow-lg shadow-primary-600/20" disabled={saving}>
+            <button type="button" onClick={() => setShowSavePreview(false)} className="btn-secondary">Kembali & Cek Dulu</button>
+            <button type="button" onClick={() => { setShowSavePreview(false); handleCreate(); }} className="btn-primary shadow-lg shadow-primary-600/20" disabled={saving}>
               <span className="flex items-center gap-2">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                 Ya, Barang Sudah Benar
@@ -1309,8 +1309,9 @@ export default function RencanaKirimPage() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={requestCloseCreate} className="btn-secondary px-5">Batal</button>
+              <button type="button" onClick={requestCloseCreate} className="btn-secondary px-5">Batal</button>
               <button
+                type="button"
                 onClick={() => setShowSavePreview(true)}
                 disabled={saving || typingItems.size > 0 || !canSave || poDuplicate || editLocked || (editingId ? !hasPermission('rencana_kirim.edit') : !hasPermission('rencana_kirim.create'))}
                 title={poDuplicate ? 'PO Transporter sudah dipakai di depo yang sama' : !canSave ? (!isMainFormValid ? 'Lengkapi Dokumen, Kendaraan & Alamat dulu' : duplicateCount > 0 ? `${duplicateCount} nama barang terduplikasi — gabungkan atau hapus dulu` : 'Isi minimal 1 barang') : undefined}
