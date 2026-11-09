@@ -107,14 +107,13 @@ describe('OpnameExpiredPage', () => {
     cleanup();
   });
 
-  it('menampilkan judul Monitoring Kedaluwarsa dan alur data end-to-end', async () => {
+  it('menampilkan judul dan konteks minggu/depo di header', async () => {
     render(<OpnameExpiredPage />);
 
     expect(await screen.findByRole('heading', { name: 'Monitoring Kedaluwarsa' })).toBeInTheDocument();
-    const flow = screen.getByLabelText('Alur monitoring kedaluwarsa');
-    expect(flow).toHaveTextContent('1. Saldo Awal');
-    expect(flow).toHaveTextContent('2. Hitung Fisik');
-    expect(flow).toHaveTextContent('3. Selesai');
+    expect(screen.getByText('Pantau lot kedaluwarsa per minggu dan depo, termasuk status Aman.')).toBeInTheDocument();
+    // Header sekarang ringkas: langkah alur tidak lagi dirender sebagai chip di header.
+    expect(screen.queryByLabelText('Alur monitoring kedaluwarsa')).not.toBeInTheDocument();
   });
 
   it('menyembunyikan Buat Baris & Pengaturan tanpa izin opname.create/opname.edit', async () => {
