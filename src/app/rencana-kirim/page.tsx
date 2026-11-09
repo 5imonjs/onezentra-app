@@ -1009,7 +1009,7 @@ export default function RencanaKirimPage() {
                           </>
                         )}
                         {!search.trim() && hasPermission('rencana_kirim.create') && (
-                          <button onClick={() => openCreate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-bold text-background shadow-sm transition-all hover:opacity-90 active:scale-[0.98]">
+                          <button onClick={() => openCreate()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-700 active:scale-[0.98]">
                             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             Buat Rencana
                           </button>
@@ -1110,7 +1110,7 @@ export default function RencanaKirimPage() {
                   </>
                 )}
                 {!search.trim() && hasPermission('rencana_kirim.create') && (
-                  <button onClick={() => openCreate()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-bold text-background shadow-sm transition-all hover:opacity-90 active:scale-[0.98]">
+                  <button onClick={() => openCreate()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-700 active:scale-[0.98]">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Buat Rencana
                   </button>
@@ -1149,7 +1149,7 @@ export default function RencanaKirimPage() {
               </button>
               )}
               {hasPermission('rencana_kirim.view') && (
-              <button onClick={() => viewItem && downloadSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-foreground text-background text-sm font-bold hover:opacity-90 shadow-lg">
+              <button onClick={() => viewItem && downloadSuratJalan(viewItem as RencanaKirimData)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 shadow-lg">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                 Download PDF
               </button>
@@ -1457,7 +1457,7 @@ export default function RencanaKirimPage() {
                 <h4 className="text-sm font-bold text-foreground">Belum ada barang</h4>
                 <p className="text-xs text-muted-foreground mt-1">Tambah manual atau import Excel — minimal 1 barang dengan jumlah &gt;0</p>
                 <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
-                  <button onClick={() => setShowBarangModal(true)} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-foreground text-background text-sm font-semibold hover:opacity-90 shadow-lg">
+                  <button onClick={() => setShowBarangModal(true)} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 shadow-lg">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah Barang
                   </button>
@@ -1713,7 +1713,7 @@ export default function RencanaKirimPage() {
               );
             })}
             <button onClick={addItem} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-border bg-card text-sm font-bold text-foreground hover:border-primary-300 hover:bg-chip-primary hover:text-accent-text transition-colors">
-              <span className="w-7 h-7 rounded-xl bg-foreground text-background flex items-center justify-center"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></span>
+              <span className="w-7 h-7 rounded-xl bg-primary-600 text-white flex items-center justify-center"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></span>
               Tambah barang lagi
             </button>
             <div className="flex items-center justify-between rounded-2xl bg-foreground text-background px-4 py-3">
