@@ -295,13 +295,6 @@ function DaysBar({ sisaHari, maxHari, status }: { sisaHari: number; maxHari: num
 }
 
 type BannerTone = 'violet' | 'amber' | 'emerald' | 'slate';
-type StepState = 'done' | 'active' | 'idle';
-
-const STEP_TONE: Record<StepState, string> = {
-  done: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-200',
-  active: 'border-primary-500/30 bg-primary-500/15 text-primary-200',
-  idle: 'border-white/10 bg-white/10 text-ink-fg-muted',
-};
 
 const BANNER_TONE: Record<BannerTone, { wrap: string; icon: string; title: string; text: string }> = {
   violet: {
@@ -650,10 +643,6 @@ export default function OpnameExpiredPage() {
   const progressPct = progressTotal > 0 ? Math.round((progressValidated / progressTotal) * 100) : 0;
   const hasWeekRows = weekRows > 0 || waves.length > 0;
 
-  const stepOne: StepState = baselineStatus === 'installed' ? 'done' : baselineStatus === 'missing' ? 'active' : 'idle';
-  const stepTwo: StepState = allRowsValidated ? 'done' : (baselineStatus !== 'missing' && hasWeekRows ? 'active' : 'idle');
-  const stepThree: StepState = allRowsValidated ? 'done' : 'idle';
-
   // Dipakai empty-state: apakah pencarian aktif (UI saja).
   const hasSearch = searchApply.trim().length > 0;
 
@@ -957,9 +946,11 @@ export default function OpnameExpiredPage() {
                 <svg aria-hidden="true" className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Monitoring operasional</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">
+                  {weekRangeLabel} · {user?.nama_depo || kodeDepo || 'Semua depo'}
+                </p>
                 <h1 className="text-2xl font-bold leading-tight">Monitoring Kedaluwarsa</h1>
-                <p className="text-ink-fg-muted mt-0.5 text-sm">Pantau lot berdasarkan tanggal kedaluwarsa, termasuk yang masih Aman. Hitung fisik dilakukan di Stock Opname.</p>
+                <p className="text-ink-fg-muted mt-0.5 text-sm">Pantau lot kedaluwarsa per minggu dan depo, termasuk status Aman.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1067,30 +1058,7 @@ export default function OpnameExpiredPage() {
               </div>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold" aria-label="Alur monitoring kedaluwarsa">
-            <span
-              className={`rounded-full border px-2.5 py-1 ${STEP_TONE[stepOne]}`}
-              title="Saldo Awal: saldo pembuka sebelum sistem, dipasang sekali per depo."
-              aria-current={stepOne === 'active' ? 'step' : undefined}
-            >
-              1. Saldo Awal
-            </span>
-            <span aria-hidden="true" className="text-ink-fg-muted">→</span>
-            <span
-              className={`rounded-full border px-2.5 py-1 ${STEP_TONE[stepTwo]}`}
-              title="Hitung Fisik: input hasil hitung lapangan lewat Stock Opname."
-              aria-current={stepTwo === 'active' ? 'step' : undefined}
-            >
-              2. Hitung Fisik
-            </span>
-            <span aria-hidden="true" className="text-ink-fg-muted">→</span>
-            <span
-              className={`rounded-full border px-2.5 py-1 ${STEP_TONE[stepThree]}`}
-              title="Selesai: semua baris minggu ini sudah tervalidasi."
-            >
-              3. Selesai
-            </span>
-          </div>
+
         </div>
 
         {nextStep && (
