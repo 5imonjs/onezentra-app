@@ -135,7 +135,7 @@ class BiayaThlController extends Controller
      */
     public function candidates(Request $request)
     {
-        $allowedTypes = ['CDD', 'Fuso', 'Container 20', 'Container 40'];
+        $allowedTypes = ['CDD', 'CDE', 'L300', 'Fuso', 'Container 20', 'Container 40'];
 
         $query = Receiving::query()
             ->with(['rencanaKirim.sjValidations', 'checker'])
