@@ -112,6 +112,9 @@ describe('OpnameExpiredPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Monitoring Kedaluwarsa' })).toBeInTheDocument();
     expect(screen.getByText('Pantau lot kedaluwarsa per minggu dan depo, termasuk status Aman.')).toBeInTheDocument();
+    // Header sekarang ringkas: tidak ada tombol Stock Opname generik yang bersaing
+    // dengan CTA kontekstual di banner (buat/lanjutkan/lihat hasil sesi).
+    expect(screen.queryByRole('link', { name: 'Stock Opname' })).not.toBeInTheDocument();
     // Header sekarang ringkas: langkah alur tidak lagi dirender sebagai chip di header.
     expect(screen.queryByLabelText('Alur monitoring kedaluwarsa')).not.toBeInTheDocument();
   });
@@ -135,7 +138,7 @@ describe('OpnameExpiredPage', () => {
     expect(await screen.findByText(/baris baru belum masuk analisa/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Buat Baris Monitoring' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Lainnya' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
 
     expect(screen.getByRole('menuitem', { name: /Kelola Saldo Awal/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Tambah Stok Manual/ })).toBeInTheDocument();
@@ -152,8 +155,8 @@ describe('OpnameExpiredPage', () => {
     expect(screen.queryByText(/baris baru belum masuk analisa/)).not.toBeInTheDocument();
 
     // Saat saldo awal belum ada, CTA hanya muncul sekali di banner langkah
-    // berikutnya; menu "Lainnya" tidak boleh menduplikasi tombol yang sama.
-    fireEvent.click(screen.getByRole('button', { name: 'Lainnya' }));
+    // berikutnya; menu "Aksi" tidak boleh menduplikasi tombol yang sama.
+    fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
     expect(screen.queryByRole('menuitem', { name: /Saldo Awal/ })).not.toBeInTheDocument();
   });
 
