@@ -318,6 +318,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/template', [ReceivingItemController::class, 'template'])->middleware(['permission:penerimaan.view', 'throttle:30,1,heavy-read']);
         Route::post('/import', [ReceivingItemController::class, 'import'])->middleware(['permission:penerimaan.create', 'throttle:20,1,heavy-write']);
         Route::post('/import-baseline', [ReceivingItemController::class, 'importBaseline'])->middleware(['permission:penerimaan.create', 'throttle:20,1,heavy-write']);
+        // Template acuan saldo awal: kolom sama dengan importer, nama file beda.
+        Route::get('/baseline/template', [ReceivingItemController::class, 'baselineTemplate'])->middleware(['permission:penerimaan.view', 'throttle:30,1,heavy-read']);
         // Manifes baseline: daftar posisi terpasang + koreksi cutoff tanpa
         // menambah/menghapus baris ledger.
         Route::get('/baseline', [ReceivingItemController::class, 'baselineManifests'])->middleware('permission:penerimaan.view');

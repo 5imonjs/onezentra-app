@@ -18,14 +18,12 @@ const operasionalMenus = [
   { name: 'Inbound (SJ)', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
 ];
 
-// Stok & Kedaluwarsa dapat grup sendiri. Alur inbound (fisik) berakhir di "Inbound (SJ)",
-// sedangkan opname adalah stock-take terjadwal dengan tiga tahap: pemantauan
-// kedaluwarsa, hitung fisik di lapangan, lalu laporan hasilnya. Nama grup
-// membawa konteks stok dan kedaluwarsa, jadi label item dibuat pendek.
+// Stok & Opname adalah area kerja operasional: pemantauan kedaluwarsa dan
+// hitung fisik. Semua laporan read-only berada di grup Laporan agar batas
+// antara halaman kerja dan halaman rekap jelas.
 const opnameMenus = [
   { name: 'Monitoring Kedaluwarsa', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
   { name: 'Stock Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
-  { name: 'Laporan Monitoring', path: '/reports/opname-expired', icon: 'chart', permission: 'reports.view' },
 ];
 
 const masterDataMenus = [
@@ -44,7 +42,8 @@ const biayaMenus = [
 const reportItems = [
   { name: 'Laporan Replenishment', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.rencana_kirim' },
   { name: 'Laporan Inbound', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.penerimaan' },
-  { name: 'Penerimaan & Kedaluwarsa', path: '/reports/penerimaan-batch-expired', icon: 'clipboard', permission: 'reports.penerimaan_batch_expired' },
+  { name: 'Laporan Batch Kedaluwarsa', path: '/reports/penerimaan-batch-expired', icon: 'clipboard', permission: 'reports.penerimaan_batch_expired' },
+  { name: 'Laporan Monitoring Kedaluwarsa', path: '/reports/opname-expired', icon: 'chart', permission: 'reports.view', permissions: ['reports.view', 'opname.view'] },
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.selisih_qty' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
@@ -167,6 +166,8 @@ interface GroupItem {
   path: string;
   icon: string;
   permission: string;
+  /** Izin tambahan yang harus dimiliki semuanya (untuk menu lintas modul). */
+  permissions?: string[];
 }
 
 interface CollapsibleGroupProps {
@@ -183,7 +184,7 @@ interface CollapsibleGroupProps {
 }
 
 function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermission, open, onToggle, onExpandRequest, accent = false }: CollapsibleGroupProps) {
-  const visibleItems = items.filter((m) => hasPermission(m.permission));
+  const visibleItems = items.filter((m) => (m.permissions ?? [m.permission]).every(hasPermission));
   if (visibleItems.length === 0) return null;
 
   const isActiveAny = visibleItems.some((m) => pathname === m.path);
@@ -411,7 +412,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
           <div className="mx-3 my-1.5 h-px bg-linear-to-r from-transparent via-gray-300/60 to-transparent" />
 
           <CollapsibleGroup
-            title="Stok & Kedaluwarsa"
+            title="Stok & Opname"
             icon="clipboard-check"
             items={opnameMenus}
             isExpanded={isExpanded}

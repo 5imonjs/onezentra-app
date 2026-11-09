@@ -208,7 +208,7 @@ export default function PenerimaanBatchExpiredReportPage() {
       );
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `laporan-penerimaan-kedaluwarsa-${toLocalISODate(new Date())}.xlsx`);
+      link.setAttribute('download', `laporan-batch-kedaluwarsa-${toLocalISODate(new Date())}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -226,7 +226,7 @@ export default function PenerimaanBatchExpiredReportPage() {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Anda tidak memiliki izin untuk melihat Laporan Penerimaan &amp; Kedaluwarsa.
+          Anda tidak memiliki izin untuk melihat Laporan Batch Kedaluwarsa.
         </div>
       </DashboardLayout>
     );
@@ -240,10 +240,11 @@ export default function PenerimaanBatchExpiredReportPage() {
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm shrink-0">
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-            <div>
-              <h1 className="text-xl lg:text-2xl font-black tracking-tight">Laporan Penerimaan &amp; Kedaluwarsa</h1>
-              <p className="text-primary-200 text-sm mt-0.5">
-                Satu baris = satu baris GR. Dikelompokkan per cluster, dengan status kedaluwarsa dan masa simpan.
+            <div className="min-w-0">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan</p>
+              <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Batch Kedaluwarsa</h1>
+              <p className="text-ink-fg-muted mt-0.5 text-sm">
+                Satu baris = satu batch penerimaan. Dikelompokkan per cluster, dengan status kedaluwarsa dan masa simpan.
               </p>
             </div>
           </div>

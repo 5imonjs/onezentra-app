@@ -439,6 +439,25 @@ class OpnameExpiredTest extends TestCase
         ]);
     }
 
+    public function test_baseline_import_template_uses_same_columns_as_manual_template(): void
+    {
+        $res = $this->get('/api/v1/receiving-items/baseline/template')->assertOk();
+
+        $temp = tempnam(sys_get_temp_dir(), 'baseline-template');
+        file_put_contents($temp, $res->streamedContent() ?: $res->getContent());
+
+        $rows = (new \PhpOffice\PhpSpreadsheet\Reader\Xlsx)->load($temp)->getActiveSheet()->toArray();
+        unlink($temp);
+
+        // Template saldo awal harus bisa langsung dipakai importer yang sama
+        // dengan stok manual: PRODUK, QTY DUS/BALL, QTY PCS, EXPIRED,
+        // TANGGAL PENERIMAAN.
+        $this->assertSame(
+            ['PRODUK', 'QTY DUS/BALL', 'QTY PCS', 'EXPIRED', 'TANGGAL PENERIMAAN'],
+            array_slice($rows[0], 0, 5),
+        );
+    }
+
     public function test_validasi_sj_item_falls_back_to_rencana_kirim_attributes(): void
     {
         $rk = RencanaKirim::create([
@@ -1101,6 +1120,16 @@ class OpnameExpiredTest extends TestCase
         ]);
         app(OpnameExpiredService::class)->generate();
 
+        $openSession = OpnameExpiredSession::create([
+            'week_start' => '2026-09-07',
+            'week_end' => '2026-09-13',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->user->id,
+            'created_by' => $this->user->id,
+            'status' => OpnameExpiredSession::STATUS_OPEN,
+        ]);
+
         OpnameExpiredWave::where('week_start', '2026-09-07')
             ->where('kode_depo', 'DPO')
             ->update(['validated_by' => $this->user->id, 'validated_at' => now()]);
@@ -1110,6 +1139,10 @@ class OpnameExpiredTest extends TestCase
 
         $this->assertTrue((bool) $depots['DPO']['submitted']);
         $this->assertFalse((bool) $depots['LAIN']['submitted']);
+        $this->assertTrue((bool) $depots['DPO']['has_open_session']);
+        $this->assertSame($openSession->id, $depots['DPO']['open_session_id']);
+        $this->assertFalse((bool) $depots['LAIN']['has_open_session']);
+        $this->assertNull($depots['LAIN']['open_session_id']);
         $this->assertSame(1, $res->json('data.submitted_count'));
         $this->assertSame(1, $res->json('data.pending_count'));
     }

@@ -373,7 +373,7 @@ class ReportController extends Controller
 
         ExportGuard::ensureWithinLimit($query);
 
-        $filename = 'laporan-penerimaan-expired-produk_'.date('Y-m-d_His').'.xlsx';
+        $filename = 'laporan-batch-kedaluwarsa_'.date('Y-m-d_His').'.xlsx';
 
         return Excel::download(new PenerimaanExpiredReportExport($query), $filename);
     }

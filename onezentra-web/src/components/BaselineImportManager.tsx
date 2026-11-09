@@ -87,6 +87,22 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
     setSuccessMsg(null);
   };
 
+  const downloadTemplate = async () => {
+    try {
+      const res = await opnameExpired.baselineTemplate();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'template_saldo_awal.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal unduh template saldo awal'));
+    }
+  };
+
   const handleImportError = (err: unknown) => {
     const response = (err as { response?: { data?: { message?: string; errors?: { row?: number; errors?: string[] }[] } } }).response?.data;
     if (response?.errors?.length) {
@@ -226,7 +242,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
               <p className="mt-1 text-xs leading-relaxed text-violet-800">
                 Isi tanggal terakhir yang sudah tercakup di file lama. Penerimaan setelah tanggal itu tetap
                 dihitung sebagai stok baru. Baris yang sudah diinput sebelum saldo awal dipasang tidak akan
-                dihitung dua kali.
+                dihitung dua kali. Gunakan template acuan di bawah; kolomnya sama dengan Import Stok Manual.
               </p>
             </div>
 
@@ -270,6 +286,12 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={downloadTemplate} className="btn-secondary text-sm px-3 py-1.5">
+                <span className="flex items-center gap-1.5">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                  Template
+                </span>
+              </button>
               <button type="button" onClick={() => inputRef.current?.click()} className="btn-secondary text-sm px-3 py-1.5" disabled={importing}>
                 Pilih File Saldo Awal
               </button>
@@ -338,12 +360,12 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
                 </p>
                 {currentBaseline.has_open_session && (
                   <p className="mt-1 text-[11px] font-medium text-amber-700">
-                    Stock opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum mengoreksi saldo awal.
+                    Stock Opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum mengoreksi saldo awal.
                   </p>
                 )}
                 {!currentBaseline.has_open_session && currentBaseline.has_finalized_current_week && (
                   <p className="mt-1 text-[11px] font-medium text-amber-700">
-                    Stock opname minggu ini sudah final. Koreksi saldo awal tidak bisa mengubah saldo yang sudah disetujui.
+                    Stock Opname minggu ini sudah final. Koreksi saldo awal tidak bisa mengubah saldo yang sudah disetujui.
                   </p>
                 )}
               </div>

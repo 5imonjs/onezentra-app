@@ -80,7 +80,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'Ubah Setting Depo', 'slug' => 'depot_settings.manage', 'menu_group' => 'Sistem', 'icon' => 'building-office', 'route' => null, 'sort_order' => 436],
             ['name' => 'Laporan Selisih Qty View', 'slug' => 'reports.selisih_qty', 'menu_group' => 'Laporan', 'icon' => 'chart', 'route' => 'reports.selisih_qty', 'sort_order' => 440],
             ['name' => 'Laporan Penerimaan View', 'slug' => 'reports.penerimaan', 'menu_group' => 'Laporan', 'icon' => 'clipboard', 'route' => 'reports.penerimaan', 'sort_order' => 441],
-            ['name' => 'Laporan Penerimaan & Expired View', 'slug' => 'reports.penerimaan_batch_expired', 'menu_group' => 'Laporan', 'icon' => 'clipboard', 'route' => 'reports.penerimaan_batch_expired', 'sort_order' => 442],
+            ['name' => 'Laporan Batch Kedaluwarsa View', 'slug' => 'reports.penerimaan_batch_expired', 'menu_group' => 'Laporan', 'icon' => 'clipboard', 'route' => 'reports.penerimaan_batch_expired', 'sort_order' => 442],
             ['name' => 'Laporan Rencana Kirim View', 'slug' => 'reports.rencana_kirim', 'menu_group' => 'Laporan', 'icon' => 'truck', 'route' => 'reports.rencana_kirim', 'sort_order' => 443],
             ['name' => 'Laporan View', 'slug' => 'reports.view', 'menu_group' => 'Laporan', 'icon' => 'chart', 'route' => 'reports.index', 'sort_order' => 439],
             ['name' => 'Hapus Baris Laporan', 'slug' => 'reports.delete', 'menu_group' => 'Laporan', 'icon' => 'trash', 'route' => 'reports.delete', 'sort_order' => 438],

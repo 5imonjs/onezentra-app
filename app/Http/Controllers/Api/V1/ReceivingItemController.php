@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exports\ReceivingItemBaselineTemplate;
 use App\Exports\ReceivingItemTemplate;
 use App\Http\Controllers\Controller;
 use App\Imports\ReceivingItemImport;
@@ -931,6 +932,16 @@ class ReceivingItemController extends Controller
     public function template()
     {
         return Excel::download(new ReceivingItemTemplate, 'template_penerimaan_manual.xlsx');
+    }
+
+    /**
+     * Template acuan Import Saldo Awal. Kolom sama dengan stok manual karena
+     * keduanya memakai ReceivingItemImport; nama file dibedakan agar operator
+     * tidak tertukar antara saldo pembuka dan stok tambahan.
+     */
+    public function baselineTemplate()
+    {
+        return Excel::download(new ReceivingItemBaselineTemplate, 'template_saldo_awal.xlsx');
     }
 
     public function destroy(Request $request, ReceivingItem $receivingItem): JsonResponse

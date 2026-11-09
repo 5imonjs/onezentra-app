@@ -584,7 +584,7 @@ class PenerimaanExpiredReportTest extends TestCase
         $response = $this->get('/api/v1/reports/penerimaan-batch-expired/export');
         $response->assertOk()
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        $this->assertStringContainsString('laporan-penerimaan-expired-produk', $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('laporan-batch-kedaluwarsa', $response->headers->get('content-disposition'));
 
         $sheet = $this->sheetFromResponse($response->streamedContent());
 

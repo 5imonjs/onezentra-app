@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameSessions, depo, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
-import { formatDateId } from '@/lib/dates';
+import { formatDateId, mondayOfWeek } from '@/lib/dates';
 import { useAuthStore } from '@/store/auth';
 import { CreateSessionModal } from '@/components/OpnameCreateSessionModal';
 import { SessionDetailModal, type SessionDetail } from '@/components/OpnameSessionDetailModal';
@@ -26,6 +27,8 @@ export default function OpnameSessionsPage() {
   const [sessions, setSessions] = useState<SessionDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<{ current_page: number; last_page: number; total: number; from: number | null; to: number | null } | null>(null);
   const [week, setWeek] = useState('');
   const [status, setStatus] = useState('');
   const [mine, setMine] = useState(false);
@@ -40,6 +43,53 @@ export default function OpnameSessionsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [initialSessionId, setInitialSessionId] = useState<number | null>(null);
+  const queryApplied = useRef(false);
+
+  // Deep link dari Monitoring Kedaluwarsa: minggu, depo, dan aksi (buat sesi
+  // atau buka sesi tertentu) dibawa lewat query string agar user tidak perlu
+  // memfilter ulang setelah pindah halaman.
+  useEffect(() => {
+    if (queryApplied.current) return;
+    queryApplied.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const weekParam = params.get('week_start');
+    if (weekParam) {
+      const normalizedWeek = mondayOfWeek(weekParam);
+      setWeek(normalizedWeek);
+      params.set('week_start', normalizedWeek);
+    }
+
+    const depoParam = params.get('kode_depo');
+    if (depoParam) setKodeDepo(depoParam);
+
+    const statusParam = params.get('status');
+    if (statusParam) setStatus(statusParam.toUpperCase());
+
+    const searchParam = params.get('search');
+    if (searchParam) {
+      setSearchInput(searchParam);
+      setSearch(searchParam);
+    }
+
+    if (params.get('mine') === '1') setMine(true);
+
+    const sessionParam = Number(params.get('session_id'));
+    if (Number.isInteger(sessionParam) && sessionParam > 0) {
+      setInitialSessionId(sessionParam);
+    }
+
+    if (params.get('create') === '1' && hasPermission('opname.session.create')) {
+      setShowCreate(true);
+    }
+
+    // Jangan biarkan reload membuka modal lagi setelah user menutupnya.
+    params.delete('create');
+    params.delete('session_id');
+    const query = params.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }, [hasPermission]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,15 +101,28 @@ export default function OpnameSessionsPage() {
         mine: mine || undefined,
         search: search || undefined,
         kode_depo: kodeDepo || undefined,
+        page,
         per_page: 25,
-      }) as { data: { data: { data: SessionDetail[] } } };
+      }) as {
+        data: {
+          data: {
+            data: SessionDetail[];
+            current_page: number;
+            last_page: number;
+            total: number;
+            from: number | null;
+            to: number | null;
+          };
+        };
+      };
       setSessions(res.data.data.data);
+      setPagination(res.data.data);
     } catch (e) {
       setLoadError(getErrorMessage(e, 'Gagal memuat sesi opname'));
     } finally {
       setLoading(false);
     }
-  }, [week, status, mine, kodeDepo, search]);
+  }, [week, status, mine, kodeDepo, search, page]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -90,15 +153,29 @@ export default function OpnameSessionsPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (initialSessionId === null) return;
+    if (!hasPermission('opname.session.view')) {
+      setInitialSessionId(null);
+      return;
+    }
+    void loadDetail(initialSessionId);
+    setInitialSessionId(null);
+  }, [hasPermission, initialSessionId, loadDetail]);
+
   const progress = useMemo(() => {
     if (!detail?.items?.length) return { done: 0, total: 0 };
     return { done: detail.items.filter((i) => i.verified_at).length, total: detail.items.length };
   }, [detail]);
 
+  const createDepo = kodeDepo || user?.kode_depo || '';
+  const createNamaDepo = depots.find((d) => d.kode_depo === createDepo)?.nama_depo
+    || (createDepo === (user?.kode_depo || '') ? (user?.nama_depo || '') : '');
+
   if (!hasPermission('opname.session.view')) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat stock opname.</div>
+        <div className="p-6 text-sm text-muted-foreground">Anda tidak memiliki izin untuk melihat Stock Opname.</div>
       </DashboardLayout>
     );
   }
@@ -111,9 +188,16 @@ export default function OpnameSessionsPage() {
             <h1 className="text-2xl font-bold leading-tight">Stock Opname</h1>
             <p className="text-ink-fg-muted mt-0.5 text-sm">Penugasan hitung fisik per minggu + depo — label lot terbit saat baris diverifikasi</p>
           </div>
-          {hasPermission('opname.session.create') && (
-            <button onClick={() => setShowCreate(true)} className="btn-primary">+ Buat Sesi</button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {hasPermission('opname.view') && (
+              <Link href="/opname-expired" className="btn-secondary text-sm">
+                Monitoring Kedaluwarsa
+              </Link>
+            )}
+            {hasPermission('opname.session.create') && (
+              <button onClick={() => setShowCreate(true)} className="btn-primary">+ Buat Sesi</button>
+            )}
+          </div>
         </div>
 
         <div className="bg-card rounded-2xl border border-border p-4 flex flex-wrap items-end gap-3">
@@ -123,25 +207,35 @@ export default function OpnameSessionsPage() {
               id="ss-search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') setSearch(searchInput.trim()); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput.trim()); setPage(1); } }}
               placeholder="Kode/nama depo, catatan, petugas, atau #ID..."
               className="input-field text-sm"
             />
           </div>
           <button
             type="button"
-            onClick={() => setSearch(searchInput.trim())}
+            onClick={() => { setSearch(searchInput.trim()); setPage(1); }}
             className="btn-secondary text-sm mb-0.5"
           >
             Cari
           </button>
           <div>
             <label htmlFor="ss-week" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Minggu</label>
-            <input id="ss-week" type="date" value={week} onChange={(e) => setWeek(e.target.value)} className="input-field text-sm" />
+            <input
+              id="ss-week"
+              type="date"
+              value={week}
+              onChange={(e) => {
+                const value = e.target.value;
+                setWeek(value ? mondayOfWeek(value) : '');
+                setPage(1);
+              }}
+              className="input-field text-sm"
+            />
           </div>
           <div>
             <label htmlFor="ss-status" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label>
-            <select id="ss-status" value={status} onChange={(e) => setStatus(e.target.value)} className="select-field-sm">
+            <select id="ss-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="select-field-sm">
               <option value="">Semua</option>
               <option value="OPEN">Terbuka</option>
               <option value="IN_PROGRESS">Berjalan</option>
@@ -157,7 +251,7 @@ export default function OpnameSessionsPage() {
               <select
                 id="ss-depo"
                 value={kodeDepo}
-                onChange={(e) => setKodeDepo(e.target.value)}
+                onChange={(e) => { setKodeDepo(e.target.value); setPage(1); }}
                 aria-label="Filter depo"
                 title="Saring sesi berdasarkan depo"
                 className="select-field-sm min-w-[160px]"
@@ -170,11 +264,11 @@ export default function OpnameSessionsPage() {
             </div>
           )}
           <label className="inline-flex items-center gap-2 text-sm text-foreground pb-2.5 cursor-pointer">
-            <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="w-4 h-4 accent-primary-600" />
+            <input type="checkbox" checked={mine} onChange={(e) => { setMine(e.target.checked); setPage(1); }} className="w-4 h-4 accent-primary-600" />
             Tugas saya
           </label>
           {(week || status || mine || kodeDepo || search) && (
-            <button onClick={() => { setWeek(''); setStatus(''); setMine(false); setKodeDepo(''); setSearchInput(''); setSearch(''); }} className="btn-secondary text-sm mb-0.5">Reset</button>
+            <button onClick={() => { setWeek(''); setStatus(''); setMine(false); setKodeDepo(''); setSearchInput(''); setSearch(''); setPage(1); }} className="btn-secondary text-sm mb-0.5">Reset</button>
           )}
         </div>
 
@@ -187,14 +281,19 @@ export default function OpnameSessionsPage() {
           <p className="text-sm text-muted-foreground">Memuat...</p>
         ) : sessions.length === 0 ? (
           <div className="border border-dashed border-border rounded-2xl py-12 text-center">
-            <p className="text-sm text-muted-foreground font-medium">Belum ada sesi stock opname.</p>
+            <p className="text-sm text-muted-foreground font-medium">Belum ada sesi Stock Opname.</p>
             <p className="text-xs text-gray-400 mt-1">Buat sesi dari baris monitoring kedaluwarsa, tugaskan ke petugas lapangan.</p>
+            {hasPermission('opname.view') && (
+              <Link href="/opname-expired" className="btn-secondary text-xs mt-4 inline-flex">
+                Buka Monitoring Kedaluwarsa
+              </Link>
+            )}
           </div>
         ) : (
           <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
             <div className="max-h-[560px] overflow-x-auto overflow-y-auto">
               <table className="w-full min-w-[860px] border-collapse">
-                <caption className="sr-only">Daftar sesi stock opname</caption>
+                <caption className="sr-only">Daftar sesi Stock Opname</caption>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-border bg-popover">
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</th>
@@ -241,12 +340,43 @@ export default function OpnameSessionsPage() {
                 </tbody>
               </table>
             </div>
+            {pagination && pagination.last_page > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  Menampilkan {pagination.from ?? 0}–{pagination.to ?? 0} dari {pagination.total} sesi
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={pagination.current_page <= 1}
+                    aria-label="Halaman sebelumnya"
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    ‹
+                  </button>
+                  <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                    Halaman {pagination.current_page} / {pagination.last_page}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
+                    disabled={pagination.current_page >= pagination.last_page}
+                    aria-label="Halaman berikutnya"
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {showCreate && (
           <CreateSessionModal
-            userDepo={{ kode_depo: user?.kode_depo || '', nama_depo: user?.nama_depo || '' }}
+            userDepo={{ kode_depo: createDepo, nama_depo: createNamaDepo }}
+            initialWeekStart={week || undefined}
             onClose={() => setShowCreate(false)}
             onCreated={() => { setShowCreate(false); load(); }}
           />

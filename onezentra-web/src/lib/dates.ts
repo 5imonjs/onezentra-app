@@ -45,6 +45,28 @@ export function todayLocal(date = new Date()): string {
   return `${date.getFullYear()}-${m}-${d}`;
 }
 
+/** 'YYYY-MM-DD' -> hari Senin pada minggu yang sama, tanpa pergeseran zona. */
+export function mondayOfWeek(value: string): string {
+  const parts = splitDateOnly(value);
+  if (!parts) return value;
+  const date = new Date(Number(parts.y), Number(parts.m) - 1, Number(parts.d));
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
+/** Geser 'YYYY-MM-DD' sebanyak N hari, tanpa pergeseran zona. */
+export function addDaysIso(value: string, days: number): string {
+  const parts = splitDateOnly(value);
+  if (!parts) return value;
+  const date = new Date(Number(parts.y), Number(parts.m) - 1, Number(parts.d));
+  date.setDate(date.getDate() + days);
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
 /**
  * Sisa hari -> 'X Thn Y Bln Z Hr' (konvensi dagang: 1 thn = 365 hr,
  * 1 bln = 30 hr). Negatif (kedaluwarsa) = 'Lewat ...'.

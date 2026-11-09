@@ -104,8 +104,10 @@ describe('PenerimaanBatchExpiredReportPage', () => {
     expect(list).not.toHaveBeenCalled();
   });
 
-  it('menampilkan kolom format standar: produk, dus/ball, pcs, tanggal, weekday, sisa simpan', async () => {
+  it('menampilkan judul laporan batch dan kolom format standar: produk, dus/ball, pcs, tanggal, weekday, sisa simpan', async () => {
     render(<PenerimaanBatchExpiredReportPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Laporan Batch Kedaluwarsa' })).toBeInTheDocument();
 
     // Tabel desktop & kartu mobile sama-sama dirender (satu disembunyikan
     // lewat CSS), jadi kueri dibatasi ke tabel agar tidak ambigu.

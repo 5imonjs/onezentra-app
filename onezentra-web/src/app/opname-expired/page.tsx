@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
-import { formatDateId, formatDurationId, todayLocal } from '@/lib/dates';
+import { addDaysIso, formatDateId, formatDurationId, mondayOfWeek, todayLocal } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ManualBatchManager from '@/components/ManualBatchManager';
@@ -131,29 +131,6 @@ function SearchBox({ initial, onSearch }: { initial: string; onSearch: (value: s
 const fmtDate = formatDateId;
 
 const fnum = (v: number) => v.toLocaleString('id-ID');
-
-/** 'YYYY-MM-DD' -> startOfWeek Senin ('YYYY-MM-DD') tanpa pergeseran zona. */
-function mondayOfWeek(dateIso: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso);
-  if (!match) return dateIso;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  const mondayOffset = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - mondayOffset);
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${mm}-${dd}`;
-}
-
-/** Geser tanggal ISO sebanyak N hari tanpa pergeseran zona waktu. */
-function addDaysIso(dateIso: string, days: number): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso);
-  if (!match) return dateIso;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  date.setDate(date.getDate() + days);
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${mm}-${dd}`;
-}
 
 function badge(status?: string | null) {
   const s = status || '-';
@@ -408,6 +385,7 @@ export default function OpnameExpiredPage() {
   const [tabKey, setTabKey] = useState<TabKey>('ACTION');
   const [thresholds, setThresholds] = useState<Record<string, number>>({});
   const [statusSummary, setStatusSummary] = useState<StatusSummary>({});
+  const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
   const [prevWeekStart, setPrevWeekStart] = useState<string | null>(null);
   const [prevStatusSummary, setPrevStatusSummary] = useState<StatusSummary>({});
   const [loading, setLoading] = useState(false);
@@ -415,7 +393,18 @@ export default function OpnameExpiredPage() {
   const [generating, setGenerating] = useState(false);
   const [pending, setPending] = useState<PendingSummary | null>(null);
   const [pendingError, setPendingError] = useState(false);
-  const [depoProgress, setDepoProgress] = useState<{ kode_depo: string; nama_depo: string | null; total: number; validated: number; has_session: boolean; submitted: boolean }[] | null>(null);
+  const [depoProgress, setDepoProgress] = useState<{
+    kode_depo: string;
+    nama_depo: string | null;
+    total: number;
+    validated: number;
+    has_session: boolean;
+    has_open_session?: boolean;
+    open_session_id?: number | null;
+    has_finalized_session?: boolean;
+    finalized_session_id?: number | null;
+    submitted: boolean;
+  }[] | null>(null);
   const [progressError, setProgressError] = useState(false);
   const [reminding, setReminding] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: 'asc' | 'desc' }>({ key: null, dir: 'asc' });
@@ -464,7 +453,15 @@ export default function OpnameExpiredPage() {
    */
   const weekEnd = useMemo(() => addDaysIso(weekStart, 6), [weekStart]);
   const weekRangeLabel = `${formatDateId(weekStart)} – ${formatDateId(weekEnd)}`;
-  const isCurrentWeek = weekStart === mondayOfWeek(todayLocal());
+  const currentWeekStart = mondayOfWeek(todayLocal());
+  const isCurrentWeek = weekStart === currentWeekStart;
+
+  const weekOptions = useMemo(() => {
+    const weeks = new Set(availableWeeks.map(mondayOfWeek));
+    weeks.add(currentWeekStart);
+    weeks.add(weekStart);
+    return Array.from(weeks).sort((a, b) => b.localeCompare(a));
+  }, [availableWeeks, currentWeekStart, weekStart]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -482,14 +479,17 @@ export default function OpnameExpiredPage() {
         page,
       }) as { data: ListResponse };
       setWaves(res.data.data.data);
-      // Buang seleksi basi (id yang tak lagi tampil).
+      // Buang seleksi basi (id yang tak lagi tampil), termasuk drawer yang
+      // sedang terbuka — kalau tidak, panel kanan bisa kosong setelah refresh.
       setSelectedWaveIds((prev) => {
         const visible = new Set(res.data.data.data.map((w: Wave) => w.id));
         return new Set(Array.from(prev).filter((id) => visible.has(id)));
       });
+      setSelectedId((prev) => (prev !== null && !res.data.data.data.some((w: Wave) => w.id === prev) ? null : prev));
       setPagination(res.data.data);
       setThresholds(res.data.meta.thresholds ?? {});
       setStatusSummary(res.data.meta.status_summary ?? {});
+      setAvailableWeeks(res.data.meta.weeks ?? []);
       setPrevWeekStart(res.data.meta.prev_week_start ?? null);
       setPrevStatusSummary(res.data.meta.prev_status_summary ?? {});
       // Dropdown depo mengikuti minggu terpilih; reset filter bila depo yang
@@ -535,7 +535,7 @@ export default function OpnameExpiredPage() {
   const loadProgress = useCallback(async (week?: string) => {
     try {
       const res = await opnameExpired.progress({ week_start: week || undefined }) as {
-        data: { data: { depots: { kode_depo: string; nama_depo: string | null; total: number; validated: number; has_session: boolean; submitted: boolean }[] } };
+        data: { data: { depots: { kode_depo: string; nama_depo: string | null; total: number; validated: number; has_session: boolean; has_open_session?: boolean; open_session_id?: number | null; has_finalized_session?: boolean; finalized_session_id?: number | null; submitted: boolean }[] } };
       };
       setDepoProgress(res.data.data.depots);
       setProgressError(false);
@@ -577,13 +577,45 @@ export default function OpnameExpiredPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const refreshAfterDataChange = useCallback(() => {
-    setPage(1);
-    load();
-    loadPending(weekStart);
-    loadProgress(weekStart);
-    loadBaselineStatus();
+  // Drawer detail berperilaku sebagai dialog: Escape menutup dan halaman di
+  // belakang tidak ikut ter-scroll saat panel terbuka.
+  useEffect(() => {
+    if (selectedId === null) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedId(null);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedId]);
+
+  const reloadAll = useCallback((resetPage = false) => {
+    if (resetPage) setPage(1);
+    void load();
+    void loadPending(weekStart);
+    void loadProgress(weekStart);
+    void loadBaselineStatus();
   }, [load, loadBaselineStatus, loadPending, loadProgress, weekStart]);
+
+  const refreshAfterDataChange = useCallback(() => reloadAll(true), [reloadAll]);
+
+  /**
+   * Semua tombol ke modul Stock Opname membawa konteks minggu + depo agar
+   * user tidak mendarat di daftar sesi mentah lalu memfilter ulang.
+   */
+  const sessionHref = (options: { depo?: string; create?: boolean; sessionId?: number | null } = {}): string => {
+    const params = new URLSearchParams();
+    params.set('week_start', weekStart);
+    const depo = options.depo || depoFilter || kodeDepo || '';
+    if (depo) params.set('kode_depo', depo);
+    if (options.create) params.set('create', '1');
+    if (options.sessionId) params.set('session_id', String(options.sessionId));
+    return `/opname-sessions?${params.toString()}`;
+  };
 
   const handleRemind = async () => {
     setReminding(true);
@@ -610,7 +642,11 @@ export default function OpnameExpiredPage() {
     ? progressTotal
     : Object.values(statusSummary).reduce((sum, s) => sum + (s?.count ?? 0), 0);
   const allRowsValidated = Boolean(depoProgress && depoProgress.length > 0 && depoProgress.every((d) => d.submitted));
-  const hasOpenSession = Boolean(depoProgress?.some((d) => d.has_session));
+  const openSessionRows = depoProgress?.filter((d) => d.has_open_session ?? d.has_session) ?? [];
+  const hasOpenSession = openSessionRows.length > 0;
+  const onlyOpenSessionId = openSessionRows.length === 1 ? (openSessionRows[0].open_session_id ?? null) : null;
+  const finalizedSessionRows = depoProgress?.filter((d) => d.has_finalized_session && d.finalized_session_id) ?? [];
+  const onlyFinalizedSessionId = finalizedSessionRows.length === 1 ? (finalizedSessionRows[0].finalized_session_id ?? null) : null;
   const progressPct = progressTotal > 0 ? Math.round((progressValidated / progressTotal) * 100) : 0;
   const hasWeekRows = weekRows > 0 || waves.length > 0;
 
@@ -704,7 +740,7 @@ export default function OpnameExpiredPage() {
     try {
       await opnameExpired.delete(deleteTargetId);
       notifyGlobal('Baris monitoring berhasil dihapus', 'success');
-      load();
+      reloadAll(false);
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Hapus gagal'), 'error');
     } finally {
@@ -759,8 +795,7 @@ export default function OpnameExpiredPage() {
       fail === 0 ? `${ok} baris opname dihapus.` : `${ok} baris opname dihapus, ${fail} gagal (kemungkinan depo lain).`,
       fail === 0 ? 'success' : 'error'
     );
-    load();
-    loadProgress(weekStart);
+    reloadAll(false);
   };
 
   const openSettings = async () => {
@@ -776,14 +811,14 @@ export default function OpnameExpiredPage() {
   const validateThresholds = (): boolean => {
     const { threshold_aman, threshold_perhatian, threshold_kritis } = thresholdForm;
     const errors: string[] = [];
-    if (threshold_aman < 0 || threshold_perhatian < 0 || threshold_kritis < 0) {
-      errors.push('Semua threshold harus ≥ 0.');
+    if (threshold_aman < 1 || threshold_perhatian < 1 || threshold_kritis < 1) {
+      errors.push('Semua threshold minimal 1 hari.');
     }
     if (threshold_aman <= threshold_perhatian) {
-      errors.push('AMAN harus > PERHATIAN.');
+      errors.push('Ambang Aman harus lebih besar dari Ambang Perhatian.');
     }
     if (threshold_perhatian <= threshold_kritis) {
-      errors.push('PERHATIAN harus > KRITIS.');
+      errors.push('Ambang Perhatian harus lebih besar dari Batas Rekomendasi SEGERA.');
     }
     setThresholdErrors(errors);
     return errors.length === 0;
@@ -871,7 +906,7 @@ export default function OpnameExpiredPage() {
         title: 'Hitung fisik minggu ini selesai',
         description: 'Semua baris sudah tervalidasi. Hasil hitung fisik bisa dilihat di Stock Opname.',
         action: hasPermission('opname.session.view') ? (
-          <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
+          <Link href={sessionHref({ sessionId: onlyFinalizedSessionId })} className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
             Lihat Hasil Stock Opname
             <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </Link>
@@ -882,10 +917,10 @@ export default function OpnameExpiredPage() {
       return {
         tone: 'emerald' as const,
         eyebrow: 'Yang perlu dilakukan',
-        title: 'Stock opname sedang berjalan',
+        title: 'Stock Opname sedang berjalan',
         description: `${fnum(progressValidated)} dari ${fnum(progressTotal)} baris sudah tervalidasi. Lanjutkan sesi yang sudah dibuka.`,
         action: hasPermission('opname.session.view') ? (
-          <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
+          <Link href={sessionHref({ sessionId: onlyOpenSessionId })} className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
             Lanjutkan Stock Opname
             <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </Link>
@@ -896,10 +931,15 @@ export default function OpnameExpiredPage() {
       tone: 'emerald' as const,
       eyebrow: 'Yang perlu dilakukan',
       title: 'Baris monitoring siap dihitung fisik',
-      description: 'Baris monitoring minggu ini sudah terbentuk. Buat sesi stock opname agar petugas bisa input hasil hitung lapangan.',
-      action: hasPermission('opname.session.view') ? (
-        <Link href="/opname-sessions" className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
+      description: 'Baris monitoring minggu ini sudah terbentuk. Buat sesi Stock Opname agar petugas bisa input hasil hitung lapangan.',
+      action: hasPermission('opname.session.create') ? (
+        <Link href={sessionHref({ create: true })} className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
           Buat Sesi Stock Opname
+          <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        </Link>
+      ) : hasPermission('opname.session.view') ? (
+        <Link href={sessionHref()} className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary-600">
+          Lihat Stock Opname
           <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </Link>
       ) : null,
@@ -925,9 +965,9 @@ export default function OpnameExpiredPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={load}
+                onClick={() => reloadAll(false)}
                 disabled={loading}
-                title="Muat ulang data"
+                title="Muat ulang semua data halaman"
                 aria-label="Muat ulang data"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white backdrop-blur transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -935,7 +975,7 @@ export default function OpnameExpiredPage() {
               </button>
               {hasPermission('opname.session.view') && (
                 <Link
-                  href="/opname-sessions"
+                  href={sessionHref()}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-600"
                 >
                   Stock Opname
@@ -999,6 +1039,17 @@ export default function OpnameExpiredPage() {
                         <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true" />
                         Export Excel
                       </button>
+                    )}
+                    {hasPermission('reports.view') && (
+                      <Link
+                        href="/reports/opname-expired"
+                        role="menuitem"
+                        onClick={() => setShowMore(false)}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true" />
+                        Lihat Rekap Laporan
+                      </Link>
                     )}
                     {hasPermission('opname.edit') && (
                       <button
@@ -1160,6 +1211,15 @@ export default function OpnameExpiredPage() {
                       </div>
                     </div>
                     <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap" title={`${d.validated} dari ${d.total} baris tervalidasi`}>{d.validated}/{d.total}</span>
+                    {hasPermission('opname.session.view') && (
+                      <Link
+                        href={sessionHref({ depo: d.kode_depo })}
+                        className="rounded-lg border border-border px-2 py-1 text-[11px] font-bold text-foreground transition-colors hover:bg-slate-100"
+                        aria-label={`Buka Stock Opname ${d.nama_depo || d.kode_depo}`}
+                      >
+                        Buka
+                      </Link>
+                    )}
                   </div>
                 );
               })}
@@ -1174,9 +1234,8 @@ export default function OpnameExpiredPage() {
             <div className="flex flex-wrap items-center gap-2">
               <label htmlFor="oe-week" className="flex items-center gap-2">
                 <span className="hidden sm:block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minggu</span>
-                <input
+                <select
                   id="oe-week"
-                  type="date"
                   value={weekStart}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -1184,9 +1243,16 @@ export default function OpnameExpiredPage() {
                     setWeekStart(mondayOfWeek(value));
                     setPage(1);
                   }}
-                  title="Pilih tanggal mana pun dalam minggu; sistem memakai hari Senin sebagai awal minggu."
-                  className="input-field text-sm py-2 bg-popover focus:bg-card"
-                />
+                  title="Daftar minggu yang memiliki data + minggu berjalan. Gunakan tombol ‹ › untuk minggu lain."
+                  className="select-field-sm min-w-[210px]"
+                >
+                  {weekOptions.map((week) => (
+                    <option key={week} value={week}>
+                      {week === currentWeekStart ? 'Minggu ini · ' : 'Minggu '}
+                      {formatDateId(week)} – {formatDateId(addDaysIso(week, 6))}
+                    </option>
+                  ))}
+                </select>
               </label>
               <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">{weekRangeLabel}</span>
               <div className="flex items-center gap-1">
@@ -1200,7 +1266,7 @@ export default function OpnameExpiredPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setWeekStart(mondayOfWeek(todayLocal())); setPage(1); }}
+                  onClick={() => { setWeekStart(currentWeekStart); setPage(1); }}
                   disabled={isCurrentWeek}
                   className="rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -1209,8 +1275,9 @@ export default function OpnameExpiredPage() {
                 <button
                   type="button"
                   onClick={() => { setWeekStart(addDaysIso(weekStart, 7)); setPage(1); }}
+                  disabled={weekStart >= currentWeekStart}
                   aria-label="Minggu berikutnya"
-                  className="rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-bold text-foreground transition-colors hover:bg-slate-100"
+                  className="rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-bold text-foreground transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   ›
                 </button>
@@ -1356,7 +1423,7 @@ export default function OpnameExpiredPage() {
             <>
               <div className="hidden md:block max-h-[560px] overflow-x-auto overflow-y-auto" id="opname-table-panel" role="tabpanel" aria-labelledby={`tab-${tabKey}`}>
                 <table className="w-full min-w-[1040px] border-collapse">
-                  <caption className="sr-only">Daftar baris opname expired</caption>
+                  <caption className="sr-only">Daftar baris monitoring kedaluwarsa</caption>
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-border bg-popover">
                       {hasPermission('opname.delete') && (
@@ -1428,8 +1495,8 @@ export default function OpnameExpiredPage() {
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Qty CRT:</span> <span className="font-semibold">{fnum(num(w.qty_ini_crt))}</span></span>
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Qty PCS:</span> <span className="font-semibold">{fnum(num(w.qty_ini_pcs))}</span></span>
                         {sourceBadge(w.source_mix)}
-                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
                         <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 1:</span> <span className="font-semibold">{w.principal_1 || '-'}</span></span>
+                        <span className="tabular-nums text-foreground"><span className="text-slate-400">Principal 2:</span> <span className="font-semibold">{w.principal_2 || '-'}</span></span>
                         {num(w.qty_koreksi_crt) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi CRT {num(w.qty_koreksi_crt)}</span>}
                         {num(w.qty_koreksi_pcs) !== 0 && <span className="tabular-nums text-[11px] text-blue-600">koreksi PCS {num(w.qty_koreksi_pcs)}</span>}
                       </div>
@@ -1510,6 +1577,11 @@ export default function OpnameExpiredPage() {
           onClick={() => setSelectedId(null)}
         />
         <aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Detail baris monitoring"
+          aria-hidden={selectedId === null}
+          inert={selectedId === null ? true : undefined}
           className={`absolute right-0 top-0 h-full w-full max-w-[480px] bg-card shadow-2xl flex flex-col transition-transform duration-300 ${selectedId !== null ? 'translate-x-0' : 'translate-x-full'}`}
         >
           {current && (
@@ -1552,7 +1624,7 @@ export default function OpnameExpiredPage() {
                     <p className="text-sm font-semibold text-foreground mt-1">{current.nama_depo || current.kode_depo || '-'}</p>
                   </div>
                   <div className="bg-popover rounded-xl p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Asal Material</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber Material</p>
                     <p className="text-sm font-semibold text-foreground mt-1 wrap-break-word">{current.sumber_material || '-'}</p>
                   </div>
                 </div>
@@ -1642,29 +1714,40 @@ export default function OpnameExpiredPage() {
               </div>
 
               {/* Drawer footer */}
-              <div className="px-5 py-3 border-t border-border flex items-center gap-2">
-                <button
-                  onClick={() => navNext(-1)}
-                  disabled={currentIndex <= 0}
-                  className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  aria-label="Baris sebelumnya"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
-                </button>
-                <button
-                  onClick={() => setSelectedId(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 text-xs font-semibold text-foreground hover:bg-slate-200 transition-colors"
-                >
-                  Tutup
-                </button>
-                <button
-                  onClick={() => navNext(1)}
-                  disabled={currentIndex >= waves.length - 1}
-                  className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  aria-label="Baris berikutnya"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                </button>
+              <div className="px-5 py-3 border-t border-border space-y-2">
+                {hasPermission('opname.session.view') && (
+                  <Link
+                    href={sessionHref({ depo: current.kode_depo })}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-500 px-3 py-2.5 text-xs font-bold text-white transition-colors hover:bg-primary-600"
+                  >
+                    Buka Stock Opname Depo Ini
+                    <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                  </Link>
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navNext(-1)}
+                    disabled={currentIndex <= 0}
+                    className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Baris sebelumnya"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                  </button>
+                  <button
+                    onClick={() => setSelectedId(null)}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-100 text-xs font-semibold text-foreground hover:bg-slate-200 transition-colors"
+                  >
+                    Tutup
+                  </button>
+                  <button
+                    onClick={() => navNext(1)}
+                    disabled={currentIndex >= waves.length - 1}
+                    className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-popover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Baris berikutnya"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -1701,20 +1784,32 @@ export default function OpnameExpiredPage() {
             ))}
           </div>
         )}
+          <div className="rounded-xl border border-border bg-popover px-4 py-3">
+            <p className="text-xs font-semibold text-foreground">Skala status saat ini</p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold">
+              <span className="rounded-md bg-red-50 px-2 py-1 text-red-700">Expired &lt; 0 hari</span>
+              <span aria-hidden="true" className="text-slate-400">·</span>
+              <span className="rounded-md bg-orange-50 px-2 py-1 text-orange-700">Kritis 0–{Math.max(0, thresholdForm.threshold_perhatian - 1)} hari</span>
+              <span aria-hidden="true" className="text-slate-400">·</span>
+              <span className="rounded-md bg-amber-50 px-2 py-1 text-amber-700">Perhatian {thresholdForm.threshold_perhatian}–{Math.max(thresholdForm.threshold_perhatian, thresholdForm.threshold_aman - 1)} hari</span>
+              <span aria-hidden="true" className="text-slate-400">·</span>
+              <span className="rounded-md bg-emerald-50 px-2 py-1 text-emerald-700">Aman ≥ {thresholdForm.threshold_aman} hari</span>
+            </div>
+          </div>
           <div>
             <label htmlFor="threshold-aman" className="block text-xs font-medium text-muted-foreground mb-1">Ambang Aman (hari, ≥ ini = Aman)</label>
-            <input id="threshold-aman" type="number" min={0} step={1} value={thresholdForm.threshold_aman} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_aman: parseInt(e.target.value) || 0 }))} className="input-field" />
+            <input id="threshold-aman" type="number" min={1} step={1} value={thresholdForm.threshold_aman} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_aman: parseInt(e.target.value) || 0 }))} className="input-field" />
             <p className="text-[11px] text-slate-400 mt-1">Lot dengan sisa ≥ hari ini → status <span className="text-emerald-600 font-medium">Aman</span></p>
           </div>
           <div>
-            <label htmlFor="threshold-perhatian" className="block text-xs font-medium text-muted-foreground mb-1">Ambang Perhatian (hari)</label>
-            <input id="threshold-perhatian" type="number" min={0} step={1} value={thresholdForm.threshold_perhatian} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_perhatian: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Lot dengan sisa &lt; ambang Aman → status <span className="text-amber-600 font-medium">Perhatian</span></p>
+            <label htmlFor="threshold-perhatian" className="block text-xs font-medium text-muted-foreground mb-1">Ambang Perhatian (hari, ≥ ini = Perhatian)</label>
+            <input id="threshold-perhatian" type="number" min={1} step={1} value={thresholdForm.threshold_perhatian} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_perhatian: parseInt(e.target.value) || 0 }))} className="input-field" />
+            <p className="text-[11px] text-slate-400 mt-1">Lot dengan sisa ≥ ambang ini tetapi &lt; Ambang Aman → status <span className="text-amber-600 font-medium">Perhatian</span></p>
           </div>
           <div>
-            <label htmlFor="threshold-kritis" className="block text-xs font-medium text-muted-foreground mb-1">Ambang Kritis — ambang &ldquo;SEGERA&rdquo; (hari)</label>
-            <input id="threshold-kritis" type="number" min={0} step={1} value={thresholdForm.threshold_kritis} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: parseInt(e.target.value) || 0 }))} className="input-field" />
-            <p className="text-[11px] text-slate-400 mt-1">Lot berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Tidak menggeser batas status (batas Kritis = ambang Perhatian).</p>
+            <label htmlFor="threshold-kritis" className="block text-xs font-medium text-muted-foreground mb-1">Batas Rekomendasi SEGERA (hari)</label>
+            <input id="threshold-kritis" type="number" min={1} step={1} value={thresholdForm.threshold_kritis} onChange={(e) => setThresholdForm((p) => ({ ...p, threshold_kritis: parseInt(e.target.value) || 0 }))} className="input-field" />
+            <p className="text-[11px] text-slate-400 mt-1">Lot berstatus Kritis dengan sisa ≤ hari ini → rekomendasi <span className="text-red-600 font-medium">&ldquo;SEGERA kirim/retur&rdquo;</span>. Nilai ini tidak menggeser batas status; status Kritis ditentukan oleh Ambang Perhatian.</p>
           </div>
         </div>
       </Modal>

@@ -258,27 +258,34 @@ class OpnameExpiredController extends Controller
             ->where('week_start', $weekStart)
             ->whereIn('status', OpnameExpiredSession::OPEN_STATUSES)
             ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
-            ->pluck('kode_depo')
-            ->flip();
+            ->get(['id', 'kode_depo'])
+            ->keyBy('kode_depo');
 
         // APPROVED adalah keputusan final; COMPLETED hanya sesi lama pra-approval.
         $completedSessions = OpnameExpiredSession::query()
             ->where('week_start', $weekStart)
             ->whereIn('status', [OpnameExpiredSession::STATUS_APPROVED, OpnameExpiredSession::STATUS_COMPLETED])
             ->when($scoped, fn ($q) => $user->applyDepotFilter($q, 'kode_depo'))
-            ->pluck('kode_depo')
-            ->flip();
+            ->get(['id', 'kode_depo'])
+            ->keyBy('kode_depo');
 
         $depots = [];
         foreach ($waves->groupBy('kode_depo') as $depo => $rows) {
             $total = $rows->count();
             $validated = $rows->whereNotNull('validated_by')->count();
+            $openSession = $openSessions->get($depo);
+            $completedSession = $completedSessions->get($depo);
             $depots[] = [
                 'kode_depo' => $depo,
                 'nama_depo' => $rows->first()->nama_depo ?: $depo,
                 'total' => $total,
                 'validated' => $validated,
-                'has_session' => isset($openSessions[$depo]) || isset($completedSessions[$depo]),
+                // has_session dipertahankan untuk konsumen lama (chart).
+                'has_session' => $openSession !== null || $completedSession !== null,
+                'has_open_session' => $openSession !== null,
+                'open_session_id' => $openSession?->id,
+                'has_finalized_session' => $completedSession !== null,
+                'finalized_session_id' => $completedSession?->id,
                 'submitted' => $total > 0 && $validated === $total,
             ];
         }

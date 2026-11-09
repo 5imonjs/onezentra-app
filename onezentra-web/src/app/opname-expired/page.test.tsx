@@ -60,7 +60,7 @@ describe('OpnameExpiredPage', () => {
       data: {
         data: { data: [], current_page: 1, last_page: 1, per_page: 25, total: 0 },
         meta: {
-          weeks: ['2026-09-07'],
+          weeks: ['2026-11-02', '2026-09-07'],
           thresholds: {},
           status_summary: {},
           prev_week_start: null,
@@ -156,13 +156,17 @@ describe('OpnameExpiredPage', () => {
   it('memakai satu minggu aktif untuk daftar, pending, dan progres', async () => {
     const { container } = render(<OpnameExpiredPage />);
 
-    const weekInput = container.querySelector('#oe-week') as HTMLInputElement;
-    expect(weekInput).toBeInTheDocument();
+    const weekSelect = container.querySelector('#oe-week') as HTMLSelectElement;
+    expect(weekSelect).toBeInTheDocument();
+    expect(weekSelect.tagName).toBe('SELECT');
     expect(container.querySelector('#oe-from')).not.toBeInTheDocument();
     expect(container.querySelector('#oe-to')).not.toBeInTheDocument();
 
-    // Kamis 2026-11-05 berada di minggu yang dimulai Senin 2026-11-02.
-    fireEvent.change(weekInput, { target: { value: '2026-11-05' } });
+    // Opsi minggu berasal dari meta.weeks (2026-11-02) dan sudah berupa Senin.
+    await waitFor(() => {
+      expect(container.querySelector('#oe-week option[value="2026-11-02"]')).not.toBeNull();
+    });
+    fireEvent.change(weekSelect, { target: { value: '2026-11-02' } });
 
     await waitFor(() => {
       expect(list).toHaveBeenLastCalledWith(
@@ -174,6 +178,25 @@ describe('OpnameExpiredPage', () => {
       expect(progress).toHaveBeenLastCalledWith(
         expect.objectContaining({ week_start: '2026-11-02' }),
       );
+    });
+  });
+
+  it('memuat ulang daftar, pending, progres, dan status saldo awal dari tombol refresh', async () => {
+    render(<OpnameExpiredPage />);
+
+    await screen.findByRole('heading', { name: 'Monitoring Kedaluwarsa' });
+    const initialListCalls = list.mock.calls.length;
+    const initialPendingCalls = pending.mock.calls.length;
+    const initialProgressCalls = progress.mock.calls.length;
+    const initialBaselineCalls = baselineManifests.mock.calls.length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Muat ulang data' }));
+
+    await waitFor(() => {
+      expect(list.mock.calls.length).toBeGreaterThan(initialListCalls);
+      expect(pending.mock.calls.length).toBeGreaterThan(initialPendingCalls);
+      expect(progress.mock.calls.length).toBeGreaterThan(initialProgressCalls);
+      expect(baselineManifests.mock.calls.length).toBeGreaterThan(initialBaselineCalls);
     });
   });
 
@@ -193,7 +216,7 @@ describe('OpnameExpiredPage', () => {
       data: {
         data: {
           depots: [
-            { kode_depo: 'DPO', nama_depo: 'Depo Test', total: 2, validated: 2, has_session: true, submitted: true },
+            { kode_depo: 'DPO', nama_depo: 'Depo Test', total: 2, validated: 2, has_session: true, has_open_session: false, has_finalized_session: true, finalized_session_id: 99, submitted: true },
           ],
         },
       },
@@ -202,7 +225,11 @@ describe('OpnameExpiredPage', () => {
     render(<OpnameExpiredPage />);
 
     expect(await screen.findByText('Hitung fisik minggu ini selesai')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Lihat Hasil Stock Opname/ })).toHaveAttribute('href', '/opname-sessions');
+    const link = screen.getByRole('link', { name: /Lihat Hasil Stock Opname/ });
+    expect(link.getAttribute('href')).toContain('/opname-sessions?');
+    expect(link.getAttribute('href')).toContain('week_start=');
+    expect(link.getAttribute('href')).toContain('kode_depo=DPO');
+    expect(link.getAttribute('href')).toContain('session_id=99');
   });
 
   it('menampilkan status sesi berjalan saat sesi terbuka tapi belum semua tervalidasi', async () => {
@@ -221,7 +248,7 @@ describe('OpnameExpiredPage', () => {
       data: {
         data: {
           depots: [
-            { kode_depo: 'DPO', nama_depo: 'Depo Test', total: 2, validated: 1, has_session: true, submitted: false },
+            { kode_depo: 'DPO', nama_depo: 'Depo Test', total: 2, validated: 1, has_session: true, has_open_session: true, open_session_id: 42, submitted: false },
           ],
         },
       },
@@ -229,7 +256,57 @@ describe('OpnameExpiredPage', () => {
 
     render(<OpnameExpiredPage />);
 
-    expect(await screen.findByText('Stock opname sedang berjalan')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Lanjutkan Stock Opname/ })).toHaveAttribute('href', '/opname-sessions');
+    expect(await screen.findByText('Stock Opname sedang berjalan')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /Lanjutkan Stock Opname/ });
+    expect(link.getAttribute('href')).toContain('/opname-sessions?');
+    expect(link.getAttribute('href')).toContain('week_start=');
+    expect(link.getAttribute('href')).toContain('kode_depo=DPO');
+    expect(link.getAttribute('href')).toContain('session_id=42');
+  });
+
+  it('mengarahkan tombol Buat Sesi ke halaman Stock Opname dengan minggu+depo dan modal create', async () => {
+    pending.mockResolvedValue({
+      data: {
+        data: {
+          week_start: '2026-11-02',
+          week_end: '2026-11-08',
+          wave_exists: true,
+          eligible: { total: 2, sj: 2, import: 0, legacy: 0 },
+          pending: { total: 0, sj: 0, import: 0, legacy: 0 },
+        },
+      },
+    });
+    progress.mockResolvedValue({
+      data: {
+        data: {
+          depots: [
+            { kode_depo: 'DPO', nama_depo: 'Depo Test', total: 2, validated: 0, has_session: false, has_open_session: false, submitted: false },
+          ],
+        },
+      },
+    });
+    list.mockResolvedValue({
+      data: {
+        data: { data: [], current_page: 1, last_page: 1, per_page: 25, total: 0 },
+        meta: {
+          weeks: ['2026-11-02'],
+          thresholds: {},
+          status_summary: { AMAN: { count: 2, qty_crt: 10 } },
+          prev_week_start: null,
+          prev_status_summary: {},
+          depot_summary: [],
+        },
+      },
+    });
+
+    render(<OpnameExpiredPage />);
+
+    expect(await screen.findByText('Baris monitoring siap dihitung fisik')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /Buat Sesi Stock Opname/ });
+    expect(link.getAttribute('href')).toContain('/opname-sessions?');
+    expect(link.getAttribute('href')).toContain('week_start=');
+    expect(link.getAttribute('href')).toContain('kode_depo=DPO');
+    expect(link.getAttribute('href')).toContain('create=1');
+    expect(link.getAttribute('href')).not.toContain('session_id=');
   });
 });
