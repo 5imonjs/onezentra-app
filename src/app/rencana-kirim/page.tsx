@@ -1592,9 +1592,18 @@ export default function RencanaKirimPage() {
                 Selanjutnya →
               </button>
             ) : currentStep === 4 ? (
-              <span className="text-xs text-muted-foreground">Isi barang lalu Simpan</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!sectionComplete.barang) { notifyGlobal('Tambahkan minimal 1 barang dengan jumlah > 0 dulu', 'error'); return; }
+                  setCurrentStep(5);
+                }}
+                className="btn-primary text-sm"
+              >
+                Selanjutnya →
+              </button>
             ) : (
-              <span className="text-xs text-success font-semibold">Siap simpan ✓</span>
+              <span className="text-xs text-success font-semibold">Simpan lewat tombol di bawah ✓</span>
             )}
           </div>
         </div>
