@@ -304,8 +304,10 @@ class RencanaKirimController extends Controller
                     ->ignore($rencanaKirim->id),
             ],
             // Saat edit, tanggal lampau yang sudah tersimpan tetap sah (tidak dipaksa mundur);
-            // yang ditolak hanya perubahan rkh_date ke tanggal lampau (after_or_equal).
-            'rkh_date' => 'nullable|date|after_or_equal:today',
+            // yang ditolak hanya perubahan rkh_date ke tanggal lampau — dicek manual di bawah
+            // (tidak bisa lewat after_or_equal di sini, karena rule itu menolak juga tanggal
+            // lama yang tidak diubah sama sekali sehingga RK lama tidak bisa diedit sama sekali).
+            'rkh_date' => 'nullable|date',
             'driver_name' => 'nullable|string|max:100',
             'nopol' => 'nullable|string|max:50',
             'jenis_kendaraan' => 'nullable|string|max:50',
@@ -329,14 +331,19 @@ class RencanaKirimController extends Controller
             'items.*.keterangan' => 'nullable|string',
         ]);
 
-        // rkh_date: hapus dulu dari validated (rule after_or_equal menolak tanggal lampau
-        // yang tersimpan). Kembali hanya bila user benar-benar mengubahnya — sehingga RK
-        // ber-tanggal lampau tetap bisa diedit tanpa dipaksa mundur.
+        // rkh_date: hapus dulu dari validated (tanggal lampau yang tersimpan
+        // harus tetap sah). Kembali hanya bila user benar-benar mengubahnya —
+        // dan perubahan ke tanggal lampau ditolak di sini.
         $validated = collect($validated)->except('rkh_date')->all();
         if ($request->filled('rkh_date')) {
             $newDate = substr((string) $request->input('rkh_date'), 0, 10);
             $oldDate = substr((string) $rencanaKirim->rkh_date, 0, 10);
             if ($newDate !== $oldDate) {
+                if ($newDate < now()->toDateString()) {
+                    throw ValidationException::withMessages([
+                        'rkh_date' => ['Tanggal RKH tidak boleh di masa lalu.'],
+                    ]);
+                }
                 $validated['rkh_date'] = $request->input('rkh_date');
             }
         }
