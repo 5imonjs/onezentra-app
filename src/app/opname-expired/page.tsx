@@ -850,7 +850,7 @@ export default function OpnameExpiredPage() {
         description: 'Pasang saldo pembuka sebelum sistem sekali per depo agar stok lama tidak dihitung dua kali.',
         action: hasPermission('penerimaan.create') ? (
           <button type="button" onClick={() => setBaselineOpen(true)} className="btn-primary text-sm">
-            Import Saldo Awal
+            Pasang Saldo Awal
           </button>
         ) : (
           <span className="text-xs font-semibold text-violet-800">Minta admin depo memasang Saldo Awal.</span>
@@ -976,7 +976,7 @@ export default function OpnameExpiredPage() {
               {hasPermission('opname.session.view') && (
                 <Link
                   href={sessionHref()}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-600"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur transition-colors hover:bg-white/20"
                 >
                   Stock Opname
                   <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -995,7 +995,7 @@ export default function OpnameExpiredPage() {
                 </button>
                 {showMore && (
                   <div role="menu" aria-label="Aksi lainnya" className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-border bg-card p-1.5 text-foreground shadow-xl">
-                    {hasPermission('penerimaan.create') && (
+                    {hasPermission('penerimaan.create') && baselineStatus !== 'missing' && (
                       <button
                         type="button"
                         role="menuitem"
@@ -1003,7 +1003,7 @@ export default function OpnameExpiredPage() {
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-violet-500" aria-hidden="true" />
-                        Import Saldo Awal
+                        Kelola Saldo Awal
                       </button>
                     )}
                     {hasPermission('penerimaan.create') && (

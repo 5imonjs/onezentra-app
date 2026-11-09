@@ -138,7 +138,7 @@ describe('OpnameExpiredPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Lainnya' }));
 
-    expect(screen.getByRole('menuitem', { name: /Import Saldo Awal/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Kelola Saldo Awal/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Tambah Stok Manual/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Pengaturan Status Kedaluwarsa/ })).toBeInTheDocument();
   });
@@ -149,8 +149,13 @@ describe('OpnameExpiredPage', () => {
     render(<OpnameExpiredPage />);
 
     expect(await screen.findByText('Saldo Awal belum dipasang')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Import Saldo Awal' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pasang Saldo Awal' })).toBeInTheDocument();
     expect(screen.queryByText(/baris baru belum masuk analisa/)).not.toBeInTheDocument();
+
+    // Saat saldo awal belum ada, CTA hanya muncul sekali di banner langkah
+    // berikutnya; menu "Lainnya" tidak boleh menduplikasi tombol yang sama.
+    fireEvent.click(screen.getByRole('button', { name: 'Lainnya' }));
+    expect(screen.queryByRole('menuitem', { name: /Saldo Awal/ })).not.toBeInTheDocument();
   });
 
   it('memakai satu minggu aktif untuk daftar, pending, dan progres', async () => {
