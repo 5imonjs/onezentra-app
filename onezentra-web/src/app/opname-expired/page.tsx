@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
@@ -294,69 +294,7 @@ function DaysBar({ sisaHari, maxHari, status }: { sisaHari: number; maxHari: num
   );
 }
 
-type BannerTone = 'violet' | 'amber' | 'emerald' | 'slate';
 
-const BANNER_TONE: Record<BannerTone, { wrap: string; icon: string; title: string; text: string }> = {
-  violet: {
-    wrap: 'border-violet-200 bg-violet-50',
-    icon: 'bg-violet-100 text-violet-700',
-    title: 'text-violet-950',
-    text: 'text-violet-800',
-  },
-  amber: {
-    wrap: 'border-amber-200 bg-amber-50',
-    icon: 'bg-amber-100 text-amber-700',
-    title: 'text-amber-950',
-    text: 'text-amber-800',
-  },
-  emerald: {
-    wrap: 'border-emerald-200 bg-emerald-50',
-    icon: 'bg-emerald-100 text-emerald-700',
-    title: 'text-emerald-950',
-    text: 'text-emerald-800',
-  },
-  slate: {
-    wrap: 'border-border bg-card',
-    icon: 'bg-slate-100 text-slate-600',
-    title: 'text-foreground',
-    text: 'text-muted-foreground',
-  },
-};
-
-function NextStepBanner({
-  tone,
-  eyebrow,
-  title,
-  description,
-  action,
-}: {
-  tone: BannerTone;
-  eyebrow: string;
-  title: string;
-  description: string;
-  action: ReactNode;
-}) {
-  const styles = BANNER_TONE[tone];
-  return (
-    <div className={`rounded-2xl border px-5 py-4 ${styles.wrap}`} role="status">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.icon}`} aria-hidden="true">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <p className={`text-[10px] font-bold uppercase tracking-[0.16em] ${styles.text}`}>{eyebrow}</p>
-            <p className={`mt-0.5 text-sm font-bold ${styles.title}`}>{title}</p>
-            <p className={`mt-0.5 text-xs leading-relaxed ${styles.text}`}>{description}</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">{action}</div>
-      </div>
-    </div>
-  );
-}
 
 export default function OpnameExpiredPage() {
   const { hasPermission, user } = useAuthStore();
@@ -828,17 +766,14 @@ export default function OpnameExpiredPage() {
   // Dipakai baris memo: boolean stabil per render (bukan hasil panggil di JSX).
   const canDeleteWaves = hasPermission('opname.delete');
 
-  // Satu langkah berikutnya yang paling relevan — menggantikan deretan tombol
-  // aksi di toolbar. Aksi sekunder tetap tersedia lewat menu "Aksi" yang
-  // dikelompokkan (Input data / Proses monitoring / Laporan / Pengaturan)
-  // supaya beda fungsi tidak tercampur; tombol Stock Opname sengaja tidak
-  // ada di header karena banner sudah memuat CTA kontekstual
-  // (buat/lanjutkan/lihat sesi).
+  // Satu langkah berikutnya yang paling relevan. CTA-nya ditampilkan di
+  // bagian atas menu "Aksi" (grup "Langkah berikutnya") agar semua tombol di
+  // header berada dalam satu menu; tidak ada lagi kartu banner terpisah.
+  // Menu "Aksi" dikelompokkan (Langkah berikutnya / Input data / Proses
+  // monitoring / Laporan / Pengaturan) supaya beda fungsi tidak tercampur.
   const nextStep = (() => {
     if (baselineStatus === 'missing') {
       return {
-        tone: 'violet' as const,
-        eyebrow: 'Yang perlu dilakukan',
         title: 'Saldo Awal belum dipasang',
         description: 'Pasang saldo pembuka sebelum sistem sekali per depo agar stok lama tidak dihitung dua kali.',
         action: hasPermission('penerimaan.create') ? (
@@ -852,8 +787,6 @@ export default function OpnameExpiredPage() {
     }
     if (pendingError) {
       return {
-        tone: 'amber' as const,
-        eyebrow: 'Yang perlu dilakukan',
         title: 'Gagal memeriksa data baru',
         description: 'Data baru belum bisa dipastikan masuk analisa. Coba periksa lagi.',
         action: (
@@ -865,8 +798,6 @@ export default function OpnameExpiredPage() {
     }
     if ((pending?.pending.total ?? 0) > 0) {
       return {
-        tone: 'amber' as const,
-        eyebrow: 'Yang perlu dilakukan',
         title: `${fnum(pending?.pending.total ?? 0)} baris baru belum masuk analisa`,
         description: `Minggu ${formatDateId(pending?.week_start)}: ${pending?.pending.sj ?? 0} baris SJ + ${pending?.pending.import ?? 0} baris stok manual${(pending?.pending.legacy ?? 0) > 0 ? ` + ${pending?.pending.legacy} baris Saldo Awal` : ''}.`,
         action: hasPermission('opname.create') ? (
@@ -881,8 +812,6 @@ export default function OpnameExpiredPage() {
     if (baselineStatus === 'loading' && !hasWeekRows) return null;
     if (!hasWeekRows) {
       return {
-        tone: 'slate' as const,
-        eyebrow: 'Yang perlu dilakukan',
         title: 'Belum ada baris monitoring minggu ini',
         description: 'Tambahkan stok manual atau pastikan penerimaan SJ sudah masuk, lalu buat baris monitoring.',
         action: hasPermission('opname.create') ? (
@@ -894,8 +823,6 @@ export default function OpnameExpiredPage() {
     }
     if (allRowsValidated) {
       return {
-        tone: 'emerald' as const,
-        eyebrow: 'Yang perlu dilakukan',
         title: 'Hitung fisik minggu ini selesai',
         description: 'Semua baris sudah tervalidasi. Hasil hitung fisik bisa dilihat di Stock Opname.',
         action: hasPermission('opname.session.view') ? (
@@ -908,8 +835,6 @@ export default function OpnameExpiredPage() {
     }
     if (hasOpenSession) {
       return {
-        tone: 'emerald' as const,
-        eyebrow: 'Yang perlu dilakukan',
         title: 'Stock Opname sedang berjalan',
         description: `${fnum(progressValidated)} dari ${fnum(progressTotal)} baris sudah tervalidasi. Lanjutkan sesi yang sudah dibuka.`,
         action: hasPermission('opname.session.view') ? (
@@ -921,8 +846,6 @@ export default function OpnameExpiredPage() {
       };
     }
     return {
-      tone: 'emerald' as const,
-      eyebrow: 'Yang perlu dilakukan',
       title: 'Baris monitoring siap dihitung fisik',
       description: 'Baris monitoring minggu ini sudah terbentuk. Buat sesi Stock Opname agar petugas bisa input hasil hitung lapangan.',
       action: hasPermission('opname.session.create') ? (
@@ -975,10 +898,21 @@ export default function OpnameExpiredPage() {
                   <svg aria-hidden="true" className={`h-3.5 w-3.5 transition-transform ${showMore ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                 </button>
                 {showMore && (
-                  <div role="menu" aria-label="Menu aksi" className="absolute right-0 z-30 mt-2 w-72 rounded-xl border border-border bg-card p-1.5 text-foreground shadow-xl">
+                  <div role="menu" aria-label="Menu aksi" className="absolute right-0 z-30 mt-2 w-80 rounded-xl border border-border bg-card p-1.5 text-foreground shadow-xl">
+                    {nextStep && (
+                      <>
+                        <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Langkah berikutnya</p>
+                        <div className="rounded-xl bg-primary-500/10 px-3 py-2.5">
+                          <p className="text-sm font-bold text-foreground">{nextStep.title}</p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{nextStep.description}</p>
+                          <div className="mt-2 [&_a]:flex [&_a]:w-full [&_a]:justify-center [&>button]:w-full">{nextStep.action}</div>
+                        </div>
+                        <div aria-hidden="true" className="my-1 border-t border-border" />
+                      </>
+                    )}
                     {hasPermission('penerimaan.create') && (
                       <>
-                        <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Input data</p>
+                        <p className="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Input data</p>
                         {baselineStatus !== 'missing' && (
                           <button
                             type="button"
@@ -1067,16 +1001,6 @@ export default function OpnameExpiredPage() {
           </div>
 
         </div>
-
-        {nextStep && (
-          <NextStepBanner
-            tone={nextStep.tone}
-            eyebrow={nextStep.eyebrow}
-            title={nextStep.title}
-            description={nextStep.description}
-            action={nextStep.action}
-          />
-        )}
 
         {/* KPI strip */}
         <div className="bg-card rounded-2xl shadow-sm border border-border px-5 py-4">
