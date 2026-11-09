@@ -140,6 +140,11 @@ describe('OpnameExpiredPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
 
+    // Menu dikelompokkan agar fungsi input, proses, laporan, dan pengaturan tidak tercampur.
+    expect(screen.getByText('Input data')).toBeInTheDocument();
+    expect(screen.getByText('Proses monitoring')).toBeInTheDocument();
+    expect(screen.getByText('Laporan')).toBeInTheDocument();
+    expect(screen.getByText('Pengaturan')).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Kelola Saldo Awal/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Tambah Stok Manual/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Pengaturan Status Kedaluwarsa/ })).toBeInTheDocument();
