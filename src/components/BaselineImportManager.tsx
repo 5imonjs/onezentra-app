@@ -372,6 +372,16 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
             <div className="space-y-3">
               <div className="rounded-xl border border-violet-200 bg-popover px-3 py-2">
                 <p className="text-xs font-semibold text-violet-900">Saldo awal terpasang</p>
+                {canInstall && currentBaseline && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveBaseline}
+                    disabled={removingBaseline}
+                    className="btn-secondary text-sm px-2 py-1 mr-2"
+                  >
+                    Hapus Baseline
+                  </button>
+                )}
                 <p className="mt-0.5 text-[11px] leading-relaxed text-violet-800">
                   Saldo pembuka s.d. <span className="font-semibold">{formatDateDmy(currentBaseline.baseline_date)}</span>
                   {' '}&middot; {currentBaseline.row_count} baris
