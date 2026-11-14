@@ -169,6 +169,22 @@ describe('OpnameExpiredPage', () => {
     expect(screen.queryByRole('menuitem', { name: /Saldo Awal/ })).not.toBeInTheDocument();
   });
 
+  it('menampilkan CTA pasang saldo awal untuk role dengan izin baseline saja', async () => {
+    baselineManifests.mockResolvedValue({ data: { data: [] } });
+    hasPermission.mockImplementation((slug: string): boolean => (
+      ['opname.view', 'penerimaan.view', 'penerimaan.baseline'].includes(slug)
+    ));
+
+    render(<OpnameExpiredPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aksi' }));
+
+    expect(await screen.findByText('Saldo Awal belum dipasang')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pasang Saldo Awal' })).toBeInTheDocument();
+    // Izin pasang saldo awal tidak membuka input penerimaan penuh.
+    expect(screen.queryByRole('menuitem', { name: /Tambah Stok Manual/ })).not.toBeInTheDocument();
+  });
+
   it('memakai satu minggu aktif untuk daftar, pending, dan progres', async () => {
     const { container } = render(<OpnameExpiredPage />);
 

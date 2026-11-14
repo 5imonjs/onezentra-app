@@ -2,9 +2,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import BaselineImportManager from './BaselineImportManager';
 
-const { api, notifyGlobal, authUser } = vi.hoisted(() => ({
+const { api, notifyGlobal, authUser, hasPermission } = vi.hoisted(() => ({
   notifyGlobal: vi.fn(),
   authUser: { kode_depo: 'DPO', nama_depo: 'Depo Test' },
+  hasPermission: vi.fn((_slug: string): boolean => true),
   api: {
     baselineManifests: vi.fn(),
     baselineTemplate: vi.fn(),
@@ -24,7 +25,7 @@ vi.mock('@/store/globalToast', () => ({ notifyGlobal }));
 
 vi.mock('@/store/auth', () => ({
   useAuthStore: () => ({
-    hasPermission: () => true,
+    hasPermission,
     user: authUser,
   }),
 }));
@@ -52,6 +53,7 @@ function baseline(overrides: Record<string, unknown> = {}) {
 describe('BaselineImportManager — koreksi saldo awal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    hasPermission.mockImplementation((_slug: string): boolean => true);
     api.baselineManifests.mockResolvedValue({ data: { data: [baseline()] } });
   });
 
@@ -66,6 +68,18 @@ describe('BaselineImportManager — koreksi saldo awal', () => {
     expect(screen.getByLabelText('Kode Depo *')).toBeDisabled();
     expect(screen.getByRole('button', { name: /Import Saldo Awal/i })).toBeDisabled();
     expect(screen.getByText(/Belum ada saldo awal terpasang/)).toBeTruthy();
+  });
+
+  it('menyembunyikan form import saat role tidak punya izin pasang saldo awal', async () => {
+    api.baselineManifests.mockResolvedValueOnce({ data: { data: [] } });
+    hasPermission.mockImplementation((slug: string): boolean => slug !== 'penerimaan.baseline');
+
+    render(<BaselineImportManager open onClose={vi.fn()} />);
+
+    expect(await screen.findByText('Saldo awal belum terpasang')).toBeTruthy();
+    expect(screen.getByText(/Penerimaan Pasang Saldo Awal/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Import Saldo Awal/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Kode Depo *')).not.toBeInTheDocument();
   });
 
   it('mengunduh template acuan saldo awal', async () => {

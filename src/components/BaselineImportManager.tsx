@@ -32,7 +32,8 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
   onChanged?: () => void;
 }) {
   const { hasPermission, user } = useAuthStore();
-  const canView = hasPermission('penerimaan.view');
+  const canInstall = hasPermission('penerimaan.baseline');
+  const canView = hasPermission('penerimaan.view') || canInstall;
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [ack, setAck] = useState(false);
@@ -120,6 +121,10 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
   };
 
   const handleImport = async () => {
+    if (!canInstall) {
+      notifyGlobal('Anda tidak memiliki izin memasang saldo awal. Minta admin mengaktifkan "Penerimaan Pasang Saldo Awal" di Roles & Permissions.');
+      return;
+    }
     if (!file) {
       notifyGlobal('Pilih file Excel saldo awal terlebih dahulu.');
       return;
@@ -235,7 +240,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
           </div>
         )}
 
-        {!loading && !currentBaseline && (
+        {!loading && !currentBaseline && canInstall && (
           <>
             <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
               <p className="text-sm font-semibold text-violet-900">Saldo awal = saldo pembuka sebelum sistem ini.</p>
@@ -343,6 +348,17 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
               </span>
             </button>
           </>
+        )}
+
+        {!loading && !currentBaseline && !canInstall && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-900">Saldo awal belum terpasang</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+              Anda tidak memiliki izin memasang saldo awal. Minta admin mengaktifkan
+              {' '}<strong>Penerimaan Pasang Saldo Awal</strong> (<code>penerimaan.baseline</code>)
+              {' '}untuk role Anda di Roles &amp; Permissions.
+            </p>
+          </div>
         )}
 
         <div className="border-t border-violet-200 pt-4">

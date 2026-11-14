@@ -765,6 +765,13 @@ export default function OpnameExpiredPage() {
 
   // Dipakai baris memo: boolean stabil per render (bukan hasil panggil di JSX).
   const canDeleteWaves = hasPermission('opname.delete');
+  const canCreatePenerimaan = hasPermission('penerimaan.create');
+  const canInstallBaseline = hasPermission('penerimaan.baseline');
+  // Grup "Input data" hanya muncul bila ada minimal satu aksi yang bisa
+  // dijalankan. Saat saldo awal sudah terpasang, pemegang izin baseline tetap
+  // bisa membuka "Kelola Saldo Awal" walau tidak boleh menambah penerimaan.
+  const canShowInputData = canCreatePenerimaan
+    || (canInstallBaseline && baselineStatus !== 'missing');
 
   // Satu langkah berikutnya yang paling relevan. CTA-nya ditampilkan di
   // bagian atas menu "Aksi" (grup "Langkah berikutnya") agar semua tombol di
@@ -776,12 +783,14 @@ export default function OpnameExpiredPage() {
       return {
         title: 'Saldo Awal belum dipasang',
         description: 'Pasang saldo pembuka sebelum sistem sekali per depo agar stok lama tidak dihitung dua kali.',
-        action: hasPermission('penerimaan.create') ? (
+        action: canInstallBaseline ? (
           <button type="button" onClick={() => setBaselineOpen(true)} className="btn-primary text-sm">
             Pasang Saldo Awal
           </button>
         ) : (
-          <span className="text-xs font-semibold text-violet-800">Minta admin depo memasang Saldo Awal.</span>
+          <span className="text-xs font-semibold text-violet-800">
+            Minta admin mengaktifkan izin &ldquo;Penerimaan Pasang Saldo Awal&rdquo; untuk role Anda.
+          </span>
         ),
       };
     }
@@ -910,10 +919,10 @@ export default function OpnameExpiredPage() {
                         <div aria-hidden="true" className="my-1 border-t border-border" />
                       </>
                     )}
-                    {hasPermission('penerimaan.create') && (
+                    {canShowInputData && (
                       <>
                         <p className="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Input data</p>
-                        {baselineStatus !== 'missing' && (
+                        {canInstallBaseline && baselineStatus !== 'missing' && (
                           <button
                             type="button"
                             role="menuitem"
@@ -924,15 +933,17 @@ export default function OpnameExpiredPage() {
                             Kelola Saldo Awal
                           </button>
                         )}
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => { setManualOpen(true); setShowMore(false); }}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
-                        >
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
-                          Tambah Stok Manual
-                        </button>
+                        {canCreatePenerimaan && (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => { setManualOpen(true); setShowMore(false); }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-slate-100"
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                            Tambah Stok Manual
+                          </button>
+                        )}
                       </>
                     )}
                     {hasPermission('opname.create') && (
