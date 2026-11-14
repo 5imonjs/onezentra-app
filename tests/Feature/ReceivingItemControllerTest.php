@@ -341,6 +341,7 @@ class ReceivingItemControllerTest extends TestCase
         $this->putJson("/api/v1/receiving-items/baseline/{$manifest->id}", [
             'baseline_date' => '2026-09-06',
         ])->assertOk()
+            ->assertJsonPath('message', 'Tanggal posisi baseline diperbarui dari 01/09/2026 ke 06/09/2026.')
             ->assertJsonPath('opname_synced', true)
             ->assertJsonPath('data.baseline_date', '2026-09-06');
 

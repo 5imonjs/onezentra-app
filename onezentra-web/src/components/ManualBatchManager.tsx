@@ -427,7 +427,7 @@ export default function ManualBatchManager({
               </button>
             )}
           </div>
-          <p className="text-[11px] text-slate-400">Maks 10 MB • .xlsx, .xls, .csv • Taruh file di sini atau klik untuk browse</p>
+          <p className="text-[11px] text-slate-400">Maks 10 MB • .xlsx, .xls, .csv • Format tanggal dd/mm/yyyy • Taruh file di sini atau klik untuk browse</p>
 
           {successMsg && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">

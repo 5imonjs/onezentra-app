@@ -17,6 +17,7 @@ use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -703,7 +704,7 @@ class ReceivingItemController extends Controller
                 $baseline->delete();
 
                 return response()->json([
-                    'message' => 'Tidak ada baris baseline yang valid. Periksa kolom wajib (produk, qty, expired).',
+                    'message' => 'Tidak ada baris baseline yang valid. Periksa kolom wajib (produk, qty, expired) dan format tanggal dd/mm/yyyy.',
                     'skipped' => $import->skipped,
                 ], 422);
             }
@@ -874,7 +875,11 @@ class ReceivingItemController extends Controller
 
         $fresh = $baselineImport->fresh();
         $message = $dateChanged
-            ? "Tanggal posisi baseline diperbarui dari {$oldDate} ke {$newDate}."
+            ? sprintf(
+                'Tanggal posisi baseline diperbarui dari %s ke %s.',
+                $oldDate ? Carbon::parse($oldDate)->format('d/m/Y') : '-',
+                Carbon::parse($newDate)->format('d/m/Y'),
+            )
             : 'Catatan baseline diperbarui.';
 
         return response()->json([

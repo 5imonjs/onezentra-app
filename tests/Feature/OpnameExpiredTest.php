@@ -29,6 +29,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
@@ -446,7 +447,8 @@ class OpnameExpiredTest extends TestCase
         $temp = tempnam(sys_get_temp_dir(), 'baseline-template');
         file_put_contents($temp, $res->streamedContent() ?: $res->getContent());
 
-        $rows = (new \PhpOffice\PhpSpreadsheet\Reader\Xlsx)->load($temp)->getActiveSheet()->toArray();
+        $sheet = (new \PhpOffice\PhpSpreadsheet\Reader\Xlsx)->load($temp)->getActiveSheet();
+        $rows = $sheet->toArray();
         unlink($temp);
 
         // Template saldo awal harus bisa langsung dipakai importer yang sama
@@ -456,6 +458,120 @@ class OpnameExpiredTest extends TestCase
             ['PRODUK', 'QTY DUS/BALL', 'QTY PCS', 'EXPIRED', 'TANGGAL PENERIMAAN'],
             array_slice($rows[0], 0, 5),
         );
+
+        // Contoh tanggal tampil dd/mm/yyyy agar operator tidak mengetik ISO
+        // atau menukar hari dan bulan.
+        $this->assertSame('31/01/2027', $sheet->getCell('D2')->getFormattedValue());
+        $this->assertSame('05/09/2026', $sheet->getCell('E2')->getFormattedValue());
+        $this->assertIsNumeric($sheet->getCell('D2')->getValue());
+        $this->assertIsNumeric($sheet->getCell('E2')->getValue());
+    }
+
+    public function test_baseline_template_sample_imports_with_dd_mm_yyyy_dates(): void
+    {
+        $template = $this->get('/api/v1/receiving-items/baseline/template')->assertOk();
+
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => UploadedFile::fake()->createWithContent(
+                'template_saldo_awal.xlsx',
+                $template->streamedContent() ?: $template->getContent(),
+            ),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-09',
+        ])->assertOk()
+            ->assertJsonPath('imported', 1)
+            ->assertJsonPath('skipped', 0);
+
+        $item = ReceivingItem::where('source', ReceivingItem::SOURCE_LEGACY)->firstOrFail();
+        $this->assertSame('2027-01-31', $item->expired_date?->toDateString());
+        $this->assertSame('2026-09-05', substr((string) $item->tanggal_penerimaan, 0, 10));
+    }
+
+    public function test_import_parses_dd_mm_yyyy_and_skips_invalid_dates(): void
+    {
+        $import = new ReceivingItemImport($this->user);
+        $import->collection(new Collection([
+            [
+                'kode_barang' => 'B-DMY-01',
+                'qty_crt_zak' => '2',
+                'qty_pcs' => '24',
+                'tgl_expired_date' => '31/01/2027',
+                'tgl_penerimaan' => '05/09/2026',
+            ],
+            // 01/02/2027 harus 1 Februari, bukan 2 Januari (m/d/Y).
+            [
+                'kode_barang' => 'B-DMY-02',
+                'qty_crt_zak' => '2',
+                'qty_pcs' => '24',
+                'tgl_expired_date' => '01/02/2027',
+                'tgl_penerimaan' => '12/01/2026',
+            ],
+            // Tanggal kalender tidak valid dan tanggal terima tidak valid
+            // harus dilewati, bukan disimpan sebagai hari lain/null.
+            [
+                'kode_barang' => 'B-DMY-03',
+                'qty_crt_zak' => '2',
+                'qty_pcs' => '24',
+                'tgl_expired_date' => '31/02/2027',
+                'tgl_penerimaan' => '05/09/2026',
+            ],
+            [
+                'kode_barang' => 'B-DMY-04',
+                'qty_crt_zak' => '2',
+                'qty_pcs' => '24',
+                'tgl_expired_date' => '31/01/2027',
+                'tgl_penerimaan' => '31/13/2026',
+            ],
+        ]));
+
+        $this->assertSame(2, $import->imported);
+        $this->assertSame(2, $import->skipped);
+
+        $valid = ReceivingItem::where('kode_barang', 'B-DMY-01')->firstOrFail();
+        $this->assertSame('2027-01-31', $valid->expired_date?->toDateString());
+        $this->assertSame('2026-09-05', substr((string) $valid->tanggal_penerimaan, 0, 10));
+
+        $ambiguous = ReceivingItem::where('kode_barang', 'B-DMY-02')->firstOrFail();
+        $this->assertSame('2027-02-01', $ambiguous->expired_date?->toDateString());
+        $this->assertSame('2026-01-12', substr((string) $ambiguous->tanggal_penerimaan, 0, 10));
+
+        $this->assertDatabaseMissing('receiving_items', ['kode_barang' => 'B-DMY-03']);
+        $this->assertDatabaseMissing('receiving_items', ['kode_barang' => 'B-DMY-04']);
+    }
+
+    public function test_import_keeps_iso_excel_serial_and_compact_dates_working(): void
+    {
+        $import = new ReceivingItemImport($this->user);
+        $import->collection(new Collection([
+            [
+                'kode_barang' => 'B-ISO-01',
+                'qty_crt_zak' => '1',
+                'tgl_expired_date' => '2027-03-15',
+                'tgl_penerimaan' => '2026-09-01',
+            ],
+            [
+                'kode_barang' => 'B-SERIAL-01',
+                'qty_crt_zak' => '1',
+                'tgl_expired_date' => Date::PHPToExcel(new \DateTimeImmutable('2027-03-15')),
+                'tgl_penerimaan' => Date::PHPToExcel(new \DateTimeImmutable('2026-09-01')),
+            ],
+            [
+                'kode_barang' => 'B-COMPACT-01',
+                'qty_crt_zak' => '1',
+                'tgl_expired_date' => '20270315',
+                'tgl_penerimaan' => '20260901',
+            ],
+        ]));
+
+        $this->assertSame(3, $import->imported);
+        $this->assertSame(0, $import->skipped);
+
+        foreach (['B-ISO-01', 'B-SERIAL-01', 'B-COMPACT-01'] as $kode) {
+            $item = ReceivingItem::where('kode_barang', $kode)->firstOrFail();
+            $this->assertSame('2027-03-15', $item->expired_date?->toDateString());
+            $this->assertSame('2026-09-01', substr((string) $item->tanggal_penerimaan, 0, 10));
+        }
     }
 
     public function test_validasi_sj_item_falls_back_to_rencana_kirim_attributes(): void
