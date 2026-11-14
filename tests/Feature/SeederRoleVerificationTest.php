@@ -327,6 +327,22 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertNotContains('admin_planner', $sessionEdit);
     }
 
+    public function test_pasang_saldo_awal_tidak_diberikan_otomatis_ke_role_lain(): void
+    {
+        $this->seedRoles();
+        $this->seed(PermissionSeeder::class);
+
+        // Keputusan akses: `penerimaan.baseline` tidak punya pemegang khusus
+        // dan tidak diturunkan dari `penerimaan.create`. Admin cukup
+        // mengaktifkannya per role lewat Roles & Permissions.
+        foreach (['staff_logistic', 'admin_distirbusi', 'cheker', 'operator', 'blc'] as $roleSlug) {
+            $this->assertFalse(
+                Role::where('slug', $roleSlug)->first()->permissions()->where('slug', 'penerimaan.baseline')->exists(),
+                "role {$roleSlug} tidak boleh otomatis memegang penerimaan.baseline",
+            );
+        }
+    }
+
     public function test_ga_viewer_luas_dan_bh_mirror_admin_planner(): void
     {
         $this->seedRoles();
@@ -364,17 +380,16 @@ class SeederRoleVerificationTest extends TestCase
         $this->assertNotEmpty($bh, 'Role bh tidak boleh nol permission (lockout)');
         $this->assertSame($adminPlanner, $bh);
 
-        // Total sistem tetap konsisten: 12 role lama + ga + bh, 112 permission
-        // (106 lama + 3 sesi opname + 1 approval sesi opname
-        // `opname.session.approve` (grant mengikuti opname.edit — migrasi) +
-        // 1 barang luar rencana `sj_validation.extra` + 1 persetujuan planner
-        // `sj_validation.approve` — keduanya tanpa grant bawaan seeder) serta
-        // grant create standarisasi ke checker lapangan dan operator. Jumlah
-        // role-permission mencakup grant turunan.
+        // Total sistem tetap konsisten: 12 role lama + ga + bh, 113 permission
+        // (112 lama + 1 pasang saldo awal `penerimaan.baseline` yang dipisah
+        // dari penerimaan.create agar bisa di-toggle per role). Permission
+        // baseline sengaja tidak punya grant turunan — hanya admin_master yang
+        // mendapatkannya lewat setelan awal "all permissions". Jumlah
+        // role-permission mencakup grant turunan lain.
         // admin_planner & bh tidak lagi punya depot.view_all (fix 2026-10-22)
         $this->assertSame(14, Role::count());
-        $this->assertSame(112, Permission::count());
-        $this->assertSame(571, DB::table('role_permission')->count());
+        $this->assertSame(113, Permission::count());
+        $this->assertSame(572, DB::table('role_permission')->count());
     }
 
     private function seedRoles(): void

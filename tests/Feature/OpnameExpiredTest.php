@@ -46,7 +46,7 @@ class OpnameExpiredTest extends TestCase
         $this->travelTo('2026-09-09 10:00:00');
 
         $role = Role::firstOrCreate(['slug' => 'opname_test'], ['name' => 'Opname Test']);
-        foreach (['penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete'] as $slug) {
+        foreach (['penerimaan.view', 'penerimaan.create', 'penerimaan.edit', 'penerimaan.delete', 'penerimaan.baseline', 'opname.view', 'opname.create', 'opname.edit', 'opname.delete'] as $slug) {
             $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
             $role->permissions()->syncWithoutDetaching([$perm->id]);
         }
@@ -1368,6 +1368,44 @@ class OpnameExpiredTest extends TestCase
         // Setelah ada Receiving baru, wave ini bukan lagi legacy murni.
         $legacyAfter = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=legacy')->assertOk();
         $this->assertSame([], collect($legacyAfter->json('data.data'))->pluck('kode_barang')->all());
+    }
+
+    public function test_baseline_install_needs_baseline_permission_without_penerimaan_create(): void
+    {
+        $role = Role::create(['slug' => 'baseline_only', 'name' => 'Baseline Only']);
+        foreach (['penerimaan.view', 'penerimaan.baseline', 'opname.view'] as $slug) {
+            $perm = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'menu_group' => 'Test']);
+            $role->permissions()->syncWithoutDetaching([$perm->id]);
+        }
+
+        $baselineOnlyUser = User::create([
+            'email' => 'baseline-only@test.com',
+            'password' => 'password',
+            'full_name' => 'Baseline Only',
+            'kode_depo' => 'DPO2',
+            'nama_depo' => 'Depo Dua',
+            'level' => 'operator',
+            'status' => 'active',
+        ]);
+        $role->users()->attach($baselineOnlyUser->id);
+        Sanctum::actingAs($baselineOnlyUser);
+
+        $rows = [['B-ONLY-01', 'Produk Admin Depo', 7, 7, '2027-01-01', '2026-09-08']];
+
+        // Admin depo (operator) boleh memasang saldo awal tanpa izin tambah
+        // penerimaan penuh — inilah alasan permission dipisah.
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile($rows),
+            'kode_depo' => 'DPO2',
+            'nama_depo' => 'Depo Dua',
+            'baseline_date' => '2026-09-08',
+        ])->assertOk()
+            ->assertJsonPath('imported', 1);
+
+        $this->assertDatabaseHas('opname_expired_baseline_imports', [
+            'kode_depo' => 'DPO2',
+            'row_count' => 1,
+        ]);
     }
 
     public function test_reclassified_baseline_row_is_still_counted_as_baseline(): void

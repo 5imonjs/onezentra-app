@@ -39,6 +39,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'Receiving Delete', 'slug' => 'receiving.delete', 'menu_group' => 'Receiving', 'icon' => 'trash', 'route' => 'receiving.destroy', 'sort_order' => 165],
             ['name' => 'Penerimaan View', 'slug' => 'penerimaan.view', 'menu_group' => 'Penerimaan', 'icon' => 'clipboard', 'route' => 'penerimaan.index', 'sort_order' => 170],
             ['name' => 'Penerimaan Create', 'slug' => 'penerimaan.create', 'menu_group' => 'Penerimaan', 'icon' => 'plus', 'route' => 'penerimaan.create', 'sort_order' => 180],
+            ['name' => 'Penerimaan Pasang Saldo Awal', 'slug' => 'penerimaan.baseline', 'menu_group' => 'Penerimaan', 'icon' => 'upload', 'route' => 'receiving_items.import_baseline', 'sort_order' => 185, 'description' => 'Memasang saldo awal (baseline) sekali per depo. Terpisah dari izin tambah penerimaan agar bisa diberikan ke admin depo tanpa memberi akses input penerimaan penuh.'],
             ['name' => 'Penerimaan Edit', 'slug' => 'penerimaan.edit', 'menu_group' => 'Penerimaan', 'icon' => 'edit', 'route' => 'penerimaan.edit', 'sort_order' => 190],
             ['name' => 'Penerimaan Delete', 'slug' => 'penerimaan.delete', 'menu_group' => 'Penerimaan', 'icon' => 'trash', 'route' => 'penerimaan.destroy', 'sort_order' => 200],
             ['name' => 'NPN View', 'slug' => 'npn.view', 'menu_group' => 'NPN', 'icon' => 'package', 'route' => 'npn.index', 'sort_order' => 210],
@@ -324,11 +325,11 @@ class PermissionSeeder extends Seeder
         }
 
         // Sesi opname (penugasan + verifikasi lapangan) awalnya menumpang slug
-        // generik `opname.create/edit` yang juga menggerakkan monitoring wave
-        // (generate, threshold). Dipisah supaya bisa dicabut independen, dan
-        // hanya untuk role yang benar-benar menjalankan sesi — viewer murni
-        // (`opname.view` saja) tidak melihat menu lapangan. Diturunkan dari grant
-        // yang ada agar tidak drift; role baru cukup dicentang lewat UI.
+        // generik `opname.create/edit` yang juga menggerakkan monitoring wave.
+        // Dipisah supaya bisa dicabut independen, dan hanya untuk role yang
+        // benar-benar menjalankan sesi — viewer murni (`opname.view` saja) tidak
+        // melihat menu lapangan. Diturunkan dari grant yang ada agar tidak
+        // drift; role baru cukup dicentang lewat UI.
         foreach (array_keys($rolePermMap) as $roleSlug) {
             $canCreate = in_array('opname.create', $rolePermMap[$roleSlug], true);
             $canVerify = in_array('opname.edit', $rolePermMap[$roleSlug], true);
@@ -343,6 +344,10 @@ class PermissionSeeder extends Seeder
                 $rolePermMap[$roleSlug][] = 'opname.session.edit';
             }
         }
+
+        // Pasang saldo awal sengaja TIDAK diturunkan dari permission lain.
+        // Sama seperti permission biasa, pemegangnya diatur dari
+        // Roles & Permissions (toggle per role) agar tidak ada pemegang khusus.
 
         foreach ($rolePermMap as $roleSlug => $permSlugs) {
             $role = Role::where('slug', $roleSlug)->first();

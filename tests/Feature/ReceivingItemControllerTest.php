@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\OpnameExpiredService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -285,6 +286,18 @@ class ReceivingItemControllerTest extends TestCase
 
         $this->putJson("/api/v1/receiving-items/{$item->id}", ['source' => 'BOGUS'])
             ->assertStatus(422);
+    }
+
+    public function test_import_baseline_requires_dedicated_baseline_permission(): void
+    {
+        // User ini memegang penerimaan.edit tetapi tidak penerimaan.baseline.
+        // Memasang saldo awal harus ditolak dan diarahkan ke toggle permission
+        // khusus, bukan ikut terbuka lewat izin edit penerimaan.
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => UploadedFile::fake()->create('baseline.xlsx', 10),
+            'kode_depo' => 'DPO',
+            'baseline_date' => '2026-09-01',
+        ])->assertForbidden();
     }
 
     public function test_baseline_manifest_can_be_listed_and_date_corrected(): void

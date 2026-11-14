@@ -317,12 +317,14 @@ Route::prefix('v1')->group(function () {
         Route::post('/', [ReceivingItemController::class, 'store'])->middleware('permission:penerimaan.create');
         Route::get('/template', [ReceivingItemController::class, 'template'])->middleware(['permission:penerimaan.view', 'throttle:30,1,heavy-read']);
         Route::post('/import', [ReceivingItemController::class, 'import'])->middleware(['permission:penerimaan.create', 'throttle:20,1,heavy-write']);
-        Route::post('/import-baseline', [ReceivingItemController::class, 'importBaseline'])->middleware(['permission:penerimaan.create', 'throttle:20,1,heavy-write']);
+        // Pemasangan saldo awal dipisah dari penerimaan.create agar admin depo
+        // bisa diberi izin ini sendiri lewat toggle Roles & Permissions.
+        Route::post('/import-baseline', [ReceivingItemController::class, 'importBaseline'])->middleware(['permission:penerimaan.baseline', 'throttle:20,1,heavy-write']);
         // Template acuan saldo awal: kolom sama dengan importer, nama file beda.
-        Route::get('/baseline/template', [ReceivingItemController::class, 'baselineTemplate'])->middleware(['permission:penerimaan.view', 'throttle:30,1,heavy-read']);
+        Route::get('/baseline/template', [ReceivingItemController::class, 'baselineTemplate'])->middleware(['permission:penerimaan.view|penerimaan.baseline', 'throttle:30,1,heavy-read']);
         // Manifes baseline: daftar posisi terpasang + koreksi cutoff tanpa
         // menambah/menghapus baris ledger.
-        Route::get('/baseline', [ReceivingItemController::class, 'baselineManifests'])->middleware('permission:penerimaan.view');
+        Route::get('/baseline', [ReceivingItemController::class, 'baselineManifests'])->middleware('permission:penerimaan.view|penerimaan.baseline');
         Route::put('/baseline/{baselineImport}', [ReceivingItemController::class, 'updateBaseline'])->middleware(['permission:penerimaan.edit', 'throttle:20,1,heavy-write']);
         // Rute statis wajib sebelum {receivingItem}.
         Route::delete('/bulk', [ReceivingItemController::class, 'bulkDestroy'])->middleware(['permission:penerimaan.delete', 'throttle:20,1,heavy-write']);
