@@ -146,6 +146,13 @@ class OpnameExpiredSessionController extends Controller
             422,
             'Petugas yang ditugaskan harus dari depo yang sama dengan sesi.'
         );
+        abort_unless($assignee->status === 'active', 422, 'Petugas yang ditugaskan harus akun aktif.');
+
+        // Satu minggu+depo hanya boleh punya satu sesi berjalan. Alur
+        // "Tambah Baris Monitoring" dan progress per depo mengasumsikan satu
+        // sesi; tanpa guard ini sesi kedua bisa dibuat untuk wave yang belum
+        // terkunci (mis. sisa wave setelah batas batch 2000).
+        $this->assertNoOpenSessionForWeekDepot($weekStart, $validated['kode_depo']);
 
         $waves = OpnameExpiredWave::whereIn('id', $validated['wave_ids'])->get();
         if ($waves->isEmpty()) {
@@ -170,6 +177,11 @@ class OpnameExpiredSessionController extends Controller
         // Pembuatan sesi + ekspansi item atomik: double-submit tidak boleh
         // menggandakan sesi atas wave yang sama.
         [$session, $itemCount] = DB::transaction(function () use ($validated, $weekStart, $user, $waves): array {
+            // Cek ulang sesi berjalan di dalam transaksi (dengan lock) agar
+            // dua request bersamaan untuk minggu+depo yang sama tidak lolos
+            // sebagai dua sesi paralel.
+            $this->assertNoOpenSessionForWeekDepot($weekStart, $validated['kode_depo'], lock: true);
+
             // Kunci baris wave lalu cek ulang di dalam transaksi: cek di luar
             // transaksi bisa dilewati dua request bersamaan sebelum salah satu
             // menulis item sesi.
@@ -571,6 +583,7 @@ class OpnameExpiredSessionController extends Controller
 
         $user = $request->user();
         $waves = OpnameExpiredWave::whereIn('id', $validated['wave_ids'])->get();
+        abort_if($waves->isEmpty(), 422, 'Wave tidak ditemukan.');
         $added = 0;
 
         DB::transaction(function () use ($user, $session, $waves, $service, &$added): void {
@@ -584,9 +597,10 @@ class OpnameExpiredSessionController extends Controller
             // wave yang sama terserialisasi sehingga cek "sedang berjalan"
             // tidak bisa dilewati.
             OpnameExpiredWave::whereIn('id', $waves->pluck('id'))->lockForUpdate()->get();
-            $this->assertWavesUnlocked($waves);
-            $sourcesByWave = $service->waveSourceItemsFor($waves);
 
+            // Validasi minggu/depo/akses sebelum cek kunci dan sebelum
+            // menghitung sumber: wave campuran harus gagal dengan alasan yang
+            // tepat, bukan "sedang berjalan di sesi lain".
             foreach ($waves as $wave) {
                 abort_unless(
                     Carbon::parse($wave->week_start)->toDateString() === Carbon::parse($session->week_start)->toDateString()
@@ -595,7 +609,12 @@ class OpnameExpiredSessionController extends Controller
                     422,
                     "Wave {$wave->kode_barang} tidak satu minggu/depo dengan sesi."
                 );
+            }
 
+            $this->assertWavesUnlocked($waves);
+            $sourcesByWave = $service->waveSourceItemsFor($waves);
+
+            foreach ($waves as $wave) {
                 $sources = $sourcesByWave[$wave->id] ?? collect();
 
                 if ($sources->isEmpty()) {
@@ -632,6 +651,30 @@ class OpnameExpiredSessionController extends Controller
             'message' => "Ditambahkan {$added} verifikasi ke sesi.",
             'data' => $session->fresh()->load(['items.wave', 'items.batch']),
         ]);
+    }
+
+    /**
+     * Satu sesi berjalan per minggu+depo. Dipanggil di luar transaksi untuk
+     * fail-fast dan di dalam transaksi dengan lock untuk menutup race dua
+     * request bersamaan yang memilih wave berbeda.
+     */
+    private function assertNoOpenSessionForWeekDepot(Carbon $weekStart, string $kodeDepo, bool $lock = false): void
+    {
+        $query = OpnameExpiredSession::query()
+            ->where('week_start', $weekStart->toDateString())
+            ->where('kode_depo', $kodeDepo)
+            ->whereIn('status', OpnameExpiredSession::OPEN_STATUSES)
+            ->select('id');
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        abort_if(
+            $query->first() !== null,
+            422,
+            'Sesi opname untuk minggu dan depo ini masih berjalan. Tambahkan baris ke sesi tersebut atau selesaikan dulu.'
+        );
     }
 
     /**

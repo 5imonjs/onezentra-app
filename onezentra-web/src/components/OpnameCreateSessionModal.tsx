@@ -74,6 +74,17 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
   }, [kodeDepo]);
 
   const loadWaves = useCallback(async () => {
+    const targetDepo = kodeDepo.trim();
+    // Sesi wajib satu minggu + satu depo. Jangan memuat semua depo saat kode
+    // depo masih kosong: pilihan campur depo akan ditolak backend 422.
+    if (!targetDepo) {
+      setWaves([]);
+      setPicked(new Set());
+      setWaveLimitReached(false);
+      setLoadingWaves(false);
+      return;
+    }
+
     setLoadingWaves(true);
     setWaveLimitReached(false);
     try {
@@ -84,7 +95,7 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
       let page = 1;
       let truncated = false;
       for (;;) {
-        const res = await opnameExpired.list({ week_start: weekStart || undefined, kode_depo: kodeDepo || undefined, per_page: 100, page }) as {
+        const res = await opnameExpired.list({ week_start: weekStart || undefined, kode_depo: targetDepo, per_page: 100, page }) as {
           data: { data: { data: WaveOption[]; last_page?: number } };
         };
         const rows = res.data.data.data;
@@ -98,12 +109,9 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
       }
       setWaveLimitReached(truncated);
       // Server sudah memfilter depo, tetapi user multi-depo bisa tetap
-      // menerima baris depo lain. Sesi hanya boleh berisi satu depo, jadi
-      // buang sisanya sebelum user memilih.
-      const targetDepo = kodeDepo.trim();
-      const scoped = targetDepo
-        ? all.filter((w) => !w.kode_depo || w.kode_depo === targetDepo)
-        : all;
+      // menerima baris depo lain. Backend memakai exact-match, jadi wave
+      // tanpa kode depo juga tidak boleh ditawarkan.
+      const scoped = all.filter((w) => w.kode_depo === targetDepo);
       setWaves(scoped);
       // Wave yang sudah masuk sesi berjalan tidak boleh dipilih lagi;
       // backend akan menolaknya dengan 422.
@@ -121,6 +129,11 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
   const pickableCount = waves.length - lockedCount;
 
   const save = async () => {
+    const targetDepo = kodeDepo.trim();
+    if (!weekStart || !targetDepo) {
+      notifyGlobal('Pilih minggu dan isi kode depo dulu.', 'error');
+      return;
+    }
     if (!assignedTo || picked.size === 0) {
       notifyGlobal(
         waves.length > 0 && pickableCount === 0
@@ -134,8 +147,8 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
     try {
       await opnameSessions.create({
         week_start: weekStart,
-        kode_depo: kodeDepo,
-        nama_depo: namaDepo || undefined,
+        kode_depo: targetDepo,
+        nama_depo: namaDepo.trim() || undefined,
         assigned_to: Number(assignedTo),
         wave_ids: Array.from(picked),
       });
@@ -204,7 +217,9 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
             Lebih dari {MAX_SESSION_WAVES} baris. Sesi ini hanya memuat {MAX_SESSION_WAVES} baris pertama; tambahkan sisanya lewat &quot;Tambah Baris Monitoring&quot; setelah sesi dibuat.
           </p>
         )}
-        {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat baris monitoring...</p> : waves.length === 0 ? (
+        {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat baris monitoring...</p> : !kodeDepo.trim() ? (
+          <p className="text-sm text-muted-foreground">Isi kode depo dulu untuk memuat baris monitoring minggu ini.</p>
+        ) : waves.length === 0 ? (
           <p className="text-sm text-muted-foreground">Tidak ada baris monitoring minggu ini — buat baris monitoring dulu di Monitoring Kedaluwarsa.</p>
         ) : (
           <>
