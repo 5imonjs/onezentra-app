@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
-import { formatDateId, todayLocal } from '@/lib/dates';
+import { formatDateDmy, todayLocal } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import { useAuthStore } from '@/store/auth';
 
@@ -157,7 +157,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
       const { imported, skipped } = res.data;
       const duplicates = Number(res.data.duplicates ?? 0);
       const synced = Boolean(res.data.opname_synced);
-      const dateLabel = res.data.baseline_date ? formatDateId(res.data.baseline_date) : baselineDate;
+      const dateLabel = formatDateDmy(res.data.baseline_date ?? baselineDate);
       setSuccessMsg(
         `Saldo awal selesai (saldo pembuka s.d. ${dateLabel}): ${imported} baris masuk, ${skipped} dilewati${duplicates > 0 ? `, ${duplicates} duplikat dilewati` : ''}.${synced ? ' Baris monitoring sudah disinkronkan.' : ' Buat baris monitoring gagal; jalankan manual.'}`
       );
@@ -329,6 +329,10 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
               )}
             </div>
 
+            <p className="text-[10px] leading-relaxed text-violet-700">
+              Format tanggal pada file: <strong>dd/mm/yyyy</strong> untuk kolom EXPIRED dan TANGGAL PENERIMAAN.
+            </p>
+
             <label className="flex items-start gap-2 text-xs text-violet-900">
               <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5 accent-violet-600" />
               <span>Saya paham saldo awal hanya boleh diimpor sekali dan tidak dapat diulang untuk depo ini.</span>
@@ -369,10 +373,10 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
               <div className="rounded-xl border border-violet-200 bg-popover px-3 py-2">
                 <p className="text-xs font-semibold text-violet-900">Saldo awal terpasang</p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-violet-800">
-                  Saldo pembuka s.d. <span className="font-semibold">{formatDateId(currentBaseline.baseline_date)}</span>
+                  Saldo pembuka s.d. <span className="font-semibold">{formatDateDmy(currentBaseline.baseline_date)}</span>
                   {' '}&middot; {currentBaseline.row_count} baris
                   {currentBaseline.imported_by ? ` \u00b7 diimpor oleh ${currentBaseline.imported_by}` : ''}
-                  {currentBaseline.imported_at ? ` pada ${formatDateId(currentBaseline.imported_at)}` : ''}
+                  {currentBaseline.imported_at ? ` pada ${formatDateDmy(currentBaseline.imported_at)}` : ''}
                 </p>
                 {currentBaseline.has_open_session && (
                   <p className="mt-1 text-[11px] font-medium text-amber-700">
