@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Manifes baseline awal hasil migrasi Excel legacy.
@@ -15,22 +16,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * sebelum/sama dengan `imported_at` dianggap sudah tercakup baseline dan tidak
  * boleh ditambahkan lagi ke saldo operasional.
  */
-use SoftDeletes;
 class OpnameExpiredBaselineImport extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'kode_depo', 'nama_depo', 'baseline_date', 'file_name', 'file_checksum', 'row_count',
         'total_qty_crt', 'total_qty_pcs', 'imported_by', 'imported_at', 'notes',
     ];
 
     protected function casts(): array
-    deleted_at => date
     {
         return [
             'baseline_date' => 'date',
             'imported_at' => 'datetime',
             'total_qty_crt' => 'decimal:2',
             'total_qty_pcs' => 'decimal:2',
+            'deleted_at' => 'datetime',
         ];
     }
 

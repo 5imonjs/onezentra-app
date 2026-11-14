@@ -1082,7 +1082,6 @@ class ReceivingItemController extends Controller
 
         return $item;
     }
-}
 
 
     /**
@@ -1113,3 +1112,4 @@ class ReceivingItemController extends Controller
             'kode_depo' => $baselineImport->kode_depo,
         ]);
     }
+}
