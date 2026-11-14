@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * sebelum/sama dengan `imported_at` dianggap sudah tercakup baseline dan tidak
  * boleh ditambahkan lagi ke saldo operasional.
  */
+use SoftDeletes;
 class OpnameExpiredBaselineImport extends Model
 {
     protected $fillable = [
@@ -23,6 +24,7 @@ class OpnameExpiredBaselineImport extends Model
     ];
 
     protected function casts(): array
+    deleted_at => date
     {
         return [
             'baseline_date' => 'date',

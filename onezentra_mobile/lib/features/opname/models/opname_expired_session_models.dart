@@ -87,11 +87,14 @@ class OpnameExpiredSessionItem {
     this.umurSimpanHari,
     this.sisaHariBatch,
     this.diterimaMingguIni = false,
+    this.clusterLabel,
   });
 
   factory OpnameExpiredSessionItem.fromJson(Map<String, dynamic> json) =>
       OpnameExpiredSessionItem(
         id: _readInt(json['id']) ?? 0,
+        clusterLabel: _readString(_readMap(json['wave'])?['principal_1']) ?? 
+                      _readString(_readMap(json['wave'])?['principal_2']),
         sessionId: _readInt(json['session_id']) ?? 0,
         waveId: _readInt(json['wave_id']) ?? 0,
         batchId: _readInt(json['batch_id']),
@@ -149,6 +152,7 @@ class OpnameExpiredSessionItem {
   final int? sisaHari;
   final String? batchNumber;
   final String? barcodeLabel;
+  final String? clusterLabel;
   final double? qtyWaveCrt;
   final double? qtyWavePcs;
   final String? statusIni;

@@ -1083,3 +1083,33 @@ class ReceivingItemController extends Controller
         return $item;
     }
 }
+
+
+    /**
+     * Reset baseline import untuk depo ini — menghapus manifes baseline lama
+     * dan mengosongkan baseline_import_id pada receiving items terkait.
+     * Setelah ini, admin/depo bisa impor baseline baru.
+     *
+     * @param  OpnameExpiredBaselineImport  $baselineImport
+     * @return JsonResponse
+     */
+    public function resetBaseline(OpnameExpiredBaselineImport $baselineImport): JsonResponse
+    {
+        abort_unless(
+            $request->user()->canAccessDepotRow($baselineImport->kode_depo, $baselineImport->nama_depo),
+            403,
+            'Anda tidak memiliki akses ke data ini.'
+        );
+
+        // Update receiving items yang tercatat baseline untuk membuang reference
+        $baselineImport->items()->update(['baseline_import_id' => null]);
+
+        // Hapus manifes baseline import
+        $baselineImport->delete();
+
+        return response()->json([
+            'message' => 'Manifest baseline untuk depo ' . $baselineImport->kode_depo . ' telah dihapus. Anda sekarang bisa impor baseline baru.',
+            'deleted_baseline_id' => $baselineImport->id,
+            'kode_depo' => $baselineImport->kode_depo,
+        ]);
+    }

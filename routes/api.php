@@ -326,6 +326,8 @@ Route::prefix('v1')->group(function () {
         // menambah/menghapus baris ledger.
         Route::get('/baseline', [ReceivingItemController::class, 'baselineManifests'])->middleware('permission:penerimaan.view|penerimaan.baseline');
         Route::put('/baseline/{baselineImport}', [ReceivingItemController::class, 'updateBaseline'])->middleware(['permission:penerimaan.edit', 'throttle:20,1,heavy-write']);
+        Route::put('/baseline/{baselineImport}/reset', [ReceivingItemController::class, 'resetBaseline'])->middleware(['permission:penerimaan.edit', 'throttle:20,1,heavy-write']);
+
         // Rute statis wajib sebelum {receivingItem}.
         Route::delete('/bulk', [ReceivingItemController::class, 'bulkDestroy'])->middleware(['permission:penerimaan.delete', 'throttle:20,1,heavy-write']);
         Route::put('/{receivingItem}', [ReceivingItemController::class, 'update'])->middleware('permission:penerimaan.edit');
