@@ -46,6 +46,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
   const [editDate, setEditDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [removingBaseline, setRemovingBaseline] = useState(false);
 
   const currentBaseline = baselines.find((b) => b.kode_depo === depo.trim()) ?? null;
   const currentBaselineDate = currentBaseline?.baseline_date ?? '';
@@ -203,6 +204,28 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
       notifyGlobal(getErrorMessage(err, 'Gagal mengoreksi tanggal saldo awal.'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveBaseline = async () => {
+    if (!currentBaseline) {
+      notifyGlobal('Saldo awal untuk depo ini belum terpasang.');
+      return;
+    }
+    if (!confirm('Yakin ingin menghapus manifest baseline untuk depo ' + (depo.trim() || '-') + '? Tindakan ini akan membatalkan setting baseline dan Receiving items terkait akan membuang reference baseline. Tindakan ini tidak bisa di-undone melalui antarmuka ini.')) {
+      return;
+    }
+    setRemovingBaseline(true);
+    try {
+      const res = await opnameExpired.resetBaseline(currentBaseline.id);
+      const { message } = res.data;
+      setSuccessMsg(message);
+      await loadBaselines();
+      onChanged?.();
+    } catch (err) {
+      notifyGlobal(getErrorMessage(err, 'Gagal menghapus baseline.'));
+    } finally {
+      setRemovingBaseline(false);
     }
   };
 
