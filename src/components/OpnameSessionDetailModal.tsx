@@ -812,7 +812,12 @@ function AddWavesModal({ session, onClose, onAdded }: {
         let page = 1;
         let truncated = false;
         for (;;) {
-          const res = await opnameExpired.list({ week_start: session.week_start, per_page: 100, page }) as {
+          const res = await opnameExpired.list({
+            week_start: session.week_start,
+            kode_depo: session.kode_depo,
+            per_page: 100,
+            page,
+          }) as {
             data: { data: { data: WaveOption[]; last_page?: number } };
           };
           const rows = res.data.data.data;
@@ -866,7 +871,7 @@ function AddWavesModal({ session, onClose, onAdded }: {
         </p>
       )}
       {loading ? <p className="text-sm text-muted-foreground">Memuat baris monitoring...</p> : waves.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Semua baris monitoring minggu ini sudah masuk sesi.</p>
+        <p className="text-sm text-muted-foreground">Tidak ada baris monitoring baru — semua sudah masuk sesi ini atau sedang dikerjakan sesi berjalan lain.</p>
       ) : (
         <div className="max-h-80 overflow-auto border border-border rounded-xl divide-y divide-gray-100">
           {waves.map((w) => (
