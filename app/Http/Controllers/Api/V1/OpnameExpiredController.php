@@ -105,7 +105,10 @@ class OpnameExpiredController extends Controller
             $query->whereIn('opname_expired_waves.status_ini', $statuses);
         }
 
-        if ($request->kode_depo && ! $request->user()->isDepotScoped()) {
+        // Hormati filter depo juga untuk user depot-scoped selama depo itu
+        // memang dalam cakupannya. Sebelumnya filter diabaikan dan UI harus
+        // membuang baris depo lain di sisi klien — pemicu sesi campur depo.
+        if ($request->kode_depo && $request->user()->canAccessDepotRow($request->kode_depo)) {
             $query->where('opname_expired_waves.kode_depo', $request->kode_depo);
         }
 
@@ -158,6 +161,21 @@ class OpnameExpiredController extends Controller
 
         $perPage = $this->perPage($request);
         $waves = $query->paginate($perPage);
+
+        // Tandai wave yang sudah dikunci sesi berjalan supaya modal "Buat
+        // Sesi" tidak menawarkannya lagi. Backend tetap menolak 422 bila
+        // client mengirim wave yang sama (race kondisi).
+        $openWaveIds = OpnameExpiredSessionItem::query()
+            ->whereIn('wave_id', $waves->getCollection()->pluck('id'))
+            ->whereHas('session', fn ($session) => $session->whereIn('status', OpnameExpiredSession::OPEN_STATUSES))
+            ->pluck('wave_id')
+            ->flip();
+
+        $waves->getCollection()->transform(function (OpnameExpiredWave $wave) use ($openWaveIds): OpnameExpiredWave {
+            $wave->setAttribute('has_open_session', $openWaveIds->has($wave->id));
+
+            return $wave;
+        });
 
         $weeks = OpnameExpiredWave::query()
             ->when($request->user()->isDepotScoped(), fn ($q) => $request->user()->applyDepotFilter($q, 'kode_depo'))

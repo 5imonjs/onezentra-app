@@ -14,6 +14,8 @@ export interface WaveOption {
   expired_date_ini: string;
   qty_ini_crt: number;
   status_ini: string;
+  /** Sudah dipakai sesi yang belum selesai — wave terkunci. */
+  has_open_session?: boolean;
 }
 
 const todayMonday = (): string => {
@@ -86,8 +88,17 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
         if (rows.length < 100 || all.length >= 2000) break;
         page++;
       }
-      setWaves(all);
-      setPicked(new Set(all.map((w) => w.id)));
+      // Server sudah memfilter depo, tetapi user multi-depo bisa tetap
+      // menerima baris depo lain. Sesi hanya boleh berisi satu depo, jadi
+      // buang sisanya sebelum user memilih.
+      const targetDepo = kodeDepo.trim();
+      const scoped = targetDepo
+        ? all.filter((w) => !w.kode_depo || w.kode_depo === targetDepo)
+        : all;
+      setWaves(scoped);
+      // Wave yang sudah masuk sesi berjalan tidak boleh dipilih lagi;
+      // backend akan menolaknya dengan 422.
+      setPicked(new Set(scoped.filter((w) => !w.has_open_session).map((w) => w.id)));
     } catch (e) {
       notifyGlobal(getErrorMessage(e, 'Gagal memuat baris monitoring'));
     } finally {
@@ -97,9 +108,17 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
 
   useEffect(() => { loadWaves(); }, [loadWaves]);
 
+  const lockedCount = waves.filter((w) => w.has_open_session).length;
+  const pickableCount = waves.length - lockedCount;
+
   const save = async () => {
     if (!assignedTo || picked.size === 0) {
-      notifyGlobal('Pilih petugas dan minimal satu baris monitoring.', 'error');
+      notifyGlobal(
+        waves.length > 0 && pickableCount === 0
+          ? 'Semua baris monitoring untuk minggu/depo ini sudah masuk sesi berjalan. Buka sesi yang ada atau tambahkan baris dari detail sesi.'
+          : 'Pilih petugas dan minimal satu baris monitoring.',
+        'error',
+      );
       return;
     }
     setSaving(true);
@@ -170,25 +189,36 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
         </div>
       </div>
       <div className="mt-4">
-        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Baris Monitoring ({picked.size}/{waves.length})</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Baris Monitoring ({picked.size}/{pickableCount})</p>
         {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat baris monitoring...</p> : waves.length === 0 ? (
           <p className="text-sm text-muted-foreground">Tidak ada baris monitoring minggu ini — buat baris monitoring dulu di Monitoring Kedaluwarsa.</p>
         ) : (
-          <div className="max-h-64 overflow-auto border border-border rounded-xl divide-y divide-gray-100">
-            {waves.map((w) => (
-              <label key={w.id} className="flex items-center gap-3 px-3 py-2 hover:bg-overlay-50 cursor-pointer">
-                <input type="checkbox" checked={picked.has(w.id)} onChange={() => setPicked((p) => {
-                  const n = new Set(p);
-                  if (n.has(w.id)) n.delete(w.id);
-                  else n.add(w.id);
-                  return n;
-                })} className="w-4 h-4 accent-primary-600" />
-                <span className="font-mono text-sm">{w.kode_barang}</span>
-                <span className="text-xs text-muted-foreground truncate">{w.nama_barang || ''}</span>
-                <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{w.qty_ini_crt} CRT · {w.status_ini}</span>
-              </label>
-            ))}
-          </div>
+          <>
+            {lockedCount > 0 && (
+              <p className="text-xs text-amber-700 mb-2">
+                {lockedCount} baris sudah masuk sesi berjalan dan tidak bisa dipilih lagi.
+              </p>
+            )}
+            <div className="max-h-64 overflow-auto border border-border rounded-xl divide-y divide-gray-100">
+              {waves.map((w) => (
+                <label
+                  key={w.id}
+                  className={`flex items-center gap-3 px-3 py-2 ${w.has_open_session ? 'opacity-60 cursor-not-allowed' : 'hover:bg-overlay-50 cursor-pointer'}`}
+                >
+                  <input type="checkbox" checked={picked.has(w.id)} disabled={w.has_open_session} onChange={() => setPicked((p) => {
+                    const n = new Set(p);
+                    if (n.has(w.id)) n.delete(w.id);
+                    else n.add(w.id);
+                    return n;
+                  })} className="w-4 h-4 accent-primary-600" />
+                  <span className="font-mono text-sm">{w.kode_barang}</span>
+                  <span className="text-xs text-muted-foreground truncate">{w.nama_barang || ''}</span>
+                  {w.has_open_session && <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">Sesi berjalan</span>}
+                  <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{w.qty_ini_crt} CRT · {w.status_ini}</span>
+                </label>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </Modal>

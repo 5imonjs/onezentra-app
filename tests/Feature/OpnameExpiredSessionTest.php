@@ -548,6 +548,11 @@ class OpnameExpiredSessionTest extends TestCase
         $waveIds = $session->items->pluck('wave_id')->all();
 
         Sanctum::actingAs($this->supervisor);
+        $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')
+            ->assertOk()
+            ->assertJsonPath('data.data.0.has_open_session', true)
+            ->assertJsonPath('data.data.1.has_open_session', true);
+
         $this->postJson('/api/v1/opname-sessions', [
             'week_start' => '2026-09-07',
             'kode_depo' => 'DPO',
@@ -570,6 +575,11 @@ class OpnameExpiredSessionTest extends TestCase
         $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
 
         Sanctum::actingAs($this->supervisor);
+        $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')
+            ->assertOk()
+            ->assertJsonPath('data.data.0.has_open_session', false)
+            ->assertJsonPath('data.data.1.has_open_session', false);
+
         $this->postJson('/api/v1/opname-sessions', [
             'week_start' => '2026-09-07',
             'kode_depo' => 'DPO',
