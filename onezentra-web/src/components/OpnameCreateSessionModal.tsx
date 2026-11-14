@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import { opnameExpired, opnameSessions, getErrorMessage } from '@/lib/api';
 import { mondayOfWeek } from '@/lib/dates';
+import { MAX_SESSION_WAVES } from '@/lib/opname';
 import { notifyGlobal } from '@/store/globalToast';
 
 export interface WaveOption {
@@ -40,6 +41,7 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
   const [waves, setWaves] = useState<WaveOption[]>([]);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [loadingWaves, setLoadingWaves] = useState(false);
+  const [waveLimitReached, setWaveLimitReached] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Petugas dipanggil dari backend per depo (bukan input ID manual), dan
@@ -73,21 +75,28 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
 
   const loadWaves = useCallback(async () => {
     setLoadingWaves(true);
+    setWaveLimitReached(false);
     try {
       // Ambil SEMUA halaman: cap server 100/halaman, wave bisa ratusan.
       // Filter depo dikirim ke server supaya hitungan halaman tidak salah
       // ketika wave depo lain dibuang di sisi klien.
       const all: WaveOption[] = [];
       let page = 1;
+      let truncated = false;
       for (;;) {
         const res = await opnameExpired.list({ week_start: weekStart || undefined, kode_depo: kodeDepo || undefined, per_page: 100, page }) as {
-          data: { data: { data: WaveOption[] } };
+          data: { data: { data: WaveOption[]; last_page?: number } };
         };
         const rows = res.data.data.data;
+        const lastPage = res.data.data.last_page ?? Number.MAX_SAFE_INTEGER;
         all.push(...rows);
-        if (rows.length < 100 || all.length >= 2000) break;
+        if (rows.length < 100 || page >= lastPage || all.length >= MAX_SESSION_WAVES) {
+          truncated = all.length >= MAX_SESSION_WAVES && page < lastPage;
+          break;
+        }
         page++;
       }
+      setWaveLimitReached(truncated);
       // Server sudah memfilter depo, tetapi user multi-depo bisa tetap
       // menerima baris depo lain. Sesi hanya boleh berisi satu depo, jadi
       // buang sisanya sebelum user memilih.
@@ -190,6 +199,11 @@ export function CreateSessionModal({ userDepo, initialWeekStart, onClose, onCrea
       </div>
       <div className="mt-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Baris Monitoring ({picked.size}/{pickableCount})</p>
+        {waveLimitReached && (
+          <p className="text-xs text-amber-700 mb-2">
+            Lebih dari {MAX_SESSION_WAVES} baris. Sesi ini hanya memuat {MAX_SESSION_WAVES} baris pertama; tambahkan sisanya lewat &quot;Tambah Baris Monitoring&quot; setelah sesi dibuat.
+          </p>
+        )}
         {loadingWaves ? <p className="text-sm text-muted-foreground">Memuat baris monitoring...</p> : waves.length === 0 ? (
           <p className="text-sm text-muted-foreground">Tidak ada baris monitoring minggu ini — buat baris monitoring dulu di Monitoring Kedaluwarsa.</p>
         ) : (

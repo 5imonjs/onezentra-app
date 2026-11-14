@@ -8,6 +8,7 @@ import { opnameExpired, opnameSessions, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
 import { formatDateId } from '@/lib/dates';
 import { CONDITIONS, conditionRequiresPhoto } from '@/lib/condition';
+import { MAX_SESSION_WAVES } from '@/lib/opname';
 
 export interface SessionDetailItem {
   id: number;
@@ -799,6 +800,7 @@ function AddWavesModal({ session, onClose, onAdded }: {
   const [waves, setWaves] = useState<WaveOption[]>([]);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -808,17 +810,25 @@ function AddWavesModal({ session, onClose, onAdded }: {
         const inSession = new Set((session.items ?? []).map((i) => i.wave_id));
         const all: WaveOption[] = [];
         let page = 1;
+        let truncated = false;
         for (;;) {
           const res = await opnameExpired.list({ week_start: session.week_start, per_page: 100, page }) as {
-            data: { data: { data: (WaveOption & { kode_depo?: string })[] } };
+            data: { data: { data: WaveOption[]; last_page?: number } };
           };
-          const rows = res.data.data.data.filter(
-            (w) => w.kode_depo === session.kode_depo && !inSession.has(w.id)
-          );
-          all.push(...rows);
-          if (rows.length < 100 || all.length >= 2000) break;
+          const rows = res.data.data.data;
+          const lastPage = res.data.data.last_page ?? Number.MAX_SAFE_INTEGER;
+          // Baris depo lain / sudah masuk sesi / terkunci sesi lain tidak
+          // boleh ditawarkan — kalau dikirim, backend menolaknya 422.
+          all.push(...rows.filter(
+            (w) => w.kode_depo === session.kode_depo && !inSession.has(w.id) && !w.has_open_session
+          ));
+          if (rows.length < 100 || page >= lastPage || all.length >= MAX_SESSION_WAVES) {
+            truncated = all.length >= MAX_SESSION_WAVES && page < lastPage;
+            break;
+          }
           page++;
         }
+        setLimitReached(truncated);
         setWaves(all);
         setPicked(new Set(all.map((w) => w.id)));
       } catch (e) {
@@ -850,6 +860,11 @@ function AddWavesModal({ session, onClose, onAdded }: {
   return (
     <Modal open onClose={onClose} title="Tambah Baris Monitoring ke Sesi" subtitle={`Baris monitoring minggu ${session.week_start} depo ${session.nama_depo || session.kode_depo} yang belum masuk sesi`} size="lg"
       footer={<><button onClick={onClose} className="btn-secondary">Batal</button><button onClick={save} disabled={saving || picked.size === 0} className="btn-primary disabled:opacity-50">{saving ? 'Menyimpan...' : `Tambah (${picked.size})`}</button></>}>
+      {limitReached && (
+        <p className="text-xs text-amber-700 mb-2">
+          Lebih dari {MAX_SESSION_WAVES} baris. Hanya {MAX_SESSION_WAVES} baris pertama yang ditampilkan; ulangi tambah setelah batch ini tersimpan.
+        </p>
+      )}
       {loading ? <p className="text-sm text-muted-foreground">Memuat baris monitoring...</p> : waves.length === 0 ? (
         <p className="text-sm text-muted-foreground">Semua baris monitoring minggu ini sudah masuk sesi.</p>
       ) : (
@@ -881,4 +896,5 @@ interface WaveOption {
   expired_date_ini: string;
   qty_ini_crt: number;
   status_ini: string;
+  has_open_session?: boolean;
 }

@@ -31,6 +31,13 @@ use Illuminate\Validation\ValidationException;
  */
 class OpnameExpiredSessionController extends Controller
 {
+    /**
+     * Batas wave per request. Modal "Buat Sesi" mengumpulkan semua wave
+     * minggu+depo (bisa >500), jadi batas lama 500 membuat sesi normal
+     * ditolak 422. Nilai ini juga dipakai endpoint tambah wave.
+     */
+    private const MAX_WAVES_PER_REQUEST = 2000;
+
     public function __construct(private EmailNotificationService $emailService) {}
 
     public function index(Request $request): JsonResponse
@@ -117,7 +124,7 @@ class OpnameExpiredSessionController extends Controller
             'kode_depo' => 'required|string|max:20',
             'nama_depo' => 'nullable|string|max:100',
             'assigned_to' => 'required|exists:users,id',
-            'wave_ids' => 'required|array|min:1|max:500|distinct',
+            'wave_ids' => 'required|array|min:1|max:'.self::MAX_WAVES_PER_REQUEST.'|distinct',
             'wave_ids.*' => 'integer|exists:opname_expired_waves,id',
             'notes' => 'nullable|string',
         ]);
@@ -183,10 +190,13 @@ class OpnameExpiredSessionController extends Controller
             // Aturan: item sesi berbutir per batch (satu wave berisi N batch =
             // N verifikasi). Baris warisan tanpa label tetap dibuat dengan
             // batch null — labelnya terbit susulan saat verifikasi pertama.
+            // Hitung sumber sekali untuk semua wave (bukan per wave) supaya
+            // sesi ratusan baris tidak memicu query berat berulang.
             $service = app(OpnameExpiredService::class);
+            $sourcesByWave = $service->waveSourceItemsFor($waves);
             $itemCount = 0;
             foreach ($waves as $wave) {
-                $sources = $service->waveSourceItems($wave);
+                $sources = $sourcesByWave[$wave->id] ?? collect();
 
                 if ($sources->isEmpty()) {
                     OpnameExpiredSessionItem::firstOrCreate([
@@ -555,7 +565,7 @@ class OpnameExpiredSessionController extends Controller
         $this->authorizeSessionWorker($session, $request->user(), ['Menambah wave'], allowCreated: true);
 
         $validated = $request->validate([
-            'wave_ids' => 'required|array|min:1|max:500|distinct',
+            'wave_ids' => 'required|array|min:1|max:'.self::MAX_WAVES_PER_REQUEST.'|distinct',
             'wave_ids.*' => 'integer|exists:opname_expired_waves,id',
         ]);
 
@@ -575,6 +585,7 @@ class OpnameExpiredSessionController extends Controller
             // tidak bisa dilewati.
             OpnameExpiredWave::whereIn('id', $waves->pluck('id'))->lockForUpdate()->get();
             $this->assertWavesUnlocked($waves);
+            $sourcesByWave = $service->waveSourceItemsFor($waves);
 
             foreach ($waves as $wave) {
                 abort_unless(
@@ -585,7 +596,7 @@ class OpnameExpiredSessionController extends Controller
                     "Wave {$wave->kode_barang} tidak satu minggu/depo dengan sesi."
                 );
 
-                $sources = $service->waveSourceItems($wave);
+                $sources = $sourcesByWave[$wave->id] ?? collect();
 
                 if ($sources->isEmpty()) {
                     OpnameExpiredSessionItem::firstOrCreate([
@@ -634,13 +645,23 @@ class OpnameExpiredSessionController extends Controller
      */
     private function assertWavesUnlocked(Collection $waves): void
     {
-        foreach ($waves as $wave) {
-            $lockedWave = OpnameExpiredSessionItem::where('wave_id', $wave->id)
-                ->whereHas('session', fn ($q) => $q->whereIn('status', OpnameExpiredSession::OPEN_STATUSES))
-                ->exists();
-
-            abort_if($lockedWave, 422, "Wave {$wave->kode_barang} sedang berjalan di sesi lain.");
+        if ($waves->isEmpty()) {
+            return;
         }
+
+        // Satu query untuk semua wave; loop exists() per wave membuat sesi
+        // ratusan baris melakukan ratusan query hanya untuk cek kunci.
+        $locked = OpnameExpiredSessionItem::query()
+            ->with('wave:id,kode_barang')
+            ->whereIn('wave_id', $waves->pluck('id'))
+            ->whereHas('session', fn ($q) => $q->whereIn('status', OpnameExpiredSession::OPEN_STATUSES))
+            ->first();
+
+        abort_if(
+            $locked,
+            422,
+            'Wave '.($locked?->wave?->kode_barang ?? $locked?->wave_id).' sedang berjalan di sesi lain.'
+        );
     }
 
     /**

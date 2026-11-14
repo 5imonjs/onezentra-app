@@ -588,6 +588,45 @@ class OpnameExpiredSessionTest extends TestCase
         ])->assertCreated();
     }
 
+    public function test_create_session_accepts_more_than_500_waves(): void
+    {
+        $now = now();
+        $rows = [];
+
+        for ($i = 1; $i <= 501; $i++) {
+            $rows[] = [
+                'week_start' => '2026-09-07',
+                'week_end' => '2026-09-13',
+                'kode_depo' => 'DPO',
+                'nama_depo' => 'Depo Test',
+                'kode_barang' => sprintf('B-LIMIT-%03d', $i),
+                'nama_barang' => 'Produk Limit '.$i,
+                'expired_date_ini' => '2027-02-01',
+                'sisa_hari' => 100,
+                'status_ini' => 'AMAN',
+                'qty_ini_crt' => 1,
+                'qty_ini_pcs' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        collect($rows)->chunk(100)->each(fn ($chunk) => OpnameExpiredWave::insert($chunk->all()));
+        $waveIds = OpnameExpiredWave::where('week_start', '2026-09-07')->pluck('id')->all();
+
+        Sanctum::actingAs($this->supervisor);
+        $res = $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => $waveIds,
+        ])->assertCreated();
+
+        $this->assertCount(501, $res->json('data.items'));
+        $this->assertDatabaseCount('opname_expired_session_items', 501);
+    }
+
     public function test_verify_requires_identification_method(): void
     {
         $session = $this->makeSession();

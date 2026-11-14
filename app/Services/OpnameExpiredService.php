@@ -684,13 +684,40 @@ class OpnameExpiredService
      */
     public function waveSourceItems(OpnameExpiredWave $wave)
     {
-        $weekStart = Carbon::parse($wave->week_start)->startOfWeek(Carbon::MONDAY);
+        return $this->waveSourceItemsFor(collect([$wave]))[$wave->id] ?? collect();
+    }
 
-        return $this->eligibleItems($weekStart)->filter(
-            fn (ReceivingItem $item) => $item->kode_barang === $wave->kode_barang
-                && ($item->getKodeDepoFallback() ?: self::DEPO_GENERAL) === ($wave->kode_depo ?: self::DEPO_GENERAL)
-                && $item->expired_date?->toDateString() === $wave->expired_date_ini?->toDateString()
-        )->values();
+    /**
+     * Sumber ledger untuk banyak wave sekaligus. `eligibleItems()` dihitung
+     * sekali per minggu, bukan sekali per wave: sesi besar (ratusan wave)
+     * sebelumnya memicu query berat berulang dan bisa timeout.
+     *
+     * @param  Collection<int, OpnameExpiredWave>  $waves
+     * @return array<int, Collection<int, ReceivingItem>>
+     */
+    public function waveSourceItemsFor(Collection $waves): array
+    {
+        $sources = [];
+
+        $byWeek = $waves->groupBy(
+            fn (OpnameExpiredWave $wave) => Carbon::parse($wave->week_start)
+                ->startOfWeek(Carbon::MONDAY)
+                ->toDateString()
+        );
+
+        foreach ($byWeek as $weekStart => $weekWaves) {
+            $eligible = $this->eligibleItems(Carbon::parse($weekStart));
+
+            foreach ($weekWaves as $wave) {
+                $sources[$wave->id] = $eligible->filter(
+                    fn (ReceivingItem $item) => $item->kode_barang === $wave->kode_barang
+                        && ($item->getKodeDepoFallback() ?: self::DEPO_GENERAL) === ($wave->kode_depo ?: self::DEPO_GENERAL)
+                        && $item->expired_date?->toDateString() === $wave->expired_date_ini?->toDateString()
+                )->values();
+            }
+        }
+
+        return $sources;
     }
 
     /**
