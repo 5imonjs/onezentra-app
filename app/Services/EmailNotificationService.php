@@ -33,10 +33,17 @@ class EmailNotificationService
      * Apply SMTP settings from email_settings to the runtime mail config.
      * Falls back to .env values when from_system_env is true or no setting exists.
      */
-    public function applySmtpSettings(): void
+    /**
+     * Terapkan setting SMTP dari database ke config runtime.
+     *
+     * @param  bool  $force  Abaikan saklar `is_active`; dipakai halaman
+     *                       "Kirim Email Test" agar admin bisa menguji
+     *                       kredensial sebelum pengiriman diaktifkan.
+     */
+    public function applySmtpSettings(bool $force = false): void
     {
         $setting = EmailSetting::latest('id')->first();
-        if (! $setting || ! $setting->is_active) {
+        if (! $setting || (! $force && ! $setting->is_active)) {
             return; // use .env defaults
         }
 

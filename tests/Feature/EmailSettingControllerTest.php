@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\EmailNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -82,6 +83,68 @@ class EmailSettingControllerTest extends TestCase
         Sanctum::actingAs($this->userWith(['emails.edit']));
 
         $this->postJson('/api/v1/email-settings/test', ['to' => 'tujuan@test.com'])->assertOk();
+    }
+
+    public function test_apply_smtp_settings_force_uses_inactive_setting(): void
+    {
+        EmailSetting::create([
+            'mailer' => 'smtp', 'host' => 'stored.smtp.test', 'port' => 2525,
+            'from_system_env' => false, 'is_active' => false,
+        ]);
+        config(['mail.mailers.smtp.host' => 'env-host', 'mail.mailers.smtp.port' => 587]);
+
+        app(EmailNotificationService::class)->applySmtpSettings(force: true);
+
+        $this->assertSame('stored.smtp.test', config('mail.mailers.smtp.host'));
+        $this->assertSame(2525, config('mail.mailers.smtp.port'));
+    }
+
+    public function test_test_endpoint_uses_stored_credentials_even_when_inactive(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+        Mail::fake();
+
+        EmailSetting::create([
+            'mailer' => 'smtp', 'host' => 'stored.smtp.test', 'port' => 2525,
+            'username' => 'u', 'password' => 'p', 'encryption' => 'tls',
+            'from_address' => 'noreply@test.com', 'from_system_env' => false, 'is_active' => false,
+        ]);
+
+        $this->postJson('/api/v1/email-settings/test', ['to' => 'tujuan@test.com'])
+            ->assertOk()
+            ->assertJsonPath('mailer', 'smtp')
+            ->assertJsonPath('host', 'stored.smtp.test');
+
+        $this->assertSame('stored.smtp.test', config('mail.mailers.smtp.host'));
+    }
+
+    public function test_test_endpoint_rejects_log_mailer(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+        Mail::fake();
+        config(['mail.default' => 'log']);
+
+        $this->postJson('/api/v1/email-settings/test', ['to' => 'tujuan@test.com'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn (string $message): bool => str_contains($message, 'mailer masih "log"'));
+    }
+
+    public function test_test_endpoint_surfaces_smtp_error_message(): void
+    {
+        Sanctum::actingAs($this->userWith(['emails.edit']));
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => '127.0.0.1',
+            'mail.mailers.smtp.port' => 1,
+            'mail.mailers.smtp.username' => null,
+            'mail.mailers.smtp.password' => null,
+            'mail.mailers.smtp.encryption' => null,
+        ]);
+
+        $response = $this->postJson('/api/v1/email-settings/test', ['to' => 'tujuan@test.com']);
+
+        $response->assertStatus(500);
+        $this->assertStringStartsWith('Gagal mengirim email uji:', (string) $response->json('message'));
     }
 
     public function test_apply_smtp_settings_uses_stored_credentials_when_not_from_env(): void

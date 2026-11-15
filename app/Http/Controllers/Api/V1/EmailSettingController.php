@@ -77,7 +77,23 @@ class EmailSettingController extends Controller
         $to = $request->validate(['to' => 'required|email'])['to'];
 
         try {
-            $this->emailService->applySmtpSettings();
+            // Uji kredensial yang tersimpan walau pengiriman belum diaktifkan,
+            // agar admin bisa memastikan konfigurasi benar sebelum go-live.
+            $this->emailService->applySmtpSettings(force: true);
+
+            // Transport bisa sudah dibuat sebelum config diubah; buang agar
+            // percobaan ini memakai host/kredensial yang baru.
+            $mailer = Mail::getFacadeRoot();
+            if (method_exists($mailer, 'purge')) {
+                $mailer->purge();
+            }
+
+            $driver = (string) config('mail.default');
+            if ($driver === 'log') {
+                return response()->json([
+                    'message' => 'Email test tidak dikirim: mailer masih "log". Matikan "Gunakan kredensial dari .env" atau isi MAIL_* di .env, lalu simpan ulang.',
+                ], 422);
+            }
 
             Mail::raw(
                 'Test email dari ONEZENTRA Warehouse System. Pengaturan email berhasil.',
@@ -86,11 +102,27 @@ class EmailSettingController extends Controller
                 }
             );
 
-            return response()->json(['message' => 'Email test sent']);
+            return response()->json([
+                'message' => 'Email test sent',
+                'mailer' => $driver,
+                'host' => config('mail.mailers.smtp.host'),
+                'port' => config('mail.mailers.smtp.port'),
+            ]);
         } catch (\Throwable $e) {
             report($e);
 
-            return response()->json(['message' => 'Gagal mengirim email uji.'], 500);
+            $raw = $e->getMessage();
+            $firstLine = trim((string) strtok($raw, "\n"));
+
+            // Gmail menolak password akun biasa (535) — arahkan ke App Password
+            // supaya admin tidak mengulang kesalahan yang sama.
+            if (str_contains($raw, '535') || str_contains($raw, 'Username and Password not accepted')) {
+                $firstLine = 'Kredensial SMTP ditolak (535). Untuk Gmail gunakan App Password 16 karakter, bukan password akun, dan pastikan 2-Step Verification aktif.';
+            }
+
+            return response()->json([
+                'message' => 'Gagal mengirim email uji: '.$firstLine,
+            ], 500);
         }
     }
 
