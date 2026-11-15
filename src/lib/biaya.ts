@@ -88,11 +88,3 @@ export function getBiayaConfigFresh(kodeDepo?: string, module: ApprovalModule = 
   return getBiayaConfigFreshWithStatus(kodeDepo, module).then((r) => r.config);
 }
 
-/**
- * Nilai runtime terpusat modul biaya (sumber: config/biaya.php + assignment
- * RFAH per depo, via GET /api/v1/biaya-config). Di-cache per depo per sesi;
- * fallback bila gagal.
- */
-export function getBiayaConfig(kodeDepo?: string, module: ApprovalModule = 'biaya_thl'): Promise<BiayaConfig> {
-  return getBiayaConfigWithStatus(kodeDepo, module).then((r) => r.config);
-}
