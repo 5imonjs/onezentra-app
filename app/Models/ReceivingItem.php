@@ -146,16 +146,6 @@ class ReceivingItem extends Model
         return $this->belongsTo(User::class, 'baseline_covered_by');
     }
 
-    public function isBaselineCovered(): bool
-    {
-        return $this->baseline_covered_at !== null;
-    }
-
-    public function isLegacyBaseline(): bool
-    {
-        return $this->source === self::SOURCE_LEGACY;
-    }
-
     public function getSumberMaterialFallback(): ?string
     {
         return $this->getRawOriginal('sumber_material') ?: $this->receiving?->rencanaKirim?->shipper_name;

@@ -49,9 +49,4 @@ class OpnameExpiredWave extends Model
     {
         return $this->belongsTo(User::class, 'validated_by');
     }
-
-    public function korektor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'koreksi_by');
-    }
 }

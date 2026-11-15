@@ -96,12 +96,4 @@ class OpnameExpiredSession extends Model
     {
         return in_array($this->status, [self::STATUS_IN_PROGRESS, self::STATUS_REVISI], true);
     }
-
-    /**
-     * Semua baris sudah dihitung — syarat kirim sesi.
-     */
-    public function unverifiedCount(): int
-    {
-        return $this->items()->whereNull('verified_at')->count();
-    }
 }

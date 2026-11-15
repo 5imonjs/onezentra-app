@@ -25,16 +25,11 @@ use Laravel\Sanctum\HasApiTokens;
 //
 // Penulisan ke kolom ini harus selalu eksplisit di sisi server, lihat
 // SecurityAuditTest::test_role_id_bisa_ditulis_server_walau_tidak_fillable.
-#[Fillable(['kode_depo', 'nama_depo', 'region_id', 'scope_level', 'kode_ps', 'full_name', 'alamat', 'email', 'password', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at', 'level', 'status'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes'])]
+#[Fillable(['kode_depo', 'nama_depo', 'region_id', 'scope_level', 'kode_ps', 'full_name', 'alamat', 'email', 'password', 'level', 'status'])]
+#[Hidden(['password'])]
 class User extends Authenticatable
 {
     use HasApiTokens, HasDepotScope, HasFactory, Notifiable;
-
-    public function isAdminMaster(): bool
-    {
-        return $this->level === 'admin_master';
-    }
 
     public function isMasterScope(): bool
     {
@@ -76,7 +71,6 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'two_factor_confirmed_at' => 'datetime',
             'password' => 'hashed',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
@@ -276,11 +270,6 @@ class User extends Authenticatable
         return $this->roles()->where('slug', $slug)->exists();
     }
 
-    public function hasAnyRole(array $slugs): bool
-    {
-        return $this->roles()->whereIn('slug', $slugs)->exists();
-    }
-
     public function getPermissions(): Collection
     {
         $cacheKey = "user:{$this->id}:permissions";
@@ -332,10 +321,5 @@ class User extends Authenticatable
     public function getAssignedPermissionSlugs(): array
     {
         return $this->getPermissions()->pluck('slug')->toArray();
-    }
-
-    public function getRoleNames(): array
-    {
-        return $this->roles()->pluck('name')->toArray();
     }
 }

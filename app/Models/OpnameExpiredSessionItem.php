@@ -64,9 +64,4 @@ class OpnameExpiredSessionItem extends Model
     {
         return $this->belongsTo(User::class, 'verified_by');
     }
-
-    public function isVerified(): bool
-    {
-        return $this->verified_at !== null;
-    }
 }
