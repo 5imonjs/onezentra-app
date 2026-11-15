@@ -212,7 +212,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
       notifyGlobal('Saldo awal untuk depo ini belum terpasang.');
       return;
     }
-    if (!confirm('Yakin ingin menghapus manifest baseline untuk depo ' + (depo.trim() || '-') + '? Tindakan ini akan membatalkan setting baseline dan Receiving items terkait akan membuang reference baseline. Tindakan ini tidak bisa di-undone melalui antarmuka ini.')) {
+    if (!confirm('Yakin ingin menghapus baseline untuk depo ' + (depo.trim() || '-') + '? Semua baris saldo awal hasil import baseline ini (beserta labelnya) akan dihapus permanen agar bisa diimpor ulang. Tindakan ini tidak bisa di-undo.')) {
       return;
     }
     setRemovingBaseline(true);
