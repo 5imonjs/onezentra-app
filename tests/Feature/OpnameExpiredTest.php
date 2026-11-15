@@ -8,6 +8,7 @@ use App\Models\Batch;
 use App\Models\ClusterPrincipal;
 use App\Models\EmailRecipient;
 use App\Models\Npn;
+use App\Models\OpnameExpiredBaselineImport;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -1484,6 +1485,74 @@ class OpnameExpiredTest extends TestCase
         // Setelah ada Receiving baru, wave ini bukan lagi legacy murni.
         $legacyAfter = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07&source=legacy')->assertOk();
         $this->assertSame([], collect($legacyAfter->json('data.data'))->pluck('kode_barang')->all());
+    }
+
+    public function test_reset_baseline_deletes_manifest_and_legacy_rows_so_reimport_works(): void
+    {
+        $rows = [['B-RESET-01', 'Produk Reset', 10, 10, '2027-01-01', '2026-09-01']];
+        $payload = [
+            'file' => $this->baselineFile($rows),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ];
+
+        $this->post('/api/v1/receiving-items/import-baseline', $payload)
+            ->assertOk()
+            ->assertJsonPath('imported', 1);
+
+        $baseline = OpnameExpiredBaselineImport::where('kode_depo', 'DPO')->firstOrFail();
+        $itemIds = ReceivingItem::where('baseline_import_id', $baseline->id)->pluck('id');
+        $this->assertCount(1, $itemIds);
+        $this->assertSame(1, Batch::count());
+
+        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset")
+            ->assertOk()
+            ->assertJsonPath('deleted_items', 1)
+            ->assertJsonPath('deleted_batches', 1)
+            ->assertJsonPath('kode_depo', 'DPO');
+
+        $this->assertSoftDeleted('opname_expired_baseline_imports', ['id' => $baseline->id]);
+        $this->assertSame(0, ReceivingItem::whereIn('id', $itemIds)->count());
+        $this->assertSame(0, Batch::count());
+
+        // Baris lama sudah dibuang, jadi impor ulang tidak dianggap duplikat.
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile($rows),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk()
+            ->assertJsonPath('imported', 1)
+            ->assertJsonPath('duplicates', 0);
+    }
+
+    public function test_reset_baseline_is_blocked_while_opname_session_is_open(): void
+    {
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile([['B-RESET-02', 'Produk Reset', 4, 4, '2027-01-01', '2026-09-01']]),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk();
+
+        $baseline = OpnameExpiredBaselineImport::where('kode_depo', 'DPO')->firstOrFail();
+
+        OpnameExpiredSession::create([
+            'week_start' => '2026-09-07',
+            'week_end' => '2026-09-13',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->user->id,
+            'created_by' => $this->user->id,
+            'status' => OpnameExpiredSession::STATUS_OPEN,
+        ]);
+
+        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset")
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Sesi opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum menghapus saldo awal.');
+
+        $this->assertDatabaseHas('opname_expired_baseline_imports', ['id' => $baseline->id, 'deleted_at' => null]);
     }
 
     public function test_baseline_install_needs_baseline_permission_without_penerimaan_create(): void

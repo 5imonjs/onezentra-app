@@ -1083,16 +1083,21 @@ class ReceivingItemController extends Controller
         return $item;
     }
 
-
     /**
-     * Reset baseline import untuk depo ini — menghapus manifes baseline lama
-     * dan mengosongkan baseline_import_id pada receiving items terkait.
-     * Setelah ini, admin/depo bisa impor baseline baru.
+     * Reset baseline import untuk depo ini — menghapus manifes baseline
+     * bersama baris ledger hasil import baseline tersebut beserta labelnya.
      *
-     * @param  OpnameExpiredBaselineImport  $baselineImport
-     * @return JsonResponse
+     * Baris ikut dibuang (bukan sekadar dilepas) karena impor berikutnya
+     * melewati kunci barang|depo|expired yang sudah ada di ledger. Kalau
+     * baris lama ditinggal, impor ulang akan dihitung duplikat dan baseline
+     * baru terbentuk tanpa isi.
+     *
+     * Label yang sudah terverifikasi sesi lapangan dilindungi: baseline
+     * ditolak dihapus agar bukti kerja tidak hilang. Sesi yang masih
+     * terbuka juga menghalangi karena snapshot lapangan akan menunjuk stok
+     * yang sudah tidak ada.
      */
-    public function resetBaseline(OpnameExpiredBaselineImport $baselineImport): JsonResponse
+    public function resetBaseline(Request $request, OpnameExpiredBaselineImport $baselineImport): JsonResponse
     {
         abort_unless(
             $request->user()->canAccessDepotRow($baselineImport->kode_depo, $baselineImport->nama_depo),
@@ -1100,16 +1105,50 @@ class ReceivingItemController extends Controller
             'Anda tidak memiliki akses ke data ini.'
         );
 
-        // Update receiving items yang tercatat baseline untuk membuang reference
-        $baselineImport->items()->update(['baseline_import_id' => null]);
+        abort_if(
+            app(OpnameExpiredService::class)->hasOpenSessionForDepot($baselineImport->kode_depo),
+            422,
+            'Sesi opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum menghapus saldo awal.'
+        );
 
-        // Hapus manifes baseline import
-        $baselineImport->delete();
+        $kodeDepo = $baselineImport->kode_depo;
+        $baselineId = $baselineImport->id;
+
+        $targetIds = ReceivingItem::query()
+            ->where('baseline_import_id', $baselineId)
+            ->pluck('id');
+
+        $protected = OpnameExpiredSessionItem::query()
+            ->whereHas('batch', fn ($query) => $query->whereIn('receiving_item_id', $targetIds))
+            ->whereNotNull('verified_at')
+            ->count();
+
+        abort_if(
+            $protected > 0,
+            422,
+            "{$protected} baris saldo awal sudah diverifikasi sesi lapangan sehingga baseline tidak bisa dihapus."
+        );
+
+        [$deletedItems, $deletedBatches] = DB::transaction(function () use ($baselineImport, $targetIds): array {
+            $deletedBatches = $targetIds->isEmpty()
+                ? 0
+                : Batch::whereIn('receiving_item_id', $targetIds)->delete();
+
+            $deletedItems = $targetIds->isEmpty()
+                ? 0
+                : ReceivingItem::whereIn('id', $targetIds)->delete();
+
+            $baselineImport->delete();
+
+            return [$deletedItems, $deletedBatches];
+        });
 
         return response()->json([
-            'message' => 'Manifest baseline untuk depo ' . $baselineImport->kode_depo . ' telah dihapus. Anda sekarang bisa impor baseline baru.',
-            'deleted_baseline_id' => $baselineImport->id,
-            'kode_depo' => $baselineImport->kode_depo,
+            'message' => "Manifes baseline depo {$kodeDepo} dihapus: {$deletedItems} baris saldo awal dan {$deletedBatches} label dibuang. Anda sekarang bisa impor baseline baru.",
+            'deleted_baseline_id' => $baselineId,
+            'kode_depo' => $kodeDepo,
+            'deleted_items' => $deletedItems,
+            'deleted_batches' => $deletedBatches,
         ]);
     }
 }
