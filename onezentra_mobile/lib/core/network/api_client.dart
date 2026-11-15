@@ -503,31 +503,6 @@ class ApiClient {
     requireAuth: requireAuth,
   );
 
-  /// PATCH request
-  Future<dynamic> patch(
-    String endpoint,
-    Map<String, dynamic> body, {
-    bool requireAuth = true,
-  }) => _send(
-    endpoint,
-    () => _client.patch(
-      _uri(endpoint),
-      headers: _getHeaders(requireAuth: requireAuth),
-      body: jsonEncode(body),
-    ),
-    requireAuth: requireAuth,
-  );
-
-  /// DELETE request
-  Future<dynamic> delete(String endpoint, {bool requireAuth = true}) => _send(
-    endpoint,
-    () => _client.delete(
-      _uri(endpoint),
-      headers: _getHeaders(requireAuth: requireAuth),
-    ),
-    requireAuth: requireAuth,
-  );
-
   Uri _uri(String endpoint) => Uri.parse('$baseUrl$endpoint');
 
   /// Runs an HTTP call with a hard timeout and maps transport failures to

@@ -18,27 +18,21 @@ typedef OpnameExpiredSessionPostMultipart =
 /// Data access for Opname Expired sessions (aturan A2).
 ///
 /// Membawa siklus hidup sesi: list, show, start, tambah wave, verifikasi
-/// item, submit, cancel, assign — approve/revise dilakukan di sistem web.
+/// item, submit, cancel — approve/revise/assign dilakukan di sistem web.
 class OpnameExpiredSessionRepository {
   OpnameExpiredSessionRepository({
     OpnameExpiredSessionGet? get,
     OpnameExpiredSessionRequest? post,
-    OpnameExpiredSessionRequest? put,
     OpnameExpiredSessionPostMultipart? postMultipart,
   }) : _get = get ?? ApiClient().get,
        _post =
            post ??
            ((String endpoint, Map<String, dynamic> body) =>
                ApiClient().post(endpoint, body)),
-       _put =
-           put ??
-           ((String endpoint, Map<String, dynamic> body) =>
-               ApiClient().put(endpoint, body)),
        _postMultipart = postMultipart ?? ApiClient().postMultipart;
 
   final OpnameExpiredSessionGet _get;
   final OpnameExpiredSessionRequest _post;
-  final OpnameExpiredSessionRequest _put;
   final OpnameExpiredSessionPostMultipart _postMultipart;
 
   static Map<String, dynamic> _expectObject(dynamic response) {
@@ -165,15 +159,6 @@ class OpnameExpiredSessionRepository {
         '/opname-sessions/$id/cancel',
         notes == null ? <String, dynamic>{} : <String, dynamic>{'notes': notes},
       ),
-    );
-    return _sessionFromBody(body);
-  }
-
-  Future<OpnameExpiredSession> assign(int id, int assignedTo) async {
-    var body = _expectObject(
-      await _put('/opname-sessions/$id/assign', <String, dynamic>{
-        'assigned_to': assignedTo,
-      }),
     );
     return _sessionFromBody(body);
   }

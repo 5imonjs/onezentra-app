@@ -581,61 +581,6 @@ class AppStatTile extends StatelessWidget {
   );
 }
 
-/// Loading overlay
-class AppLoadingOverlay extends StatelessWidget {
-  const AppLoadingOverlay({
-    required this.isLoading,
-    required this.child,
-    super.key,
-    this.message,
-  });
-  final bool isLoading;
-  final Widget child;
-  final String? message;
-
-  @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      child,
-      if (isLoading)
-        Container(
-          color: Colors.black.withValues(alpha: 0.3),
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(AppTheme.space6),
-              decoration: BoxDecoration(
-                color: context.colors.surfaceCard,
-                borderRadius: AppTheme.radiusXl,
-                boxShadow: const [AppTheme.shadowXl],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppTheme.primary600,
-                    ),
-                  ),
-                  if (message != null) ...[
-                    const SizedBox(height: AppTheme.space4),
-                    Text(
-                      message!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: context.colors.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-    ],
-  );
-}
-
 /// Error display widget
 class AppErrorDisplay extends StatelessWidget {
   const AppErrorDisplay({
@@ -770,47 +715,6 @@ class AppEmptyState extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Divider with text
-class AppSectionDivider extends StatelessWidget {
-  const AppSectionDivider({required this.text, super.key, this.color});
-  final String text;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    var theme = Theme.of(context);
-
-    return Row(
-      children: [
-        Expanded(
-          child: Divider(
-            color: color ?? context.colors.gray200,
-            thickness: 1,
-            height: 1,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
-          child: Text(
-            text,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: color ?? context.colors.gray50,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Divider(
-            color: color ?? context.colors.gray200,
-            thickness: 1,
-            height: 1,
-          ),
-        ),
-      ],
     );
   }
 }

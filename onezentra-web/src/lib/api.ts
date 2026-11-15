@@ -411,7 +411,6 @@ export const npn = {
 export const clusterPrincipal = {
   list: (params?: Record<string, unknown>) => apiClient.get('/cluster-principal', { params }),
   filters: () => apiClient.get('/cluster-principal/filters'),
-  create: (data: Record<string, unknown>) => apiClient.post('/cluster-principal', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/cluster-principal/${id}`, data),
   delete: (id: number) => apiClient.delete(`/cluster-principal/${id}`),
   bulkDelete: (ids: number[]) => apiClient.post('/cluster-principal/bulk-delete', { ids }),
@@ -493,7 +492,6 @@ export const retribusiRates = {
 };
 
 export const receivingItems = {
-  list: (params?: Record<string, unknown>) => apiClient.get('/receiving-items', { params }),
   /**
    * Daftar group penerimaan (pagination per group: satu receiving / satu
    * tanggal manual = satu group utuh, tidak pernah terpotong halaman).
@@ -521,7 +519,6 @@ export const opnameSessions = {
   submit: (id: number) => apiClient.post(`/opname-sessions/${id}/submit`),
   approve: (id: number) => apiClient.post(`/opname-sessions/${id}/approve`),
   revise: (id: number, reason: string) => apiClient.post(`/opname-sessions/${id}/revise`, { reason }),
-  assign: (id: number, assignedTo: number) => apiClient.put(`/opname-sessions/${id}/assign`, { assigned_to: assignedTo }),
   cancel: (id: number, notes?: string) => apiClient.post(`/opname-sessions/${id}/cancel`, notes ? { notes } : {}),
 };
 
@@ -587,7 +584,6 @@ export const opnameExpired = {
 export const rencanaKirim = {
   list: (params?: Record<string, unknown>) => apiClient.get('/rencana-kirim', { params }),
   stats: (kodeDepo?: string) => apiClient.get('/rencana-kirim/stats', { params: kodeDepo ? { kode_depo: kodeDepo } : {} }),
-  get: (id: number) => apiClient.get(`/rencana-kirim/${id}`),
   create: (data: Record<string, unknown>) => apiClient.post('/rencana-kirim', data),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/rencana-kirim/${id}`, data),
   delete: (id: number) => apiClient.delete(`/rencana-kirim/${id}`),
@@ -622,7 +618,6 @@ export const docks = {
 
 export const gateTransactions = {
   list: (params?: Record<string, unknown>) => apiClient.get('/gate-transactions', { params }),
-  stats: (params?: Record<string, unknown>) => apiClient.get('/gate-transactions/stats', { params }),
   create: (data: Record<string, unknown>) => apiClient.post('/gate-transactions', data),
   byNoDokumen: (poTransporter: string) => apiClient.get('/gate-transactions/search/by-dokumen', { params: { po_transporter: poTransporter } }),
 };
@@ -680,7 +675,6 @@ export const users = {
 
   // Depot assignments for Region Manager
   getDepots: (userId: number) => apiClient.get<UserDepotsResponse>(`/users/${userId}/depots`),
-  syncDepots: (userId: number, depotCodes: string[]) => apiClient.put(`/users/${userId}/depots`, { depot_codes: depotCodes }),
 };
 
 export const emailSettings = {
@@ -692,7 +686,6 @@ export const emailSettings = {
 
 export const emailRecipients = {
   list: (params?: Record<string, unknown>) => apiClient.get('/email-recipients', { params }),
-  create: (data: Record<string, unknown>) => apiClient.post('/email-recipients', data),
   // Satu form "Tambah Penerima" → satu permintaan atomik (banyak target).
   bulk: (targets: Record<string, unknown>[]) => apiClient.post('/email-recipients/bulk', { targets }),
   update: (id: number, data: Record<string, unknown>) => apiClient.put(`/email-recipients/${id}`, data),
@@ -716,7 +709,6 @@ export const sjValidations = {
     const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
     return apiClient.post(`/sj-validations/${id}/scan`, data, config);
   },
-  deleteItem: (id: number, itemId: number) => apiClient.delete(`/sj-validations/${id}/items/${itemId}`),
   complete: (id: number) => apiClient.post(`/sj-validations/${id}/complete`),
   cancel: (id: number) => apiClient.post(`/sj-validations/${id}/cancel`),
   // Barang di luar rencana kirim (deviation record): foto bukti wajib, jadi
@@ -750,7 +742,6 @@ export const reports = {
 
 export const biayaThl = {
   list: (params?: Record<string, unknown>) => apiClient.get('/biaya-thl', { params }),
-  candidates: (params?: Record<string, unknown>) => apiClient.get('/biaya-thl/candidates', { params }),
   get: (id: number) => apiClient.get(`/biaya-thl/${id}`),
   create: (data: Record<string, unknown> | FormData) => {
     const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT_MS } : {};
