@@ -413,7 +413,7 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
                 </p>
                 {currentBaseline.has_open_session && (
                   <p className="mt-1 text-[11px] font-medium text-amber-700">
-                    Stock Opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum mengoreksi saldo awal.
+                    Stock Opname depo ini masih terbuka. Koreksi tanggal saldo awal dikunci sampai sesi selesai atau dibatalkan; hapus baseline tetap bisa dilakukan.
                   </p>
                 )}
                 {!currentBaseline.has_open_session && currentBaseline.has_finalized_current_week && (

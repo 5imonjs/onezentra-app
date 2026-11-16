@@ -662,8 +662,10 @@ class ReceivingItemController extends Controller
             'Anda tidak memiliki akses ke depo ini.'
         );
 
-        $this->assertNoOpenOpnameSession($kodeDepo);
-
+        // Baseline boleh dihapus lalu diimpor ulang. Sesi opname yang masih
+        // terbuka tidak boleh menahan import: reset baseline sudah membuang
+        // wave turunannya, dan sesi yang tersisa hanya header riwayat. Baris
+        // yang sudah diverifikasi tetap dilindungi di endpoint reset.
         $alreadyImported = OpnameExpiredBaselineImport::query()
             ->where('kode_depo', $kodeDepo)
             ->exists();
@@ -1103,12 +1105,11 @@ class ReceivingItemController extends Controller
      * awal tetap tampil di Monitoring Kedaluwarsa meski ledger-nya sudah
      * dihapus, lalu ikut terbawa roll-forward ke minggu berikutnya.
      *
-     * Saldo awal boleh dihapus lalu diimpor ulang. Label yang sudah
-     * terverifikasi sesi lapangan tetap dilindungi agar bukti kerja tidak
-     * hilang; sesi yang masih terbuka juga menghalangi karena snapshot
-     * lapangan akan menunjuk stok yang sudah tidak ada. Item sesi final yang
-     * belum terverifikasi ikut ter-cascade bersama wave (sesi induk tetap
-     * tersimpan sebagai riwayat).
+     * Saldo awal boleh dihapus lalu diimpor ulang. Sesi yang masih terbuka
+     * tidak menghalangi: item sesi yang belum terverifikasi ikut ter-cascade
+     * bersama wave, sedangkan header sesi tetap tersimpan sebagai riwayat.
+     * Label yang sudah terverifikasi sesi lapangan tetap dilindungi agar bukti
+     * kerja tidak hilang.
      */
     public function resetBaseline(Request $request, OpnameExpiredBaselineImport $baselineImport): JsonResponse
     {
@@ -1116,12 +1117,6 @@ class ReceivingItemController extends Controller
             $request->user()->canAccessDepotRow($baselineImport->kode_depo, $baselineImport->nama_depo),
             403,
             'Anda tidak memiliki akses ke data ini.'
-        );
-
-        abort_if(
-            app(OpnameExpiredService::class)->hasOpenSessionForDepot($baselineImport->kode_depo),
-            422,
-            'Sesi opname depo ini masih terbuka. Selesaikan atau batalkan sesi sebelum menghapus saldo awal.'
         );
 
         $kodeDepo = $baselineImport->kode_depo;
@@ -1177,9 +1172,10 @@ class ReceivingItemController extends Controller
             })
             ->pluck('id');
 
-        // Saldo awal sengaja boleh dihapus lalu diimpor ulang. Item sesi yang
-        // belum terverifikasi ikut ter-cascade bersama wave-nya; item yang
-        // sudah terverifikasi tetap dilindungi oleh pemeriksaan di atas.
+        // Saldo awal sengaja boleh dihapus lalu diimpor ulang, termasuk saat
+        // sesi lapangan masih terbuka. Item sesi yang belum terverifikasi ikut
+        // ter-cascade bersama wave-nya; item yang sudah terverifikasi tetap
+        // dilindungi oleh pemeriksaan di atas.
         $sessionItems = OpnameExpiredSessionItem::query()
             ->whereIn('wave_id', $waveIds)
             ->count();
