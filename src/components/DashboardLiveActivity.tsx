@@ -33,13 +33,13 @@ type LivePayload = {
 type LiveResponse = { data?: { data?: LivePayload } };
 
 const METHOD_TONES: Record<string, string> = {
-  LOGIN: 'bg-emerald-50 text-emerald-700',
-  LOGOUT: 'bg-slate-100 text-foreground',
-  GET: 'bg-sky-50 text-sky-700',
-  POST: 'bg-indigo-50 text-indigo-700',
-  PUT: 'bg-amber-50 text-amber-700',
-  PATCH: 'bg-amber-50 text-amber-700',
-  DELETE: 'bg-red-50 text-red-700',
+  LOGIN: 'bg-emerald-500/10 text-emerald-600',
+  LOGOUT: 'bg-popover text-muted-foreground',
+  GET: 'bg-sky-500/10 text-sky-600',
+  POST: 'bg-indigo-500/10 text-indigo-600',
+  PUT: 'bg-amber-500/10 text-amber-600',
+  PATCH: 'bg-amber-500/10 text-amber-600',
+  DELETE: 'bg-red-500/10 text-red-600',
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -175,12 +175,12 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
       title="Aktivitas Real-time"
       subtitle={
         <>
-          <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
-            <span aria-hidden="true" className={`h-2 w-2 rounded-full ${connectionDot}`} />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 ring-1 ring-emerald-500/20">
+            <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${connectionDot}`} />
             {connectionLabel}
           </span>
           <span aria-hidden="true">·</span>
-          <span>
+          <span className="tabular-nums">
             {lastUpdated
               ? `Diperbarui ${lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
               : 'Memuat aktivitas...'}
@@ -244,12 +244,18 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
             </div>
           )}
 
-          <ul className="max-h-[30rem] divide-y divide-gray-100 overflow-y-auto" aria-label="Daftar aktivitas real-time">
-            {events.map((event) => (
-              <li key={event.id} className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-popover">
+          <ul className="max-h-[30rem] space-y-1 overflow-y-auto px-3 py-3" aria-label="Daftar aktivitas real-time">
+            {events.map((event, index) => (
+              <li key={event.id} className="group relative flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-popover/70">
+                {index < events.length - 1 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-[25px] top-11 h-[calc(100%-1.25rem)] w-px bg-linear-to-b from-border to-transparent"
+                  />
+                )}
                 <span
                   aria-hidden="true"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-linear-to-br from-primary-500 to-primary-600 text-xs font-bold text-white"
+                  className="relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-linear-to-br from-primary-500 to-primary-600 text-xs font-bold text-white shadow-md ring-2 ring-card"
                 >
                   {event.user_name?.charAt(0)?.toUpperCase() || 'U'}
                 </span>
@@ -259,8 +265,8 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
                     <span className="font-semibold">{event.user_name}</span>{' '}
                     <span className="text-foreground">{event.action}</span>
                   </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-400">
-                    <span className="rounded-full bg-popover px-2 py-0.5 font-semibold text-foreground">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                    <span className="rounded-full bg-popover px-2 py-0.5 font-semibold text-foreground ring-1 ring-border/70">
                       {event.module}
                     </span>
                     <span>{event.level}</span>
@@ -275,13 +281,13 @@ export default function DashboardLiveActivity({ kodeDepo }: { kodeDepo?: string 
                       {formatRelativeTime(event.occurred_at)}
                     </span>
                     <span aria-hidden="true">·</span>
-                    <span className="max-w-full truncate font-mono" title={event.route}>
+                    <span className="max-w-full truncate font-mono text-[10px]" title={event.route}>
                       {event.route}
                     </span>
                   </div>
                 </div>
 
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${methodTone(event.method)}`}>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ring-black/5 ${methodTone(event.method)}`}>
                   {methodLabel(event.method)}
                 </span>
               </li>

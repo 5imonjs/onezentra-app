@@ -8,6 +8,8 @@ import DashboardPanel from '@/components/DashboardPanel';
 
 type Tone = 'amber' | 'blue' | 'sky' | 'violet';
 
+type ToneStyle = { dot: string; chip: string; label: string; tile: string; ring: string };
+
 type ActionItem = { id: string; primary: string; secondary: string; href: string };
 
 type Group = {
@@ -21,11 +23,11 @@ type Group = {
   tone: Tone;
 };
 
-const TONE_STYLES: Record<Tone, { dot: string; chip: string; label: string }> = {
-  amber:  { dot: 'bg-amber-500',   chip: 'bg-amber-50 text-amber-700',      label: 'text-amber-700' },
-  blue:   { dot: 'bg-blue-600',    chip: 'bg-blue-50 text-blue-700',        label: 'text-blue-700' },
-  sky:    { dot: 'bg-sky-600',     chip: 'bg-sky-50 text-sky-700',          label: 'text-sky-700' },
-  violet: { dot: 'bg-primary-600', chip: 'bg-chip-primary text-accent-text', label: 'text-accent-text' },
+const TONE_STYLES: Record<Tone, ToneStyle> = {
+  amber:  { dot: 'bg-amber-500',   chip: 'bg-amber-500/10 text-amber-600 ring-amber-500/20', label: 'text-amber-600', tile: 'bg-amber-500/10 text-amber-600', ring: 'hover:ring-amber-500/30' },
+  blue:   { dot: 'bg-blue-500',    chip: 'bg-blue-500/10 text-blue-600 ring-blue-500/20',    label: 'text-blue-600',  tile: 'bg-blue-500/10 text-blue-600',  ring: 'hover:ring-blue-500/30' },
+  sky:    { dot: 'bg-sky-500',     chip: 'bg-sky-500/10 text-sky-600 ring-sky-500/20',      label: 'text-sky-600',   tile: 'bg-sky-500/10 text-sky-600',   ring: 'hover:ring-sky-500/30' },
+  violet: { dot: 'bg-primary-500', chip: 'bg-primary-500/10 text-accent-text ring-primary-500/20', label: 'text-accent-text', tile: 'bg-primary-500/10 text-accent-text', ring: 'hover:ring-primary-500/30' },
 };
 
 const MAX_PER_GROUP = 4;
@@ -281,11 +283,11 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
 
   if (loading) {
     return (
-      <section className="bg-card rounded-2xl shadow-sm border border-border p-5" aria-busy="true">
-        <div className="mb-3 h-4 w-36 rounded bg-gray-100 animate-pulse" />
+      <section className="rounded-2xl border border-border/80 bg-card/95 p-5 shadow-sm" aria-busy="true">
+        <div className="mb-3 h-4 w-36 rounded-full bg-popover animate-pulse" />
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="h-9 rounded-lg bg-popover animate-pulse" />
-          <div className="h-9 rounded-lg bg-popover animate-pulse" />
+          <div className="h-14 rounded-xl bg-popover animate-pulse" />
+          <div className="h-14 rounded-xl bg-popover animate-pulse" />
         </div>
       </section>
     );
@@ -328,8 +330,11 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
       subtitle="Item yang menunggu aksi Anda hari ini"
       icon={<path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />}
       badge={
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold tabular-nums text-red-700">
-          <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
+        <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-bold tabular-nums text-amber-600 ring-1 ring-amber-500/20">
+          <span className="relative flex h-2 w-2" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+          </span>
           {totalItems} item
         </span>
       }
@@ -341,37 +346,45 @@ export default function PendingActions({ kodeDepo }: { kodeDepo?: string }) {
         </div>
       )}
 
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-border/60">
         {groups.map((group) => {
           const tone = TONE_STYLES[group.tone];
           return (
-            <div key={group.key} className="px-5 py-3">
-              <div className="mb-1.5 flex items-center gap-2">
-                <h3 className={`truncate text-xs font-semibold ${tone.label}`}>{group.label}</h3>
-                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${tone.chip}`}>{group.total}</span>
-                <Link href={group.href} className="ml-auto shrink-0 text-xs font-semibold text-gray-400 transition-colors hover:text-foreground">
+            <div key={group.key} className="px-5 py-4">
+              <div className="mb-2.5 flex items-center gap-2">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${tone.dot}`} aria-hidden="true" />
+                <h3 className="truncate text-[13px] font-semibold text-foreground">{group.label}</h3>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ring-1 ${tone.chip}`}>{group.total}</span>
+                <Link
+                  href={group.href}
+                  className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-popover hover:text-foreground"
+                >
                   Lihat semua →
                 </Link>
               </div>
-              <ul className="grid grid-cols-1 gap-0.5 sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {group.items.map((item) => (
                   <li key={item.id}>
                     <Link
                       href={item.href}
-                      className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-popover"
+                      className={`group flex items-center gap-3 rounded-xl border border-border/70 bg-popover/60 px-3 py-2.5 ring-1 ring-transparent transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:shadow-sm ${tone.ring}`}
                     >
-                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone.dot}`} aria-hidden="true" />
-                      <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{item.primary}</span>
-                        <span className="min-w-0 truncate text-xs text-gray-400">{item.secondary}</span>
+                      <span aria-hidden="true" className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tone.tile}`}>
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l2.25 2.25L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                       </span>
-                      <svg className="h-3.5 w-3.5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-foreground">{item.primary}</span>
+                        <span className="block truncate text-[11px] text-muted-foreground">{item.secondary}</span>
+                      </span>
+                      <svg className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </Link>
                   </li>
                 ))}
               </ul>
               {group.moreCount > 0 && (
-                <p className="mt-1 px-1 text-xs text-gray-400">+{group.moreCount} lainnya — lihat semua di halaman modul</p>
+                <p className="mt-2 px-1 text-[11px] text-muted-foreground">+{group.moreCount} lainnya — lihat semua di halaman modul</p>
               )}
             </div>
           );
