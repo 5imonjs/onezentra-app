@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/store/auth';
 import DashboardActivityChart from '@/components/DashboardActivityChart';
-import DashboardAlerts from '@/components/DashboardAlerts';
 import DashboardBiayaQueue from '@/components/DashboardBiayaQueue';
 import DashboardLiveActivity from '@/components/DashboardLiveActivity';
 import DashboardOpnameChart from '@/components/DashboardOpnameChart';
@@ -75,8 +74,6 @@ export default function DashboardPage() {
         return <DashboardBiayaQueue key={key} kodeDepo={kodeDepo || undefined} />;
       case 'pending':
         return <PendingActions key={key} kodeDepo={kodeDepo || undefined} />;
-      case 'alerts':
-        return <DashboardAlerts key={key} kodeDepo={kodeDepo || undefined} />;
       case 'charts':
         return (
           <div key={key} className="space-y-5">
