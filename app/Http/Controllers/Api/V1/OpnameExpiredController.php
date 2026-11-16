@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exports\OpnameExpiredExport;
 use App\Http\Controllers\Controller;
 use App\Mail\OpnameExpiredNotification;
+use App\Models\ApprovalHistory;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -156,7 +157,11 @@ class OpnameExpiredController extends Controller
         if ($sortBy) {
             $query->orderBy($sortBy, $sortDir)->orderBy('opname_expired_waves.id');
         } else {
-            $query->orderByDesc('opname_expired_waves.week_start');
+            // FEFO: expired terdekat tampil lebih dulu agar operator tidak
+            // memilih lot yang masih panjang umurnya.
+            $query->orderBy('opname_expired_waves.expired_date_ini')
+                ->orderByDesc('opname_expired_waves.week_start')
+                ->orderBy('opname_expired_waves.id');
         }
 
         $perPage = $this->perPage($request);
@@ -432,6 +437,7 @@ class OpnameExpiredController extends Controller
         $validated = $request->validate([
             'qty_koreksi_crt' => 'nullable|numeric|between:-999999,999999',
             'qty_koreksi_pcs' => 'nullable|numeric|between:-9999999,9999999',
+            'reason' => 'required|string|min:10|max:1000',
         ]);
 
         $updates = [];
@@ -445,9 +451,22 @@ class OpnameExpiredController extends Controller
         }
 
         if ($updates) {
-            $updates['koreksi_by'] = $request->user()->id;
-            $updates['koreksi_at'] = now();
-            $wave->update($updates);
+            DB::transaction(function () use ($wave, $updates, $validated, $request): void {
+                $wave->update(array_merge($updates, [
+                    'koreksi_by' => $request->user()->id,
+                    'koreksi_at' => now(),
+                ]));
+
+                ApprovalHistory::create([
+                    'subject_type' => $wave::class,
+                    'subject_id' => $wave->id,
+                    'from_status' => $wave->status_ini,
+                    'to_status' => 'ADJUSTED',
+                    'action' => 'manual_adjust',
+                    'reason' => $validated['reason'],
+                    'actor_id' => $request->user()->id,
+                ]);
+            });
         }
 
         return response()->json([

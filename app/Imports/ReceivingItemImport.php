@@ -30,6 +30,14 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
     /** Baris dilewati karena batch yang sama sudah ada di ledger. */
     public int $duplicates = 0;
 
+    /**
+     * Detail baris duplikat agar operator bisa membetulkan file, bukan
+     * menebak mengapa jumlah import lebih kecil dari isi Excel.
+     *
+     * @var array<int, array{row: int, kode_barang: string, kode_depo: string|null, expired_date: string}>
+     */
+    public array $duplicateRows = [];
+
     public function __construct(
         private User $user,
         private string $source = ReceivingItem::SOURCE_IMPORT,
@@ -66,7 +74,7 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
             ->flip()
             ->all();
 
-        foreach ($collection as $row) {
+        foreach ($collection as $index => $row) {
             // Operator cukup mengisi 5 kolom: PRODUK, QTY DUS/BALL, QTY PCS,
             // EXPIRED, TANGGAL TERIMA. PRODUK boleh SKU pendek (ESVAG150)
             // maupun kode penuh — NPN yang menyelesaikan jadi kode_barang.
@@ -157,6 +165,13 @@ class ReceivingItemImport implements ToCollection, WithHeadingRow, WithValidatio
             $batchKey = implode('|', [$resolvedKode, $attributes['kode_depo'] ?? '', $expired]);
             if (isset($handled[$batchKey]) || isset($existing[$batchKey])) {
                 $this->duplicates++;
+                $this->duplicateRows[] = [
+                    // Heading row = baris 1; data pertama = baris 2.
+                    'row' => $index + 2,
+                    'kode_barang' => $resolvedKode,
+                    'kode_depo' => $attributes['kode_depo'] ?? null,
+                    'expired_date' => $expired,
+                ];
 
                 continue;
             }

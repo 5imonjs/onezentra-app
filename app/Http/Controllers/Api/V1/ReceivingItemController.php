@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\ReceivingItemImport;
 use App\Models\Batch;
 use App\Models\Npn;
+use App\Models\OpnameExpiredBaselineAudit;
 use App\Models\OpnameExpiredBaselineImport;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
@@ -608,6 +609,7 @@ class ReceivingItemController extends Controller
                 'imported' => $import->imported,
                 'skipped' => $import->skipped,
                 'duplicates' => $import->duplicates,
+                'duplicate_rows' => $import->duplicateRows,
                 'weeks' => $import->weeks,
                 'opname_synced' => $synced,
             ]);
@@ -742,6 +744,7 @@ class ReceivingItemController extends Controller
                 'imported' => $import->imported,
                 'skipped' => $import->skipped,
                 'duplicates' => $import->duplicates,
+                'duplicate_rows' => $import->duplicateRows,
                 'baseline_import_id' => $baseline->id,
                 'baseline_date' => $baseline->baseline_date?->toDateString(),
                 'opname_synced' => $synced,
@@ -1119,8 +1122,15 @@ class ReceivingItemController extends Controller
             'Anda tidak memiliki akses ke data ini.'
         );
 
+        $validated = $request->validate([
+            'reason' => 'required|string|min:10|max:1000',
+        ]);
+
         $kodeDepo = $baselineImport->kode_depo;
         $baselineId = $baselineImport->id;
+        $manifestSnapshot = array_merge($baselineImport->toArray(), [
+            'items_count_snapshot' => $baselineImport->items()->count(),
+        ]);
 
         $baselineItems = ReceivingItem::query()
             ->where('baseline_import_id', $baselineId)
@@ -1180,8 +1190,8 @@ class ReceivingItemController extends Controller
             ->whereIn('wave_id', $waveIds)
             ->count();
 
-        [$deletedItems, $deletedBatches, $deletedWaves] = DB::transaction(
-            function () use ($baselineImport, $targetIds, $waveIds): array {
+        [$deletedItems, $deletedBatches, $deletedWaves, $audit] = DB::transaction(
+            function () use ($baselineImport, $targetIds, $waveIds, $sessionItems, $manifestSnapshot, $validated, $request, $kodeDepo): array {
                 $deletedWaves = $waveIds->isEmpty()
                     ? 0
                     : OpnameExpiredWave::whereIn('id', $waveIds)->delete();
@@ -1196,7 +1206,21 @@ class ReceivingItemController extends Controller
 
                 $baselineImport->delete();
 
-                return [$deletedItems, $deletedBatches, $deletedWaves];
+                $audit = OpnameExpiredBaselineAudit::create([
+                    'baseline_import_id' => $baselineImport->id,
+                    'kode_depo' => $kodeDepo,
+                    'nama_depo' => $baselineImport->nama_depo,
+                    'action' => 'reset',
+                    'reason' => $validated['reason'],
+                    'actor_id' => $request->user()->id,
+                    'deleted_items' => $deletedItems,
+                    'deleted_batches' => $deletedBatches,
+                    'deleted_waves' => $deletedWaves,
+                    'deleted_session_items' => $sessionItems,
+                    'manifest_snapshot' => $manifestSnapshot,
+                ]);
+
+                return [$deletedItems, $deletedBatches, $deletedWaves, $audit];
             }
         );
 
@@ -1223,6 +1247,7 @@ class ReceivingItemController extends Controller
             'deleted_batches' => $deletedBatches,
             'deleted_waves' => $deletedWaves,
             'deleted_session_items' => $sessionItems,
+            'audit_id' => $audit->id,
             'opname_synced' => $synced,
         ]);
     }

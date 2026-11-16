@@ -6,6 +6,7 @@ use App\Mail\OpnameExpiredNotification;
 use App\Models\ApprovalHistory;
 use App\Models\Batch;
 use App\Models\EmailRecipient;
+use App\Models\OpnameExpiredAdjustment;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -991,5 +992,84 @@ class OpnameExpiredSessionTest extends TestCase
 
         // Koreksi non-stok (catatan) tetap boleh di tengah sesi.
         $this->putJson("/api/v1/receiving-items/{$manual->id}", ['notes' => 'catatan lapangan'])->assertOk();
+    }
+
+    public function test_approved_corrections_create_ledger_and_next_session_uses_adjusted_quantity(): void
+    {
+        $session = $this->countedAndSubmittedSession();
+        $waveIds = $session->items->pluck('wave_id')->all();
+
+        Sanctum::actingAs($this->approver);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
+
+        $this->assertDatabaseCount('opname_expired_adjustments', 2);
+
+        $adjustment = OpnameExpiredAdjustment::where('session_id', $session->id)
+            ->where('qty_crt', '!=', 0)
+            ->firstOrFail();
+        $this->assertSame($this->approver->id, (int) $adjustment->approved_by);
+        $this->assertSame(10.0, (float) $adjustment->expected_crt);
+        $this->assertSame(5.0, (float) $adjustment->physical_crt);
+        $this->assertSame(-5.0, (float) $adjustment->qty_crt);
+        $this->assertNotNull($adjustment->approved_at);
+
+        // Sesi baru pada wave yang sama WAJIB membandingkan fisik dengan qty
+        // yang sudah dikoreksi (5), bukan qty ledger asli (10).
+        Sanctum::actingAs($this->supervisor);
+        $res = $this->postJson('/api/v1/opname-sessions', [
+            'week_start' => '2026-09-07',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->field->id,
+            'wave_ids' => $waveIds,
+        ])->assertCreated();
+
+        $next = OpnameExpiredSession::find($res->json('data.id'));
+
+        Sanctum::actingAs($this->field);
+        $this->postJson("/api/v1/opname-sessions/{$next->id}/start")->assertOk();
+
+        $nextFirst = $next->items()->where('wave_id', $adjustment->wave_id)->firstOrFail();
+        $this->assertEquals(5, (float) $nextFirst->qty_sistem_crt);
+    }
+
+    public function test_approved_retur_disposition_quarantines_batch(): void
+    {
+        $session = $this->countedAndSubmittedSession();
+        $session->load('items.batch');
+
+        Sanctum::actingAs($this->approver);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
+
+        $batches = $session->items->map->batch->filter()->unique('id');
+        $this->assertCount(2, $batches);
+
+        foreach ($batches as $batch) {
+            $batch->refresh();
+            $this->assertSame(Batch::STATUS_QUARANTINED, $batch->status);
+            $this->assertSame($session->id, (int) $batch->quarantine_session_id);
+            $this->assertSame($this->approver->id, (int) $batch->quarantined_by);
+            $this->assertNotNull($batch->quarantined_at);
+            $this->assertStringContainsString('RETUR', (string) $batch->quarantine_reason);
+        }
+    }
+
+    public function test_approval_is_idempotent_for_adjustment_ledger(): void
+    {
+        $session = $this->countedAndSubmittedSession();
+
+        Sanctum::actingAs($this->approver);
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertOk();
+
+        $this->assertDatabaseCount('opname_expired_adjustments', 2);
+        $waveId = OpnameExpiredAdjustment::where('session_id', $session->id)
+            ->where('qty_crt', '!=', 0)
+            ->value('wave_id');
+
+        // Status APPROVED menolak approval kedua, sehingga ledger tidak bisa
+        // bertambah meski endpoint dipanggil ulang (double-submit).
+        $this->postJson("/api/v1/opname-sessions/{$session->id}/approve")->assertStatus(422);
+        $this->assertDatabaseCount('opname_expired_adjustments', 2);
+        $this->assertEquals(-5, (float) OpnameExpiredWave::findOrFail($waveId)->qty_koreksi_crt);
     }
 }

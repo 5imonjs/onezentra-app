@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OpnameExpiredWave extends Model
 {
@@ -48,5 +49,10 @@ class OpnameExpiredWave extends Model
     public function validator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'validated_by');
+    }
+
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(OpnameExpiredAdjustment::class, 'wave_id');
     }
 }

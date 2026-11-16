@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Imports\ReceivingItemImport;
 use App\Mail\OpnameExpiredNotification;
+use App\Models\ApprovalHistory;
 use App\Models\Batch;
 use App\Models\ClusterPrincipal;
 use App\Models\EmailRecipient;
 use App\Models\Npn;
+use App\Models\OpnameExpiredBaselineAudit;
 use App\Models\OpnameExpiredBaselineImport;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
@@ -372,6 +374,11 @@ class OpnameExpiredTest extends TestCase
 
         $this->putJson("/api/v1/opname-expired/{$wave->id}", [
             'qty_koreksi_crt' => -2,
+        ])->assertStatus(422);
+
+        $this->putJson("/api/v1/opname-expired/{$wave->id}", [
+            'qty_koreksi_crt' => -2,
+            'reason' => 'Koreksi manual hasil cek lapangan.',
         ])->assertOk();
 
         $wave->refresh();
@@ -379,6 +386,13 @@ class OpnameExpiredTest extends TestCase
         $this->assertEquals(8, $wave->effectiveCrt());
         $this->assertNotNull($wave->koreksi_at);
         $this->assertSame($this->user->id, $wave->koreksi_by);
+
+        $history = ApprovalHistory::where('subject_type', OpnameExpiredWave::class)
+            ->where('subject_id', $wave->id)
+            ->where('action', 'manual_adjust')
+            ->firstOrFail();
+        $this->assertSame('Koreksi manual hasil cek lapangan.', $history->reason);
+        $this->assertSame('ADJUSTED', $history->to_status);
     }
 
     public function test_wave_koreksi_is_used_as_next_week_baseline(): void
@@ -1487,6 +1501,64 @@ class OpnameExpiredTest extends TestCase
         $this->assertSame([], collect($legacyAfter->json('data.data'))->pluck('kode_barang')->all());
     }
 
+    public function test_reset_baseline_requires_reason_and_records_audit(): void
+    {
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile([['B-REASON-01', 'Produk Alasan', 5, 5, '2027-01-01', '2026-09-01']]),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk();
+
+        $baseline = OpnameExpiredBaselineImport::where('kode_depo', 'DPO')->firstOrFail();
+
+        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset", [])
+            ->assertStatus(422);
+
+        $this->assertDatabaseCount('opname_expired_baseline_audits', 0);
+
+        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset", [
+            'reason' => 'Impor ulang karena data baseline berubah.',
+        ])->assertOk();
+
+        $this->assertDatabaseCount('opname_expired_baseline_audits', 1);
+    }
+
+    public function test_baseline_import_reports_duplicate_rows(): void
+    {
+        $rows = [
+            ['B-DUP-01', 'Produk Duplikat', 4, 4, '2027-01-01', '2026-09-01'],
+            ['B-DUP-01', 'Produk Duplikat', 4, 4, '2027-01-01', '2026-09-01'],
+            ['B-DUP-02', 'Produk Berbeda', 6, 6, '2027-02-01', '2026-09-01'],
+        ];
+
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile($rows),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk()
+            ->assertJsonPath('imported', 2)
+            ->assertJsonPath('duplicates', 1)
+            ->assertJsonPath('duplicate_rows.0.row', 3)
+            ->assertJsonPath('duplicate_rows.0.kode_barang', 'B-DUP-01');
+    }
+
+    public function test_index_orders_by_fefo_by_default(): void
+    {
+        $this->receipt('B-FEFO-FAR', 'Produk Umur Panjang', 4, '2027-08-01', '2026-09-09');
+        $this->receipt('B-FEFO-NEAR', 'Produk Expired Dekat', 4, '2026-09-20', '2026-09-09');
+
+        app(OpnameExpiredService::class)->generate();
+
+        $res = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')->assertOk();
+
+        $this->assertSame(
+            ['B-FEFO-NEAR', 'B-FEFO-FAR'],
+            collect($res->json('data.data'))->pluck('kode_barang')->all()
+        );
+    }
+
     public function test_reset_baseline_deletes_manifest_and_legacy_rows_so_reimport_works(): void
     {
         $rows = [['B-RESET-01', 'Produk Reset', 10, 10, '2027-01-01', '2026-09-01']];
@@ -1508,12 +1580,22 @@ class OpnameExpiredTest extends TestCase
 
         $this->assertDatabaseHas('opname_expired_waves', ['kode_barang' => 'B-RESET-01']);
 
-        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset")
+        $reset = $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset", [
+            'reason' => 'Reset baseline untuk impor ulang data terbaru.',
+        ])
             ->assertOk()
             ->assertJsonPath('deleted_items', 1)
             ->assertJsonPath('deleted_batches', 1)
             ->assertJsonPath('deleted_waves', 1)
             ->assertJsonPath('kode_depo', 'DPO');
+
+        $audit = OpnameExpiredBaselineAudit::findOrFail($reset->json('audit_id'));
+        $this->assertSame('DPO', $audit->kode_depo);
+        $this->assertSame('Reset baseline untuk impor ulang data terbaru.', $audit->reason);
+        $this->assertSame($this->user->id, (int) $audit->actor_id);
+        $this->assertSame(1, $audit->deleted_items);
+        $this->assertSame(1, $audit->manifest_snapshot['items_count_snapshot']);
+        $this->assertSame('DPO', $audit->manifest_snapshot['kode_depo']);
 
         $this->assertSoftDeleted('opname_expired_baseline_imports', ['id' => $baseline->id]);
         $this->assertSame(0, ReceivingItem::whereIn('id', $itemIds)->count());
@@ -1630,7 +1712,9 @@ class OpnameExpiredTest extends TestCase
         // Saldo awal memang boleh dihapus lalu diimpor ulang. Item sesi yang
         // belum terverifikasi ikut ter-cascade bersama wave; sesi induk tetap
         // ada sebagai riwayat.
-        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset")
+        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset", [
+            'reason' => 'Reset baseline untuk impor ulang data terbaru.',
+        ])
             ->assertOk()
             ->assertJsonPath('deleted_waves', 1)
             ->assertJsonPath('deleted_session_items', 1);
@@ -1672,7 +1756,9 @@ class OpnameExpiredTest extends TestCase
 
         // Sesi yang masih terbuka tidak boleh menahan hapus baseline: item
         // yang belum terverifikasi ikut ter-cascade, header sesi tetap ada.
-        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset")
+        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset", [
+            'reason' => 'Reset baseline untuk impor ulang data terbaru.',
+        ])
             ->assertOk()
             ->assertJsonPath('deleted_waves', 1)
             ->assertJsonPath('deleted_session_items', 1);

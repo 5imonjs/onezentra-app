@@ -52,6 +52,14 @@ class OpnameExpiredSession extends Model
         return $this->hasMany(OpnameExpiredSessionItem::class, 'session_id');
     }
 
+    /**
+     * Ledger koreksi yang lahir saat sesi disetujui.
+     */
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(OpnameExpiredAdjustment::class, 'session_id');
+    }
+
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Mail\OpnameExpiredNotification;
 use App\Models\ApprovalHistory;
+use App\Models\OpnameExpiredAdjustment;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -255,7 +256,15 @@ class OpnameExpiredSessionController extends Controller
         $bySj = ReceivingItem::whereIn('sj_validation_item_id', $batches->pluck('sj_validation_item_id')->filter()->all())
             ->get()->keyBy('sj_validation_item_id');
 
-        $items = $session->items->map(function (OpnameExpiredSessionItem $item) use ($byReceiving, $bySj, $session): array {
+        $adjustments = OpnameExpiredAdjustment::query()
+            ->whereIn('batch_id', $batches->pluck('id')->all())
+            ->whereNotNull('approved_at')
+            ->selectRaw('batch_id, COALESCE(SUM(qty_crt), 0) as crt, COALESCE(SUM(qty_pcs), 0) as pcs')
+            ->groupBy('batch_id')
+            ->get()
+            ->keyBy('batch_id');
+
+        $items = $session->items->map(function (OpnameExpiredSessionItem $item) use ($byReceiving, $bySj, $adjustments, $session): array {
             $source = $item->batch
                 ? ($item->batch->receiving_item_id
                     ? ($byReceiving[$item->batch->receiving_item_id] ?? null)
@@ -306,12 +315,18 @@ class OpnameExpiredSessionController extends Controller
                         : (int) $today->diffInDays($expiredDay);
             }
 
+            $adjustment = $item->batch_id ? ($adjustments[$item->batch_id] ?? null) : null;
+            $adjustmentCrt = (float) ($adjustment->crt ?? 0);
+            $adjustmentPcs = (float) ($adjustment->pcs ?? 0);
+
             $expectedCrt = $item->qty_sistem_crt !== null
                 ? (float) $item->qty_sistem_crt
-                : ($source ? (float) $source->actual_qty : null);
+                : ($source ? (float) $source->actual_qty + $adjustmentCrt : null);
             $expectedPcs = $item->qty_sistem_pcs !== null
                 ? (float) $item->qty_sistem_pcs
-                : ($source && $source->qty_pcs !== null ? (float) $source->qty_pcs : null);
+                : ($source && $source->qty_pcs !== null
+                    ? (float) $source->qty_pcs + $adjustmentPcs
+                    : ($adjustmentPcs !== 0.0 ? $adjustmentPcs : null));
 
             return array_merge($item->toArray(), [
                 'expected_crt' => $expectedCrt,

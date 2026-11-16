@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Batch;
+use App\Models\OpnameExpiredAdjustment;
 use App\Models\OpnameExpiredBaselineImport;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
@@ -21,6 +22,9 @@ class OpnameExpiredService
 
     /** @var array<string, array{date: Carbon, at: Carbon}>|null */
     private ?array $baselineCutoffsCache = null;
+
+    /** @var array<int, array{crt: float, pcs: float}> */
+    private array $adjustmentTotals = [];
 
     public function generate(?Carbon $reference = null, ?User $user = null): array
     {
@@ -335,6 +339,15 @@ class OpnameExpiredService
         }
 
         return ReceivingItem::with(['receiving.rencanaKirim', 'batch', 'verifiedBatch'])
+            // Koreksi opname yang sudah disetujui ikut mengubah qty efektif.
+            // Jika wave pernah dihapus lalu generate ulang, stok tidak boleh
+            // kembali ke qty ledger asli sebelum koreksi.
+            ->withSum(['opnameAdjustments as approved_adjustment_crt' => function ($query): void {
+                $query->whereNotNull('approved_at');
+            }], 'qty_crt')
+            ->withSum(['opnameAdjustments as approved_adjustment_pcs' => function ($query): void {
+                $query->whereNotNull('approved_at');
+            }], 'qty_pcs')
             ->whereNotNull('expired_date')
             ->whereNotNull('kode_barang')
             ->when(
@@ -602,8 +615,8 @@ class OpnameExpiredService
                 ];
             }
 
-            $aggregates[$key]['qty_crt'] += (float) $item->actual_qty;
-            $aggregates[$key]['qty_pcs'] += (float) ($item->qty_pcs ?? 0);
+            $aggregates[$key]['qty_crt'] += (float) $item->actual_qty + (float) ($item->approved_adjustment_crt ?? 0);
+            $aggregates[$key]['qty_pcs'] += (float) ($item->qty_pcs ?? 0) + (float) ($item->approved_adjustment_pcs ?? 0);
 
             // Komposisi sumber untuk penanda visual (SJ murni / Import / Campuran).
             if ($item->source === ReceivingItem::SOURCE_VALIDASI) {
@@ -830,6 +843,13 @@ class OpnameExpiredService
             }
 
             $items = $query->get();
+
+            // Satu query untuk semua batch di sesi — bukan N+1 saat freeze
+            // ratusan baris.
+            $this->primeAdjustmentTotals(
+                $items->pluck('batch_id')->filter()->unique()->values()->all()
+            );
+
             $count = 0;
 
             foreach ($items as $item) {
@@ -846,9 +866,59 @@ class OpnameExpiredService
     }
 
     /**
-     * Qty acuan sistem satu baris sesi. Batch-level memakai qty ledger batch;
-     * baris warisan memakai qty wave efektif (termasuk koreksi yang sudah
-     * disetujui sebelumnya).
+     * Muat total koreksi per batch dalam satu query. Batch tanpa adjustment
+     * diisi nol agar pemanggilan berikutnya tidak query ulang.
+     *
+     * @param  array<int, int|string>  $batchIds
+     */
+    public function primeAdjustmentTotals(array $batchIds): void
+    {
+        $batchIds = array_values(array_unique(array_filter(
+            array_map('intval', $batchIds),
+            fn (int $id): bool => $id > 0,
+        )));
+
+        if ($batchIds === []) {
+            return;
+        }
+
+        foreach (OpnameExpiredAdjustment::query()
+            ->whereIn('batch_id', $batchIds)
+            ->whereNotNull('approved_at')
+            ->selectRaw('batch_id, COALESCE(SUM(qty_crt), 0) as crt, COALESCE(SUM(qty_pcs), 0) as pcs')
+            ->groupBy('batch_id')
+            ->get() as $row) {
+            $this->adjustmentTotals[(int) $row->batch_id] = [
+                'crt' => (float) $row->crt,
+                'pcs' => (float) $row->pcs,
+            ];
+        }
+
+        foreach ($batchIds as $batchId) {
+            $this->adjustmentTotals[$batchId] ??= ['crt' => 0.0, 'pcs' => 0.0];
+        }
+    }
+
+    /**
+     * @return array{crt: float, pcs: float}
+     */
+    private function approvedAdjustmentTotals(?int $batchId): array
+    {
+        if ($batchId === null) {
+            return ['crt' => 0.0, 'pcs' => 0.0];
+        }
+
+        if (! array_key_exists($batchId, $this->adjustmentTotals)) {
+            $this->primeAdjustmentTotals([$batchId]);
+        }
+
+        return $this->adjustmentTotals[$batchId];
+    }
+
+    /**
+     * Qty acuan sistem satu baris sesi. Batch-level memakai qty ledger batch
+     * ditambah seluruh koreksi yang sudah disetujui; baris warisan memakai
+     * qty wave efektif (termasuk koreksi yang sudah disetujui sebelumnya).
      *
      * @return array{0: float, 1: float|null}
      */
@@ -857,9 +927,14 @@ class OpnameExpiredService
         $source = $item->batch ? $this->batchSourceItem($item->batch) : null;
 
         if ($source) {
+            $adjustment = $this->approvedAdjustmentTotals($item->batch_id);
+            $expectedPcs = $source->qty_pcs !== null
+                ? (float) $source->qty_pcs + $adjustment['pcs']
+                : ($adjustment['pcs'] !== 0.0 ? $adjustment['pcs'] : null);
+
             return [
-                (float) $source->actual_qty,
-                $source->qty_pcs !== null ? (float) $source->qty_pcs : null,
+                (float) $source->actual_qty + $adjustment['crt'],
+                $expectedPcs,
             ];
         }
 
@@ -1013,6 +1088,10 @@ class OpnameExpiredService
      * - item warisan tanpa batch (wave tanpa baris ledger): selisih =
      *   fisik − qty wave minggu ini.
      *
+     * Setiap selisih juga ditulis ke `opname_expired_adjustments` (ledger
+     * koreksi per batch) agar sesi berikutnya memakai qty yang sudah
+     * dikoreksi, dan disposisi RETUR/DISPOSAL mengarantina batch.
+     *
      * Penanda koreksi memakai identitas PETUGAS (koreksi_by = angka), penanda
      * validasi memakai identitas APPROVER (validated_by = setuju).
      */
@@ -1021,6 +1100,13 @@ class OpnameExpiredService
         $wavesTouched = 0;
 
         $items = $lockedSession->items()->whereNotNull('verified_at')->with('batch')->get();
+
+        // Snapshot qty acuan sudah dibekukan saat sesi dimulai. Di sini hanya
+        // perlu memuat total koreksi lama untuk audit/fallback; jangan biarkan
+        // sesi yang sama menambah koreksi dua kali bila approval diulang.
+        $this->primeAdjustmentTotals(
+            $items->pluck('batch_id')->filter()->unique()->values()->all()
+        );
 
         foreach ($items->groupBy('wave_id') as $waveId => $waveItems) {
             $wave = OpnameExpiredWave::whereKey($waveId)->lockForUpdate()->firstOrFail();
@@ -1041,9 +1127,6 @@ class OpnameExpiredService
                     $expectedPcs = $waveItem->qty_sistem_pcs !== null
                         ? (float) $waveItem->qty_sistem_pcs
                         : (float) ($source->qty_pcs ?? 0);
-
-                    $deltaCrt += $fisikCrt - $expectedCrt;
-                    $deltaPcs += $fisikPcs - $expectedPcs;
                 } else {
                     // Wave tanpa baris ledger (warisan / carried murni):
                     // acuan pembandingnya snapshot sesi, atau qty wave efektif
@@ -1054,16 +1137,63 @@ class OpnameExpiredService
                     $expectedPcs = $waveItem->qty_sistem_pcs !== null
                         ? (float) $waveItem->qty_sistem_pcs
                         : $wave->effectivePcs();
+                }
 
-                    $deltaCrt += $fisikCrt - $expectedCrt;
-                    $deltaPcs += $fisikPcs - $expectedPcs;
+                $adjustment = OpnameExpiredAdjustment::firstOrCreate(
+                    [
+                        'session_id' => $lockedSession->id,
+                        'wave_id' => $wave->id,
+                        'item_key' => OpnameExpiredAdjustment::itemKeyFor($waveItem->batch),
+                    ],
+                    [
+                        'batch_id' => $waveItem->batch_id,
+                        'receiving_item_id' => $source?->id,
+                        'qty_crt' => $fisikCrt - $expectedCrt,
+                        'qty_pcs' => $fisikPcs - $expectedPcs,
+                        'expected_crt' => $expectedCrt,
+                        'expected_pcs' => $expectedPcs,
+                        'physical_crt' => $fisikCrt,
+                        'physical_pcs' => $fisikPcs,
+                        'disposition' => $waveItem->disposition,
+                        'notes' => $waveItem->notes,
+                        'approved_by' => $approver->id,
+                        'approved_at' => now(),
+                    ]
+                );
+
+                // Approval yang terulang tidak boleh menggandakan koreksi.
+                if (! $adjustment->wasRecentlyCreated) {
+                    continue;
+                }
+
+                $deltaCrt += (float) $adjustment->qty_crt;
+                $deltaPcs += (float) $adjustment->qty_pcs;
+
+                if ($source && $waveItem->batch
+                    && in_array($waveItem->disposition, [
+                        OpnameExpiredSessionItem::DISPOSITION_RETUR,
+                        OpnameExpiredSessionItem::DISPOSITION_DISPOSAL,
+                    ], true)) {
+                    $waveItem->batch->quarantine(
+                        $approver,
+                        $lockedSession,
+                        sprintf(
+                            'Disposisi %s dari sesi opname #%d.',
+                            $waveItem->disposition,
+                            $lockedSession->id,
+                        ),
+                    );
                 }
             }
 
             // Increment atomik: pembacaan lalu tulis biasa dapat menimpa
             // koreksi transaksi pesaing yang commit di antara baca dan tulis.
-            $wave->increment('qty_koreksi_crt', $deltaCrt);
-            $wave->increment('qty_koreksi_pcs', $deltaPcs);
+            if ($deltaCrt !== 0.0) {
+                $wave->increment('qty_koreksi_crt', $deltaCrt);
+            }
+            if ($deltaPcs !== 0.0) {
+                $wave->increment('qty_koreksi_pcs', $deltaPcs);
+            }
             $wave->update([
                 'koreksi_by' => $lockedSession->submitted_by,
                 'koreksi_at' => $lockedSession->submitted_at ?? now(),
@@ -1073,6 +1203,10 @@ class OpnameExpiredService
 
             $wavesTouched++;
         }
+
+        // Koreksi baru sudah tercatat; buang cache agar pemakaian service
+        // berikutnya di request yang sama membaca total terbaru.
+        $this->adjustmentTotals = [];
 
         return $wavesTouched;
     }
@@ -1104,7 +1238,7 @@ class OpnameExpiredService
     private function rekomendasi(string $status, int $sisaHari): string
     {
         return match ($status) {
-            'AMAN' => 'Stok aman, jalankan FIFO normal.',
+            'AMAN' => 'Stok aman, jalankan FEFO normal (expired terdekat keluar dulu).',
             'PERHATIAN' => "Mulai prioritaskan produk ini, sisa {$sisaHari} hari.",
             'KRITIS' => $sisaHari <= OpnameSetting::get('threshold_kritis', 7)
                 ? "SEGERA kirim/retur, sisa {$sisaHari} hari."

@@ -2,16 +2,32 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 
 class Batch extends Model
 {
+    public const STATUS_ACTIVE = 'ACTIVE';
+
+    public const STATUS_CANCELLED = 'CANCELLED';
+
+    /** Stok diblokir sampai retur/disposal selesai. */
+    public const STATUS_QUARANTINED = 'QUARANTINED';
+
+    public const STATUSES = [
+        self::STATUS_ACTIVE,
+        self::STATUS_CANCELLED,
+        self::STATUS_QUARANTINED,
+    ];
+
     protected $fillable = [
         'batch_number', 'receiving_id', 'sj_validation_item_id', 'sj_validation_extra_item_id', 'receiving_item_id', 'barcode_label',
-        'items_json', 'status', 'printed_at',
+        'items_json', 'status', 'printed_at', 'quarantined_at', 'quarantined_by',
+        'quarantine_session_id', 'quarantine_reason',
     ];
 
     protected function casts(): array
@@ -19,7 +35,46 @@ class Batch extends Model
         return [
             'items_json' => 'array',
             'printed_at' => 'datetime',
+            'quarantined_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Stok yang boleh dialokasikan untuk pengiriman normal. Batch karantina
+     * tetap terlihat di monitoring opname sampai retur/disposal selesai.
+     */
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    public function scopeQuarantined(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_QUARANTINED);
+    }
+
+    public function isQuarantined(): bool
+    {
+        return $this->status === self::STATUS_QUARANTINED;
+    }
+
+    /**
+     * Blokir stok karena keputusan opname RETUR/DISPOSAL. Batch CANCELLED
+     * tidak diubah: label itu sudah mati dan bukan stok.
+     */
+    public function quarantine(User $actor, ?OpnameExpiredSession $session, string $reason): void
+    {
+        if ($this->status === self::STATUS_CANCELLED) {
+            return;
+        }
+
+        $this->forceFill([
+            'status' => self::STATUS_QUARANTINED,
+            'quarantined_at' => now(),
+            'quarantined_by' => $actor->id,
+            'quarantine_session_id' => $session?->id,
+            'quarantine_reason' => $reason,
+        ])->save();
     }
 
     /**
@@ -151,5 +206,20 @@ class Batch extends Model
     public function receivingItem(): BelongsTo
     {
         return $this->belongsTo(ReceivingItem::class, 'receiving_item_id');
+    }
+
+    public function opnameAdjustments(): HasMany
+    {
+        return $this->hasMany(OpnameExpiredAdjustment::class);
+    }
+
+    public function quarantinedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'quarantined_by');
+    }
+
+    public function quarantineSession(): BelongsTo
+    {
+        return $this->belongsTo(OpnameExpiredSession::class, 'quarantine_session_id');
     }
 }

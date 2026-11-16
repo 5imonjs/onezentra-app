@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
@@ -204,6 +205,11 @@ class ReceivingItem extends Model
         }
 
         return 0.0;
+    }
+
+    public function opnameAdjustments(): HasMany
+    {
+        return $this->hasMany(OpnameExpiredAdjustment::class, 'receiving_item_id');
     }
 
     protected function getSumberMaterialAttribute(?string $value): ?string

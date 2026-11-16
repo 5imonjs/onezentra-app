@@ -9,7 +9,7 @@ class OpnameExpiredSessionItem extends Model
 {
     /**
      * Disposisi tindak lanjut per batch (keputusan yang memanggil approve):
-     * - LANJUT   : barang tetap berputar (FIFO) — status memungkinkan.
+     * - LANJUT   : barang tetap berputar (FEFO) — status memungkinkan.
      * - RETUR    : menunggu pengiriman ke principal (exp dekat/expired).
      * - DISPOSAL : rusak terbatas — perlu pemusnahan berfoto + akad.
      */

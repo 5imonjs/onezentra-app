@@ -305,6 +305,7 @@ class SystemEndToEndTest extends TestCase
         $wave = OpnameExpiredWave::where('kode_barang', 'B-OPN-01')->first();
         $this->putJson("/api/v1/opname-expired/{$wave->id}", [
             'qty_koreksi_crt' => -1,
+            'reason' => 'Koreksi manual hasil inspeksi.',
         ])->assertOk();
 
         // show single wave
