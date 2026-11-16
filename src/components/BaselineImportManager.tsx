@@ -215,9 +215,19 @@ export default function BaselineImportManager({ open, onClose, onChanged }: {
     if (!confirm('Yakin ingin menghapus baseline untuk depo ' + (depo.trim() || '-') + '? Semua baris saldo awal hasil import baseline ini (beserta labelnya) akan dihapus permanen agar bisa diimpor ulang. Tindakan ini tidak bisa di-undo.')) {
       return;
     }
+
+    const reason = window.prompt('Alasan hapus baseline (wajib, minimal 10 karakter). Alasan ini disimpan di audit:');
+    if (reason === null) {
+      return;
+    }
+    if (reason.trim().length < 10) {
+      notifyGlobal('Alasan hapus baseline wajib diisi minimal 10 karakter.');
+      return;
+    }
+
     setRemovingBaseline(true);
     try {
-      const res = await opnameExpired.resetBaseline(currentBaseline.id);
+      const res = await opnameExpired.resetBaseline(currentBaseline.id, reason.trim());
       const { message } = res.data;
       setSuccessMsg(message);
       await loadBaselines();
