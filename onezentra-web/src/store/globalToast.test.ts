@@ -56,4 +56,30 @@ describe('useGlobalToastStore', () => {
 
     expect(state().toasts).toHaveLength(1);
   });
+
+  it('membatasi antrean maksimal 5 toast terbaru', () => {
+    for (let i = 1; i <= 7; i += 1) {
+      notifyGlobal(`Pesan ${i}`, 'info');
+    }
+
+    expect(state().toasts.map((t) => t.message)).toEqual([
+      'Pesan 3', 'Pesan 4', 'Pesan 5', 'Pesan 6', 'Pesan 7',
+    ]);
+  });
+
+  it('menyimpan opsi judul, deskripsi, dan durasi kustom', () => {
+    notifyGlobal('Ekspor selesai', 'success', {
+      title: 'Ekspor XLSX',
+      description: 'Klik untuk mengunduh.',
+      duration: 2500,
+    });
+
+    expect(state().toasts[0]).toMatchObject({
+      message: 'Ekspor selesai',
+      type: 'success',
+      title: 'Ekspor XLSX',
+      description: 'Klik untuk mengunduh.',
+      duration: 2500,
+    });
+  });
 });

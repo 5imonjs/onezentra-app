@@ -27,9 +27,38 @@ describe('Toast', () => {
     expect(screen.getByText(/Baris 3: PO tidak ditemukan\./)).toBeTruthy();
   });
 
-  it('tetap men				  pesan satu baris tanpa efek samping', () => {
+  it('tetap menampilkan pesan satu baris tanpa efek samping', () => {
     render(<Toast message="Import berhasil" type="success" onClose={() => {}} />);
 
     expect(screen.getByText('Import berhasil')).toBeTruthy();
+  });
+
+  it('toast modern punya label tipe dan progress bar hitung mundur', () => {
+    const { container } = render(<Toast message="Data tersimpan" onClose={() => {}} />);
+
+    expect(screen.getByText('Berhasil')).toBeTruthy();
+    expect(container.querySelector('[data-toast-progress]')).not.toBeNull();
+  });
+
+  it('error memakai role alert agar pembaca layar mengumumkan segera', () => {
+    render(<Toast message="Gagal menyimpan" type="error" onClose={() => {}} />);
+
+    expect(screen.getByRole('alert')).toBeTruthy();
+  });
+
+  it('bisa memakai judul kustom dan deskripsi tambahan', () => {
+    render(
+      <Toast
+        message="Baris 3: PO tidak ditemukan."
+        type="info"
+        title="Import sebagian gagal"
+        description="Periksa kembali file lalu ulangi."
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('Import sebagian gagal')).toBeTruthy();
+    expect(screen.getByText('Periksa kembali file lalu ulangi.')).toBeTruthy();
+    expect(screen.getByText(/Baris 3/)).toBeTruthy();
   });
 });
