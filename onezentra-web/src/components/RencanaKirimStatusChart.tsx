@@ -34,13 +34,13 @@ interface StatusDef {
  * "Antrean Persetujuan Biaya" supaya dua blok di dashboard terlihat satu gaya.
  */
 const STATUSES: StatusDef[] = [
-  { key: 'DRAFT',       label: 'Rencana Kirim',     dot: 'bg-slate-400', box: 'border-border bg-popover', num: 'text-foreground', name: 'text-muted-foreground' },
-  { key: 'SCHEDULED',   label: 'Dijadwalkan',       dot: 'bg-blue-300',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
-  { key: 'CHECKED_IN',  label: 'Gate Check-in',     dot: 'bg-blue-400',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
-  { key: 'VERIFIED',    label: 'Verifikasi',        dot: 'bg-blue-500',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
-  { key: 'IN_PROGRESS', label: 'Receiving',         dot: 'bg-blue-600',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-700',  name: 'text-blue-600' },
-  { key: 'COMPLETED',   label: 'Selesai Receiving', dot: 'bg-blue-700',  box: 'border-blue-200 bg-blue-50',         num: 'text-blue-800',  name: 'text-blue-700' },
-  { key: 'CANCELLED',   label: 'Dibatalkan',        dot: 'bg-red-500',   box: 'border-red-200 bg-red-50',           num: 'text-red-700',   name: 'text-red-600' },
+  { key: 'DRAFT',       label: 'Rencana Kirim',     dot: 'bg-slate-400', box: 'border-border/70 bg-popover/60',             num: 'text-foreground', name: 'text-muted-foreground' },
+  { key: 'SCHEDULED',   label: 'Dijadwalkan',       dot: 'bg-blue-300',  box: 'border-blue-500/20 bg-blue-500/10 ring-1 ring-blue-500/20', num: 'text-blue-600', name: 'text-blue-600' },
+  { key: 'CHECKED_IN',  label: 'Gate Check-in',     dot: 'bg-blue-400',  box: 'border-blue-500/20 bg-blue-500/10 ring-1 ring-blue-500/20', num: 'text-blue-600', name: 'text-blue-600' },
+  { key: 'VERIFIED',    label: 'Verifikasi',        dot: 'bg-blue-500',  box: 'border-blue-500/20 bg-blue-500/10 ring-1 ring-blue-500/20', num: 'text-blue-600', name: 'text-blue-600' },
+  { key: 'IN_PROGRESS', label: 'Receiving',         dot: 'bg-blue-600',  box: 'border-blue-500/20 bg-blue-500/10 ring-1 ring-blue-500/20', num: 'text-blue-600', name: 'text-blue-600' },
+  { key: 'COMPLETED',   label: 'Selesai Receiving', dot: 'bg-blue-700',  box: 'border-blue-500/20 bg-blue-500/10 ring-1 ring-blue-500/20', num: 'text-blue-700', name: 'text-blue-600' },
+  { key: 'CANCELLED',   label: 'Dibatalkan',        dot: 'bg-red-500',   box: 'border-red-500/20 bg-red-500/10 ring-1 ring-red-500/20',   num: 'text-red-600',   name: 'text-red-600' },
 ];
 
 // Tahap yang membentuk alur normal rencana kirim -> receiving. CANCELLED
@@ -119,7 +119,7 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
       icon={TRUCK_ICON}
       className="transition-shadow hover:shadow-md"
       badge={
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-chip-primary-border bg-chip-primary px-2.5 py-1 text-[11px] font-bold text-accent-text">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-500/10 px-2.5 py-1 text-[11px] font-bold text-accent-text ring-1 ring-primary-500/20">
           <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
           {total} pengiriman
         </span>
@@ -194,9 +194,9 @@ export default function RencanaKirimStatusChart({ kodeDepo }: { kodeDepo?: strin
     </svg>
   </span>
 </span>
-                        <p className={`truncate text-[11px] font-semibold uppercase tracking-wider ${active ? s.name : 'text-slate-400'}`}>{s.label}</p>
+                        <p className={`truncate text-[11px] font-semibold uppercase tracking-wider ${active ? s.name : 'text-muted-foreground'}`}>{s.label}</p>
                       </div>
-                      <p className={`mt-1.5 text-xl leading-none font-black tabular-nums ${active ? s.num : 'text-slate-400'}`}>{count}</p>
+                      <p className={`mt-1.5 text-xl leading-none font-black tabular-nums ${active ? s.num : 'text-muted-foreground'}`}>{count}</p>
                       {active && (
                         <p className="mt-1 truncate text-[11px] text-muted-foreground">
                           {qtyMap[s.key].toLocaleString('id-ID')} qty • {kubikasiMap[s.key].toFixed(2)} m³

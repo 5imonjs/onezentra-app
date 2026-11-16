@@ -124,13 +124,13 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
           {trendPct !== null && (
             <span
               aria-label={`Aktivitas 7 hari terakhir ${trendPct >= 0 ? 'naik' : 'turun'} ${Math.abs(trendPct)} persen dibanding minggu sebelumnya`}
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${trendPct >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ring-1 ${trendPct >= 0 ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20' : 'bg-red-500/10 text-red-600 ring-red-500/20'}`}
             >
               {trendPct >= 0 ? '▲' : '▼'} {Math.abs(trendPct)}% vs minggu lalu
             </span>
           )}
           {trendBaru && (
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-foreground">
+            <span className="inline-flex items-center rounded-full bg-popover px-2 py-0.5 text-[11px] font-bold text-foreground ring-1 ring-border/70">
               Baru minggu ini
             </span>
           )}
@@ -189,25 +189,45 @@ export default function DashboardActivityChart({ kodeDepo }: { kodeDepo?: string
         {!loading && !error && usage && !isEmpty && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              <div className="rounded-xl bg-popover px-4 py-3">
-                <p className="text-xs text-muted-foreground">Total aktivitas</p>
-                <p className="mt-1 text-xl font-bold text-foreground tabular-nums">{totalRequests.toLocaleString('id-ID')}</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-gray-400">Aksi tercatat, bukan jumlah dokumen</p>
+              <div className="rounded-xl border border-border/70 bg-popover/60 px-4 py-3 ring-1 ring-transparent transition-all duration-200 hover:ring-primary-500/20">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-lg bg-primary-500/10 text-accent-text">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+                  </span>
+                  <p className="text-[11px] font-medium text-muted-foreground">Total aktivitas</p>
+                </div>
+                <p className="mt-2 text-xl font-bold text-foreground tabular-nums">{totalRequests.toLocaleString('id-ID')}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Aksi tercatat, bukan jumlah dokumen</p>
               </div>
-              <div className="rounded-xl bg-emerald-50 px-4 py-3">
-                <p className="text-xs text-emerald-700">Login berhasil</p>
-                <p className="mt-1 text-xl font-bold text-emerald-900 tabular-nums">{totalLogins.toLocaleString('id-ID')}</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-emerald-700/70">Jumlah login pada periode ini</p>
+              <div className="rounded-xl border border-border/70 bg-popover/60 px-4 py-3 ring-1 ring-transparent transition-all duration-200 hover:ring-emerald-500/20">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </span>
+                  <p className="text-[11px] font-medium text-muted-foreground">Login berhasil</p>
+                </div>
+                <p className="mt-2 text-xl font-bold text-foreground tabular-nums">{totalLogins.toLocaleString('id-ID')}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Jumlah login pada periode ini</p>
               </div>
-              <div className="rounded-xl bg-cyan-50 px-4 py-3">
-                <p className="text-xs text-cyan-700">Puncak user aktif</p>
-                <p className="mt-1 text-xl font-bold text-cyan-900 tabular-nums">{peakUsers}</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-cyan-700/70">Terbanyak dalam satu hari</p>
+              <div className="rounded-xl border border-border/70 bg-popover/60 px-4 py-3 ring-1 ring-transparent transition-all duration-200 hover:ring-cyan-500/20">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-lg bg-cyan-500/10 text-cyan-600">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                  </span>
+                  <p className="text-[11px] font-medium text-muted-foreground">Puncak user aktif</p>
+                </div>
+                <p className="mt-2 text-xl font-bold text-foreground tabular-nums">{peakUsers}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Terbanyak dalam satu hari</p>
               </div>
-              <div className="rounded-xl bg-amber-50 px-4 py-3">
-                <p className="text-xs text-amber-700">User teratas</p>
-                <p className="mt-1 text-sm font-bold text-amber-900 truncate">{topUsers[0]?.name ?? 'Belum ada data'}</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-amber-700/70">Paling banyak aktivitas</p>
+              <div className="rounded-xl border border-border/70 bg-popover/60 px-4 py-3 ring-1 ring-transparent transition-all duration-200 hover:ring-amber-500/20">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-lg bg-amber-500/10 text-amber-600">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.009.407 3.61 1.223 4.728M5.25 4.236A6 6 0 0110.5 1.5m0 0a6 6 0 015.25 3.098m-5.25-3.098V4.5c0 1.947-.61 3.53-1.797 4.739M16.5 4.236v.264a6.003 6.003 0 01-2.441 4.228m2.441-4.492c.982.143 1.954.317 2.916.52A6.003 6.003 0 0116.27 9.728" /></svg>
+                  </span>
+                  <p className="text-[11px] font-medium text-muted-foreground">User teratas</p>
+                </div>
+                <p className="mt-2 text-sm font-bold text-foreground truncate">{topUsers[0]?.name ?? 'Belum ada data'}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Paling banyak aktivitas</p>
               </div>
             </div>
 
