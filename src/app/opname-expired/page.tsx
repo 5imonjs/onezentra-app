@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, getErrorMessage } from '@/lib/api';
 import { notifyGlobal } from '@/store/globalToast';
-import { addDaysIso, formatDateId, formatDurationId, mondayOfWeek, todayLocal } from '@/lib/dates';
+import { addDaysIso, formatDateId, formatDurationId, mondayOfWeek, sisaHariTitle, todayLocal } from '@/lib/dates';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ManualBatchManager from '@/components/ManualBatchManager';
@@ -26,6 +26,10 @@ interface Wave {
   principal_2?: string | null;
   // Jejak batch penyusun baris agregat ini (diisi Generate).
   batch_numbers?: string[] | null;
+  // Lot yang sudah dikarantina hasil disposisi RETUR/DISPOSAL (dihitung
+  // backend dari status batch, bukan dari teks rekomendasi).
+  quarantined_batches?: string[] | null;
+  is_quarantined?: boolean;
   // Komposisi sumber: {sj, import, legacy} — penanda SJ murni / Import manual /
   // baseline legacy / Gabungan.
   source_mix?: { sj: number; import: number; legacy?: number } | null;
@@ -132,6 +136,34 @@ const fmtDate = formatDateId;
 
 const fnum = (v: number) => v.toLocaleString('id-ID');
 
+/**
+ * Sumber material harusnya supplier/principal. Data lama kadang mengisi
+ * kolom ini dengan nama depo yang sama seperti kolom Depo — itu bukan sumber
+ * material. Jangan tampilkan duplikat nama depo seolah supplier.
+ */
+function sumberMaterialLabel(wave: Wave): string {
+  const sumber = (wave.sumber_material || '').trim();
+  const depo = (wave.nama_depo || wave.kode_depo || '').trim();
+
+  if (!sumber || sumber === '-' || sumber.toUpperCase() === 'N/A' || sumber === depo) {
+    return '— (supplier belum diisi)';
+  }
+
+  return sumber;
+}
+
+/** Qty CRT/PCS konsisten di kartu ringkasan dan tabel perbandingan. */
+function qtyPairLabel(crt: number, pcs: number): string {
+  const c = num(crt);
+  const p = num(pcs);
+
+  if (c === 0 && p === 0) {
+    return '—';
+  }
+
+  return `${fnum(c)} / ${p > 0 ? fnum(p) : '—'}`;
+}
+
 function badge(status?: string | null) {
   const s = status || '-';
   const meta = STATUS_META[s] || { label: s, badge: 'bg-popover text-foreground', dot: 'bg-gray-400', bar: 'bg-gray-300', text: 'text-foreground', panel: 'bg-popover border-border' };
@@ -197,7 +229,7 @@ const WaveRow = memo(function WaveRow({ w, selected, canDelete, deleting, maxHar
       <td className="px-5 py-3 whitespace-nowrap">
         <div className="flex items-center gap-2">
           <DaysBar sisaHari={w.sisa_hari} maxHari={maxHari} status={w.status_ini} />
-          <span title={`${w.sisa_hari} hari`} className={`text-sm font-bold tabular-nums whitespace-nowrap ${meta.text}`}>
+          <span title={sisaHariTitle(w.sisa_hari)} className={`text-sm font-bold tabular-nums whitespace-nowrap ${meta.text}`}>
             {formatDurationId(w.sisa_hari)}
           </span>
         </div>
@@ -286,9 +318,19 @@ function SortHeader({ label, sortKey, sort, onSort, align = 'left' }: {
 
 function DaysBar({ sisaHari, maxHari, status }: { sisaHari: number; maxHari: number; status: string }) {
   const meta = STATUS_META[status] || STATUS_META.AMAN;
-  const pct = Math.max(0, Math.min(100, (sisaHari / Math.max(maxHari, 1)) * 100));
+  const expired = sisaHari < 0 || status === 'EXPIRED';
+
+  // Bar lama memakai width 0% untuk barang expired. Secara matematis "sisa
+  // umur = 0%" benar, tapi visualnya jadi batang kosong dan terbaca sebagai
+  // "data tidak ada", bukan "sudah kedaluwarsa".
+  const pct = expired ? 100 : Math.max(0, Math.min(100, (sisaHari / Math.max(maxHari, 1)) * 100));
+
   return (
-    <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden min-w-10 max-w-[80px]">
+    <div
+      className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden min-w-10 max-w-[80px]"
+      title={sisaHariTitle(sisaHari)}
+      aria-label={sisaHariTitle(sisaHari)}
+    >
       <div className={`h-full rounded-full transition-all duration-300 ${meta.bar}`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -356,6 +398,16 @@ export default function OpnameExpiredPage() {
 
   const current = useMemo(() => waves.find((w) => w.id === selectedId) ?? null, [waves, selectedId]);
   const currentIndex = useMemo(() => waves.findIndex((w) => w.id === selectedId), [waves, selectedId]);
+
+  // Barang yang sudah expired sejak berbulan lalu tapi baru muncul lewat SJ
+  // minggu ini bukan sekadar "BARU" — itu indikasi input terlambat / tanggal
+  // expired salah. Perlu flag khusus di panel detail.
+  const terimaSetelahExpired = useMemo(() => {
+    if (!current?.tanggal_penerimaan || !current.expired_date_ini) {
+      return false;
+    }
+    return current.tanggal_penerimaan.slice(0, 10) > current.expired_date_ini.slice(0, 10);
+  }, [current]);
 
   const tabStatuses = useMemo((): string[] | null => {
     switch (tabKey) {
@@ -1422,7 +1474,7 @@ export default function OpnameExpiredPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <DaysBar sisaHari={w.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={w.status_ini} />
-                        <span title={`${w.sisa_hari} hari`} className={`whitespace-nowrap text-sm font-bold tabular-nums ${meta.text}`}>{formatDurationId(w.sisa_hari)}</span>
+                        <span title={sisaHariTitle(w.sisa_hari)} className={`whitespace-nowrap text-sm font-bold tabular-nums ${meta.text}`}>{formatDurationId(w.sisa_hari)}</span>
                       </div>
                       <div className="flex items-center gap-2 border-t border-border pt-3">
                         <button
@@ -1516,7 +1568,9 @@ export default function OpnameExpiredPage() {
                   <div className="bg-popover rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qty Minggu Ini</p>
                     <p className="text-lg font-bold text-foreground tabular-nums mt-1">{fnum(num(current.qty_ini_crt))} CRT</p>
-                    {num(current.qty_ini_pcs) > 0 && <p className="text-xs text-muted-foreground tabular-nums">{fnum(num(current.qty_ini_pcs))} PCS</p>}
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {num(current.qty_ini_pcs) > 0 ? `${fnum(num(current.qty_ini_pcs))} PCS` : 'PCS: —'}
+                    </p>
                     {num(current.qty_koreksi_crt) !== 0 && (
                       <p className="text-[11px] text-blue-600 tabular-nums mt-0.5">koreksi {num(current.qty_koreksi_crt)} CRT / {num(current.qty_koreksi_pcs)} PCS</p>
                     )}
@@ -1526,8 +1580,23 @@ export default function OpnameExpiredPage() {
                     <p className="text-lg font-bold text-foreground mt-1">{fmtDate(current.expired_date_ini)}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <DaysBar sisaHari={current.sisa_hari} maxHari={num(thresholds.threshold_aman) || 90} status={current.status_ini} />
-                      <span title={`${current.sisa_hari} hari`} className={`text-xs font-bold tabular-nums ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).text}`}>{formatDurationId(current.sisa_hari)}</span>
+                      <span title={sisaHariTitle(current.sisa_hari)} className={`text-xs font-bold tabular-nums ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).text}`}>{formatDurationId(current.sisa_hari)}</span>
                     </div>
+                  </div>
+                  <div className="bg-popover rounded-xl p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tanggal Terima</p>
+                    <p className="text-sm font-semibold text-foreground mt-1">{fmtDate(current.tanggal_penerimaan)}</p>
+                    {terimaSetelahExpired && (
+                      <p className="text-[10px] font-semibold text-amber-700 mt-0.5">Diterima setelah expired</p>
+                    )}
+                  </div>
+                  <div className="bg-popover rounded-xl p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status Karantina</p>
+                    <p className="text-sm font-semibold text-foreground mt-1">
+                      {current.is_quarantined
+                        ? `Ya · ${(current.quarantined_batches || []).length} lot`
+                        : 'Tidak'}
+                    </p>
                   </div>
                   <div className="bg-popover rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Depo</p>
@@ -1535,9 +1604,19 @@ export default function OpnameExpiredPage() {
                   </div>
                   <div className="bg-popover rounded-xl p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber Material</p>
-                    <p className="text-sm font-semibold text-foreground mt-1 wrap-break-word">{current.sumber_material || '-'}</p>
+                    <p className="text-sm font-semibold text-foreground mt-1 wrap-break-word">{sumberMaterialLabel(current)}</p>
                   </div>
                 </div>
+
+                {terimaSetelahExpired && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-800">Peringatan Penerimaan</p>
+                    <p className="text-sm text-foreground mt-0.5 leading-snug">
+                      Barang diterima pada {fmtDate(current.tanggal_penerimaan)} setelah tanggal expired {fmtDate(current.expired_date_ini)}.
+                      Periksa kembali tanggal expired dan ajukan retur/karantina.
+                    </p>
+                  </div>
+                )}
 
                 {/* Rekomendasi */}
                 <div className={`rounded-xl border px-4 py-3 ${(STATUS_META[current.status_ini] || STATUS_META.AMAN).panel}`}>
@@ -1561,6 +1640,11 @@ export default function OpnameExpiredPage() {
                       return parts.length > 1 ? `Gabungan (${parts.join(' + ')})` : parts[0];
                     })()}
                   </p>
+                  {current.is_quarantined && (
+                    <p className="mt-1 text-[11px] font-semibold text-red-700">
+                      {current.quarantined_batches?.length || 0} lot dalam karantina · tidak untuk pengiriman normal
+                    </p>
+                  )}
                   {(current.batch_numbers || []).length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {(current.batch_numbers || []).map((b) => (
@@ -1587,8 +1671,8 @@ export default function OpnameExpiredPage() {
                       <tbody className="divide-y divide-gray-100">
                         <tr>
                           <td className="px-3 py-2 text-muted-foreground text-xs">Qty (CRT / PCS)</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-foreground">{fnum(num(current.qty_ini_crt))} / {fnum(num(current.qty_ini_pcs))}</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{num(current.qty_lalu_crt) > 0 || num(current.qty_lalu_pcs) > 0 ? `${fnum(num(current.qty_lalu_crt))} / ${fnum(num(current.qty_lalu_pcs))}` : '—'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-foreground">{qtyPairLabel(current.qty_ini_crt, current.qty_ini_pcs)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{qtyPairLabel(current.qty_lalu_crt, current.qty_lalu_pcs)}</td>
                         </tr>
                         <tr>
                           <td className="px-3 py-2 text-muted-foreground text-xs">Tanggal Kedaluwarsa</td>

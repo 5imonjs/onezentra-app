@@ -68,17 +68,28 @@ export function addDaysIso(value: string, days: number): string {
 }
 
 /**
- * Sisa hari -> 'X Thn Y Bln Z Hr' (konvensi dagang: 1 thn = 365 hr,
- * 1 bln = 30 hr). Negatif (kedaluwarsa) = 'Lewat ...'.
+ * Sisa hari -> teks ringkas berdasarkan TOTAL hari.
+ *
+ * Versi lama memecah 1 tahun = 365 hari dan 1 bulan = 30 hari. Untuk barang
+ * yang sudah expired, itu menghasilkan "Lewat 0 thn 8 bln 19 hr" padahal
+ * selisih kalender aslinya 8 bulan 14 hari. Karena helper ini hanya menerima
+ * jumlah hari (bukan tanggal acuan), satu-satunya angka yang bisa dijamin
+ * benar adalah total harinya.
  */
 export function formatDurationId(days: number): string {
   if (!Number.isFinite(days)) return '-';
-  if (days < 0) return `Lewat ${formatDurationId(-days).toLowerCase()}`;
-  const thn = Math.floor(days / 365);
-  const rest = days % 365;
-  const bln = Math.floor(rest / 30);
-  const hr = rest % 30;
-  return `${thn} Thn ${bln} Bln ${hr} Hr`;
+  const total = Math.round(Math.abs(days));
+  if (days < 0) return `Lewat ${total} hari`;
+  if (days === 0) return 'Hari ini';
+  return `${total} hari`;
+}
+
+/** Judul tooltip: hindari angka negatif mentah seperti "-259 hari". */
+export function sisaHariTitle(days: number): string {
+  if (!Number.isFinite(days)) return 'Sisa hari tidak diketahui';
+  if (days < 0) return `Lewat ${Math.round(Math.abs(days))} hari`;
+  if (days === 0) return 'Kedaluwarsa hari ini';
+  return `Tersisa ${Math.round(days)} hari`;
 }
 
 /** 'YYYY-MM-DD...' -> '12 Jan 2026' (id-ID), tanpa sentuhan Date. */

@@ -298,6 +298,76 @@ describe('OpnameExpiredPage', () => {
     expect(link.getAttribute('href')).toContain('session_id=42');
   });
 
+  it('panel detail expired menjelaskan durasi, karantina, dan penerimaan setelah expired', async () => {
+    list.mockResolvedValue({
+      data: {
+        data: {
+          data: [{
+            id: 9001,
+            week_start: '2026-11-16',
+            week_end: '2026-11-22',
+            kode_depo: '0127',
+            nama_depo: 'Depo Singkawang',
+            kode_barang: 'KUKI8',
+            nama_barang: 'Kuki 8',
+            principal_1: null,
+            principal_2: null,
+            batch_numbers: ['BATCH-KH3RWOVU'],
+            quarantined_batches: ['BATCH-KH3RWOVU'],
+            is_quarantined: true,
+            source_mix: { sj: 1, import: 0, legacy: 0 },
+            sumber_material: 'Depo Singkawang',
+            tanggal_penerimaan: '2026-11-14',
+            qty_ini_crt: 40,
+            qty_ini_pcs: 0,
+            qty_lalu_crt: 0,
+            qty_lalu_pcs: 0,
+            expired_date_ini: '2026-03-02',
+            expired_date_lalu: null,
+            sisa_hari: -259,
+            status_ini: 'EXPIRED',
+            status_lalu: null,
+            perubahan: 'BARU',
+            rekomendasi: 'BATCH EXPIRED — wajib ditarik/diretur dan dikoreksi stok.',
+            selisih_expired_date: null,
+            qty_koreksi_crt: 0,
+            qty_koreksi_pcs: 0,
+            validated_at: null,
+          }],
+          current_page: 1,
+          last_page: 1,
+          per_page: 25,
+          total: 1,
+        },
+        meta: {
+          weeks: ['2026-11-16'],
+          thresholds: { threshold_aman: 90, threshold_perhatian: 30, threshold_kritis: 7 },
+          status_summary: {},
+          prev_week_start: null,
+          prev_status_summary: {},
+          depot_summary: [],
+        },
+      },
+    });
+
+    render(<OpnameExpiredPage />);
+
+    const detailButtons = await screen.findAllByRole('button', { name: 'Detail' });
+    fireEvent.click(detailButtons[0]);
+
+    // Total hari dipakai, bukan pembulatan 30 hari yang salah.
+    expect((await screen.findAllByText('Lewat 259 hari')).length).toBeGreaterThan(0);
+    // PCS dan sumber material tidak lagi ditampilkan sebagai angka 0 / nama depo.
+    expect(await screen.findByText('PCS: —')).toBeInTheDocument();
+    expect(screen.getByText('40 / —')).toBeInTheDocument();
+    expect(screen.getByText('— (supplier belum diisi)')).toBeInTheDocument();
+    // Barang expired 8 bulan lalu baru diterima minggu ini → flag khusus.
+    expect(await screen.findByText('Diterima setelah expired')).toBeInTheDocument();
+    expect(screen.getByText(/Peringatan Penerimaan/)).toBeInTheDocument();
+    // Karantina berasal dari status batch nyata, bukan teks rekomendasi.
+    expect(screen.getByText(/1 lot dalam karantina/)).toBeInTheDocument();
+  });
+
   it('mengarahkan tombol Buat Sesi ke halaman Stock Opname dengan minggu+depo dan modal create', async () => {
     pending.mockResolvedValue({
       data: {
