@@ -25,4 +25,11 @@ describe('dashboardBlocks', () => {
   it('peran tanpa urutan khusus memakai urutan default', () => {
     expect(dashboardBlockOrder(undefined)).toEqual([...DEFAULT_DASHBOARD_ORDER]);
   });
+
+  it('blok Perlu Perhatian tidak lagi dirender di dashboard', () => {
+    expect(DEFAULT_DASHBOARD_ORDER).not.toContain('alerts');
+    for (const role of ['admin_master', 'blc', 'rlh', 'rh']) {
+      expect(dashboardBlockOrder(role)).not.toContain('alerts');
+    }
+  });
 });

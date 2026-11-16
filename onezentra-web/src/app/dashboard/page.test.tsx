@@ -19,7 +19,7 @@ vi.mock('@/lib/api', () => ({
 vi.mock('@/components/DashboardActivityChart', () => ({ default: () => <div data-testid="activity-chart" /> }));
 vi.mock('@/components/DashboardLiveActivity', () => ({ default: () => <div data-testid="live-activity" /> }));
 vi.mock('@/components/RencanaKirimStatusChart', () => ({ default: () => <div data-testid="rencana-chart" /> }));
-vi.mock('@/components/DashboardAlerts', () => ({ default: () => null }));
+vi.mock('@/components/DashboardAlerts', () => ({ default: () => <div data-testid="alerts-panel" /> }));
 vi.mock('@/components/DashboardBiayaQueue', () => ({ default: () => null }));
 vi.mock('@/components/DashboardOpnameChart', () => ({ default: () => null }));
 vi.mock('@/components/DashboardRecent', () => ({ default: () => null }));
@@ -71,6 +71,13 @@ describe('DashboardPage — tata letak chart', () => {
     render(<DashboardPage />);
 
     expect(screen.getByTestId('live-activity')).toBeInTheDocument();
+  });
+
+  it('tidak menampilkan panel Perlu Perhatian di dashboard utama', () => {
+    render(<DashboardPage />);
+
+    expect(screen.queryByTestId('alerts-panel')).not.toBeInTheDocument();
+    expect(screen.queryByText('Perlu Perhatian')).not.toBeInTheDocument();
   });
 
   it('hero menampilkan sapaan dengan nama depan user', () => {

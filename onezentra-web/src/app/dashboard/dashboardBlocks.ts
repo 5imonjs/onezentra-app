@@ -10,7 +10,6 @@
 export type DashboardBlockKey =
   | 'biayaQueue'
   | 'pending'
-  | 'alerts'
   | 'charts'
   | 'opname'
   | 'recent';
@@ -24,7 +23,6 @@ export interface DashboardBlockDef {
 export const DASHBOARD_BLOCKS: readonly DashboardBlockDef[] = [
   { key: 'biayaQueue', anyPermissions: ['approval.check', 'approval.approve', 'approval.rfah'] },
   { key: 'pending', anyPermissions: ['dashboard.view'] },
-  { key: 'alerts', anyPermissions: ['dashboard.view'] },
   { key: 'charts', anyPermissions: ['users.view', 'rencana_kirim.view'] },
   { key: 'opname', anyPermissions: ['opname.view'] },
   {
@@ -41,18 +39,18 @@ export const DEFAULT_DASHBOARD_ORDER: readonly DashboardBlockKey[] = DASHBOARD_B
  * pernah "hilang" hanya karena lupa memperbarui salah satu peran di sini.
  */
 export const ROLE_DASHBOARD_ORDER: Readonly<Record<string, readonly DashboardBlockKey[]>> = {
-  admin_master: ['pending', 'biayaQueue', 'alerts', 'charts', 'opname', 'recent'],
-  admin_distirbusi: ['biayaQueue', 'pending', 'alerts', 'opname', 'recent', 'charts'],
-  admin_planner: ['charts', 'pending', 'alerts', 'opname', 'recent', 'biayaQueue'],
-  staff_logistic: ['biayaQueue', 'pending', 'alerts', 'opname', 'recent', 'charts'],
-  blc: ['pending', 'alerts', 'charts', 'opname', 'recent', 'biayaQueue'],
-  cheker: ['pending', 'alerts', 'opname', 'charts', 'recent', 'biayaQueue'],
-  operator: ['pending', 'alerts', 'opname', 'charts', 'recent', 'biayaQueue'],
-  bac: ['biayaQueue', 'pending', 'alerts', 'charts', 'opname', 'recent'],
-  sac: ['biayaQueue', 'pending', 'alerts', 'charts', 'opname', 'recent'],
-  rlh: ['biayaQueue', 'alerts', 'opname', 'recent', 'pending', 'charts'],
-  rfah: ['biayaQueue', 'alerts', 'opname', 'recent', 'pending', 'charts'],
-  rh: ['opname', 'alerts', 'recent', 'pending', 'charts', 'biayaQueue'],
+  admin_master: ['pending', 'biayaQueue', 'charts', 'opname', 'recent'],
+  admin_distirbusi: ['biayaQueue', 'pending', 'opname', 'recent', 'charts'],
+  admin_planner: ['charts', 'pending', 'opname', 'recent', 'biayaQueue'],
+  staff_logistic: ['biayaQueue', 'pending', 'opname', 'recent', 'charts'],
+  blc: ['pending', 'charts', 'opname', 'recent', 'biayaQueue'],
+  cheker: ['pending', 'opname', 'charts', 'recent', 'biayaQueue'],
+  operator: ['pending', 'opname', 'charts', 'recent', 'biayaQueue'],
+  bac: ['biayaQueue', 'pending', 'charts', 'opname', 'recent'],
+  sac: ['biayaQueue', 'pending', 'charts', 'opname', 'recent'],
+  rlh: ['biayaQueue', 'opname', 'recent', 'pending', 'charts'],
+  rfah: ['biayaQueue', 'opname', 'recent', 'pending', 'charts'],
+  rh: ['opname', 'recent', 'pending', 'charts', 'biayaQueue'],
 };
 
 export function dashboardBlockOrder(role: string | null | undefined): DashboardBlockKey[] {
