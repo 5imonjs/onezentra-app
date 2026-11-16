@@ -6,6 +6,7 @@ use App\Exports\OpnameExpiredExport;
 use App\Http\Controllers\Controller;
 use App\Mail\OpnameExpiredNotification;
 use App\Models\ApprovalHistory;
+use App\Models\Batch;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
@@ -17,6 +18,7 @@ use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -166,6 +168,11 @@ class OpnameExpiredController extends Controller
 
         $perPage = $this->perPage($request);
         $waves = $query->paginate($perPage);
+
+        // Status batch (ACTIVE/QUARANTINED) tidak tersimpan di wave. Ambil
+        // sekali untuk semua lot yang tampil agar panel detail bisa menunjukkan
+        // karantina tanpa N+1 query per baris.
+        $this->annotateBatchStatus($waves->getCollection());
 
         // Tandai wave yang sudah dikunci sesi berjalan supaya modal "Buat
         // Sesi" tidak menawarkannya lagi. Backend tetap menolak 422 bila
@@ -324,6 +331,43 @@ class OpnameExpiredController extends Controller
     }
 
     /**
+     * Tambahkan penanda karantina ke baris monitoring yang sedang tampil.
+     *
+     * Satu query untuk semua nomor batch di halaman ini — bukan satu query
+     * per wave. Batch CANCELLED sengaja tidak dihitung sebagai karantina:
+     * label itu sudah mati, bukan stok yang diblokir.
+     *
+     * @param  Collection<int, OpnameExpiredWave>  $waves
+     */
+    private function annotateBatchStatus(Collection $waves): void
+    {
+        $allNumbers = $waves
+            ->flatMap(fn (OpnameExpiredWave $wave): array => $wave->batch_numbers ?? [])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $quarantinedNumbers = $allNumbers === []
+            ? collect()
+            : Batch::query()
+                ->whereIn('batch_number', $allNumbers)
+                ->where('status', Batch::STATUS_QUARANTINED)
+                ->pluck('batch_number')
+                ->flip();
+
+        foreach ($waves as $wave) {
+            $matched = array_values(array_intersect(
+                $wave->batch_numbers ?? [],
+                $quarantinedNumbers->keys()->all(),
+            ));
+
+            $wave->setAttribute('quarantined_batches', $matched);
+            $wave->setAttribute('is_quarantined', $matched !== []);
+        }
+    }
+
+    /**
      * Filter sumber data: sj (murni sistem) / import (manual) / legacy
      * (baseline awal) / mixed. Baris wave lama tanpa source_mix ikut tampil
      * di filter lama (Generate ulang untuk mengisi penandanya).
@@ -422,6 +466,8 @@ class OpnameExpiredController extends Controller
             403,
             'Anda tidak memiliki akses ke data ini.'
         );
+
+        $this->annotateBatchStatus(collect([$wave]));
 
         return response()->json(['data' => $wave->load('validator')]);
     }

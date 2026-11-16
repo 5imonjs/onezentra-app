@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDaysIso, formatDateDmy, formatDateId, mondayOfWeek, todayLocal, toDateInput, formatDurationId } from './dates';
+import { addDaysIso, formatDateDmy, formatDateId, mondayOfWeek, todayLocal, toDateInput, formatDurationId, sisaHariTitle } from './dates';
 
 describe('toDateInput', () => {
   it('memotong bagian waktu tanpa menggeser hari', () => {
@@ -69,13 +69,28 @@ describe('addDaysIso', () => {
 });
 
 describe('formatDurationId', () => {
-  it('memecah hari ke tahun-bulan-hari (365/30)', () => {
-    expect(formatDurationId(274)).toBe('0 Thn 9 Bln 4 Hr');
-    expect(formatDurationId(400)).toBe('1 Thn 1 Bln 5 Hr');
-    expect(formatDurationId(0)).toBe('0 Thn 0 Bln 0 Hr');
+  it('memakai total hari yang pasti benar (tanpa pembulatan 30 hari)', () => {
+    expect(formatDurationId(274)).toBe('274 hari');
+    expect(formatDurationId(400)).toBe('400 hari');
+    expect(formatDurationId(0)).toBe('Hari ini');
   });
 
-  it('menandai yang kedaluwarsa', () => {
-    expect(formatDurationId(-8)).toBe('Lewat 0 thn 0 bln 8 hr');
+  it('menandai yang kedaluwarsa dengan angka positif', () => {
+    expect(formatDurationId(-8)).toBe('Lewat 8 hari');
+    // Kasus nyata: 02 Mar 2026 -> 16 Nov 2026 = 259 hari.
+    // Versi lama salah menyebut "8 bln 19 hr" (kalender: 8 bln 14 hr).
+    expect(formatDurationId(-259)).toBe('Lewat 259 hari');
+  });
+
+  it('mengembalikan strip untuk nilai tak terbatas', () => {
+    expect(formatDurationId(Number.NaN)).toBe('-');
+  });
+});
+
+describe('sisaHariTitle', () => {
+  it('tidak pernah menampilkan angka negatif mentah', () => {
+    expect(sisaHariTitle(-259)).toBe('Lewat 259 hari');
+    expect(sisaHariTitle(0)).toBe('Kedaluwarsa hari ini');
+    expect(sisaHariTitle(7)).toBe('Tersisa 7 hari');
   });
 });

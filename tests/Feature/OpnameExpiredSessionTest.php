@@ -1052,6 +1052,22 @@ class OpnameExpiredSessionTest extends TestCase
             $this->assertNotNull($batch->quarantined_at);
             $this->assertStringContainsString('RETUR', (string) $batch->quarantine_reason);
         }
+
+        // Label terbit saat verifikasi lapangan; jejak lot di wave terisi
+        // pada Generate berikutnya (sama seperti alur produksi).
+        app(OpnameExpiredService::class)->generate();
+
+        // Monitoring ikut menandai karantina (satu query untuk semua lot),
+        // supaya panel detail tidak perlu menebak dari teks rekomendasi.
+        $index = $this->getJson('/api/v1/opname-expired?week_start=2026-09-07')->assertOk();
+        $flagged = collect($index->json('data.data'))
+            ->filter(fn (array $row): bool => (bool) ($row['is_quarantined'] ?? false));
+
+        $this->assertCount(2, $flagged);
+        $this->assertSame(
+            $batches->pluck('batch_number')->values()->all(),
+            $flagged->flatMap(fn (array $row): array => $row['quarantined_batches'] ?? [])->values()->all(),
+        );
     }
 
     public function test_approval_is_idempotent_for_adjustment_ledger(): void
