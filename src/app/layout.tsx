@@ -1,16 +1,9 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Roboto } from "next/font/google";
+const roboto = { variable: "--font-roboto" }; // dummy
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
-const roboto = Roboto({
-  variable: "--font-roboto",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  display: "swap",
-  preload: false,
-});
 
 export const metadata: Metadata = {
   title: "ONEZENTRA - Warehouse Management System",
