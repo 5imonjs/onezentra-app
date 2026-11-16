@@ -17,12 +17,12 @@ type DashboardPanelProps = {
 };
 
 /**
- * Kerangka panel dashboard yang seragam: header ramping (chip ikon + judul +
- * subjudul, badge/aksi di kanan) di atas konten.
+ * Kerangka panel dashboard yang seragam.
  *
- * Dipakai seluruh blok dashboard supaya header tidak lagi punya dua dialek
- * berbeda (dulu sebagian `px-6 py-4 text-lg`, sebagian `text-sm` ber-ikon).
- * Header memakai gradien `gray-50 → surface-card` yang mengikuti tema.
+ * Versi modern memakai kartu dengan elevasi lembut, garis aksen tipis di
+ * bagian atas yang muncul saat hover, dan chip ikon berbasis `primary` agar
+ * konsisten di terang/gelap. Header tetap ramping supaya konten operasional
+ * tidak terdorong ke bawah.
  */
 export default function DashboardPanel({
   title,
@@ -35,19 +35,27 @@ export default function DashboardPanel({
   children,
 }: DashboardPanelProps) {
   return (
-    <section aria-label={ariaLabel} className={`overflow-hidden rounded-2xl border border-border bg-card shadow-sm ${className}`}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-linear-to-r from-gray-50 to-surface-card px-5 py-3.5">
+    <section
+      aria-label={ariaLabel}
+      className={`group relative overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_14px_36px_-28px_rgba(15,23,42,0.4)] ring-1 ring-black/[0.02] backdrop-blur-sm transition-shadow duration-300 hover:shadow-[0_2px_4px_rgba(15,23,42,0.06),0_20px_44px_-28px_rgba(15,23,42,0.45)] ${className}`}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary-500/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+      />
+
+      <div className="relative flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border/70 bg-linear-to-r from-surface-card/80 to-card px-5 py-4">
         {icon && (
-          <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-chip-primary text-accent-text ring-1 ring-chip-primary-border">
+          <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-primary-600 ring-1 ring-primary-500/20">
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               {icon}
             </svg>
           </span>
         )}
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold text-foreground">{title}</h2>
+          <h2 className="truncate text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
           {subtitle != null && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">{subtitle}</div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">{subtitle}</div>
           )}
         </div>
         {(badge || actions) && (
@@ -57,7 +65,8 @@ export default function DashboardPanel({
           </div>
         )}
       </div>
-      {children}
+
+      <div className="relative">{children}</div>
     </section>
   );
 }

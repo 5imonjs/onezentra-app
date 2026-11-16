@@ -54,6 +54,9 @@ export default function DashboardOpnameChart() {
   if (!hasPermission('opname.view')) return null;
 
   const done = depots.filter((d) => d.submitted).length;
+  const totalRows = depots.reduce((sum, d) => sum + d.total, 0);
+  const totalValidated = depots.reduce((sum, d) => sum + d.validated, 0);
+  const overallPct = totalRows > 0 ? Math.round((totalValidated / totalRows) * 100) : 0;
 
   return (
     <DashboardPanel
@@ -77,38 +80,73 @@ export default function DashboardOpnameChart() {
         </>
       }
     >
-      <div className="px-6 py-4">
+      <div className="px-5 py-4">
         {loading && depots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Memuat...</p>
+          <div className="flex items-center gap-3">
+            <div className="h-14 w-14 animate-pulse rounded-full bg-popover" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-2/5 animate-pulse rounded bg-popover" />
+              <div className="h-2.5 w-1/3 animate-pulse rounded bg-popover" />
+            </div>
+          </div>
         ) : error ? (
-          <div id="opname-chart-error" role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-            <span className="flex-1 text-sm text-red-700">{error}</span>
-            <button onClick={() => load()} disabled={loading} className="rounded-lg border border-red-300 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed">
+          <div id="opname-chart-error" role="alert" className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3">
+            <span className="flex-1 text-sm text-red-600">{error}</span>
+            <button onClick={() => load()} disabled={loading} className="rounded-lg border border-red-500/20 px-3 py-1.5 text-xs font-bold text-red-600 transition-colors hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed">
               Coba lagi
             </button>
           </div>
         ) : depots.length === 0 ? (
           <p className="text-sm text-muted-foreground">Belum ada baris monitoring minggu ini — buat baris monitoring dulu di Monitoring Kedaluwarsa.</p>
         ) : (
-          <ul className="space-y-3">
-            {depots.map((d) => {
-              const pct = d.total > 0 ? Math.round((d.validated / d.total) * 100) : 100;
-              return (
-                <li key={d.kode_depo}>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${d.submitted ? 'bg-emerald-500' : 'bg-amber-500'}`} aria-hidden="true" />
-                      <span className="font-semibold text-foreground truncate">{d.nama_depo || d.kode_depo}</span>
-                    </span>
-                    <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">{d.validated}/{d.total} · {pct}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-100 overflow-hidden mt-1" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Progres ${d.nama_depo || d.kode_depo}`}>
-                    <div className={`h-full rounded-full transition-all duration-300 ${d.submitted ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <div className="mb-5 flex items-center gap-4 rounded-2xl border border-border/70 bg-linear-to-br from-popover/80 to-card p-3.5">
+              <div className="relative h-14 w-14 shrink-0">
+                <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90" aria-hidden="true">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--color-gray-200)" strokeWidth="3" />
+                  <circle
+                    cx="18" cy="18" r="15.9" fill="none"
+                    stroke={overallPct === 100 ? 'var(--color-emerald-500)' : 'var(--color-primary-500)'}
+                    strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${overallPct} ${100 - overallPct}`}
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <span className="absolute inset-0 grid place-items-center text-sm font-black tabular-nums text-foreground">{overallPct}%</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ringkasan minggu ini</p>
+                <p className="mt-0.5 text-base font-bold tracking-tight text-foreground">{done}/{depots.length} depo sudah kirim</p>
+                <p className="text-xs tabular-nums text-muted-foreground">{totalValidated}/{totalRows} item tervalidasi</p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${overallPct === 100 ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20' : 'bg-amber-500/10 text-amber-600 ring-amber-500/20'}`}>
+                {overallPct === 100 ? 'Selesai' : 'Berjalan'}
+              </span>
+            </div>
+
+            <ul className="space-y-3">
+              {depots.map((d) => {
+                const pct = d.total > 0 ? Math.round((d.validated / d.total) * 100) : 100;
+                return (
+                  <li key={d.kode_depo}>
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${d.submitted ? 'bg-emerald-500' : 'bg-amber-500'}`} aria-hidden="true" />
+                        <span className="font-semibold text-foreground truncate">{d.nama_depo || d.kode_depo}</span>
+                      </span>
+                      <span className="rounded-full bg-popover px-2 py-0.5 text-[11px] font-bold tabular-nums text-foreground ring-1 ring-border/70 whitespace-nowrap">{d.validated}/{d.total} · {pct}%</span>
+                    </div>
+                    <div className="mt-1.5 h-2 rounded-full bg-popover overflow-hidden ring-1 ring-inset ring-border/60" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Progres ${d.nama_depo || d.kode_depo}`}>
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${d.submitted ? 'bg-linear-to-r from-emerald-400 to-emerald-600' : 'bg-linear-to-r from-amber-400 to-primary-500'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
     </DashboardPanel>

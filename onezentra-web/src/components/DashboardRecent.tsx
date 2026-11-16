@@ -7,10 +7,10 @@ import DashboardPanel from '@/components/DashboardPanel';
 const HISTORY_ICON = <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />;
 
 const TYPE_TONES: Record<string, string> = {
-  'Rencana Kirim': 'bg-amber-100 text-amber-700',
-  'Validasi SJ': 'bg-chip-primary text-accent-text',
-  'Standarisasi': 'bg-slate-200 text-foreground',
-  'Receiving': 'bg-teal-100 text-teal-700',
+  'Rencana Kirim': 'bg-amber-500/10 text-amber-600 ring-amber-500/20',
+  'Validasi SJ': 'bg-primary-500/10 text-accent-text ring-primary-500/20',
+  'Standarisasi': 'bg-popover text-foreground ring-border/70',
+  'Receiving': 'bg-teal-500/10 text-teal-600 ring-teal-500/20',
 };
 
 export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
@@ -39,18 +39,24 @@ export default function DashboardRecent({ kodeDepo }: { kodeDepo?: string }) {
       subtitle="Perubahan terakhir lintas modul"
       icon={HISTORY_ICON}
     >
-      <ul className="divide-y divide-gray-100">
+      <ul className="space-y-1 px-3 py-3">
         {summary.recent.map((item, i) => (
           <li key={`${item.type}-${item.title}-${i}`}>
-            <Link href={item.href} className="flex items-center gap-3 px-5 py-3 hover:bg-popover transition-colors">
-              <span className={`shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold ${TYPE_TONES[item.type] ?? 'bg-slate-100 text-foreground'}`}>
+            <Link
+              href={item.href}
+              className="group flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-popover/70"
+            >
+              <span className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold ring-1 ${TYPE_TONES[item.type] ?? 'bg-popover text-foreground ring-border/70'}`}>
                 {item.type}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-foreground truncate">{item.title}</span>
-                {item.subtitle && <span className="block text-xs text-slate-400 truncate">{item.subtitle}</span>}
+                {item.subtitle && <span className="block text-[11px] text-muted-foreground truncate">{item.subtitle}</span>}
               </span>
-              <span className="shrink-0 text-xs text-slate-400 tabular-nums">{formatRelativeTime(item.at)}</span>
+              <span className="shrink-0 rounded-full bg-popover px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground ring-1 ring-border/60">
+                {formatRelativeTime(item.at)}
+              </span>
+              <svg className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
             </Link>
           </li>
         ))}
