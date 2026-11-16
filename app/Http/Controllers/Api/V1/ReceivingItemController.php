@@ -11,6 +11,7 @@ use App\Models\Npn;
 use App\Models\OpnameExpiredBaselineImport;
 use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
+use App\Models\OpnameExpiredWave;
 use App\Models\ReceivingItem;
 use App\Services\OpnameExpiredService;
 use App\Support\EvidenceStorage;
@@ -676,6 +677,11 @@ class ReceivingItemController extends Controller
         $file = $request->file('file');
         $checksum = hash_file('sha256', $file->getRealPath()) ?: null;
 
+        // Reset baseline versi lama meninggalkan wave turunannya. Bersihkan
+        // lebih dulu: setelah manifes baru dibuat, wave legacy yatim tidak
+        // lagi bisa dibedakan dari baseline yang sah.
+        app(OpnameExpiredService::class)->purgeOrphanBaselineWaves($user);
+
         $baseline = OpnameExpiredBaselineImport::create([
             'kode_depo' => $kodeDepo,
             'file_name' => $file->getClientOriginalName(),
@@ -1092,10 +1098,17 @@ class ReceivingItemController extends Controller
      * baris lama ditinggal, impor ulang akan dihitung duplikat dan baseline
      * baru terbentuk tanpa isi.
      *
-     * Label yang sudah terverifikasi sesi lapangan dilindungi: baseline
-     * ditolak dihapus agar bukti kerja tidak hilang. Sesi yang masih
-     * terbuka juga menghalangi karena snapshot lapangan akan menunjuk stok
-     * yang sudah tidak ada.
+     * Snapshot monitoring (`opname_expired_waves`) juga ikut dibuang. Wave
+     * adalah turunan ledger, bukan sumber data: kalau dibiarkan, baris saldo
+     * awal tetap tampil di Monitoring Kedaluwarsa meski ledger-nya sudah
+     * dihapus, lalu ikut terbawa roll-forward ke minggu berikutnya.
+     *
+     * Saldo awal boleh dihapus lalu diimpor ulang. Label yang sudah
+     * terverifikasi sesi lapangan tetap dilindungi agar bukti kerja tidak
+     * hilang; sesi yang masih terbuka juga menghalangi karena snapshot
+     * lapangan akan menunjuk stok yang sudah tidak ada. Item sesi final yang
+     * belum terverifikasi ikut ter-cascade bersama wave (sesi induk tetap
+     * tersimpan sebagai riwayat).
      */
     public function resetBaseline(Request $request, OpnameExpiredBaselineImport $baselineImport): JsonResponse
     {
@@ -1114,9 +1127,11 @@ class ReceivingItemController extends Controller
         $kodeDepo = $baselineImport->kode_depo;
         $baselineId = $baselineImport->id;
 
-        $targetIds = ReceivingItem::query()
+        $baselineItems = ReceivingItem::query()
             ->where('baseline_import_id', $baselineId)
-            ->pluck('id');
+            ->get(['id', 'kode_barang', 'expired_date']);
+
+        $targetIds = $baselineItems->pluck('id');
 
         $protected = OpnameExpiredSessionItem::query()
             ->whereHas('batch', fn ($query) => $query->whereIn('receiving_item_id', $targetIds))
@@ -1129,26 +1144,90 @@ class ReceivingItemController extends Controller
             "{$protected} baris saldo awal sudah diverifikasi sesi lapangan sehingga baseline tidak bisa dihapus."
         );
 
-        [$deletedItems, $deletedBatches] = DB::transaction(function () use ($baselineImport, $targetIds): array {
-            $deletedBatches = $targetIds->isEmpty()
-                ? 0
-                : Batch::whereIn('receiving_item_id', $targetIds)->delete();
+        // Kunci barang|expired milik baseline dipakai untuk menemukan wave
+        // turunannya, termasuk baris yang sudah direklasifikasi ke VALIDASI_SJ
+        // sehingga penanda `source_mix.legacy` tidak lagi ada.
+        $baselineKeys = $baselineItems
+            ->mapWithKeys(fn (ReceivingItem $item): array => [
+                $item->kode_barang.'|'.($item->expired_date?->toDateString() ?? '') => true,
+            ]);
 
-            $deletedItems = $targetIds->isEmpty()
-                ? 0
-                : ReceivingItem::whereIn('id', $targetIds)->delete();
+        $importWeekStart = $baselineImport->imported_at
+            ?->copy()
+            ->startOfWeek(Carbon::MONDAY)
+            ->toDateString();
 
-            $baselineImport->delete();
+        $waveIds = OpnameExpiredWave::query()
+            ->where('kode_depo', $kodeDepo)
+            ->get(['id', 'kode_barang', 'expired_date_ini', 'source_mix', 'week_start'])
+            ->filter(function (OpnameExpiredWave $wave) use ($baselineKeys, $importWeekStart): bool {
+                if ((int) ($wave->source_mix['legacy'] ?? 0) > 0) {
+                    return true;
+                }
 
-            return [$deletedItems, $deletedBatches];
-        });
+                $key = $wave->kode_barang.'|'.($wave->expired_date_ini?->toDateString() ?? '');
+
+                if (! $baselineKeys->has($key)) {
+                    return false;
+                }
+
+                // Jangan sentuh wave historis yang sudah ada sebelum baseline
+                // dipasang: wave itu bukan turunan manifes ini.
+                return $importWeekStart === null || (string) $wave->week_start >= $importWeekStart;
+            })
+            ->pluck('id');
+
+        // Saldo awal sengaja boleh dihapus lalu diimpor ulang. Item sesi yang
+        // belum terverifikasi ikut ter-cascade bersama wave-nya; item yang
+        // sudah terverifikasi tetap dilindungi oleh pemeriksaan di atas.
+        $sessionItems = OpnameExpiredSessionItem::query()
+            ->whereIn('wave_id', $waveIds)
+            ->count();
+
+        [$deletedItems, $deletedBatches, $deletedWaves] = DB::transaction(
+            function () use ($baselineImport, $targetIds, $waveIds): array {
+                $deletedWaves = $waveIds->isEmpty()
+                    ? 0
+                    : OpnameExpiredWave::whereIn('id', $waveIds)->delete();
+
+                $deletedBatches = $targetIds->isEmpty()
+                    ? 0
+                    : Batch::whereIn('receiving_item_id', $targetIds)->delete();
+
+                $deletedItems = $targetIds->isEmpty()
+                    ? 0
+                    : ReceivingItem::whereIn('id', $targetIds)->delete();
+
+                $baselineImport->delete();
+
+                return [$deletedItems, $deletedBatches, $deletedWaves];
+            }
+        );
+
+        // Ledger di luar baseline (stok baru yang sempat berbagi wave campuran)
+        // perlu dicerminkan ulang setelah wave turunannya dibuang. Gagal di
+        // sini tidak membatalkan reset: data sumber sudah bersih dan Generate
+        // manual tetap bisa dijalankan.
+        $synced = false;
+        try {
+            app(OpnameExpiredService::class)->generate(null, $request->user());
+            $synced = true;
+        } catch (\Throwable $e) {
+            Log::error('Opname generate after baseline reset failed', [
+                'baseline_import_id' => $baselineId,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return response()->json([
-            'message' => "Manifes baseline depo {$kodeDepo} dihapus: {$deletedItems} baris saldo awal dan {$deletedBatches} label dibuang. Anda sekarang bisa impor baseline baru.",
+            'message' => "Manifes baseline depo {$kodeDepo} dihapus: {$deletedItems} baris saldo awal, {$deletedBatches} label, dan {$deletedWaves} baris monitoring dibuang. Anda sekarang bisa impor baseline baru.",
             'deleted_baseline_id' => $baselineId,
             'kode_depo' => $kodeDepo,
             'deleted_items' => $deletedItems,
             'deleted_batches' => $deletedBatches,
+            'deleted_waves' => $deletedWaves,
+            'deleted_session_items' => $sessionItems,
+            'opname_synced' => $synced,
         ]);
     }
 }

@@ -37,6 +37,13 @@ class OpnameExpiredService
             $perhatian = OpnameSetting::get('threshold_perhatian', 30);
             $kritis = OpnameSetting::get('threshold_kritis', 7);
 
+            // Self-heal data lama: reset baseline sebelum perbaikan ini hanya
+            // membuang ledger + manifes, sedangkan wave turunannya tertinggal
+            // di Monitoring Kedaluwarsa dan terus ikut roll-forward. Sapu
+            // wave legacy yatim setiap generate agar instalasi yang sudah
+            // terlanjur reset ikut bersih tanpa reset ulang.
+            $this->purgeOrphanBaselineWaves($user);
+
             $batis = $this->carriedBatches($weekStart, $user);
 
             $aggregates = $this->receivingAggregates($weekStart, $user);
@@ -161,6 +168,12 @@ class OpnameExpiredService
                 if ((string) $row->week_start < $baselineWeekStart) {
                     continue;
                 }
+            } elseif ((int) ($row->source_mix['legacy'] ?? 0) > 0) {
+                // Tidak ada baseline aktif/fallback untuk depo ini: wave
+                // bersumber LEGACY adalah sisa baseline yang sudah dihapus.
+                // Jangan dibawa lagi ke minggu berjalan (penyebab saldo awal
+                // "hidup kembali" setelah reset).
+                continue;
             }
 
             $key = implode('|', [
@@ -856,6 +869,104 @@ class OpnameExpiredService
             $wave ? $wave->effectiveCrt() : 0.0,
             $wave ? $wave->effectivePcs() : null,
         ];
+    }
+
+    /**
+     * Hapus snapshot monitoring milik baseline yang sudah tidak terpasang.
+     *
+     * Yang disebut yatim adalah wave LEGACY yang kunci
+     * `barang|depo|expired`-nya tidak lagi punya baris ledger baseline
+     * (`source = LEGACY_IMPORT` atau `baseline_import_id` terisi). Baseline
+     * yang masih terpasang selalu punya baris ledger, jadi tidak pernah
+     * disentuh; yang dibuang hanya sisa reset (ledger sudah hilang) —
+     * termasuk bila setelah reset sempat diimpor ulang file yang isinya
+     * tidak lagi memuat produk lama.
+     *
+     * Wave yang masih dipakai sesi opname BERJALAN dilewati agar snapshot
+     * penghitungan yang sedang aktif tidak berubah di tengah jalan. Sesi
+     * yang sudah final/batal tidak menghalangi: saldo awal memang boleh
+     * dihapus lalu diimpor ulang.
+     */
+    public function purgeOrphanBaselineWaves(?User $user = null): int
+    {
+        // Generate dipanggil setiap receiving selesai: batasi pembacaan ke
+        // wave LEGACY saja, bukan seluruh tabel monitoring.
+        $waveQuery = OpnameExpiredWave::query()
+            ->where('source_mix->legacy', '>', 0)
+            ->select('id', 'kode_depo', 'kode_barang', 'expired_date_ini');
+
+        if ($user?->isDepotScoped()) {
+            $user->applyDepotFilter($waveQuery, 'kode_depo');
+        }
+
+        $legacyWaves = $waveQuery->get();
+
+        if ($legacyWaves->isEmpty()) {
+            return 0;
+        }
+
+        $depotCodes = $legacyWaves
+            ->pluck('kode_depo')
+            ->map(fn ($depo): string => $depo === null ? self::DEPO_GENERAL : (string) $depo)
+            ->unique()
+            ->values();
+
+        $ledgerQuery = ReceivingItem::query()
+            ->where(fn ($query) => $query
+                ->where('source', ReceivingItem::SOURCE_LEGACY)
+                ->orWhereNotNull('baseline_import_id'))
+            ->whereNotNull('kode_barang')
+            ->whereNotNull('expired_date');
+
+        $realDepots = $depotCodes
+            ->reject(fn (string $depo): bool => $depo === self::DEPO_GENERAL)
+            ->values()
+            ->all();
+
+        if ($legacyWaves->contains(fn (OpnameExpiredWave $wave): bool => $wave->kode_depo === null)) {
+            $ledgerQuery->where(function ($query) use ($realDepots): void {
+                $query->whereNull('kode_depo');
+
+                if ($realDepots !== []) {
+                    $query->orWhereIn('kode_depo', $realDepots);
+                }
+            });
+        } else {
+            $ledgerQuery->whereIn('kode_depo', $realDepots);
+        }
+
+        $validKeys = [];
+
+        foreach ($ledgerQuery->get(['kode_depo', 'kode_barang', 'expired_date']) as $item) {
+            $depo = $item->kode_depo ?: self::DEPO_GENERAL;
+            $validKeys[$depo.'|'.$item->kode_barang.'|'.($item->expired_date?->toDateString() ?? '')] = true;
+        }
+
+        $orphanIds = $legacyWaves
+            ->filter(function (OpnameExpiredWave $wave) use ($validKeys): bool {
+                $depo = $wave->kode_depo ?: self::DEPO_GENERAL;
+                $key = $depo.'|'.$wave->kode_barang.'|'.($wave->expired_date_ini?->toDateString() ?? '');
+
+                return ! isset($validKeys[$key]);
+            })
+            ->pluck('id');
+
+        if ($orphanIds->isEmpty()) {
+            return 0;
+        }
+
+        $linkedWaveIds = OpnameExpiredSessionItem::query()
+            ->whereIn('wave_id', $orphanIds)
+            ->whereHas('session', fn ($query) => $query
+                ->whereIn('status', OpnameExpiredSession::OPEN_STATUSES))
+            ->pluck('wave_id')
+            ->unique();
+
+        $deleteIds = $orphanIds->diff($linkedWaveIds);
+
+        return $deleteIds->isEmpty()
+            ? 0
+            : OpnameExpiredWave::whereIn('id', $deleteIds->all())->delete();
     }
 
     /**

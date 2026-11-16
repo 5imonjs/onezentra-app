@@ -1506,15 +1506,30 @@ class OpnameExpiredTest extends TestCase
         $this->assertCount(1, $itemIds);
         $this->assertSame(1, Batch::count());
 
+        $this->assertDatabaseHas('opname_expired_waves', ['kode_barang' => 'B-RESET-01']);
+
         $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset")
             ->assertOk()
             ->assertJsonPath('deleted_items', 1)
             ->assertJsonPath('deleted_batches', 1)
+            ->assertJsonPath('deleted_waves', 1)
             ->assertJsonPath('kode_depo', 'DPO');
 
         $this->assertSoftDeleted('opname_expired_baseline_imports', ['id' => $baseline->id]);
         $this->assertSame(0, ReceivingItem::whereIn('id', $itemIds)->count());
         $this->assertSame(0, Batch::count());
+
+        // Wave turunan baseline ikut hilang supaya baris saldo awal tidak
+        // tertinggal di Monitoring Kedaluwarsa.
+        $this->assertSame(0, OpnameExpiredWave::where('kode_barang', 'B-RESET-01')->count());
+        $index = $this->getJson('/api/v1/opname-expired')->assertOk();
+        $this->assertSame([], collect($index->json('data.data'))->pluck('kode_barang')->all());
+
+        // Roll-forward minggu berikutnya tidak boleh menghidupkan lagi saldo
+        // awal yang sudah dihapus.
+        $this->travelTo('2026-09-16 10:00:00');
+        app(OpnameExpiredService::class)->generate();
+        $this->assertSame(0, OpnameExpiredWave::where('kode_barang', 'B-RESET-01')->count());
 
         // Baris lama sudah dibuang, jadi impor ulang tidak dianggap duplikat.
         $this->post('/api/v1/receiving-items/import-baseline', [
@@ -1525,6 +1540,105 @@ class OpnameExpiredTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('imported', 1)
             ->assertJsonPath('duplicates', 0);
+    }
+
+    public function test_generate_purges_legacy_waves_left_by_an_old_baseline_reset(): void
+    {
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile([['B-ORPHAN-01', 'Produk Yatim', 8, 8, '2027-01-01', '2026-09-01']]),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk();
+
+        $baseline = OpnameExpiredBaselineImport::where('kode_depo', 'DPO')->firstOrFail();
+        $itemIds = ReceivingItem::where('baseline_import_id', $baseline->id)->pluck('id');
+
+        // Simulasikan reset versi lama: ledger + manifes dibuang, wave
+        // turunannya tertinggal.
+        Batch::whereIn('receiving_item_id', $itemIds)->delete();
+        ReceivingItem::whereIn('id', $itemIds)->delete();
+        $baseline->delete();
+
+        $this->assertSame(1, OpnameExpiredWave::where('kode_barang', 'B-ORPHAN-01')->count());
+
+        // Generate menyapu wave legacy yatim; tidak perlu reset ulang.
+        app(OpnameExpiredService::class)->generate();
+
+        $this->assertSame(0, OpnameExpiredWave::where('kode_barang', 'B-ORPHAN-01')->count());
+    }
+
+    public function test_reimport_after_an_old_baseline_reset_does_not_keep_stale_legacy_waves(): void
+    {
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile([['B-OLD-01', 'Produk Lama', 5, 5, '2027-01-01', '2026-09-01']]),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk();
+
+        $baseline = OpnameExpiredBaselineImport::where('kode_depo', 'DPO')->firstOrFail();
+        $itemIds = ReceivingItem::where('baseline_import_id', $baseline->id)->pluck('id');
+
+        Batch::whereIn('receiving_item_id', $itemIds)->delete();
+        ReceivingItem::whereIn('id', $itemIds)->delete();
+        $baseline->delete();
+
+        $this->assertDatabaseHas('opname_expired_waves', ['kode_barang' => 'B-OLD-01']);
+
+        // Impor baseline baru tanpa menjalankan Generate lebih dulu tetap
+        // membuang wave legacy lama; kalau tidak, baris produk lama terus
+        // tampil di monitoring.
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile([['B-NEW-01', 'Produk Baru', 7, 7, '2027-02-01', '2026-09-01']]),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk()->assertJsonPath('imported', 1);
+
+        $this->assertDatabaseMissing('opname_expired_waves', ['kode_barang' => 'B-OLD-01']);
+        $this->assertDatabaseHas('opname_expired_waves', ['kode_barang' => 'B-NEW-01']);
+    }
+
+    public function test_reset_baseline_stays_allowed_when_wave_is_used_by_a_closed_session(): void
+    {
+        $this->post('/api/v1/receiving-items/import-baseline', [
+            'file' => $this->baselineFile([['B-SESS-01', 'Produk Sesi', 6, 6, '2027-01-01', '2026-09-01']]),
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'baseline_date' => '2026-09-01',
+        ])->assertOk();
+
+        $baseline = OpnameExpiredBaselineImport::where('kode_depo', 'DPO')->firstOrFail();
+        $wave = OpnameExpiredWave::where('kode_barang', 'B-SESS-01')->firstOrFail();
+
+        $session = OpnameExpiredSession::create([
+            'week_start' => '2026-09-07',
+            'week_end' => '2026-09-13',
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'assigned_to' => $this->user->id,
+            'created_by' => $this->user->id,
+            'status' => OpnameExpiredSession::STATUS_APPROVED,
+        ]);
+
+        OpnameExpiredSessionItem::create([
+            'session_id' => $session->id,
+            'wave_id' => $wave->id,
+        ]);
+
+        // Saldo awal memang boleh dihapus lalu diimpor ulang. Item sesi yang
+        // belum terverifikasi ikut ter-cascade bersama wave; sesi induk tetap
+        // ada sebagai riwayat.
+        $this->putJson("/api/v1/receiving-items/baseline/{$baseline->id}/reset")
+            ->assertOk()
+            ->assertJsonPath('deleted_waves', 1)
+            ->assertJsonPath('deleted_session_items', 1);
+
+        $this->assertDatabaseMissing('opname_expired_waves', ['id' => $wave->id]);
+        $this->assertDatabaseMissing('opname_expired_session_items', ['wave_id' => $wave->id]);
+        $this->assertSoftDeleted('opname_expired_baseline_imports', ['id' => $baseline->id]);
+        $this->assertDatabaseHas('opname_expired_sessions', ['id' => $session->id]);
     }
 
     public function test_reset_baseline_is_blocked_while_opname_session_is_open(): void
