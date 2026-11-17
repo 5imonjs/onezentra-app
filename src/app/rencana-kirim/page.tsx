@@ -1161,14 +1161,16 @@ export default function RencanaKirimPage() {
       >
         {viewItem && (
           <div className="space-y-5">
-            <div className="rounded-2xl bg-foreground p-5 text-background">
+            {/* Permukaan ink selalu gelap di tema terang maupun gelap, jadi
+                teks white/xx dan panel white/10 tidak berbalik kontras. */}
+            <div className="rounded-2xl bg-ink-900 p-5 text-white ring-1 ring-white/10">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">PO Transporter</p>
                   <h3 className="mt-1 text-xl font-black tracking-tight">{fmt(viewItem.po_transporter)}</h3>
                   <p className="mt-1 text-xs text-white/70"><span className="font-semibold">RK:</span> {fmtDateId(viewItem.rkh_date?.split('T')[0])} <span className="text-white/40">•</span> <span className="font-semibold">Dibuat:</span> {fmtDateId(viewItem.created_at?.split('T')[0])}</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1 text-xs font-black text-foreground ring-1 ring-inset ring-gray-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white ring-1 ring-inset ring-white/20">
                   <span className={`w-2 h-2 rounded-full ${statusConfig[viewItem.status]?.dot || 'bg-slate-400'}`} />{statusConfig[viewItem.status]?.label || viewItem.status}
                 </span>
               </div>
@@ -1181,8 +1183,8 @@ export default function RencanaKirimPage() {
                   <p className="text-xs font-bold tracking-widest text-white/60 uppercase">Kubikasi</p>
                   <p className="text-lg font-black">{typeof viewItem.total_kubikasi === 'number' ? `${Number(viewItem.total_kubikasi).toFixed(2)}` : '-'} <span className="text-xs font-normal">m³</span></p>
                 </div>
-                <div className="rounded-xl bg-card text-foreground p-3 text-center">
-                  <p className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Tujuan</p>
+                <div className="rounded-xl bg-white/10 border border-white/10 p-3 text-center">
+                  <p className="text-xs font-bold tracking-widest text-white/60 uppercase">Tujuan</p>
                   <p className="text-sm font-black truncate">{fmt(viewItem.destination_name)}</p>
                 </div>
               </div>
