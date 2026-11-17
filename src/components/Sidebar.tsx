@@ -398,7 +398,7 @@ export default function Sidebar({ isCollapsed, onToggle, onHoverChange, mobileOp
 
         <div className="mt-3 space-y-1">
           <CollapsibleGroup
-            title="Alur Inbound"
+            title="Inbound"
             icon="road"
             items={operasionalMenus}
             isExpanded={isExpanded}

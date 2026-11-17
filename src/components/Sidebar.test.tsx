@@ -85,7 +85,7 @@ describe('Sidebar — ikon menu', () => {
     nav.pathname = '/reports/opname-expired';
     renderSidebar();
 
-    expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
+    expect(screen.getByText('Inbound')).toBeInTheDocument();
     expect(screen.getByText('Stok & Opname')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Laporan Monitoring Kedaluwarsa' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Laporan Batch Kedaluwarsa' })).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe('Sidebar — ikon menu', () => {
     nav.pathname = '/rencana-kirim';
     renderSidebar();
 
-    expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
+    expect(screen.getByText('Inbound')).toBeInTheDocument();
     for (const label of ['Rencana Kirim', 'Gate Check-in', 'Validasi SJ', 'Receiving', 'Detail Inbound']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
@@ -117,7 +117,7 @@ describe('Sidebar — ikon menu', () => {
     nav.pathname = '/penerimaan';
     renderSidebar();
 
-    expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
+    expect(screen.getByText('Inbound')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Detail Inbound' })).toBeInTheDocument();
     // Grup Stok & Opname tidak dibuka saat halaman Detail Inbound aktif.
     expect(screen.queryByRole('link', { name: 'Monitoring Kedaluwarsa' })).not.toBeInTheDocument();
