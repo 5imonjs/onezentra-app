@@ -18,6 +18,7 @@ use App\Models\SjValidationItem;
 use App\Models\StandarisasiTumpukan;
 use App\Models\StandarUmurProduk;
 use App\Models\User;
+use App\Services\Biaya\BiayaRetribusiSyncService;
 use App\Services\EmailNotificationService;
 use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
@@ -473,6 +474,11 @@ class SjValidationController extends Controller
         $receiving?->update([
             'total_received_qty' => $receiving->items()->sum('actual_qty'),
         ]);
+
+        // Retribusi yang masih draft mengikuti qty aktual terbaru.
+        if ($receiving) {
+            app(BiayaRetribusiSyncService::class)->syncForReceiving((int) $receiving->id);
+        }
     }
 
     /**
@@ -969,7 +975,7 @@ class SjValidationController extends Controller
             'Catatan sudah diputuskan (status '.$extra->status.') — keputusan bersifat final.'
         );
 
-        $extra = DB::transaction(function () use ($extra, $decision, $request, $validated) {
+        $extra = DB::transaction(function () use ($extra, $decision, $request, $validated, $sjValidation) {
             // Kunci baris: keputusan final + penerbitan batch harus
             // serialisasi — dua planner menyetujui bersamaan tidak boleh
             // melahirkan dua batch.
@@ -995,7 +1001,10 @@ class SjValidationController extends Controller
             // dicetak seperti item rencana kirim (satu catatan = satu batch,
             // idempoten).
             if ($decision === 'APPROVED') {
-                $this->issueExtraItemBatch($locked);
+                // Barang fisik diterima → masuk ledger penerimaan supaya ikut
+                // kandidat retribusi & opname, lalu dapat label batch-nya.
+                $receivingItem = $this->materializeExtraReceivingItem($locked, $sjValidation);
+                $this->issueExtraItemBatch($locked, $receivingItem);
             }
 
             return $locked;
@@ -1020,21 +1029,73 @@ class SjValidationController extends Controller
     }
 
     /**
+     * Materialisasi barang luar rencana yang disetujui sebagai baris ledger
+     * penerimaan. Tanpa ini, qty extra item hanya ada di tabel catatan dan
+     * tidak pernah dijumlah kandidat biaya retribusi.
+     */
+    private function materializeExtraReceivingItem(SjValidationExtraItem $extra, SjValidation $sjValidation): ReceivingItem
+    {
+        $sjValidation->loadMissing('rencanaKirim');
+        [, $receiving] = $this->ensureReceiving($sjValidation);
+        $rencana = $sjValidation->rencanaKirim;
+
+        $item = ReceivingItem::firstOrCreate([
+            'receiving_id' => $receiving->id,
+            'sj_validation_extra_item_id' => $extra->id,
+        ], [
+            'source' => ReceivingItem::SOURCE_VALIDASI,
+            'kode_barang' => $extra->kode_barang,
+            'nama_barang' => $extra->nama_barang,
+            'expected_qty' => $extra->qty,
+            'actual_qty' => $extra->qty,
+            'satuan' => $extra->satuan,
+            'condition' => $extra->condition ?? 'FISIK_BAGUS',
+            'expired_date' => $extra->expired_date?->toDateString(),
+            'barcode' => $extra->barcode,
+            'notes' => $extra->notes,
+            'selisih_qty' => 0,
+            'validated_by' => $extra->approved_by,
+            'scanned_by' => $extra->recorded_by,
+            'scan_time' => now(),
+            'sumber_material' => $rencana?->shipper_name,
+            'kode_depo' => $rencana?->kode_depo,
+            'nama_depo' => $rencana?->nama_depo,
+            'tanggal_penerimaan' => $rencana?->checked_in_at?->toDateString() ?? today()->toDateString(),
+        ]);
+
+        if ($item->wasRecentlyCreated) {
+            $receiving->update([
+                'total_expected_qty' => $receiving->items()->sum('expected_qty'),
+                'total_received_qty' => $receiving->items()->sum('actual_qty'),
+            ]);
+
+            app(BiayaRetribusiSyncService::class)->syncForReceiving((int) $receiving->id);
+        }
+
+        return $item;
+    }
+
+    /**
      * Terbitkan batch label untuk satu catatan barang luar rencana yang
      * disetujui. Idempoten — catatan yang sudah berlabel dikembalikan apa
      * adanya (guard ganda seperti scanItem, mencegah batch dobel saat retry
      * jaringan / double-tap lolos lock).
      */
-    private function issueExtraItemBatch(SjValidationExtraItem $extra): void
+    private function issueExtraItemBatch(SjValidationExtraItem $extra, ?ReceivingItem $receivingItem = null): void
     {
         $existing = Batch::where('sj_validation_extra_item_id', $extra->id)->first();
         if ($existing) {
+            if ($receivingItem && ! $existing->receiving_item_id) {
+                $existing->update(['receiving_item_id' => $receivingItem->id]);
+            }
+
             return;
         }
 
         try {
             Batch::createWithRetry([
                 'sj_validation_extra_item_id' => $extra->id,
+                'receiving_item_id' => $receivingItem?->id,
                 'items_json' => [[
                     'kode_barang' => $extra->kode_barang,
                     'nama_barang' => $extra->nama_barang,

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\BiayaRetribusi;
 use App\Models\Permission;
 use App\Models\Receiving;
+use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\RetribusiRate;
 use App\Models\Role;
@@ -30,6 +31,7 @@ class BiayaRetribusiKoliCalcTest extends TestCase
         $permissions = collect([
             ['biaya_retribusi.create', 'Create'],
             ['biaya_retribusi.view', 'View'],
+            ['penerimaan.edit', 'Edit Penerimaan'],
             ['depot.view_all', 'Akses Semua Depo'],
         ])->map(fn (array $permission): Permission => Permission::firstOrCreate(
             ['slug' => $permission[0]],
@@ -79,11 +81,27 @@ class BiayaRetribusiKoliCalcTest extends TestCase
         ]);
     }
 
+    private function receivingItem(Receiving $receiving, string $satuan, float $qty): ReceivingItem
+    {
+        return ReceivingItem::create([
+            'receiving_id' => $receiving->id,
+            'kode_barang' => 'SKU-KOLI',
+            'nama_barang' => 'Barang Koli',
+            'expected_qty' => $qty,
+            'actual_qty' => $qty,
+            'satuan' => $satuan,
+            'condition' => 'FISIK_BAGUS',
+            'source' => ReceivingItem::SOURCE_VALIDASI,
+        ]);
+    }
+
     public function test_nominal_koli_dihitung_dari_qty_dan_mengabaikan_nominal_client(): void
     {
         $user = $this->actingUser();
         $this->koliRate();
         $receiving = $this->completedReceiving($user);
+        $this->receivingItem($receiving, 'ZAK', 10);
+        $this->receivingItem($receiving, 'CRT', 4);
 
         $response = $this->postJson('/api/v1/biaya-retribusi', [
             'tanggal_pengajuan' => '2026-10-16',
@@ -129,5 +147,68 @@ class BiayaRetribusiKoliCalcTest extends TestCase
 
         // Baris manual tidak ikut rumus koli meski depo mode koli.
         $this->assertSame(123000.0, (float) $detail->nominal_biaya);
+    }
+
+    public function test_qty_retribusi_diderivasi_dari_ledger_receiving_bukan_request_client(): void
+    {
+        $this->actingUser();
+        $this->koliRate();
+        $receiving = $this->completedReceiving(User::factory()->create());
+        $this->receivingItem($receiving, 'ZAK', 10);
+        $this->receivingItem($receiving, 'CRT', 4);
+
+        $response = $this->postJson('/api/v1/biaya-retribusi', [
+            'tanggal_pengajuan' => '2026-10-16',
+            'details' => [[
+                'receiving_id' => $receiving->id,
+                'nopol_kendaraan' => 'KB 1234 XX',
+                'type_kendaraan' => 'CDD',
+                'qty_zak' => 999, // stale/client — harus ditimpa ledger
+                'qty_crt' => 888,
+                'nominal_biaya' => 1,
+            ]],
+        ]);
+
+        $response->assertCreated();
+
+        $detail = BiayaRetribusi::findOrFail($response->json('data.id'))->details()->first();
+        $this->assertEquals(10, (float) $detail->qty_zak);
+        $this->assertEquals(4, (float) $detail->qty_crt);
+        $this->assertSame(25000.0, (float) $detail->nominal_biaya);
+    }
+
+    public function test_qty_retribusi_draft_tersinkron_saat_qty_receiving_diubah(): void
+    {
+        $this->actingUser();
+        $this->koliRate();
+        $receiving = $this->completedReceiving(User::factory()->create());
+        $item = $this->receivingItem($receiving, 'ZAK', 10);
+
+        $response = $this->postJson('/api/v1/biaya-retribusi', [
+            'tanggal_pengajuan' => '2026-10-16',
+            'details' => [[
+                'receiving_id' => $receiving->id,
+                'nopol_kendaraan' => 'KB 1234 XX',
+                'type_kendaraan' => 'CDD',
+                'qty_zak' => 10,
+                'nominal_biaya' => 1,
+            ]],
+        ]);
+        $response->assertCreated();
+        $biaya = BiayaRetribusi::findOrFail($response->json('data.id'));
+
+        $this->putJson("/api/v1/receiving-items/{$item->id}", ['qty_crt' => 14])->assertOk();
+
+        $detail = $biaya->details()->first();
+        $this->assertEquals(14, (float) $detail->qty_zak);
+        $this->assertSame(21000.0, (float) $detail->nominal_biaya);
+        $this->assertSame(21000.0, (float) $biaya->fresh()->nominal_biaya);
+
+        // Pengajuan yang sudah dikirim TIDAK diubah diam-diam.
+        $biaya->update(['status' => 'submitted']);
+        $this->putJson("/api/v1/receiving-items/{$item->id}", ['qty_crt' => 20])->assertOk();
+
+        $this->assertEquals(14, (float) $detail->fresh()->qty_zak);
+        $this->assertSame(21000.0, (float) $biaya->fresh()->nominal_biaya);
     }
 }

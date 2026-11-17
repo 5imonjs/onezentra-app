@@ -6,6 +6,7 @@ use App\Mail\ExtraItemReported;
 use App\Models\Batch;
 use App\Models\Npn;
 use App\Models\Permission;
+use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\RencanaKirimItem;
 use App\Models\Role;
@@ -482,6 +483,30 @@ class SjValidationExtraItemTest extends TestCase
 
         // Satu catatan = tepat satu batch.
         $this->assertDatabaseCount('batches', 1);
+    }
+
+    /**
+     * Extra item yang disetujui wajib masuk ledger penerimaan, kalau tidak
+     * qty-nya tidak pernah dihitung kandidat biaya retribusi (yang menjumlah
+     * receiving_items.actual_qty).
+     */
+    public function test_persetujuan_mencatat_extra_item_sebagai_receiving_item(): void
+    {
+        Sanctum::actingAs($planner = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+        $recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']);
+        $rk = $this->rencanaKirim($planner);
+        $validation = $this->inProgressValidation($planner, $rk);
+        $extra = $this->buatCatatanLuar($recorder, $validation);
+
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", [])->assertOk();
+
+        $item = ReceivingItem::where('sj_validation_extra_item_id', $extra->id)->firstOrFail();
+        $this->assertEquals(2, (float) $item->actual_qty);
+        $this->assertSame('CRT', $item->satuan);
+        $this->assertSame('SKU-LUAR-1', $item->kode_barang);
+
+        $batch = Batch::where('sj_validation_extra_item_id', $extra->id)->firstOrFail();
+        $this->assertSame($item->id, (int) $batch->receiving_item_id);
     }
 
     /** Ditolak = barang dikembalikan ke transporter → tidak ada label. */

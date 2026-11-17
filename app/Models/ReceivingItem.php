@@ -62,7 +62,7 @@ class ReceivingItem extends Model
     }
 
     protected $fillable = [
-        'receiving_id', 'sj_validation_item_id', 'rencana_kirim_item_id', 'barcode',
+        'receiving_id', 'sj_validation_item_id', 'sj_validation_extra_item_id', 'rencana_kirim_item_id', 'barcode',
         'kode_barang', 'nama_barang', 'expected_qty', 'actual_qty',
         'satuan', 'condition', 'expired_date',         'notes', 'photo', 'scanned_by', 'scan_time',
         'selisih_qty', 'selisih_reason', 'validated_by',
@@ -96,6 +96,14 @@ class ReceivingItem extends Model
     }
 
     /**
+     * Catatan barang luar rencana yang sudah disetujui planner.
+     */
+    public function extraValidationItem(): BelongsTo
+    {
+        return $this->belongsTo(SjValidationExtraItem::class, 'sj_validation_extra_item_id');
+    }
+
+    /**
      * Batch label untuk item ini.
      *
      * Dicocokkan lewat `sj_validation_item_id`, bukan `batches.receiving_id`:
@@ -110,7 +118,10 @@ class ReceivingItem extends Model
         // `batches.sj_validation_item_id = receiving_items.id` — tidak
         // pernah cocok karena kedua kolom beda arti. Yang benar:
         // `batches.sj_validation_item_id = receiving_items.sj_validation_item_id`.
-        return $this->hasOne(Batch::class, 'sj_validation_item_id', 'sj_validation_item_id');
+        // whereNotNull mencegah baris tanpa sj_validation_item_id (extra item,
+        // import manual) mencocokkan batch apa pun yang kolomnya NULL.
+        return $this->hasOne(Batch::class, 'sj_validation_item_id', 'sj_validation_item_id')
+            ->whereNotNull('sj_validation_item_id');
     }
 
     /**

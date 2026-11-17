@@ -11,6 +11,52 @@ use App\Models\RetribusiRate;
 class BiayaRetribusiCalculator
 {
     /**
+     * Qty koli diambil dari ledger penerimaan (bukan dari request klien):
+     * actual_qty per satuan ZAK/CRT. Dipakai bersama oleh kandidat, klaim,
+     * dan sinkronisasi ulang saat qty receiving berubah.
+     *
+     * @return array{qty_zak: float, qty_crt: float}
+     */
+    public function quantitiesForReceiving(Receiving $receiving): array
+    {
+        $receiving->loadMissing('items');
+
+        return [
+            'qty_zak' => (float) $receiving->items
+                ->filter(fn ($item): bool => str_contains(strtoupper((string) $item->satuan), 'ZAK'))
+                ->sum('actual_qty'),
+            'qty_crt' => (float) $receiving->items
+                ->filter(fn ($item): bool => str_contains(strtoupper((string) $item->satuan), 'CRT'))
+                ->sum('actual_qty'),
+        ];
+    }
+
+    /**
+     * Paksa qty baris berbasis receiving mengikuti ledger, menutup celah
+     * client mengirim qty lama/salah saat klaim atau edit.
+     *
+     * @param  array<int, array<string, mixed>>  $details
+     * @return array<int, array<string, mixed>>
+     */
+    public function deriveReceivingQuantities(array $details): array
+    {
+        $ids = collect($details)->pluck('receiving_id')->filter()->unique()->values()->all();
+        if ($ids === []) {
+            return $details;
+        }
+
+        $receivings = Receiving::whereIn('id', $ids)->with('items')->get()->keyBy('id');
+
+        return array_map(function (array $detail) use ($receivings): array {
+            if (empty($detail['receiving_id']) || ! $receivings->has($detail['receiving_id'])) {
+                return $detail;
+            }
+
+            return array_merge($detail, $this->quantitiesForReceiving($receivings->get($detail['receiving_id'])));
+        }, $details);
+    }
+
+    /**
      * Terapkan logika hitung retribusi: hanya baris receiving yang mengikuti
      * mode koli depo (nominal = qty_zak * rate_zak + qty_crt * rate_crt);
      * baris manual (tanpa receiving_id) selalu memakai nominal manual

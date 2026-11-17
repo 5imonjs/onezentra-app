@@ -14,6 +14,7 @@ use App\Models\OpnameExpiredSession;
 use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\ReceivingItem;
+use App\Services\Biaya\BiayaRetribusiSyncService;
 use App\Services\OpnameExpiredService;
 use App\Support\EvidenceStorage;
 use App\Support\LikePattern;
@@ -537,6 +538,19 @@ class ReceivingItemController extends Controller
                 $synced = true;
             } catch (\Throwable $e) {
                 Log::error('Opname generate after receiving item correction failed', [
+                    'receiving_item_id' => $receivingItem->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Qty/satuan berubah → angka retribusi yang masih draft ikut
+        // disegarkan. Kegagalan sinkronisasi tidak membatalkan koreksi ledger.
+        if (array_key_exists('actual_qty', $attributes) || array_key_exists('satuan', $attributes)) {
+            try {
+                app(BiayaRetribusiSyncService::class)->syncForReceiving((int) $receivingItem->receiving_id);
+            } catch (\Throwable $e) {
+                Log::error('Biaya retribusi sync after receiving item correction failed', [
                     'receiving_item_id' => $receivingItem->id,
                     'error' => $e->getMessage(),
                 ]);

@@ -143,12 +143,9 @@ class BiayaRetribusiController extends Controller
             ->get()
             ->map(function (Receiving $receiving) {
                 // Hasil bersih penerimaan: jumlah aktual per satuan.
-                $qtyZak = (float) $receiving->items
-                    ->filter(fn ($item) => str_contains(strtoupper((string) $item->satuan), 'ZAK'))
-                    ->sum('actual_qty');
-                $qtyCrt = (float) $receiving->items
-                    ->filter(fn ($item) => str_contains(strtoupper((string) $item->satuan), 'CRT'))
-                    ->sum('actual_qty');
+                $quantities = $this->calculator->quantitiesForReceiving($receiving);
+                $qtyZak = $quantities['qty_zak'];
+                $qtyCrt = $quantities['qty_crt'];
 
                 return [
                     'id' => $receiving->id,
@@ -210,6 +207,9 @@ class BiayaRetribusiController extends Controller
         $validated['status'] = 'draft';
         $validated = $user->depotAttributes($validated);
         $validated['details'] = $this->normalizer->forRetribusi($validated['details']);
+        // Qty receiving selalu diderivasi server-side — jangan percaya qty
+        // yang dikirim klien (bisa stale setelah validasi SJ dikoreksi).
+        $validated['details'] = $this->calculator->deriveReceivingQuantities($validated['details']);
         $validated['details'] = $this->calculator->apply($validated['kode_depo'] ?? null, $validated['details']);
         $validated['nominal_biaya'] = collect($validated['details'])->sum('nominal_biaya');
         $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.retribusi_rfah_threshold', 1000000);
@@ -336,6 +336,7 @@ class BiayaRetribusiController extends Controller
         $validated = $this->calculator->inheritReceivingDepot($validated);
 
         $validated['details'] = $this->normalizer->forRetribusi($validated['details']);
+        $validated['details'] = $this->calculator->deriveReceivingQuantities($validated['details']);
         $validated['details'] = $this->calculator->apply($validated['kode_depo'] ?? $biayaRetribusi->kode_depo, $validated['details']);
         $validated['nominal_biaya'] = collect($validated['details'])->sum('nominal_biaya');
         $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.retribusi_rfah_threshold', 1000000);
