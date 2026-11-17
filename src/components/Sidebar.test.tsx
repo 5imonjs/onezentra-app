@@ -100,12 +100,12 @@ describe('Sidebar — ikon menu', () => {
     expect(screen.queryByRole('link', { name: 'Laporan Monitoring Kedaluwarsa' })).not.toBeInTheDocument();
   });
 
-  it('menampilkan alur inbound sebagai 4 langkah dengan label yang jelas', () => {
+  it('menampilkan alur inbound dengan label jelas incl. detail penerimaan', () => {
     nav.pathname = '/rencana-kirim';
     renderSidebar();
 
     expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
-    for (const label of ['Rencana Kirim', 'Gate Check-in', 'Validasi SJ', 'Receiving']) {
+    for (const label of ['Rencana Kirim', 'Gate Check-in', 'Validasi SJ', 'Receiving', 'Detail Inbound']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
     expect(screen.queryByRole('link', { name: 'Inbound (SJ)' })).not.toBeInTheDocument();
@@ -113,14 +113,15 @@ describe('Sidebar — ikon menu', () => {
     expect(screen.queryByRole('link', { name: 'Check Out Point' })).not.toBeInTheDocument();
   });
 
-  it('menaruh Stok Manual di grup Stok & Opname, bukan di alur inbound', () => {
+  it('menaruh Detail Inbound di alur inbound, bukan di Stok & Opname', () => {
     nav.pathname = '/penerimaan';
     renderSidebar();
 
-    expect(screen.getByText('Stok & Opname')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Stok Manual' })).toBeInTheDocument();
-    // Grup Alur Inbound tidak dibuka saat halaman Stok Manual aktif.
-    expect(screen.queryByRole('link', { name: 'Rencana Kirim' })).not.toBeInTheDocument();
+    expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Detail Inbound' })).toBeInTheDocument();
+    // Grup Stok & Opname tidak dibuka saat halaman Detail Inbound aktif.
+    expect(screen.queryByRole('link', { name: 'Monitoring Kedaluwarsa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Stok Manual' })).not.toBeInTheDocument();
   });
 
   it('menyembunyikan "Stock Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {
