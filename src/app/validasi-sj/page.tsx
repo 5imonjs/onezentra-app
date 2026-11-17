@@ -1190,7 +1190,7 @@ export default function ValidasiSjPage() {
       </div>
 
       {/* Detail Modal */}
-      <Modal open={!!active} onClose={() => { setActive(null); setSelected(null); }} title="Detail Validasi Dokumen" subtitle="Pantau progres pemeriksaan dan validasi setiap item." size="2xl" footer={
+      <Modal open={!!active} onClose={() => { setActive(null); setSelected(null); }} title="Detail Validasi Dokumen" subtitle="Tahap 3 — pemeriksaan fisik & label batch (sumber data)." size="2xl" footer={
         <div className="flex w-full flex-col gap-3">
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
             {active?.status === 'IN_PROGRESS' && (
@@ -1199,6 +1199,18 @@ export default function ValidasiSjPage() {
                 Selesaikan Validasi
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                const po = active?.rencana_kirim?.po_transporter || '';
+                setActive(null);
+                setSelected(null);
+                router.push(`/receiving${po ? `?search=${encodeURIComponent(po)}` : ''}`);
+              }}
+              className="btn-secondary w-full px-4 py-2 text-sm sm:w-auto"
+            >
+              Lihat hasil Receiving
+            </button>
             <button type="button" onClick={() => { setActive(null); setSelected(null); }} className="btn-secondary w-full px-4 py-2 text-sm sm:w-auto">Tutup</button>
           </div>
           {/* Alasan tombol Selesaikan terkunci. Penuh lebar di baris sendiri —

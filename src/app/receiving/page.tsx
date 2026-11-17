@@ -120,6 +120,14 @@ export default function ReceivingPage() {
   const [statusTotals, setStatusTotals] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0 });
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+
+  // Deep link dari modal Validasi Dokumen: ?search=<po> langsung memfilter.
+  useEffect(() => {
+    const initialSearch = new URLSearchParams(window.location.search).get('search');
+    if (initialSearch) {
+      setSearch(initialSearch);
+    }
+  }, []);
   const [kodeDepo, setKodeDepo] = useState('');
   const [depots, setDepots] = useState<{ kode_depo: string; nama_depo: string }[]>([]);
   const [lastPage, setLastPage] = useState(1);
@@ -671,7 +679,7 @@ export default function ReceivingPage() {
         />
 
         {/* Detail Modal — bersih, putih, fokus pada data */}
-        <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Detail Receiving" subtitle="Rincian barang yang diterima per PO transporter." size="xl" footer={
+        <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Detail Receiving" subtitle="Tahap 4 — hasil bongkar, salinan dari validasi yang sudah selesai." size="xl" footer={
           <div className="flex flex-wrap items-center justify-end gap-3">
             <button
               type="button"
@@ -696,6 +704,9 @@ export default function ReceivingPage() {
                     <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">PO Transporter</p>
                     <h3 className="text-lg font-bold tracking-tight font-mono text-foreground">{viewItem.rencana_kirim?.po_transporter}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{viewItem.rencana_kirim?.driver_name || '-'} · {viewItem.rencana_kirim?.nopol || '-'}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      Angka di bawah disalin dari Validasi Dokumen yang sudah selesai untuk PO ini. Koreksi setelah bongkar selesai dilakukan lewat menu Detail Inbound.
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="rounded-xl bg-card border border-border p-3 text-center min-w-[76px]">
