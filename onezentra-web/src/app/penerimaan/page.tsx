@@ -158,12 +158,6 @@ interface ReceivingItem {
   } | null;
 }
 
-interface ComboItem {
-  kode_barang: string;
-  nama_barang: string | null;
-  expired_date: string | null;
-}
-
 interface ServerGroup {
   key: string;
   receiving_id: number | null;
@@ -233,6 +227,14 @@ export default function PenerimaanPage() {
   const [editing, setEditing] = useState<ReceivingItem | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
+  // Deep link dari halaman Receiving: ?search=<po> langsung memfilter group.
+  useEffect(() => {
+    const initialSearch = new URLSearchParams(window.location.search).get('search');
+    if (initialSearch) {
+      setSearch(initialSearch);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -280,21 +282,6 @@ export default function PenerimaanPage() {
   useEffect(() => { loadDepots(); }, [loadDepots]);
 
   const allItems = useMemo<ReceivingItem[]>(() => rawGroups.flatMap((g) => g.items), [rawGroups]);
-
-  const combos = useMemo((): ComboItem[] => {
-    const grouped = new Map<string, ComboItem>();
-    for (const it of allItems) {
-      const key = `${it.kode_barang}|${it.expired_date || ''}|${it.kode_depo || ''}`;
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          kode_barang: it.kode_barang,
-          nama_barang: it.nama_barang,
-          expired_date: it.expired_date,
-        });
-      }
-    }
-    return Array.from(grouped.values());
-  }, [allItems]);
 
   const [npnProducts, setNpnProducts] = useState<NpnProduct[]>([]);
   // Kode yang pernah diminta tidak dicari ulang — mencegah N+1 request
@@ -406,7 +393,7 @@ export default function PenerimaanPage() {
                 <svg aria-hidden="true" className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
               </div>
               <div>
-                <h1 className="text-2xl font-bold leading-tight">Inbound</h1>
+                <h1 className="text-2xl font-bold leading-tight">Detail Inbound</h1>
                 <p className="mt-0.5 text-ink-fg-muted">Hasil penerimaan SJ — tiap lot menjadi sumber Monitoring Kedaluwarsa</p>
               </div>
             </div>
@@ -433,7 +420,10 @@ export default function PenerimaanPage() {
                 value={search}
                 onChange={(v) => { setSearch(v); setPage(1); }}
                 placeholder="Cari kode / nama barang / sumber material / PO..."
-                resultCount={combos.length}
+                resultCount={groups.length}
+                totalCount={pagination?.total}
+                currentFrom={pagination?.from ?? undefined}
+                currentTo={pagination?.to ?? undefined}
                 resultLabel="lot"
               />
               {canFilterDepo && depots.length > 1 && (

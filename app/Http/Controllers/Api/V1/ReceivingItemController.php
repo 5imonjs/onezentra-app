@@ -113,7 +113,7 @@ class ReceivingItemController extends Controller
         }
 
         // Kunci bucket dibangun di PHP (bukan SQL raw) agar portabel antar
-        // database: R{receiving_id}|{depo} untuk item ber-receiving, atau
+        // database: R{receiving_id} untuk item ber-receiving, atau
         // D{tanggal}|{depo} untuk item tanpa receiving (manual/legacy).
         // Nilai tanggal dinormalisasi manual: tergantung driver DB, atribut bisa
         // datang sebagai Carbon atau string, jadi jangan mengandalkan cast.

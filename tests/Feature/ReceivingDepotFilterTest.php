@@ -153,6 +153,27 @@ class ReceivingDepotFilterTest extends TestCase
             ->assertJsonPath('message', 'Access denied: depo isolation');
     }
 
+    public function test_stats_mengikuti_filter_depo_dan_search(): void
+    {
+        $master = $this->userWith(true);
+        $this->makeReceiving('DPO-A', $master, 'PENDING', 'PO-STATS-A');
+        $this->makeReceiving('DPO-A', $master, 'COMPLETED', 'PO-STATS-B');
+        $this->makeReceiving('DPO-B', $master, 'PENDING', 'PO-STATS-C');
+
+        Sanctum::actingAs($master);
+
+        $this->getJson('/api/v1/receivings/stats?kode_depo=DPO-A')
+            ->assertOk()
+            ->assertJsonPath('data.total', 2)
+            ->assertJsonPath('data.pending', 1)
+            ->assertJsonPath('data.completed', 1);
+
+        $this->getJson('/api/v1/receivings/stats?search=PO-STATS-B')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.completed', 1);
+    }
+
     public function test_stats_returns_grouped_counts_for_the_users_depo(): void
     {
         $master = $this->userWith(true);

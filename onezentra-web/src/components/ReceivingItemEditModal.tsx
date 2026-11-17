@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
-import { opnameExpired, getErrorMessage } from '@/lib/api';
+import { receivingItems, getErrorMessage } from '@/lib/api';
 import { toDateInput } from '@/lib/dates';
 import { notifyGlobal } from '@/store/globalToast';
 import { CONDITIONS, CONDITION_LABELS, canonicalCondition, conditionRequiresPhoto } from '@/lib/condition';
@@ -127,7 +127,7 @@ export default function ReceivingItemEditModal({ open, item, onClose, onSaved }:
     const dateChanged = (form.tanggal_penerimaan || '') !== originalTanggal;
 
     try {
-      const res = await opnameExpired.manualUpdate(item.id, {
+      const res = await receivingItems.update(item.id, {
         qty_crt: qtyCrt,
         qty_pcs: qtyPcs,
         satuan: form.satuan || 'CRT',

@@ -60,6 +60,14 @@ describe('PenerimaanPage — filter depo', () => {
 
   afterEach(cleanup);
 
+  it('memakai judul Detail Inbound agar tidak mirip halaman Receiving', async () => {
+    hasPermission.mockImplementation(() => true);
+
+    render(<PenerimaanPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Detail Inbound' })).toBeInTheDocument();
+  });
+
   it('menampilkan filter depo untuk user dengan izin depot.view_all', async () => {
     hasPermission.mockImplementation((perm) => perm === 'depot.view_all');
 

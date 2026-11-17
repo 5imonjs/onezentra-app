@@ -498,6 +498,25 @@ export const receivingItems = {
    * Shape: { data: Group[], meta: { total, per_page, current_page, ... } }
    */
   groups: (params?: Record<string, unknown>) => apiClient.get('/receiving-items/groups', { params }),
+  /**
+   * Koreksi satu baris ledger receiving (digunakan modul Detail Inbound).
+   */
+  update: (id: number, data: Record<string, unknown>, photoFile?: File | null) => {
+    if (photoFile) {
+      const formData = new FormData();
+      formData.append('_method', 'PUT');
+      for (const [key, value] of Object.entries(data)) {
+        if (value === undefined || value === null) continue;
+        formData.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : String(value));
+      }
+      formData.append('photo', photoFile);
+      return apiClient.post(`/receiving-items/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+
+    return apiClient.put(`/receiving-items/${id}`, data);
+  },
 };
 
 export const opnameSessions = {
@@ -533,23 +552,9 @@ export const opnameExpired = {
   export: (params?: Record<string, unknown>) => apiClient.get('/opname-expired/export', { params, responseType: 'blob' }),
   manualItems: (params?: Record<string, unknown>) => apiClient.get('/receiving-items', { params: { source: 'IMPORT_MANUAL', ...params } }),
   manualCreate: (data: Record<string, unknown>) => apiClient.post('/receiving-items', data),
-  manualUpdate: (id: number, data: Record<string, unknown>, photoFile?: File | null) => {
-    if (photoFile) {
-      const formData = new FormData();
-      formData.append('_method', 'PUT');
-      for (const [key, value] of Object.entries(data)) {
-        if (value === undefined || value === null) continue;
-        // FormData selalu string; rule `boolean` Laravel hanya menerima
-        // '1'/'0' (bukan 'true'/'false').
-        formData.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : String(value));
-      }
-      formData.append('photo', photoFile);
-      return apiClient.post(`/receiving-items/${id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-    }
-    return apiClient.put(`/receiving-items/${id}`, data);
-  },
+  /** @deprecated Gunakan `receivingItems.update` — ini bukan fungsi opname. */
+  manualUpdate: (id: number, data: Record<string, unknown>, photoFile?: File | null) =>
+    receivingItems.update(id, data, photoFile),
   manualImport: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -624,6 +629,7 @@ export const gateTransactions = {
 
 export const receivings = {
   list: (params?: Record<string, unknown>) => apiClient.get('/receivings', { params }),
+  stats: (params?: Record<string, unknown>) => apiClient.get('/receivings/stats', { params }),
   get: (id: number) => apiClient.get(`/receivings/${id}`),
   complete: (id: number, data?: Record<string, unknown>) => apiClient.post(`/receivings/${id}/complete`, data ?? {}),
   import: (file: File) => {

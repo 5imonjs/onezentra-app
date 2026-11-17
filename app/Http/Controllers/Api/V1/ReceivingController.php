@@ -82,17 +82,47 @@ class ReceivingController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $user = $request->user();
-        $statusCounts = $this->scopeReceivingsToUser(Receiving::query(), $user)
+        $query = $this->scopeReceivingsToUser(Receiving::query(), $user);
+
+        // Statistik mengikuti filter yang sama dengan daftar, supaya angka di
+        // header tidak berbeda dengan baris yang sedang terlihat.
+        if ($request->filled('kode_depo')) {
+            $depotCodes = $this->accessibleDepotCodes($user);
+
+            if ($depotCodes !== null
+                && ! in_array((string) $request->input('kode_depo'), $depotCodes, true)) {
+                return response()->json(['message' => 'Access denied: depo isolation'], 403);
+            }
+
+            $query->whereHas('rencanaKirim', fn ($q) => $q->where('kode_depo', $request->input('kode_depo')));
+        }
+
+        if ($request->search) {
+            $like = LikePattern::contains((string) $request->search);
+            $query->whereHas('rencanaKirim', function ($q) use ($like): void {
+                $q->whereRaw('po_transporter LIKE ? ESCAPE ?', [$like, '\\'])
+                    ->orWhereRaw('driver_name LIKE ? ESCAPE ?', [$like, '\\']);
+            });
+        }
+
+        $statusCounts = $query
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
+        $pending = (int) ($statusCounts['PENDING'] ?? 0);
+        $inProgress = (int) ($statusCounts['IN_PROGRESS'] ?? 0);
+        $completed = (int) ($statusCounts['COMPLETED'] ?? 0);
+
         return response()->json([
             'data' => [
-                'total' => (int) $statusCounts->sum(),
-                'pending' => (int) ($statusCounts['PENDING'] ?? 0),
-                'in_progress' => (int) ($statusCounts['IN_PROGRESS'] ?? 0),
-                'completed' => (int) ($statusCounts['COMPLETED'] ?? 0),
+                // Total = jumlah tiga status yang ditampilkan di UI.
+                // CANCELLED sengaja tidak ikut supaya Total = pending + diproses + selesai.
+                'total' => $pending + $inProgress + $completed,
+                'pending' => $pending,
+                'in_progress' => $inProgress,
+                'completed' => $completed,
+                'cancelled' => (int) ($statusCounts['CANCELLED'] ?? 0),
             ],
         ]);
     }
