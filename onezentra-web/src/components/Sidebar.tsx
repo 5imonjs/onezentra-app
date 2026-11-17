@@ -11,11 +11,10 @@ const menuItems = [
 ];
 
 const operasionalMenus = [
-  { name: 'Replenishment', path: '/rencana-kirim', icon: 'truck', permission: 'rencana_kirim.view' },
-  { name: 'Check In Point', path: '/gate', icon: 'gate', permission: 'gate.view' },
-  { name: 'Validasi Dokumen', path: '/validasi-sj', icon: 'check', permission: 'sj_validation.view' },
-  { name: 'Check Out Point', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
-  { name: 'Inbound (SJ)', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
+  { name: 'Rencana Kirim', path: '/rencana-kirim', icon: 'truck', permission: 'rencana_kirim.view' },
+  { name: 'Gate Check-in', path: '/gate', icon: 'gate', permission: 'gate.view' },
+  { name: 'Validasi SJ', path: '/validasi-sj', icon: 'check', permission: 'sj_validation.view' },
+  { name: 'Receiving', path: '/receiving', icon: 'receive', permission: 'receiving.view' },
 ];
 
 // Stok & Opname adalah area kerja operasional: pemantauan kedaluwarsa dan
@@ -24,6 +23,9 @@ const operasionalMenus = [
 const opnameMenus = [
   { name: 'Monitoring Kedaluwarsa', path: '/opname-expired', icon: 'clock', permission: 'opname.view' },
   { name: 'Stock Opname', path: '/opname-sessions', icon: 'user-group', permission: 'opname.session.view' },
+  // Stok manual bukan langkah alur inbound — ia adalah entri ledger fisik
+  // (baseline/import), jadi taruh di area stok, bukan di Alur Inbound.
+  { name: 'Stok Manual', path: '/penerimaan', icon: 'clipboard', permission: 'penerimaan.view' },
 ];
 
 const masterDataMenus = [
