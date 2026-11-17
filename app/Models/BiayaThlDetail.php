@@ -11,7 +11,7 @@ class BiayaThlDetail extends Model
     protected $table = 'biaya_thl_details';
 
     protected $fillable = [
-        'biaya_thl_id', 'no_surat_jalan', 'nama_thl', 'driver_name', 'nopol_kendaraan',
+        'biaya_thl_id', 'receiving_id', 'no_surat_jalan', 'nama_thl', 'driver_name', 'nopol_kendaraan',
         'type_kendaraan', 'kubikasi', 'droppoint', 'posisi',
         'jam_datang', 'jam_pulang', 'nominal_biaya', 'kendaraan_tambahan', 'kendaraan_sj',
         'kendaraan_nopol', 'kendaraan_type', 'order',
@@ -35,6 +35,11 @@ class BiayaThlDetail extends Model
     public function biayaThl(): BelongsTo
     {
         return $this->belongsTo(BiayaThl::class);
+    }
+
+    public function receiving(): BelongsTo
+    {
+        return $this->belongsTo(Receiving::class);
     }
 
     public function photos(): HasMany

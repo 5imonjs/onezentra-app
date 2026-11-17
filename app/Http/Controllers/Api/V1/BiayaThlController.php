@@ -18,6 +18,7 @@ use App\Services\Biaya\BiayaApprovalPresenter;
 use App\Services\Biaya\BiayaDetailNormalizer;
 use App\Services\Biaya\BiayaPdfRenderer;
 use App\Services\Biaya\BiayaQueueSummary;
+use App\Services\Biaya\BiayaThlCalculator;
 use App\Services\Biaya\BiayaThlDetailWriter;
 use App\Services\Biaya\BiayaThlValidator;
 use App\Services\BiayaApprovalService;
@@ -30,6 +31,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -43,7 +45,67 @@ class BiayaThlController extends Controller
         private readonly BiayaDetailNormalizer $normalizer,
         private readonly BiayaThlDetailWriter $detailWriter,
         private readonly BiayaThlValidator $validator,
+        private readonly BiayaThlCalculator $thlCalculator,
     ) {}
+
+    /**
+     * Override dari detail retribusi hanya boleh dipakai untuk baris yang
+     * memang berasal dari receiving itu, dan pengajuan retribusinya harus
+     * masih dalam cakupan depo user. Tidak boleh menimpa semua pekerja.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function applyScopedRetribusiOverride(array $validated, ?User $user): array
+    {
+        abort_unless($user, 401);
+
+        $retribusiDetailId = $validated['biaya_retribusi_detail_id'] ?? null;
+        if (! $retribusiDetailId) {
+            return $validated;
+        }
+
+        $retribusiDetail = BiayaRetribusiDetail::whereKey($retribusiDetailId)
+            ->whereHas('biayaRetribusi', fn ($q) => $q->forUserDepot($user))
+            ->first();
+
+        abort_unless($retribusiDetail, 403, 'Detail retribusi tidak ditemukan dalam cakupan depo Anda.');
+
+        foreach ($validated['details'] ?? [] as &$detail) {
+            $detailReceivingId = $detail['receiving_id'] ?? null;
+            if (! $detailReceivingId || (int) $detailReceivingId !== (int) $retribusiDetail->receiving_id) {
+                continue;
+            }
+
+            $detail['nopol_kendaraan'] = $retribusiDetail->nopol_kendaraan;
+            $detail['type_kendaraan'] = $retribusiDetail->type_kendaraan;
+            $detail['no_surat_jalan'] = $retribusiDetail->no_surat_jalan;
+            $detail['kubikasi'] = $retribusiDetail->kubikasi;
+            $detail['droppoint'] = $retribusiDetail->droppoint;
+            $detail['posisi'] = $retribusiDetail->posisi ?: ($detail['posisi'] ?? null);
+            $detail['jam_datang'] = $retribusiDetail->jam_datang?->toDateTimeString();
+            $detail['jam_pulang'] = $retribusiDetail->jam_pulang?->toDateTimeString();
+            $detail['kendaraan_tambahan'] = $retribusiDetail->kendaraan_tambahan;
+        }
+        unset($detail);
+
+        return $validated;
+    }
+
+    /** Kunci receiving yang dipakai baris agar qty/SJ tidak berubah saat klaim. */
+    private function lockReceivingRows(array $validated): void
+    {
+        $ids = collect($validated['details'] ?? [])
+            ->pluck('receiving_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids !== []) {
+            Receiving::whereIn('id', $ids)->lockForUpdate()->get();
+        }
+    }
 
     /**
      * Scope dasar yang sama untuk index + export: approver melihat antrean
@@ -206,29 +268,16 @@ class BiayaThlController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validator->validate($request);
+        /** @var User $user */
+        $user = $request->user();
 
-        // Ambil data dari BiayaRetribusiDetail jika biaya_retribusi_detail_id disediakan
-        $retribusiDetail = null;
-        if ($validated['biaya_retribusi_detail_id'] ?? null) {
-            $retribusiDetail = BiayaRetribusiDetail::find($validated['biaya_retribusi_detail_id']);
-        }
+        $validated = $this->applyScopedRetribusiOverride($validated, $user);
+        $this->lockReceivingRows($validated);
+        $validated = $this->thlCalculator->deriveReceivingData($validated);
 
         foreach ($validated['details'] ?? [] as &$detail) {
             $detail['kubikasi'] = (float) ($detail['kubikasi'] ?? 0);
             $detail['droppoint'] = (string) ($detail['droppoint'] ?? '0');
-
-            // Override dengan field dari BiayaRetribusiDetail jika tersedia
-            if ($retribusiDetail) {
-                $detail['nopol_kendaraan'] = $retribusiDetail->nopol_kendaraan;
-                $detail['type_kendaraan'] = $retribusiDetail->type_kendaraan;
-                $detail['no_surat_jalan'] = $retribusiDetail->no_surat_jalan;
-                $detail['kubikasi'] = $retribusiDetail->kubikasi;
-                $detail['droppoint'] = $retribusiDetail->droppoint;
-                $detail['posisi'] = $retribusiDetail->posisi;
-                $detail['jam_datang'] = $retribusiDetail->jam_datang;
-                $detail['jam_pulang'] = $retribusiDetail->jam_pulang;
-                $detail['kendaraan_tambahan'] = $retribusiDetail->kendaraan_tambahan;
-            }
 
             if (strtoupper(trim((string) ($detail['posisi'] ?? ''))) === 'THL GUDANG') {
                 $detail['kubikasi'] = 0;
@@ -241,8 +290,6 @@ class BiayaThlController extends Controller
         $validated['kubikasi_base'] = collect($validated['details'] ?? [])->sum('kubikasi');
         $validated['nominal_biaya'] = collect($validated['details'] ?? [])->sum('nominal_biaya');
         $validated['is_rfah_required'] = $validated['nominal_biaya'] > config('biaya.thl_rfah_threshold', 750000);
-        /** @var User $user */
-        $user = $request->user();
         $validated['approval_pengajuan'] = $user->full_name ?: $user->email;
         $validated['approval_pengajuan_level'] = $user->level;
         $validated['created_by'] = $user->id;
@@ -260,10 +307,12 @@ class BiayaThlController extends Controller
             $validated['rfah_name'] = ApprovalAssignment::resolveRfahName($validated['kode_depo'] ?? null, ApprovalAssignment::MODULE_THL);
         }
 
-        $firstDetail = $validated['details'][0] ?? [];
-        $validated['no_kendaraan'] = $firstDetail['nopol_kendaraan'] ?? null;
-        $validated['type_kendaraan'] = $firstDetail['type_kendaraan'] ?? null;
-        $validated['no_surat_jalan'] = $firstDetail['no_surat_jalan'] ?? null;
+        // Header adalah ringkasan seluruh baris — bukan snapshot details[0]
+        // yang menyesatkan saat satu pengajuan punya beberapa kendaraan/SJ.
+        $details = collect($validated['details'] ?? []);
+        $validated['no_kendaraan'] = Str::limit($details->pluck('nopol_kendaraan')->filter()->unique()->implode(', '), 255);
+        $validated['type_kendaraan'] = Str::limit($details->pluck('type_kendaraan')->filter()->unique()->implode(', '), 255);
+        $validated['no_surat_jalan'] = Str::limit($details->pluck('no_surat_jalan')->filter()->unique()->implode(', '), 255);
 
         $biayaThl = DB::transaction(function () use ($validated) {
             $biayaThl = BiayaThl::create(collect($validated)->except(['details'])->toArray());
@@ -318,6 +367,9 @@ class BiayaThlController extends Controller
         }
 
         $validated = $this->validator->validate($request, true, $biayaThl->id);
+        $validated = $this->applyScopedRetribusiOverride($validated, $editor);
+        $this->lockReceivingRows($validated);
+        $validated = $this->thlCalculator->deriveReceivingData($validated);
 
         foreach ($validated['details'] ?? [] as &$detail) {
             $detail['kubikasi'] = (float) ($detail['kubikasi'] ?? 0);
@@ -340,10 +392,12 @@ class BiayaThlController extends Controller
             $validated['rfah_name'] = null;
         }
 
-        $firstDetail = $validated['details'][0] ?? [];
-        $validated['no_kendaraan'] = $firstDetail['nopol_kendaraan'] ?? null;
-        $validated['type_kendaraan'] = $firstDetail['type_kendaraan'] ?? null;
-        $validated['no_surat_jalan'] = $firstDetail['no_surat_jalan'] ?? null;
+        // Header adalah ringkasan seluruh baris — bukan snapshot details[0]
+        // yang menyesatkan saat satu pengajuan punya beberapa kendaraan/SJ.
+        $details = collect($validated['details'] ?? []);
+        $validated['no_kendaraan'] = Str::limit($details->pluck('nopol_kendaraan')->filter()->unique()->implode(', '), 255);
+        $validated['type_kendaraan'] = Str::limit($details->pluck('type_kendaraan')->filter()->unique()->implode(', '), 255);
+        $validated['no_surat_jalan'] = Str::limit($details->pluck('no_surat_jalan')->filter()->unique()->implode(', '), 255);
 
         DB::transaction(function () use ($validated, $biayaThl): void {
             $header = $validated;

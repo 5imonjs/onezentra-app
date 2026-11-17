@@ -22,8 +22,10 @@ class BiayaThlValidator
         if ($request->boolean('is_draft')) {
             return Validator::make($request->all(), [
                 'tanggal_pengajuan' => 'nullable|date',
+                'biaya_retribusi_detail_id' => 'nullable|exists:biaya_retribusi_details,id',
                 'details' => 'nullable|array|max:20',
                 'details.*.id' => 'nullable|integer|exists:biaya_thl_details,id',
+                'details.*.receiving_id' => 'nullable|integer|exists:receivings,id',
                 'details.*.no_surat_jalan' => 'nullable|string|max:50',
                 'details.*.nama_thl' => 'nullable|string|max:150',
                 'details.*.driver_name' => 'nullable|string|max:150',
@@ -60,6 +62,7 @@ class BiayaThlValidator
             'kubikasi_base' => 'nullable|numeric|min:0',
             'details' => 'required|array|min:1|max:20',
             'details.*.id' => 'nullable|integer|exists:biaya_thl_details,id',
+            'details.*.receiving_id' => 'nullable|integer|exists:receivings,id',
             'details.*.no_surat_jalan' => 'nullable|string|max:50',
             'details.*.nama_thl' => 'required|string|max:150',
             'details.*.driver_name' => 'nullable|string|max:150',

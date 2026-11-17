@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalAssignment;
+use App\Models\BiayaRetribusi;
+use App\Models\BiayaRetribusiDetail;
 use App\Models\BiayaThl;
 use App\Models\BiayaThlPhoto;
 use App\Models\Permission;
 use App\Models\Receiving;
+use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
 use App\Models\Role;
+use App\Models\SjValidation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -942,5 +946,136 @@ class BiayaThlFlowTest extends TestCase
 
         // Draft tetap boleh belum berdepo.
         $this->postJson('/api/v1/biaya-thl', ['is_draft' => true])->assertCreated();
+    }
+
+    private function completedReceivingForDerivation(string $kodeDepo, string $nopol, string $sj): Receiving
+    {
+        $rencana = RencanaKirim::create([
+            'po_transporter' => 'PO-THL-'.uniqid(),
+            'kode_depo' => $kodeDepo,
+            'nama_depo' => 'Depo '.$kodeDepo,
+            'nopol' => $nopol,
+            'jenis_kendaraan' => 'CDD',
+            'status' => 'COMPLETED',
+        ]);
+
+        SjValidation::create([
+            'rencana_kirim_id' => $rencana->id,
+            'scan_code' => $sj,
+            'status' => 'COMPLETED',
+            'completed_at' => now(),
+        ]);
+
+        $receiving = Receiving::create([
+            'rencana_kirim_id' => $rencana->id,
+            'status' => 'COMPLETED',
+            'checked_by' => $this->user->id,
+        ]);
+
+        ReceivingItem::create([
+            'receiving_id' => $receiving->id,
+            'kode_barang' => 'SKU-THL',
+            'nama_barang' => 'Barang THL',
+            'expected_qty' => 5,
+            'actual_qty' => 5,
+            'satuan' => 'CRT',
+            'source' => ReceivingItem::SOURCE_VALIDASI,
+        ]);
+
+        return $receiving;
+    }
+
+    public function test_detail_thl_menurunkan_identitas_dari_receiving(): void
+    {
+        Sanctum::actingAs($this->user);
+        $receiving = $this->completedReceivingForDerivation('DPT-A', 'KB 1234 AA', 'SJ-THL-1');
+
+        $res = $this->postJson('/api/v1/biaya-thl', [
+            'is_draft' => true,
+            'details' => [[
+                'receiving_id' => $receiving->id,
+                'nopol_kendaraan' => 'KB SALAH',
+                'type_kendaraan' => 'Fuso',
+                'no_surat_jalan' => 'SJ SALAH',
+                'nama_thl' => 'Budi',
+                'nominal_biaya' => 100000,
+                'kubikasi' => 99,
+                'posisi' => 'THL GUDANG',
+            ]],
+        ])->assertCreated();
+
+        $detail = BiayaThl::findOrFail($res->json('data.id'))->details()->first();
+        $this->assertSame($receiving->id, (int) $detail->receiving_id);
+        $this->assertSame('KB 1234 AA', $detail->nopol_kendaraan);
+        $this->assertSame('CDD', $detail->type_kendaraan);
+        $this->assertSame('SJ-THL-1', $detail->no_surat_jalan);
+    }
+
+    public function test_header_thl_merangkum_semua_kendaraan_bukan_baris_pertama(): void
+    {
+        Sanctum::actingAs($this->user);
+
+        $res = $this->postJson('/api/v1/biaya-thl', [
+            'is_draft' => true,
+            'details' => [
+                [
+                    'nopol_kendaraan' => 'KB 1111 AA',
+                    'type_kendaraan' => 'CDD',
+                    'no_surat_jalan' => 'SJ-1',
+                    'nama_thl' => 'Budi',
+                    'nominal_biaya' => 100000,
+                    'posisi' => 'THL GUDANG',
+                ],
+                [
+                    'nopol_kendaraan' => 'KB 2222 BB',
+                    'type_kendaraan' => 'Fuso',
+                    'no_surat_jalan' => 'SJ-2',
+                    'nama_thl' => 'Andi',
+                    'nominal_biaya' => 100000,
+                    'posisi' => 'THL GUDANG',
+                ],
+            ],
+        ])->assertCreated();
+
+        $thl = BiayaThl::findOrFail($res->json('data.id'));
+        $this->assertStringContainsString('KB 1111 AA', (string) $thl->no_kendaraan);
+        $this->assertStringContainsString('KB 2222 BB', (string) $thl->no_kendaraan);
+        $this->assertStringContainsString('SJ-1', (string) $thl->no_surat_jalan);
+        $this->assertStringContainsString('SJ-2', (string) $thl->no_surat_jalan);
+    }
+
+    public function test_override_detail_retribusi_dibatasi_depo(): void
+    {
+        Sanctum::actingAs($this->user);
+
+        $foreign = $this->completedReceivingForDerivation('DPT-B', 'KB FOREIGN', 'SJ-FOREIGN');
+        $foreignRetribusi = BiayaRetribusi::create([
+            'tanggal_pengajuan' => '2026-09-18',
+            'kode_depo' => 'DPT-B',
+            'nama_depo' => 'Depo DPT-B',
+            'created_by' => $this->user->id,
+            'status' => 'draft',
+            'nominal_biaya' => 100000,
+        ]);
+        $foreignDetail = BiayaRetribusiDetail::create([
+            'biaya_retribusi_id' => $foreignRetribusi->id,
+            'receiving_id' => $foreign->id,
+            'nopol_kendaraan' => 'KB FOREIGN',
+            'type_kendaraan' => 'CDD',
+            'no_surat_jalan' => 'SJ-FOREIGN',
+            'kubikasi' => 10,
+        ]);
+
+        $this->postJson('/api/v1/biaya-thl', [
+            'is_draft' => true,
+            'biaya_retribusi_detail_id' => $foreignDetail->id,
+            'details' => [[
+                'nopol_kendaraan' => 'KB 1 X',
+                'type_kendaraan' => 'CDD',
+                'nama_thl' => 'Budi',
+                'nominal_biaya' => 100000,
+                'posisi' => 'THL GUDANG',
+            ]],
+        ])->assertForbidden();
     }
 }
