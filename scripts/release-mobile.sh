@@ -23,8 +23,9 @@ APP_DIR="${OZ_APP_DIR:-/home/onezentra-app}"
 REMOTE_APK="/tmp/onezentra-release-$$.apk"
 
 usage() {
-  echo "Usage: $0 <version-name> <version-code> <notes> [--optional]" >&2
-  echo "Contoh: $0 1.0.2 5 'Perbaikan approval barang luar rencana'" >&2
+  echo "Usage: $0 <version-name> <version-code> <notes> [--force] [--optional]" >&2
+  echo "Contoh: $0 1.0.2 5 'Perbaikan approval barang luar rencana' --force" >&2
+  echo "Default: build di bawah version-code wajib update via min-supported-code." >&2
   exit 1
 }
 
@@ -34,16 +35,23 @@ VERSION_NAME="$1"
 VERSION_CODE="$2"
 shift 2
 
-FORCE=1
+# Default aman: hanya build lama yang dipaksa lewat min-supported-code.
+# --force hanya dipakai kalau memang ingin memaksa semua build lama sekaligus.
+FORCE=0
 MIN_SUPPORTED="$VERSION_CODE"
 NOTES_PARTS=()
 for arg in "$@"; do
-  if [ "$arg" = "--optional" ]; then
-    FORCE=0
-    MIN_SUPPORTED=1
-  else
-    NOTES_PARTS+=("$arg")
-  fi
+  case "$arg" in
+    --force)
+      FORCE=1
+      ;;
+    --optional)
+      MIN_SUPPORTED=1
+      ;;
+    *)
+      NOTES_PARTS+=("$arg")
+      ;;
+  esac
 done
 NOTES="${NOTES_PARTS[*]}"
 

@@ -51,12 +51,25 @@ class PublishAppRelease extends Command
         // Nama file stabil: releases/onezentra-<code>.apk pada disk local
         // (storage/app) — disajikan lewat route download, bukan public/.
         $destination = "releases/onezentra-{$versionCode}.apk";
+        $disk = Storage::disk('local');
+        $destinationPath = $disk->path($destination);
+
+        // Republish versi yang sama tidak boleh membaca dari file tujuan yang
+        // sedang ditimpa — jika tidak, hash dihitung dari file 0 byte.
+        if (realpath($apkPath) === realpath($destinationPath)) {
+            $this->error('APK sumber sama dengan file tujuan. Salin ke /tmp lalu publish ulang.');
+
+            return self::FAILURE;
+        }
+
+        // Hitung hash SEBELUM menimpa, agar selalu mengikuti isi asli.
+        $sha256 = hash_file('sha256', $apkPath);
+
         $stream = fopen($apkPath, 'rb');
-        Storage::disk('local')->put($destination, $stream);
+        $disk->put($destination, $stream);
         fclose($stream);
 
         $apkUrl = route('api.releases.download', ['versionCode' => $versionCode]);
-        $sha256 = hash_file('sha256', $apkPath);
 
         $release = AppRelease::query()->updateOrCreate(
             [

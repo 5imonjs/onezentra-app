@@ -42,6 +42,25 @@ void main() {
     );
   });
 
+  test(
+    'flag force tidak memaksa build yang sudah sama dengan rilis terbaru',
+    () {
+      const forced = AppUpdateInfo(
+        versionName: '1.1.1',
+        versionCode: 4,
+        apkUrl: 'https://example.test/releases/onezentra-4.apk',
+        sha256: null,
+        notes: null,
+        force: true,
+        minSupportedCode: 4,
+      );
+      expect(
+        decideAppUpdate(installedBuild: 4, latest: forced),
+        AppUpdateDecision.upToDate,
+      );
+    },
+  );
+
   test('flag force memaksa walau build sudah mencukupi', () {
     const forced = AppUpdateInfo(
       versionName: '1.1.1',

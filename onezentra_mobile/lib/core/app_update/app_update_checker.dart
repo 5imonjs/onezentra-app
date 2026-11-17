@@ -83,14 +83,16 @@ AppUpdateDecision decideAppUpdate({
   if (latest == null) {
     return AppUpdateDecision.upToDate;
   }
+  // Build yang sudah sama/lebih baru tidak perlu update, walaupun server
+  // masih mengirim flag force (flag itu hanya berlaku untuk build lama).
+  if (installedBuild >= latest.versionCode) {
+    return AppUpdateDecision.upToDate;
+  }
   var minRequired = latest.minSupportedCode > 0 ? latest.minSupportedCode : 0;
   if (installedBuild < minRequired || latest.force) {
     return AppUpdateDecision.force;
   }
-  if (installedBuild < latest.versionCode) {
-    return AppUpdateDecision.optional;
-  }
-  return AppUpdateDecision.upToDate;
+  return AppUpdateDecision.optional;
 }
 
 /// Kanal platform untuk membuka URL APK (bukan plugin url_launcher).
