@@ -100,6 +100,29 @@ describe('Sidebar — ikon menu', () => {
     expect(screen.queryByRole('link', { name: 'Laporan Monitoring Kedaluwarsa' })).not.toBeInTheDocument();
   });
 
+  it('menampilkan alur inbound sebagai 4 langkah dengan label yang jelas', () => {
+    nav.pathname = '/rencana-kirim';
+    renderSidebar();
+
+    expect(screen.getByText('Alur Inbound')).toBeInTheDocument();
+    for (const label of ['Rencana Kirim', 'Gate Check-in', 'Validasi SJ', 'Receiving']) {
+      expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('link', { name: 'Inbound (SJ)' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Check In Point' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Check Out Point' })).not.toBeInTheDocument();
+  });
+
+  it('menaruh Stok Manual di grup Stok & Opname, bukan di alur inbound', () => {
+    nav.pathname = '/penerimaan';
+    renderSidebar();
+
+    expect(screen.getByText('Stok & Opname')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Stok Manual' })).toBeInTheDocument();
+    // Grup Alur Inbound tidak dibuka saat halaman Stok Manual aktif.
+    expect(screen.queryByRole('link', { name: 'Rencana Kirim' })).not.toBeInTheDocument();
+  });
+
   it('menyembunyikan "Stock Opname" dari viewer murni (opname.view tanpa opname.session.view)', () => {
     nav.pathname = '/opname-expired';
     auth.can = (permission: string) => permission !== 'opname.session.view';
