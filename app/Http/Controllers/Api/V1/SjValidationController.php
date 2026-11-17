@@ -34,6 +34,17 @@ use Illuminate\Validation\ValidationException;
 
 class SjValidationController extends Controller
 {
+    /**
+     * Kondisi ini menggambarkan selisih item RENCANA, bukan barang fisik
+     * tambahan. Memakainya di catatan "luar rencana" menyesatkan planner dan
+     * (bila disetujui) menciptakan receiving item untuk barang yang tidak ada.
+     */
+    private const EXTRA_INVALID_CONDITIONS = [
+        'QTY_KURANG',
+        'ISI_KEMASAN_KURANG',
+        'FISIK_TIDAK_ADA',
+    ];
+
     public function __construct(private EmailNotificationService $emailService) {}
 
     public function index(Request $request): JsonResponse
@@ -891,6 +902,8 @@ class SjValidationController extends Controller
             ]);
         }
 
+        $this->assertExtraItemValid($sjValidation, $kodeBarang, $validated['condition'] ?? 'FISIK_BAGUS');
+
         $extra = DB::transaction(function () use ($request, $sjValidation, $validated, $npn, $kodeBarang, $namaBarang, $satuan) {
             $photoPath = EvidenceStorage::putFile($request->file('photo'), 'validation-photos');
 
@@ -952,6 +965,26 @@ class SjValidationController extends Controller
         return $this->decideExtraItem($request, $sjValidation, $extraItem, 'REJECTED');
     }
 
+    /** Cegah catatan "luar rencana" dipakai untuk selisih item rencana. */
+    private function assertExtraItemValid(SjValidation $sjValidation, string $kodeBarang, string $condition): void
+    {
+        if (in_array($condition, self::EXTRA_INVALID_CONDITIONS, true)) {
+            throw ValidationException::withMessages([
+                'condition' => ['Kondisi ini adalah selisih item rencana — koreksi qty/expired pada item yang bersangkutan, bukan catatan barang luar rencana.'],
+            ]);
+        }
+
+        $sudahDirencanakan = $sjValidation->items()
+            ->where('kode_barang', $kodeBarang)
+            ->exists();
+
+        if ($sudahDirencanakan) {
+            throw ValidationException::withMessages([
+                'kode_barang' => ['Barang ini sudah ada di rencana kirim — gunakan koreksi item rencana, bukan catatan luar rencana.'],
+            ]);
+        }
+    }
+
     private function decideExtraItem(Request $request, SjValidation $sjValidation, int $extraItemId, string $decision): JsonResponse
     {
         $this->authorizeDepot($sjValidation);
@@ -974,6 +1007,16 @@ class SjValidationController extends Controller
             422,
             'Catatan sudah diputuskan (status '.$extra->status.') — keputusan bersifat final.'
         );
+
+        // Data lama yang salah bentuk tidak boleh disetujui — nanti ia
+        // materialisasi sebagai receiving item untuk barang yang tidak ada.
+        if ($decision === 'APPROVED') {
+            $this->assertExtraItemValid(
+                $sjValidation,
+                (string) $extra->kode_barang,
+                (string) ($extra->condition ?: 'FISIK_BAGUS'),
+            );
+        }
 
         $extra = DB::transaction(function () use ($extra, $decision, $request, $validated, $sjValidation) {
             // Kunci baris: keputusan final + penerbitan batch harus
@@ -1152,6 +1195,15 @@ class SjValidationController extends Controller
 
             $pending = $locked->items()->where('status', 'PENDING')->count();
             abort_if($pending > 0, 422, 'Masih ada item yang belum divalidasi ('.$pending.')');
+
+            // Approval planner adalah gate: catatan luar rencana belum boleh
+            // "hilang" di alur hanya karena sesi ditutup.
+            $pendingExtra = $locked->extraItems()->where('status', 'PENDING')->count();
+            abort_if(
+                $pendingExtra > 0,
+                422,
+                'Masih ada '.$pendingExtra.' catatan barang luar rencana yang menunggu keputusan planner.'
+            );
 
             // Tanggal expired adalah syarat kelengkapan yang sama di web.
             // Tanpa guard di server, client lain bisa menyelesaikan sesi

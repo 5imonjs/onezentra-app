@@ -252,6 +252,7 @@ class _ExtraItemSheetState extends State<ExtraItemSheet> {
               const SizedBox(height: AppTheme.space2),
               ConditionChipRow(
                 value: _condition,
+                values: ValidationCondition.extraValues,
                 onChanged: (value) => setState(() => _condition = value),
               ),
               // Backend mewajibkan foto untuk setiap barang luar rencana,

@@ -31,6 +31,7 @@ class ConditionChipRow extends StatelessWidget {
   const ConditionChipRow({
     required this.value,
     required this.onChanged,
+    this.values = ValidationCondition.values,
     super.key,
   });
 
@@ -40,6 +41,10 @@ class ConditionChipRow extends StatelessWidget {
 
   /// Dipanggil dengan nilai kondisi baru saat chip ditekan.
   final ValueChanged<String> onChanged;
+
+  /// Daftar kondisi yang diizinkan. Item rencana memakai semua kondisi,
+  /// catatan barang luar rencana hanya kondisi fisik barang tambahan.
+  final List<String> values;
 
   @override
   Widget build(BuildContext context) => DropdownButtonFormField<String>(
@@ -52,7 +57,7 @@ class ConditionChipRow extends StatelessWidget {
       labelText: 'Kondisi fisik',
       border: OutlineInputBorder(borderRadius: AppTheme.radiusLg),
     ),
-    items: ValidationCondition.values
+    items: values
         .map(
           (opt) => DropdownMenuItem(
             value: opt,

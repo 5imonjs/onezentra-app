@@ -12,6 +12,7 @@ use App\Models\RencanaKirimItem;
 use App\Models\Role;
 use App\Models\SjValidation;
 use App\Models\SjValidationExtraItem;
+use App\Models\SjValidationItem;
 use App\Models\User;
 use Database\Seeders\EmailNotificationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -583,6 +584,93 @@ class SjValidationExtraItemTest extends TestCase
         // Operator pelapor tidak otomatis boleh menyetujui laporannya sendiri.
         $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", [])
             ->assertForbidden();
+        $this->assertDatabaseHas('sj_validation_extra_items', ['id' => $extra->id, 'status' => 'PENDING']);
+    }
+
+    public function test_kondisi_selisih_rencana_ditolak_sebagai_barang_luar_rencana(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']));
+        Storage::fake('public');
+        $validation = $this->inProgressValidation($user, $this->rencanaKirim($user));
+
+        $this->post("/api/v1/sj-validations/{$validation->id}/extra-items", [
+            'kode_barang' => 'SKU-LUAR-1',
+            'nama_barang' => 'Barang di Luar Rencana',
+            'qty' => 7,
+            'satuan' => 'CRT',
+            'condition' => 'QTY_KURANG',
+            'photo' => UploadedFile::fake()->image('bukti.jpg'),
+        ])->assertStatus(422)->assertJsonValidationErrors(['condition']);
+
+        $this->assertDatabaseCount('sj_validation_extra_items', 0);
+    }
+
+    public function test_sku_yang_sudah_direncanakan_ditolak_sebagai_barang_luar_rencana(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']));
+        Storage::fake('public');
+        $rk = $this->rencanaKirim($user);
+        $validation = $this->inProgressValidation($user, $rk);
+        SjValidationItem::create([
+            'sj_validation_id' => $validation->id,
+            'rencana_kirim_item_id' => RencanaKirimItem::where('rencana_kirim_id', $rk->id)->value('id'),
+            'kode_barang' => 'SKU-PLAN-1',
+            'nama_barang' => 'Barang Rencana',
+            'expected_qty' => 10,
+            'actual_qty' => 10,
+            'satuan' => 'CRT',
+            'status' => 'PENDING',
+        ]);
+
+        $this->post("/api/v1/sj-validations/{$validation->id}/extra-items", [
+            'kode_barang' => 'SKU-PLAN-1',
+            'nama_barang' => 'Barang Rencana',
+            'qty' => 7,
+            'satuan' => 'CRT',
+            'condition' => 'FISIK_BAGUS',
+            'photo' => UploadedFile::fake()->image('bukti.jpg'),
+        ])->assertStatus(422)->assertJsonValidationErrors(['kode_barang']);
+
+        $this->assertDatabaseCount('sj_validation_extra_items', 0);
+    }
+
+    public function test_complete_ditahan_sampai_planner_memutus_catatan_luar_rencana(): void
+    {
+        Sanctum::actingAs($user = $this->userWithPermissions([
+            'sj_validation.view', 'sj_validation.extra', 'sj_validation.complete',
+        ]));
+        Storage::fake('public');
+        $validation = $this->inProgressValidation($user, $this->rencanaKirim($user));
+        $this->buatCatatanLuar($user, $validation);
+
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/complete")
+            ->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Masih ada 1 catatan barang luar rencana yang menunggu keputusan planner.']);
+
+        $this->assertDatabaseHas('sj_validations', ['id' => $validation->id, 'status' => 'IN_PROGRESS']);
+    }
+
+    public function test_catatan_lama_yang_salah_tidak_bisa_disetujui(): void
+    {
+        Sanctum::actingAs($planner = $this->userWithPermissions(['sj_validation.view', 'sj_validation.approve']));
+        $recorder = $this->userWithPermissions(['sj_validation.view', 'sj_validation.extra']);
+        $rk = $this->rencanaKirim($planner);
+        $validation = $this->inProgressValidation($planner, $rk);
+
+        // Data lama: qty kurang dari item rencana disimpan sebagai extra item.
+        $extra = SjValidationExtraItem::create([
+            'sj_validation_id' => $validation->id,
+            'kode_barang' => 'SKU-PLAN-1',
+            'nama_barang' => 'Barang Rencana',
+            'qty' => 9,
+            'satuan' => 'CRT',
+            'condition' => 'QTY_KURANG',
+            'photo' => 'validation-photos/lama.jpg',
+            'recorded_by' => $recorder->id,
+        ]);
+
+        $this->postJson("/api/v1/sj-validations/{$validation->id}/extra-items/{$extra->id}/approve", [])
+            ->assertStatus(422);
         $this->assertDatabaseHas('sj_validation_extra_items', ['id' => $extra->id, 'status' => 'PENDING']);
     }
 

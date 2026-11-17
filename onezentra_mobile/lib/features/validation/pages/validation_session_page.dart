@@ -1552,6 +1552,10 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
     required bool canComplete,
   }) {
     var pending = session.items.where((item) => item.isPending).length;
+    // Catatan luar rencana juga wajib diputus planner sebelum sesi ditutup.
+    var pendingExtra = session.extraItems
+        .where((item) => item.isPending)
+        .length;
     var missingExpired = session.items
         .where(
           (item) =>
@@ -1576,13 +1580,19 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
         .where((extra) => extra.canPrint && extra.batch?.isPrinted != true)
         .length;
     var totalUnprinted = unprinted + unprintedExtra;
-    var blocked = pending > 0 || missingExpired > 0 || totalUnprinted > 0;
+    var blocked =
+        pending > 0 ||
+        pendingExtra > 0 ||
+        missingExpired > 0 ||
+        totalUnprinted > 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _darkActionButton(
           label: pending > 0
               ? 'Selesaikan ($pending item tersisa)'
+              : pendingExtra > 0
+              ? 'Tunggu $pendingExtra persetujuan luar rencana'
               : missingExpired > 0
               ? 'Lengkapi $missingExpired tanggal expired'
               : totalUnprinted > 0
@@ -1616,6 +1626,8 @@ class _ValidationSessionPageState extends State<ValidationSessionPage> {
                   child: Text(
                     pending > 0
                         ? 'Validasi dulu $pending item di atas — tombol aktif otomatis.'
+                        : pendingExtra > 0
+                        ? 'Planner belum memutus $pendingExtra catatan barang luar rencana — tunggu persetujuan/penolakan.'
                         : missingExpired > 0
                         ? 'Isi tanggal expired $missingExpired item di atas — server juga menolak sesi tanpa tanggal expired.'
                         : 'Cetak label $totalUnprinted item di atas — tombol aktif setelah semua dilaporkan tercetak.',

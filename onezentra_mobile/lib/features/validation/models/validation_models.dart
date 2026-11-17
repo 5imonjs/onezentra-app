@@ -250,6 +250,17 @@ class ValidationCondition {
     'LAINNYA',
   ];
 
+  /// Kondisi fisik yang sah untuk catatan BARANG DI LUAR rencana kirim.
+  /// QTY_KURANG / ISI_KEMASAN_KURANG / FISIK_TIDAK_ADA adalah selisih item
+  /// rencana — bukan barang tambahan, dan tidak boleh dipakai di sheet ini.
+  static const List<String> extraValues = [
+    'FISIK_BAGUS',
+    'FISIK_RUSAK',
+    'EXPIRED_TIDAK_STANDAR',
+    'SURPLUS',
+    'LAINNYA',
+  ];
+
   /// Conditions the server only accepts together with a photo upload.
   static const List<String> requiresPhoto = [
     'FISIK_RUSAK',
@@ -583,6 +594,11 @@ class SjValidationExtraItem {
 
   /// Keputusan planner (Fase 2): PENDING / APPROVED / REJECTED.
   final String status;
+
+  bool get isPending => status == 'PENDING';
+  bool get isApproved => status == 'APPROVED';
+  bool get isRejected => status == 'REJECTED';
+
   final String? decisionNotes;
   final String? approverName;
   final String condition;
