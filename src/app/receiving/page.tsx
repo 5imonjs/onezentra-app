@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/dashboard/layout';
 import { receivings, depo, getErrorMessage } from '@/lib/api';
 import { AUTHENTICATED_FILE_REL, storageFileUrl } from '@/lib/storageFile';
@@ -109,6 +110,7 @@ function ProgressCell({ received, expected }: { received: number; expected: numb
 
 export default function ReceivingPage() {
   const { hasPermission } = useAuthStore();
+  const router = useRouter();
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
@@ -144,19 +146,15 @@ export default function ReceivingPage() {
       if (reqIdRef.current !== reqId) return;
       setItems(res.data.data);
       setLastPage(res.data.last_page);
-      // Total per status diambil terpisah agar statistik header akurat
-      // (tidak terbatas pada 20 baris halaman aktif).
-      const [pending, inProgress, completed] = await Promise.all([
-        receivings.list({ search, status: 'PENDING', per_page: 1, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }),
-        receivings.list({ search, status: 'IN_PROGRESS', per_page: 1, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }),
-        receivings.list({ search, status: 'COMPLETED', per_page: 1, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) }),
-      ]);
+      // Satu endpoint stats mengikuti filter search/depo yang sama dengan
+      // daftar — lebih murah daripada tiga request list terpisah.
+      const stats = await receivings.stats({ search, ...(kodeDepo ? { kode_depo: kodeDepo } : {}) });
       if (reqIdRef.current !== reqId) return;
       setStatusTotals({
-        total: res.data.total ?? res.data.data?.length ?? 0,
-        pending: pending.data.total ?? 0,
-        inProgress: inProgress.data.total ?? 0,
-        completed: completed.data.total ?? 0,
+        total: stats.data.data.total ?? 0,
+        pending: stats.data.data.pending ?? 0,
+        inProgress: stats.data.data.in_progress ?? 0,
+        completed: stats.data.data.completed ?? 0,
       });
     } catch (e) {
       if (reqIdRef.current !== reqId) return;
@@ -320,7 +318,7 @@ export default function ReceivingPage() {
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Anda tidak memiliki izin untuk melihat Check Out Point.
+          Anda tidak memiliki izin untuk melihat Receiving.
         </div>
       </DashboardLayout>
     );
@@ -337,7 +335,7 @@ export default function ReceivingPage() {
                 <svg className="h-6 w-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
               </div>
               <div>
-                <h1 className="text-2xl font-bold leading-tight">Check Out Point</h1>
+                <h1 className="text-2xl font-bold leading-tight">Receiving</h1>
                 <p className="mt-0.5 text-ink-fg-muted">Konfirmasi selesai bongkar dengan scan barcode PO transporter.</p>
               </div>
             </div>
@@ -673,8 +671,19 @@ export default function ReceivingPage() {
         />
 
         {/* Detail Modal — bersih, putih, fokus pada data */}
-        <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Detail Check Out Point" subtitle="Rincian barang yang diterima per PO transporter." size="xl" footer={
-          <div className="flex items-center justify-end gap-3">
+        <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Detail Receiving" subtitle="Rincian barang yang diterima per PO transporter." size="xl" footer={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const po = viewItem?.rencana_kirim?.po_transporter || '';
+                setViewItem(null);
+                router.push(`/penerimaan${po ? `?search=${encodeURIComponent(po)}` : ''}`);
+              }}
+              className="btn-secondary text-sm"
+            >
+              Lihat item di Detail Inbound
+            </button>
             <button type="button" onClick={() => setViewItem(null)} className="btn-secondary text-sm">Tutup</button>
           </div>
         }>
@@ -785,8 +794,8 @@ export default function ReceivingPage() {
       <Modal
         open={showImportModal}
         onClose={() => { setShowImportModal(false); setImportFile(null); }}
-        title="Import Check Out Point"
-        subtitle="Upload file Excel/CSV untuk mengimpor data Check Out Point"
+        title="Import Receiving"
+        subtitle="Upload file Excel/CSV untuk mengimpor data Receiving"
         size="md"
         footer={
           <>
@@ -806,7 +815,7 @@ export default function ReceivingPage() {
               onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-chip-primary file:text-accent-text hover:file:bg-chip-primary"
             />
-            <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: no_surat_jalan, nama_thl</p>
+            <p className="text-xs text-slate-400 mt-1">Format: xlsx, xls, csv. Kolom wajib: po_transporter, driver_name, tanggal_penerimaan</p>
           </div>
         </div>
       </Modal>
