@@ -80,6 +80,16 @@ describe('PenerimaanPage — filter depo', () => {
     expect(screen.queryByLabelText('Filter depo')).not.toBeInTheDocument();
   });
 
+  it('tidak menampilkan tombol Stok Manual dan Penerima Email di halaman inbound', async () => {
+    hasPermission.mockImplementation(() => true);
+
+    render(<PenerimaanPage />);
+
+    await waitFor(() => expect(groupsMock).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: 'Stok Manual' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Penerima Email' })).not.toBeInTheDocument();
+  });
+
   it('mengirim kode_depo ke server saat filter dipilih', async () => {
     hasPermission.mockImplementation((perm) => perm === 'depot.view_all');
 
