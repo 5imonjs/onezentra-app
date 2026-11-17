@@ -151,7 +151,7 @@ const DOCUMENT_TYPES = [
   { value: 'lainnya', label: 'Dokumen Lain' },
 ];
 
-const VEHICLE_TYPES = ['CDD', 'Fuso', 'Container 20', 'Container 40'];
+const VEHICLE_TYPES = ['CDD', 'CDE', 'L300', 'Fuso', 'Container 20', 'Container 40'];
 
 /** Plat/SJ/type kendaraan selalu kapital (ketikan user dinormalkan saat input). */
 const upper = (value: string | null | undefined): string => (value || '').toString().trim().toUpperCase();
@@ -634,8 +634,13 @@ export default function BiayaRetribusiPage() {
           ready = compressed;
         }
       } catch (e) {
-        notifyGlobal(e instanceof Error ? e.message : 'PDF terlalu besar dan gagal dikompresi — perkecil file lalu coba lagi', 'error');
-        return;
+        // Kompresi gagal TIDAK boleh menggugurkan lampiran. Selama file asli
+        // masih di bawah batas, tetap simpan agar pengajuan bisa dilanjutkan.
+        if (ready.size > MAX_DOC_BYTES) {
+          notifyGlobal(e instanceof Error ? e.message : 'PDF terlalu besar dan gagal dikompresi — perkecil file lalu coba lagi', 'error');
+          return;
+        }
+        notifyGlobal('Kompresi PDF gagal — file asli tetap dilampirkan.', 'info');
       }
     }
     if (ready.size > MAX_DOC_BYTES) {
@@ -1057,6 +1062,17 @@ export default function BiayaRetribusiPage() {
     + formData.details.reduce((sum, d) => sum + existingNominal(d), 0)
     + manualDetails.reduce((sum, md) => sum + manualNominal(md), 0);
   const isRfahRequired = totalNominal > biayaConfig.retribusi_rfah_threshold;
+  const duplicateSelectedPos = Object.entries(
+    selectedCandidates.reduce<Record<string, number>>((acc, id) => {
+      const po = (candidates.find((c) => c.id === id)?.po_transporter || '').trim();
+      if (po) {
+        acc[po] = (acc[po] ?? 0) + 1;
+      }
+      return acc;
+    }, {}),
+  )
+    .filter(([, count]) => count > 1)
+    .map(([po]) => po);
   const hasIncompleteManualRows = manualDetails.some((row) => !row.nopol_kendaraan || !row.type_kendaraan || Number(row.nominal_biaya || 0) <= 0);
   const hasIncompleteExistingRows = formData.details.some((d) => !d.nopol_kendaraan || !d.type_kendaraan || Number(existingNominal(d)) <= 0);
   const hasIncompleteCandidateRows = selectedCandidates.some((id) => {
@@ -2014,6 +2030,11 @@ export default function BiayaRetribusiPage() {
                   {busy ? 'Mencari...' : candidates.length > 0 ? 'Muat ulang receiving' : 'Muat Receiving Selesai'}
                 </button>
                 <p className="mb-3 text-[11px] text-slate-400">Hanya receiving COMPLETED yang sudah divalidasi checker dan belum diklaim. Qty zak/crt dan tanggal pengajuan terisi otomatis dari receiving — tanpa input ulang.</p>
+                {duplicateSelectedPos.length > 0 && (
+                  <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">
+                    PO berikut dipilih lebih dari satu baris: {duplicateSelectedPos.join(', ')}. Tiap bongkaran tetap dihitung sebagai baris terpisah — pastikan qty tiap baris sesuai faktur truck masing-masing.
+                  </p>
+                )}
                 {candidates.length === 0 && !busy && (
                   <div className="rounded-xl border-2 border-dashed border-border bg-overlay-60 p-6 text-center">
                     <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm ring-1 ring-gray-300">

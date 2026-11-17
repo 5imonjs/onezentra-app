@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -57,6 +58,29 @@ class BiayaRetribusiImportTest extends TestCase
         $this->get(parse_url($fileUrl, PHP_URL_PATH), ['Accept' => 'application/pdf'])
             ->assertOk()
             ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_import_tetap_berhasil_saat_qpdf_tidak_tersedia(): void
+    {
+        Storage::fake('public');
+        Sanctum::actingAs($this->importer);
+
+        // Shared hosting sering tanpa binary qpdf. Process::run melempar
+        // sebelum punya result — kompresi opsional tidak boleh menggagalkan
+        // import dokumen.
+        Process::fake(fn () => throw new \RuntimeException('qpdf not found'));
+
+        $pdfBytes = $this->buildPdfWithUncompressedStream(4096);
+
+        $response = $this->post('/api/v1/biaya-retribusi/import', [
+            'file' => UploadedFile::fake()->createWithContent('dokumen.pdf', $pdfBytes),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertOk()->assertJsonPath('message', 'Import berhasil');
+
+        $path = 'biaya_retribusi/import/'.basename((string) parse_url((string) $response->json('data.file_url'), PHP_URL_PATH));
+        Storage::disk('public')->assertExists($path);
+        $this->assertSame(strlen($pdfBytes), Storage::disk('public')->size($path));
     }
 
     public function test_disallowed_file_type_returns_422(): void

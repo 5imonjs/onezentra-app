@@ -106,7 +106,7 @@ class BiayaRetribusiController extends Controller
      */
     public function candidates(Request $request)
     {
-        $allowedTypes = ['CDD', 'Fuso', 'Container 20', 'Container 40'];
+        $allowedTypes = ['CDD', 'CDE', 'L300', 'Fuso', 'Container 20', 'Container 40'];
 
         $claimedIds = BiayaRetribusiDetail::query()
             ->whereNotNull('receiving_id')
@@ -626,8 +626,12 @@ class BiayaRetribusiController extends Controller
             if ($extension === 'pdf') {
                 // Kompres PDF dengan qpdf sebelum disimpan
                 $compressedPath = $trackTemp(storage_path('app/tmp/'.uniqid().'_compressed.pdf'));
-                PdfCompressor::compress($sourcePath, $compressedPath);
-                if (file_exists($compressedPath)) {
+                $compressed = PdfCompressor::compress($sourcePath, $compressedPath);
+                // Jangan percaya file partial: qpdf bisa meninggalkan output
+                // kosong/rusak saat gagal. Pakai hasil hanya bila benar PDF.
+                if ($compressed && file_exists($compressedPath)
+                    && filesize($compressedPath) > 0
+                    && str_starts_with((string) file_get_contents($compressedPath, false, null, 0, 5), '%PDF-')) {
                     $sourcePath = $compressedPath;
                 }
 
