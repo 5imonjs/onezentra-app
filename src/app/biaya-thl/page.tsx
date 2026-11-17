@@ -26,9 +26,28 @@ type PhotoItem = File | StoredPhoto;
 
 const isStoredPhoto = (p: PhotoItem): p is StoredPhoto => !(p instanceof File);
 
+interface ThlReceivingCandidate {
+  id: number;
+  receiving_id: number;
+  tanggal_selesai: string;
+  nopol_kendaraan: string;
+  type_kendaraan: string;
+  no_surat_jalan: string;
+  po_transporter: string;
+  driver_name: string;
+  checker_name: string;
+  kode_depo: string;
+  nama_depo: string;
+  qty_zak: number;
+  qty_crt: number;
+  has_retribusi: boolean;
+  retribusi_status: string | null;
+}
+
 interface DetailRow {
   id?: number;
   detailId?: number;
+  receiving_id?: number | null;
   no_surat_jalan: string;
   nama_thl: string;
   driver_name: string;
@@ -834,6 +853,7 @@ export default function BiayaThlPage() {
     normalizedDetails.forEach((d, i) => {
       const fdRow = d as FormDetailRow;
       if (fdRow.detailId) fd.append(`details[${i}][id]`, String(fdRow.detailId));
+      if (fdRow.receiving_id) fd.append(`details[${i}][receiving_id]`, String(fdRow.receiving_id));
       (fdRow.photos_remove ?? []).forEach((pid) => fd.append(`details[${i}][photos_remove][]`, String(pid)));
       fd.append(`details[${i}][no_surat_jalan]`, d.no_surat_jalan);
       fd.append(`details[${i}][nama_thl]`, d.nama_thl);
@@ -958,6 +978,7 @@ export default function BiayaThlPage() {
       });
       const fdRow = d as FormDetailRow;
       if (fdRow.detailId) fd.append(`details[${i}][id]`, String(fdRow.detailId));
+      if (fdRow.receiving_id) fd.append(`details[${i}][receiving_id]`, String(fdRow.receiving_id));
       (fdRow.photos_remove ?? []).forEach((pid) => fd.append(`details[${i}][photos_remove][]`, String(pid)));
       fd.append(`details[${i}][order]`, String(i));
       d.photos.forEach((photo) => { if (!isStoredPhoto(photo)) fd.append(`details[${i}][photos][]`, photo); });
@@ -1055,8 +1076,8 @@ export default function BiayaThlPage() {
       setViewItem(normalizeBiayaThlItem(response.data.data));
       await fetchItems();
       notifyGlobal(action === 'submit' && viewItem.status === 'revisi' ? 'Perbaikan berhasil dikirim kembali ke BAC untuk diperiksa ulang.' : 'Status pengajuan berhasil diperbarui', 'success');
-    } catch {
-      notifyGlobal('Aksi approval tidak dapat diproses', 'error');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Aksi approval tidak dapat diproses'), 'error');
     }
   };
 
@@ -1084,8 +1105,8 @@ export default function BiayaThlPage() {
       notifyGlobal(decision.action === 'approve' ? 'Pengajuan disetujui' : decision.action === 'revise' ? 'Pengajuan diminta revisi' : 'Pengajuan ditolak', 'success');
       setDecision(null);
       setDecisionReason('');
-    } catch {
-      notifyGlobal('Aksi approval tidak dapat diproses', 'error');
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Aksi approval tidak dapat diproses'), 'error');
     } finally {
       setDecisionBusy(false);
     }
@@ -1126,6 +1147,36 @@ export default function BiayaThlPage() {
   const addSjGroup = () => {
     const gid = insertSjGroupBefore(null);
     focusSjInput(gid);
+  };
+
+  const fetchThlCandidates = async () => {
+    setLoadingCandidates(true);
+    try {
+      const res = await biayaThl.candidates();
+      setThlCandidates(Array.isArray(res.data) ? res.data : []);
+      setCandidateOpen(true);
+    } catch (e) {
+      notifyGlobal(getErrorMessage(e, 'Gagal memuat receiving selesai.'), 'error');
+    } finally {
+      setLoadingCandidates(false);
+    }
+  };
+
+  const addCandidateWorker = (candidate: ThlReceivingCandidate) => {
+    const groupId = createGroupId();
+    setFormData((prev) => {
+      const row: FormDetailRow = {
+        ...createEmptyDetail(prev.details.length, candidate.no_surat_jalan, groupId),
+        receiving_id: candidate.receiving_id,
+        nopol_kendaraan: candidate.nopol_kendaraan,
+        type_kendaraan: candidate.type_kendaraan,
+        kubikasi: Number(candidate.qty_zak || 0) + Number(candidate.qty_crt || 0),
+        droppoint: candidate.po_transporter || '',
+      };
+      return { ...prev, details: [...prev.details, row] };
+    });
+    setCandidateOpen(false);
+    focusSjInput(groupId);
   };
 
   const addDetailRow = (groupId: string) => {
@@ -1324,6 +1375,9 @@ export default function BiayaThlPage() {
   // yang sudah Siap agar scroll pendek. Index stabil (pakai hidden, bukan
   // filter array) sehingga anchor worker-card-* dan order tidak bergeser.
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  const [candidateOpen, setCandidateOpen] = useState(false);
+  const [thlCandidates, setThlCandidates] = useState<ThlReceivingCandidate[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
   // Grup review Step 3 per posisi (terbuka semua secara default).
   const [reviewGroupsOpen, setReviewGroupsOpen] = useState<Set<string>>(() => new Set(POSITIONS));
   const toggleReviewGroup = (pos: string) => {
@@ -1843,7 +1897,7 @@ export default function BiayaThlPage() {
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
                           </button>
                           )}
-                          {hasPermission('approval.submit') && (hasPermission('biaya_thl.full_control') || item.status === 'draft') && (
+                          {hasPermission('approval.submit') && (hasPermission('biaya_thl.full_control') || (item.status === 'draft' && item.created_by === user?.id)) && (
                           <button onClick={() => { biayaThl.submit(item.id).then(() => { notifyGlobal('Pengajuan dikirim ke antrean pemeriksaan', 'success'); fetchItems(); }).catch((e: unknown) => notifyGlobal(getErrorMessage(e, 'Gagal mengirim'), 'error')); }} className="min-h-11 min-w-11 p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Kirim untuk diperiksa" aria-label="Kirim">
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                           </button>
@@ -2131,6 +2185,10 @@ export default function BiayaThlPage() {
                       {formData.details.length} pekerja
                     </span>
                   )}
+                  <button type="button" onClick={() => void fetchThlCandidates()} disabled={loadingCandidates} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2 text-xs font-black text-muted-foreground transition-colors hover:border-primary-300 hover:text-accent-text disabled:opacity-50 shrink-0">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                    {loadingCandidates ? 'Memuat...' : 'Dari Receiving'}
+                  </button>
                   <button type="button" onClick={addSjGroup} className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-colors shrink-0 ${formData.details.length === 0 ? 'border border-border bg-card text-muted-foreground hover:border-primary-300 hover:text-accent-text' : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-200'}`}>
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah Surat Jalan
@@ -2666,9 +2724,9 @@ export default function BiayaThlPage() {
           <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
             {/* Kirim hanya untuk draft (masuk antrean); revisi/rejected dikirim ulang lewat edit modal "Simpan Perubahan & Kirim Ulang". */}
             {viewItem?.status === 'draft' ? (viewItem?.created_by === user?.id && hasPermission('approval.submit') ? <button onClick={() => void approvalAction('submit')} className="btn-secondary w-full sm:w-auto">Kirim</button> : null) : null}
-            {viewItem?.status === 'pending' ? <>{hasRole('bac', 'admin_master') && hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}{hasRole('bac', 'admin_master') && hasPermission('approval.check') ? <button onClick={() => void approvalAction('check')} className="btn-secondary w-full sm:w-auto">Periksa</button> : null}</> : null}
-            {viewItem?.status === 'checked' && viewItem ? <>{hasPermission('approval.reject') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('revise', viewItem)} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600">Perlu Revisi</button> : null}{hasPermission('approval.approve') && (hasRole('rlh', 'admin_master')) ? <button onClick={() => openDecision('approve', viewItem)} className="btn-primary w-full sm:w-auto">Setujui</button> : null}</> : null}
-            {viewItem?.status === 'rlh_approved' ? <>{hasPermission('approval.rfah') && hasRole('rfah', 'admin_master') ? <button onClick={() => void approvalAction('rfahApprove')} className="btn-primary w-full sm:w-auto">Setujui</button> : null}{hasPermission('approval.reject') && (hasRole('rfah', 'admin_master')) ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') && (hasRole('rfah', 'admin_master')) ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}</> : null}
+            {viewItem?.status === 'pending' ? <>{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}{hasPermission('approval.check') ? <button onClick={() => void approvalAction('check')} className="btn-secondary w-full sm:w-auto">Periksa</button> : null}</> : null}
+            {viewItem?.status === 'checked' && viewItem ? <>{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600">Perlu Revisi</button> : null}{hasPermission('approval.approve') ? <button onClick={() => openDecision('approve', viewItem)} className="btn-primary w-full sm:w-auto">Setujui</button> : null}</> : null}
+            {viewItem?.status === 'rlh_approved' ? <>{hasPermission('approval.rfah') ? <button onClick={() => void approvalAction('rfahApprove')} className="btn-primary w-full sm:w-auto">Setujui</button> : null}{hasPermission('approval.reject') ? <button onClick={() => openDecision('reject', viewItem)} className="btn-secondary w-full sm:w-auto">Tolak</button> : null}{hasPermission('approval.revise') ? <button onClick={() => openDecision('revise', viewItem)} className="btn-secondary w-full sm:w-auto">Perlu Revisi</button> : null}</> : null}
             {viewItem && <button onClick={() => { void (async () => { try { await previewTHLPdf(await loadLatestPdfItem(viewItem)); } catch (e: unknown) { previewPdfError(e); } })(); }} className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               Preview PDF
@@ -3008,6 +3066,48 @@ export default function BiayaThlPage() {
           variant="warning"
         />
       </div>
+
+      {/* Receiving candidates */}
+      <Modal
+        open={candidateOpen}
+        onClose={() => setCandidateOpen(false)}
+        title="Pilih Receiving Selesai"
+        subtitle="Nopol, Surat Jalan, dan kubikasi diisi otomatis dari penerimaan"
+        size="lg"
+        footer={<button type="button" onClick={() => setCandidateOpen(false)} className="btn-secondary">Tutup</button>}
+      >
+        {loadingCandidates ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Memuat receiving...</p>
+        ) : thlCandidates.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Belum ada receiving COMPLETED yang sudah diperiksa checker.</p>
+        ) : (
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {thlCandidates.map((candidate) => (
+              <div key={candidate.receiving_id} className="flex flex-col gap-2 rounded-xl border border-border bg-popover/60 p-3 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {candidate.nopol_kendaraan} · {candidate.type_kendaraan}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {formatDate(candidate.tanggal_selesai)} · {candidate.no_surat_jalan || candidate.po_transporter} · {candidate.nama_depo}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Qty {Number(candidate.qty_zak || 0).toLocaleString('id-ID')} zak / {Number(candidate.qty_crt || 0).toLocaleString('id-ID')} crt
+                    {candidate.has_retribusi ? ` · Retribusi: ${candidate.retribusi_status || 'ada'}` : ' · Retribusi belum ada'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => addCandidateWorker(candidate)}
+                  className="btn-primary shrink-0 text-xs"
+                >
+                  Tambah Pekerja
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
 
       {/* Import Modal */}
       <Modal

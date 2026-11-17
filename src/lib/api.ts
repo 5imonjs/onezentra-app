@@ -742,6 +742,7 @@ export const reports = {
 
 export const biayaThl = {
   list: (params?: Record<string, unknown>) => apiClient.get('/biaya-thl', { params }),
+  candidates: (params?: Record<string, unknown>) => apiClient.get('/biaya-thl/candidates', { params }),
   get: (id: number) => apiClient.get(`/biaya-thl/${id}`),
   create: (data: Record<string, unknown> | FormData) => {
     const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT_MS } : {};
