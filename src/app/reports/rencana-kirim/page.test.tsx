@@ -173,4 +173,20 @@ describe('RencanaKirimReportPage — detail dokumen', () => {
 
     expect(await within(dialog).findByText('Rencana kirim tidak ditemukan')).toBeInTheDocument();
   });
+
+  it('mengunci header tabel laporan dan tabel detail saat baris digulir', async () => {
+    render(<RencanaKirimReportPage />);
+
+    const reportTable = await screen.findByRole('table', { name: 'Laporan rencana kirim' });
+    expect(reportTable.querySelector('thead')).toHaveClass('sticky', 'top-0');
+    // Sticky butuh scroll container bertinggi tetap; `overflow-x-auto` saja
+    // membuat header ikut naik bersama halaman.
+    expect(reportTable.parentElement).toHaveClass('overflow-auto', 'max-h-[65vh]');
+
+    const dialog = await openDetailDialog();
+    await waitFor(() => expect(within(dialog).getByText('SAP-DTL-01')).toBeInTheDocument());
+    const detailTable = within(dialog).getByRole('table', { name: /Barang dalam rencana kirim/ });
+    expect(detailTable.querySelector('thead')).toHaveClass('sticky', 'top-0');
+    expect(detailTable.parentElement).toHaveClass('overflow-auto', 'max-h-[420px]');
+  });
 });

@@ -635,7 +635,7 @@ export default function RencanaKirimReportPage() {
           </div>
 
           {/* Desktop table */}
-          <div className="overflow-x-auto hidden lg:block">
+          <div className="max-h-[65vh] overflow-auto hidden lg:block">
             <table className="w-full min-w-[1140px] border-collapse">
               <caption className="sr-only">Laporan rencana kirim</caption>
               <thead className="sticky top-0 z-10">
@@ -905,10 +905,10 @@ export default function RencanaKirimReportPage() {
                 </div>
               ))}
             </div>
-            <div className="overflow-x-auto rounded-xl border border-border">
+            <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
               <table className="w-full min-w-[760px] border-collapse">
                 <caption className="sr-only">Barang dalam rencana kirim {detail.po_transporter}</caption>
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr className="border-b border-border">
                     <th scope="col" className="table-header">No</th>
                     <th scope="col" className="table-header">Kode Barang</th>
