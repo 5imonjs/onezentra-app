@@ -1009,7 +1009,7 @@ export default function UsersPage() {
         {/* Table */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           {/* Desktop table */}
-          <div className="hidden overflow-x-auto md:block">
+          <div className="max-h-[65vh] overflow-auto hidden md:block">
             <table className="w-full min-w-[720px]">
               <caption className="sr-only">Daftar pengguna</caption>
               <thead className="sticky top-0 z-10">

@@ -1533,7 +1533,7 @@ export default function BiayaRetribusiPage() {
 
         {/* Table - Desktop */}
         <div className="hidden md:block">
-          <div className="overflow-x-auto">
+          <div className="max-h-[65vh] overflow-auto">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-border bg-popover">
