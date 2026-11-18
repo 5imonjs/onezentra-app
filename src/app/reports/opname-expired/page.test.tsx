@@ -86,6 +86,7 @@ describe('OpnameExpiredReportPage', () => {
     render(<OpnameExpiredReportPage />);
 
     expect(await screen.findByRole('heading', { name: /laporan monitoring kedaluwarsa/i })).toBeInTheDocument();
+    expect(screen.getByText('Snapshot mingguan — opname_expired_waves')).toBeInTheDocument();
     expect(list).toHaveBeenCalled();
   });
 

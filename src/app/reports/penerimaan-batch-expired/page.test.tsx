@@ -108,6 +108,7 @@ describe('PenerimaanBatchExpiredReportPage', () => {
     render(<PenerimaanBatchExpiredReportPage />);
 
     expect(await screen.findByRole('heading', { name: 'Laporan Batch Kedaluwarsa' })).toBeInTheDocument();
+    expect(screen.getByText('Ledger penerimaan (mentah) — receiving_items')).toBeInTheDocument();
 
     // Tabel desktop & kartu mobile sama-sama dirender (satu disembunyikan
     // lewat CSS), jadi kueri dibatasi ke tabel agar tidak ambigu.
