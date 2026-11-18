@@ -6,6 +6,7 @@ import { depo, getErrorMessage, reports } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useReportRowDelete } from '@/lib/useReportRowDelete';
 import { ReportDeleteBar, ReportSelectCheckbox } from '@/components/ReportDeleteControls';
+import ExpiredReportNotice from '@/components/ExpiredReportNotice';
 
 interface Row {
   id: number;
@@ -241,10 +242,10 @@ export default function PenerimaanBatchExpiredReportPage() {
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div className="min-w-0">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan</p>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan · read-only · ledger penerimaan</p>
               <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Batch Kedaluwarsa</h1>
               <p className="text-ink-fg-muted mt-0.5 text-sm">
-                Satu baris = satu batch penerimaan. Dikelompokkan per cluster, dengan status kedaluwarsa dan masa simpan.
+                Data ledger mentah: satu baris = satu batch penerimaan, dikelompokkan per cluster. Belum diagregasi atau dikoreksi opname.
               </p>
             </div>
           </div>
@@ -265,6 +266,8 @@ export default function PenerimaanBatchExpiredReportPage() {
             {error}
           </div>
         )}
+        <ExpiredReportNotice kind="batch" />
+
         {/* Filter Laporan */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           <div className="px-5 py-4 border-b border-border bg-linear-to-r from-slate-50 to-surface-card">

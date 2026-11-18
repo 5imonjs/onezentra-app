@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/app/dashboard/layout';
 import { opnameExpired, depo, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import ExpiredReportNotice from '@/components/ExpiredReportNotice';
 
 interface Wave {
   id: number;
@@ -323,9 +324,9 @@ export default function OpnameExpiredReportPage() {
               <svg className="w-6 h-6 text-primary-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div className="min-w-0">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan · read-only</p>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-fg-muted">Laporan · read-only · snapshot mingguan</p>
               <h1 className="text-2xl font-bold leading-tight tracking-tight">Laporan Monitoring Kedaluwarsa</h1>
-              <p className="text-ink-fg-muted mt-0.5 text-sm">Rekap baris monitoring kedaluwarsa lintas periode dan depo</p>
+              <p className="text-ink-fg-muted mt-0.5 text-sm">Rekap snapshot mingguan per produk–depo–expired, termasuk koreksi opname yang disetujui</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-4">
@@ -380,6 +381,8 @@ export default function OpnameExpiredReportPage() {
             </button>
           </div>
         )}
+
+        <ExpiredReportNotice kind="monitoring" />
 
         {/* Filter panel */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
