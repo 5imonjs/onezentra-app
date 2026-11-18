@@ -322,16 +322,16 @@ export default function ExpiredStockReportPage() {
                   {isWave && <th scope="col" className="table-header text-right">Koreksi</th>}
                   <th scope="col" className="table-header">Expired</th>
                   <th scope="col" className="table-header text-right">Sisa Hari</th>
-                  {!isWave && <th scope="col" className="table-header">Masa Simpan</th>}
+                  <th scope="col" className="table-header">Masa Simpan</th>
                   <th scope="col" className="table-header">Status</th>
                   {isWave && <th scope="col" className="table-header">Perubahan</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loading ? (
-                  <tr><td colSpan={isWave ? 14 : 13} className="table-cell text-center py-12 text-sm text-muted-foreground">Memuat data...</td></tr>
+                  <tr><td colSpan={isWave ? 13 : 11} className="table-cell text-center py-12 text-sm text-muted-foreground">Memuat data...</td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={isWave ? 14 : 13} className="table-cell text-center py-12 text-sm text-muted-foreground">Tidak ada data.</td></tr>
+                  <tr><td colSpan={isWave ? 13 : 11} className="table-cell text-center py-12 text-sm text-muted-foreground">Tidak ada data.</td></tr>
                 ) : (
                   rows.map((row) => (
                     <tr key={`${row.grain}-${row.id}`} className="even:bg-overlay-60">
@@ -346,7 +346,7 @@ export default function ExpiredStockReportPage() {
                       {isWave && <td className="table-cell text-sm text-right tabular-nums text-foreground">{fmtNum(row.qty_koreksi_crt)}</td>}
                       <td className="table-cell text-sm font-mono text-foreground">{fmtDate(row.tanggal_expired)}</td>
                       <td className="table-cell text-sm text-right tabular-nums text-foreground">{row.sisa_hari ?? '-'}</td>
-                      {!isWave && <td className="table-cell text-sm text-foreground">{row.sisa_simpan ?? '-'}</td>}
+                      <td className="table-cell text-sm text-foreground">{row.sisa_simpan ?? '-'}</td>
                       <td className="table-cell text-sm text-foreground">
                         <span className="inline-flex rounded-full border border-border bg-popover px-2.5 py-1 text-xs font-semibold text-foreground">
                           {STATUS_LABEL[row.status_tier ?? row.status_kode] ?? row.status_kode}

@@ -74,7 +74,7 @@ const waveRow = {
   status_kode: 'KRITIS',
   status_tier: 'KRITIS',
   sisa_hari: 5,
-  sisa_simpan: null,
+  sisa_simpan: '0 Thn 1 Bln 0 Hr',
   perubahan: 'TETAP',
   week_start: '2026-11-16',
 };
@@ -143,6 +143,9 @@ describe('ExpiredStockReportPage — satu data, dua tahap', () => {
     expect(within(table).getByText('Kritis')).toBeInTheDocument();
     expect(within(table).getByText('-2')).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'Koreksi' })).toBeInTheDocument();
+    // Masa Simpan memakai rumus yang sama dengan tab Data Dasar.
+    expect(within(table).getByRole('columnheader', { name: 'Masa Simpan' })).toBeInTheDocument();
+    expect(within(table).getByText('0 Thn 1 Bln 0 Hr')).toBeInTheDocument();
   });
 
   it('header tabel tetap saat baris digulir', async () => {

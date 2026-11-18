@@ -70,8 +70,9 @@ class ExpiredStockReportTest extends TestCase
             'kode_barang' => 'BRG-B',
             'nama_barang' => 'Produk B',
             'sumber_material' => 'PT Sumber',
-            'expired_date_ini' => now()->addDays(5)->toDateString(),
-            'sisa_hari' => 5,
+            'tanggal_penerimaan' => now()->subDay()->toDateString(),
+            'expired_date_ini' => now()->addDays(29)->toDateString(),
+            'sisa_hari' => 29,
             'status_ini' => 'PERHATIAN',
             'qty_ini_crt' => 10,
             'qty_ini_pcs' => 240,
@@ -126,7 +127,7 @@ class ExpiredStockReportTest extends TestCase
             ->assertJsonPath('data.0.status_tier', 'PERHATIAN')
             ->assertJsonPath('data.0.status_lalu', null);
 
-        $res->assertJsonPath('data.0.sisa_simpan', null);
+        $res->assertJsonPath('data.0.sisa_simpan', '0 Thn 1 Bln 0 Hr');
         $res->assertJsonPath('data.0.tanggal_expired', $wave->expired_date_ini->toDateString());
         $this->assertArrayHasKey('cluster', $res->json('data.0'));
         $this->assertArrayHasKey('koreksi_by', $res->json('data.0'));

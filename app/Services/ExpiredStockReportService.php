@@ -7,6 +7,7 @@ use App\Exports\PenerimaanExpiredReportExport;
 use App\Models\OpnameExpiredWave;
 use App\Models\User;
 use App\Support\LikePattern;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
@@ -253,6 +254,16 @@ class ExpiredStockReportService
      */
     private static function fromWave(OpnameExpiredWave $wave): array
     {
+        // Masa simpan memakai helper yang SAMA dengan data dasar: DATEDIF dari
+        // tanggal terima ke tanggal expired. Wave menyimpan kedua tanggal itu,
+        // jadi tidak perlu rumus kedua — cukup panggil helper yang sama.
+        $tanggalMasuk = $wave->tanggal_penerimaan
+            ? Carbon::parse($wave->tanggal_penerimaan)->startOfDay()
+            : null;
+        $expired = $wave->expired_date_ini
+            ? Carbon::parse($wave->expired_date_ini)->startOfDay()
+            : null;
+
         return [
             'id' => $wave->id,
             'grain' => self::GRAIN_WAVE,
@@ -271,7 +282,9 @@ class ExpiredStockReportService
             'expired_date_lalu' => $wave->expired_date_lalu?->toDateString(),
             'selisih_expired_date' => $wave->selisih_expired_date !== null ? (int) $wave->selisih_expired_date : null,
             'sisa_hari' => (int) $wave->sisa_hari,
-            'sisa_simpan' => null,
+            'sisa_simpan' => $tanggalMasuk && $expired
+                ? PenerimaanExpiredReportService::sisaSimpan($tanggalMasuk, $expired)
+                : '-',
             'qty_crt' => $wave->effectiveCrt(),
             'qty_pcs' => $wave->effectivePcs(),
             'qty_lalu_crt' => (float) $wave->qty_lalu_crt,
