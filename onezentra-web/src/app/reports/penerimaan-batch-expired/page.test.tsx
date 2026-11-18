@@ -181,4 +181,15 @@ describe('PenerimaanBatchExpiredReportPage', () => {
       );
     });
   });
+
+  it('mengunci header tabel laporan batch kedaluwarsa saat baris digulir', async () => {
+    render(<PenerimaanBatchExpiredReportPage />);
+
+    const table = await screen.findByRole('table');
+
+    expect(table.querySelector('thead')).toHaveClass('sticky', 'top-0');
+    // Sticky butuh scroll container bertinggi tetap; `overflow-x-auto` saja
+    // membuat header ikut naik bersama halaman.
+    expect(table.parentElement).toHaveClass('overflow-auto', 'max-h-[65vh]');
+  });
 });

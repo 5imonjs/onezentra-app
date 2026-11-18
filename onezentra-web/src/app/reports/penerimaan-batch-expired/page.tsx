@@ -383,7 +383,7 @@ export default function PenerimaanBatchExpiredReportPage() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto hidden lg:block">
+          <div className="max-h-[65vh] overflow-auto hidden lg:block">
             <table className="w-full min-w-325 border-collapse">
               <caption className="sr-only">Laporan penerimaan produk dan status kedaluwarsa lot, dikelompokkan per cluster</caption>
               <thead className="sticky top-0 z-10">
