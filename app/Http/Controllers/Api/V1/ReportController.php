@@ -6,6 +6,7 @@ use App\Exports\BiayaRetribusiReportExport;
 use App\Exports\BiayaThlReportExport;
 use App\Exports\PenerimaanExpiredReportExport;
 use App\Exports\PenerimaanExport;
+use App\Exports\RencanaKirimDetailExport;
 use App\Exports\RencanaKirimReportExport;
 use App\Exports\SelisihQtyExport;
 use App\Http\Controllers\Controller;
@@ -215,6 +216,70 @@ class ReportController extends Controller
         ExportGuard::ensureWithinLimit($export->query());
 
         return Excel::download($export, $filename);
+    }
+
+    /**
+     * Detail satu rencana kirim untuk halaman laporan.
+     *
+     * Memakai filter scoping yang sama dengan daftar/export laporan (bukan
+     * endpoint operasional yang memakai permission berbeda), sehingga user
+     * laporan tetap terikat pada deponya.
+     */
+    public function rencanaKirimDetail(Request $request, RencanaKirim $rencanaKirim): JsonResponse
+    {
+        $query = RencanaKirim::with('items.npn')->whereKey($rencanaKirim->id);
+
+        RencanaKirimReportExport::applyFilters(
+            $query,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $request->user(),
+        );
+
+        $rencana = $query->firstOrFail();
+        $row = $this->rencanaKirimRow($rencana);
+        $row['items'] = $rencana->items->map(fn ($item): array => [
+            'id' => $item->id,
+            'item_number' => $item->item_number,
+            'kode_barang' => $item->kode_barang,
+            'nama_barang' => $item->nama_barang,
+            'jumlah' => (float) $item->jumlah,
+            'satuan' => $item->satuan,
+            'kubikasi' => $item->kubikasi !== null ? (float) $item->kubikasi : null,
+            'keterangan' => $item->keterangan,
+            'received_qty' => $item->received_qty !== null ? (float) $item->received_qty : null,
+        ])->values()->all();
+
+        return response()->json(['data' => $row]);
+    }
+
+    /**
+     * Ekspor isi (barang) satu rencana kirim — bukan baris ringkasan PO.
+     */
+    public function rencanaKirimDetailExport(Request $request, RencanaKirim $rencanaKirim)
+    {
+        $query = RencanaKirim::with('items.npn')->whereKey($rencanaKirim->id);
+
+        RencanaKirimReportExport::applyFilters(
+            $query,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $request->user(),
+        );
+
+        $row = $query->firstOrFail();
+        ExportGuard::ensureWithinLimit($row->items());
+
+        $safePo = preg_replace('/[^A-Za-z0-9_-]/', '_', (string) $row->po_transporter) ?: 'rencana-kirim';
+        $filename = 'rencana-kirim-detail-'.$safePo.'-'.date('Y-m-d_His').'.xlsx';
+
+        return Excel::download(new RencanaKirimDetailExport($row), $filename);
     }
 
     private function validateRencanaKirimRequest(Request $request): void

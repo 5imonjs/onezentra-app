@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth';
 import { todayLocal } from '@/lib/dates';
 import { useReportRowDelete } from '@/lib/useReportRowDelete';
 import { ReportDeleteBar, ReportSelectCheckbox } from '@/components/ReportDeleteControls';
+import Modal from '@/components/Modal';
 
 interface ReportItem {
   id: number;
@@ -23,6 +24,22 @@ interface ReportItem {
   total_kubikasi: number;
   item_count: number;
   status: string;
+}
+
+interface DetailItem {
+  id: number;
+  item_number: number;
+  kode_barang: string | null;
+  nama_barang: string | null;
+  jumlah: number;
+  satuan: string | null;
+  kubikasi: number | null;
+  keterangan: string | null;
+  received_qty: number | null;
+}
+
+interface DetailRow extends ReportItem {
+  items: DetailItem[];
 }
 
 interface StatusCount {
@@ -103,7 +120,13 @@ export default function RencanaKirimReportPage() {
   const [lastPage, setLastPage] = useState(1);
   const [plannerNote, setPlannerNote] = useState('');
   const [plannerSaved, setPlannerSaved] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<ReportItem | null>(null);
+  const [detail, setDetail] = useState<DetailRow | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+  const [detailExporting, setDetailExporting] = useState(false);
   const reqIdRef = useRef(0);
+  const detailReqIdRef = useRef(0);
   const canDelete = hasPermission('reports.delete');
 
   const selectedDepo = depots.find((d) => d.kode_depo === kodeDepo);
@@ -246,6 +269,17 @@ export default function RencanaKirimReportPage() {
     setDebouncedSearch(term);
   };
 
+  const downloadExcel = (data: BlobPart, filename: string) => {
+    const url = window.URL.createObjectURL(new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleExport = async () => {
     setExporting(true);
     try {
@@ -254,18 +288,50 @@ export default function RencanaKirimReportPage() {
       delete exportParams.page;
       delete exportParams.per_page;
       const res = await reports.rencanaKirimExport(exportParams);
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `laporan-rencana-kirim-${todayLocal()}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      downloadExcel(res.data, `laporan-rencana-kirim-${todayLocal()}.xlsx`);
     } catch (e) {
       setError(getErrorMessage(e, 'Gagal export laporan'));
     } finally {
       setExporting(false);
+    }
+  };
+
+  const openDetail = async (item: ReportItem) => {
+    const reqId = ++detailReqIdRef.current;
+    setDetailTarget(item);
+    setDetail(null);
+    setDetailError('');
+    setDetailLoading(true);
+    try {
+      const res = await reports.rencanaKirimDetail(item.id);
+      if (detailReqIdRef.current !== reqId) return;
+      setDetail(res.data.data);
+    } catch (e) {
+      if (detailReqIdRef.current !== reqId) return;
+      setDetailError(getErrorMessage(e, 'Gagal memuat detail rencana kirim'));
+    } finally {
+      if (detailReqIdRef.current === reqId) setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    detailReqIdRef.current += 1;
+    setDetailTarget(null);
+    setDetail(null);
+    setDetailError('');
+  };
+
+  const handleDetailExport = async () => {
+    if (!detailTarget) return;
+    setDetailExporting(true);
+    try {
+      const res = await reports.rencanaKirimDetailExport(detailTarget.id);
+      const safePo = detailTarget.po_transporter.replace(/[^A-Za-z0-9_-]/g, '_') || 'rencana-kirim';
+      downloadExcel(res.data, `rencana-kirim-detail-${safePo}.xlsx`);
+    } catch (e) {
+      setDetailError(getErrorMessage(e, 'Gagal export detail rencana kirim'));
+    } finally {
+      setDetailExporting(false);
     }
   };
 
@@ -595,20 +661,21 @@ export default function RencanaKirimReportPage() {
                   <th scope="col" className="table-header text-right whitespace-nowrap">Kubikasi (m³)</th>
                   <th scope="col" className="table-header whitespace-nowrap">Status</th>
                   <th scope="col" className="table-header whitespace-nowrap">Depo</th>
+                  <th scope="col" className="table-header whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="animate-pulse" aria-hidden="true">
-                      {Array.from({ length: 12 }).map((__, j) => (
+                      {Array.from({ length: canDelete ? 14 : 13 }).map((__, j) => (
                         <td key={j} className="table-cell"><div className="h-3.5 w-20 bg-slate-100 rounded" /></td>
                       ))}
                     </tr>
                   ))
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={canDelete ? 13 : 12} className="table-cell text-center py-16">
+                    <td colSpan={canDelete ? 14 : 13} className="table-cell text-center py-16">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
                           <svg className="w-7 h-7 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
@@ -661,6 +728,16 @@ export default function RencanaKirimReportPage() {
                           </span>
                         </td>
                         <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.nama_depo || item.kode_depo}</td>
+                        <td className="table-cell whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => openDetail(item)}
+                            aria-label={`Lihat detail ${item.po_transporter}`}
+                            className="rounded-lg border border-border bg-popover px-3 py-1.5 text-xs font-bold text-foreground hover:bg-slate-100 transition-colors"
+                          >
+                            Detail
+                          </button>
+                        </td>
                       </tr>
                     );
                   })
@@ -730,6 +807,14 @@ export default function RencanaKirimReportPage() {
                     <span>{item.expedisi}</span>
                     <span className="ml-auto">{item.nama_depo || item.kode_depo}</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => openDetail(item)}
+                    aria-label={`Lihat detail ${item.po_transporter}`}
+                    className="btn-secondary w-full text-xs"
+                  >
+                    Lihat Detail Barang
+                  </button>
                 </article>
               );
             })}
@@ -774,6 +859,92 @@ export default function RencanaKirimReportPage() {
       {canDelete && (
         <ReportDeleteBar count={selectedIds.length} deleting={deleting} onDelete={removeSelected} onClear={clear} />
       )}
+
+      <Modal
+        open={detailTarget !== null}
+        onClose={closeDetail}
+        title="Detail Rencana Kirim"
+        subtitle={detailTarget ? `${detailTarget.po_transporter} • ${detailTarget.nama_depo || detailTarget.kode_depo}` : undefined}
+        size="xl"
+        footer={
+          <>
+            <button type="button" onClick={closeDetail} className="btn-secondary">Tutup</button>
+            <button
+              type="button"
+              onClick={handleDetailExport}
+              disabled={!detail || detailExporting || !!detailError}
+              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+            >
+              {detailExporting ? 'Mengekspor...' : 'Export Excel Detail'}
+            </button>
+          </>
+        }
+      >
+        {detailLoading && (
+          <div role="status" className="py-10 text-center text-sm text-muted-foreground">Memuat detail rencana kirim...</div>
+        )}
+        {!detailLoading && detailError && (
+          <div role="alert" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{detailError}</div>
+        )}
+        {!detailLoading && !detailError && detail && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                ['Tgl RKH', fmtDate(detail.rkh_date)],
+                ['Driver', detail.driver_name],
+                ['Nopol', detail.nopol],
+                ['Tujuan', detail.destination_name],
+                ['Depo', detail.nama_depo || detail.kode_depo],
+                ['Status', summary?.status_counts[detail.status]?.label || detail.status],
+                ['Total Qty', fmtNum(detail.total_qty)],
+                ['Total Kubikasi', `${Number(detail.total_kubikasi).toFixed(2)} m³`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-border bg-popover p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-foreground break-words">{value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full min-w-[760px] border-collapse">
+                <caption className="sr-only">Barang dalam rencana kirim {detail.po_transporter}</caption>
+                <thead>
+                  <tr className="bg-slate-50 border-b border-border">
+                    <th scope="col" className="table-header">No</th>
+                    <th scope="col" className="table-header">Kode Barang</th>
+                    <th scope="col" className="table-header">Nama Barang</th>
+                    <th scope="col" className="table-header text-right">Jumlah</th>
+                    <th scope="col" className="table-header">Satuan</th>
+                    <th scope="col" className="table-header text-right">Kubikasi (m³)</th>
+                    <th scope="col" className="table-header">Keterangan</th>
+                    <th scope="col" className="table-header text-right">Qty Diterima</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {detail.items.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="table-cell text-center py-10 text-sm text-muted-foreground">Belum ada barang pada rencana kirim ini.</td>
+                    </tr>
+                  ) : (
+                    detail.items.map((it) => (
+                      <tr key={it.id} className="even:bg-overlay-60">
+                        <td className="table-cell text-sm tabular-nums text-foreground">{it.item_number}</td>
+                        <td className="table-cell text-sm font-mono text-foreground">{it.kode_barang ?? '-'}</td>
+                        <td className="table-cell text-sm text-foreground">{it.nama_barang ?? '-'}</td>
+                        <td className="table-cell text-sm text-right font-semibold tabular-nums text-foreground">{fmtNum(it.jumlah)}</td>
+                        <td className="table-cell text-sm text-foreground">{it.satuan ?? '-'}</td>
+                        <td className="table-cell text-sm text-right tabular-nums text-teal-700">{it.kubikasi !== null ? Number(it.kubikasi).toFixed(4) : '-'}</td>
+                        <td className="table-cell text-sm text-foreground">{it.keterangan ?? '-'}</td>
+                        <td className="table-cell text-sm text-right tabular-nums text-foreground">{it.received_qty !== null ? fmtNum(it.received_qty) : '-'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </Modal>
     </DashboardLayout>
   );
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exports\RencanaKirimDetailExport;
 use App\Exports\RencanaKirimReportExport;
 use App\Models\Npn;
 use App\Models\Permission;
@@ -231,5 +232,126 @@ class RencanaKirimReportTest extends TestCase
         $this->getJson('/api/v1/reports/rencana-kirim?per_page=0')->assertStatus(422);
         $this->getJson('/api/v1/reports/rencana-kirim?per_page=101')->assertStatus(422);
         $this->getJson('/api/v1/reports/rencana-kirim?page=0')->assertStatus(422);
+    }
+
+    public function test_detail_requires_reports_view_permission(): void
+    {
+        $user = $this->viewer();
+        $user->roles()->detach();
+        Sanctum::actingAs($user);
+        $rk = $this->createRk($user);
+
+        $this->getJson('/api/v1/reports/rencana-kirim/'.$rk->id)->assertForbidden();
+        $this->get('/api/v1/reports/rencana-kirim/'.$rk->id.'/export')->assertForbidden();
+    }
+
+    public function test_detail_returns_header_and_items_with_kubikasi(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+
+        $npn = Npn::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'szNickName' => 'Produk Detail',
+            'SAPszProductId' => 'SAP-DTL-01',
+            'SAPszUomId' => 'CRT',
+            'SAPdecUom' => '12',
+            'decVolume' => '5000',
+            'szStatus' => 'EXISTING',
+        ]);
+        $rk = $this->createRk($user, ['po_transporter' => 'PO-DETAIL-01']);
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $rk->id,
+            'npn_id' => $npn->id,
+            'item_number' => 1,
+            'kode_barang' => 'SAP-DTL-01',
+            'nama_barang' => 'Produk Detail',
+            'jumlah' => 10,
+            'satuan' => 'CRT',
+            'received_qty' => 8,
+        ]);
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $rk->id,
+            'item_number' => 2,
+            'kode_barang' => 'MANUAL-01',
+            'nama_barang' => 'Barang Manual',
+            'jumlah' => 3,
+            'satuan' => 'PCS',
+        ]);
+
+        $res = $this->getJson('/api/v1/reports/rencana-kirim/'.$rk->id)
+            ->assertOk()
+            ->assertJsonPath('data.id', $rk->id)
+            ->assertJsonPath('data.po_transporter', 'PO-DETAIL-01')
+            ->assertJsonPath('data.item_count', 2)
+            ->assertJsonCount(2, 'data.items')
+            ->assertJsonPath('data.items.0.kode_barang', 'SAP-DTL-01')
+            ->assertJsonPath('data.items.0.received_qty', 8)
+            ->assertJsonPath('data.items.0.kubikasi', 0.6)
+            ->assertJsonPath('data.items.1.kubikasi', null);
+    }
+
+    public function test_detail_is_scoped_to_user_depot(): void
+    {
+        $user = $this->viewer(false);
+        Sanctum::actingAs($user);
+        $rk = $this->createRk($user, ['kode_depo' => 'LAIN', 'nama_depo' => 'Depo Lain']);
+
+        $this->getJson('/api/v1/reports/rencana-kirim/'.$rk->id)->assertNotFound();
+        $this->get('/api/v1/reports/rencana-kirim/'.$rk->id.'/export')->assertNotFound();
+    }
+
+    public function test_detail_export_returns_xlsx(): void
+    {
+        $user = $this->viewer();
+        Sanctum::actingAs($user);
+        $rk = $this->createRk($user, ['po_transporter' => 'PO EXPORT DETAIL']);
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $rk->id,
+            'item_number' => 1,
+            'kode_barang' => 'MANUAL-01',
+            'nama_barang' => 'Barang Manual',
+            'jumlah' => 3,
+            'satuan' => 'PCS',
+        ]);
+
+        $this->get('/api/v1/reports/rencana-kirim/'.$rk->id.'/export')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
+
+    public function test_detail_export_map_uses_item_kubikasi_and_received_qty(): void
+    {
+        $user = $this->viewer();
+        $npn = Npn::create([
+            'kode_depo' => 'DPO',
+            'nama_depo' => 'Depo Test',
+            'szNickName' => 'Produk Ekspor Detail',
+            'SAPszProductId' => 'SAP-EXP-01',
+            'SAPszUomId' => 'CRT',
+            'SAPdecUom' => '12',
+            'decVolume' => '5000',
+            'szStatus' => 'EXISTING',
+        ]);
+        $rk = $this->createRk($user);
+        RencanaKirimItem::create([
+            'rencana_kirim_id' => $rk->id,
+            'npn_id' => $npn->id,
+            'item_number' => 1,
+            'kode_barang' => 'SAP-EXP-01',
+            'nama_barang' => 'Produk Ekspor Detail',
+            'jumlah' => 10,
+            'satuan' => 'CRT',
+            'received_qty' => 7,
+        ]);
+
+        $export = new RencanaKirimDetailExport($rk);
+        $headings = $export->headings();
+        $row = $export->map($export->collection()->first());
+
+        $this->assertContains('Qty Diterima', $headings);
+        $this->assertSame(7.0, $row[array_search('Qty Diterima', $headings)]);
+        $this->assertEqualsWithDelta(0.6, $row[array_search('Kubikasi (m³)', $headings)], 0.001);
     }
 }

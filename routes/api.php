@@ -446,6 +446,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/penerimaan-batch-expired/export', [ReportController::class, 'penerimaanExpiredExport'])->middleware(['permission:reports.penerimaan_batch_expired', 'throttle:30,1,heavy-read']);
         Route::get('/rencana-kirim', [ReportController::class, 'rencanaKirim'])->middleware('permission:reports.rencana_kirim');
         Route::get('/rencana-kirim/export', [ReportController::class, 'rencanaKirimExport'])->middleware(['permission:reports.rencana_kirim', 'throttle:30,1,heavy-read']);
+        // Harus setelah rute literal `/export`, kalau tidak kata "export"
+        // tertangkap sebagai {rencanaKirim} oleh implicit binding.
+        Route::get('/rencana-kirim/{rencanaKirim}', [ReportController::class, 'rencanaKirimDetail'])->middleware('permission:reports.rencana_kirim');
+        Route::get('/rencana-kirim/{rencanaKirim}/export', [ReportController::class, 'rencanaKirimDetailExport'])->middleware(['permission:reports.rencana_kirim', 'throttle:30,1,heavy-read']);
         Route::delete('/rows', [ReportController::class, 'destroyRows'])->middleware('permission:reports.delete');
         Route::get('/biaya-thl', [ReportController::class, 'biayaThl'])->middleware('permission:reports.biaya_thl');
         Route::get('/biaya-thl/export', [ReportController::class, 'biayaThlExport'])->middleware(['permission:reports.biaya_thl', 'throttle:30,1,heavy-read']);

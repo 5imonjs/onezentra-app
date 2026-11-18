@@ -53,6 +53,8 @@ onezentra-web/out/
 onezentra-web/.env*
 !onezentra-web/.env.example
 onezentra-web/tsconfig.tsbuildinfo
+# Artefak Excel lokal (contoh: saldo_awal 141126.xlsx) — bukan sumber kode.
+onezentra-web/*.xlsx
 onezentra-web/.turbo
 onezentra-web/.vercel
 onezentra-web/next-env.d.ts
