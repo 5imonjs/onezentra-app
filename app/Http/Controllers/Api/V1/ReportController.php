@@ -17,6 +17,7 @@ use App\Models\OpnameExpiredSessionItem;
 use App\Models\OpnameExpiredWave;
 use App\Models\ReceivingItem;
 use App\Models\RencanaKirim;
+use App\Services\ExpiredStockReportService;
 use App\Services\ExportGuard;
 use App\Services\PenerimaanExpiredReportService;
 use App\Support\LikePattern;
@@ -441,6 +442,44 @@ class ReportController extends Controller
         $filename = 'laporan-batch-kedaluwarsa_'.date('Y-m-d_His').'.xlsx';
 
         return Excel::download(new PenerimaanExpiredReportExport($query), $filename);
+    }
+
+    /**
+     * Satu data, dua tahap: `grain=ledger` (mentah) atau `grain=wave` (efektif).
+     *
+     * Izin lama tetap dihormati: cukup punya reports.penerimaan_batch_expired
+     * ATAU (reports.view DAN opname.view). Middleware permission tidak dipakai
+     * karena syaratnya bukan satu slug tunggal.
+     */
+    public function expiredStock(Request $request): JsonResponse
+    {
+        $this->authorizeExpiredStock($request);
+
+        return response()->json(ExpiredStockReportService::paginate(
+            ExpiredStockReportService::validate($request),
+            $request->user(),
+        ));
+    }
+
+    public function expiredStockExport(Request $request)
+    {
+        $this->authorizeExpiredStock($request);
+        set_time_limit(300);
+        ini_set('memory_limit', '1G');
+
+        return ExpiredStockReportService::export(
+            ExpiredStockReportService::validate($request),
+            $request->user(),
+        );
+    }
+
+    private function authorizeExpiredStock(Request $request): void
+    {
+        $user = $request->user();
+        $canBatch = $user->hasPermission('reports.penerimaan_batch_expired');
+        $canMonitor = $user->hasPermission('reports.view') && $user->hasPermission('opname.view');
+
+        abort_unless($canBatch || $canMonitor, 403);
     }
 
     public function biayaThl(Request $request): JsonResponse

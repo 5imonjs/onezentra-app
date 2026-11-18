@@ -42,8 +42,9 @@ const biayaMenus = [
 const reportItems = [
   { name: 'Laporan Replenishment', path: '/reports/rencana-kirim', icon: 'truck', permission: 'reports.rencana_kirim' },
   { name: 'Laporan Inbound', path: '/reports/penerimaan', icon: 'clipboard', permission: 'reports.penerimaan' },
-  { name: 'Laporan Batch Kedaluwarsa', path: '/reports/penerimaan-batch-expired', icon: 'clipboard', permission: 'reports.penerimaan_batch_expired' },
-  { name: 'Laporan Monitoring Kedaluwarsa', path: '/reports/opname-expired', icon: 'chart', permission: 'reports.view', permissions: ['reports.view', 'opname.view'] },
+  // Dua laporan kedaluwarsa kini satu halaman + satu data. Izin lama tetap
+  // diterima: batch ATAU (reports.view DAN opname.view).
+  { name: 'Laporan Stok Kedaluwarsa', path: '/reports/expired-stock', icon: 'chart', permission: 'reports.view', anyPermissions: ['reports.penerimaan_batch_expired', ['reports.view', 'opname.view']] },
   { name: 'Selisih Qty', path: '/reports/selisih-qty', icon: 'chart', permission: 'reports.selisih_qty' },
   { name: 'Biaya THL', path: '/reports/biaya-thl', icon: 'coins', permission: 'reports.biaya_thl' },
   { name: 'Biaya Retribusi', path: '/reports/biaya-retribusi', icon: 'file-dollar', permission: 'reports.biaya_retribusi' },
@@ -168,6 +169,18 @@ interface GroupItem {
   permission: string;
   /** Izin tambahan yang harus dimiliki semuanya (untuk menu lintas modul). */
   permissions?: string[];
+  /** Alternatif izin: cukup salah satu grup yang terpenuhi (grup = AND). */
+  anyPermissions?: (string | string[])[];
+}
+
+function canSeeMenu(item: GroupItem, hasPermission: (slug: string) => boolean): boolean {
+  if (item.anyPermissions) {
+    return item.anyPermissions.some((option) => Array.isArray(option)
+      ? option.every(hasPermission)
+      : hasPermission(option));
+  }
+
+  return (item.permissions ?? [item.permission]).every(hasPermission);
 }
 
 interface CollapsibleGroupProps {
@@ -184,7 +197,7 @@ interface CollapsibleGroupProps {
 }
 
 function CollapsibleGroup({ title, icon, items, isExpanded, pathname, hasPermission, open, onToggle, onExpandRequest, accent = false }: CollapsibleGroupProps) {
-  const visibleItems = items.filter((m) => (m.permissions ?? [m.permission]).every(hasPermission));
+  const visibleItems = items.filter((m) => canSeeMenu(m, hasPermission));
   if (visibleItems.length === 0) return null;
 
   const isActiveAny = visibleItems.some((m) => pathname === m.path);

@@ -29,9 +29,10 @@ const MENU_FALLBACK: [string, string[]][] = [
   ['/email-recipients', ['emails.view']],
   ['/reports/rencana-kirim', ['reports.rencana_kirim']],
   ['/reports/penerimaan', ['reports.penerimaan']],
-  ['/reports/penerimaan-batch-expired', ['reports.penerimaan_batch_expired']],
+  // Laporan kedaluwarsa kini satu halaman; halaman lama tetap bisa dibuka
+  // langsung. Fallback memakai reports.view (pemakai opname juga memilikinya).
+  ['/reports/expired-stock', ['reports.view']],
   ['/reports/selisih-qty', ['reports.selisih_qty']],
-  ['/reports/opname-expired', ['reports.view', 'opname.view']],
   ['/reports/biaya-thl', ['reports.biaya_thl']],
   ['/reports/biaya-retribusi', ['reports.biaya_retribusi']],
 ];

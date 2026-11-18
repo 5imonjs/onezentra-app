@@ -444,6 +444,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/penerimaan/export', [ReportController::class, 'penerimaanExport'])->middleware(['permission:reports.penerimaan', 'throttle:30,1,heavy-read']);
         Route::get('/penerimaan-batch-expired', [ReportController::class, 'penerimaanExpired'])->middleware('permission:reports.penerimaan_batch_expired');
         Route::get('/penerimaan-batch-expired/export', [ReportController::class, 'penerimaanExpiredExport'])->middleware(['permission:reports.penerimaan_batch_expired', 'throttle:30,1,heavy-read']);
+        // Satu read-model untuk kedua laporan kedaluwarsa. Izin OR dicek di
+        // controller (batch ATAU view+opname), bukan middleware satu slug.
+        Route::get('/expired-stock', [ReportController::class, 'expiredStock']);
+        Route::get('/expired-stock/export', [ReportController::class, 'expiredStockExport'])->middleware('throttle:30,1,heavy-read');
         Route::get('/rencana-kirim', [ReportController::class, 'rencanaKirim'])->middleware('permission:reports.rencana_kirim');
         Route::get('/rencana-kirim/export', [ReportController::class, 'rencanaKirimExport'])->middleware(['permission:reports.rencana_kirim', 'throttle:30,1,heavy-read']);
         // Harus setelah rute literal `/export`, kalau tidak kata "export"
