@@ -81,23 +81,24 @@ describe('Sidebar — ikon menu', () => {
     expect(monitoring).not.toEqual(stock);
   });
 
-  it('menaruh laporan monitoring di grup Laporan, bukan di grup operasional Stok & Opname', () => {
-    nav.pathname = '/reports/opname-expired';
+  it('menaruh satu laporan stok kedaluwarsa di grup Laporan', () => {
+    nav.pathname = '/reports/expired-stock';
     renderSidebar();
 
     expect(screen.getByText('Inbound')).toBeInTheDocument();
     expect(screen.getByText('Stok & Opname')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Laporan Monitoring Kedaluwarsa' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Laporan Batch Kedaluwarsa' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Laporan Stok Kedaluwarsa' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Laporan Monitoring Kedaluwarsa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Laporan Batch Kedaluwarsa' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Laporan Replenishment' })).toBeInTheDocument();
   });
 
-  it('menyembunyikan laporan monitoring bila salah satu izin lintas modul tidak dimiliki', () => {
-    nav.pathname = '/reports/opname-expired';
-    auth.can = (permission: string) => permission !== 'opname.view';
+  it('menyembunyikan laporan kedaluwarsa bila tidak ada izin lama maupun izin monitoring', () => {
+    nav.pathname = '/reports/expired-stock';
+    auth.can = (permission: string) => !['reports.penerimaan_batch_expired', 'reports.view', 'opname.view'].includes(permission);
     renderSidebar();
 
-    expect(screen.queryByRole('link', { name: 'Laporan Monitoring Kedaluwarsa' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Laporan Stok Kedaluwarsa' })).not.toBeInTheDocument();
   });
 
   it('menampilkan alur inbound dengan label jelas incl. detail penerimaan', () => {

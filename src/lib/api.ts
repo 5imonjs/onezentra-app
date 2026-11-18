@@ -745,6 +745,8 @@ export const reports = {
   biayaThlExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-thl/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
   biayaRetribusi: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi', { params }),
   biayaRetribusiExport: (params?: Record<string, unknown>) => apiClient.get('/reports/biaya-retribusi/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
+  expiredStock: (params?: Record<string, unknown>) => apiClient.get('/reports/expired-stock', { params }),
+  expiredStockExport: (params?: Record<string, unknown>) => apiClient.get('/reports/expired-stock/export', { params, responseType: 'blob', timeout: REPORT_EXPORT_TIMEOUT_MS }),
   deleteRows: (type: string, ids: number[]) => apiClient.delete('/reports/rows', { data: { type, ids } }),
 };
 
