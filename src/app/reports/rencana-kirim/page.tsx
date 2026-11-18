@@ -405,7 +405,7 @@ export default function RencanaKirimReportPage() {
           <div className="px-5 py-4 border-b border-border bg-linear-to-r from-slate-50 to-surface-card">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-ink-900 to-slate-700 text-white flex items-center justify-center shadow">
+                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-ink-900 to-ink-800 text-white flex items-center justify-center shadow">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
                 </div>
                 <div>
@@ -457,7 +457,7 @@ export default function RencanaKirimReportPage() {
               </p>
               <div className="flex items-center gap-2">
                 <button onClick={resetFilters} className="px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-popover hover:border-border transition-all">Reset</button>
-                <button onClick={handleApply} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-slate-700 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
+                <button onClick={handleApply} disabled={loading} className="px-5 py-2 rounded-xl bg-linear-to-r from-ink-900 to-ink-800 text-white text-sm font-semibold hover:from-ink-800 hover:to-ink-800 shadow-lg disabled:opacity-50 transition-all">{loading ? 'Memuat...' : 'Terapkan Filter'}</button>
               </div>
             </div>
           </div>
@@ -479,11 +479,11 @@ export default function RencanaKirimReportPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-linear-to-br from-teal-600 to-teal-500 rounded-2xl shadow-lg p-5 text-white card-hover relative overflow-hidden group">
+            <div className="bg-linear-to-br from-ink-900 via-ink-900 to-ink-800 rounded-2xl shadow-lg p-5 text-white card-hover relative overflow-hidden group">
               <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
               <div className="relative flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-teal-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>
+                  <svg className="w-5 h-5 text-ink-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L12 12.75 6.429 9.75m11.142 0l4.179 2.25-9.75 5.25-9.75-5.25 4.179-2.25" /></svg>
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Total Kubikasi</p>
@@ -546,7 +546,7 @@ export default function RencanaKirimReportPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> {st}: {c}
                           </span>
                         ))}
-                        {Object.keys(overdueByStatus).length === 0 && <span className="text-xs text-gray-300">Tidak ada dokumen terlambat</span>}
+                        {Object.keys(overdueByStatus).length === 0 && <span className="text-xs text-muted-foreground">Tidak ada dokumen terlambat</span>}
                       </div>
                     </div>
                   </>
@@ -576,7 +576,7 @@ export default function RencanaKirimReportPage() {
                   if (entries.length === 0) return null;
                   return entries.map(([kode, s]) => (
                     <div key={kode} className="p-5">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-300 mb-1">{s.name}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{s.name}</p>
                       <p className="text-lg font-black text-foreground mb-1">{s.total} dok</p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Selesai {s.completed}</span>
@@ -720,7 +720,7 @@ export default function RencanaKirimReportPage() {
                         <td className="table-cell text-sm text-foreground whitespace-nowrap">{item.destination_name}</td>
                         <td className="table-cell text-sm text-center tabular-nums text-foreground whitespace-nowrap">{item.item_count}</td>
                         <td className="table-cell text-sm text-right font-bold text-foreground tabular-nums whitespace-nowrap">{fmtNum(item.total_qty)}</td>
-                        <td className="table-cell text-sm text-right font-semibold text-teal-700 tabular-nums whitespace-nowrap">{Number(item.total_kubikasi).toFixed(2)}</td>
+                        <td className="table-cell text-sm text-right font-semibold text-emerald-700 tabular-nums whitespace-nowrap">{Number(item.total_kubikasi).toFixed(2)}</td>
                         <td className="table-cell whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${st?.bg || 'bg-card'} ${st?.color || 'text-foreground'} ${st?.border || 'border-border'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${st?.dot || 'bg-gray-400'}`} aria-hidden="true" />
@@ -733,7 +733,7 @@ export default function RencanaKirimReportPage() {
                             type="button"
                             onClick={() => openDetail(item)}
                             aria-label={`Lihat detail ${item.po_transporter}`}
-                            className="rounded-lg border border-border bg-popover px-3 py-1.5 text-xs font-bold text-foreground hover:bg-slate-100 transition-colors"
+                            className="rounded-lg border border-border bg-popover px-3 py-1.5 text-xs font-bold text-foreground hover:bg-surface-hover transition-colors"
                           >
                             Detail
                           </button>
@@ -900,7 +900,7 @@ export default function RencanaKirimReportPage() {
                 ['Total Kubikasi', `${Number(detail.total_kubikasi).toFixed(2)} m³`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl border border-border bg-popover p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
                   <p className="mt-0.5 text-sm font-semibold text-foreground break-words">{value}</p>
                 </div>
               ))}
@@ -909,7 +909,7 @@ export default function RencanaKirimReportPage() {
               <table className="w-full min-w-[760px] border-collapse">
                 <caption className="sr-only">Barang dalam rencana kirim {detail.po_transporter}</caption>
                 <thead>
-                  <tr className="bg-slate-50 border-b border-border">
+                  <tr className="border-b border-border">
                     <th scope="col" className="table-header">No</th>
                     <th scope="col" className="table-header">Kode Barang</th>
                     <th scope="col" className="table-header">Nama Barang</th>
@@ -920,7 +920,7 @@ export default function RencanaKirimReportPage() {
                     <th scope="col" className="table-header text-right">Qty Diterima</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {detail.items.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="table-cell text-center py-10 text-sm text-muted-foreground">Belum ada barang pada rencana kirim ini.</td>
@@ -933,7 +933,7 @@ export default function RencanaKirimReportPage() {
                         <td className="table-cell text-sm text-foreground">{it.nama_barang ?? '-'}</td>
                         <td className="table-cell text-sm text-right font-semibold tabular-nums text-foreground">{fmtNum(it.jumlah)}</td>
                         <td className="table-cell text-sm text-foreground">{it.satuan ?? '-'}</td>
-                        <td className="table-cell text-sm text-right tabular-nums text-teal-700">{it.kubikasi !== null ? Number(it.kubikasi).toFixed(4) : '-'}</td>
+                        <td className="table-cell text-sm text-right tabular-nums text-emerald-700">{it.kubikasi !== null ? Number(it.kubikasi).toFixed(4) : '-'}</td>
                         <td className="table-cell text-sm text-foreground">{it.keterangan ?? '-'}</td>
                         <td className="table-cell text-sm text-right tabular-nums text-foreground">{it.received_qty !== null ? fmtNum(it.received_qty) : '-'}</td>
                       </tr>

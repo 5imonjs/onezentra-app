@@ -497,4 +497,23 @@ describe('theme token discipline', () => {
     const allowed = '<input type="date" className="input-field w-full border-2" />';
     expect(/\bbg-white\//.test(allowed)).toBe(false);
   });
+
+  it('keeps the replenishment report and its detail on theme tokens', () => {
+    // The detail modal shipped with `text-teal-700` on a table cell: teal is a
+    // fixed dark-chip ramp, so 700 is #ccfbf1 in BOTH themes — pale mint on the
+    // white card in light mode. The summary card used a teal 600→500 gradient
+    // under white text with the same result. Both must use theme tokens:
+    // `emerald-700` flips with the theme, and dark panels take the ink ramp.
+    const source = read(join(SRC, 'src/app/reports/rencana-kirim/page.tsx'));
+    const detail = source.slice(source.indexOf('<Modal'), source.indexOf('</Modal>'));
+
+    expect(detail).not.toMatch(/\b(?:text|bg|divide|border)-(?:gray|slate)-(?:50|100|200|300|400)\b/);
+    expect(detail).not.toMatch(/\b(?:text|bg|border)-teal-\d/);
+    expect(source).not.toMatch(/\bfrom-teal-\d/);
+    expect(source).not.toMatch(/table-cell[^"]*\btext-teal-\d/);
+
+    // Self-check: the guard fires on the defect it exists to catch.
+    expect(/\btext-teal-700\b/.test('<td className="table-cell text-teal-700">')).toBe(true);
+    expect(/\bfrom-teal-\d/.test('bg-linear-to-br from-teal-600 to-teal-500')).toBe(true);
+  });
 });
