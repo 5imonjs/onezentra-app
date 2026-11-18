@@ -8,6 +8,7 @@ use App\Models\OpnameExpiredWave;
 use App\Models\User;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -114,10 +115,7 @@ class ExpiredStockReportService
             return PenerimaanExpiredReportService::summary($filters, $user);
         }
 
-        $query = self::waveQuery($filters, $user);
-        $agg = (clone $query)->reorder()->toBase()
-            ->selectRaw('COUNT(*) as c, COALESCE(SUM(qty_ini_crt), 0) as crt, COALESCE(SUM(qty_ini_pcs), 0) as pcs, COALESCE(SUM(qty_koreksi_crt), 0) as koreksi')
-            ->first();
+        $agg = self::summaryQuery($filters, $user)->first();
 
         return [
             'total_item' => (int) $agg->c,
@@ -125,6 +123,23 @@ class ExpiredStockReportService
             'total_qty_pcs' => (float) $agg->pcs,
             'total_koreksi' => (float) $agg->koreksi,
         ];
+    }
+
+    /**
+     * Query ringkasan wave. `waveQuery()` membawa `opname_expired_waves.*`
+     * dan dua ekspresi principal; keduanya WAJIB dibuang sebelum agregat,
+     * kalau tidak MySQL ONLY_FULL_GROUP_BY menolak dengan error 1140.
+     * SQLite (test) mengizinkan, jadi ini perlu dijaga lewat test SQL.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public static function summaryQuery(array $filters, ?User $user = null): QueryBuilder
+    {
+        return (clone self::waveQuery($filters, $user))
+            ->reorder()
+            ->toBase()
+            ->select([])
+            ->selectRaw('COUNT(*) as c, COALESCE(SUM(qty_ini_crt), 0) as crt, COALESCE(SUM(qty_ini_pcs), 0) as pcs, COALESCE(SUM(qty_koreksi_crt), 0) as koreksi');
     }
 
     /**

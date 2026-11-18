@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Models\ReceivingItem;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\ExpiredStockReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -137,6 +138,18 @@ class ExpiredStockReportTest extends TestCase
 
         $this->getJson('/api/v1/reports/expired-stock?grain=ledger&status=KRITIS')->assertStatus(422);
         $this->getJson('/api/v1/reports/expired-stock?grain=wave&status=FUTURE')->assertStatus(422);
+    }
+
+    public function test_query_ringkasan_wave_tidak_menyertakan_kolom_mentah(): void
+    {
+        // MySQL ONLY_FULL_GROUP_BY menolak `SELECT opname_expired_waves.*,
+        // COUNT(*) ...` tanpa GROUP BY (error 1140). SQLite tidak, jadi pola
+        // ini harus dijaga lewat SQL, bukan hanya lewat response test.
+        $sql = ExpiredStockReportService::summaryQuery(['grain' => 'wave'])->toSql();
+
+        $this->assertStringNotContainsString('opname_expired_waves.*', $sql);
+        $this->assertStringNotContainsString('as principal_1', $sql);
+        $this->assertStringContainsString('COUNT(*) as c', $sql);
     }
 
     public function test_export_mengikuti_grain(): void
