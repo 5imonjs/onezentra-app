@@ -537,7 +537,7 @@ export default function OpnameExpiredReportPage() {
             </div>
           </div>
           {/* Desktop */}
-          <div className="overflow-x-auto hidden lg:block">
+          <div className="max-h-[65vh] overflow-auto hidden lg:block">
             <table className="w-full min-w-190 border-collapse">
               <caption className="sr-only">Rekap per depo</caption>
               <thead className="sticky top-0 z-10">
@@ -707,7 +707,7 @@ export default function OpnameExpiredReportPage() {
           ) : (
             <>
               {/* Desktop */}
-              <div className="overflow-x-auto hidden lg:block">
+              <div className="max-h-[65vh] overflow-auto hidden lg:block">
                 <table className="w-full min-w-225 border-collapse">
                   <caption className="sr-only">Laporan monitoring kedaluwarsa</caption>
                   <thead className="sticky top-0 z-10">

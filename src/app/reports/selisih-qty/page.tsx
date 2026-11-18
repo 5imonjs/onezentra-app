@@ -378,7 +378,7 @@ export default function SelisihQtyReportPage() {
             </div>
           </div>
           {/* Desktop table */}
-          <div className="overflow-x-auto hidden lg:block">
+          <div className="max-h-[65vh] overflow-auto hidden lg:block">
             <table className="w-full min-w-[1100px] border-collapse">
               <caption className="sr-only">Laporan selisih kuantitas</caption>
               <thead className="sticky top-0 z-10">
