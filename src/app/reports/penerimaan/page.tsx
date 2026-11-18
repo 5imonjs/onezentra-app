@@ -414,7 +414,7 @@ export default function PenerimaanReportPage() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto hidden lg:block">
+          <div className="max-h-[65vh] overflow-auto hidden lg:block">
             <table className="w-full min-w-[1200px] border-collapse">
               <caption className="sr-only">Laporan penerimaan</caption>
               <thead className="sticky top-0 z-10">
