@@ -441,7 +441,7 @@ export default function NpnPage() {
 
           {/* Table */}
           {/* Desktop table */}
-          <div className="hidden overflow-x-auto md:block">
+          <div className="max-h-[65vh] overflow-auto hidden md:block">
             <table className="w-full border-collapse">
               <caption className="sr-only">Daftar produk NPN</caption>
               <thead className="sticky top-0 z-10">

@@ -1,39 +1,55 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const DIR = __dirname;
+const SRC = join(__dirname, '..', '..');
 
-const reportPages = readdirSync(DIR, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => join(DIR, entry.name, 'page.tsx'))
-  .filter((file) => {
-    try {
-      return readFileSync(file, 'utf8').includes('<table');
-    } catch {
-      return false;
-    }
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap((entry) => {
+    const full = join(dir, entry);
+    return statSync(full).isDirectory() ? walk(full) : full.endsWith('.tsx') ? [full] : [];
   });
+}
 
-describe('laporan — header tabel sticky', () => {
-  it('memberi tinggi tetap pada setiap wrapper tabel yang bisa digulir', () => {
+describe('header tabel sticky', () => {
+  it('memberi tinggi tetap pada wrapper tabel yang punya header sticky', () => {
     // `thead sticky top-0` hanya bekerja bila scroll container terdekat
     // benar-benar punya scroll vertikal. `overflow-x-auto` saja menjadikan
     // wrapper itu scroll container tanpa tinggi, jadi header ikut naik
-    // bersama halaman. Semua tabel laporan memakai pola `max-h-[...] overflow-auto`.
-    const offenders = reportPages.flatMap((file) =>
-      readFileSync(file, 'utf8')
+    // bersama halaman. Pola yang dipakai: `max-h-[...] overflow-auto`.
+    const offenders = walk(SRC).flatMap((file) => {
+      const lines = readFileSync(file, 'utf8').split('\n');
+      return lines.flatMap((text, i) => {
+        if (!/\boverflow-(?:x-)?auto\b/.test(text) || /max-h-/.test(text)) return [];
+        const window = lines.slice(i + 1, i + 9).join('\n');
+        // Hanya wrapper tabel dengan thead sticky yang wajib bertinggi tetap;
+        // listbox dan tabel pratinjau tanpa sticky tidak masuk aturan ini.
+        return /<table\b/.test(window) && /sticky top-0/.test(window)
+          ? [`${file.slice(SRC.length + 1)}:${i + 1}`]
+          : [];
+      });
+    });
+
+    expect(offenders).toEqual([]);
+
+    // Self-check: guard harus menangkap pola lama yang memicu bug ini, dan
+    // tidak boleh mengganggu listbox yang memang memakai overflow-auto.
+    const broken = [
+      '<div className="overflow-x-auto hidden lg:block">',
+      '<table>',
+      '<thead className="sticky top-0 z-10">',
+    ].join('\n');
+    const listbox = '<ul className="max-h-60 overflow-auto">';
+    const scan = (source: string) =>
+      source
         .split('\n')
-        .map((text, i) => ({ file: file.slice(DIR.length + 1), line: i + 1, text }))
-        .filter(({ text }) => /\boverflow-(?:x-)?auto\b/.test(text))
-        .filter(({ text }) => !/max-h-\[/.test(text)),
-    );
-
-    expect(offenders.map(({ file, line }) => `${file}:${line}`)).toEqual([]);
-    expect(reportPages.length).toBeGreaterThan(0);
-
-    // Self-check: guard harus menangkap pola lama yang memicu bug ini.
-    const broken = '<div className="overflow-x-auto hidden lg:block">';
-    expect(/\boverflow-(?:x-)?auto\b/.test(broken) && !/max-h-\[/.test(broken)).toBe(true);
+        .some((line, i, all) =>
+          /\boverflow-(?:x-)?auto\b/.test(line) &&
+          !/max-h-/.test(line) &&
+          /<table\b/.test(all.slice(i + 1, i + 9).join('\n')) &&
+          /sticky top-0/.test(all.slice(i + 1, i + 9).join('\n')),
+        );
+    expect(scan(broken)).toBe(true);
+    expect(scan(listbox)).toBe(false);
   });
 });

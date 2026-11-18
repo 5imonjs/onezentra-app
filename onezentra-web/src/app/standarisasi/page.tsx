@@ -622,7 +622,7 @@ const confirmApprove = async () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="max-h-[65vh] overflow-auto">
             <table className="w-full border-collapse">
               <caption className="sr-only">Daftar standarisasi tumpukan</caption>
               <thead className="sticky top-0 z-10">
