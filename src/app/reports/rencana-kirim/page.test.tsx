@@ -57,6 +57,7 @@ function row(overrides: Record<string, unknown> = {}) {
     total_qty: 13,
     total_kubikasi: 0.6,
     item_count: 2,
+    item_names: ['Produk Detail', 'Barang Manual'],
     status: 'SCHEDULED',
     ...overrides,
   };
@@ -135,6 +136,15 @@ describe('RencanaKirimReportPage — detail dokumen', () => {
     expect(await screen.findByText(/tidak memiliki izin/i)).toBeInTheDocument();
     expect(list).not.toHaveBeenCalled();
     expect(detail).not.toHaveBeenCalled();
+  });
+
+  it('menampilkan nama barang di baris tanpa membuka detail', async () => {
+    render(<RencanaKirimReportPage />);
+
+    const table = await screen.findByRole('table', { name: 'Laporan rencana kirim' });
+
+    expect(within(table).getByRole('columnheader', { name: 'Barang' })).toBeInTheDocument();
+    expect(within(table).getByText(/Produk Detail/)).toBeInTheDocument();
   });
 
   it('memuat detail dokumen dan menampilkan barang saat tombol Detail diklik', async () => {
